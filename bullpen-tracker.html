@@ -168,17 +168,28 @@
   .add-type-inline button{ background:none; border:1px solid var(--border-strong); color:var(--chalk-dim); border-radius:5px; padding:6px 10px; font-size:12px; }
   .add-type-inline button:hover{ color:var(--amber); border-color:var(--amber); }
 
-  .velo-row{ display:flex; align-items:center; gap:10px; }
-  .velo-input{
-    width:90px; font-size:24px; text-align:center; background:var(--field-dark);
-    border:1px solid var(--border-strong); border-radius:6px; color:var(--amber-bright); padding:6px 4px;
+  .velo-toggle-row{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--chalk-dim); }
+  .velo-toggle-row input[type="checkbox"]{
+    width:16px; height:16px; accent-color:var(--amber); cursor:pointer;
   }
-  .velo-btn{
-    width:34px; height:34px; border-radius:6px; background:var(--field-panel-2);
-    border:1px solid var(--border-strong); color:var(--chalk); font-size:18px; line-height:1;
+  .velo-slider-row{ display:flex; align-items:center; gap:14px; }
+  .velo-slider-row.disabled{ opacity:0.4; }
+  .velo-slider-row input[type="range"]{
+    flex:1; -webkit-appearance:none; appearance:none; height:6px; border-radius:3px;
+    background:linear-gradient(90deg, var(--amber) 0%, var(--amber) var(--fill,50%), var(--field-dark) var(--fill,50%), var(--field-dark) 100%);
+    outline-offset:4px;
   }
-  .velo-btn:hover{ border-color:var(--amber); color:var(--amber); }
-  .velo-unit{ font-size:12px; color:var(--chalk-faint); text-transform:uppercase; letter-spacing:0.08em; }
+  .velo-slider-row input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:20px; height:20px; border-radius:50%;
+    background:var(--amber-bright); border:2px solid var(--field-dark); cursor:pointer;
+    box-shadow:0 0 0 1px var(--border-strong);
+  }
+  .velo-slider-row input[type="range"]::-moz-range-thumb{
+    width:20px; height:20px; border-radius:50%; background:var(--amber-bright);
+    border:2px solid var(--field-dark); cursor:pointer;
+  }
+  .velo-slider-row input[type="range"]:disabled{ cursor:not-allowed; }
+  .velo-readout{ font-size:22px; color:var(--amber-bright); min-width:70px; text-align:right; }
 
   .hint-msg{ font-size:12px; color:var(--clay); min-height:16px; }
 
@@ -189,11 +200,29 @@
   }
   .zone-cell{
     background:var(--field-dark); border-radius:3px; position:relative; border:1px solid transparent;
+    transition:background-color 0.3s ease;
   }
   .zone-cell.in-zone{ background:#152B21; border-color:var(--border-strong); }
   .zone-cell.clickable{ cursor:pointer; }
   .zone-cell.clickable:hover{ outline:2px solid var(--amber); outline-offset:-2px; }
   .zone-caption{ font-size:11px; color:var(--chalk-faint); text-transform:uppercase; letter-spacing:0.1em; }
+
+  .zone-cell-flash{ --flash-fg:#F1ECDD; animation:cellFlash 1.4s ease forwards; }
+  .zone-cell-flash.flash-strike{ --flash-bg:#2E8B57; }
+  .zone-cell-flash.flash-ball{ --flash-bg:#C0453B; }
+  @keyframes cellFlash{
+    0%{ background-color:var(--flash-bg); }
+    55%{ background-color:var(--flash-bg); }
+    100%{ background-color:transparent; }
+  }
+  .flash-letter{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:'Teko',sans-serif; font-size:26px; font-weight:700; color:var(--flash-fg);
+    animation:letterFade 1.4s ease forwards;
+  }
+  @keyframes letterFade{
+    0%{ opacity:1; } 55%{ opacity:1; } 100%{ opacity:0; }
+  }
 
   .log-panel{ min-width:230px; flex:1; display:flex; flex-direction:column; gap:12px; }
   .stat-readout{ display:flex; gap:18px; flex-wrap:wrap; }
@@ -279,7 +308,9 @@ let state = {
   view: 'session',    // session | history | trends
   activeSession: null, // {pitches:[], startedAt}
   selectedType: null,
-  velo: '',
+  velo: 65,
+  recordVelocity: true,
+  flashCell: null,
   expandedSessionId: null,
   hint: '',
   draftAvailable: false,
@@ -346,7 +377,8 @@ async function selectPitcher(id, skipRender){
   state.view = 'session';
   state.expandedSessionId = null;
   state.selectedType = null;
-  state.velo = '';
+  state.velo = 65;
+  state.flashCell = null;
   state.sessions = (await storGet('sessions:' + id)) || [];
   const draft = await storGet('draft:' + id);
   if(draft && draft.pitches && draft.pitches.length){
@@ -386,23 +418,47 @@ window.selectType = function(type){
   state.hint = '';
   render();
 };
-window.adjustVelo = function(delta){
-  const cur = parseInt(document.getElementById('velo-field').value) || 0;
-  state.velo = String(Math.max(0, cur + delta));
+window.toggleRecordVelocity = function(checked){
+  state.recordVelocity = checked;
   render();
 };
-window.onVeloInput = function(val){
-  state.velo = val.replace(/[^0-9]/g, '');
+window.onVeloSlide = function(val){
+  state.velo = parseInt(val);
+  const readout = document.getElementById('velo-readout');
+  if(readout) readout.textContent = state.velo + ' mph';
+  const slider = document.getElementById('velo-slider');
+  if(slider) slider.style.setProperty('--fill', ((state.velo/110)*100) + '%');
+};
+function attachVeloSliderHandlers(){
+  const slider = document.getElementById('velo-slider');
+  if(!slider) return;
+  slider.style.setProperty('--fill', ((state.velo/110)*100) + '%');
+  slider.addEventListener('keydown', function(e){
+    if(e.key === 'Tab'){
+      e.preventDefault();
+      let v = parseInt(this.value) || 0;
+      v = e.shiftKey ? Math.max(0, v - 10) : Math.min(110, v + 10);
+      this.value = v;
+      window.onVeloSlide(v);
+    }
+  });
 };
 window.logPitch = async function(row, col){
   if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
-  const veloVal = parseInt(document.getElementById('velo-field').value) || parseInt(state.velo) || null;
-  if(!veloVal){ state.hint = 'Enter a velocity first'; render(); return; }
-  state.velo = String(veloVal);
   state.hint = '';
+  const veloVal = state.recordVelocity ? state.velo : null;
+  const strike = isStrikeCell(row, col);
   state.activeSession.pitches.push({ type: state.selectedType, velo: veloVal, row, col, ts: Date.now() });
   await storSet('draft:' + state.currentPitcherId, state.activeSession);
+  const flashKey = uid();
+  state.flashCell = { row, col, strike, key: flashKey };
   render();
+  setTimeout(() => {
+    if(state.flashCell && state.flashCell.key === flashKey){
+      state.flashCell = null;
+      render();
+    }
+  }, 1400);
 };
 window.undoLastPitch = async function(){
   state.activeSession.pitches.pop();
@@ -433,7 +489,8 @@ window.endSession = async function(){
   await storDelete('draft:' + state.currentPitcherId);
   state.activeSession = { pitches: [], startedAt: Date.now() };
   state.selectedType = null;
-  state.velo = '';
+  state.velo = 65;
+  state.flashCell = null;
   state.view = 'history';
   state.expandedSessionId = session.id;
   render();
@@ -450,24 +507,26 @@ window.toggleSessionExpand = function(id){
 function sessionStats(pitches){
   const total = pitches.length;
   const strikes = pitches.filter(p => isStrikeCell(p.row, p.col)).length;
-  const velos = pitches.map(p => p.velo);
-  const avgVelo = velos.length ? Math.round(velos.reduce((a,b)=>a+b,0) / velos.length) : 0;
-  const minVelo = velos.length ? Math.min(...velos) : 0;
-  const maxVelo = velos.length ? Math.max(...velos) : 0;
+  const velos = pitches.map(p => p.velo).filter(v => v !== null && v !== undefined);
+  const hasVelo = velos.length > 0;
+  const avgVelo = hasVelo ? Math.round(velos.reduce((a,b)=>a+b,0) / velos.length) : null;
+  const minVelo = hasVelo ? Math.min(...velos) : null;
+  const maxVelo = hasVelo ? Math.max(...velos) : null;
   const byType = {};
   pitches.forEach(p => {
     if(!byType[p.type]) byType[p.type] = { count:0, velos:[], strikes:0 };
     byType[p.type].count++;
-    byType[p.type].velos.push(p.velo);
+    if(p.velo !== null && p.velo !== undefined) byType[p.type].velos.push(p.velo);
     if(isStrikeCell(p.row, p.col)) byType[p.type].strikes++;
   });
   Object.values(byType).forEach(t => {
-    t.avgVelo = Math.round(t.velos.reduce((a,b)=>a+b,0) / t.velos.length);
-    t.minVelo = Math.min(...t.velos);
-    t.maxVelo = Math.max(...t.velos);
+    t.hasVelo = t.velos.length > 0;
+    t.avgVelo = t.hasVelo ? Math.round(t.velos.reduce((a,b)=>a+b,0) / t.velos.length) : null;
+    t.minVelo = t.hasVelo ? Math.min(...t.velos) : null;
+    t.maxVelo = t.hasVelo ? Math.max(...t.velos) : null;
     t.strikePct = Math.round((t.strikes / t.count) * 100);
   });
-  return { total, strikes, strikePct: total ? Math.round((strikes/total)*100) : 0, avgVelo, minVelo, maxVelo, byType };
+  return { total, strikes, strikePct: total ? Math.round((strikes/total)*100) : 0, hasVelo, avgVelo, minVelo, maxVelo, byType };
 }
 function heatCounts(pitches){
   const grid = {};
@@ -479,29 +538,48 @@ function heatCounts(pitches){
 }
 
 /* ---------- RENDER: ZONE GRID ---------- */
-function renderZoneGrid(pitches, clickable){
-  const heat = heatCounts(pitches);
-  const maxCount = Math.max(1, ...Object.values(heat));
+function renderZoneGrid(pitches, clickable, flashCell){
   let cells = '';
-  for(let row=0; row<GRID_SIZE; row++){
-    for(let col=0; col<GRID_SIZE; col++){
-      const key = row+'-'+col;
-      const count = heat[key] || 0;
-      const inZone = isStrikeCell(row,col);
-      let bg = '';
-      if(count > 0){
-        const intensity = count / maxCount;
-        const r = Math.round(46 + (192-46)*intensity);
-        const g = Math.round(107 + (69-107)*intensity);
-        const b = Math.round(82 + (59-82)*intensity);
-        bg = `background:rgba(${r},${g},${b},${0.35 + 0.5*intensity});`;
+
+  if(clickable){
+    // Live logging view: plain grid, with a transient green/red K/B flash on the just-tapped cell.
+    for(let row=0; row<GRID_SIZE; row++){
+      for(let col=0; col<GRID_SIZE; col++){
+        const inZone = isStrikeCell(row,col);
+        const isFlash = flashCell && flashCell.row === row && flashCell.col === col;
+        let cls = 'zone-cell' + (inZone ? ' in-zone' : '') + ' clickable';
+        let label = '';
+        if(isFlash){
+          cls += flashCell.strike ? ' zone-cell-flash flash-strike' : ' zone-cell-flash flash-ball';
+          label = `<span class="flash-letter">${flashCell.strike ? 'K' : 'B'}</span>`;
+        }
+        cells += `<div class="${cls}" onclick="logPitch(${row},${col})">${label}</div>`;
       }
-      const cls = 'zone-cell' + (inZone ? ' in-zone' : '') + (clickable ? ' clickable' : '');
-      const onclick = clickable ? `onclick="logPitch(${row},${col})"` : '';
-      const label = count > 0 ? `<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#F1ECDD;">${count}</span>` : '';
-      cells += `<div class="${cls}" style="${bg}" ${onclick}>${label}</div>`;
+    }
+  } else {
+    // Static history view: aggregate heat map with pitch counts.
+    const heat = heatCounts(pitches);
+    const maxCount = Math.max(1, ...Object.values(heat));
+    for(let row=0; row<GRID_SIZE; row++){
+      for(let col=0; col<GRID_SIZE; col++){
+        const key = row+'-'+col;
+        const count = heat[key] || 0;
+        const inZone = isStrikeCell(row,col);
+        let bg = '';
+        if(count > 0){
+          const intensity = count / maxCount;
+          const r = Math.round(46 + (192-46)*intensity);
+          const g = Math.round(107 + (69-107)*intensity);
+          const b = Math.round(82 + (59-82)*intensity);
+          bg = `background:rgba(${r},${g},${b},${0.35 + 0.5*intensity});`;
+        }
+        const cls = 'zone-cell' + (inZone ? ' in-zone' : '');
+        const label = count > 0 ? `<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#F1ECDD;">${count}</span>` : '';
+        cells += `<div class="${cls}" style="${bg}">${label}</div>`;
+      }
     }
   }
+
   return `<div class="zone-grid">${cells}</div>`;
 }
 
@@ -529,8 +607,9 @@ function renderSessionView(){
   const logRows = pitches.slice().reverse().slice(0, 12).map((pt, i) => {
     const color = colorForType(p, pt.type);
     const strike = isStrikeCell(pt.row, pt.col);
-    return `<div class="pitch-log-row"><span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pt.type}</span> · ${pt.velo} mph · ${strike ? 'Strike' : 'Ball'}</span>${i===0 ? '<button class="undo-btn" onclick="undoLastPitch()">Undo</button>' : ''}</div>`;
-  }).join('') || `<p style="color:var(--chalk-faint);font-size:12.5px;">No pitches logged yet. Pick a type, set velocity, then tap the zone.</p>`;
+    const veloText = (pt.velo !== null && pt.velo !== undefined) ? `${pt.velo} mph · ` : '';
+    return `<div class="pitch-log-row"><span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pt.type}</span> · ${veloText}${strike ? 'Strike' : 'Ball'}</span>${i===0 ? '<button class="undo-btn" onclick="undoLastPitch()">Undo</button>' : ''}</div>`;
+  }).join('') || `<p style="color:var(--chalk-faint);font-size:12.5px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
 
   return `
     <div class="session-grid-layout">
@@ -545,17 +624,20 @@ function renderSessionView(){
         </div>
         <div>
           <div class="field-label" style="margin-bottom:8px;">Velocity</div>
-          <div class="velo-row">
-            <button class="velo-btn" onclick="adjustVelo(-1)">−</button>
-            <input id="velo-field" class="velo-input mono" inputmode="numeric" value="${state.velo}" oninput="onVeloInput(this.value)" placeholder="—">
-            <button class="velo-btn" onclick="adjustVelo(1)">+</button>
-            <span class="velo-unit">mph</span>
+          <label class="velo-toggle-row">
+            <input type="checkbox" ${state.recordVelocity ? 'checked' : ''} onchange="toggleRecordVelocity(this.checked)">
+            Record velocity
+          </label>
+          <div class="velo-slider-row${state.recordVelocity ? '' : ' disabled'}" style="margin-top:8px;">
+            <input type="range" id="velo-slider" min="0" max="110" step="1" value="${state.velo}"
+              ${state.recordVelocity ? '' : 'disabled'} oninput="onVeloSlide(this.value)">
+            <span id="velo-readout" class="velo-readout mono">${state.recordVelocity ? state.velo + ' mph' : '—'}</span>
           </div>
         </div>
         <div class="hint-msg">${state.hint}</div>
         <div>
           <div class="zone-wrap">
-            ${renderZoneGrid(pitches, true)}
+            ${renderZoneGrid(pitches, true, state.flashCell)}
             <div class="zone-caption">Tap where the pitch landed</div>
           </div>
         </div>
@@ -564,8 +646,8 @@ function renderSessionView(){
         <div class="stat-readout">
           <div class="stat-box"><span class="stat-num mono">${stats.total}</span><span class="stat-lbl">Pitches</span></div>
           <div class="stat-box"><span class="stat-num mono">${stats.strikePct}%</span><span class="stat-lbl">Strikes</span></div>
-          <div class="stat-box"><span class="stat-num mono">${stats.avgVelo || '—'}</span><span class="stat-lbl">Avg mph</span></div>
-          <div class="stat-box"><span class="stat-num mono">${pitches.length ? stats.minVelo+'–'+stats.maxVelo : '—'}</span><span class="stat-lbl">Range</span></div>
+          <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="stat-lbl">Avg mph</span></div>
+          <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.minVelo+'–'+stats.maxVelo : '—'}</span><span class="stat-lbl">Range</span></div>
         </div>
         <div class="field-label">Recent pitches</div>
         <div class="pitch-log">${logRows}</div>
@@ -586,7 +668,7 @@ function renderHistoryView(){
     const dateStr = new Date(s.date).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
     const typeRows = Object.entries(stats.byType).map(([type, t]) => {
       const color = colorForType(p, type);
-      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${type}</td><td class="mono">${t.count}</td><td class="mono">${t.avgVelo} mph</td><td class="mono">${t.minVelo}–${t.maxVelo}</td><td class="mono">${t.strikePct}%</td></tr>`;
+      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${type}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${t.strikePct}%</td></tr>`;
     }).join('');
     return `
       <div class="session-card">
@@ -595,7 +677,7 @@ function renderHistoryView(){
           <div class="session-meta">
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
             <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
-            <div class="meta-item"><span class="meta-num mono">${stats.avgVelo}</span><span class="meta-lbl">Avg mph</span></div>
+            <div class="meta-item"><span class="meta-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="meta-lbl">Avg mph</span></div>
           </div>
         </div>
         ${expanded ? `
@@ -642,10 +724,12 @@ function renderTrendsView(){
     </div>`;
   }
 
+  const anyVelo = points.some(pt => pt.stats.hasVelo);
+
   return `
     <div style="display:flex;flex-direction:column;gap:20px;">
       ${barChart('Strike % by session', pt => pt.stats.strikePct, '%', 100)}
-      ${barChart('Average velocity by session', pt => pt.stats.avgVelo, '', 0)}
+      ${anyVelo ? barChart('Average velocity by session', pt => pt.stats.hasVelo ? pt.stats.avgVelo : 0, ' mph', 0) : `<div class="empty-hist">No velocity data recorded across these sessions.</div>`}
     </div>`;
 }
 
@@ -719,6 +803,7 @@ function render(){
   }
 
   app.innerHTML = sidebar + `<div class="main">${main}</div>`;
+  attachVeloSliderHandlers();
 }
 
 init();

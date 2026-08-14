@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log in · Bullpen Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --field-dark:#0F241B;
+    --field-panel:#183527;
+    --field-panel-2:#1F4230;
+    --chalk:#F1ECDD;
+    --chalk-dim:#B7C2B4;
+    --chalk-faint:#7C8C82;
+    --clay:#C17A45;
+    --amber:#E8A83D;
+    --amber-bright:#F5C365;
+    --border:rgba(241,236,221,0.12);
+    --border-strong:rgba(241,236,221,0.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:var(--field-dark);
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(232,168,61,0.08), transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(193,122,69,0.08), transparent 45%);
+    color:var(--chalk);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+  }
+  ::selection{ background:var(--amber); color:var(--field-dark); }
+  .display{ font-family:'Teko', sans-serif; font-weight:600; letter-spacing:0.01em; }
+  a{ color:var(--chalk-faint); text-decoration:none; font-size:13px; }
+  a:hover{ color:var(--chalk); }
+  button{ font-family:inherit; cursor:pointer; }
+  input{ font-family:inherit; }
+  button:focus-visible, input:focus-visible, a:focus-visible{ outline:2px solid var(--amber-bright); outline-offset:3px; }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
+
+  .card{
+    width:100%; max-width:380px;
+    background:var(--field-panel);
+    border:1.5px solid var(--border-strong);
+    border-radius:14px;
+    padding:38px 34px;
+    display:flex; flex-direction:column; gap:22px;
+  }
+  .brand{ display:flex; align-items:baseline; gap:8px; }
+  .brand-mark{ width:10px; height:10px; border-radius:2px; background:var(--amber); transform:rotate(45deg); margin-bottom:3px; }
+  .brand h1{ font-size:22px; line-height:1; margin:0; letter-spacing:0.02em; }
+  .brand span{ color:var(--amber); }
+
+  .role-tag{
+    align-self:flex-start;
+    font-size:11px; text-transform:uppercase; letter-spacing:0.1em;
+    color:var(--amber-bright);
+    background:rgba(232,168,61,0.12);
+    border:1px solid rgba(232,168,61,0.3);
+    padding:4px 10px; border-radius:20px;
+  }
+
+  h2.display{ font-size:38px; margin:0; line-height:1; }
+
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--chalk-faint); }
+  .text-input{
+    background:var(--field-dark); border:1px solid var(--border-strong); border-radius:6px;
+    color:var(--chalk); padding:11px 12px; font-size:14px; width:100%;
+  }
+  .text-input::placeholder{ color:var(--chalk-faint); }
+  .text-input:focus{ border-color:var(--amber); }
+
+  .btn-primary{
+    background:var(--amber); color:var(--field-dark); border:none; border-radius:7px;
+    padding:12px 14px; font-size:14px; font-weight:700; letter-spacing:0.02em;
+  }
+  .btn-primary:hover{ background:var(--amber-bright); }
+
+  .foot-row{ display:flex; justify-content:space-between; align-items:center; }
+</style>
+</head>
+<body>
+  <form class="card" id="login-form" autocomplete="off">
+    <div class="brand"><span class="brand-mark"></span><h1 class="display">Bullpen<span>.</span></h1></div>
+
+    <div>
+      <span class="role-tag" id="role-tag">Signing in</span>
+      <h2 class="display" style="margin-top:10px;">Welcome back</h2>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="username">Username</label>
+      <input class="text-input" id="username" name="username" placeholder="Enter any username" autofocus>
+    </div>
+    <div class="field">
+      <label class="field-label" for="password">Password</label>
+      <input class="text-input" id="password" name="password" type="password" placeholder="Enter any password">
+    </div>
+
+    <button type="submit" class="btn-primary">Log in</button>
+
+    <div class="foot-row">
+      <a href="index.html">&larr; Back</a>
+      <span style="font-size:11px;color:var(--chalk-faint);">Preview build · no account required</span>
+    </div>
+  </form>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const role = params.get('role');
+  const roleTag = document.getElementById('role-tag');
+  if(role === 'coach'){ roleTag.textContent = 'Signing in as Coach'; }
+  else if(role === 'pitcher'){ roleTag.textContent = 'Signing in as Pitcher'; }
+
+  document.getElementById('login-form').addEventListener('submit', function(e){
+    e.preventDefault();
+    const dest = role ? ('bullpen-tracker.html?role=' + encodeURIComponent(role)) : 'bullpen-tracker.html';
+    window.location.href = dest;
+  });
+</script>
+</body>
+</html>

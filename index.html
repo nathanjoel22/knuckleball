@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bullpen Tracker</title>
+<title>Knuckleball</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -41,13 +41,14 @@
 
   .wrap{ width:100%; max-width:760px; display:flex; flex-direction:column; align-items:center; gap:44px; text-align:center; }
 
+  .brand-block{ display:flex; flex-direction:column; align-items:center; gap:4px; }
   .brand{ display:flex; align-items:baseline; gap:8px; }
   .brand-mark{ width:11px; height:11px; border-radius:2px; background:var(--amber); transform:rotate(45deg); margin-bottom:3px; }
   .brand h1{ font-size:26px; line-height:1; margin:0; letter-spacing:0.02em; }
   .brand span{ color:var(--amber); }
+  .tagline{ font-size:11px; text-transform:uppercase; letter-spacing:0.18em; color:var(--chalk-faint); }
 
   h2.display{ font-size:64px; line-height:1; margin:0; }
-  .subtitle{ color:var(--chalk-dim); font-size:15px; margin-top:-24px; max-width:420px; }
 
   .options{ display:flex; gap:22px; width:100%; flex-wrap:wrap; justify-content:center; }
   .option-card{
@@ -81,11 +82,13 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="brand"><span class="brand-mark"></span><h1 class="display">Bullpen<span>.</span></h1></div>
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
 
     <div>
       <h2 class="display">Who are you?</h2>
-      <p class="subtitle">We'll take you to the right side of the mound.</p>
     </div>
 
     <div class="options">
@@ -112,7 +115,7 @@
       </a>
     </div>
 
-    <div class="foot">Bullpen Tracker · Session Log</div>
+    <div class="foot">Knuckleball · Session Log</div>
   </div>
 </body>
 </html>

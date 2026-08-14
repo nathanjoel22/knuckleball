@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bullpen Tracker</title>
+<title>Knuckleball</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -57,9 +57,12 @@
     padding:22px 18px;
     display:flex; flex-direction:column; gap:16px;
   }
-  .brand{
-    display:flex; align-items:baseline; gap:8px; padding-bottom:14px;
+  .brand-block{
+    display:flex; flex-direction:column; gap:4px; padding-bottom:14px;
     border-bottom:1px solid var(--border);
+  }
+  .brand{
+    display:flex; align-items:baseline; gap:8px;
   }
   .brand-mark{
     width:10px; height:10px; border-radius:2px; background:var(--amber);
@@ -69,6 +72,7 @@
     font-size:30px; line-height:1; margin:0; letter-spacing:0.02em;
   }
   .brand span{ color:var(--amber); }
+  .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:0.14em; color:var(--chalk-faint); }
 
   .roster-label{
     font-size:11px; text-transform:uppercase; letter-spacing:0.12em;
@@ -680,7 +684,10 @@ function render(){
 
   const sidebar = `
     <div class="sidebar">
-      <div class="brand"><span class="brand-mark"></span><h1 class="display">Bullpen<span>.</span></h1></div>
+      <div class="brand-block">
+        <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+        <span class="tagline">Always a Step Ahead</span>
+      </div>
       <div class="roster-label">Roster</div>
       <div class="roster-list">${rosterItems || '<p style="color:var(--chalk-faint);font-size:12.5px;">No pitchers yet.</p>'}</div>
       ${addForm}

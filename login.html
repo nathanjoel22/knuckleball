@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Log in · Knuckleball</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -17,6 +18,7 @@
     --clay:#C17A45;
     --amber:#E8A83D;
     --amber-bright:#F5C365;
+    --red:#C0453B;
     --border:rgba(241,236,221,0.12);
     --border-strong:rgba(241,236,221,0.22);
   }
@@ -82,8 +84,11 @@
     padding:12px 14px; font-size:14px; font-weight:700; letter-spacing:0.02em;
   }
   .btn-primary:hover{ background:var(--amber-bright); }
+  .btn-primary:disabled{ opacity:0.6; cursor:not-allowed; }
 
-  .foot-row{ display:flex; justify-content:space-between; align-items:center; }
+  .error-msg{ font-size:12.5px; color:var(--red); min-height:16px; }
+
+  .foot-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
 </style>
 </head>
 <body>
@@ -94,38 +99,63 @@
     </div>
 
     <div>
-      <span class="role-tag" id="role-tag">Signing in</span>
+      <span class="role-tag" id="role-tag">Sign in</span>
       <h2 class="display" style="margin-top:10px;">Welcome back</h2>
     </div>
 
     <div class="field">
-      <label class="field-label" for="username">Username</label>
-      <input class="text-input" id="username" name="username" placeholder="Enter any username" autofocus>
+      <label class="field-label" for="email">Email</label>
+      <input class="text-input" id="email" name="email" type="email" placeholder="you@example.com" autofocus autocomplete="email">
     </div>
     <div class="field">
       <label class="field-label" for="password">Password</label>
-      <input class="text-input" id="password" name="password" type="password" placeholder="Enter any password">
+      <input class="text-input" id="password" name="password" type="password" placeholder="••••••••" autocomplete="current-password">
     </div>
 
-    <button type="submit" class="btn-primary">Log in</button>
+    <div class="error-msg" id="error-msg"></div>
+
+    <button type="submit" class="btn-primary" id="submit-btn">Log in</button>
 
     <div class="foot-row">
       <a href="index.html">&larr; Back</a>
-      <span style="font-size:11px;color:var(--chalk-faint);">Preview build · no account required</span>
+      <a href="coach-signup.html">New coach? Create an account</a>
     </div>
   </form>
 
+<script src="supabase-config.js"></script>
 <script>
   const params = new URLSearchParams(window.location.search);
   const role = params.get('role');
   const roleTag = document.getElementById('role-tag');
-  if(role === 'coach'){ roleTag.textContent = 'Signing in as Coach'; }
-  else if(role === 'pitcher'){ roleTag.textContent = 'Signing in as Pitcher'; }
+  if(role === 'coach'){ roleTag.textContent = 'Coach sign in'; }
+  else if(role === 'pitcher'){ roleTag.textContent = 'Pitcher sign in'; }
 
-  document.getElementById('login-form').addEventListener('submit', function(e){
+  const form = document.getElementById('login-form');
+  const errorEl = document.getElementById('error-msg');
+  const submitBtn = document.getElementById('submit-btn');
+
+  form.addEventListener('submit', async function(e){
     e.preventDefault();
-    const dest = role ? ('bullpen-tracker.html?role=' + encodeURIComponent(role)) : 'bullpen-tracker.html';
-    window.location.href = dest;
+    errorEl.textContent = '';
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    if(!email || !password){
+      errorEl.textContent = 'Enter both email and password.';
+      return;
+    }
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Logging in…';
+
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+    if(error){
+      errorEl.textContent = error.message;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Log in';
+      return;
+    }
+
+    window.location.href = 'bullpen-tracker.html';
   });
 </script>
 </body>

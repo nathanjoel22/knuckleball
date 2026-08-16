@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coach sign up · Knuckleball</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --field-dark:#0F241B; --field-panel:#183527; --field-panel-2:#1F4230;
+    --chalk:#F1ECDD; --chalk-dim:#B7C2B4; --chalk-faint:#7C8C82;
+    --clay:#C17A45; --amber:#E8A83D; --amber-bright:#F5C365; --red:#C0453B;
+    --border:rgba(241,236,221,0.12); --border-strong:rgba(241,236,221,0.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:var(--field-dark);
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(232,168,61,0.08), transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(193,122,69,0.08), transparent 45%);
+    color:var(--chalk); font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  ::selection{ background:var(--amber); color:var(--field-dark); }
+  .display{ font-family:'Teko', sans-serif; font-weight:600; letter-spacing:0.01em; }
+  a{ color:var(--chalk-faint); text-decoration:none; font-size:13px; }
+  a:hover{ color:var(--chalk); }
+  button{ font-family:inherit; cursor:pointer; }
+  input{ font-family:inherit; }
+  button:focus-visible, input:focus-visible, a:focus-visible{ outline:2px solid var(--amber-bright); outline-offset:3px; }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
+
+  .card{
+    width:100%; max-width:400px; background:var(--field-panel); border:1.5px solid var(--border-strong);
+    border-radius:14px; padding:38px 34px; display:flex; flex-direction:column; gap:20px;
+  }
+  .brand-block{ display:flex; flex-direction:column; gap:4px; }
+  .brand{ display:flex; align-items:baseline; gap:8px; }
+  .brand-mark{ width:10px; height:10px; border-radius:2px; background:var(--amber); transform:rotate(45deg); margin-bottom:3px; }
+  .brand h1{ font-size:22px; line-height:1; margin:0; letter-spacing:0.02em; }
+  .brand span{ color:var(--amber); }
+  .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:0.16em; color:var(--chalk-faint); }
+  h2.display{ font-size:34px; margin:0; line-height:1; }
+  p.sub{ font-size:13px; color:var(--chalk-dim); margin:0; }
+
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--chalk-faint); }
+  .text-input{
+    background:var(--field-dark); border:1px solid var(--border-strong); border-radius:6px;
+    color:var(--chalk); padding:11px 12px; font-size:14px; width:100%;
+  }
+  .text-input::placeholder{ color:var(--chalk-faint); }
+  .text-input:focus{ border-color:var(--amber); }
+
+  .btn-primary{
+    background:var(--amber); color:var(--field-dark); border:none; border-radius:7px;
+    padding:12px 14px; font-size:14px; font-weight:700; letter-spacing:0.02em;
+  }
+  .btn-primary:hover{ background:var(--amber-bright); }
+  .btn-primary:disabled{ opacity:0.6; cursor:not-allowed; }
+
+  .error-msg{ font-size:12.5px; color:var(--red); min-height:16px; }
+  .info-msg{ font-size:13px; color:var(--chalk-dim); line-height:1.5; background:var(--field-panel-2); border:1px solid var(--border-strong); border-radius:8px; padding:14px; }
+
+  .foot-row{ display:flex; justify-content:space-between; align-items:center; }
+  .step-hidden{ display:none; }
+</style>
+</head>
+<body>
+  <form class="card" id="signup-form" autocomplete="off">
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <div>
+      <h2 class="display">Create a coach account</h2>
+      <p class="sub">You'll be able to invite pitchers once your team is set up.</p>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="full-name">Full name</label>
+      <input class="text-input" id="full-name" placeholder="Your name" autofocus>
+    </div>
+    <div class="field">
+      <label class="field-label" for="email">Email</label>
+      <input class="text-input" id="email" type="email" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <div class="field">
+      <label class="field-label" for="password">Password</label>
+      <input class="text-input" id="password" type="password" placeholder="At least 8 characters" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label class="field-label" for="team-name">Team / program name</label>
+      <input class="text-input" id="team-name" placeholder="e.g. Cairn University Baseball">
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+    <button type="submit" class="btn-primary" id="submit-btn">Create account</button>
+    <div class="foot-row">
+      <a href="index.html">&larr; Back</a>
+      <a href="login.html">Already have an account? Log in</a>
+    </div>
+  </form>
+
+  <div class="card step-hidden" id="confirm-card">
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <h2 class="display">Check your email</h2>
+    <div class="info-msg">We sent a confirmation link to your email. Click it, then come back and log in to finish setting up your team.</div>
+    <a href="login.html">Go to login &rarr;</a>
+  </div>
+
+<script src="supabase-config.js"></script>
+<script>
+  const form = document.getElementById('signup-form');
+  const errorEl = document.getElementById('error-msg');
+  const submitBtn = document.getElementById('submit-btn');
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    errorEl.textContent = '';
+
+    const fullName = document.getElementById('full-name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const teamName = document.getElementById('team-name').value.trim();
+
+    if(!fullName || !email || !password || !teamName){
+      errorEl.textContent = 'Fill in every field to continue.';
+      return;
+    }
+    if(password.length < 8){
+      errorEl.textContent = 'Password should be at least 8 characters.';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating account…';
+
+    const { data: signUpData, error: signUpErr } = await supabaseClient.auth.signUp({ email, password });
+    if(signUpErr){
+      errorEl.textContent = signUpErr.message;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Create account';
+      return;
+    }
+
+    // If email confirmation is required, there's no active session yet —
+    // send them to check their inbox instead of trying to write data now.
+    if(!signUpData.session){
+      form.classList.add('step-hidden');
+      document.getElementById('confirm-card').classList.remove('step-hidden');
+      return;
+    }
+
+    const userId = signUpData.user.id;
+
+    const { error: profileErr } = await supabaseClient.from('profiles').insert({
+      id: userId, role: 'coach', full_name: fullName
+    });
+    if(profileErr){
+      errorEl.textContent = 'Account created, but profile setup failed: ' + profileErr.message;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Create account';
+      return;
+    }
+
+    const { error: teamErr } = await supabaseClient.from('teams').insert({
+      coach_id: userId, name: teamName
+    });
+    if(teamErr){
+      errorEl.textContent = 'Profile created, but team setup failed: ' + teamErr.message;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Create account';
+      return;
+    }
+
+    window.location.href = 'bullpen-tracker.html';
+  });
+</script>
+</body>
+</html>

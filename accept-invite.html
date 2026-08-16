@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accept invite · Knuckleball</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --field-dark:#0F241B; --field-panel:#183527; --field-panel-2:#1F4230;
+    --chalk:#F1ECDD; --chalk-dim:#B7C2B4; --chalk-faint:#7C8C82;
+    --clay:#C17A45; --amber:#E8A83D; --amber-bright:#F5C365; --red:#C0453B;
+    --border:rgba(241,236,221,0.12); --border-strong:rgba(241,236,221,0.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:var(--field-dark);
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(232,168,61,0.08), transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(193,122,69,0.08), transparent 45%);
+    color:var(--chalk); font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  ::selection{ background:var(--amber); color:var(--field-dark); }
+  .display{ font-family:'Teko', sans-serif; font-weight:600; letter-spacing:0.01em; }
+  a{ color:var(--chalk-faint); text-decoration:none; font-size:13px; }
+  a:hover{ color:var(--chalk); }
+  button{ font-family:inherit; cursor:pointer; }
+  input{ font-family:inherit; }
+  button:focus-visible, input:focus-visible{ outline:2px solid var(--amber-bright); outline-offset:3px; }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
+
+  .card{
+    width:100%; max-width:400px; background:var(--field-panel); border:1.5px solid var(--border-strong);
+    border-radius:14px; padding:38px 34px; display:flex; flex-direction:column; gap:20px;
+  }
+  .brand-block{ display:flex; flex-direction:column; gap:4px; }
+  .brand{ display:flex; align-items:baseline; gap:8px; }
+  .brand-mark{ width:10px; height:10px; border-radius:2px; background:var(--amber); transform:rotate(45deg); margin-bottom:3px; }
+  .brand h1{ font-size:22px; line-height:1; margin:0; letter-spacing:0.02em; }
+  .brand span{ color:var(--amber); }
+  .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:0.16em; color:var(--chalk-faint); }
+  h2.display{ font-size:34px; margin:0; line-height:1; }
+  p.sub{ font-size:13px; color:var(--chalk-dim); margin:0; }
+
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--chalk-faint); }
+  .text-input{
+    background:var(--field-dark); border:1px solid var(--border-strong); border-radius:6px;
+    color:var(--chalk); padding:11px 12px; font-size:14px; width:100%;
+  }
+  .text-input:focus{ border-color:var(--amber); }
+
+  .btn-primary{
+    background:var(--amber); color:var(--field-dark); border:none; border-radius:7px;
+    padding:12px 14px; font-size:14px; font-weight:700; letter-spacing:0.02em;
+  }
+  .btn-primary:hover{ background:var(--amber-bright); }
+  .btn-primary:disabled{ opacity:0.6; cursor:not-allowed; }
+
+  .error-msg{ font-size:12.5px; color:var(--red); min-height:16px; }
+  .info-msg{ font-size:13px; color:var(--chalk-dim); line-height:1.5; }
+  .step-hidden{ display:none; }
+</style>
+</head>
+<body>
+  <div class="card" id="loading-card">
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <p class="info-msg">Checking your invite…</p>
+  </div>
+
+  <form class="card step-hidden" id="accept-form" autocomplete="off">
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <div>
+      <h2 class="display">Set up your account</h2>
+      <p class="sub" id="invite-sub">Joining <span id="team-name-display">a team</span>.</p>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="full-name">Your name</label>
+      <input class="text-input" id="full-name" placeholder="Full name" autofocus>
+    </div>
+    <div class="field">
+      <label class="field-label" for="password">Choose a password</label>
+      <input class="text-input" id="password" type="password" placeholder="At least 8 characters" autocomplete="new-password">
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+    <button type="submit" class="btn-primary" id="submit-btn">Finish setup</button>
+  </form>
+
+  <div class="card step-hidden" id="invalid-card">
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <p class="info-msg" id="invalid-msg">This invite link is invalid or has expired. Ask your coach to resend it.</p>
+    <a href="login.html">Go to login &rarr;</a>
+  </div>
+
+<script src="supabase-config.js"></script>
+<script>
+  const loadingCard = document.getElementById('loading-card');
+  const acceptForm = document.getElementById('accept-form');
+  const invalidCard = document.getElementById('invalid-card');
+  const invalidMsg = document.getElementById('invalid-msg');
+  const errorEl = document.getElementById('error-msg');
+  const submitBtn = document.getElementById('submit-btn');
+
+  function showInvalid(message){
+    loadingCard.classList.add('step-hidden');
+    acceptForm.classList.add('step-hidden');
+    if(message) invalidMsg.textContent = message;
+    invalidCard.classList.remove('step-hidden');
+  }
+
+  let pendingInvite = null;
+
+  async function init(){
+    // supabase-js auto-detects the invite token in the URL and creates a session.
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if(!session || !session.user || !session.user.email){
+      showInvalid();
+      return;
+    }
+
+    const email = session.user.email;
+    const { data: invites, error: inviteErr } = await supabaseClient
+      .from('invites')
+      .select('id, team_id, status, teams ( name )')
+      .eq('email', email)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if(inviteErr || !invites || !invites.length){
+      showInvalid('No pending invite found for ' + email + '.');
+      return;
+    }
+
+    pendingInvite = invites[0];
+    document.getElementById('team-name-display').textContent = pendingInvite.teams ? pendingInvite.teams.name : 'your team';
+
+    loadingCard.classList.add('step-hidden');
+    acceptForm.classList.remove('step-hidden');
+  }
+
+  acceptForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    errorEl.textContent = '';
+
+    const fullName = document.getElementById('full-name').value.trim();
+    const password = document.getElementById('password').value;
+    if(!fullName || !password){
+      errorEl.textContent = 'Enter your name and choose a password.';
+      return;
+    }
+    if(password.length < 8){
+      errorEl.textContent = 'Password should be at least 8 characters.';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Setting up…';
+
+    const { data: updateData, error: updateErr } = await supabaseClient.auth.updateUser({ password });
+    if(updateErr){
+      errorEl.textContent = updateErr.message;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Finish setup';
+      return;
+    }
+
+    const userId = updateData.user.id;
+
+    const { error: profileErr } = await supabaseClient.from('profiles')
+      .upsert({ id: userId, role: 'pitcher', full_name: fullName }, { onConflict: 'id' });
+    if(profileErr){
+      errorEl.textContent = 'Password set, but profile setup failed: ' + profileErr.message;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Finish setup';
+      return;
+    }
+
+    const { error: membershipErr } = await supabaseClient.from('pitcher_teams').insert({
+      pitcher_id: userId, team_id: pendingInvite.team_id
+    });
+    if(membershipErr && !membershipErr.message.toLowerCase().includes('duplicate')){
+      errorEl.textContent = 'Profile created, but joining the team failed: ' + membershipErr.message;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Finish setup';
+      return;
+    }
+
+    await supabaseClient.from('invites').update({ status: 'accepted' }).eq('id', pendingInvite.id);
+
+    window.location.href = 'bullpen-tracker.html';
+  });
+
+  init();
+</script>
+</body>
+</html>

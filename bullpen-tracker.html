@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Knuckleball</title>
+<script src="report-config.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -224,6 +225,27 @@
     0%{ opacity:1; } 55%{ opacity:1; } 100%{ opacity:0; }
   }
 
+  .zone-number{
+    position:absolute; top:3px; left:5px; font-family:'IBM Plex Mono',monospace;
+    font-size:9.5px; color:rgba(241,236,221,0.4); pointer-events:none; line-height:1;
+  }
+  .zone-number-heat{ color:rgba(15,36,27,0.55); font-weight:600; }
+  .zone-count{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; color:#0F241B;
+  }
+  .zone-cell-target{
+    outline:2px solid var(--amber); outline-offset:-2px; background:rgba(232,168,61,0.16);
+  }
+  .target-dot{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+  .target-dot-core{
+    width:12px; height:12px; border-radius:50%; background:var(--amber);
+    box-shadow:0 0 0 4px rgba(232,168,61,0.28); animation:targetPulse 1.1s ease-in-out infinite;
+  }
+  @keyframes targetPulse{
+    0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.15); opacity:0.75; }
+  }
+
   .log-panel{ min-width:230px; flex:1; display:flex; flex-direction:column; gap:12px; }
   .stat-readout{ display:flex; gap:18px; flex-wrap:wrap; }
   .stat-box{ display:flex; flex-direction:column; }
@@ -265,6 +287,22 @@
   .breakdown-table td{ padding:6px 8px 6px 0; border-bottom:1px solid var(--border); }
 
   .empty-hist{ text-align:center; color:var(--chalk-faint); padding:40px 20px; font-size:13.5px; }
+
+  .contacts-panel{
+    display:flex; gap:14px; flex-wrap:wrap; background:var(--field-panel); border:1px solid var(--border);
+    border-radius:10px; padding:16px; margin-top:-8px;
+  }
+  .contacts-panel .field{ flex:1; min-width:200px; }
+
+  .report-panel{
+    margin-top:16px; padding-top:14px; border-top:1px solid var(--border);
+    display:flex; flex-direction:column; gap:8px; align-items:flex-start;
+  }
+  .report-recipients{ margin:0; font-size:12px; color:var(--chalk-faint); }
+  .report-status{ margin:0; font-size:12px; }
+  .report-status-sending{ color:var(--chalk-faint); }
+  .report-status-sent{ color:#6FA287; }
+  .report-status-error{ color:var(--red); }
 
   /* TRENDS */
   .trend-panel{ display:flex; flex-direction:column; gap:6px; }
@@ -311,6 +349,7 @@ let state = {
   velo: 65,
   recordVelocity: true,
   flashCell: null,
+  pendingTarget: null,
   expandedSessionId: null,
   hint: '',
   draftAvailable: false,
@@ -324,6 +363,13 @@ function colorForType(pitcher, type){
 }
 function currentPitcher(){ return state.roster.find(p => p.id === state.currentPitcherId) || null; }
 function isStrikeCell(row, col){ return row >= 1 && row <= 3 && col >= 1 && col <= 3; }
+function zoneNumber(row, col){
+  if(!isStrikeCell(row, col)) return null;
+  return (row - 1) * 3 + (col - 1) + 1; // 1 (top-left) ... 9 (bottom-right), standard baseball numbering
+}
+function isAccurate(pitch){
+  return pitch.targetRow === pitch.actualRow && pitch.targetCol === pitch.actualCol;
+}
 
 /* ---------- INIT ---------- */
 async function init(){
@@ -351,7 +397,7 @@ window.submitAddPitcher = async function(){
   const name = (nameEl.value || '').trim();
   if(!name) return;
   const pitchTypes = (typesEl.value || '').split(',').map(s=>s.trim()).filter(Boolean);
-  const pitcher = { id: uid(), name, pitchTypes: pitchTypes.length ? pitchTypes : ['FB'] };
+  const pitcher = { id: uid(), name, pitchTypes: pitchTypes.length ? pitchTypes : ['FB'], contactEmails: { coach:'', pitchingCoach:'', pitcher:'' } };
   state.roster.push(pitcher);
   await storSet('roster', state.roster);
   state.addingPitcher = false;
@@ -379,6 +425,7 @@ async function selectPitcher(id, skipRender){
   state.selectedType = null;
   state.velo = 65;
   state.flashCell = null;
+  state.pendingTarget = null;
   state.sessions = (await storGet('sessions:' + id)) || [];
   const draft = await storGet('draft:' + id);
   if(draft && draft.pitches && draft.pitches.length){
@@ -409,6 +456,53 @@ window.removePitchType = async function(type){
   p.pitchTypes = p.pitchTypes.filter(t => t !== type);
   if(state.selectedType === type) state.selectedType = null;
   await storSet('roster', state.roster);
+  render();
+};
+
+/* ---------- CONTACT EMAILS ---------- */
+window.saveContactEmail = async function(field, value){
+  const p = currentPitcher();
+  if(!p.contactEmails) p.contactEmails = { coach:'', pitchingCoach:'', pitcher:'' };
+  p.contactEmails[field] = value.trim();
+  await storSet('roster', state.roster);
+};
+window.toggleContactsPanel = function(){
+  state.contactsOpen = !state.contactsOpen;
+  render();
+};
+
+/* ---------- EMAIL REPORT (requires backend — see SETUP.md) ---------- */
+window.sendSessionReport = async function(sessionId){
+  const p = currentPitcher();
+  const session = state.sessions.find(s => s.id === sessionId);
+  if(!session) return;
+  const contacts = p.contactEmails || {};
+  const emails = [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean);
+  if(!emails.length) return;
+
+  state.reportStatus = { sessionId, status: 'sending', message: 'Sending…' };
+  render();
+
+  const stats = sessionStats(session.pitches);
+  try{
+    if(typeof SEND_REPORT_URL === 'undefined' || SEND_REPORT_URL.indexOf('YOUR_') === 0){
+      throw new Error('not configured');
+    }
+    const res = await fetch(SEND_REPORT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-report-key': typeof REPORT_API_KEY !== 'undefined' ? REPORT_API_KEY : '' },
+      body: JSON.stringify({
+        emails,
+        pitcherName: p.name,
+        date: session.date,
+        stats: { total: stats.total, strikePct: stats.strikePct, accuracyPct: stats.accuracyPct, avgVelo: stats.avgVelo }
+      })
+    });
+    if(!res.ok) throw new Error('server responded ' + res.status);
+    state.reportStatus = { sessionId, status: 'sent', message: 'Report sent to ' + emails.length + ' recipient(s).' };
+  } catch(err){
+    state.reportStatus = { sessionId, status: 'error', message: 'Could not send yet — the email backend still needs to be deployed (see SETUP.md).' };
+  }
   render();
 };
 
@@ -443,12 +537,28 @@ function attachVeloSliderHandlers(){
     }
   });
 };
-window.logPitch = async function(row, col){
+window.handleZoneTap = async function(row, col){
   if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
   state.hint = '';
+
+  if(!state.pendingTarget){
+    // First tap: where the pitcher was aiming.
+    state.pendingTarget = { row, col };
+    render();
+    return;
+  }
+
+  // Second tap: where it actually landed.
+  const target = state.pendingTarget;
   const veloVal = state.recordVelocity ? state.velo : null;
   const strike = isStrikeCell(row, col);
-  state.activeSession.pitches.push({ type: state.selectedType, velo: veloVal, row, col, ts: Date.now() });
+  state.activeSession.pitches.push({
+    type: state.selectedType, velo: veloVal,
+    targetRow: target.row, targetCol: target.col,
+    actualRow: row, actualCol: col,
+    ts: Date.now()
+  });
+  state.pendingTarget = null;
   await storSet('draft:' + state.currentPitcherId, state.activeSession);
   const flashKey = uid();
   state.flashCell = { row, col, strike, key: flashKey };
@@ -460,8 +570,13 @@ window.logPitch = async function(row, col){
     }
   }, 1400);
 };
+window.resetTarget = function(){
+  state.pendingTarget = null;
+  render();
+};
 window.undoLastPitch = async function(){
   state.activeSession.pitches.pop();
+  state.pendingTarget = null;
   await storSet('draft:' + state.currentPitcherId, state.activeSession);
   render();
 };
@@ -474,6 +589,7 @@ window.discardDraft = async function(){
   await storDelete('draft:' + state.currentPitcherId);
   state.activeSession = { pitches: [], startedAt: Date.now() };
   state.draftAvailable = false;
+  state.pendingTarget = null;
   render();
 };
 window.endSession = async function(){
@@ -506,7 +622,8 @@ window.toggleSessionExpand = function(id){
 /* ---------- STATS HELPERS ---------- */
 function sessionStats(pitches){
   const total = pitches.length;
-  const strikes = pitches.filter(p => isStrikeCell(p.row, p.col)).length;
+  const strikes = pitches.filter(p => isStrikeCell(p.actualRow, p.actualCol)).length;
+  const accurate = pitches.filter(isAccurate).length;
   const velos = pitches.map(p => p.velo).filter(v => v !== null && v !== undefined);
   const hasVelo = velos.length > 0;
   const avgVelo = hasVelo ? Math.round(velos.reduce((a,b)=>a+b,0) / velos.length) : null;
@@ -514,10 +631,11 @@ function sessionStats(pitches){
   const maxVelo = hasVelo ? Math.max(...velos) : null;
   const byType = {};
   pitches.forEach(p => {
-    if(!byType[p.type]) byType[p.type] = { count:0, velos:[], strikes:0 };
+    if(!byType[p.type]) byType[p.type] = { count:0, velos:[], strikes:0, accurate:0 };
     byType[p.type].count++;
     if(p.velo !== null && p.velo !== undefined) byType[p.type].velos.push(p.velo);
-    if(isStrikeCell(p.row, p.col)) byType[p.type].strikes++;
+    if(isStrikeCell(p.actualRow, p.actualCol)) byType[p.type].strikes++;
+    if(isAccurate(p)) byType[p.type].accurate++;
   });
   Object.values(byType).forEach(t => {
     t.hasVelo = t.velos.length > 0;
@@ -525,39 +643,61 @@ function sessionStats(pitches){
     t.minVelo = t.hasVelo ? Math.min(...t.velos) : null;
     t.maxVelo = t.hasVelo ? Math.max(...t.velos) : null;
     t.strikePct = Math.round((t.strikes / t.count) * 100);
+    t.accuracyPct = Math.round((t.accurate / t.count) * 100);
   });
-  return { total, strikes, strikePct: total ? Math.round((strikes/total)*100) : 0, hasVelo, avgVelo, minVelo, maxVelo, byType };
+  return {
+    total, strikes, strikePct: total ? Math.round((strikes/total)*100) : 0,
+    accurate, accuracyPct: total ? Math.round((accurate/total)*100) : 0,
+    hasVelo, avgVelo, minVelo, maxVelo, byType
+  };
 }
 function heatCounts(pitches){
   const grid = {};
   pitches.forEach(p => {
-    const k = p.row + '-' + p.col;
+    const k = p.actualRow + '-' + p.actualCol;
     grid[k] = (grid[k] || 0) + 1;
   });
   return grid;
 }
+function heatColor(intensity){
+  // light blue (never located here) → red (heavily located here)
+  const from = { r:142, g:197, b:232 };
+  const to = { r:208, g:60, b:60 };
+  const r = Math.round(from.r + (to.r - from.r) * intensity);
+  const g = Math.round(from.g + (to.g - from.g) * intensity);
+  const b = Math.round(from.b + (to.b - from.b) * intensity);
+  return `rgb(${r},${g},${b})`;
+}
 
 /* ---------- RENDER: ZONE GRID ---------- */
-function renderZoneGrid(pitches, clickable, flashCell){
+function renderZoneGrid(pitches, clickable, flashCell, pendingTarget){
   let cells = '';
 
   if(clickable){
-    // Live logging view: plain grid, with a transient green/red K/B flash on the just-tapped cell.
+    // Live logging view: plain grid, zone numbers always visible, plus a target
+    // marker while awaiting the outcome tap, and a transient K/B flash on commit.
     for(let row=0; row<GRID_SIZE; row++){
       for(let col=0; col<GRID_SIZE; col++){
         const inZone = isStrikeCell(row,col);
+        const num = zoneNumber(row,col);
+        const isTarget = pendingTarget && pendingTarget.row === row && pendingTarget.col === col;
         const isFlash = flashCell && flashCell.row === row && flashCell.col === col;
         let cls = 'zone-cell' + (inZone ? ' in-zone' : '') + ' clickable';
-        let label = '';
+        let inner = num !== null ? `<span class="zone-number">${num}</span>` : '';
+        if(isTarget){
+          cls += ' zone-cell-target';
+          inner += `<span class="target-dot"><span class="target-dot-core"></span></span>`;
+        }
         if(isFlash){
           cls += flashCell.strike ? ' zone-cell-flash flash-strike' : ' zone-cell-flash flash-ball';
-          label = `<span class="flash-letter">${flashCell.strike ? 'K' : 'B'}</span>`;
+          inner += `<span class="flash-letter">${flashCell.strike ? 'K' : 'B'}</span>`;
         }
-        cells += `<div class="${cls}" onclick="logPitch(${row},${col})">${label}</div>`;
+        cells += `<div class="${cls}" onclick="handleZoneTap(${row},${col})">${inner}</div>`;
       }
     }
   } else {
-    // Static history view: aggregate heat map with pitch counts.
+    // Static history view: blue (never located here) → red (heavily located here) heat map,
+    // with the standard 1-9 zone numbers always shown.
     const heat = heatCounts(pitches);
     const maxCount = Math.max(1, ...Object.values(heat));
     for(let row=0; row<GRID_SIZE; row++){
@@ -565,17 +705,13 @@ function renderZoneGrid(pitches, clickable, flashCell){
         const key = row+'-'+col;
         const count = heat[key] || 0;
         const inZone = isStrikeCell(row,col);
-        let bg = '';
-        if(count > 0){
-          const intensity = count / maxCount;
-          const r = Math.round(46 + (192-46)*intensity);
-          const g = Math.round(107 + (69-107)*intensity);
-          const b = Math.round(82 + (59-82)*intensity);
-          bg = `background:rgba(${r},${g},${b},${0.35 + 0.5*intensity});`;
-        }
+        const num = zoneNumber(row,col);
+        const intensity = count / maxCount;
+        const bg = `background:${heatColor(intensity)};opacity:${0.4 + 0.5*intensity};`;
         const cls = 'zone-cell' + (inZone ? ' in-zone' : '');
-        const label = count > 0 ? `<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#F1ECDD;">${count}</span>` : '';
-        cells += `<div class="${cls}" style="${bg}">${label}</div>`;
+        const numLabel = num !== null ? `<span class="zone-number zone-number-heat">${num}</span>` : '';
+        const countLabel = count > 0 ? `<span class="zone-count">${count}</span>` : '';
+        cells += `<div class="${cls}" style="${bg}">${numLabel}${countLabel}</div>`;
       }
     }
   }
@@ -606,10 +742,18 @@ function renderSessionView(){
 
   const logRows = pitches.slice().reverse().slice(0, 12).map((pt, i) => {
     const color = colorForType(p, pt.type);
-    const strike = isStrikeCell(pt.row, pt.col);
+    const strike = isStrikeCell(pt.actualRow, pt.actualCol);
+    const accurate = isAccurate(pt);
     const veloText = (pt.velo !== null && pt.velo !== undefined) ? `${pt.velo} mph · ` : '';
-    return `<div class="pitch-log-row"><span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pt.type}</span> · ${veloText}${strike ? 'Strike' : 'Ball'}</span>${i===0 ? '<button class="undo-btn" onclick="undoLastPitch()">Undo</button>' : ''}</div>`;
+    const targetNum = zoneNumber(pt.targetRow, pt.targetCol);
+    const actualNum = zoneNumber(pt.actualRow, pt.actualCol);
+    const locText = `${targetNum ? 'aimed '+targetNum : 'aimed ball'} → ${actualNum ? 'landed '+actualNum : 'landed ball'}${accurate ? ' ✓' : ''}`;
+    return `<div class="pitch-log-row"><span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pt.type}</span> · ${veloText}${strike ? 'Strike' : 'Ball'} · <span style="color:var(--chalk-faint);">${locText}</span></span>${i===0 ? '<button class="undo-btn" onclick="undoLastPitch()">Undo</button>' : ''}</div>`;
   }).join('') || `<p style="color:var(--chalk-faint);font-size:12.5px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
+
+  const zoneCaption = state.pendingTarget
+    ? `Now tap where it actually landed <a href="#" onclick="resetTarget();return false;" style="color:var(--amber);">(reset target)</a>`
+    : `Tap where you're aiming`;
 
   return `
     <div class="session-grid-layout">
@@ -637,8 +781,8 @@ function renderSessionView(){
         <div class="hint-msg">${state.hint}</div>
         <div>
           <div class="zone-wrap">
-            ${renderZoneGrid(pitches, true, state.flashCell)}
-            <div class="zone-caption">Tap where the pitch landed</div>
+            ${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget)}
+            <div class="zone-caption">${zoneCaption}</div>
           </div>
         </div>
       </div>
@@ -646,6 +790,7 @@ function renderSessionView(){
         <div class="stat-readout">
           <div class="stat-box"><span class="stat-num mono">${stats.total}</span><span class="stat-lbl">Pitches</span></div>
           <div class="stat-box"><span class="stat-num mono">${stats.strikePct}%</span><span class="stat-lbl">Strikes</span></div>
+          <div class="stat-box"><span class="stat-num mono">${stats.accuracyPct}%</span><span class="stat-lbl">Accuracy</span></div>
           <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="stat-lbl">Avg mph</span></div>
           <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.minVelo+'–'+stats.maxVelo : '—'}</span><span class="stat-lbl">Range</span></div>
         </div>
@@ -668,8 +813,22 @@ function renderHistoryView(){
     const dateStr = new Date(s.date).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
     const typeRows = Object.entries(stats.byType).map(([type, t]) => {
       const color = colorForType(p, type);
-      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${type}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${t.strikePct}%</td></tr>`;
+      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${type}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${t.strikePct}%</td><td class="mono">${t.accuracyPct}%</td></tr>`;
     }).join('');
+
+    const contacts = p.contactEmails || {};
+    const emailList = [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean);
+    const rs = state.reportStatus && state.reportStatus.sessionId === s.id ? state.reportStatus : null;
+    const reportPanel = `
+      <div class="report-panel">
+        <div class="field-label">Email this report</div>
+        ${emailList.length
+          ? `<p class="report-recipients">To: ${emailList.join(', ')}</p>`
+          : `<p class="report-recipients">No contact emails set for ${p.name} yet — add them under Contacts above.</p>`}
+        <button class="btn btn-primary" ${emailList.length ? '' : 'disabled'} onclick="sendSessionReport('${s.id}')">Send report</button>
+        ${rs ? `<p class="report-status report-status-${rs.status}">${rs.message}</p>` : ''}
+      </div>`;
+
     return `
       <div class="session-card">
         <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')" style="cursor:pointer;">
@@ -677,6 +836,7 @@ function renderHistoryView(){
           <div class="session-meta">
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
             <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
+            <div class="meta-item"><span class="meta-num mono">${stats.accuracyPct}%</span><span class="meta-lbl">Accuracy</span></div>
             <div class="meta-item"><span class="meta-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="meta-lbl">Avg mph</span></div>
           </div>
         </div>
@@ -685,9 +845,10 @@ function renderHistoryView(){
           <div class="zone-wrap">${renderZoneGrid(s.pitches, false)}<div class="zone-caption">Location heat map</div></div>
           <div style="flex:1;min-width:220px;">
             <table class="breakdown-table">
-              <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th></tr></thead>
+              <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th></tr></thead>
               <tbody>${typeRows}</tbody>
             </table>
+            ${reportPanel}
           </div>
         </div>` : ''}
       </div>`;
@@ -786,13 +947,31 @@ function render(){
       const c = colorForType(p, t);
       return `<span class="pitch-chip" style="background:${c};">${t} <span onclick="removePitchType('${t.replace(/'/g,"\\'")}')" style="cursor:pointer;margin-left:4px;">✕</span></span>`;
     }).join('');
+    const contacts = p.contactEmails || {};
+    const contactsPanel = state.contactsOpen ? `
+      <div class="contacts-panel">
+        <div class="field">
+          <span class="field-label">Coach email</span>
+          <input class="text-input" value="${contacts.coach||''}" placeholder="coach@example.com" onblur="saveContactEmail('coach', this.value)">
+        </div>
+        <div class="field">
+          <span class="field-label">Pitching coach email</span>
+          <input class="text-input" value="${contacts.pitchingCoach||''}" placeholder="pitchingcoach@example.com" onblur="saveContactEmail('pitchingCoach', this.value)">
+        </div>
+        <div class="field">
+          <span class="field-label">Pitcher email</span>
+          <input class="text-input" value="${contacts.pitcher||''}" placeholder="pitcher@example.com" onblur="saveContactEmail('pitcher', this.value)">
+        </div>
+      </div>` : '';
     main = `
       <div class="pitcher-header">
         <div>
           <h2 class="display">${p.name}</h2>
           <div class="pitcher-sub">${arsenalChips}</div>
         </div>
+        <button class="btn btn-ghost" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>
       </div>
+      ${contactsPanel}
       <div class="tabs">
         <button class="tab-btn${state.view==='session'?' active':''}" onclick="setView('session')">New session</button>
         <button class="tab-btn${state.view==='history'?' active':''}" onclick="setView('history')">History</button>

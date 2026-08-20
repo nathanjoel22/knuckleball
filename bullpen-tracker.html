@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Knuckleball</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
 <script src="report-config.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
@@ -107,6 +109,13 @@
     font-weight:600;
   }
   .add-pitcher-btn:hover{ border-color:var(--amber); color:var(--amber); }
+
+  .sign-out-btn{
+    margin-top:auto; background:transparent; border:1px solid var(--border);
+    color:var(--chalk-faint); border-radius:6px; padding:9px; font-size:12.5px;
+    font-weight:600; text-align:center;
+  }
+  .sign-out-btn:hover{ border-color:var(--red); color:var(--red); }
 
   .add-pitcher-form{
     background:var(--field-panel-2); border:1px solid var(--border-strong);
@@ -293,6 +302,10 @@
     border-radius:10px; padding:16px; margin-top:-8px;
   }
   .contacts-panel .field{ flex:1; min-width:200px; }
+  .contacts-save-row{
+    flex-basis:100%; display:flex; align-items:center; gap:12px; margin-top:2px;
+  }
+  .contacts-saved-msg{ font-size:12.5px; color:#6FA287; font-weight:600; }
 
   .report-panel{
     margin-top:16px; padding-top:14px; border-top:1px solid var(--border);
@@ -382,6 +395,15 @@ async function init(){
   render();
 }
 
+window.signOut = async function(){
+  try{
+    await supabaseClient.auth.signOut();
+  } catch(e){
+    console.error('Sign out error', e);
+  }
+  window.location.href = 'login.html';
+};
+
 /* ---------- ROSTER ACTIONS ---------- */
 window.showAddPitcherForm = function(){
   state.addingPitcher = true;
@@ -426,6 +448,8 @@ async function selectPitcher(id, skipRender){
   state.velo = 65;
   state.flashCell = null;
   state.pendingTarget = null;
+  state.contactsOpen = false;
+  state.contactsSavedAt = null;
   state.sessions = (await storGet('sessions:' + id)) || [];
   const draft = await storGet('draft:' + id);
   if(draft && draft.pitches && draft.pitches.length){
@@ -460,14 +484,19 @@ window.removePitchType = async function(type){
 };
 
 /* ---------- CONTACT EMAILS ---------- */
-window.saveContactEmail = async function(field, value){
+window.saveContactEmails = async function(){
   const p = currentPitcher();
   if(!p.contactEmails) p.contactEmails = { coach:'', pitchingCoach:'', pitcher:'' };
-  p.contactEmails[field] = value.trim();
+  p.contactEmails.coach = (document.getElementById('contact-coach').value || '').trim();
+  p.contactEmails.pitchingCoach = (document.getElementById('contact-pitching-coach').value || '').trim();
+  p.contactEmails.pitcher = (document.getElementById('contact-pitcher').value || '').trim();
   await storSet('roster', state.roster);
+  state.contactsSavedAt = Date.now();
+  render();
 };
 window.toggleContactsPanel = function(){
   state.contactsOpen = !state.contactsOpen;
+  state.contactsSavedAt = null;
   render();
 };
 
@@ -936,6 +965,7 @@ function render(){
       <div class="roster-label">Roster</div>
       <div class="roster-list">${rosterItems || '<p style="color:var(--chalk-faint);font-size:12.5px;">No pitchers yet.</p>'}</div>
       ${addForm}
+      <button class="sign-out-btn" onclick="signOut()">Sign out</button>
     </div>`;
 
   const p = currentPitcher();
@@ -952,15 +982,19 @@ function render(){
       <div class="contacts-panel">
         <div class="field">
           <span class="field-label">Coach email</span>
-          <input class="text-input" value="${contacts.coach||''}" placeholder="coach@example.com" onblur="saveContactEmail('coach', this.value)">
+          <input class="text-input" id="contact-coach" value="${contacts.coach||''}" placeholder="coach@example.com">
         </div>
         <div class="field">
           <span class="field-label">Pitching coach email</span>
-          <input class="text-input" value="${contacts.pitchingCoach||''}" placeholder="pitchingcoach@example.com" onblur="saveContactEmail('pitchingCoach', this.value)">
+          <input class="text-input" id="contact-pitching-coach" value="${contacts.pitchingCoach||''}" placeholder="pitchingcoach@example.com">
         </div>
         <div class="field">
           <span class="field-label">Pitcher email</span>
-          <input class="text-input" value="${contacts.pitcher||''}" placeholder="pitcher@example.com" onblur="saveContactEmail('pitcher', this.value)">
+          <input class="text-input" id="contact-pitcher" value="${contacts.pitcher||''}" placeholder="pitcher@example.com">
+        </div>
+        <div class="contacts-save-row">
+          <button class="btn btn-primary" onclick="saveContactEmails()">Save</button>
+          ${state.contactsSavedAt ? '<span class="contacts-saved-msg">Saved</span>' : ''}
         </div>
       </div>` : '';
     main = `

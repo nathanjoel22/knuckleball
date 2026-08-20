@@ -53,6 +53,10 @@
     color:var(--chalk); padding:11px 12px; font-size:14px; width:100%;
   }
   .text-input:focus{ border-color:var(--amber); }
+  .email-readout{
+    background:var(--field-dark); border:1px solid var(--border); border-radius:6px;
+    color:var(--chalk-dim); padding:11px 12px; font-size:14px; font-family:'IBM Plex Mono',monospace;
+  }
 
   .btn-primary{
     background:var(--amber); color:var(--field-dark); border:none; border-radius:7px;
@@ -85,6 +89,10 @@
       <p class="sub" id="invite-sub">Joining <span id="team-name-display">a team</span>.</p>
     </div>
 
+    <div class="field">
+      <label class="field-label">Your login email</label>
+      <div class="email-readout" id="email-display">—</div>
+    </div>
     <div class="field">
       <label class="field-label" for="full-name">Your name</label>
       <input class="text-input" id="full-name" placeholder="Full name" autofocus>
@@ -134,6 +142,7 @@
     }
 
     const email = session.user.email;
+    document.getElementById('email-display').textContent = email;
     const { data: invites, error: inviteErr } = await supabaseClient
       .from('invites')
       .select('id, team_id, status, teams ( name )')

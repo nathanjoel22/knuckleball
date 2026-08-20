@@ -142,7 +142,10 @@
     submitBtn.disabled = true;
     submitBtn.textContent = 'Creating account…';
 
-    const { data: signUpData, error: signUpErr } = await supabaseClient.auth.signUp({ email, password });
+    const { data: signUpData, error: signUpErr } = await supabaseClient.auth.signUp({
+      email, password,
+      options: { data: { full_name: fullName, team_name: teamName, intended_role: 'coach' } }
+    });
     if(signUpErr){
       errorEl.textContent = signUpErr.message;
       submitBtn.disabled = false;

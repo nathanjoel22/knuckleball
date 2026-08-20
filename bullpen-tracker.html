@@ -478,7 +478,7 @@ async function loadRosterForTeam(teamId){
     .from('pitcher_teams')
     .select('profiles(id, full_name, pitch_types, contact_emails)')
     .eq('team_id', teamId);
-  if(error){ state.roster = []; return; }
+  if(error){ console.error('loadRosterForTeam failed', error); state.roster = []; return; }
   state.roster = (data || []).map(r => r.profiles).filter(Boolean).map(mapProfile);
 }
 

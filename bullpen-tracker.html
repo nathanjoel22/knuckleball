@@ -366,6 +366,7 @@ let state = {
   draftAvailable: false,
   pendingDraft: null,
   contactsOpen: false,
+  coachEmailDefault: null,
   contactsSavedAt: null,
   inviteOpen: false,
   inviteStatus: null,
@@ -375,7 +376,7 @@ let state = {
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function mapProfile(row){
-  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {} };
+  return { id: row.id, name: row.full_name, email: row.email || '', pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {} };
 }
 function isCoach(){ return state.profile && state.profile.role === 'coach'; }
 function colorForType(pitcher, type){
@@ -411,7 +412,7 @@ async function init(){
     const meta = session.user.user_metadata || {};
     if(meta.intended_role === 'coach' && meta.full_name){
       const { data: newProfile, error: insertErr } = await supabaseClient
-        .from('profiles').insert({ id: session.user.id, role: 'coach', full_name: meta.full_name })
+        .from('profiles').insert({ id: session.user.id, role: 'coach', full_name: meta.full_name, email: session.user.email })
         .select().single();
       if(!insertErr && newProfile){
         profile = newProfile;
@@ -537,7 +538,18 @@ window.removePitchType = async function(type){
   render();
 };
 
-/* ---------- CONTACT EMAILS (pitcher edits own only) ---------- */
+/* ---------- CONTACT EMAILS (pitcher edits own only) ----------
+   Coach and pitcher fields default-fill from real account data when
+   left blank, but every field always stays a normal editable input —
+   whatever's in the boxes when Save is clicked is exactly what's used,
+   default or not. */
+async function fetchCoachEmailForCurrentTeam(){
+  if(isCoach() || !state.currentTeamId) return null;
+  const { data: team } = await supabaseClient.from('teams').select('coach_id').eq('id', state.currentTeamId).single();
+  if(!team) return null;
+  const { data: coachProfile } = await supabaseClient.from('profiles').select('email').eq('id', team.coach_id).single();
+  return coachProfile ? coachProfile.email : null;
+}
 window.saveContactEmails = async function(){
   const emails = {
     coach: (document.getElementById('contact-coach').value || '').trim(),
@@ -548,9 +560,15 @@ window.saveContactEmails = async function(){
   if(!error){ state.profile.contact_emails = emails; state.contactsSavedAt = Date.now(); }
   render();
 };
-window.toggleContactsPanel = function(){
+window.toggleContactsPanel = async function(){
   state.contactsOpen = !state.contactsOpen;
   state.contactsSavedAt = null;
+  if(state.contactsOpen){
+    const saved = state.profile.contact_emails || {};
+    if(!saved.coach){
+      state.coachEmailDefault = await fetchCoachEmailForCurrentTeam();
+    }
+  }
   render();
 };
 
@@ -1008,6 +1026,21 @@ window.sendSessionReport = async function(sessionId){
   render();
 
   const stats = sessionStats(session.pitches);
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+
+  const history = state.sessions.slice().sort((a,b) => a.date - b.date).map(s => {
+    const sStats = sessionStats(s.pitches);
+    const byType = {};
+    Object.entries(sStats.byType).forEach(([type, t]) => {
+      byType[type] = { accuracyPct: t.accuracyPct, strikePct: t.strikePct, count: t.count };
+    });
+    return {
+      date: s.date,
+      dateLabel: new Date(s.date).toLocaleDateString(undefined, { month:'numeric', day:'numeric' }),
+      byType
+    };
+  });
+
   try{
     if(typeof SEND_REPORT_URL === 'undefined' || SEND_REPORT_URL.indexOf('YOUR_') === 0){
       throw new Error('not configured');
@@ -1016,8 +1049,14 @@ window.sendSessionReport = async function(sessionId){
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-report-key': typeof REPORT_API_KEY !== 'undefined' ? REPORT_API_KEY : '' },
       body: JSON.stringify({
-        emails, pitcherName: p.name, date: session.date,
-        stats: { total: stats.total, strikePct: stats.strikePct, accuracyPct: stats.accuracyPct, avgVelo: stats.avgVelo }
+        emails,
+        pitcherName: p.name,
+        date: session.date,
+        teamName: team ? team.name : '',
+        pitchTypes: p.pitchTypes,
+        pitches: session.pitches,
+        stats: { total: stats.total, strikePct: stats.strikePct, accuracyPct: stats.accuracyPct, avgVelo: stats.avgVelo, hasVelo: stats.hasVelo },
+        history
       })
     });
     if(!res.ok) throw new Error('server responded ' + res.status);
@@ -1115,11 +1154,14 @@ function render(){
     }).join('') || `<span style="color:var(--chalk-faint);font-size:12.5px;">No pitches set yet</span>`;
 
     const contacts = p.contactEmails || {};
+    const coachFieldValue = contacts.coach || state.coachEmailDefault || '';
+    const pitcherFieldValue = contacts.pitcher || p.email || '';
     const contactsPanel = (!isCoach() && state.contactsOpen) ? `
       <div class="contacts-panel">
-        <div class="field"><span class="field-label">Coach email</span><input class="text-input" id="contact-coach" value="${contacts.coach||''}" placeholder="coach@example.com"></div>
-        <div class="field"><span class="field-label">Pitching coach email</span><input class="text-input" id="contact-pitching-coach" value="${contacts.pitchingCoach||''}" placeholder="pitchingcoach@example.com"></div>
-        <div class="field"><span class="field-label">Pitcher email</span><input class="text-input" id="contact-pitcher" value="${contacts.pitcher||''}" placeholder="pitcher@example.com"></div>
+        <div class="field"><span class="field-label">Coach email</span><input class="text-input" id="contact-coach" value="${coachFieldValue}" placeholder="coach@example.com"></div>
+        <div class="field"><span class="field-label">Additional contact (optional)</span><input class="text-input" id="contact-pitching-coach" value="${contacts.pitchingCoach||''}" placeholder="e.g. pitching coach"></div>
+        <div class="field"><span class="field-label">Your email</span><input class="text-input" id="contact-pitcher" value="${pitcherFieldValue}" placeholder="you@example.com"></div>
+        <p style="flex-basis:100%;margin:-4px 0 0;font-size:11.5px;color:var(--chalk-faint);">Coach and your own email are filled in automatically — edit or clear any field as needed.</p>
         <div class="contacts-save-row">
           <button class="btn btn-primary" onclick="saveContactEmails()">Save</button>
           ${state.contactsSavedAt ? '<span class="contacts-saved-msg">Saved</span>' : ''}

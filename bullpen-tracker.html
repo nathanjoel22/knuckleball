@@ -357,6 +357,7 @@ let state = {
   view: 'session',          // session | history | trends
   activeSession: null,
   selectedType: null,
+  selectedAccuracyMode: null,
   velo: 65,
   recordVelocity: true,
   flashCell: null,
@@ -394,6 +395,36 @@ function zoneNumber(row, col){
 }
 function isAccurate(pitch){
   return pitch.targetRow === pitch.actualRow && pitch.targetCol === pitch.actualCol;
+}
+
+const ACCURACY_MODE_LABELS = {
+  ring: 'Accuracy Ring',
+  nothingUp: 'Nothing Up',
+  nothingLow: 'Nothing Low',
+  nothingAway: 'Nothing Away',
+  nothingInside: 'Nothing Inside'
+};
+
+// Relative accuracy: an alternate, per-pitch "was this good enough"
+// rule, distinct from exact bullseye. Directional modes judge the
+// pitch's actual location alone (regardless of target) — a deliberate
+// choice matching how a coach might say "just stay down" for a
+// session, rather than demanding an exact spot.
+function isRelativelyAccurate(pitch){
+  const mode = pitch.accuracyMode;
+  if(!mode) return isAccurate(pitch);
+  switch(mode){
+    case 'ring': {
+      const dRow = Math.abs(pitch.actualRow - pitch.targetRow);
+      const dCol = Math.abs(pitch.actualCol - pitch.targetCol);
+      return Math.max(dRow, dCol) <= 1;
+    }
+    case 'nothingUp': return pitch.actualRow >= 3;       // bottom two rows only
+    case 'nothingLow': return pitch.actualRow <= 1;      // top two rows only
+    case 'nothingAway': return pitch.actualCol >= 3;     // right two columns only
+    case 'nothingInside': return pitch.actualCol <= 1;   // left two columns only
+    default: return isAccurate(pitch);
+  }
 }
 
 /* ---------- INIT / AUTH GUARD ---------- */
@@ -587,6 +618,7 @@ async function refreshDraftState(){
     state.activeSession = { pitches: [], startedAt: Date.now() };
   }
   state.selectedType = null;
+  state.selectedAccuracyMode = null;
   state.pendingTarget = null;
   state.flashCell = null;
 }
@@ -605,6 +637,10 @@ window.discardDraft = async function(){
 window.selectType = function(type){
   state.selectedType = type;
   state.hint = '';
+  render();
+};
+window.selectAccuracyMode = function(mode){
+  state.selectedAccuracyMode = (state.selectedAccuracyMode === mode) ? null : mode;
   render();
 };
 window.toggleRecordVelocity = function(checked){
@@ -650,6 +686,7 @@ window.handleZoneTap = async function(row, col){
     type: state.selectedType, velo: veloVal,
     targetRow: target.row, targetCol: target.col,
     actualRow: row, actualCol: col,
+    accuracyMode: state.selectedAccuracyMode,
     ts: Date.now()
   });
   state.pendingTarget = null;
@@ -697,6 +734,7 @@ window.endSession = async function(){
     session_id: sessionRow.id, type: p.type, velo: p.velo,
     target_row: p.targetRow, target_col: p.targetCol,
     actual_row: p.actualRow, actual_col: p.actualCol,
+    accuracy_mode: p.accuracyMode || null,
     ts: new Date(p.ts).toISOString()
   }));
   const { error: pitchErr } = await supabaseClient.from('pitches').insert(pitchRows);
@@ -723,7 +761,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, started_at, pitcher_id, logged_by, pitches(type, velo, target_row, target_col, actual_row, actual_col, ts)')
+    .select('id, started_at, pitcher_id, logged_by, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, ts)')
     .eq('pitcher_id', pitcherId)
     .eq('team_id', teamId)
     .order('started_at', { ascending: false });
@@ -736,6 +774,7 @@ async function loadSessionsForCurrentSelection(){
       type: p.type, velo: p.velo,
       targetRow: p.target_row, targetCol: p.target_col,
       actualRow: p.actual_row, actualCol: p.actual_col,
+      accuracyMode: p.accuracy_mode || null,
       ts: new Date(p.ts).getTime()
     }))
   }));
@@ -753,6 +792,8 @@ function sessionStats(pitches){
   const total = pitches.length;
   const strikes = pitches.filter(p => isStrikeCell(p.actualRow, p.actualCol)).length;
   const accurate = pitches.filter(isAccurate).length;
+  const relativeAccurate = pitches.filter(isRelativelyAccurate).length;
+  const usesRelativeMode = pitches.some(p => p.accuracyMode);
   const velos = pitches.map(p => p.velo).filter(v => v !== null && v !== undefined);
   const hasVelo = velos.length > 0;
   const avgVelo = hasVelo ? Math.round(velos.reduce((a,b)=>a+b,0) / velos.length) : null;
@@ -760,11 +801,12 @@ function sessionStats(pitches){
   const maxVelo = hasVelo ? Math.max(...velos) : null;
   const byType = {};
   pitches.forEach(p => {
-    if(!byType[p.type]) byType[p.type] = { count:0, velos:[], strikes:0, accurate:0 };
+    if(!byType[p.type]) byType[p.type] = { count:0, velos:[], strikes:0, accurate:0, relativeAccurate:0 };
     byType[p.type].count++;
     if(p.velo !== null && p.velo !== undefined) byType[p.type].velos.push(p.velo);
     if(isStrikeCell(p.actualRow, p.actualCol)) byType[p.type].strikes++;
     if(isAccurate(p)) byType[p.type].accurate++;
+    if(isRelativelyAccurate(p)) byType[p.type].relativeAccurate++;
   });
   Object.values(byType).forEach(t => {
     t.hasVelo = t.velos.length > 0;
@@ -773,10 +815,13 @@ function sessionStats(pitches){
     t.maxVelo = t.hasVelo ? Math.max(...t.velos) : null;
     t.strikePct = Math.round((t.strikes / t.count) * 100);
     t.accuracyPct = Math.round((t.accurate / t.count) * 100);
+    t.relativeAccuracyPct = Math.round((t.relativeAccurate / t.count) * 100);
   });
   return {
     total, strikes, strikePct: total ? Math.round((strikes/total)*100) : 0,
     accurate, accuracyPct: total ? Math.round((accurate/total)*100) : 0,
+    relativeAccurate, relativeAccuracyPct: total ? Math.round((relativeAccurate/total)*100) : 0,
+    usesRelativeMode,
     hasVelo, avgVelo, minVelo, maxVelo, byType
   };
 }
@@ -836,6 +881,24 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget){
 }
 
 /* ---------- RENDER: SESSION VIEW (pitcher only) ---------- */
+function renderAccuracyModeChips(){
+  const options = [
+    { key: null, label: 'Exact only' },
+    { key: 'ring', label: 'Accuracy Ring' },
+    { key: 'nothingUp', label: 'Nothing Up' },
+    { key: 'nothingLow', label: 'Nothing Low' },
+    { key: 'nothingAway', label: 'Nothing Away' },
+    { key: 'nothingInside', label: 'Nothing Inside' }
+  ];
+  return options.map(opt => {
+    const selected = state.selectedAccuracyMode === opt.key;
+    const cls = 'type-chip' + (selected ? ' selected' : '');
+    const style = selected ? `background:${'#7C9CBF'};border-color:#7C9CBF;` : `color:#7C9CBF;border-color:#7C9CBF55;`;
+    const onclick = `onclick="selectAccuracyMode(${opt.key === null ? 'null' : `'${opt.key}'`})"`;
+    return `<button class="${cls}" style="${style}" ${onclick}>${opt.label}</button>`;
+  }).join('');
+}
+
 function renderSessionView(){
   const p = currentPitcher();
   if(state.draftAvailable){
@@ -860,10 +923,12 @@ function renderSessionView(){
     const color = colorForType(p, pt.type);
     const strike = isStrikeCell(pt.actualRow, pt.actualCol);
     const accurate = isAccurate(pt);
+    const relAccurate = isRelativelyAccurate(pt);
     const veloText = (pt.velo !== null && pt.velo !== undefined) ? `${pt.velo} mph · ` : '';
     const targetNum = zoneNumber(pt.targetRow, pt.targetCol);
     const actualNum = zoneNumber(pt.actualRow, pt.actualCol);
-    const locText = `${targetNum ? 'aimed '+targetNum : 'aimed ball'} → ${actualNum ? 'landed '+actualNum : 'landed ball'}${accurate ? ' ✓' : ''}`;
+    const modeTag = pt.accuracyMode ? ` <span style="color:#7C9CBF;">[${ACCURACY_MODE_LABELS[pt.accuracyMode]}${relAccurate ? ' ✓' : ''}]</span>` : '';
+    const locText = `${targetNum ? 'aimed '+targetNum : 'aimed ball'} → ${actualNum ? 'landed '+actualNum : 'landed ball'}${accurate ? ' ✓' : ''}${modeTag}`;
     return `<div class="pitch-log-row"><span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pt.type}</span> · ${veloText}${strike ? 'Strike' : 'Ball'} · <span style="color:var(--chalk-faint);">${locText}</span></span>${i===0 ? '<button class="undo-btn" onclick="undoLastPitch()">Undo</button>' : ''}</div>`;
   }).join('') || `<p style="color:var(--chalk-faint);font-size:12.5px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
 
@@ -882,6 +947,10 @@ function renderSessionView(){
             <input id="new-type-input" class="text-input" placeholder="Add a pitch (e.g. Splitter)" onkeydown="if(event.key==='Enter')addPitchType()">
             <button onclick="addPitchType()">Add</button>
           </div>` : (p.pitchTypes.length ? '' : `<p style="color:var(--chalk-faint);font-size:12px;margin-top:8px;">${p.name} hasn't set up their pitch arsenal yet — they can add pitch types from their own login.</p>`)}
+        </div>
+        <div>
+          <div class="field-label" style="margin-bottom:8px;">Relative accuracy</div>
+          <div class="chip-row">${renderAccuracyModeChips()}</div>
         </div>
         <div>
           <div class="field-label" style="margin-bottom:8px;">Velocity</div>
@@ -908,6 +977,7 @@ function renderSessionView(){
           <div class="stat-box"><span class="stat-num mono">${stats.total}</span><span class="stat-lbl">Pitches</span></div>
           <div class="stat-box"><span class="stat-num mono">${stats.strikePct}%</span><span class="stat-lbl">Strikes</span></div>
           <div class="stat-box"><span class="stat-num mono">${stats.accuracyPct}%</span><span class="stat-lbl">Accuracy</span></div>
+          ${stats.usesRelativeMode ? `<div class="stat-box"><span class="stat-num mono">${stats.relativeAccuracyPct}%</span><span class="stat-lbl">Relative Acc.</span></div>` : ''}
           <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="stat-lbl">Avg mph</span></div>
           <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.minVelo+'–'+stats.maxVelo : '—'}</span><span class="stat-lbl">Range</span></div>
         </div>
@@ -931,7 +1001,7 @@ function renderHistoryView(){
     const dateStr = new Date(s.date).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
     const typeRows = Object.entries(stats.byType).map(([type, t]) => {
       const color = colorForType(p, type);
-      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${type}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${t.strikePct}%</td><td class="mono">${t.accuracyPct}%</td></tr>`;
+      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${type}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${t.strikePct}%</td><td class="mono">${t.accuracyPct}%</td><td class="mono">${t.relativeAccuracyPct}%</td></tr>`;
     }).join('');
 
     const contacts = p.contactEmails || {};
@@ -963,7 +1033,7 @@ function renderHistoryView(){
           <div class="zone-wrap">${renderZoneGrid(s.pitches, false)}<div class="zone-caption">Location heat map</div></div>
           <div style="flex:1;min-width:220px;">
             <table class="breakdown-table">
-              <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th></tr></thead>
+              <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th><th>Relative Acc%</th></tr></thead>
               <tbody>${typeRows}</tbody>
             </table>
             ${reportPanel}

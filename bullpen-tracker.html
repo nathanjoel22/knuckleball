@@ -399,10 +399,10 @@ function isAccurate(pitch){
 
 const ACCURACY_MODE_LABELS = {
   ring: 'Accuracy Ring',
-  nothingUp: 'Nothing Up',
-  nothingLow: 'Nothing Low',
-  nothingAway: 'Nothing Away',
-  nothingInside: 'Nothing Inside'
+  nothingUp: 'Low',
+  nothingLow: 'High',
+  nothingAway: 'Inside',
+  nothingInside: 'Outside'
 };
 
 // Relative accuracy: an alternate, per-pitch "was this good enough"
@@ -883,12 +883,12 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget){
 /* ---------- RENDER: SESSION VIEW (pitcher only) ---------- */
 function renderAccuracyModeChips(){
   const options = [
-    { key: null, label: 'Exact only' },
+    { key: null, label: 'Target' },
     { key: 'ring', label: 'Accuracy Ring' },
-    { key: 'nothingUp', label: 'Nothing Up' },
-    { key: 'nothingLow', label: 'Nothing Low' },
-    { key: 'nothingAway', label: 'Nothing Away' },
-    { key: 'nothingInside', label: 'Nothing Inside' }
+    { key: 'nothingUp', label: 'Low' },
+    { key: 'nothingLow', label: 'High' },
+    { key: 'nothingAway', label: 'Inside' },
+    { key: 'nothingInside', label: 'Outside' }
   ];
   return options.map(opt => {
     const selected = state.selectedAccuracyMode === opt.key;
@@ -1052,6 +1052,7 @@ function renderTrendsView(){
   const ordered = state.sessions.slice().sort((a,b) => a.date - b.date);
   const points = ordered.map(s => ({ date: s.date, stats: sessionStats(s.pitches) }));
   const anyVelo = points.some(pt => pt.stats.hasVelo);
+  const anyRelative = points.some(pt => pt.stats.usesRelativeMode);
 
   function barChart(title, valueFn, unit, maxHint){
     const vals = points.map(valueFn);
@@ -1079,6 +1080,7 @@ function renderTrendsView(){
     <div style="display:flex;flex-direction:column;gap:20px;">
       ${barChart('Strike % by session', pt => pt.stats.strikePct, '%', 100)}
       ${barChart('Accuracy % by session', pt => pt.stats.accuracyPct, '%', 100)}
+      ${anyRelative ? barChart('Relative accuracy % by session', pt => pt.stats.relativeAccuracyPct, '%', 100) : ''}
       ${anyVelo ? barChart('Average velocity by session', pt => pt.stats.hasVelo ? pt.stats.avgVelo : 0, ' mph', 0) : `<div class="empty-hist">No velocity data recorded across these sessions.</div>`}
     </div>`;
 }
@@ -1102,7 +1104,7 @@ window.sendSessionReport = async function(sessionId){
     const sStats = sessionStats(s.pitches);
     const byType = {};
     Object.entries(sStats.byType).forEach(([type, t]) => {
-      byType[type] = { accuracyPct: t.accuracyPct, strikePct: t.strikePct, count: t.count };
+      byType[type] = { accuracyPct: t.accuracyPct, relativeAccuracyPct: t.relativeAccuracyPct, strikePct: t.strikePct, count: t.count };
     });
     return {
       date: s.date,
@@ -1125,7 +1127,12 @@ window.sendSessionReport = async function(sessionId){
         teamName: team ? team.name : '',
         pitchTypes: p.pitchTypes,
         pitches: session.pitches,
-        stats: { total: stats.total, strikePct: stats.strikePct, accuracyPct: stats.accuracyPct, avgVelo: stats.avgVelo, hasVelo: stats.hasVelo },
+        stats: {
+          total: stats.total, strikePct: stats.strikePct,
+          accuracyPct: stats.accuracyPct,
+          relativeAccuracyPct: stats.relativeAccuracyPct, usesRelativeMode: stats.usesRelativeMode,
+          avgVelo: stats.avgVelo, hasVelo: stats.hasVelo
+        },
         history
       })
     });

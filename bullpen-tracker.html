@@ -246,6 +246,12 @@
   }
   @keyframes targetPulse{ 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.15); opacity:0.75; } }
 
+  .rel-glow-overlay{
+    position:absolute; inset:0; border-radius:2px; background:#F1ECDD;
+    pointer-events:none; animation:relGlowPulse 1.1s ease-in-out infinite;
+  }
+  @keyframes relGlowPulse{ 0%,100%{ opacity:0.16; } 50%{ opacity:0.5; } }
+
   .log-panel{ min-width:230px; flex:1; display:flex; flex-direction:column; gap:12px; }
   .stat-readout{ display:flex; gap:18px; flex-wrap:wrap; }
   .stat-box{ display:flex; flex-direction:column; }
@@ -840,17 +846,34 @@ function heatColor(intensity){
 }
 
 /* ---------- RENDER: ZONE GRID ---------- */
+function relativelyAccurateCells(targetRow, targetCol, mode){
+  const set = new Set();
+  for(let r=0; r<GRID_SIZE; r++){
+    for(let c=0; c<GRID_SIZE; c++){
+      if(isRelativelyAccurate({ accuracyMode: mode, targetRow, targetCol, actualRow: r, actualCol: c })){
+        set.add(r+'-'+c);
+      }
+    }
+  }
+  return set;
+}
+
 function renderZoneGrid(pitches, clickable, flashCell, pendingTarget){
   let cells = '';
   if(clickable){
+    const glowCells = (pendingTarget && state.selectedAccuracyMode)
+      ? relativelyAccurateCells(pendingTarget.row, pendingTarget.col, state.selectedAccuracyMode)
+      : null;
     for(let row=0; row<GRID_SIZE; row++){
       for(let col=0; col<GRID_SIZE; col++){
         const inZone = isStrikeCell(row,col);
         const num = zoneNumber(row,col);
         const isTarget = pendingTarget && pendingTarget.row === row && pendingTarget.col === col;
         const isFlash = flashCell && flashCell.row === row && flashCell.col === col;
+        const isGlow = glowCells && glowCells.has(row+'-'+col);
         let cls = 'zone-cell' + (inZone ? ' in-zone' : '') + ' clickable';
         let inner = num !== null ? `<span class="zone-number">${num}</span>` : '';
+        if(isGlow) inner += `<span class="rel-glow-overlay"></span>`;
         if(isTarget){ cls += ' zone-cell-target'; inner += `<span class="target-dot"><span class="target-dot-core"></span></span>`; }
         if(isFlash){
           cls += flashCell.strike ? ' zone-cell-flash flash-strike' : ' zone-cell-flash flash-ball';

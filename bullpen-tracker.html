@@ -7,6 +7,16 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script src="report-config.js"></script>
+<script>
+  // Offline app shell (P0-06) -- lets this page load with no network.
+  // Never blocks page load: registration happens after the page's own
+  // load event, and any failure is just logged, not surfaced to the user.
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(err => console.error('SW registration failed', err));
+    });
+  }
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -473,6 +483,24 @@ async function init(){
   }
 
   if(!profile){
+    // A live fetch failure here (dead wifi, not "no profile row yet" --
+    // that case is handled above) must not sign the user out mid-bullpen.
+    // Fall back to the last context seen online so the draft-restore
+    // check below still runs against the right pitcher/team.
+    const cached = await storGet(lastKnownKey(session.user.id));
+    if(cached && cached.profile){
+      state.profile = cached.profile;
+      state.teams = cached.teams || [];
+      state.roster = cached.roster || [];
+      state.currentTeamId = cached.currentTeamId;
+      state.currentPitcherId = cached.currentPitcherId;
+      state.view = isCoach() ? 'history' : 'session';
+      await loadSessionsForCurrentSelection();
+      await refreshDraftState();
+      state.loaded = true;
+      render();
+      return;
+    }
     alert('Could not load your account profile. Please try logging in again, or contact support if this keeps happening.');
     await supabaseClient.auth.signOut();
     window.location.href = 'login.html';
@@ -498,6 +526,24 @@ async function loadTeams(){
   }
 }
 
+// Best-effort, last-known snapshot of profile/teams/roster and current
+// selection -- NOT an authoritative data cache (out of scope: caching
+// Supabase responses). Its only job is letting init() recover enough
+// context to reach the P0-03 draft-restore check when a profile/teams
+// fetch fails offline, instead of alerting and signing the user out
+// before ever looking at localStorage.
+function lastKnownKey(userId){ return 'lastKnownContext:' + userId; }
+async function saveLastKnownContext(){
+  if(!state.session || !state.profile) return;
+  await storSet(lastKnownKey(state.session.user.id), {
+    profile: state.profile,
+    teams: state.teams,
+    roster: state.roster,
+    currentTeamId: state.currentTeamId,
+    currentPitcherId: state.currentPitcherId
+  });
+}
+
 window.signOut = async function(){
   try{ await supabaseClient.auth.signOut(); } catch(e){ console.error('Sign out error', e); }
   window.location.href = 'login.html';
@@ -520,6 +566,7 @@ window.onTeamChange = async function(teamId, skipRender){
   }
   await loadSessionsForCurrentSelection();
   await refreshDraftState();
+  await saveLastKnownContext();
   if(!skipRender) render();
 };
 
@@ -537,6 +584,7 @@ window.selectPitcher = async function(pitcherId){
   state.expandedSessionId = null;
   await loadSessionsForCurrentSelection();
   await refreshDraftState();
+  await saveLastKnownContext();
   render();
 };
 

@@ -17,13 +17,19 @@ Knuckleball (knuckleballonline.com) is a bullpen session tracking app for pitchi
 
 ## Schema and RLS
 
-Source of truth: `supabase/schema/schema.sql` + `supabase/schema/SCHEMA_NOTES.md` (created by task P0-02 — if these don't exist yet, the live schema is **not** fully captured in the repo and you must not modify schema or policies until it is). Known tables include `profiles`, `teams`, `pitcher_teams`, `invites`, and session/pitch storage; the intended ownership model is **sessions belong to the pitcher, team affiliation is optional** (decision D3 in the project plan).
+Source of truth: `supabase/schema/schema.sql` (live production dump, 2026-08-25) + `supabase/schema/SCHEMA_NOTES.md`. **Warning:** the older hand-written `supabase/schema.sql` (different path — directly under `supabase/`) is STALE: it predates the RLS-recursion fix and the current pitches model. Never run it; it is slated for deletion in P1-08.
+
+The real tables (from the dump): `profiles` (incl. `contact_emails jsonb`), `teams` (`coach_id` → auth.users), `pitcher_teams` (`pitcher_id` → **profiles**, not auth.users — required for the PostgREST embeds the roster code uses; keep it that way), `invites`, `sessions` (`pitcher_id` → auth.users NOT NULL; `team_id` → teams, currently NOT NULL until the D3 migration in P2-01 makes it nullable; `logged_by` → auth.users — the person who charted, which may be a coach or teammate rather than the pitcher), `pitches` (`session_id` → sessions; `target_row/col` + `actual_row/col`; `accuracy_mode` with a check constraint matching the relative-accuracy modes).
+
+There are 19 RLS policies. Coaches hold **FOR ALL** (not just SELECT) on their team's sessions and pitches — they can chart and edit on behalf of pitchers; pitchers manage their own rows via `pitcher_id` only, with no team dependency. Decision D3 is settled: sessions belong to the pitcher, team affiliation becomes optional (the `team_id` NOT NULL drop is P2-01).
+
+**There is no migration chain.** `supabase/migrations/` has never existed; all live schema state was applied by hand. The first migration created in this repo must be a baseline of current production (part of P1-08). Until that exists, the dump is the only truth — regenerate it after any approved schema change.
 
 RLS rules of engagement:
 
 1. Never write or alter a policy without first dumping the current policies (`select * from pg_policies where schemaname='public'`).
 2. Every schema/policy change is a migration file in `supabase/migrations/` — never a dashboard-only edit.
-3. Policies on `teams` and `pitcher_teams` must never reference each other in a way that can recurse — this exact pair caused a production 42P17 infinite-recursion outage. If a policy needs cross-table checks, use a `security definer` helper function.
+3. Policies on `teams` and `pitcher_teams` must never reference each other in a way that can recurse — this exact pair caused a production 42P17 infinite-recursion outage. The live fix is two `SECURITY DEFINER` helper functions, `public.is_team_coach(check_team_id)` and `public.is_team_member(check_team_id)`: any policy needing a cross-table team check goes through these helpers, never a direct subquery.
 4. Test policy changes with three personas: coach, rostered pitcher, and (once they exist) solo pitcher.
 
 ## Deploy and environments

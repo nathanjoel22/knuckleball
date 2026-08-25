@@ -1,5 +1,2 @@
 project_id = "fkgccjhuimkkbupbanxp"
 
-[functions.send-session-report]
-verify_jwt = false
-

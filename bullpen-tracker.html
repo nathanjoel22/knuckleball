@@ -1142,7 +1142,7 @@ window.sendSessionReport = async function(sessionId){
     }
     const res = await fetch(SEND_REPORT_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-report-key': typeof REPORT_API_KEY !== 'undefined' ? REPORT_API_KEY : '' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token },
       body: JSON.stringify({
         emails,
         pitcherName: p.name,

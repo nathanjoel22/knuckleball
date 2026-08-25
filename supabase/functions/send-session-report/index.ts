@@ -1,13 +1,26 @@
 // Deploy with: supabase functions deploy send-session-report
 // Requires these secrets set on your Supabase project (see SETUP.md):
-//   RESEND_API_KEY, REPORT_FROM_EMAIL, REPORT_API_KEY
+//   RESEND_API_KEY, REPORT_FROM_EMAIL, SUPABASE_URL, SUPABASE_ANON_KEY
 
 import { PDFDocument, StandardFonts, rgb } from 'https://esm.sh/pdf-lib@1.17.1'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-report-key',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
+}
+
+const MAX_RECIPIENTS = 3
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function escapeHtml(str: string): string {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 // Must match TYPE_PALETTE in bullpen-tracker.html exactly, so a pitch
@@ -254,9 +267,22 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders })
 
-  const expectedKey = Deno.env.get('REPORT_API_KEY')
-  const providedKey = req.headers.get('x-report-key')
-  if (!expectedKey || providedKey !== expectedKey) {
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader) {
+    return new Response(JSON.stringify({ error: 'Missing Authorization header' }), { status: 401, headers: corsHeaders })
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+
+  // Client scoped to the calling user's own session — used only to confirm
+  // they are a real logged-in Knuckleball user before we send any email.
+  const callerClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } }
+  })
+
+  const { data: { user }, error: userErr } = await callerClient.auth.getUser()
+  if (userErr || !user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
   }
 
@@ -268,6 +294,9 @@ Deno.serve(async (req) => {
   const { emails, pitcherName, date, teamName, pitchTypes, pitches, stats, history } = body
   if (!emails || !emails.length || !pitcherName || !Array.isArray(pitches) || !stats) {
     return new Response(JSON.stringify({ error: 'emails, pitcherName, pitches, and stats are required' }), { status: 400, headers: corsHeaders })
+  }
+  if (!Array.isArray(emails) || emails.length > MAX_RECIPIENTS || !emails.every((e: any) => typeof e === 'string' && EMAIL_RE.test(e))) {
+    return new Response(JSON.stringify({ error: `emails must be an array of up to ${MAX_RECIPIENTS} valid addresses` }), { status: 400, headers: corsHeaders })
   }
 
   const dateStr = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
@@ -302,7 +331,7 @@ Deno.serve(async (req) => {
       from: fromEmail,
       to: emails,
       subject: `Bullpen Session Report — ${pitcherName}${dateStr ? ' — ' + dateStr : ''}`,
-      html: `<p>Attached is the bullpen session report for ${pitcherName}${dateStr ? ' (' + dateStr + ')' : ''}.</p>`,
+      html: `<p>Attached is the bullpen session report for ${escapeHtml(pitcherName)}${dateStr ? ' (' + escapeHtml(dateStr) + ')' : ''}.</p>`,
       attachments: [{ filename: 'session-report.pdf', content: pdfBase64 }]
     })
   })

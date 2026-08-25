@@ -383,6 +383,17 @@ let state = {
 };
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+// crypto.randomUUID() needs a newer WebKit than some field devices have
+// (e.g. older iPhones running Chrome, which is WebKit under the hood on
+// iOS) -- this has no such dependency and produces the same valid-uuid
+// format Postgres uuid columns require.
+function genUUID(){
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
 function mapProfile(row){
   return { id: row.id, name: row.full_name, email: row.email || '', pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {} };
 }
@@ -693,7 +704,7 @@ window.handleZoneTap = async function(row, col){
   const veloVal = state.recordVelocity ? state.velo : null;
   const strike = isStrikeCell(row, col);
   state.activeSession.pitches.push({
-    id: crypto.randomUUID(),
+    id: genUUID(),
     type: state.selectedType, velo: veloVal,
     targetRow: target.row, targetCol: target.col,
     actualRow: row, actualCol: col,
@@ -736,7 +747,7 @@ window.endSession = async function(){
   // are upserts keyed on that id / each pitch's own id — so re-running
   // this function after a failure just re-attempts the same rows.
   if(!state.activeSession.savedSessionId){
-    state.activeSession.savedSessionId = crypto.randomUUID();
+    state.activeSession.savedSessionId = genUUID();
     await storSet(draftKey(), state.activeSession);
   }
   const sessionId = state.activeSession.savedSessionId;

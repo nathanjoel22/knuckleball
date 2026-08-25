@@ -340,15 +340,15 @@ const GRID_SIZE = 5;
    refresh mid-bullpen doesn't lose pitches already tapped in. The
    permanent record of a finished session always lives in Supabase. */
 async function storGet(key){
-  try{ const r = await window.storage.get(key, false); return r ? JSON.parse(r.value) : null; }
+  try{ const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; }
   catch(e){ return null; }
 }
 async function storSet(key, val){
-  try{ await window.storage.set(key, JSON.stringify(val), false); }
+  try{ localStorage.setItem(key, JSON.stringify(val)); }
   catch(e){ console.error('storage set failed', key, e); }
 }
 async function storDelete(key){
-  try{ await window.storage.delete(key, false); } catch(e){}
+  try{ localStorage.removeItem(key); } catch(e){}
 }
 
 /* ---------- STATE ---------- */
@@ -372,6 +372,7 @@ let state = {
   hint: '',
   draftAvailable: false,
   pendingDraft: null,
+  saveFailed: false,
   contactsOpen: false,
   coachEmailDefault: null,
   contactsSavedAt: null,
@@ -621,22 +622,25 @@ async function refreshDraftState(){
   } else {
     state.draftAvailable = false;
     state.pendingDraft = null;
-    state.activeSession = { pitches: [], startedAt: Date.now() };
+    state.activeSession = { pitches: [], startedAt: Date.now(), savedSessionId: null };
   }
   state.selectedType = null;
   state.selectedAccuracyMode = null;
   state.pendingTarget = null;
   state.flashCell = null;
+  state.saveFailed = false;
 }
 window.resumeDraft = function(){
   state.activeSession = state.pendingDraft;
   state.draftAvailable = false;
+  state.saveFailed = false;
   render();
 };
 window.discardDraft = async function(){
   await storDelete(draftKey());
-  state.activeSession = { pitches: [], startedAt: Date.now() };
+  state.activeSession = { pitches: [], startedAt: Date.now(), savedSessionId: null };
   state.draftAvailable = false;
+  state.saveFailed = false;
   render();
 };
 
@@ -689,6 +693,7 @@ window.handleZoneTap = async function(row, col){
   const veloVal = state.recordVelocity ? state.velo : null;
   const strike = isStrikeCell(row, col);
   state.activeSession.pitches.push({
+    id: crypto.randomUUID(),
     type: state.selectedType, velo: veloVal,
     targetRow: target.row, targetCol: target.col,
     actualRow: row, actualCol: col,
@@ -721,42 +726,60 @@ window.undoLastPitch = async function(){
 window.endSession = async function(){
   if(!state.activeSession.pitches.length){ state.hint = 'Log at least one pitch before ending the session'; render(); return; }
   state.saving = true;
+  state.hint = '';
   render();
 
-  const { data: sessionRow, error: sessErr } = await supabaseClient.from('sessions').insert({
+  // Retrying a previously-failed save must never create a second session
+  // row or double-insert pitches (dead wifi mid-save is the normal case
+  // here, not the exception). The session id is generated client-side and
+  // persisted to the draft before the network call, and both writes below
+  // are upserts keyed on that id / each pitch's own id — so re-running
+  // this function after a failure just re-attempts the same rows.
+  if(!state.activeSession.savedSessionId){
+    state.activeSession.savedSessionId = crypto.randomUUID();
+    await storSet(draftKey(), state.activeSession);
+  }
+  const sessionId = state.activeSession.savedSessionId;
+
+  const { error: sessErr } = await supabaseClient.from('sessions').upsert({
+    id: sessionId,
     pitcher_id: state.currentPitcherId,
     team_id: state.currentTeamId,
     logged_by: state.profile.id,
     started_at: new Date(state.activeSession.startedAt).toISOString(),
     ended_at: new Date().toISOString()
-  }).select().single();
+  }, { onConflict: 'id' });
 
-  if(sessErr || !sessionRow){
-    state.hint = 'Could not save session: ' + (sessErr ? sessErr.message : 'unknown error');
+  if(sessErr){
+    state.hint = 'Could not save session — nothing was lost, tap Retry. ' + sessErr.message;
+    state.saveFailed = true;
     state.saving = false; render(); return;
   }
 
   const pitchRows = state.activeSession.pitches.map(p => ({
-    session_id: sessionRow.id, type: p.type, velo: p.velo,
+    id: p.id,
+    session_id: sessionId, type: p.type, velo: p.velo,
     target_row: p.targetRow, target_col: p.targetCol,
     actual_row: p.actualRow, actual_col: p.actualCol,
     accuracy_mode: p.accuracyMode || null,
     ts: new Date(p.ts).toISOString()
   }));
-  const { error: pitchErr } = await supabaseClient.from('pitches').insert(pitchRows);
+  const { error: pitchErr } = await supabaseClient.from('pitches').upsert(pitchRows, { onConflict: 'id' });
   if(pitchErr){
-    state.hint = 'Session saved, but pitches failed to save: ' + pitchErr.message;
+    state.hint = 'Session saved, but pitches failed to save — nothing was lost, tap Retry. ' + pitchErr.message;
+    state.saveFailed = true;
     state.saving = false; render(); return;
   }
 
   await storDelete(draftKey());
-  state.activeSession = { pitches: [], startedAt: Date.now() };
+  state.activeSession = { pitches: [], startedAt: Date.now(), savedSessionId: null };
   state.selectedType = null;
   state.pendingTarget = null;
   state.saving = false;
+  state.saveFailed = false;
   await loadSessionsForCurrentSelection();
   state.view = 'history';
-  state.expandedSessionId = sessionRow.id;
+  state.expandedSessionId = sessionId;
   render();
 };
 
@@ -987,7 +1010,7 @@ function renderSessionView(){
             <span id="velo-readout" class="velo-readout mono">${state.recordVelocity ? state.velo + ' mph' : '—'}</span>
           </div>
         </div>
-        <div class="hint-msg">${state.hint}</div>
+        <div class="hint-msg">${state.saveFailed ? `<strong>${state.hint}</strong>` : state.hint}</div>
         <div>
           <div class="zone-wrap">
             ${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget)}
@@ -1006,7 +1029,7 @@ function renderSessionView(){
         </div>
         <div class="field-label">Recent pitches</div>
         <div class="pitch-log">${logRows}</div>
-        <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
+        <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : (state.saveFailed ? 'Retry' : 'End session & save')}</button>
       </div>
     </div>`;
 }

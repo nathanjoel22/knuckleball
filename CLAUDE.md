@@ -36,7 +36,7 @@ RLS rules of engagement:
 
 - Frontend: git push to the GitHub Pages branch. Rollback = `git revert` + push.
 - Edge Functions: `supabase functions deploy <name>`. Rollback = check out last good version of the function directory, redeploy.
-- Migrations and the full procedure: follow `DEPLOY.md` (task P1-08). If it exists, staging (a second Supabase project) gets every change first; production schema changes only after a fresh backup (`BACKUPS.md`).
+- Migrations and the full procedure: follow `DEPLOY.md`. Staging (`knuckleball-staging`, a second Supabase project, same org as production) gets every change first; production schema changes only after a fresh backup (`BACKUPS.md`).
 - Auth config landmine: Supabase **Site URL / redirect URLs** were once left at `localhost:3000`, breaking every email link. Any auth-flow change: verify these settings.
 
 ## Secrets
@@ -60,7 +60,7 @@ Vanilla JS in single-file pages; small shared JS only if a `js/` directory alrea
 
 ## Rules of engagement
 
-**Never, without asking first:** run destructive SQL against production (or any UPDATE/DELETE without a WHERE you've shown); change RLS policies; change auth flows (signup, invite, reset); add dependencies, frameworks, or build steps; touch billing/legal text; delete user data; commit anything resembling a secret; deploy schema changes that haven't run on staging (once staging exists).
+**Never, without asking first:** run destructive SQL against production (or any UPDATE/DELETE without a WHERE you've shown); change RLS policies; change auth flows (signup, invite, reset); add dependencies, frameworks, or build steps; touch billing/legal text; delete user data; commit anything resembling a secret; deploy schema changes that haven't run on staging.
 
 **Always:** work from a task packet when one exists, and respect its Out-of-scope and Escalate-if clauses; make schema changes as migration files; prefer the smallest change that passes acceptance; leave the codebase style-consistent.
 

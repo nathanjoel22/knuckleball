@@ -17,7 +17,7 @@ Knuckleball (knuckleballonline.com) is a bullpen session tracking app for pitchi
 
 ## Schema and RLS
 
-Source of truth: `supabase/schema/schema.sql` (live production dump, 2026-08-25) + `supabase/schema/SCHEMA_NOTES.md`. **Warning:** the older hand-written `supabase/schema.sql` (different path — directly under `supabase/`) is STALE: it predates the RLS-recursion fix and the current pitches model. Never run it; it is slated for deletion in P1-08.
+Source of truth: `supabase/schema/schema.sql` (live production dump, 2026-08-25) + `supabase/schema/SCHEMA_NOTES.md`. As of P1-08, `supabase/migrations/` exists with a baseline migration generated from that dump, and the old stale hand-written `supabase/schema.sql` (which predated the RLS-recursion fix and the current pitches model) has been deleted.
 
 The real tables (from the dump): `profiles` (incl. `contact_emails jsonb`), `teams` (`coach_id` → auth.users), `pitcher_teams` (`pitcher_id` → **profiles**, not auth.users — required for the PostgREST embeds the roster code uses; keep it that way), `invites`, `sessions` (`pitcher_id` → auth.users NOT NULL; `team_id` → teams, currently NOT NULL until the D3 migration in P2-01 makes it nullable; `logged_by` → auth.users — the person who charted, which may be a coach or teammate rather than the pitcher), `pitches` (`session_id` → sessions; `target_row/col` + `actual_row/col`; `accuracy_mode` with a check constraint matching the relative-accuracy modes).
 

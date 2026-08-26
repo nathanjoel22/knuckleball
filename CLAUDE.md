@@ -2,6 +2,10 @@
 
 Standing context for every Claude session working in this repo. Read fully before touching anything.
 
+## Design principle (binding)
+
+**Charting never requires the network. Only syncing and sending reports do.** A team must be able to open Knuckleball anywhere — including with no internet — and chart a complete bullpen. Login is the single honest exception, and only on first use: the standard is **log in once, then chart anywhere forever**. A token refresh that fails purely for lack of network must never bounce a charter to a login screen or block charting; genuine auth failures while online still must. Reports are never generated from an unsynced session. Any change that makes charting depend on a network round trip is a regression, whatever else it improves.
+
 ## What this is
 
 Knuckleball (knuckleballonline.com) is a bullpen session tracking app for pitching coaches and pitchers: two-tap pitch charting on a 5×5 zone grid (target vs. actual), pitch types, velocity, heat maps, accuracy percentages (including a "relative accuracy" mode), trend charts, and an emailed PDF session report. Charting typically happens on an **iPhone/iPad, often with no wifi** — never assume network availability in the tracker flow.
@@ -17,7 +21,7 @@ Knuckleball (knuckleballonline.com) is a bullpen session tracking app for pitchi
 
 ## Schema and RLS
 
-Source of truth: `supabase/schema/schema.sql` (live production dump, 2026-08-25) + `supabase/schema/SCHEMA_NOTES.md`. As of P1-08, `supabase/migrations/` exists with a baseline migration generated from that dump, and the old stale hand-written `supabase/schema.sql` (which predated the RLS-recursion fix and the current pitches model) has been deleted.
+Source of truth: `supabase/schema/schema.sql` (live production dump, 2026-08-25) + `supabase/schema/SCHEMA_NOTES.md`. **Warning:** the older hand-written `supabase/schema.sql` (different path — directly under `supabase/`) is STALE: it predates the RLS-recursion fix and the current pitches model. Never run it; it is slated for deletion in P1-08.
 
 The real tables (from the dump): `profiles` (incl. `contact_emails jsonb`), `teams` (`coach_id` → auth.users), `pitcher_teams` (`pitcher_id` → **profiles**, not auth.users — required for the PostgREST embeds the roster code uses; keep it that way), `invites`, `sessions` (`pitcher_id` → auth.users NOT NULL; `team_id` → teams, currently NOT NULL until the D3 migration in P2-01 makes it nullable; `logged_by` → auth.users — the person who charted, which may be a coach or teammate rather than the pitcher), `pitches` (`session_id` → sessions; `target_row/col` + `actual_row/col`; `accuracy_mode` with a check constraint matching the relative-accuracy modes).
 
@@ -36,7 +40,7 @@ RLS rules of engagement:
 
 - Frontend: git push to the GitHub Pages branch. Rollback = `git revert` + push.
 - Edge Functions: `supabase functions deploy <name>`. Rollback = check out last good version of the function directory, redeploy.
-- Migrations and the full procedure: follow `DEPLOY.md`. Staging (`knuckleball-staging`, a second Supabase project, same org as production) gets every change first; production schema changes only after a fresh backup (`BACKUPS.md`).
+- Migrations and the full procedure: follow `DEPLOY.md` (task P1-08). If it exists, staging (a second Supabase project) gets every change first; production schema changes only after a fresh backup (`BACKUPS.md`).
 - Auth config landmine: Supabase **Site URL / redirect URLs** were once left at `localhost:3000`, breaking every email link. Any auth-flow change: verify these settings.
 
 ## Secrets
@@ -52,7 +56,8 @@ Function secrets live in Supabase (`supabase secrets list`): `SUPABASE_URL`, `SU
 5. **Client-computed reports:** the report payload (pitches, stats, history) is computed client-side and never stored server-side; a report cannot be regenerated later. Accepted limitation — don't "fix" it in passing.
 6. **Supabase default auth SMTP has tiny rate limits.** Bulk invites can silently fail mid-batch unless custom SMTP is configured (task P1-04 / SETUP.md).
 7. **Free-tier Supabase projects pause when inactive** — relevant off-season. Check project status before diagnosing "the database is down".
-8. **Offline is the normal case** for the tracker page: in-progress sessions autosave to localStorage, completed sessions queue and sync (tasks P0-03/P1-01). Never add code to the charting/save path that requires a network round-trip to keep charting.
+8. **Offline is the normal case** for the tracker page: in-progress sessions autosave to localStorage, completed sessions queue and sync (tasks P0-03/P1-01). Never add code to the charting/save path that requires a network round-trip to keep charting. Data persistence and app availability are two separate problems — localStorage keeps the pitches, the service worker (P0-06) keeps the app openable offline. A field test proved that without the second, the first is unreachable.
+9. **Service worker caching cuts both ways.** Once sw.js ships, a stale cached shell can strand users on old JS — exactly the failure mode that made a fixed bug look unfixed during P0-01. Always version the cache name, clean old caches on activate, and verify a deployed change actually appears after two reloads.
 
 ## Coding conventions
 
@@ -60,7 +65,7 @@ Vanilla JS in single-file pages; small shared JS only if a `js/` directory alrea
 
 ## Rules of engagement
 
-**Never, without asking first:** run destructive SQL against production (or any UPDATE/DELETE without a WHERE you've shown); change RLS policies; change auth flows (signup, invite, reset); add dependencies, frameworks, or build steps; touch billing/legal text; delete user data; commit anything resembling a secret; deploy schema changes that haven't run on staging.
+**Never, without asking first:** run destructive SQL against production (or any UPDATE/DELETE without a WHERE you've shown); change RLS policies; change auth flows (signup, invite, reset); add dependencies, frameworks, or build steps; touch billing/legal text; delete user data; commit anything resembling a secret; deploy schema changes that haven't run on staging (once staging exists).
 
 **Always:** work from a task packet when one exists, and respect its Out-of-scope and Escalate-if clauses; make schema changes as migration files; prefer the smallest change that passes acceptance; leave the codebase style-consistent.
 

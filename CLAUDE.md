@@ -21,13 +21,13 @@ Knuckleball (knuckleballonline.com) is a bullpen session tracking app for pitchi
 
 ## Schema and RLS
 
-Source of truth: `supabase/schema/schema.sql` (live production dump, 2026-08-25) + `supabase/schema/SCHEMA_NOTES.md`. **Warning:** the older hand-written `supabase/schema.sql` (different path — directly under `supabase/`) is STALE: it predates the RLS-recursion fix and the current pitches model. Never run it; it is slated for deletion in P1-08.
+Source of truth: `supabase/schema/schema.sql` (live production dump, 2026-08-25) + `supabase/schema/SCHEMA_NOTES.md`. As of P1-08, `supabase/migrations/` exists with a baseline migration generated from that dump, and the old stale hand-written `supabase/schema.sql` (which predated the RLS-recursion fix and the current pitches model) has been deleted.
 
 The real tables (from the dump): `profiles` (incl. `contact_emails jsonb`), `teams` (`coach_id` → auth.users), `pitcher_teams` (`pitcher_id` → **profiles**, not auth.users — required for the PostgREST embeds the roster code uses; keep it that way), `invites`, `sessions` (`pitcher_id` → auth.users NOT NULL; `team_id` → teams, currently NOT NULL until the D3 migration in P2-01 makes it nullable; `logged_by` → auth.users — the person who charted, which may be a coach or teammate rather than the pitcher), `pitches` (`session_id` → sessions; `target_row/col` + `actual_row/col`; `accuracy_mode` with a check constraint matching the relative-accuracy modes).
 
 There are 19 RLS policies. Coaches hold **FOR ALL** (not just SELECT) on their team's sessions and pitches — they can chart and edit on behalf of pitchers; pitchers manage their own rows via `pitcher_id` only, with no team dependency. Decision D3 is settled: sessions belong to the pitcher, team affiliation becomes optional (the `team_id` NOT NULL drop is P2-01).
 
-**There is no migration chain.** `supabase/migrations/` has never existed; all live schema state was applied by hand. The first migration created in this repo must be a baseline of current production (part of P1-08). Until that exists, the dump is the only truth — regenerate it after any approved schema change.
+**Migration history.** Every schema change up to P1-08 was applied to production by hand; `supabase/migrations/20260826082320_baseline.sql` is the snapshot of that state and the first real migration this repo has. Production has no `supabase_migrations` history table yet, so a one-time `supabase migration repair --status applied` is required before the first `db push` (see DEPLOY.md). Keep regenerating the dump in `supabase/schema/schema.sql` after any approved schema change — it stays the human-readable source of truth.
 
 RLS rules of engagement:
 
@@ -40,7 +40,7 @@ RLS rules of engagement:
 
 - Frontend: git push to the GitHub Pages branch. Rollback = `git revert` + push.
 - Edge Functions: `supabase functions deploy <name>`. Rollback = check out last good version of the function directory, redeploy.
-- Migrations and the full procedure: follow `DEPLOY.md` (task P1-08). If it exists, staging (a second Supabase project) gets every change first; production schema changes only after a fresh backup (`BACKUPS.md`).
+- Migrations and the full procedure: follow `DEPLOY.md`. Staging (`knuckleball-staging`, a second Supabase project, same org as production) gets every change first; production schema changes only after a fresh backup (`BACKUPS.md`).
 - Auth config landmine: Supabase **Site URL / redirect URLs** were once left at `localhost:3000`, breaking every email link. Any auth-flow change: verify these settings.
 
 ## Secrets
@@ -65,7 +65,7 @@ Vanilla JS in single-file pages; small shared JS only if a `js/` directory alrea
 
 ## Rules of engagement
 
-**Never, without asking first:** run destructive SQL against production (or any UPDATE/DELETE without a WHERE you've shown); change RLS policies; change auth flows (signup, invite, reset); add dependencies, frameworks, or build steps; touch billing/legal text; delete user data; commit anything resembling a secret; deploy schema changes that haven't run on staging (once staging exists).
+**Never, without asking first:** run destructive SQL against production (or any UPDATE/DELETE without a WHERE you've shown); change RLS policies; change auth flows (signup, invite, reset); add dependencies, frameworks, or build steps; touch billing/legal text; delete user data; commit anything resembling a secret; deploy schema changes that haven't run on staging.
 
 **Always:** work from a task packet when one exists, and respect its Out-of-scope and Escalate-if clauses; make schema changes as migration files; prefer the smallest change that passes acceptance; leave the codebase style-consistent.
 

@@ -384,7 +384,6 @@ let state = {
   pendingDraft: null,
   saveFailed: false,
   contactsOpen: false,
-  coachEmailDefault: null,
   contactsSavedAt: null,
   inviteOpen: false,
   inviteStatus: null,
@@ -405,7 +404,7 @@ function genUUID(){
   });
 }
 function mapProfile(row){
-  return { id: row.id, name: row.full_name, email: row.email || '', pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {} };
+  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {} };
 }
 function isCoach(){ return state.profile && state.profile.role === 'coach'; }
 function colorForType(pitcher, type){
@@ -471,7 +470,7 @@ async function init(){
     const meta = session.user.user_metadata || {};
     if(meta.intended_role === 'coach' && meta.full_name){
       const { data: newProfile, error: insertErr } = await supabaseClient
-        .from('profiles').insert({ id: session.user.id, role: 'coach', full_name: meta.full_name, email: session.user.email })
+        .from('profiles').insert({ id: session.user.id, role: 'coach', full_name: meta.full_name })
         .select().single();
       if(!insertErr && newProfile){
         profile = newProfile;
@@ -636,17 +635,11 @@ window.removePitchType = async function(type){
 };
 
 /* ---------- CONTACT EMAILS (pitcher edits own only) ----------
-   Coach and pitcher fields default-fill from real account data when
-   left blank, but every field always stays a normal editable input —
-   whatever's in the boxes when Save is clicked is exactly what's used,
-   default or not. */
-async function fetchCoachEmailForCurrentTeam(){
-  if(isCoach() || !state.currentTeamId) return null;
-  const { data: team } = await supabaseClient.from('teams').select('coach_id').eq('id', state.currentTeamId).single();
-  if(!team) return null;
-  const { data: coachProfile } = await supabaseClient.from('profiles').select('email').eq('id', team.coach_id).single();
-  return coachProfile ? coachProfile.email : null;
-}
+   The report recipient emails are whatever is in the boxes when Save is
+   clicked. There is no server-side source to pre-fill them from — a user's
+   email lives in auth.users, which PostgREST doesn't expose, and profiles
+   has no email column — so the fields start from the saved contact_emails
+   and are edited by hand. */
 window.saveContactEmails = async function(){
   const emails = {
     coach: (document.getElementById('contact-coach').value || '').trim(),
@@ -660,12 +653,6 @@ window.saveContactEmails = async function(){
 window.toggleContactsPanel = async function(){
   state.contactsOpen = !state.contactsOpen;
   state.contactsSavedAt = null;
-  if(state.contactsOpen){
-    const saved = state.profile.contact_emails || {};
-    if(!saved.coach){
-      state.coachEmailDefault = await fetchCoachEmailForCurrentTeam();
-    }
-  }
   render();
 };
 
@@ -1336,14 +1323,14 @@ function render(){
     }).join('') || `<span style="color:var(--chalk-faint);font-size:12.5px;">No pitches set yet</span>`;
 
     const contacts = p.contactEmails || {};
-    const coachFieldValue = contacts.coach || state.coachEmailDefault || '';
-    const pitcherFieldValue = contacts.pitcher || p.email || '';
+    const coachFieldValue = contacts.coach || '';
+    const pitcherFieldValue = contacts.pitcher || '';
     const contactsPanel = (!isCoach() && state.contactsOpen) ? `
       <div class="contacts-panel">
         <div class="field"><span class="field-label">Coach email</span><input class="text-input" id="contact-coach" value="${coachFieldValue}" placeholder="coach@example.com"></div>
         <div class="field"><span class="field-label">Additional contact (optional)</span><input class="text-input" id="contact-pitching-coach" value="${contacts.pitchingCoach||''}" placeholder="e.g. pitching coach"></div>
         <div class="field"><span class="field-label">Your email</span><input class="text-input" id="contact-pitcher" value="${pitcherFieldValue}" placeholder="you@example.com"></div>
-        <p style="flex-basis:100%;margin:-4px 0 0;font-size:11.5px;color:var(--chalk-faint);">Coach and your own email are filled in automatically — edit or clear any field as needed.</p>
+        <p style="flex-basis:100%;margin:-4px 0 0;font-size:11.5px;color:var(--chalk-faint);">These are the addresses the session report is emailed to — edit or clear any field as needed.</p>
         <div class="contacts-save-row">
           <button class="btn btn-primary" onclick="saveContactEmails()">Save</button>
           ${state.contactsSavedAt ? '<span class="contacts-saved-msg">Saved</span>' : ''}

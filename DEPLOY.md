@@ -127,6 +127,40 @@ verification on both projects; keep it that way (see P0-01's history with
 `git checkout` the last-good commit of the function's `index.ts`, then redeploy that version
 with the same command.
 
+## Frontend: deploy to production
+
+The frontend has no build step. "Deploying" is a `git push` of `main` to GitHub Pages;
+the live site updates within a minute or two.
+
+Before every frontend deploy:
+
+1. **Confirm the config files point at production**, not staging. If you've been serving
+   against staging locally (section below), the swap may still be in place:
+   ```bash
+   grep -l wpsscxwawgiwmifpjpec supabase-config.js report-config.js
+   ```
+   This must print **nothing**. If it prints a filename, restore the prod config (the `mv`
+   step at the end of the staging section) before committing.
+
+2. **If this change touched `sw.js`'s logic or the `PRECACHE_URLS` list, bump
+   `CACHE_VERSION`** in `sw.js` (`kb-shell-vN` → `kb-shell-vN+1`), so `activate()` purges
+   the old cache generation. Routine content edits to the precached HTML/JS do **not** need
+   a bump — the service worker refreshes each cached file in the background on the next
+   online load (stale-while-revalidate). See the comment at the top of `sw.js`.
+
+3. `git push origin main`.
+
+4. **Verify the change is actually live.** Load the affected page and hard-reload twice
+   (the service worker serves the previous shell on the first load, refreshes in the
+   background, and serves the new one on the second). A `sw.js` change itself can take
+   ~10 min to reach a device — GitHub Pages sets its own cache-control on that file.
+
+### Rollback (frontend)
+
+`git revert <bad-commit>` and push. If the bad deploy changed `CACHE_VERSION`, the revert
+carries the bump back down too, which is fine — it's still a *different* value from the
+broken generation, so `activate()` still cleans up.
+
 ## Frontend: running against staging locally
 
 The frontend is static HTML with no build step, so "deploying" it to staging just means

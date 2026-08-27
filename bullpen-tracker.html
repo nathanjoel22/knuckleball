@@ -397,7 +397,12 @@ let state = {
   saving: false,
   loaded: false,
   outbox: [],        // completed sessions not yet synced to Supabase (P1-01)
-  syncing: false
+  syncing: false,
+  setupNeeded: null, // null | 'role' | 'team' -- account-setup recovery UI (P1-12)
+  setupBusy: false,
+  setupError: null,
+  setupName: '',
+  setupTeam: ''
 };
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -497,34 +502,46 @@ async function init(){
     return;
   }
   state.session = session;
+  state.setupNeeded = null;
   await refreshOutboxState();
 
-  let { data: profile, error: profErr } = await supabaseClient
+  // navigator.onLine is only a hint (can be true with no real internet), but a
+  // confident `false` means the account-setup RPC below has no network to run
+  // against -- skip it and fall through to the cached-context path.
+  const online = !(typeof navigator !== 'undefined' && navigator.onLine === false);
+
+  let { data: profile } = await supabaseClient
     .from('profiles').select('*').eq('id', session.user.id).single();
 
-  // If a profile row doesn't exist yet, it's most likely because email
-  // confirmation delayed the account past the moment signup normally
-  // creates it. Self-heal using the metadata captured at signup time.
-  if(!profile && profErr && profErr.code === 'PGRST116'){
-    const meta = session.user.user_metadata || {};
-    if(meta.intended_role === 'coach' && meta.full_name){
-      const { data: newProfile, error: insertErr } = await supabaseClient
-        .from('profiles').insert({ id: session.user.id, role: 'coach', full_name: meta.full_name })
-        .select().single();
-      if(!insertErr && newProfile){
-        profile = newProfile;
-        if(meta.team_name){
-          await supabaseClient.from('teams').insert({ coach_id: session.user.id, name: meta.team_name });
-        }
-      }
-    }
+  // Account setup is guaranteed server-side now (P1-12): an AFTER INSERT
+  // trigger on auth.users covers coach signups, and public.ensure_account_setup()
+  // -- idempotent, a safe no-op for a healthy account -- covers invited
+  // pitchers, accounts created before the trigger existed, and a team insert
+  // that failed after its profile succeeded. Only call it when the profile is
+  // actually missing; the coach-with-no-team case is handled after loadTeams().
+  let setupRes = null;
+  if(!profile && online){
+    const { data } = await supabaseClient.rpc('ensure_account_setup');
+    setupRes = data || null;
+    ({ data: profile } = await supabaseClient
+      .from('profiles').select('*').eq('id', session.user.id).single());
+  }
+
+  // Reached the server, still no profile, and the RPC couldn't determine a
+  // role from signup metadata -> ask in the UI (coach or pitcher, + name)
+  // rather than signing the user out.
+  if(!profile && setupRes && setupRes.needs_role){
+    state.setupNeeded = 'role';
+    state.loaded = true;
+    finishInit();
+    return;
   }
 
   if(!profile){
-    // A live fetch failure here (dead wifi, not "no profile row yet" --
-    // that case is handled above) must not sign the user out mid-bullpen.
-    // Fall back to the last context seen online so the draft-restore
-    // check below still runs against the right pitcher/team.
+    // A live fetch failure (dead wifi), or offline with no server reached --
+    // must not sign the user out mid-bullpen. Fall back to the last context
+    // seen online so the draft-restore check still runs against the right
+    // pitcher/team.
     const cached = await storGet(lastKnownKey(session.user.id));
     if(cached && cached.profile){
       state.profile = cached.profile;
@@ -547,6 +564,21 @@ async function init(){
   state.profile = profile;
 
   await loadTeams();
+
+  // A coach with a profile but no team: try to finish setup from signup
+  // metadata, then fall back to the create-team form -- never the old
+  // "No team yet / Sign out" dead end.
+  if(isCoach() && !state.teams.length && online){
+    await supabaseClient.rpc('ensure_account_setup');
+    await loadTeams();
+    if(!state.teams.length){
+      state.setupNeeded = 'team';
+      state.loaded = true;
+      finishInit();
+      return;
+    }
+  }
+
   if(state.teams.length){
     await onTeamChange(state.teams[0].id, true);
   }
@@ -554,12 +586,17 @@ async function init(){
   finishInit();
 }
 
-// Common tail for both init() paths: paint the app, then wire up the two
-// passive sync triggers (reconnect, and "we just finished loading") --
-// manual "Sync now" is wired separately, on the button itself.
+// Common tail for every init() path: paint the app, then wire up the passive
+// sync triggers (reconnect, and "we just finished loading") -- manual "Sync
+// now" is wired separately, on the button itself. Guarded so re-running init()
+// (e.g. after the account-setup form completes) doesn't stack listeners.
+let syncTriggersWired = false;
 function finishInit(){
   render();
-  window.addEventListener('online', () => triggerSync());
+  if(!syncTriggersWired){
+    syncTriggersWired = true;
+    window.addEventListener('online', () => triggerSync());
+  }
   triggerSync();
 }
 
@@ -678,6 +715,61 @@ window.sendInvite = async function(){
     state.inviteStatus = 'error:' + err.message;
   }
   render();
+};
+
+/* ---------- ACCOUNT SETUP RECOVERY (P1-12) ----------
+   Shown when init() reached the server but the account is still incomplete:
+   'role' -> no profile and no usable signup metadata (ask coach/pitcher + name);
+   'team' -> a coach with a profile but no team. Both submit to the same
+   idempotent RPC that the server-side trigger and init() use. */
+window.submitAccountSetup = async function(role){
+  // Stash typed values so an error re-render doesn't wipe them.
+  const nameEl = document.getElementById('setup-name');
+  const teamEl = document.getElementById('setup-team');
+  if(nameEl) state.setupName = nameEl.value;
+  if(teamEl) state.setupTeam = teamEl.value;
+
+  const payload = {};
+  if(state.setupNeeded === 'role'){
+    const name = state.setupName.trim();
+    if(!name){ state.setupError = 'Enter your name.'; render(); return; }
+    payload.p_role = role;
+    payload.p_full_name = name;
+    if(role === 'coach'){
+      const team = state.setupTeam.trim();
+      if(!team){ state.setupError = 'Enter a team or program name.'; render(); return; }
+      payload.p_team_name = team;
+    }
+  } else {
+    const team = state.setupTeam.trim();
+    if(!team){ state.setupError = 'Enter a team or program name.'; render(); return; }
+    payload.p_team_name = team;
+  }
+
+  state.setupBusy = true;
+  state.setupError = null;
+  render();
+
+  const { data, error } = await supabaseClient.rpc('ensure_account_setup', payload);
+  state.setupBusy = false;
+  if(error){
+    state.setupError = 'Setup failed: ' + error.message;
+    render();
+    return;
+  }
+  if(data && (data.needs_role || data.needs_team)){
+    state.setupError = 'That didn’t complete setup — please check the fields and try again.';
+    render();
+    return;
+  }
+
+  // Rows exist now -- re-run init() from the top to load the app normally.
+  state.setupNeeded = null;
+  state.setupName = '';
+  state.setupTeam = '';
+  state.loaded = false;
+  render();
+  await init();
 };
 
 /* ---------- PITCH ARSENAL (pitcher edits own only) ---------- */
@@ -1248,6 +1340,49 @@ function renderOutboxBadge(){
     </div>`;
 }
 
+/* ---------- RENDER: ACCOUNT SETUP RECOVERY (P1-12) ---------- */
+function renderAccountSetupScreen(){
+  const attr = v => String(v || '').replace(/"/g, '&quot;');
+  const busy = state.setupBusy ? 'disabled' : '';
+  const err = state.setupError
+    ? `<p class="invite-status invite-status-error">${state.setupError}</p>` : '';
+
+  let title, blurb, fields, buttons;
+  if(state.setupNeeded === 'team'){
+    title = 'Create your team';
+    blurb = 'Your account is set up, but it has no team yet. Name your team or program to finish.';
+    fields = `
+      <div><span class="field-label">Team / program name</span>
+        <input id="setup-team" class="text-input" style="margin-top:5px;" value="${attr(state.setupTeam)}" placeholder="e.g. Cairn University Baseball"></div>`;
+    buttons = `<button class="btn btn-primary" ${busy} onclick="submitAccountSetup('coach')">${state.setupBusy ? 'Creating…' : 'Create team'}</button>`;
+  } else {
+    title = 'Finish setting up your account';
+    blurb = 'We couldn’t tell whether this account is a coach or a pitcher. Pick one and add your name to continue.';
+    fields = `
+      <div><span class="field-label">Your name</span>
+        <input id="setup-name" class="text-input" style="margin-top:5px;" value="${attr(state.setupName)}" placeholder="Full name"></div>
+      <div><span class="field-label">Team / program name <span style="text-transform:none;letter-spacing:0;">(coaches only)</span></span>
+        <input id="setup-team" class="text-input" style="margin-top:5px;" value="${attr(state.setupTeam)}" placeholder="e.g. Cairn University Baseball"></div>`;
+    buttons = `
+      <button class="btn btn-primary" ${busy} onclick="submitAccountSetup('coach')">${state.setupBusy ? 'Setting up…' : 'I’m a coach'}</button>
+      <button class="btn btn-ghost" ${busy} onclick="submitAccountSetup('pitcher')">I’m a pitcher</button>`;
+  }
+
+  return `
+    <div class="main">
+      <div class="empty-state" style="max-width:420px;margin:0 auto;">
+        <div class="display" style="font-size:32px;">${title}</div>
+        <p style="color:var(--chalk-dim);font-size:14px;margin:0;">${blurb}</p>
+        <div class="invite-form" style="width:100%;text-align:left;">
+          ${fields}
+          <div class="form-row-buttons">${buttons}</div>
+          ${err}
+        </div>
+        <button class="sign-out-btn" style="margin-top:6px;" onclick="signOut()">Sign out</button>
+      </div>
+    </div>`;
+}
+
 /* ---------- RENDER: HISTORY VIEW ---------- */
 function renderHistoryView(){
   const p = currentPitcher();
@@ -1419,6 +1554,11 @@ function render(){
   const app = document.getElementById('app');
   if(!state.loaded){
     app.innerHTML = `<div class="empty-state"><div class="display">Loading…</div></div>`;
+    return;
+  }
+
+  if(state.setupNeeded){
+    app.innerHTML = renderAccountSetupScreen();
     return;
   }
 

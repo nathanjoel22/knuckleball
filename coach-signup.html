@@ -154,35 +154,19 @@
     }
 
     // If email confirmation is required, there's no active session yet —
-    // send them to check their inbox instead of trying to write data now.
+    // send them to check their inbox. The profile + team are created
+    // server-side by the on_auth_user_created trigger from the signup
+    // metadata above (P1-12), so there's nothing to write from here.
     if(!signUpData.session){
       form.classList.add('step-hidden');
       document.getElementById('confirm-card').classList.remove('step-hidden');
       return;
     }
 
-    const userId = signUpData.user.id;
-
-    const { error: profileErr } = await supabaseClient.from('profiles').insert({
-      id: userId, role: 'coach', full_name: fullName
-    });
-    if(profileErr){
-      errorEl.textContent = 'Account created, but profile setup failed: ' + profileErr.message;
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Create account';
-      return;
-    }
-
-    const { error: teamErr } = await supabaseClient.from('teams').insert({
-      coach_id: userId, name: teamName
-    });
-    if(teamErr){
-      errorEl.textContent = 'Profile created, but team setup failed: ' + teamErr.message;
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Create account';
-      return;
-    }
-
+    // Confirmation disabled -> we already have a session. The trigger has
+    // run; call the idempotent setup RPC to be certain the profile + team
+    // exist (it's a no-op if they do) before entering the app.
+    await supabaseClient.rpc('ensure_account_setup');
     window.location.href = 'bullpen-tracker.html';
   });
 </script>

@@ -7,6 +7,24 @@ straight from the live catalog — no separate `pg_policies` pull was needed sin
 already includes full `USING`/`WITH CHECK` clauses. No data rows (no `INSERT`/`COPY`) are
 present in this file — verified with `grep -nE "^INSERT INTO|^COPY .* FROM stdin"`, zero matches.
 
+## Changes since the 2026-08-25 dump (not yet reflected in schema.sql)
+
+- **P1-08** — `supabase/migrations/` created with `20260826082320_baseline.sql` (a
+  baseline of this dump). `schema.sql` is still the human-readable source of truth;
+  regenerate it after any applied migration.
+- **P1-12** — `supabase/migrations/20260827161717_account_setup_server_side.sql` adds:
+  - `public.handle_new_user()` + trigger `on_auth_user_created AFTER INSERT ON
+    auth.users` — the **first user-defined trigger on `auth.users`** in this project.
+    Creates a coach's `profiles` (+ `teams`) row at signup from `raw_user_meta_data`;
+    `SECURITY DEFINER`, swallows its own errors and always `RETURN NEW` so it can never
+    block signup.
+  - `public.ensure_account_setup(p_role, p_full_name, p_team_name) returns jsonb` —
+    `SECURITY DEFINER`, `EXECUTE` granted to `authenticated` only. Idempotent
+    profile/team repair, called from the frontend via RPC. Uses
+    `pg_advisory_xact_lock` on the caller's uid.
+
+  Regenerate `schema.sql` from production once this migration is deployed there.
+
 ## 0. Biggest discrepancy: there are no migration files, and there never have been
 
 `supabase/migrations/` does not exist in this repo, and `git log --oneline -- supabase/migrations`

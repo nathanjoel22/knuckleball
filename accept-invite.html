@@ -191,10 +191,14 @@
 
     const userId = updateData.user.id;
 
-    const { error: profileErr } = await supabaseClient.from('profiles')
-      .upsert({ id: userId, role: 'pitcher', full_name: fullName }, { onConflict: 'id' });
-    if(profileErr){
-      errorEl.textContent = 'Password set, but profile setup failed: ' + profileErr.message;
+    // Create the pitcher's profile through the same idempotent server-side
+    // path everything else uses (P1-12). accept-invite is the one place that
+    // knows the pitcher's name, so it's passed in explicitly.
+    const { data: setupRes, error: profileErr } = await supabaseClient
+      .rpc('ensure_account_setup', { p_role: 'pitcher', p_full_name: fullName });
+    if(profileErr || (setupRes && setupRes.needs_role)){
+      errorEl.textContent = 'Password set, but profile setup failed: '
+        + (profileErr ? profileErr.message : 'could not create your profile');
       submitBtn.disabled = false;
       submitBtn.textContent = 'Finish setup';
       return;

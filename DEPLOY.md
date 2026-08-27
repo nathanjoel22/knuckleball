@@ -39,6 +39,33 @@ supabase secrets list --project-ref wpsscxwawgiwmifpjpec
 for Auth settings** (see SETUP.md — it can reset unspecified dashboard settings like Site
 URL/redirect URLs).
 
+### One-time prerequisite — register the baseline on production (NOT done yet)
+
+Do this **once**, before the very first `supabase db push` to production. Skipping it
+turns the first real migration into a mid-deploy failure.
+
+Production was built entirely by hand and has no `supabase_migrations.schema_migrations`
+table, so the CLI has no record that `supabase/migrations/20260826082320_baseline.sql`
+is already live there. Left as-is, the first `db push` to production will try to *run*
+the baseline against the real database and abort partway through — the baseline's
+`CREATE POLICY` statements have no `IF NOT EXISTS`, so it dies on the first policy that
+already exists (`42710 "policy already exists"`), after it has already created the
+migrations table. Staging doesn't have this problem: it was built *from* the baseline.
+
+Mark the baseline as already-applied on production instead:
+
+```bash
+supabase migration repair --status applied 20260826082320 --project-ref fkgccjhuimkkbupbanxp --password <prod-db-password>
+```
+
+Then confirm — the baseline should now show as applied on both sides, and nothing else:
+
+```bash
+supabase migration list --project-ref fkgccjhuimkkbupbanxp --password <prod-db-password>
+```
+
+From here on, only genuinely new migration files run against production in step 5.
+
 1. **Write a migration file.**
    ```bash
    supabase migration new <short_description>

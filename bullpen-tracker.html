@@ -127,6 +127,13 @@
   }
   .sign-out-btn:hover{ border-color:var(--red); color:var(--red); }
 
+  .outbox-badge{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:rgba(193,122,69,0.12); border:1px solid var(--clay-dim); border-radius:6px;
+    padding:8px 10px; font-size:12px; color:var(--chalk-dim);
+  }
+  .outbox-badge .btn{ padding:5px 10px; font-size:11.5px; flex-shrink:0; }
+
   .invite-form{
     background:var(--field-panel-2); border:1px solid var(--border-strong);
     border-radius:8px; padding:14px; display:flex; flex-direction:column; gap:10px;
@@ -295,6 +302,7 @@
     color:var(--amber-bright); background:rgba(232,168,61,0.12); border:1px solid rgba(232,168,61,0.3);
     padding:2px 7px; border-radius:20px; margin-left:6px; vertical-align:middle;
   }
+  .pending-tag{ color:var(--clay); background:rgba(193,122,69,0.14); border-color:rgba(193,122,69,0.4); }
   .session-meta{ display:flex; gap:16px; flex-wrap:wrap; }
   .meta-item{ display:flex; flex-direction:column; align-items:flex-end; }
   .meta-num{ font-family:'Teko',sans-serif; font-size:24px; color:var(--amber-bright); line-height:1; }
@@ -382,13 +390,14 @@ let state = {
   hint: '',
   draftAvailable: false,
   pendingDraft: null,
-  saveFailed: false,
   contactsOpen: false,
   contactsSavedAt: null,
   inviteOpen: false,
   inviteStatus: null,
   saving: false,
-  loaded: false
+  loaded: false,
+  outbox: [],        // completed sessions not yet synced to Supabase (P1-01)
+  syncing: false
 };
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -456,9 +465,39 @@ function isRelativelyAccurate(pitch){
 
 /* ---------- INIT / AUTH GUARD ---------- */
 async function init(){
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if(!session){ window.location.href = 'login.html'; return; }
+  let session = null;
+  try{
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    session = sessionData && sessionData.session;
+  } catch(e){
+    // getSession() is a local read and shouldn't throw, but an auth-check
+    // exception must never blank the page for someone mid-bullpen -- fall
+    // through to the stored-session path below.
+    console.warn('getSession() threw during init', e);
+  }
+  if(!session){
+    // getSession() also comes back empty when the device is offline and
+    // its access token has expired: gotrue-js only clears the persisted
+    // session on a genuine bad/revoked-credential rejection (400/401), and
+    // leaves it alone when the token refresh merely failed to reach the
+    // network. So a stored session still present here means "logged in,
+    // currently offline" -- use it rather than bouncing a charter to a
+    // login screen they can't complete offline. If storage is genuinely
+    // empty (never logged in, or a real rejection cleared it), the
+    // fallback returns null too and we hit the login redirect just below.
+    session = readPersistedSessionRaw();
+  }
+  if(!session){
+    // No usable session and nothing in storage => genuinely logged out
+    // (or a real credential rejection wiped it). login.html is the right
+    // destination even offline: there's no local charting state tied to a
+    // user we can't identify, and signing in needs the network anyway.
+    // .replace() so Back doesn't land on a torn-down tracker.
+    window.location.replace('login.html');
+    return;
+  }
   state.session = session;
+  await refreshOutboxState();
 
   let { data: profile, error: profErr } = await supabaseClient
     .from('profiles').select('*').eq('id', session.user.id).single();
@@ -497,7 +536,7 @@ async function init(){
       await loadSessionsForCurrentSelection();
       await refreshDraftState();
       state.loaded = true;
-      render();
+      finishInit();
       return;
     }
     alert('Could not load your account profile. Please try logging in again, or contact support if this keeps happening.');
@@ -512,7 +551,34 @@ async function init(){
     await onTeamChange(state.teams[0].id, true);
   }
   state.loaded = true;
+  finishInit();
+}
+
+// Common tail for both init() paths: paint the app, then wire up the two
+// passive sync triggers (reconnect, and "we just finished loading") --
+// manual "Sync now" is wired separately, on the button itself.
+function finishInit(){
   render();
+  window.addEventListener('online', () => triggerSync());
+  triggerSync();
+}
+
+// supabase-js (no custom storageKey configured -- see supabase-config.js)
+// persists the session under `sb-<project-ref>-auth-token`, with `user`
+// embedded directly in that same object. Recomputed here from SUPABASE_URL
+// rather than hard-coded so it can't drift from whatever project this page
+// is actually pointed at (production vs. staging).
+function authStorageKey(){
+  return 'sb-' + new URL(SUPABASE_URL).hostname.split('.')[0] + '-auth-token';
+}
+function readPersistedSessionRaw(){
+  try{
+    const raw = localStorage.getItem(authStorageKey());
+    if(!raw) return null;
+    const sess = JSON.parse(raw);
+    if(sess && sess.access_token && sess.user && sess.user.id) return sess;
+    return null;
+  } catch(e){ return null; }
 }
 
 async function loadTeams(){
@@ -668,25 +734,22 @@ async function refreshDraftState(){
   } else {
     state.draftAvailable = false;
     state.pendingDraft = null;
-    state.activeSession = { pitches: [], startedAt: Date.now(), savedSessionId: null };
+    state.activeSession = { pitches: [], startedAt: Date.now() };
   }
   state.selectedType = null;
   state.selectedAccuracyMode = null;
   state.pendingTarget = null;
   state.flashCell = null;
-  state.saveFailed = false;
 }
 window.resumeDraft = function(){
   state.activeSession = state.pendingDraft;
   state.draftAvailable = false;
-  state.saveFailed = false;
   render();
 };
 window.discardDraft = async function(){
   await storDelete(draftKey());
-  state.activeSession = { pitches: [], startedAt: Date.now(), savedSessionId: null };
+  state.activeSession = { pitches: [], startedAt: Date.now() };
   state.draftAvailable = false;
-  state.saveFailed = false;
   render();
 };
 
@@ -771,63 +834,157 @@ window.undoLastPitch = async function(){
 
 window.endSession = async function(){
   if(!state.activeSession.pitches.length){ state.hint = 'Log at least one pitch before ending the session'; render(); return; }
+  // Setting saving=true and painting it before any await closes the only
+  // reentrancy gap a double-tap could hit here (storSet below is async but
+  // does no real I/O, so this is mostly belt-and-suspenders).
   state.saving = true;
   state.hint = '';
   render();
 
-  // Retrying a previously-failed save must never create a second session
-  // row or double-insert pitches (dead wifi mid-save is the normal case
-  // here, not the exception). The session id is generated client-side and
-  // persisted to the draft before the network call, and both writes below
-  // are upserts keyed on that id / each pitch's own id — so re-running
-  // this function after a failure just re-attempts the same rows.
-  if(!state.activeSession.savedSessionId){
-    state.activeSession.savedSessionId = genUUID();
-    await storSet(draftKey(), state.activeSession);
-  }
-  const sessionId = state.activeSession.savedSessionId;
-
-  const { error: sessErr } = await supabaseClient.from('sessions').upsert({
+  // Ending a session never waits on the network: it moves straight into
+  // the offline outbox (queue-and-sync, P1-01) and the UI moves on
+  // immediately. A background sync attempt follows, and reconnecting later
+  // (or reopening the app, or tapping "Sync now") retries anything still
+  // queued -- see syncOutbox().
+  const sessionId = genUUID();
+  const item = {
     id: sessionId,
-    pitcher_id: state.currentPitcherId,
-    team_id: state.currentTeamId,
-    logged_by: state.profile.id,
-    started_at: new Date(state.activeSession.startedAt).toISOString(),
-    ended_at: new Date().toISOString()
-  }, { onConflict: 'id' });
-
-  if(sessErr){
-    state.hint = 'Could not save session — nothing was lost, tap Retry. ' + sessErr.message;
-    state.saveFailed = true;
-    state.saving = false; render(); return;
-  }
-
-  const pitchRows = state.activeSession.pitches.map(p => ({
-    id: p.id,
-    session_id: sessionId, type: p.type, velo: p.velo,
-    target_row: p.targetRow, target_col: p.targetCol,
-    actual_row: p.actualRow, actual_col: p.actualCol,
-    accuracy_mode: p.accuracyMode || null,
-    ts: new Date(p.ts).toISOString()
-  }));
-  const { error: pitchErr } = await supabaseClient.from('pitches').upsert(pitchRows, { onConflict: 'id' });
-  if(pitchErr){
-    state.hint = 'Session saved, but pitches failed to save — nothing was lost, tap Retry. ' + pitchErr.message;
-    state.saveFailed = true;
-    state.saving = false; render(); return;
-  }
-
+    pitcherId: state.currentPitcherId,
+    teamId: state.currentTeamId,
+    loggedBy: state.profile.id,
+    startedAt: state.activeSession.startedAt,
+    endedAt: Date.now(),
+    pitches: state.activeSession.pitches,
+    queuedAt: Date.now(),
+    lastError: null,
+    lastAttemptAt: null
+  };
+  await enqueueOutboxItem(state.session.user.id, item);
   await storDelete(draftKey());
-  state.activeSession = { pitches: [], startedAt: Date.now(), savedSessionId: null };
+
+  state.activeSession = { pitches: [], startedAt: Date.now() };
   state.selectedType = null;
   state.pendingTarget = null;
   state.saving = false;
-  state.saveFailed = false;
-  await loadSessionsForCurrentSelection();
+  await refreshOutboxState();
   state.view = 'history';
   state.expandedSessionId = sessionId;
   render();
+
+  triggerSync();
 };
+
+/* ---------- OFFLINE OUTBOX + SYNC (P1-01) ----------
+   A completed session lands here the instant "End session" is tapped, so
+   finishing a session never blocks on the network. Each item's id is the
+   session's own client-generated UUID and every write below is an upsert
+   keyed on that id (pitches keyed on their own ids), so a sync that runs
+   twice -- a retry, two triggers overlapping, a reconnect mid-attempt --
+   just re-upserts the same rows instead of duplicating them. Scoped per
+   signed-in user (not per pitcher/team) so a coach's device can queue
+   sessions for several pitchers at once and a shared device switching
+   accounts doesn't mix their queues. */
+function outboxKey(userId){ return 'outbox:' + userId; }
+async function loadOutbox(userId){ return (await storGet(outboxKey(userId))) || []; }
+async function enqueueOutboxItem(userId, item){
+  const items = await loadOutbox(userId);
+  items.push(item);
+  await storSet(outboxKey(userId), items);
+}
+async function updateOutboxItem(userId, updated){
+  const items = await loadOutbox(userId);
+  const idx = items.findIndex(i => i.id === updated.id);
+  if(idx >= 0){ items[idx] = updated; await storSet(outboxKey(userId), items); }
+}
+async function removeOutboxItem(userId, id){
+  const items = await loadOutbox(userId);
+  await storSet(outboxKey(userId), items.filter(i => i.id !== id));
+}
+async function refreshOutboxState(){
+  state.outbox = state.session ? await loadOutbox(state.session.user.id) : [];
+}
+function pendingSessionsForCurrentSelection(){
+  return state.outbox
+    .filter(item => item.pitcherId === state.currentPitcherId && item.teamId === state.currentTeamId)
+    .map(item => ({
+      id: item.id,
+      date: item.endedAt,
+      loggedByCoach: item.loggedBy !== item.pitcherId,
+      pitches: item.pitches,
+      pending: true,
+      lastError: item.lastError
+    }));
+}
+
+let syncInFlight = null;
+window.triggerSync = function(){
+  if(!syncInFlight){
+    syncInFlight = syncOutbox()
+      .catch(err => console.error('syncOutbox failed', err))
+      .finally(() => { syncInFlight = null; });
+  }
+  return syncInFlight;
+};
+
+async function syncOutbox(){
+  if(!state.session) return;
+  // Fail fast instead of hanging on a fetch that has no real network to
+  // time out against -- navigator.onLine is only a heuristic (it can say
+  // true with no real internet), so this is purely a fast-exit when it's
+  // confidently false; a false positive just falls through to the normal
+  // attempt-and-fail path below, same as without this check.
+  if(typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  const userId = state.session.user.id;
+
+  // A device that's been offline long enough for its access token to
+  // expire needs a fresh one before Supabase will accept these writes --
+  // try that first so a reconnect after a long outage doesn't need an
+  // extra manual retry. Harmless no-op if the session is still fresh.
+  const { data: refreshed } = await supabaseClient.auth.getSession();
+  if(refreshed && refreshed.session) state.session = refreshed.session;
+
+  const items = await loadOutbox(userId);
+  if(!items.length) return;
+
+  state.syncing = true;
+  render();
+
+  for(const item of items){
+    const sessionRow = {
+      id: item.id,
+      pitcher_id: item.pitcherId,
+      team_id: item.teamId,
+      logged_by: item.loggedBy,
+      started_at: new Date(item.startedAt).toISOString(),
+      ended_at: new Date(item.endedAt).toISOString()
+    };
+    const pitchRows = item.pitches.map(p => ({
+      id: p.id,
+      session_id: item.id, type: p.type, velo: p.velo,
+      target_row: p.targetRow, target_col: p.targetCol,
+      actual_row: p.actualRow, actual_col: p.actualCol,
+      accuracy_mode: p.accuracyMode || null,
+      ts: new Date(p.ts).toISOString()
+    }));
+    try{
+      const { error: sessErr } = await supabaseClient.from('sessions').upsert(sessionRow, { onConflict: 'id' });
+      if(sessErr) throw sessErr;
+      const { error: pitchErr } = await supabaseClient.from('pitches').upsert(pitchRows, { onConflict: 'id' });
+      if(pitchErr) throw pitchErr;
+      await removeOutboxItem(userId, item.id);
+    } catch(err){
+      await updateOutboxItem(userId, Object.assign({}, item, {
+        lastError: (err && err.message) || String(err),
+        lastAttemptAt: Date.now()
+      }));
+    }
+  }
+
+  await refreshOutboxState();
+  await loadSessionsForCurrentSelection();
+  state.syncing = false;
+  render();
+}
 
 /* ---------- LOAD SESSIONS (works for coach viewing a pitcher, or a pitcher viewing self) ---------- */
 async function loadSessionsForCurrentSelection(){
@@ -1056,7 +1213,7 @@ function renderSessionView(){
             <span id="velo-readout" class="velo-readout mono">${state.recordVelocity ? state.velo + ' mph' : '—'}</span>
           </div>
         </div>
-        <div class="hint-msg">${state.saveFailed ? `<strong>${state.hint}</strong>` : state.hint}</div>
+        <div class="hint-msg">${state.hint}</div>
         <div>
           <div class="zone-wrap">
             ${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget)}
@@ -1075,8 +1232,19 @@ function renderSessionView(){
         </div>
         <div class="field-label">Recent pitches</div>
         <div class="pitch-log">${logRows}</div>
-        <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : (state.saveFailed ? 'Retry' : 'End session & save')}</button>
+        <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
       </div>
+    </div>`;
+}
+
+/* ---------- RENDER: OUTBOX BADGE (P1-01) ---------- */
+function renderOutboxBadge(){
+  if(!state.outbox.length) return '';
+  const n = state.outbox.length;
+  return `
+    <div class="outbox-badge">
+      <span>${n} session${n === 1 ? '' : 's'} pending sync</span>
+      <button class="btn btn-ghost" ${state.syncing ? 'disabled' : ''} onclick="triggerSync()">${state.syncing ? 'Syncing…' : 'Sync now'}</button>
     </div>`;
 }
 
@@ -1084,10 +1252,11 @@ function renderSessionView(){
 function renderHistoryView(){
   const p = currentPitcher();
   if(!p){ return `<div class="empty-hist">No pitcher selected.</div>`; }
-  if(!state.sessions.length){
+  const combined = pendingSessionsForCurrentSelection().concat(state.sessions).sort((a,b) => b.date - a.date);
+  if(!combined.length){
     return `<div class="empty-hist">No saved sessions yet for ${p.name}${isCoach() ? '' : ' — finish a bullpen session to see it here'}.</div>`;
   }
-  return state.sessions.map(s => {
+  return combined.map(s => {
     const stats = sessionStats(s.pitches);
     const expanded = state.expandedSessionId === s.id;
     const dateStr = new Date(s.date).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
@@ -1099,7 +1268,12 @@ function renderHistoryView(){
     const contacts = p.contactEmails || {};
     const emailList = [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean);
     const rs = state.reportStatus && state.reportStatus.sessionId === s.id ? state.reportStatus : null;
-    const reportPanel = `
+    const reportPanel = s.pending ? `
+      <div class="report-panel">
+        <div class="field-label">Email this report</div>
+        <p class="report-recipients">Available once this session has synced.</p>
+        <button class="btn btn-primary" disabled>Send report</button>
+      </div>` : `
       <div class="report-panel">
         <div class="field-label">Email this report</div>
         ${emailList.length
@@ -1109,10 +1283,14 @@ function renderHistoryView(){
         ${rs ? `<p class="report-status report-status-${rs.status}">${rs.message}</p>` : ''}
       </div>`;
 
+    const pendingTag = s.pending
+      ? ` <span class="coach-logged-tag pending-tag">Pending sync${s.lastError ? ' · retrying' : ''}</span>`
+      : '';
+
     return `
       <div class="session-card">
         <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
-          <div class="session-date">${dateStr}${s.loggedByCoach ? ' <span class="coach-logged-tag">Logged by coach</span>' : ''}</div>
+          <div class="session-date">${dateStr}${s.loggedByCoach ? ' <span class="coach-logged-tag">Logged by coach</span>' : ''}${pendingTag}</div>
           <div class="session-meta">
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
             <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
@@ -1251,6 +1429,7 @@ function render(){
     app.innerHTML = `
       <div class="sidebar">
         <div class="brand-block"><div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div><span class="tagline">Always a Step Ahead</span></div>
+        ${renderOutboxBadge()}
         <button class="sign-out-btn" onclick="signOut()">Sign out</button>
       </div>
       <div class="main"><div class="empty-state"><div class="display">No team yet</div>${msg}</div></div>`;
@@ -1308,6 +1487,7 @@ function render(){
         <span class="role-badge">${isCoach() ? 'Coach' : 'Pitcher'}</span>
       </div>
       ${sidebarBody}
+      ${renderOutboxBadge()}
       <button class="sign-out-btn" onclick="signOut()">Sign out</button>
     </div>`;
 

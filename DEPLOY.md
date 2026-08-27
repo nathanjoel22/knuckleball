@@ -155,6 +155,10 @@ serving it locally with the staging config swapped in — nothing gets pushed an
 exactly this reason — invite links sent from staging only make sense while serving locally
 on that port.
 
+Staging's Supabase **Site URL** (Auth settings) must stay set to `http://localhost:8080` for
+the same reason — auth email links (confirmation, password reset) are built from it, and
+staging is only ever served locally on port 8080. Don't "fix" it to a real URL.
+
 The frontend is never actually deployed "to staging" as a hosted site — production remains
 the only place `git push` publishes to (GitHub Pages). Building separate staging hosting
 was deliberately out of scope here.

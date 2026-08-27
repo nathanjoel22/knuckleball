@@ -4,6 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Knuckleball</title>
+<script>
+  // Already signed in on this device? Go straight to the tracker -- don't
+  // make a logged-in charter walk back through the role picker and login
+  // form, which is a dead end with no network (P1-01). This is a purely
+  // local read of the stored Supabase session; bullpen-tracker.html's
+  // init() stays the single authority on the online/offline auth decision,
+  // so the validity check here mirrors its readPersistedSessionRaw() to
+  // avoid a redirect loop if the stored blob is malformed.
+  (function(){
+    try{
+      for(var i = 0; i < localStorage.length; i++){
+        var k = localStorage.key(i);
+        if(!k || !/^sb-.+-auth-token$/.test(k)) continue;
+        var raw = localStorage.getItem(k);
+        if(!raw) continue;
+        var s = JSON.parse(raw);
+        if(s && s.access_token && s.user && s.user.id){
+          window.location.replace('bullpen-tracker.html');
+          return;
+        }
+      }
+    } catch(e){ /* storage blocked / bad JSON -> just show this page */ }
+  })();
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 

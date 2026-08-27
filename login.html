@@ -4,6 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Log in · Knuckleball</title>
+<script>
+  // Already signed in on this device? Skip the form and go to the tracker.
+  // A logged-in charter who lands here with no network would otherwise be
+  // stuck: the form can't submit offline (P1-01). Purely a local read of
+  // the stored Supabase session -- bullpen-tracker.html's init() stays the
+  // single authority on the online/offline auth decision, and this
+  // validity check mirrors its readPersistedSessionRaw() so a malformed
+  // stored blob can't cause a redirect loop.
+  (function(){
+    try{
+      for(var i = 0; i < localStorage.length; i++){
+        var k = localStorage.key(i);
+        if(!k || !/^sb-.+-auth-token$/.test(k)) continue;
+        var raw = localStorage.getItem(k);
+        if(!raw) continue;
+        var s = JSON.parse(raw);
+        if(s && s.access_token && s.user && s.user.id){
+          window.location.replace('bullpen-tracker.html');
+          return;
+        }
+      }
+    } catch(e){ /* storage blocked / bad JSON -> just show the form */ }
+  })();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // Offline app shell (P0-06) -- lets this page load with no network.
@@ -157,7 +181,13 @@
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
     if(error){
-      errorEl.textContent = error.message;
+      // Tell a connectivity failure apart from a real credential rejection
+      // so an offline user isn't told their password is wrong.
+      const looksOffline = (typeof navigator !== 'undefined' && navigator.onLine === false)
+        || /failed to fetch|network|load failed|fetch/i.test(error.message || '');
+      errorEl.textContent = looksOffline
+        ? "Can't reach the server — check your connection and try again."
+        : error.message;
       submitBtn.disabled = false;
       submitBtn.textContent = 'Log in';
       return;

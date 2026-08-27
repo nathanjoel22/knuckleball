@@ -1,0 +1,88 @@
+#!/bin/sh
+#
+# Knuckleball pre-push guard: if this push changes any frontend shell file
+# (*.html, sw.js, sw-killswitch.js, supabase-config.js, report-config.js) on
+# `main`, refuse it unless sw.js's CACHE_VERSION (kb-shell-vN) is a higher
+# number than what's already on the remote. See DEPLOY.md, "Frontend: deploy
+# to production", step 2 -- a returning coach otherwise sits on stale JS.
+#
+# Docs-only, backend-only, and migration-only pushes are never touched -- the
+# check only fires when a shell file itself changed. For the rare shell edit
+# that ships nothing deployable (a comment, WIP), bypass with:
+#     git push --no-verify
+#
+# One-time install:  git config core.hooksPath .githooks
+#
+# Passed on argv: <remote-name> <remote-url>
+# Passed on stdin, one line per ref: <local-ref> <local-oid> <remote-ref> <remote-oid>
+
+zero=$(git hash-object --stdin </dev/null | tr '0-9a-f' '0')  # all-zeros oid, any hash length
+
+frontend_changed() {
+  git diff --name-only "$1" "$2" \
+    | grep -Eq '(^|/)([^/]+\.html|sw\.js|sw-killswitch\.js|supabase-config\.js|report-config\.js)$'
+}
+
+cache_version() {
+  # print the integer N from `kb-shell-vN` in sw.js at the given commit, or nothing
+  git show "$1:sw.js" 2>/dev/null \
+    | sed -n 's/.*kb-shell-v\([0-9][0-9]*\).*/\1/p' \
+    | head -n1
+}
+
+status=0
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+  # only guard the branch that actually publishes to GitHub Pages
+  [ "$remote_ref" = "refs/heads/main" ] || continue
+  # branch deletion -- nothing to check
+  [ "$local_oid" = "$zero" ] && continue
+
+  if [ "$remote_oid" = "$zero" ]; then
+    # main doesn't exist on the remote yet; fall back to origin/main if present
+    base=$(git rev-parse --verify --quiet origin/main) || continue
+  else
+    base="$remote_oid"
+  fi
+
+  frontend_changed "$base" "$local_oid" || continue  # no shell files touched -> fine
+
+  old_ver=$(cache_version "$base")
+  new_ver=$(cache_version "$local_oid")
+
+  if [ -z "$new_ver" ]; then
+    echo "" >&2
+    echo "  PUSH REJECTED - sw.js changed but no 'kb-shell-vN' string could be found in it." >&2
+    echo "  Check that CACHE_VERSION near the top of sw.js still reads like 'kb-shell-v3'." >&2
+    echo "  To push anyway (not a deploy): git push --no-verify" >&2
+    echo "" >&2
+    status=1
+    continue
+  fi
+
+  if [ -n "$old_ver" ] && [ "$new_ver" -le "$old_ver" ]; then
+    next=$((old_ver + 1))
+    echo "" >&2
+    echo "  PUSH REJECTED - these frontend shell files changed:" >&2
+    git diff --name-only "$base" "$local_oid" \
+      | grep -E '(^|/)([^/]+\.html|sw\.js|sw-killswitch\.js|supabase-config\.js|report-config\.js)$' \
+      | sed 's/^/      - /' >&2
+    echo "" >&2
+    echo "  ...but sw.js CACHE_VERSION is still kb-shell-v$new_ver (remote already has kb-shell-v$old_ver)." >&2
+    echo "  Returning coaches will keep loading the OLD cached shell until that number changes." >&2
+    echo "" >&2
+    echo "  TO FIX - edit sw.js, bump the version by one:" >&2
+    echo "      const CACHE_VERSION = 'kb-shell-v$next';" >&2
+    echo "  then commit that change (amend the last commit or add a new one) and push again." >&2
+    echo "" >&2
+    echo "  If this push ships NO deployable frontend change (comment-only edit, WIP)," >&2
+    echo "  skip this check: git push --no-verify" >&2
+    echo "" >&2
+    status=1
+    continue
+  fi
+
+  echo "pre-push: sw.js CACHE_VERSION kb-shell-v${old_ver:-none} -> kb-shell-v$new_ver, ok" >&2
+done
+
+exit $status

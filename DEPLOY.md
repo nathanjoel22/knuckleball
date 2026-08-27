@@ -142,24 +142,34 @@ Before every frontend deploy:
    This must print **nothing**. If it prints a filename, restore the prod config (the `mv`
    step at the end of the staging section) before committing.
 
-2. **If this change touched `sw.js`'s logic or the `PRECACHE_URLS` list, bump
-   `CACHE_VERSION`** in `sw.js` (`kb-shell-vN` → `kb-shell-vN+1`), so `activate()` purges
-   the old cache generation. Routine content edits to the precached HTML/JS do **not** need
-   a bump — the service worker refreshes each cached file in the background on the next
-   online load (stale-while-revalidate). See the comment at the top of `sw.js`.
+2. **Bump `CACHE_VERSION` in `sw.js`** (`kb-shell-vN` → `kb-shell-vN+1`) — on *every*
+   frontend deploy, whether or not this change touched `sw.js` or `PRECACHE_URLS`. A fresh
+   version name forces the next service-worker activation to re-precache the whole shell
+   and purge the old cache generation, so an already-installed device can't sit on stale
+   JS — or on a half-updated mix of new and old shell files — after the push. Skipped, this
+   is the step that silently leaves returning coaches on old code. (The stale-while-revalidate
+   fetch handler is a backstop, not the delivery mechanism.)
 
 3. `git push origin main`.
+   A tracked pre-push hook (`.githooks/pre-push`) enforces step 2: if the push changes any
+   shell file (`*.html`, `sw.js`, `sw-killswitch.js`, `supabase-config.js`,
+   `report-config.js`) on `main` without a higher `kb-shell-vN` than the remote, the push
+   is rejected. It needs a **one-time** enable per clone: `git config core.hooksPath .githooks`.
+   Genuine exception: `git push --no-verify`.
 
-4. **Verify the change is actually live.** Load the affected page and hard-reload twice
-   (the service worker serves the previous shell on the first load, refreshes in the
-   background, and serves the new one on the second). A `sw.js` change itself can take
-   ~10 min to reach a device — GitHub Pages sets its own cache-control on that file.
+4. **Verify the change is actually live.** Load the affected page and reload twice: the
+   service worker serves the old shell on the first load, installs the new `CACHE_VERSION`
+   and re-precaches in the background, then serves the new shell on the second. The new
+   `sw.js` can take a few minutes to reach a device (GitHub Pages sets its own
+   cache-control on that file) — if the change still isn't visible after two reloads, wait
+   ~10 min and retry before assuming the deploy failed.
 
 ### Rollback (frontend)
 
-`git revert <bad-commit>` and push. If the bad deploy changed `CACHE_VERSION`, the revert
-carries the bump back down too, which is fine — it's still a *different* value from the
-broken generation, so `activate()` still cleans up.
+`git revert <bad-commit>` and push. The plain revert carries `CACHE_VERSION` *back down*
+to its previous value, which reuses an old generation name — bump it *forward* again in
+the revert commit (step 2 above) so the version history stays monotonic. Any value that
+differs from the broken generation makes `activate()` re-precache and clean up.
 
 ## Frontend: running against staging locally
 

@@ -6,13 +6,16 @@
 // browser's own offline error page. It must never cache Supabase
 // requests (auth, REST, storage) -- those always go to the network.
 //
-// Bump CACHE_VERSION whenever this file's own logic or PRECACHE_URLS
-// list changes, so activate() cleans up the old cache generation. Routine
-// content edits to the precached HTML/JS files do NOT need a version
-// bump -- the fetch handler below refreshes each cached file in the
-// background on every successful online load (stale-while-revalidate),
-// so a plain reload picks up new content without any version dance.
-const CACHE_VERSION = 'kb-shell-v1';
+// Bump CACHE_VERSION on EVERY frontend deploy (kb-shell-vN -> vN+1) --
+// not only when this file's logic or the PRECACHE_URLS list changes. A
+// new name makes the next activation re-precache the whole shell fresh
+// and purge the old generation, so a returning coach is never left on
+// stale JS, or on a half-updated mix of new and old shell files (each
+// file otherwise refreshes on its own next fetch, not together). The
+// stale-while-revalidate fetch handler below is the offline/secondary
+// path -- it is not what ships a code change. This bump is a required
+// step in DEPLOY.md ("Frontend: deploy to production").
+const CACHE_VERSION = 'kb-shell-v2';
 
 const PRECACHE_URLS = [
   '/',

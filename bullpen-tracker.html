@@ -17,9 +17,16 @@
     });
   }
 </script>
+<!-- Fonts load non-render-blocking (P1-13): a CSS @import here stalls first
+     paint until it resolves or fails, which on a connected-but-dead network
+     (indoor facility wifi with no route) can be many seconds. The stylesheet
+     swaps in when it arrives; offline it simply never does and the fallback
+     stacks (sans-serif / monospace) are used. -->
+<link rel="preload" as="style"
+      href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"></noscript>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
-
   :root{
     --field-dark:#0F241B;
     --field-panel:#183527;
@@ -88,6 +95,24 @@
     color:var(--amber-bright); background:rgba(232,168,61,0.12);
     border:1px solid rgba(232,168,61,0.3); padding:3px 9px; border-radius:20px; margin-top:2px;
   }
+
+  /* Offline indicator + instant boot screen (P1-13) */
+  .offline-pill{
+    align-self:flex-start; display:inline-flex; align-items:center; gap:6px; margin-top:6px;
+    font-size:10px; text-transform:uppercase; letter-spacing:0.09em;
+    color:var(--amber-bright); background:rgba(232,168,61,0.12);
+    border:1px solid rgba(232,168,61,0.3); padding:3px 9px; border-radius:20px;
+  }
+  .offline-pill::before{
+    content:''; width:6px; height:6px; border-radius:50%; background:var(--amber-bright); flex-shrink:0;
+  }
+  .boot-screen{
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px; text-align:center; padding:40px 24px;
+  }
+  .boot-screen .brand h1{ font-size:34px; }
+  .boot-msg{ font-size:13px; color:var(--chalk-faint); margin:0; line-height:1.5; }
+  .boot-msg.boot-offline{ color:var(--amber-bright); }
 
   .team-select-wrap{ display:flex; flex-direction:column; gap:5px; }
   .team-select{
@@ -399,6 +424,7 @@ let state = {
   outbox: [],        // completed sessions not yet synced to Supabase (P1-01)
   syncing: false,
   setupNeeded: null, // null | 'role' | 'team' -- account-setup recovery UI (P1-12)
+  bootError: null,   // null | 'offline-no-context' | 'load-failed' -- boot-screen dead ends (P1-13)
   setupBusy: false,
   setupError: null,
   setupName: '',
@@ -469,35 +495,61 @@ function isRelativelyAccurate(pitch){
 }
 
 /* ---------- INIT / AUTH GUARD ---------- */
+// P1-13: nothing on the path to first paint may await the network.
+// supabase-js's auth.getSession() retries a failed token refresh with
+// exponential backoff for ~20-30s (and forever on a black-holed
+// network) before returning, and until this task init() awaited it
+// before painting anything -- so an offline cold launch showed a blank
+// screen for that whole time. Now:
+//   1. the session is read from localStorage only (no network refresh)
+//   2. with a cached context we paint the real charting UI immediately
+//      and reconcile with the server in the background
+//   3. every startup network call that survives is wrapped in a short
+//      timeout so a connected-but-dead network can't stall startup either
+const STARTUP_NET_TIMEOUT_MS = 3000;
+
+function isOnline(){ return !(typeof navigator !== 'undefined' && navigator.onLine === false); }
+
+// Race a promise (or supabase thenable) against a timeout. The underlying
+// request keeps running -- we just stop waiting on it.
+function netTimeout(thenable, ms){
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('startup network timeout')), ms || STARTUP_NET_TIMEOUT_MS);
+  });
+  return Promise.race([Promise.resolve(thenable), timeout]).finally(() => clearTimeout(timer));
+}
+
+function applyCachedContext(cached){
+  state.profile = cached.profile;
+  state.teams = cached.teams || [];
+  state.roster = cached.roster || [];
+  state.currentTeamId = cached.currentTeamId;
+  state.currentPitcherId = cached.currentPitcherId;
+  state.view = isCoach() ? 'history' : 'session';
+}
+
 async function init(){
-  let session = null;
-  try{
-    const { data: sessionData } = await supabaseClient.auth.getSession();
-    session = sessionData && sessionData.session;
-  } catch(e){
-    // getSession() is a local read and shouldn't throw, but an auth-check
-    // exception must never blank the page for someone mid-bullpen -- fall
-    // through to the stored-session path below.
-    console.warn('getSession() threw during init', e);
+  renderBoot();   // instant -- never leave #app blank while auth resolves
+
+  // supabase-js only clears the stored session on a genuine credential
+  // rejection (400/401); a refresh that merely couldn't reach the network
+  // leaves it in place. So a stored session here means "logged in, maybe
+  // offline" -- trust it, and never block on a network refresh to confirm.
+  const urlHasToken = typeof window !== 'undefined' && /[#&]access_token=/.test(window.location.hash || '');
+  let session = readPersistedSessionRaw();
+  if(!session && (isOnline() || urlHasToken)){
+    // Nothing stored -- e.g. a fresh redirect back from an auth link.
+    // Give supabase-js one bounded chance to produce a session.
+    try{
+      const { data } = await netTimeout(supabaseClient.auth.getSession());
+      session = data && data.session;
+    }catch(e){ /* timed out or threw -> treat as logged out */ }
   }
   if(!session){
-    // getSession() also comes back empty when the device is offline and
-    // its access token has expired: gotrue-js only clears the persisted
-    // session on a genuine bad/revoked-credential rejection (400/401), and
-    // leaves it alone when the token refresh merely failed to reach the
-    // network. So a stored session still present here means "logged in,
-    // currently offline" -- use it rather than bouncing a charter to a
-    // login screen they can't complete offline. If storage is genuinely
-    // empty (never logged in, or a real rejection cleared it), the
-    // fallback returns null too and we hit the login redirect just below.
-    session = readPersistedSessionRaw();
-  }
-  if(!session){
-    // No usable session and nothing in storage => genuinely logged out
-    // (or a real credential rejection wiped it). login.html is the right
-    // destination even offline: there's no local charting state tied to a
-    // user we can't identify, and signing in needs the network anyway.
-    // .replace() so Back doesn't land on a torn-down tracker.
+    // Genuinely logged out (or a real rejection wiped storage). Signing in
+    // needs the network anyway and there's no local charting state for an
+    // unknown user. .replace() so Back doesn't land on a torn-down tracker.
     window.location.replace('login.html');
     return;
   }
@@ -505,57 +557,110 @@ async function init(){
   state.setupNeeded = null;
   await refreshOutboxState();
 
-  // navigator.onLine is only a hint (can be true with no real internet), but a
-  // confident `false` means the account-setup RPC below has no network to run
-  // against -- skip it and fall through to the cached-context path.
-  const online = !(typeof navigator !== 'undefined' && navigator.onLine === false);
+  const cached = await storGet(lastKnownKey(session.user.id));
+  const online = isOnline();
 
-  let { data: profile } = await supabaseClient
-    .from('profiles').select('*').eq('id', session.user.id).single();
-
-  // Account setup is guaranteed server-side now (P1-12): an AFTER INSERT
-  // trigger on auth.users covers coach signups, and public.ensure_account_setup()
-  // -- idempotent, a safe no-op for a healthy account -- covers invited
-  // pitchers, accounts created before the trigger existed, and a team insert
-  // that failed after its profile succeeded. Only call it when the profile is
-  // actually missing; the coach-with-no-team case is handled after loadTeams().
-  let setupRes = null;
-  if(!profile && online){
-    const { data } = await supabaseClient.rpc('ensure_account_setup');
-    setupRes = data || null;
-    ({ data: profile } = await supabaseClient
-      .from('profiles').select('*').eq('id', session.user.id).single());
+  if(cached && cached.profile){
+    // ---- Fast path: paint the real charting UI from the last context we
+    //      saw online. No network awaited before charting is usable. ----
+    applyCachedContext(cached);
+    state.sessions = [];   // server history isn't reachable offline; queued sessions still show via the outbox
+    await refreshDraftState();
+    state.loaded = true;
+    finishInit();
+    if(online) resolveOnline(true).catch(err => console.error('background reconcile failed', err));
+    return;
   }
 
-  // Reached the server, still no profile, and the RPC couldn't determine a
-  // role from signup metadata -> ask in the UI (coach or pitcher, + name)
-  // rather than signing the user out.
+  // ---- No cached context yet (first load after login, or cleared storage). ----
+  if(!online){
+    state.bootError = 'offline-no-context';
+    renderBoot();
+    return;
+  }
+  await resolveOnline(false);
+}
+
+// The online half of startup, off the first-paint path. Confirms the
+// session with the auth server (bounded), then loads profile/teams/roster.
+// `alreadyPainted` is true when the cached charting UI is already up: a
+// failure then is silent and keeps the cache. When false (nothing painted
+// yet -- fresh login, or cleared storage) a hard failure shows a clear
+// boot message instead of a dead spinner.
+async function resolveOnline(alreadyPainted){
+  // Confirm / refresh the session. supabase-js clears storage on a genuine
+  // credential rejection (400/401) and leaves it alone on a mere network
+  // failure -- so "no session AND storage now empty" means a real online
+  // sign-out/revocation, and anything else (timeout, transient) is
+  // inconclusive and must not bounce a charter.
+  let fresh;
+  try{
+    const { data } = await netTimeout(supabaseClient.auth.getSession());
+    fresh = data && data.session;
+  }catch(e){
+    if(alreadyPainted) return;            // keep the cached view
+    state.bootError = 'load-failed';
+    renderBoot();
+    return;
+  }
+  if(!fresh){
+    if(isOnline() && !readPersistedSessionRaw()){
+      // Genuine revocation. Any in-progress charting is already in the
+      // localStorage draft, so nothing is lost by redirecting now.
+      try{ await supabaseClient.auth.signOut(); }catch(e){}
+      window.location.replace('login.html');
+      return;
+    }
+    if(alreadyPainted) return;
+    window.location.replace('login.html');
+    return;
+  }
+  state.session = fresh;
+  await loadFullContextOnline(alreadyPainted);
+}
+
+// The full online load: profile -> server-side setup check (P1-12) ->
+// teams -> first team's roster/sessions. Runs only after resolveOnline()
+// has a confirmed session. `alreadyPainted` true = the cached charting UI
+// is already up, so a failure here is silent and keeps the cache; false =
+// nothing painted yet, so a hard failure shows a clear boot message.
+async function loadFullContextOnline(alreadyPainted){
+  const session = state.session;
+  const giveUp = () => {
+    if(alreadyPainted) return true;       // keep the cached UI already shown
+    state.bootError = 'load-failed';
+    renderBoot();
+    return true;
+  };
+
+  let profile;
+  try{
+    ({ data: profile } = await netTimeout(
+      supabaseClient.from('profiles').select('*').eq('id', session.user.id).single()));
+  }catch(e){ if(giveUp()) return; }
+
+  // Account setup is guaranteed server-side (P1-12): the auth.users trigger
+  // covers coach signups; ensure_account_setup() -- idempotent, a safe
+  // no-op for a healthy account -- covers invited pitchers and older
+  // accounts. Only call it when the profile is actually missing.
+  let setupRes = null;
+  if(!profile){
+    try{
+      const { data } = await netTimeout(supabaseClient.rpc('ensure_account_setup'));
+      setupRes = data || null;
+      ({ data: profile } = await netTimeout(
+        supabaseClient.from('profiles').select('*').eq('id', session.user.id).single()));
+    }catch(e){ if(giveUp()) return; }
+  }
+
   if(!profile && setupRes && setupRes.needs_role){
     state.setupNeeded = 'role';
     state.loaded = true;
     finishInit();
     return;
   }
-
   if(!profile){
-    // A live fetch failure (dead wifi), or offline with no server reached --
-    // must not sign the user out mid-bullpen. Fall back to the last context
-    // seen online so the draft-restore check still runs against the right
-    // pitcher/team.
-    const cached = await storGet(lastKnownKey(session.user.id));
-    if(cached && cached.profile){
-      state.profile = cached.profile;
-      state.teams = cached.teams || [];
-      state.roster = cached.roster || [];
-      state.currentTeamId = cached.currentTeamId;
-      state.currentPitcherId = cached.currentPitcherId;
-      state.view = isCoach() ? 'history' : 'session';
-      await loadSessionsForCurrentSelection();
-      await refreshDraftState();
-      state.loaded = true;
-      finishInit();
-      return;
-    }
+    if(alreadyPainted) return;   // keep the cached view rather than sign out mid-bullpen
     alert('Could not load your account profile. Please try logging in again, or contact support if this keeps happening.');
     await supabaseClient.auth.signOut();
     window.location.href = 'login.html';
@@ -563,14 +668,16 @@ async function init(){
   }
   state.profile = profile;
 
-  await loadTeams();
+  try{ await netTimeout(loadTeams()); }
+  catch(e){ if(giveUp()) return; }
 
   // A coach with a profile but no team: try to finish setup from signup
-  // metadata, then fall back to the create-team form -- never the old
-  // "No team yet / Sign out" dead end.
-  if(isCoach() && !state.teams.length && online){
-    await supabaseClient.rpc('ensure_account_setup');
-    await loadTeams();
+  // metadata, then fall back to the create-team form.
+  if(isCoach() && !state.teams.length){
+    try{
+      await netTimeout(supabaseClient.rpc('ensure_account_setup'));
+      await netTimeout(loadTeams());
+    }catch(e){ /* fall through to the setup form */ }
     if(!state.teams.length){
       state.setupNeeded = 'team';
       state.loaded = true;
@@ -580,10 +687,35 @@ async function init(){
   }
 
   if(state.teams.length){
-    await onTeamChange(state.teams[0].id, true);
+    try{ await netTimeout(onTeamChange(state.teams[0].id, true)); }
+    catch(e){ if(giveUp()) return; }
   }
+
+  state.setupNeeded = null;
   state.loaded = true;
+  await saveLastKnownContext();   // so the next cold start has a fresh cache to paint from
   finishInit();
+}
+
+// Instant boot screen -- shown before auth resolves, and for the two
+// dead-end cases where there's nothing to paint.
+function renderBoot(){
+  const app = document.getElementById('app');
+  if(!app) return;
+  let msg;
+  if(state.bootError === 'offline-no-context'){
+    msg = `<p class="boot-msg boot-offline">You're offline and this device has no saved bullpen yet.<br>Connect to the internet once to finish signing in.</p>`;
+  } else if(state.bootError === 'load-failed'){
+    msg = `<p class="boot-msg">Couldn't load your account. Check your connection and reload.</p>`;
+  } else if(!isOnline()){
+    msg = `<p class="boot-msg boot-offline">Offline — opening your saved bullpen…</p>`;
+  } else {
+    msg = `<p class="boot-msg">Loading…</p>`;
+  }
+  app.innerHTML = `<div class="boot-screen">
+    <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+    ${msg}
+  </div>`;
 }
 
 // Common tail for every init() path: paint the app, then wire up the passive
@@ -595,7 +727,10 @@ function finishInit(){
   render();
   if(!syncTriggersWired){
     syncTriggersWired = true;
-    window.addEventListener('online', () => triggerSync());
+    // Reconnecting: re-render (drop the offline indicator) and flush the outbox.
+    window.addEventListener('online', () => { render(); triggerSync(); });
+    // Going offline: re-render so the offline indicator appears right away.
+    window.addEventListener('offline', () => render());
   }
   triggerSync();
 }
@@ -1032,8 +1167,13 @@ async function syncOutbox(){
   // expire needs a fresh one before Supabase will accept these writes --
   // try that first so a reconnect after a long outage doesn't need an
   // extra manual retry. Harmless no-op if the session is still fresh.
-  const { data: refreshed } = await supabaseClient.auth.getSession();
-  if(refreshed && refreshed.session) state.session = refreshed.session;
+  // Bounded (P1-13): getSession() retries a failed refresh for ~20-30s,
+  // and this runs at startup via finishInit() -- don't let it stall the
+  // "Syncing…" state on a dead network; the upserts below fail fast enough.
+  try{
+    const { data: refreshed } = await netTimeout(supabaseClient.auth.getSession());
+    if(refreshed && refreshed.session) state.session = refreshed.session;
+  }catch(e){ /* keep the current session and let the writes below try */ }
 
   const items = await loadOutbox(userId);
   if(!items.length) return;
@@ -1329,6 +1469,14 @@ function renderSessionView(){
     </div>`;
 }
 
+/* ---------- RENDER: OFFLINE INDICATOR (P1-13) ---------- */
+// Shown whenever the device reports itself offline, so an offline launch
+// reads as "working, just offline" rather than as a stalled/broken app.
+function renderOfflinePill(){
+  if(isOnline()) return '';
+  return `<span class="offline-pill">Offline · saved on this device</span>`;
+}
+
 /* ---------- RENDER: OUTBOX BADGE (P1-01) ---------- */
 function renderOutboxBadge(){
   if(!state.outbox.length) return '';
@@ -1553,7 +1701,7 @@ window.sendSessionReport = async function(sessionId){
 function render(){
   const app = document.getElementById('app');
   if(!state.loaded){
-    app.innerHTML = `<div class="empty-state"><div class="display">Loading…</div></div>`;
+    renderBoot();
     return;
   }
 
@@ -1568,7 +1716,7 @@ function render(){
       : `<p>You haven't joined a team yet. Ask your coach to send you an invite email.</p>`;
     app.innerHTML = `
       <div class="sidebar">
-        <div class="brand-block"><div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div><span class="tagline">Always a Step Ahead</span></div>
+        <div class="brand-block"><div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div><span class="tagline">Always a Step Ahead</span>${renderOfflinePill()}</div>
         ${renderOutboxBadge()}
         <button class="sign-out-btn" onclick="signOut()">Sign out</button>
       </div>
@@ -1625,6 +1773,7 @@ function render(){
         <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
         <span class="tagline">Always a Step Ahead</span>
         <span class="role-badge">${isCoach() ? 'Coach' : 'Pitcher'}</span>
+        ${renderOfflinePill()}
       </div>
       ${sidebarBody}
       ${renderOutboxBadge()}

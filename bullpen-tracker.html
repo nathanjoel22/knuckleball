@@ -309,6 +309,14 @@
   .plr-dot{ width:8px; height:8px; border-radius:2px; display:inline-block; margin-right:7px; transform:rotate(45deg); }
   .undo-btn{ background:none; border:none; color:var(--chalk-faint); font-size:11px; text-decoration:underline; }
   .undo-btn:hover{ color:var(--red); }
+  .pitch-row-actions{ display:flex; gap:9px; flex-shrink:0; }
+  .row-x-btn{ background:none; border:none; color:var(--chalk-faint); font-size:13px; line-height:1; padding:0 2px; }
+  .row-x-btn:hover{ color:var(--red); }
+  .pitch-log-row.editing{ flex-direction:column; align-items:stretch; gap:8px; }
+  .edit-row-fields{ display:flex; gap:8px; }
+  .edit-mini{ background:var(--field-dark); border:1px solid var(--border-strong); border-radius:5px; color:var(--chalk); padding:5px 7px; font-size:12.5px; }
+  .edit-mini.edit-velo{ width:74px; }
+  .edit-row-actions{ display:flex; gap:12px; }
   .end-session-btn{ align-self:flex-start; }
   .end-session-btn:disabled{ opacity:0.6; cursor:not-allowed; }
 
@@ -429,7 +437,8 @@ let state = {
   setupBusy: false,
   setupError: null,
   setupName: '',
-  setupTeam: ''
+  setupTeam: '',
+  editDraftRow: null  // index into activeSession.pitches being edited in-session (P1-05)
 };
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -975,6 +984,7 @@ async function refreshDraftState(){
   state.selectedAccuracyMode = null;
   state.pendingTarget = null;
   state.flashCell = null;
+  state.editDraftRow = null;
 }
 window.resumeDraft = function(){
   state.activeSession = state.pendingDraft;
@@ -1024,6 +1034,7 @@ function attachVeloSliderHandlers(){
 }
 
 window.handleZoneTap = async function(row, col){
+  if(state.editDraftRow !== null){ state.hint = 'Finish editing that pitch first'; render(); return; }
   if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
   state.hint = '';
 
@@ -1060,12 +1071,43 @@ window.resetTarget = function(){
   state.pendingTarget = null;
   render();
 };
-window.undoLastPitch = async function(){
-  state.activeSession.pitches.pop();
+/* ---------- IN-SESSION PITCH CORRECTION (P1-05, interim) ----------
+   Fixes a mis-tap in the moment, on the active draft only -- pure
+   localStorage, no network, same persistence path as logging a pitch, so
+   P0-03 restore and P1-01 sync still see the corrected pitches. Location
+   isn't editable here (you just tapped it -- remove + re-chart); post-hoc
+   editing of a saved session covers type/target/actual/velo. */
+window.removePitch = async function(realIdx){
+  state.activeSession.pitches.splice(realIdx, 1);
   state.pendingTarget = null;
+  if(state.editDraftRow === realIdx) state.editDraftRow = null;
   await storSet(draftKey(), state.activeSession);
   render();
 };
+window.startEditDraftRow = function(realIdx){
+  state.editDraftRow = realIdx;
+  render();
+};
+window.cancelEditDraftRow = function(){
+  state.editDraftRow = null;
+  render();
+};
+window.saveEditDraftRow = async function(realIdx){
+  const pitch = state.activeSession.pitches[realIdx];
+  if(!pitch){ state.editDraftRow = null; render(); return; }
+  const typeEl = document.getElementById('edit-draft-type');
+  const veloEl = document.getElementById('edit-draft-velo');
+  if(typeEl && typeEl.value) pitch.type = typeEl.value;
+  if(veloEl){
+    const v = veloEl.value.trim();
+    pitch.velo = v === '' ? null : Math.max(0, Math.min(110, parseInt(v, 10) || 0));
+  }
+  state.editDraftRow = null;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// Back-compat: the newest-row quick action used to be "Undo".
+window.undoLastPitch = function(){ return window.removePitch(state.activeSession.pitches.length - 1); };
 
 window.endSession = async function(){
   if(!state.activeSession.pitches.length){ state.hint = 'Log at least one pitch before ending the session'; render(); return; }
@@ -1100,6 +1142,7 @@ window.endSession = async function(){
   state.activeSession = { pitches: [], startedAt: Date.now() };
   state.selectedType = null;
   state.pendingTarget = null;
+  state.editDraftRow = null;
   state.saving = false;
   await refreshOutboxState();
   state.view = 'history';
@@ -1409,7 +1452,23 @@ function renderSessionView(){
   }).join('');
 
   const logRows = pitches.slice().reverse().slice(0, 12).map((pt, i) => {
+    const realIdx = pitches.length - 1 - i;
     const color = colorForType(p, pt.type);
+    if(state.editDraftRow === realIdx){
+      const typeOpts = p.pitchTypes.map(t =>
+        `<option value="${String(t).replace(/"/g,'&quot;')}" ${t===pt.type?'selected':''}>${t}</option>`).join('');
+      return `<div class="pitch-log-row editing">
+        <div class="edit-row-fields">
+          <select id="edit-draft-type" class="edit-mini">${typeOpts}</select>
+          <input id="edit-draft-velo" class="edit-mini edit-velo" type="number" inputmode="numeric" min="0" max="110"
+            placeholder="mph" value="${(pt.velo!==null&&pt.velo!==undefined)?pt.velo:''}">
+        </div>
+        <div class="edit-row-actions">
+          <button class="undo-btn" onclick="saveEditDraftRow(${realIdx})">Save</button>
+          <button class="undo-btn" onclick="cancelEditDraftRow()">Cancel</button>
+        </div>
+      </div>`;
+    }
     const strike = isStrikeCell(pt.actualRow, pt.actualCol);
     const accurate = isAccurate(pt);
     const relAccurate = isRelativelyAccurate(pt);
@@ -1418,7 +1477,13 @@ function renderSessionView(){
     const actualNum = zoneNumber(pt.actualRow, pt.actualCol);
     const modeTag = pt.accuracyMode ? ` <span style="color:#7C9CBF;">[${ACCURACY_MODE_LABELS[pt.accuracyMode]}${relAccurate ? ' ✓' : ''}]</span>` : '';
     const locText = `${targetNum ? 'aimed '+targetNum : 'aimed ball'} → ${actualNum ? 'landed '+actualNum : 'landed ball'}${accurate ? ' ✓' : ''}${modeTag}`;
-    return `<div class="pitch-log-row"><span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pt.type}</span> · ${veloText}${strike ? 'Strike' : 'Ball'} · <span style="color:var(--chalk-faint);">${locText}</span></span>${i===0 ? '<button class="undo-btn" onclick="undoLastPitch()">Undo</button>' : ''}</div>`;
+    return `<div class="pitch-log-row">
+      <span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pt.type}</span> · ${veloText}${strike ? 'Strike' : 'Ball'} · <span style="color:var(--chalk-faint);">${locText}</span></span>
+      <span class="pitch-row-actions">
+        <button class="undo-btn" onclick="startEditDraftRow(${realIdx})">edit</button>
+        <button class="row-x-btn" onclick="removePitch(${realIdx})" title="Remove this pitch" aria-label="Remove this pitch">✕</button>
+      </span>
+    </div>`;
   }).join('') || `<p style="color:var(--chalk-faint);font-size:12.5px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
 
   const zoneCaption = state.pendingTarget

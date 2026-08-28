@@ -15,7 +15,7 @@
 // stale-while-revalidate fetch handler below is the offline/secondary
 // path -- it is not what ships a code change. This bump is a required
 // step in DEPLOY.md ("Frontend: deploy to production").
-const CACHE_VERSION = 'kb-shell-v3';
+const CACHE_VERSION = 'kb-shell-v4';
 
 const PRECACHE_URLS = [
   '/',
@@ -24,6 +24,7 @@ const PRECACHE_URLS = [
   '/bullpen-tracker.html',
   '/coach-signup.html',
   '/accept-invite.html',
+  '/reset-password.html',
   '/supabase-config.js',
   '/report-config.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'

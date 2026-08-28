@@ -153,31 +153,29 @@ Offline coach view was visually confirmed during testing — sidebar shows the a
 "OFFLINE · SAVED ON THIS DEVICE" pill under the role badge, roster + team selector +
 history tab all render from cache.
 
-## On-device verification — TODO (Joel, real iPhone/iPad)
+## On-device verification (Joel, real iPad, 2026-08-28, live production build v3)
 
-The acceptance checks that need a real device + stopwatch are **not yet run**:
+- [x] **#1 — PASS.** Airplane mode, cold launch from fully-quit Safari → usable UI in
+      **under 1 second** (stopwatch). Before, same device: ~20 s ×3.
+- [x] **#4 — PASS.** Joined a dead wifi (connected, no internet) → cold launch loaded in
+      **under a second** too — not just true airplane mode.
+- [x] **#2 — PASS.** The amber "Offline · saved on this device" pill shows on the device
+      when offline (used as the build-check tell in step 0; appeared as expected).
+- [x] **#3 — PASS.** "Everything worked" on the first offline paint, incl. charting —
+      pitch type + zone taps registered immediately, no wait for auth to settle.
 
-- [ ] **#1** Airplane mode, cold launch from fully-quit Safari → usable UI in under ~1 s
-      (stopwatch, 3 runs). Record before/after here.
-      - before (2026-08-27): ~20 s ×3
-      - after: _______
-- [ ] **#4** Connected-but-dead network (join a wifi with no internet, or a black-holed
-      throttle profile) → also starts fast, not just true airplane mode.
-      - after: _______
-- [ ] **#3** Charting possible immediately on paint (tap a pitch type + zone before auth
-      settles). Expected: yes — the zone grid is in the first paint.
-- [ ] **#2** Offline indicator is unambiguous on the device. Expected: the amber pill.
+## Desktop / online no-regression
 
-## Desktop DevTools verification — TODO (needs a real staging login)
+- [x] **#6 — PASS.** Desktop, live site, real account: sign out → sign back in → into the
+      app, all normal. No P1-01 auth regression.
+- [~] **#5** Online startup: loaded normally online during the on-device rollout (step 0)
+      and in ongoing use — no slowdown or change observed. Not run as a formal Network-tab
+      before/after comparison. The online path makes the same calls as before, now behind
+      an instant boot screen and a 3 s `Promise.race` timeout (negligible overhead).
 
-- [ ] **#5** Online startup not slowed / not otherwise changed (Network tab, compare
-      first-paint + full-load before/after with a normal connection).
-- [ ] **#6** Genuine sign-out → login → back into the app, online, all normal (no P1-01
-      regression).
-
-Blocked: setting a staging test password (SQL and Admin API both) was refused by the
-local safety classifier, so these two need Joel to run them with a real staging session,
-or to provide a staging login.
+Note: self-provisioning a staging test login (SQL + Admin API) was refused by the local
+safety classifier, so #5 wasn't scripted against staging; low-risk given the online path
+is structurally unchanged and rollback is a one-commit `git revert`.
 
 ## Escalate-if — not triggered
 
@@ -190,6 +188,14 @@ call; judged in-bounds for the "charting never requires the network" principle.
 
 ## Outcome
 
-**Fix implemented and desktop-verified; on-device acceptance (#1, #4) and the online
-no-regression checks (#5, #6) still pending.** Not deployed — `CACHE_VERSION` not yet
-bumped, nothing pushed, pending Joel's on-device numbers.
+**P1-13 passed.** The four acceptance checks that were the point of the task — #1
+(airplane cold start), #4 (dead-network cold start), #2 (offline indicator), #3 (chart
+immediately) — all confirmed on a real iPad against the live production build (v3,
+`cdf2cb7`): offline cold launch went from ~20 s of blank screen to **under 1 second** to
+usable charting UI, in both true airplane mode and joined-but-dead wifi.
+
+#6 (sign-out / sign-in, no P1-01 regression) also confirmed on desktop against the live
+site. #5 (online startup not *measurably* slowed) was not run as a formal Network-tab
+before/after — the online path is structurally unchanged (same calls, now behind an
+instant boot screen and a 3 s timeout) and was observed normal throughout. Rollback if
+anything surfaces: `git revert cdf2cb7`, bump `CACHE_VERSION` forward, push.

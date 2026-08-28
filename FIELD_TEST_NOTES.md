@@ -270,3 +270,12 @@ session used for the RLS-block check was left intact.
 
 **P1-05 (interim) passed on staging.** Not yet deployed. Rollback: revert either commit
 alone (`c2790eb` / `770de77`), bump `CACHE_VERSION` forward, push.
+
+## Update — 2026-08-28: post-hoc editing + delete reverted
+
+Both P1-05 commits shipped to production, then Joel decided **a saved session is
+final** — pitch data is immutable for everyone (coaches included) once "End session &
+save" is pressed. `770de77` (post-hoc per-pitch edit + hard delete) was reverted in
+`47fcd4a`; `c2790eb` (in-session correction) stays. Delete returns in its own packet, and
+only with a tombstone. Confirmed on prod (v7): the expanded history card offers no
+pitch-edit or delete affordance; in-session edit/remove still works.

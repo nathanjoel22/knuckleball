@@ -320,19 +320,6 @@
   .end-session-btn{ align-self:flex-start; }
   .end-session-btn:disabled{ opacity:0.6; cursor:not-allowed; }
 
-  /* Post-hoc pitch editor + session delete (P1-05) */
-  .session-pitch-list{ display:flex; flex-direction:column; gap:5px; max-height:260px; overflow-y:auto; }
-  .picker-pair{ display:flex; gap:18px; flex-wrap:wrap; }
-  .picker-grid{ display:grid; grid-template-columns:repeat(5, 30px); grid-template-rows:repeat(5, 30px); gap:2px; background:var(--border); padding:2px; border-radius:5px; }
-  .picker-cell{ background:var(--field-dark); border-radius:2px; position:relative; cursor:pointer; }
-  .picker-cell.in-zone{ background:#152B21; }
-  .picker-cell:hover{ outline:2px solid var(--amber); outline-offset:-2px; }
-  .picker-cell.sel{ background:rgba(232,168,61,0.28); outline:2px solid var(--amber); outline-offset:-2px; }
-  .picker-num{ position:absolute; top:2px; left:3px; font-family:'IBM Plex Mono',monospace; font-size:8px; color:rgba(241,236,221,0.4); }
-  .delete-zone{ margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
-  .delete-warn{ margin:0 0 8px; font-size:12.5px; color:var(--chalk-dim); }
-  .delete-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-
   .draft-banner{
     display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
     background:var(--field-panel-2); border:1px solid var(--clay-dim); border-radius:8px; padding:12px 16px;
@@ -451,12 +438,7 @@ let state = {
   setupError: null,
   setupName: '',
   setupTeam: '',
-  editDraftRow: null,      // index into activeSession.pitches being edited in-session (P1-05)
-  editPitch: null,         // { sessionId, pitchId, working:{...}, busy, error } -- post-hoc pitch edit (P1-05)
-  deletingSessionId: null, // session pending a typed-confirmation delete (P1-05)
-  deleteConfirmText: '',
-  deleteBusy: false,
-  deleteError: null
+  editDraftRow: null  // index into activeSession.pitches being edited in-session (P1-05)
 };
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -820,7 +802,6 @@ window.onTeamChange = async function(teamId, skipRender){
   state.expandedSessionId = null;
   state.inviteOpen = false;
   state.hint = '';
-  clearCorrectionState();
 
   if(isCoach()){
     await loadRosterForTeam(teamId);
@@ -848,7 +829,6 @@ async function loadRosterForTeam(teamId){
 window.selectPitcher = async function(pitcherId){
   state.currentPitcherId = pitcherId;
   state.expandedSessionId = null;
-  clearCorrectionState();
   await loadSessionsForCurrentSelection();
   await refreshDraftState();
   await saveLastKnownContext();
@@ -1129,128 +1109,6 @@ window.saveEditDraftRow = async function(realIdx){
 // Back-compat: the newest-row quick action used to be "Undo".
 window.undoLastPitch = function(){ return window.removePitch(state.activeSession.pitches.length - 1); };
 
-/* ---------- POST-HOC CORRECTION: edit a pitch, delete a session (P1-05, interim) ----------
-   Synced sessions only. Coach (their team) and pitcher (own) are both
-   entitled by the existing FOR ALL RLS -- no policy change. Pending
-   (outbox) sessions are left alone; P1-01 owns that state. */
-function findSessionPitch(sessionId, pitchId){
-  const s = state.sessions.find(x => x.id === sessionId);
-  return s ? s.pitches.find(x => x.id === pitchId) : null;
-}
-window.startEditPitch = function(sessionId, pitchId){
-  const pt = findSessionPitch(sessionId, pitchId);
-  if(!pt) return;
-  state.editPitch = {
-    sessionId, pitchId, busy: false, error: null,
-    working: {
-      type: pt.type, velo: pt.velo,
-      targetRow: pt.targetRow, targetCol: pt.targetCol,
-      actualRow: pt.actualRow, actualCol: pt.actualCol
-    }
-  };
-  state.deletingSessionId = null;
-  render();
-};
-window.cancelEditPitch = function(){ state.editPitch = null; render(); };
-// Pull the velo field's current text into working state before any
-// re-render, so a chip/grid tap doesn't wipe a half-typed number.
-function stashEditPitchVelo(){
-  if(!state.editPitch) return;
-  const el = document.getElementById('edit-pitch-velo');
-  if(!el) return;
-  const v = el.value.trim();
-  state.editPitch.working.velo = v === '' ? null : Math.max(0, Math.min(110, parseInt(v, 10) || 0));
-}
-window.setEditPitchType = function(t){
-  if(!state.editPitch) return;
-  stashEditPitchVelo();
-  state.editPitch.working.type = t;
-  render();
-};
-window.setEditPitchCell = function(kind, row, col){
-  if(!state.editPitch) return;
-  stashEditPitchVelo();
-  if(kind === 'target'){ state.editPitch.working.targetRow = row; state.editPitch.working.targetCol = col; }
-  else { state.editPitch.working.actualRow = row; state.editPitch.working.actualCol = col; }
-  render();
-};
-window.saveEditPitch = async function(){
-  if(!state.editPitch) return;
-  stashEditPitchVelo();
-  const w = state.editPitch.working;
-  state.editPitch.busy = true;
-  state.editPitch.error = null;
-  render();
-  const { error } = await supabaseClient.from('pitches').update({
-    type: w.type, velo: w.velo,
-    target_row: w.targetRow, target_col: w.targetCol,
-    actual_row: w.actualRow, actual_col: w.actualCol
-  }).eq('id', state.editPitch.pitchId);
-  if(error){
-    state.editPitch.busy = false;
-    state.editPitch.error = 'Could not save: ' + error.message;
-    render();
-    return;
-  }
-  state.editPitch = null;
-  await loadSessionsForCurrentSelection();
-  render();
-};
-
-window.startDeleteSession = function(sessionId){
-  state.deletingSessionId = sessionId;
-  state.deleteConfirmText = '';
-  state.deleteError = null;
-  state.editPitch = null;
-  render();
-};
-window.cancelDeleteSession = function(){
-  state.deletingSessionId = null;
-  state.deleteConfirmText = '';
-  state.deleteError = null;
-  render();
-};
-window.onDeleteConfirmInput = function(v){ state.deleteConfirmText = v; };
-window.confirmDeleteSession = async function(){
-  const el = document.getElementById('delete-confirm-input');
-  if(el) state.deleteConfirmText = el.value;
-  if(state.deleteConfirmText.trim().toUpperCase() !== 'DELETE'){
-    state.deleteError = 'Type DELETE to confirm.';
-    render();
-    return;
-  }
-  const id = state.deletingSessionId;
-  state.deleteBusy = true;
-  state.deleteError = null;
-  render();
-  const { error } = await supabaseClient.from('sessions').delete().eq('id', id);
-  state.deleteBusy = false;
-  if(error){
-    state.deleteError = 'Could not delete: ' + error.message;
-    render();
-    return;
-  }
-  state.deletingSessionId = null;
-  state.deleteConfirmText = '';
-  if(state.expandedSessionId === id) state.expandedSessionId = null;
-  await loadSessionsForCurrentSelection();
-  render();
-};
-
-// Small single-select 5x5 grid for picking a pitch's target/actual location.
-function renderPickerGrid(kind, selRow, selCol){
-  let cells = '';
-  for(let row = 0; row < GRID_SIZE; row++){
-    for(let col = 0; col < GRID_SIZE; col++){
-      const inZone = isStrikeCell(row, col);
-      const num = zoneNumber(row, col);
-      const sel = row === selRow && col === selCol;
-      cells += `<div class="picker-cell${inZone ? ' in-zone' : ''}${sel ? ' sel' : ''}" onclick="setEditPitchCell('${kind}',${row},${col})">${num !== null ? `<span class="picker-num">${num}</span>` : ''}</div>`;
-    }
-  }
-  return `<div class="picker-grid">${cells}</div>`;
-}
-
 window.endSession = async function(){
   if(!state.activeSession.pitches.length){ state.hint = 'Log at least one pitch before ending the session'; render(); return; }
   // Setting saving=true and painting it before any await closes the only
@@ -1418,7 +1276,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, started_at, pitcher_id, logged_by, pitches(id, type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, ts)')
+    .select('id, started_at, pitcher_id, logged_by, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, ts)')
     .eq('pitcher_id', pitcherId)
     .eq('team_id', teamId)
     .order('started_at', { ascending: false });
@@ -1428,29 +1286,19 @@ async function loadSessionsForCurrentSelection(){
     date: new Date(s.started_at).getTime(),
     loggedByCoach: s.logged_by !== s.pitcher_id,
     pitches: (s.pitches || []).map(p => ({
-      id: p.id,                          // P1-05: needed to edit an individual pitch
       type: p.type, velo: p.velo,
       targetRow: p.target_row, targetCol: p.target_col,
       actualRow: p.actual_row, actualCol: p.actual_col,
       accuracyMode: p.accuracy_mode || null,
       ts: new Date(p.ts).getTime()
-    })).sort((a, b) => a.ts - b.ts)
+    }))
   }));
 }
 
 /* ---------- NAV ---------- */
-// Drop any half-finished pitch edit / delete-confirm (P1-05) when the
-// session context changes -- switching sessions, pitchers, teams, or view.
-function clearCorrectionState(){
-  state.editPitch = null;
-  state.deletingSessionId = null;
-  state.deleteConfirmText = '';
-  state.deleteError = null;
-}
-window.setView = function(v){ state.view = v; clearCorrectionState(); render(); };
+window.setView = function(v){ state.view = v; render(); };
 window.toggleSessionExpand = function(id){
   state.expandedSessionId = state.expandedSessionId === id ? null : id;
-  clearCorrectionState();
   render();
 };
 
@@ -1795,59 +1643,6 @@ function renderHistoryView(){
       ? ` <span class="coach-logged-tag pending-tag">Pending sync${s.lastError ? ' · retrying' : ''}</span>`
       : '';
 
-    // P1-05: per-pitch list with edit / remove, and a typed-confirm delete.
-    // Synced sessions only -- pending (outbox) sessions are P1-01's to manage.
-    const canCorrect = !s.pending;
-    const pitchList = canCorrect ? `
-      <div class="session-pitch-list">
-        <div class="field-label" style="margin-top:12px;">Pitches — tap to fix a mis-tap</div>
-        ${s.pitches.map(pt => {
-          const color = colorForType(p, pt.type);
-          const strike = isStrikeCell(pt.actualRow, pt.actualCol);
-          const tN = zoneNumber(pt.targetRow, pt.targetCol);
-          const aN = zoneNumber(pt.actualRow, pt.actualCol);
-          const vT = (pt.velo !== null && pt.velo !== undefined) ? `${pt.velo} mph · ` : '';
-          return `<div class="pitch-log-row">
-            <span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pt.type}</span> · ${vT}${strike ? 'Strike' : 'Ball'} · <span style="color:var(--chalk-faint);">${tN ? 'aimed '+tN : 'aimed ball'} → ${aN ? 'landed '+aN : 'landed ball'}</span></span>
-            <span class="pitch-row-actions"><button class="undo-btn" onclick="startEditPitch('${s.id}','${pt.id}')">edit</button></span>
-          </div>`;
-        }).join('') || '<p style="color:var(--chalk-faint);font-size:12px;">No pitches in this session.</p>'}
-      </div>` : '';
-
-    const deleteZone = canCorrect ? (state.deletingSessionId === s.id ? `
-      <div class="delete-zone">
-        <p class="delete-warn">Delete this session and its ${stats.total} pitch(es)? This can't be undone.${state.deleteError ? ` <span class="report-status-error">${state.deleteError}</span>` : ''}</p>
-        <div class="delete-row">
-          <input id="delete-confirm-input" class="text-input" style="max-width:150px;" placeholder="Type DELETE" value="${String(state.deleteConfirmText).replace(/"/g,'&quot;')}" oninput="onDeleteConfirmInput(this.value)">
-          <button class="btn btn-primary" style="background:var(--red);" ${state.deleteBusy ? 'disabled' : ''} onclick="confirmDeleteSession()">${state.deleteBusy ? 'Deleting…' : 'Delete session'}</button>
-          <button class="btn btn-ghost" ${state.deleteBusy ? 'disabled' : ''} onclick="cancelDeleteSession()">Cancel</button>
-        </div>
-      </div>` : `
-      <div class="delete-zone">
-        <button class="undo-btn" onclick="startDeleteSession('${s.id}')">Delete this session</button>
-      </div>`) : '';
-
-    let body;
-    if(expanded && state.editPitch && state.editPitch.sessionId === s.id){
-      body = renderPitchEditor(p);
-    } else if(expanded){
-      body = `
-        <div class="session-card-body">
-          <div class="zone-wrap">${renderZoneGrid(s.pitches, false)}<div class="zone-caption">Location heat map</div></div>
-          <div style="flex:1;min-width:220px;">
-            <table class="breakdown-table">
-              <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th><th>Relative Acc%</th></tr></thead>
-              <tbody>${typeRows}</tbody>
-            </table>
-            ${pitchList}
-            ${reportPanel}
-            ${deleteZone}
-          </div>
-        </div>`;
-    } else {
-      body = '';
-    }
-
     return `
       <div class="session-card">
         <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
@@ -1859,42 +1654,19 @@ function renderHistoryView(){
             <div class="meta-item"><span class="meta-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="meta-lbl">Avg mph</span></div>
           </div>
         </div>
-        ${body}
+        ${expanded ? `
+        <div class="session-card-body">
+          <div class="zone-wrap">${renderZoneGrid(s.pitches, false)}<div class="zone-caption">Location heat map</div></div>
+          <div style="flex:1;min-width:220px;">
+            <table class="breakdown-table">
+              <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th><th>Relative Acc%</th></tr></thead>
+              <tbody>${typeRows}</tbody>
+            </table>
+            ${reportPanel}
+          </div>
+        </div>` : ''}
       </div>`;
   }).join('');
-}
-
-/* ---------- RENDER: POST-HOC PITCH EDITOR (P1-05) ---------- */
-function renderPitchEditor(pitcher){
-  const w = state.editPitch.working;
-  const typeChips = pitcher.pitchTypes.map(t => {
-    const color = colorForType(pitcher, t);
-    const sel = w.type === t;
-    return `<button class="type-chip${sel ? ' selected' : ''}" style="${sel ? `background:${color};border-color:${color};` : `color:${color};border-color:${color}55;`}" onclick="setEditPitchType('${String(t).replace(/'/g,"\\'")}')">${t}</button>`;
-  }).join('');
-  return `
-    <div class="session-card-body">
-      <div style="flex:1;min-width:260px;display:flex;flex-direction:column;gap:14px;">
-        <div class="field-label">Editing a pitch</div>
-        <div>
-          <div class="field-label" style="margin-bottom:6px;">Pitch type</div>
-          <div class="chip-row">${typeChips || '<span style="color:var(--chalk-faint);font-size:12px;">No pitch types set.</span>'}</div>
-        </div>
-        <div>
-          <div class="field-label" style="margin-bottom:6px;">Velocity</div>
-          <input id="edit-pitch-velo" class="edit-mini edit-velo" type="number" inputmode="numeric" min="0" max="110" placeholder="mph" value="${(w.velo!==null&&w.velo!==undefined)?w.velo:''}">
-        </div>
-        <div class="picker-pair">
-          <div><div class="field-label" style="margin-bottom:6px;">Aimed at</div>${renderPickerGrid('target', w.targetRow, w.targetCol)}</div>
-          <div><div class="field-label" style="margin-bottom:6px;">Landed at</div>${renderPickerGrid('actual', w.actualRow, w.actualCol)}</div>
-        </div>
-        ${state.editPitch.error ? `<p class="report-status report-status-error">${state.editPitch.error}</p>` : ''}
-        <div class="form-row-buttons">
-          <button class="btn btn-primary" ${state.editPitch.busy ? 'disabled' : ''} onclick="saveEditPitch()">${state.editPitch.busy ? 'Saving…' : 'Save pitch'}</button>
-          <button class="btn btn-ghost" ${state.editPitch.busy ? 'disabled' : ''} onclick="cancelEditPitch()">Cancel</button>
-        </div>
-      </div>
-    </div>`;
 }
 
 /* ---------- RENDER: TRENDS VIEW ---------- */

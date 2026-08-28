@@ -234,3 +234,39 @@ P1-04 gap.
 **P1-02 passed** on staging and production. Rollback: `git revert 176aee4`, bump
 `CACHE_VERSION` forward, push; optionally remove the `/reset-password.html` redirect URLs
 from Auth config.
+
+---
+
+# P1-05 — Edit and delete a session (interim, option c)
+
+Two commits, independently revertible: `c2790eb` in-session correction, `770de77`
+post-hoc + delete (+ `sw.js` v5→v6). Built on the existing FOR ALL RLS — no schema or
+RLS migration. Narrowing to recording-team rights + tombstones deferred to Track R / R5.
+
+## In-session correction (`c2790eb`) — staging, coach charting for a rostered pitcher
+
+Every "Recent pitches" row gets `edit` (inline type + velo) and `✕` (remove). Draft-only,
+no network. Re-ran P1-01 offline checks 1–3 with corrections applied:
+
+- Charted offline; edited pitch 2 (CB/76 → CH/79), removed pitch 4.
+- Killed the tab, reopened → draft restored exactly: 4 pitches, edit kept, removed pitch
+  gone, pitch ids stable.
+- Ended offline → queued; reconnected → auto-synced. DB session had exactly the four
+  corrected pitches — no duplicate, no phantom removed pitch.
+
+## Post-hoc + delete (`770de77`) — staging two-account walkthrough (coach + pitcher magiclinks)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Coach edits a pitch → dashboard + re-sent report | PASS — `pitches.update` persisted (`CH, 82, aimed 5, landed 9`); `select` on the row confirmed; the edited pitch appears in the intercepted report-send payload |
+| 2 | Pitcher edits own; cannot edit another's | PASS — pitcher edited own pitch (type+velo+location). Pitcher `update()` against another pitcher's pitch → 0 rows, no error, that pitch unchanged in the DB (RLS) |
+| 3 | Delete requires confirmation, removes everywhere | PASS — wrong confirm text rejected ("Type DELETE to confirm."); "DELETE" → `sessions.delete`; `select` confirmed session + 3 pitches gone (FK cascade). Verified as coach and as the pitcher on their own session |
+| 4 | RLS change (if any) as a committed migration | N/A — no policy change; existing `FOR ALL` policies cover coach (team) and pitcher (own) |
+
+No console errors. All staging test sessions cleaned up afterward; another pitcher's
+session used for the RLS-block check was left intact.
+
+## Outcome
+
+**P1-05 (interim) passed on staging.** Not yet deployed. Rollback: revert either commit
+alone (`c2790eb` / `770de77`), bump `CACHE_VERSION` forward, push.

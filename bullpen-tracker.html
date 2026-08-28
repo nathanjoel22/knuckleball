@@ -180,6 +180,7 @@
   .invite-status-sending{ color:var(--chalk-faint); }
   .invite-status-sent{ color:#6FA287; }
   .invite-status-error{ color:var(--red); }
+  .invite-status-info{ color:var(--clay); }
 
   /* MAIN */
   .main{ flex:1; min-width:0; padding:26px 32px; display:flex; flex-direction:column; gap:20px; }
@@ -843,11 +844,18 @@ window.sendInvite = async function(){
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token },
       body: JSON.stringify({ email, teamId: state.currentTeamId })
     });
-    const json = await res.json();
-    if(!res.ok) throw new Error(json.error || ('server responded ' + res.status));
-    state.inviteStatus = 'sent';
+    const json = await res.json().catch(() => ({}));
+    if(res.ok){
+      state.inviteStatus = 'sent';
+    } else if(json.code === 'existing_account'){
+      // An honest dead-end until the roster-acceptance flow ships (P1-03
+      // hygiene; the real existing-player invite is Track R / R2).
+      state.inviteStatus = 'info:' + (json.error || 'That email already has a Knuckleball account.');
+    } else {
+      state.inviteStatus = 'error:' + (json.error || ('Server responded ' + res.status + '.'));
+    }
   } catch(err){
-    state.inviteStatus = 'error:' + err.message;
+    state.inviteStatus = 'error:Could not reach the server — check your connection and try again.';
   }
   render();
 };
@@ -1752,7 +1760,8 @@ function render(){
         </div>
         ${state.inviteStatus === 'sending' ? '<p class="invite-status invite-status-sending">Sending…</p>' : ''}
         ${state.inviteStatus === 'sent' ? '<p class="invite-status invite-status-sent">Invite sent.</p>' : ''}
-        ${state.inviteStatus && state.inviteStatus.indexOf('error') === 0 ? `<p class="invite-status invite-status-error">Could not send invite (${state.inviteStatus.slice(6)}).</p>` : ''}
+        ${state.inviteStatus && state.inviteStatus.indexOf('info:') === 0 ? `<p class="invite-status invite-status-info">${state.inviteStatus.slice(5)}</p>` : ''}
+        ${state.inviteStatus && state.inviteStatus.indexOf('error:') === 0 ? `<p class="invite-status invite-status-error">${state.inviteStatus.slice(6)}</p>` : ''}
       </div>` : `<button class="invite-btn" onclick="toggleInvitePanel()">+ Invite pitcher</button>`;
 
     sidebarBody = `

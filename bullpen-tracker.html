@@ -346,6 +346,19 @@
   .breakdown-table th{ text-align:left; color:var(--chalk-faint); font-weight:600; font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; padding:4px 8px 6px 0; border-bottom:1px solid var(--border); }
   .breakdown-table td{ padding:6px 8px 6px 0; border-bottom:1px solid var(--border); }
 
+  /* Deleted-session tombstone + delete control (P1-15) */
+  .session-card-deleted{ opacity:0.72; }
+  .session-card-deleted .session-card-head:hover{ background:transparent; }
+  .deleted-tag{
+    font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--chalk-faint); background:rgba(241,236,221,0.06);
+    border:1px solid var(--border-strong); padding:2px 7px; border-radius:20px; margin-left:6px; vertical-align:middle;
+  }
+  .deleted-meta{ font-size:11.5px; color:var(--chalk-faint); }
+  .delete-zone{ margin-top:16px; padding-top:12px; border-top:1px solid var(--border); }
+  .delete-warn{ margin:0 0 8px; font-size:12.5px; color:var(--chalk-dim); line-height:1.5; }
+  .delete-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+
   .empty-hist{ text-align:center; color:var(--chalk-faint); padding:40px 20px; font-size:13.5px; }
 
   .contacts-panel{
@@ -438,7 +451,12 @@ let state = {
   setupError: null,
   setupName: '',
   setupTeam: '',
-  editDraftRow: null  // index into activeSession.pitches being edited in-session (P1-05)
+  editDraftRow: null,       // index into activeSession.pitches being edited in-session (P1-05)
+  deletedSessions: [],      // soft-deleted sessions for the current selection -- tombstones only (P1-15)
+  deletingSessionId: null,  // session with an open typed-confirm delete form (P1-15)
+  deleteConfirmText: '',
+  deleteBusy: false,
+  deleteError: null
 };
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -574,7 +592,8 @@ async function init(){
     // ---- Fast path: paint the real charting UI from the last context we
     //      saw online. No network awaited before charting is usable. ----
     applyCachedContext(cached);
-    state.sessions = [];   // server history isn't reachable offline; queued sessions still show via the outbox
+    state.sessions = [];        // server history isn't reachable offline; queued sessions still show via the outbox
+    state.deletedSessions = []; // (P1-15) tombstones come from the server too
     await refreshDraftState();
     state.loaded = true;
     finishInit();
@@ -802,6 +821,7 @@ window.onTeamChange = async function(teamId, skipRender){
   state.expandedSessionId = null;
   state.inviteOpen = false;
   state.hint = '';
+  clearDeleteState();
 
   if(isCoach()){
     await loadRosterForTeam(teamId);
@@ -829,6 +849,7 @@ async function loadRosterForTeam(teamId){
 window.selectPitcher = async function(pitcherId){
   state.currentPitcherId = pitcherId;
   state.expandedSessionId = null;
+  clearDeleteState();
   await loadSessionsForCurrentSelection();
   await refreshDraftState();
   await saveLastKnownContext();
@@ -1152,6 +1173,51 @@ window.endSession = async function(){
   triggerSync();
 };
 
+/* ---------- DELETE A SAVED SESSION (P1-15) ----------
+   Synced sessions only. Soft-deletes the session (a tombstone stays in
+   history) and hard-deletes its pitches, atomically, via the
+   delete_session RPC -- which re-checks entitlement under the caller's
+   own RLS. Pitch data is never editable after save; this is the only
+   post-save mutation. A queued/unsynced session isn't in the DB yet, so
+   none of this touches the P1-01 outbox. */
+window.startDeleteSession = function(sessionId){
+  state.deletingSessionId = sessionId;
+  state.deleteConfirmText = '';
+  state.deleteError = null;
+  render();
+};
+window.cancelDeleteSession = function(){
+  clearDeleteState();
+  render();
+};
+window.onDeleteConfirmInput = function(v){ state.deleteConfirmText = v; };
+window.confirmDeleteSession = async function(){
+  const el = document.getElementById('delete-confirm-input');
+  if(el) state.deleteConfirmText = el.value;
+  if(state.deleteConfirmText.trim().toUpperCase() !== 'DELETE'){
+    state.deleteError = 'Type DELETE to confirm.';
+    render();
+    return;
+  }
+  const id = state.deletingSessionId;
+  state.deleteBusy = true;
+  state.deleteError = null;
+  render();
+
+  const { data, error } = await supabaseClient.rpc('delete_session', { p_session_id: id });
+  state.deleteBusy = false;
+  if(error || (data && data.error)){
+    state.deleteError = 'Could not delete: ' + ((error && error.message) || data.error);
+    render();
+    return;
+  }
+
+  clearDeleteState();
+  if(state.expandedSessionId === id) state.expandedSessionId = null;
+  await loadSessionsForCurrentSelection();
+  render();
+};
+
 /* ---------- OFFLINE OUTBOX + SYNC (P1-01) ----------
    A completed session lands here the instant "End session" is tapped, so
    finishing a session never blocks on the network. Each item's id is the
@@ -1273,18 +1339,21 @@ async function syncOutbox(){
 async function loadSessionsForCurrentSelection(){
   const pitcherId = state.currentPitcherId;
   const teamId = state.currentTeamId;
-  if(!pitcherId || !teamId){ state.sessions = []; return; }
+  if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, started_at, pitcher_id, logged_by, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, ts)')
+    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by_role, pitch_count, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, ts)')
     .eq('pitcher_id', pitcherId)
     .eq('team_id', teamId)
     .order('started_at', { ascending: false });
-  if(error){ console.error(error); state.sessions = []; return; }
-  state.sessions = (data || []).map(s => ({
+  if(error){ console.error(error); state.sessions = []; state.deletedSessions = []; return; }
+  const all = (data || []).map(s => ({
     id: s.id,
     date: new Date(s.started_at).getTime(),
     loggedByCoach: s.logged_by !== s.pitcher_id,
+    deletedAt: s.deleted_at ? new Date(s.deleted_at).getTime() : null,
+    deletedByRole: s.deleted_by_role || null,
+    pitchCount: s.pitch_count,
     pitches: (s.pitches || []).map(p => ({
       type: p.type, velo: p.velo,
       targetRow: p.target_row, targetCol: p.target_col,
@@ -1293,12 +1362,25 @@ async function loadSessionsForCurrentSelection(){
       ts: new Date(p.ts).getTime()
     }))
   }));
+  // P1-15: soft-deleted sessions never enter state.sessions, so every existing
+  // calc (stats, trends, report history) excludes them for free. They render
+  // only as tombstones in the history view.
+  state.sessions = all.filter(s => !s.deletedAt);
+  state.deletedSessions = all.filter(s => s.deletedAt);
 }
 
 /* ---------- NAV ---------- */
-window.setView = function(v){ state.view = v; render(); };
+// Drop a half-finished delete confirmation (P1-15) whenever the session
+// context changes.
+function clearDeleteState(){
+  state.deletingSessionId = null;
+  state.deleteConfirmText = '';
+  state.deleteError = null;
+}
+window.setView = function(v){ state.view = v; clearDeleteState(); render(); };
 window.toggleSessionExpand = function(id){
   state.expandedSessionId = state.expandedSessionId === id ? null : id;
+  clearDeleteState();
   render();
 };
 
@@ -1608,14 +1690,32 @@ function renderAccountSetupScreen(){
 function renderHistoryView(){
   const p = currentPitcher();
   if(!p){ return `<div class="empty-hist">No pitcher selected.</div>`; }
-  const combined = pendingSessionsForCurrentSelection().concat(state.sessions).sort((a,b) => b.date - a.date);
+  const tombstones = state.deletedSessions.map(s => ({ ...s, tombstone: true }));
+  const combined = pendingSessionsForCurrentSelection()
+    .concat(state.sessions).concat(tombstones)
+    .sort((a,b) => b.date - a.date);
   if(!combined.length){
     return `<div class="empty-hist">No saved sessions yet for ${p.name}${isCoach() ? '' : ' — finish a bullpen session to see it here'}.</div>`;
   }
   return combined.map(s => {
+    const dateStr = new Date(s.date).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+
+    // P1-15: a deleted session is a tombstone -- not expandable, no stats,
+    // no report. It only records that an outing happened and was removed.
+    if(s.tombstone){
+      const by = s.deletedByRole === 'coach' ? 'the team' : 'the player';
+      const delDate = s.deletedAt ? new Date(s.deletedAt).toLocaleDateString(undefined, { month:'short', day:'numeric' }) : '';
+      return `
+        <div class="session-card session-card-deleted">
+          <div class="session-card-head" style="cursor:default;">
+            <div class="session-date">${dateStr} <span class="deleted-tag">Deleted</span></div>
+            <div class="deleted-meta">${s.pitchCount != null ? s.pitchCount : '—'} pitch${s.pitchCount === 1 ? '' : 'es'} thrown · removed by ${by}${delDate ? ' · ' + delDate : ''}</div>
+          </div>
+        </div>`;
+    }
+
     const stats = sessionStats(s.pitches);
     const expanded = state.expandedSessionId === s.id;
-    const dateStr = new Date(s.date).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
     const typeRows = Object.entries(stats.byType).map(([type, t]) => {
       const color = colorForType(p, type);
       return `<tr><td><span class="plr-dot" style="background:${color}"></span>${type}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${t.strikePct}%</td><td class="mono">${t.accuracyPct}%</td><td class="mono">${t.relativeAccuracyPct}%</td></tr>`;
@@ -1643,6 +1743,21 @@ function renderHistoryView(){
       ? ` <span class="coach-logged-tag pending-tag">Pending sync${s.lastError ? ' · retrying' : ''}</span>`
       : '';
 
+    // P1-15: delete a saved (synced) session. Pending sessions are left to
+    // P1-01. No pitch editing anywhere -- delete is the only post-save action.
+    const deleteZone = s.pending ? '' : (state.deletingSessionId === s.id ? `
+      <div class="delete-zone">
+        <p class="delete-warn">This permanently removes the ${stats.total} pitch${stats.total === 1 ? '' : 'es'} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
+        ${state.deleteError ? `<p class="report-status report-status-error" style="margin:0 0 8px;">${state.deleteError}</p>` : ''}
+        <div class="delete-row">
+          <input id="delete-confirm-input" class="text-input" style="max-width:150px;" placeholder="Type DELETE"
+            value="${String(state.deleteConfirmText).replace(/"/g,'&quot;')}" oninput="onDeleteConfirmInput(this.value)">
+          <button class="btn btn-primary" style="background:var(--red);" ${state.deleteBusy ? 'disabled' : ''} onclick="confirmDeleteSession()">${state.deleteBusy ? 'Deleting…' : 'Delete session'}</button>
+          <button class="btn btn-ghost" ${state.deleteBusy ? 'disabled' : ''} onclick="cancelDeleteSession()">Cancel</button>
+        </div>
+      </div>` : `
+      <div class="delete-zone"><button class="undo-btn" onclick="startDeleteSession('${s.id}')">Delete this session</button></div>`);
+
     return `
       <div class="session-card">
         <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
@@ -1663,6 +1778,7 @@ function renderHistoryView(){
               <tbody>${typeRows}</tbody>
             </table>
             ${reportPanel}
+            ${deleteZone}
           </div>
         </div>` : ''}
       </div>`;

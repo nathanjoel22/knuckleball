@@ -199,3 +199,38 @@ site. #5 (online startup not *measurably* slowed) was not run as a formal Networ
 before/after — the online path is structurally unchanged (same calls, now behind an
 instant boot screen and a 3 s timeout) and was observed normal throughout. Rollback if
 anything surfaces: `git revert cdf2cb7`, bump `CACHE_VERSION` forward, push.
+
+---
+
+# P1-02 — Forgot-password flow
+
+Files: `reset-password.html` (new), `login.html` ("Forgot password?" link), `sw.js`
+(precache + `CACHE_VERSION` v3→v4). Shipped in `176aee4`.
+
+## Staging walkthrough — 2026-08-28, `localhost:8080`, account `nate.j.pugh+stagingsmoke@gmail.com`
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Reset email arrives for an existing account | PASS — arrived in ~1–2 s |
+| 2 | Link opens the reset page, new password accepted | PASS — verify link → `reset-password.html` in recovery mode, correct account email, `PUT /auth/v1/user` → 200 |
+| 3 | Old password fails, new password logs in | PASS — wrong password → "Invalid login credentials"; new password → session for the right user |
+| 4 | Nonexistent email → same neutral message | PASS — "If an account exists for that address, a password reset link is on its way." |
+| 5 | Expired/reused link → sane error, not blank | PASS — reusing the consumed link → `#error=…otp_expired` → email form with "That reset link has expired. Enter your email to get a fresh one." |
+
+No console errors. Staging email came from Supabase's default mailer
+(`noreply@mail.app.supabase.io`) — expected, since P1-04's custom SMTP was applied to the
+production project only.
+
+Account note: `nate.j.pugh+stagingsmoke@gmail.com` password is now `Knuckle$P102Reset`.
+
+## Production walkthrough — 2026-08-28, `knuckleballonline.com` (Joel)
+
+All five steps passed end to end. **Reset email received from `knuckleballonline.com`**
+(Resend) — confirms recovery emails route through the custom SMTP like invites do, no
+P1-04 gap.
+
+## Outcome
+
+**P1-02 passed** on staging and production. Rollback: `git revert 176aee4`, bump
+`CACHE_VERSION` forward, push; optionally remove the `/reset-password.html` redirect URLs
+from Auth config.

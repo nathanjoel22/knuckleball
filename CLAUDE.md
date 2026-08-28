@@ -6,6 +6,16 @@ Standing context for every Claude session working in this repo. Read fully befor
 
 **Charting never requires the network. Only syncing and sending reports do.** A team must be able to open Knuckleball anywhere — including with no internet — and chart a complete bullpen. Login is the single honest exception, and only on first use: the standard is **log in once, then chart anywhere forever**. A token refresh that fails purely for lack of network must never bounce a charter to a login screen or block charting; genuine auth failures while online still must. Reports are never generated from an unsynced session. Any change that makes charting depend on a network round trip is a regression, whatever else it improves.
 
+## Roster & visibility model (decided by Joel, Aug 28 2026 — built as Track R, Phase 2)
+
+Data follows the player. Sessions belong to the pitcher permanently; a team's view of a pitcher exists only through a current pitcher_teams membership row. Specifics, all decided — do not relitigate:
+- Adding an existing account to a roster ALWAYS requires the player's in-app acceptance (pending invite shown at login). No auto-add, no acceptance email.
+- Players can be on multiple rosters. Every pen is filed at session start: one of the pitcher's teams, or "independent" (NULL team_id, post-P2-01).
+- A coach sees FULL detail only for sessions thrown for their team by currently-rostered pitchers, from each pitcher's join date. All other pens by rostered pitchers (other teams, independent) appear as summary-only workload entries: date, pitch count, team label — never the full report. Summary exposure goes through a scoped view/RPC, not RLS alone.
+- Membership ending — player leaves or coach removes, both with explicit confirmation — instantly removes the team's ENTIRE view of that player, both directions, automatically. The player keeps every session regardless of who recorded it. Re-joining restores nothing retroactively.
+- Deletion: the pitcher may delete any of their own pens; the recording team may delete pens it recorded; every deletion leaves a dated tombstone visible in history. Edits follow the same rights.
+Until Track R ships: inviting an already-registered email must fail honestly ("existing account — coming soon"), never auto-add and never half-succeed silently.
+
 ## What this is
 
 Knuckleball (knuckleballonline.com) is a bullpen session tracking app for pitching coaches and pitchers: two-tap pitch charting on a 5×5 zone grid (target vs. actual), pitch types, velocity, heat maps, accuracy percentages (including a "relative accuracy" mode), trend charts, and an emailed PDF session report. Charting typically happens on an **iPhone/iPad, often with no wifi** — never assume network availability in the tracker flow.

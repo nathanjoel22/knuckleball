@@ -216,6 +216,13 @@
     border:1.5px solid var(--border-strong); background:transparent; color:var(--chalk-dim);
   }
   .type-chip.selected{ color:var(--field-dark); border-color:transparent; }
+  .chip-row-with-counter{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+  .chip-row-with-counter .chip-row{ flex:1; }
+  .pitch-counter{
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:28px; height:28px; padding:0 8px; border-radius:14px; font-size:13px; font-weight:600;
+    background:var(--field-panel-2); border:1px solid var(--border-strong); color:var(--amber-bright); flex-shrink:0;
+  }
   .add-type-inline{ display:flex; gap:6px; align-items:center; }
   .add-type-inline input{ flex:1; padding:6px 8px; font-size:12.5px; }
   .add-type-inline button{ background:none; border:1px solid var(--border-strong); color:var(--chalk-dim); border-radius:5px; padding:6px 10px; font-size:12px; }
@@ -1609,7 +1616,17 @@ function renderSessionView(){
         </div>
         <div>
           <div class="field-label" style="margin-bottom:8px;">Relative accuracy</div>
-          <div class="chip-row">${renderAccuracyModeChips()}</div>
+          <div class="chip-row-with-counter">
+            <div class="chip-row">${renderAccuracyModeChips()}</div>
+            <span class="pitch-counter mono">${stats.total}</span>
+          </div>
+        </div>
+        <div class="hint-msg">${state.hint}</div>
+        <div>
+          <div class="zone-wrap">
+            ${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget)}
+            <div class="zone-caption">${zoneCaption}</div>
+          </div>
         </div>
         <div>
           <div class="field-label" style="margin-bottom:8px;">Velocity</div>
@@ -1621,13 +1638,6 @@ function renderSessionView(){
             <input type="range" id="velo-slider" min="0" max="110" step="1" value="${state.velo}"
               ${state.recordVelocity ? '' : 'disabled'} oninput="onVeloSlide(this.value)">
             <span id="velo-readout" class="velo-readout mono">${state.recordVelocity ? state.velo + ' mph' : '—'}</span>
-          </div>
-        </div>
-        <div class="hint-msg">${state.hint}</div>
-        <div>
-          <div class="zone-wrap">
-            ${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget)}
-            <div class="zone-caption">${zoneCaption}</div>
           </div>
         </div>
       </div>

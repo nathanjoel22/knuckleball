@@ -262,9 +262,12 @@
   .zone-cell.clickable:hover{ outline:2px solid var(--amber); outline-offset:-2px; }
   .zone-caption{ font-size:11px; color:var(--chalk-faint); text-transform:uppercase; letter-spacing:0.1em; }
 
-  .home-plate-wrap{ width:100%; max-width:278px; display:flex; justify-content:center; } /* 278px = zone-grid's own resolved width (5*52 + 4*3 gaps + 2*3 padding) */
-  .home-plate{ display:block; width:38%; min-width:60px; }
-  .home-plate polygon{ fill:var(--chalk-faint); fill-opacity:0.14; stroke:var(--border-strong); stroke-width:2; }
+  /* Sized to match the strike zone (the inner 3x3 of cells, rows/cols 1-3 --
+     see isStrikeCell), not the full 5x5 grid: 3 cells + 2 internal 3px gaps
+     = 3*52 + 2*3 = 162px at the fixed desktop cell size. */
+  .home-plate-wrap{ width:162px; display:flex; justify-content:center; }
+  .home-plate{ display:block; width:100%; }
+  .home-plate polygon{ fill:#FFFFFF; stroke:#000000; stroke-width:2; }
 
   .zone-cell-flash{ --flash-fg:#F1ECDD; animation:cellFlash 1.4s ease forwards; }
   .zone-cell-flash.flash-strike{ --flash-bg:#2E8B57; }
@@ -406,7 +409,12 @@
       grid-template-columns:repeat(5, minmax(0, 1fr)); grid-template-rows:repeat(5, minmax(0, 1fr));
       width:100%; max-width:320px; aspect-ratio:1/1;
     }
-    .home-plate-wrap{ max-width:320px; }
+    /* Same 3-of-5-columns proportion as the desktop 162px value, but derived
+       from the grid's own responsive width (100% up to 320px) instead of a
+       fixed cell size: strike-zone width = 0.6 * gridWidth - 4.8px, where
+       0.6 = 3/5 columns and 4.8px accounts for the padding/gap difference
+       between 3 cells and 5 (see the desktop comment above for the algebra). */
+    .home-plate-wrap{ width:calc(0.6 * min(100%, 320px) - 4.8px); }
   }
 </style>
 </head>

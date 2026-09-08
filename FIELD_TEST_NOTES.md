@@ -279,3 +279,72 @@ save" is pressed. `770de77` (post-hoc per-pitch edit + hard delete) was reverted
 `47fcd4a`; `c2790eb` (in-session correction) stays. Delete returns in its own packet, and
 only with a tombstone. Confirmed on prod (v7): the expanded history card offers no
 pitch-edit or delete affordance; in-session edit/remove still works.
+
+---
+
+# U1 — Charting quick wins: buttons, iPad spacing, home plate
+
+## The iPad overlap — diagnosis
+
+The `max-width: 860px` media query's `.zone-grid` rule set
+`grid-template-columns: repeat(5, 15vw)` (fixed-length tracks) while separately capping
+the box at `max-width: 320px`. On iPad portrait (768px CSS width) those two numbers
+fight: 5 × 15vw ≈ 576px of demanded track width against a 320px box. Grid tracks don't
+shrink to fit a `max-width` the way `fr` tracks do, so the grid rendered at its full
+~576px intrinsic width and overflowed straight out of `.controls-panel`, bleeding over
+the log panel beside it (column 5 of the grid was pushed off past the panel boundary).
+iPad **landscape** (1024px, above the 860px breakpoint) never hit this rule — it used the
+fixed 52px desktop tracks, which is why the bug was portrait-only.
+
+Reproduced this exactly in an isolated harness (extracted CSS + representative session
+markup, iframed at 768×1024) before touching anything, confirming the mismatch was the
+real cause and not, e.g., the two-panel flexbox wrapping.
+
+## The fix (`bullpen-tracker.html` only)
+
+1. **Grid overflow:** mobile `.zone-grid` now uses `repeat(5, minmax(0,1fr))` tracks with
+   `width:100%; max-width:320px; aspect-ratio:1/1` — the box's own resolved width is what
+   gets drawn, so it can never exceed its container regardless of viewport math. No
+   layout was moved; the box just stopped lying about its size.
+2. **Pitch-type (and accuracy-mode) buttons:** `.type-chip` now guarantees a 44×44px
+   minimum tap target (`min-height/min-width:44px`, bumped padding, `inline-flex`
+   centering) with the chip-row gap widened 8px → 10px. Order/alignment untouched —
+   only size and inline centering changed.
+3. **Home plate:** new `renderHomePlate()` returns an inline pentagon SVG (flat edge up,
+   toward the pitcher; point down, toward the catcher/viewer) appended after every
+   `.zone-grid` from the one shared `renderZoneGrid()`, so it appears under the grid in
+   both the live-charting and history heat-map views without duplicating markup. Sized
+   via CSS (`.home-plate-wrap` matches the grid's own resolved width — 278px desktop,
+   320px under the mobile breakpoint) rather than fixed pixels, so it always tracks the
+   grid. Subtle: 14% fill opacity, thin stroke, 38% width.
+
+No JS logic, storage, network, or service-worker code paths touched — offline charting
+(P1-01) is unaffected by construction. `sw.js` `CACHE_VERSION` bumped `v8 → v9` per the
+pre-push guard, since this ships a frontend shell change.
+
+## Emulated verification (harness, not the real device)
+
+Built an isolated static harness (this file's CSS extracted verbatim + hand-built
+markup matching `renderSessionView()`'s structure) and viewed it in an iframe pinned to
+exact CSS-pixel iPad dimensions (Chrome devtools-style window resize was unreliable in
+this environment — the OS window wouldn't actually resize to the requested viewport, so
+an iframe of fixed width/height was used instead to get a trustworthy viewport):
+
+| viewport | result |
+|---|---|
+| 768×1024 (portrait) | Grid renders fully inside `.controls-panel`, no overlap with the log panel; home plate centered directly under it. |
+| 1024×768 (landscape) | Unaffected by the media query (as expected); desktop fixed-track layout, no regression. |
+| Same harness, CSS reverted to the pre-fix rule | Bug reproduced on demand — grid overflowed the panel, column 5 clipped off, confirming the diagnosis. |
+
+This is **not** a substitute for acceptance check #1/#2 (real iPad, real pace, Joel's
+hands) — no login/session was created against staging or production for this pass, by
+design (no unasked side effects). Button tap-target sizing (#2) was verified by CSS
+inspection (44px computed min box) only, not a live 20-tap pass.
+
+## Outcome
+
+**Not yet verified on-device.** CSS fix + diagnosis done and confirmed against a
+faithful static reproduction of the real markup/CSS; still needs Joel's real-iPad pass
+per the task packet (both orientations, ~20-tap charting-pace test, visual check of the
+plate on iPad and desktop) before this is marked done. Rollback: `git revert` the U1
+commit(s) + push, `CACHE_VERSION` already bumped forward (`v9`) in the same change.

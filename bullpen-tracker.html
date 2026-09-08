@@ -209,10 +209,11 @@
   .session-grid-layout{ display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
   .panel{ background:var(--field-panel); border:1px solid var(--border); border-radius:10px; padding:18px; }
   .controls-panel{ display:flex; flex-direction:column; gap:14px; min-width:260px; flex:1; }
-  .chip-row{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip-row{ display:flex; flex-wrap:wrap; gap:10px; }
   .type-chip{
-    padding:7px 13px; border-radius:20px; font-size:13px; font-weight:600; border:1.5px solid var(--border-strong);
-    background:transparent; color:var(--chalk-dim);
+    display:inline-flex; align-items:center; justify-content:center;
+    min-height:44px; min-width:44px; padding:10px 16px; border-radius:22px; font-size:14px; font-weight:600;
+    border:1.5px solid var(--border-strong); background:transparent; color:var(--chalk-dim);
   }
   .type-chip.selected{ color:var(--field-dark); border-color:transparent; }
   .add-type-inline{ display:flex; gap:6px; align-items:center; }
@@ -243,7 +244,7 @@
 
   .hint-msg{ font-size:12px; color:var(--clay); min-height:16px; }
 
-  .zone-wrap{ display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .zone-wrap{ display:flex; flex-direction:column; align-items:center; gap:10px; width:100%; }
   .zone-grid{
     display:grid; grid-template-columns:repeat(5, 52px); grid-template-rows:repeat(5, 52px);
     gap:3px; background:var(--border); padding:3px; border-radius:6px;
@@ -256,6 +257,10 @@
   .zone-cell.clickable{ cursor:pointer; }
   .zone-cell.clickable:hover{ outline:2px solid var(--amber); outline-offset:-2px; }
   .zone-caption{ font-size:11px; color:var(--chalk-faint); text-transform:uppercase; letter-spacing:0.1em; }
+
+  .home-plate-wrap{ width:100%; max-width:278px; display:flex; justify-content:center; } /* 278px = zone-grid's own resolved width (5*52 + 4*3 gaps + 2*3 padding) */
+  .home-plate{ display:block; width:38%; min-width:60px; }
+  .home-plate polygon{ fill:var(--chalk-faint); fill-opacity:0.14; stroke:var(--border-strong); stroke-width:2; }
 
   .zone-cell-flash{ --flash-fg:#F1ECDD; animation:cellFlash 1.4s ease forwards; }
   .zone-cell-flash.flash-strike{ --flash-bg:#2E8B57; }
@@ -388,7 +393,16 @@
     .sidebar{ width:100%; border-right:none; border-bottom:1px solid var(--border); max-height:none; }
     .roster-list{ max-height:220px; }
     .main{ padding:20px 16px; }
-    .zone-grid{ grid-template-columns:repeat(5, 15vw); grid-template-rows:repeat(5, 15vw); max-width:320px; }
+    /* Fixed-length (15vw) tracks previously demanded ~75vw of width while the
+       grid's own box was capped at max-width:320px -- on iPad portrait that
+       mismatch (~576px of track vs a 320px box) overflowed the grid past its
+       container and over the log panel beside it. fr tracks size to the box
+       itself, so the box's own width (bounded below) is what's ever drawn. */
+    .zone-grid{
+      grid-template-columns:repeat(5, minmax(0, 1fr)); grid-template-rows:repeat(5, minmax(0, 1fr));
+      width:100%; max-width:320px; aspect-ratio:1/1;
+    }
+    .home-plate-wrap{ max-width:320px; }
   }
 </style>
 </head>
@@ -1491,7 +1505,16 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget){
       }
     }
   }
-  return `<div class="zone-grid">${cells}</div>`;
+  return `<div class="zone-grid">${cells}</div>${renderHomePlate()}`;
+}
+
+/* Simple pentagon, catcher's perspective: flat edge faces the pitcher (top),
+   point faces the catcher/viewer (bottom). Sized off the grid via CSS, not
+   pixel math here, so it always matches whatever width the grid resolves to. */
+function renderHomePlate(){
+  return `<div class="home-plate-wrap"><svg class="home-plate" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Home plate">
+    <polygon points="4,4 96,4 96,32 50,56 4,32"></polygon>
+  </svg></div>`;
 }
 
 /* ---------- RENDER: SESSION VIEW (pitcher only) ---------- */

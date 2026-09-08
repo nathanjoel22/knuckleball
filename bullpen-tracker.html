@@ -551,8 +551,12 @@ function isRelativelyAccurate(pitch){
     }
     case 'nothingUp': return pitch.actualRow >= 3;       // bottom two rows only
     case 'nothingLow': return pitch.actualRow <= 1;      // top two rows only
-    case 'nothingAway': return pitch.actualCol >= 3;     // right two columns only
-    case 'nothingInside': return pitch.actualCol <= 1;   // left two columns only
+    // Inside/outside is relative to BATTER HANDEDNESS; this mapping assumes
+    // a right-handed batter (for a RHB, inside = the pitcher's-glove-side
+    // columns, i.e. col 0-1 / the 1-4-7 column and left of it). U2 (batter
+    // side stored per pitch) is where this becomes dynamic instead of fixed.
+    case 'nothingAway': return pitch.actualCol <= 1;     // "Inside" -- left two columns only
+    case 'nothingInside': return pitch.actualCol >= 3;   // "Outside" -- right two columns only
     default: return isAccurate(pitch);
   }
 }

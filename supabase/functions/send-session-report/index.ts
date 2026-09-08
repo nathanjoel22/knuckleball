@@ -56,8 +56,13 @@ function isRelativelyAccurate(p: any) {
     }
     case 'nothingUp': return p.actualRow >= 3
     case 'nothingLow': return p.actualRow <= 1
-    case 'nothingAway': return p.actualCol >= 3
-    case 'nothingInside': return p.actualCol <= 1
+    // Inside/outside is relative to BATTER HANDEDNESS; this mapping assumes
+    // a right-handed batter (for a RHB, inside = the pitcher's-glove-side
+    // columns, i.e. col 0-1 / the 1-4-7 column and left of it). U2 (batter
+    // side stored per pitch) is where this becomes dynamic instead of fixed.
+    // Must match isRelativelyAccurate() in bullpen-tracker.html exactly.
+    case 'nothingAway': return p.actualCol <= 1   // "Inside" -- left two columns only
+    case 'nothingInside': return p.actualCol >= 3 // "Outside" -- right two columns only
     default: return isAccurate(p)
   }
 }

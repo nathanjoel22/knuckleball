@@ -216,6 +216,7 @@
     border:1.5px solid var(--border-strong); background:transparent; color:var(--chalk-dim);
   }
   .type-chip.selected{ color:var(--field-dark); border-color:transparent; }
+  .type-chip:disabled{ opacity:0.5; cursor:not-allowed; }
   /* Two side-by-side label-over-value columns: "Relative accuracy" above
      its dropdown, "Pitch count" above its number, so both labels line up
      on row 1 and the dropdown + number line up together on row 2. */
@@ -261,6 +262,7 @@
   .zone-grid{
     display:grid; grid-template-columns:repeat(5, 52px); grid-template-rows:repeat(5, 52px);
     gap:3px; background:var(--border); padding:3px; border-radius:6px;
+    position:relative; /* containing block for .home-plate-overlay (U5) */
   }
   .zone-cell{
     background:var(--field-dark); border-radius:3px; position:relative; border:1px solid transparent;
@@ -277,6 +279,22 @@
   .home-plate-wrap{ width:162px; display:flex; justify-content:center; }
   .home-plate{ display:block; width:100%; }
   .home-plate polygon{ fill:#FFFFFF; stroke:#000000; stroke-width:2; }
+
+  /* U5, behind_pitcher only: same pentagon rotated 180deg, drawn OVER the
+     grid as a translucent spatial cue instead of below it. Percentages are
+     the desktop grid's own box geometry (278px total): box 2's center at
+     30.22% from top, the vertical middle of boxes 7/8/9 at 69.78%, the 3x3
+     zone's own width at 58.27% centered -- .zone-grid is square at both
+     breakpoints (aspect-ratio:1/1 under the mobile media query below), so
+     these percentages resolve correctly at both without a separate calc().
+     Distinct class from .home-plate-wrap so this never collides with that
+     rule's own mobile-breakpoint override. */
+  .home-plate-overlay{
+    position:absolute; pointer-events:none;
+    left:20.86%; width:58.27%; top:30.22%; height:39.56%;
+    transform:rotate(180deg);
+  }
+  .home-plate-overlay polygon{ fill:#FFFFFF; fill-opacity:0.12; stroke:#000000; stroke-opacity:0.35; stroke-width:2; }
 
   .zone-cell-flash{ --flash-fg:#F1ECDD; animation:cellFlash 1.4s ease forwards; }
   .zone-cell-flash.flash-strike{ --flash-bg:#2E8B57; }
@@ -526,6 +544,24 @@ function zoneNumber(row, col){
 function isAccurate(pitch){
   return pitch.targetRow === pitch.actualRow && pitch.targetCol === pitch.actualCol;
 }
+
+// U5 -- charting perspective. Row never mirrors (up is up from both views);
+// only the column does. mirrorCol is its own inverse, so the same function
+// converts screen->canonical at capture and canonical->screen for anything
+// re-derived from stored coordinates and drawn back for the CURRENT
+// charter to look at (the live glow, the live pitch log) -- never for
+// history/heat-map rendering, which always shows canonical coordinates
+// unmirrored so two sessions charted from opposite sides land on the same
+// cell (see isRelativelyAccurate's own comment below: it needs zero
+// perspective awareness precisely because capture already normalized it).
+function mirrorCol(col){ return (GRID_SIZE - 1) - col; }
+function perspectiveCol(col, chartingPerspective){
+  return chartingPerspective === 'behind_pitcher' ? mirrorCol(col) : col;
+}
+function sessionPerspective(session){
+  return (session && session.chartingPerspective) || 'behind_catcher';
+}
+const PERSPECTIVE_PREF_KEY = 'lastChartingPerspective';
 
 const ACCURACY_MODE_LABELS = {
   ring: 'Accuracy Ring',
@@ -1028,6 +1064,13 @@ window.toggleContactsPanel = async function(){
 
 /* ---------- SESSION LOGGING (pitcher only) ---------- */
 function draftKey(){ return 'draft:' + state.currentPitcherId + ':' + state.currentTeamId; }
+// U5: one place a fresh session gets constructed, so chartingPerspective's
+// default (the device's last choice, remembered per PERSPECTIVE_PREF_KEY)
+// is only ever read in one spot rather than duplicated at each call site.
+async function freshActiveSession(){
+  const lastPerspective = await storGet(PERSPECTIVE_PREF_KEY);
+  return { pitches: [], startedAt: Date.now(), chartingPerspective: lastPerspective || 'behind_catcher' };
+}
 async function refreshDraftState(){
   if(!state.currentPitcherId){ state.draftAvailable = false; state.activeSession = null; return; }
   const draft = await storGet(draftKey());
@@ -1038,7 +1081,7 @@ async function refreshDraftState(){
   } else {
     state.draftAvailable = false;
     state.pendingDraft = null;
-    state.activeSession = { pitches: [], startedAt: Date.now() };
+    state.activeSession = await freshActiveSession();
   }
   state.selectedType = null;
   state.selectedAccuracyMode = null;
@@ -1048,12 +1091,14 @@ async function refreshDraftState(){
 }
 window.resumeDraft = function(){
   state.activeSession = state.pendingDraft;
+  // Defensive: a draft persisted before U5 shipped won't carry this field.
+  state.activeSession.chartingPerspective = sessionPerspective(state.activeSession);
   state.draftAvailable = false;
   render();
 };
 window.discardDraft = async function(){
   await storDelete(draftKey());
-  state.activeSession = { pitches: [], startedAt: Date.now() };
+  state.activeSession = await freshActiveSession();
   state.draftAvailable = false;
   render();
 };
@@ -1065,6 +1110,13 @@ window.selectType = function(type){
 };
 window.selectAccuracyMode = function(mode){
   state.selectedAccuracyMode = (state.selectedAccuracyMode === mode) ? null : mode;
+  render();
+};
+window.selectPerspective = async function(newPerspective){
+  if(state.activeSession.pitches.length > 0) return; // locked after the first pitch
+  state.activeSession.chartingPerspective = newPerspective;
+  await storSet(PERSPECTIVE_PREF_KEY, newPerspective);
+  await storSet(draftKey(), state.activeSession);
   render();
 };
 window.toggleRecordVelocity = function(checked){
@@ -1107,11 +1159,15 @@ window.handleZoneTap = async function(row, col){
   const target = state.pendingTarget;
   const veloVal = state.recordVelocity ? state.velo : null;
   const strike = isStrikeCell(row, col);
+  // U5: the single normalize-at-capture point. Tapped (screen-frame)
+  // columns are converted to the canonical catcher frame right here, once,
+  // before anything reaches storage -- see mirrorCol's comment above.
+  const chartingPerspective = sessionPerspective(state.activeSession);
   state.activeSession.pitches.push({
     id: genUUID(),
     type: state.selectedType, velo: veloVal,
-    targetRow: target.row, targetCol: target.col,
-    actualRow: row, actualCol: col,
+    targetRow: target.row, targetCol: perspectiveCol(target.col, chartingPerspective),
+    actualRow: row, actualCol: perspectiveCol(col, chartingPerspective),
     accuracyMode: state.selectedAccuracyMode,
     ts: Date.now()
   });
@@ -1192,6 +1248,7 @@ window.endSession = async function(){
     startedAt: state.activeSession.startedAt,
     endedAt: Date.now(),
     pitches: state.activeSession.pitches,
+    chartingPerspective: sessionPerspective(state.activeSession),
     queuedAt: Date.now(),
     lastError: null,
     lastAttemptAt: null
@@ -1199,7 +1256,7 @@ window.endSession = async function(){
   await enqueueOutboxItem(state.session.user.id, item);
   await storDelete(draftKey());
 
-  state.activeSession = { pitches: [], startedAt: Date.now() };
+  state.activeSession = await freshActiveSession();
   state.selectedType = null;
   state.pendingTarget = null;
   state.editDraftRow = null;
@@ -1344,7 +1401,10 @@ async function syncOutbox(){
       team_id: item.teamId,
       logged_by: item.loggedBy,
       started_at: new Date(item.startedAt).toISOString(),
-      ended_at: new Date(item.endedAt).toISOString()
+      ended_at: new Date(item.endedAt).toISOString(),
+      // Defensive fallback: an outbox item queued before U5 shipped won't
+      // carry this field.
+      charting_perspective: item.chartingPerspective || 'behind_catcher'
     };
     const pitchRows = item.pitches.map(p => ({
       id: p.id,
@@ -1381,7 +1441,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by_role, pitch_count, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, ts)')
+    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by_role, pitch_count, charting_perspective, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, ts)')
     .eq('pitcher_id', pitcherId)
     .eq('team_id', teamId)
     .order('started_at', { ascending: false });
@@ -1393,6 +1453,10 @@ async function loadSessionsForCurrentSelection(){
     deletedAt: s.deleted_at ? new Date(s.deleted_at).getTime() : null,
     deletedByRole: s.deleted_by_role || null,
     pitchCount: s.pitch_count,
+    // Not used to adjust rendering (history/heat-map always shows canonical
+    // coordinates unmirrored, see mirrorCol's comment) -- carried through
+    // for data fidelity and SQL-verifiability only.
+    chartingPerspective: s.charting_perspective,
     pitches: (s.pitches || []).map(p => ({
       type: p.type, velo: p.velo,
       targetRow: p.target_row, targetCol: p.target_col,
@@ -1476,11 +1540,18 @@ function heatColor(intensity){
 }
 
 /* ---------- RENDER: ZONE GRID ---------- */
-function relativelyAccurateCells(targetRow, targetCol, mode){
+// U5: targetCol/each probed col are converted to canonical before testing
+// isRelativelyAccurate (safe for every mode, including ring, since
+// mirroring is distance-preserving when applied identically to both
+// points) -- but the returned Set stays keyed by SCREEN row-col, so the
+// caller's existing cell-matching logic needs no change.
+function relativelyAccurateCells(targetRow, targetCol, mode, chartingPerspective){
   const set = new Set();
+  const canonTargetCol = perspectiveCol(targetCol, chartingPerspective);
   for(let r=0; r<GRID_SIZE; r++){
     for(let c=0; c<GRID_SIZE; c++){
-      if(isRelativelyAccurate({ accuracyMode: mode, targetRow, targetCol, actualRow: r, actualCol: c })){
+      const canonCol = perspectiveCol(c, chartingPerspective);
+      if(isRelativelyAccurate({ accuracyMode: mode, targetRow, targetCol: canonTargetCol, actualRow: r, actualCol: canonCol })){
         set.add(r+'-'+c);
       }
     }
@@ -1488,11 +1559,11 @@ function relativelyAccurateCells(targetRow, targetCol, mode){
   return set;
 }
 
-function renderZoneGrid(pitches, clickable, flashCell, pendingTarget){
+function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPerspective){
   let cells = '';
   if(clickable){
     const glowCells = (pendingTarget && state.selectedAccuracyMode)
-      ? relativelyAccurateCells(pendingTarget.row, pendingTarget.col, state.selectedAccuracyMode)
+      ? relativelyAccurateCells(pendingTarget.row, pendingTarget.col, state.selectedAccuracyMode, chartingPerspective)
       : null;
     for(let row=0; row<GRID_SIZE; row++){
       for(let col=0; col<GRID_SIZE; col++){
@@ -1530,13 +1601,30 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget){
       }
     }
   }
-  return `<div class="zone-grid">${cells}</div>${renderHomePlate()}`;
+  const plate = renderHomePlate(chartingPerspective);
+  // U5: behind_pitcher draws the plate INSIDE .zone-grid (an extra
+  // absolutely-positioned child, overlaying the cells) instead of as a
+  // sibling below it. The history call site never passes a perspective, so
+  // it always falls through to the unchanged behind_catcher markup.
+  return chartingPerspective === 'behind_pitcher'
+    ? `<div class="zone-grid">${cells}${plate}</div>`
+    : `<div class="zone-grid">${cells}</div>${plate}`;
 }
 
-/* Simple pentagon, catcher's perspective: flat edge faces the pitcher (top),
-   point faces the catcher/viewer (bottom). Sized off the grid via CSS, not
-   pixel math here, so it always matches whatever width the grid resolves to. */
-function renderHomePlate(){
+/* Simple pentagon. Behind the catcher (default, and always for
+   history/heat-map -- see mirrorCol's comment): flat edge faces the
+   pitcher (top), point faces the catcher/viewer (bottom), below the grid,
+   sized off the grid via CSS. Behind the pitcher: the same shape rotated
+   180deg via CSS (not a second hand-authored polygon), drawn OVER the
+   grid as a translucent spatial cue -- point near box 2, wide edge across
+   the middle of boxes 7/8/9, pointer-events:none so taps pass through to
+   the cells beneath it. */
+function renderHomePlate(chartingPerspective){
+  if(chartingPerspective === 'behind_pitcher'){
+    return `<svg class="home-plate-overlay" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Home plate (behind pitcher)">
+      <polygon points="4,4 96,4 96,32 50,56 4,32"></polygon>
+    </svg>`;
+  }
   return `<div class="home-plate-wrap"><svg class="home-plate" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Home plate">
     <polygon points="4,4 96,4 96,32 50,56 4,32"></polygon>
   </svg></div>`;
@@ -1559,6 +1647,27 @@ function renderAccuracyModeSelect(){
   return `<select class="team-select accuracy-select" onchange="selectAccuracyMode(this.value || null)">${optionsHtml}</select>`;
 }
 
+// U5: session-start "prompt" is a persistent, always-visible toggle (this
+// codebase has no modal/dialog pattern anywhere) rather than a one-shot
+// dismissible dialog -- pre-filled from the device's remembered last
+// choice, locked once the first pitch is logged so the tap->storage mirror
+// never has more than its one capture-time call site to worry about.
+function renderPerspectiveToggle(){
+  const current = sessionPerspective(state.activeSession);
+  const locked = state.activeSession.pitches.length > 0;
+  const opts = [
+    { key: 'behind_catcher', label: 'Behind the catcher' },
+    { key: 'behind_pitcher', label: 'Behind the pitcher' }
+  ];
+  const chips = opts.map(o => {
+    const selected = current === o.key;
+    const style = selected ? `background:var(--amber);border-color:var(--amber);` : `color:var(--amber-bright);border-color:var(--amber-bright)55;`;
+    return `<button class="type-chip${selected?' selected':''}" style="${style}" ${locked?'disabled':''} onclick="selectPerspective('${o.key}')">${o.label}</button>`;
+  }).join('');
+  const lockedNote = locked ? `<p style="color:var(--chalk-faint);font-size:11.5px;margin:6px 0 0;">Locked after the first pitch.</p>` : '';
+  return `<div><div class="field-label" style="margin-bottom:8px;">Charting perspective</div><div class="chip-row">${chips}</div>${lockedNote}</div>`;
+}
+
 function renderSessionView(){
   const p = currentPitcher();
   if(state.draftAvailable){
@@ -1573,6 +1682,7 @@ function renderSessionView(){
   }
   const pitches = state.activeSession.pitches;
   const stats = sessionStats(pitches);
+  const chartingPerspective = sessionPerspective(state.activeSession);
   const typeChips = p.pitchTypes.map(t => {
     const color = colorForType(p, t);
     const selected = state.selectedType === t;
@@ -1601,8 +1711,11 @@ function renderSessionView(){
     const accurate = isAccurate(pt);
     const relAccurate = isRelativelyAccurate(pt);
     const veloText = (pt.velo !== null && pt.velo !== undefined) ? `${pt.velo} mph · ` : '';
-    const targetNum = zoneNumber(pt.targetRow, pt.targetCol);
-    const actualNum = zoneNumber(pt.actualRow, pt.actualCol);
+    // U5: stored columns are canonical; converted back to the CURRENT
+    // session's screen frame so this matches what the charter actually
+    // tapped, not the raw stored value (see mirrorCol's comment).
+    const targetNum = zoneNumber(pt.targetRow, perspectiveCol(pt.targetCol, chartingPerspective));
+    const actualNum = zoneNumber(pt.actualRow, perspectiveCol(pt.actualCol, chartingPerspective));
     const modeTag = pt.accuracyMode ? ` <span style="color:#7C9CBF;">[${ACCURACY_MODE_LABELS[pt.accuracyMode]}${relAccurate ? ' ✓' : ''}]</span>` : '';
     const locText = `${targetNum ? 'aimed '+targetNum : 'aimed ball'} → ${actualNum ? 'landed '+actualNum : 'landed ball'}${accurate ? ' ✓' : ''}${modeTag}`;
     return `<div class="pitch-log-row">
@@ -1621,6 +1734,7 @@ function renderSessionView(){
   return `
     <div class="session-grid-layout">
       <div class="panel controls-panel">
+        ${renderPerspectiveToggle()}
         <div>
           <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
           <div class="chip-row">${typeChips}</div>
@@ -1643,7 +1757,7 @@ function renderSessionView(){
         <div class="hint-msg">${state.hint}</div>
         <div>
           <div class="zone-wrap">
-            ${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget)}
+            ${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, sessionPerspective(state.activeSession))}
             <div class="zone-caption">${zoneCaption}</div>
           </div>
         </div>

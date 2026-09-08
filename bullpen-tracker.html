@@ -222,7 +222,12 @@
   .accuracy-count-row{ display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
   .accuracy-select-col{ display:flex; flex-direction:column; gap:8px; min-width:0; }
   .accuracy-select{ width:150px; }
-  .pitch-counter{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0; }
+  /* gap is bigger than .accuracy-select-col's on purpose: the dropdown box
+     (with its border/padding) is taller than the bare number text, so this
+     extra gap equalizes the two columns' total heights -- with equal
+     heights, .accuracy-count-row's align-items:flex-end lines up both the
+     labels on top AND the dropdown/number on the bottom at the same time. */
+  .pitch-counter{ display:flex; flex-direction:column; align-items:flex-end; gap:24px; flex-shrink:0; }
   .pitch-counter-num{ font-family:'Teko',sans-serif; font-size:22px; line-height:1; color:var(--amber-bright); }
   .add-type-inline{ display:flex; gap:6px; align-items:center; }
   .add-type-inline input{ flex:1; padding:6px 8px; font-size:12.5px; }

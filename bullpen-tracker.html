@@ -216,13 +216,10 @@
     border:1.5px solid var(--border-strong); background:transparent; color:var(--chalk-dim);
   }
   .type-chip.selected{ color:var(--field-dark); border-color:transparent; }
-  .chip-row-with-counter{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
-  .chip-row-with-counter .chip-row{ flex:1; }
-  .pitch-counter{
-    display:inline-flex; align-items:center; justify-content:center;
-    min-width:28px; height:28px; padding:0 8px; border-radius:14px; font-size:13px; font-weight:600;
-    background:var(--field-panel-2); border:1px solid var(--border-strong); color:var(--amber-bright); flex-shrink:0;
-  }
+  /* Reuses .field-label's font/case/color so it reads as the same kind of
+     text as the "Pitch type" / "Relative accuracy" headers, just inline
+     within the chip row instead of above it. */
+  .pitch-counter{ display:inline-flex; align-items:center; white-space:nowrap; margin:0; }
   .add-type-inline{ display:flex; gap:6px; align-items:center; }
   .add-type-inline input{ flex:1; padding:6px 8px; font-size:12.5px; }
   .add-type-inline button{ background:none; border:1px solid var(--border-strong); color:var(--chalk-dim); border-radius:5px; padding:6px 10px; font-size:12px; }
@@ -1525,7 +1522,7 @@ function renderHomePlate(){
 }
 
 /* ---------- RENDER: SESSION VIEW (pitcher only) ---------- */
-function renderAccuracyModeChips(){
+function renderAccuracyModeChips(pitchCount){
   const options = [
     { key: null, label: 'Target' },
     { key: 'ring', label: 'Accuracy Ring' },
@@ -1534,13 +1531,18 @@ function renderAccuracyModeChips(){
     { key: 'nothingAway', label: 'Inside' },
     { key: 'nothingInside', label: 'Outside' }
   ];
-  return options.map(opt => {
+  const chips = options.map(opt => {
     const selected = state.selectedAccuracyMode === opt.key;
     const cls = 'type-chip' + (selected ? ' selected' : '');
     const style = selected ? `background:${'#7C9CBF'};border-color:#7C9CBF;` : `color:#7C9CBF;border-color:#7C9CBF55;`;
     const onclick = `onclick="selectAccuracyMode(${opt.key === null ? 'null' : `'${opt.key}'`})"`;
     return `<button class="${cls}" style="${style}" ${onclick}>${opt.label}</button>`;
-  }).join('');
+  });
+  // Inserted right after "Accuracy Ring" (not appended at the end) so it
+  // wraps onto the same line as the first two chips instead of getting
+  // pushed below the full 6-chip row on a narrow controls-panel.
+  chips.splice(2, 0, `<span class="field-label pitch-counter">Pitch count: ${pitchCount}</span>`);
+  return chips.join('');
 }
 
 function renderSessionView(){
@@ -1616,10 +1618,7 @@ function renderSessionView(){
         </div>
         <div>
           <div class="field-label" style="margin-bottom:8px;">Relative accuracy</div>
-          <div class="chip-row-with-counter">
-            <div class="chip-row">${renderAccuracyModeChips()}</div>
-            <span class="pitch-counter mono">${stats.total}</span>
-          </div>
+          <div class="chip-row">${renderAccuracyModeChips(stats.total)}</div>
         </div>
         <div class="hint-msg">${state.hint}</div>
         <div>

@@ -1533,22 +1533,20 @@ function renderHomePlate(){
 }
 
 /* ---------- RENDER: SESSION VIEW (pitcher only) ---------- */
-function renderAccuracyModeChips(){
+function renderAccuracyModeSelect(){
   const options = [
-    { key: null, label: 'Target' },
+    { key: '', label: 'Target' },
     { key: 'ring', label: 'Accuracy Ring' },
     { key: 'nothingUp', label: 'Low' },
     { key: 'nothingLow', label: 'High' },
     { key: 'nothingAway', label: 'Inside' },
     { key: 'nothingInside', label: 'Outside' }
   ];
-  return options.map(opt => {
-    const selected = state.selectedAccuracyMode === opt.key;
-    const cls = 'type-chip' + (selected ? ' selected' : '');
-    const style = selected ? `background:${'#7C9CBF'};border-color:#7C9CBF;` : `color:#7C9CBF;border-color:#7C9CBF55;`;
-    const onclick = `onclick="selectAccuracyMode(${opt.key === null ? 'null' : `'${opt.key}'`})"`;
-    return `<button class="${cls}" style="${style}" ${onclick}>${opt.label}</button>`;
+  const optionsHtml = options.map(opt => {
+    const selected = (state.selectedAccuracyMode || '') === opt.key;
+    return `<option value="${opt.key}" ${selected ? 'selected' : ''}>${opt.label}</option>`;
   }).join('');
+  return `<select class="team-select" onchange="selectAccuracyMode(this.value || null)">${optionsHtml}</select>`;
 }
 
 function renderSessionView(){
@@ -1630,7 +1628,7 @@ function renderSessionView(){
               <span class="pitch-counter-num mono">${stats.total}</span>
             </div>
           </div>
-          <div class="chip-row">${renderAccuracyModeChips()}</div>
+          ${renderAccuracyModeSelect()}
         </div>
         <div class="hint-msg">${state.hint}</div>
         <div>

@@ -1,0 +1,162 @@
+<!-- ============================================================
+     Knuckleball — batter silhouette + batter-side control (U2a)
+     Traced from Joel's source image, Sept 9 2026. Single path,
+     inlined — no external file, no network request, works offline.
+
+     WHAT CARRIES THE STATE
+     The "vs RHB" / "vs LHB" pill is the indicator, NOT the figure.
+     A batter silhouette is ambiguous between handedness and viewpoint
+     (an RHB seen from behind and an LHB seen from the front are the
+     same shape), so the text is the only unambiguous signal. The
+     figure is a spatial cue and a tap target, nothing more.
+
+     FACING
+     The traced figure FACES LEFT and must always face the grid:
+       silhouette LEFT of the grid  -> class "is-left"  (mirrored, faces right)
+       silhouette RIGHT of the grid -> class "is-right" (as traced, faces left)
+     Which side it stands on is NOT decided here — it comes from the
+     existing U5 perspective transform, same as the zone labels, which
+     is what keeps it beside the 1/4/7 column in all four cases.
+
+     LAYOUT — BINDING
+     position:absolute, participates in NO layout flow. Nothing else on
+     the page may move because of it. An earlier version was inserted as
+     a layout sibling and pushed the home plate out of position.
+
+     PHONES (<=500px)
+     The figure is dropped entirely — there is no room, and it is not the
+     indicator. The pill becomes a large centred control sitting in a
+     RESERVED BAND below the grid, so it cannot be mis-tapped while
+     aiming at the grid and cannot overlap the velocity slider.
+     >>> The grid wrapper needs padding-bottom on phones to create that
+     >>> band. See the .zone-grid-wrap rule at the bottom — apply it to
+     >>> whatever the real wrapper class is.
+     ============================================================ -->
+
+<button type="button" class="kb-batter" id="kbBatter"
+        aria-label="Pitching to a right-handed batter. Tap to switch to left-handed.">
+  <svg class="kb-batter__fig" viewBox="0 0 167 504" aria-hidden="true" focusable="false">
+    <path d="M48.8 503C44.1 500.1 48.8 492 55.2 492C59.1 492 69.5 486.3 71.1 483.3C71.8 482 73.9 480 75.7 478.9C79.2 476.7 80.1 474.6 79.7 469C79.5 466.1 79.9 465.4 81.7 465.2C86 464.6 86.3 462.8 84 452.3C81.7 441.7 78.8 431.4 76 423.5C75 420.8 73.7 416 73 413C72.4 410 71.4 406.1 70.9 404.5C70.4 402.9 68.8 397.5 67.4 392.7C64.7 383.7 61 379 56.7 379C54.8 379 40.4 371.6 37.8 369.3C33.8 365.7 27.8 353.9 27.8 349.4C27.8 340.6 61.5 290.3 75.9 277.5C86 268.7 89.1 260.2 85.3 252.2C83.3 247.8 74 233.5 68.6 226.5C54.5 207.8 47.5 197.8 45.4 193.3C42.8 187.4 42.1 187.1 39.5 190C38.3 191.3 36.4 192 34 192C31.9 192 27.8 193.3 24.4 195C15.8 199.4 7.7 198.9 2.3 193.8C-1.5 190.3 -1 180.3 3.1 175.9C7.9 170.8 9 168.8 9 165.5C9 163.8 9.9 160.9 11 159C17.3 147.9 17.2 148.3 17.1 136.5C16.9 124.5 18 121.8 24.3 118.3C25.9 117.5 26.1 116.7 25.3 112.9L24.4 108.5L19.7 108.5C13.6 108.5 13.5 107.4 19 103.5L23.5 100.3L24 89.7C24.7 76.5 25.3 75.7 39.3 70.1C45.2 67.7 58.6 69.2 66.1 73.1C72.4 76.4 71.1 77.6 103.4 39C111.8 29 122.5 16.9 133.4 5.3C138.8 -0.6 141.2 -1.2 145.4 2.1C151.6 7 151.4 7.3 113.7 45.1C74.2 84.7 75.4 83.2 77.1 89.2C77.8 91.6 78.3 98.1 78.4 103.7C78.5 113.3 78.6 114 80.5 114.1C81.6 114.2 88.2 114.1 95.1 114C109.3 113.8 112.1 114.6 116.3 120.2C119.8 124.9 120.4 127.3 120.5 138C120.6 145.4 121.1 148.5 122.8 152.3C124 155 125.6 161.9 126.5 168.8C128.5 184.1 135.6 212.4 138.5 217C139.8 219 143.5 223.8 146.7 227.6C149.9 231.4 153.8 236.3 155.3 238.5C156.7 240.7 159.2 243.8 160.6 245.5C165.6 251.2 167 255.6 167 266.5C167 283.8 164.5 290.2 151.2 306.3C142.5 316.9 134.4 328 125 342C118.5 351.7 111.8 360.7 104.8 369.2C100.1 374.9 100.1 375.4 106.5 382.8C116.4 394.2 122.8 399.3 126.5 398.7C129.1 398.3 130.9 398.8 134.6 401.3C137.2 403.1 139.8 404.8 140.4 405.1C142 406.1 150.7 408 153.4 408C156.9 408 161 411.7 161 414.9C161 418.3 152.8 435.3 150.3 437.1C147 439.5 145 443.3 145 447.1C145 451.8 138.5 465.6 132.6 473.8C128.5 479.3 127.6 480 124.6 480C119.3 480 118.5 478.2 118.4 465.1C118.3 441.8 113.9 427.9 107.5 430.4C103.9 431.7 107.3 468.1 111.5 473.1C113 475 113.9 477.7 114.3 482.4C114.6 486 115.5 490.8 116.1 492.9C118.8 502.1 114.9 504.5 98.5 503.6C85.5 502.9 87.1 502.9 67.5 503.5C56.3 503.9 49.9 503.7 48.8 503Z"/>
+  </svg>
+  <span class="kb-batter__label">vs RHB</span>
+</button>
+
+<style>
+/* The grid wrapper must be positioned. Add this ONLY if it isn't already,
+   and do not change its box model:
+     .zone-grid-wrap { position: relative; }                            */
+
+.kb-batter {
+  position: absolute;
+  bottom: 0;                       /* feet level with the bottom of the grid */
+
+  /* --- tunables --- */
+  --kb-batter-h: 112%;             /* figure height relative to the grid */
+  --kb-batter-gap: 6px;            /* space between figure and grid edge */
+  --kb-pill-h: 48px;               /* phone: pill height */
+  --kb-pill-clear: 18px;           /* phone: gap between grid and pill */
+
+  height: var(--kb-batter-h);
+  aspect-ratio: 167 / 504;
+
+  min-width: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+
+  color: #1a1a1a;
+  opacity: .85;
+  transition: opacity .12s ease;
+}
+.kb-batter:active { opacity: 1; }
+
+.kb-batter.is-left  { right: 100%; margin-right: var(--kb-batter-gap); }
+.kb-batter.is-right { left:  100%; margin-left:  var(--kb-batter-gap); }
+
+/* Face the grid. Source faces LEFT, so mirror it when standing on the left. */
+.kb-batter.is-left .kb-batter__fig { transform: scaleX(-1); }
+
+.kb-batter__fig {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.kb-batter__label {
+  /* The state indicator. Must read at a glance. Do not shrink it. */
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 4px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  line-height: 1;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #1a1a1a;
+  color: #fff;
+  pointer-events: none;
+}
+
+/* ============================================================
+   PHONES — figure gone, pill becomes the whole control.
+   ============================================================ */
+@media (max-width: 500px) {
+
+  /* No silhouette at all: no room, and it never carried the state. */
+  .kb-batter__fig { display: none; }
+
+  /* The button stops being a figure-shaped box and becomes just the pill,
+     centred in the reserved band under the grid. Still absolute, so it
+     still moves nothing. */
+  .kb-batter,
+  .kb-batter.is-left,
+  .kb-batter.is-right {
+    height: auto;
+    width: auto;
+    aspect-ratio: auto;
+    top: auto;
+    bottom: 8px;                   /* sits inside the reserved band */
+    left: 50%;
+    right: auto;
+    margin: 0;
+    transform: translateX(-50%);
+    opacity: 1;
+  }
+
+  .kb-batter__label {
+    position: static;
+    transform: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: var(--kb-pill-h);  /* comfortably above the 44px minimum */
+    min-width: 140px;
+    padding: 0 22px;
+    font-size: 16px;
+    font-weight: 800;
+    border-radius: 999px;
+    pointer-events: auto;
+  }
+}
+
+/* ============================================================
+   RESERVED BAND — apply to the REAL grid wrapper class.
+   Without this the pill overlaps the velocity slider. With it, the
+   wrapper grows by a fixed, predictable amount on phones only, and
+   nothing else needs to move.
+   ============================================================ */
+@media (max-width: 500px) {
+  .zone-grid-wrap {
+    padding-bottom: calc(var(--kb-pill-h, 48px) + var(--kb-pill-clear, 18px) + 8px);
+  }
+}
+</style>

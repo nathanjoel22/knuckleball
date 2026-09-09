@@ -287,16 +287,35 @@
     white-space:nowrap; font-size:14px; font-weight:800; letter-spacing:.02em; line-height:1;
     padding:5px 9px; border-radius:999px; background:#1a1a1a; color:#fff; pointer-events:none;
   }
-  @media (max-width:430px){
-    /* No room in the margin at this width -- overlay the grid's outer edge
-       at low opacity instead (same treatment as the behind-pitcher home
-       plate). Still absolute, still no reflow; only the offset changes.
-       The label stays full-strength and becomes the tap target. */
-    .kb-batter{ opacity:1; }
-    .kb-batter__fig{ opacity:.22; }
-    .kb-batter.is-left{ right:auto; left:0; margin:0; }
-    .kb-batter.is-right{ left:auto; right:0; margin:0; }
-    .kb-batter__label{ pointer-events:auto; }
+  @media (max-width:500px){
+    /* Phones: no room for the figure beside the grid, and the figure never
+       carried the state anyway -- drop it entirely. The pill becomes the
+       whole control: a large, centered target sitting in a RESERVED BAND
+       below the grid (.zone-grid's own margin-bottom, below), so it can't
+       be mis-tapped while aiming and can't overlap the velocity slider.
+       Replaces the previous <=430px low-opacity-overlay treatment.
+       bottom is NEGATIVE here on purpose: the reserved band lives in
+       .zone-grid's MARGIN (see the .zone-grid rule below), which sits
+       outside the padding box that `bottom` is normally measured against
+       -- a negative value is what reaches past that edge into the band.
+       clear+pillH positions the pill's TOP at margin-top of the band
+       (clear px below the grid's actual bottom edge); its own height
+       (pillH) then fills down from there, leaving the remaining 8px of
+       the band empty below it, before whatever comes next in flow. */
+    .kb-batter__fig{ display:none; }
+    .kb-batter,
+    .kb-batter.is-left,
+    .kb-batter.is-right{
+      height:auto; width:auto; aspect-ratio:auto;
+      top:auto; bottom:calc(-1 * (var(--kb-pill-clear) + var(--kb-pill-h)));
+      left:50%; right:auto; margin:0;
+      transform:translateX(-50%); opacity:1;
+    }
+    .kb-batter__label{
+      position:static; transform:none; display:flex; align-items:center; justify-content:center;
+      min-height:var(--kb-pill-h); min-width:140px; padding:0 22px;
+      font-size:16px; font-weight:800; border-radius:999px; pointer-events:auto;
+    }
   }
   .zone-grid{
     display:grid; grid-template-columns:repeat(5, 52px); grid-template-rows:repeat(5, 52px);
@@ -481,6 +500,40 @@
        0.6 = 3/5 columns and 4.8px accounts for the padding/gap difference
        between 3 cells and 5 (see the desktop comment above for the algebra). */
     .home-plate-wrap{ width:calc(0.6 * min(100%, 320px) - 4.8px); }
+  }
+
+  @media (max-width:500px){
+    /* RESERVED BAND for the phone pitch-pill (see .kb-batter's media block
+       above). .zone-grid IS the real "grid wrapper" the silhouette is
+       positioned against (already position:relative, see its comment) --
+       batter-silhouette.html's own .zone-grid-wrap placeholder maps to
+       this class in this codebase.
+       margin-bottom, NOT padding-bottom: .zone-grid already uses
+       aspect-ratio:1/1 (in the rule above) under box-sizing:border-box
+       (global *{box-sizing:border-box}), so the square ratio applies to
+       the BORDER box. padding-bottom there would keep the border box
+       square and eat the new space out of the grid's own CONTENT height
+       instead -- squishing the 5 rows shorter, not adding room below them
+       (this was tried and visibly broke the grid: rows collapsed to 2px
+       each -- acceptance check 4 requires the grid stay the same size).
+       margin is outside the box-sizing model entirely, so it reserves
+       flow space (pushing .zone-caption and everything after it down)
+       with ZERO effect on .zone-grid's own square box -- the grid is
+       pixel-identical to before this rule exists; only the space below it
+       changes. The pill (an absolutely-positioned child of .zone-grid)
+       then reaches into that margin with a negative `bottom` offset (see
+       .kb-batter's phone-mode rule above) since margin sits outside the
+       padding box that `bottom` normally measures against.
+       --kb-pill-h/--kb-pill-clear are declared here (not on .kb-batter)
+       because custom properties only inherit DOWNWARD -- .kb-batter is a
+       child of .zone-grid, so declaring them on the parent lets both this
+       rule and .kb-batter's own phone-mode rule (above) read the same
+       values; declaring them on the child would leave this rule unable to
+       see them at all. */
+    .zone-grid{
+      --kb-pill-h:48px; --kb-pill-clear:18px;
+      margin-bottom:calc(var(--kb-pill-clear) + var(--kb-pill-h) + 8px);
+    }
   }
 </style>
 </head>

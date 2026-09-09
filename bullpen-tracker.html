@@ -333,26 +333,43 @@
 
   /* Sized to match the strike zone (the inner 3x3 of cells, rows/cols 1-3 --
      see isStrikeCell), not the full 5x5 grid: 3 cells + 2 internal 3px gaps
-     = 3*52 + 2*3 = 162px at the fixed desktop cell size. */
+     = 3*52 + 2*3 = 162px at the fixed desktop cell size.
+     HISTORY/HEAT-MAP ONLY as of this change (see mirrorCol's comment: that
+     view always shows canonical, unmirrored data, so its plate stays the
+     original opaque below-grid treatment regardless of any session's own
+     perspective). The LIVE grid uses .home-plate-overlay in both
+     perspectives now -- see below. */
   .home-plate-wrap{ width:162px; display:flex; justify-content:center; }
   .home-plate{ display:block; width:100%; }
   .home-plate polygon{ fill:#FFFFFF; stroke:#000000; stroke-width:2; }
 
-  /* U5, behind_pitcher only: same pentagon rotated 180deg, drawn OVER the
-     grid as a translucent spatial cue instead of below it. Percentages are
-     the desktop grid's own box geometry (278px total): box 2's center at
-     30.22% from top, the vertical middle of boxes 7/8/9 at 69.78%, the 3x3
-     zone's own width at 58.27% centered -- .zone-grid is square at both
-     breakpoints (aspect-ratio:1/1 under the mobile media query below), so
-     these percentages resolve correctly at both without a separate calc().
-     Distinct class from .home-plate-wrap so this never collides with that
-     rule's own mobile-breakpoint override. */
+  /* Live grid, both perspectives: one pentagon shape, drawn OVER the grid
+     as a translucent spatial cue, repositioned/rotated per mode -- never a
+     second hand-authored polygon. Percentages are the desktop grid's own
+     box geometry (278px total; cell pitch 55px, padding 3px), so they
+     resolve correctly at both breakpoints (.zone-grid is square at both --
+     aspect-ratio:1/1 under the mobile media query below) without a
+     separate calc(). pointer-events:none in both modes -- it sits on top
+     of charting cells and must never swallow a tap. */
   .home-plate-overlay{
     position:absolute; pointer-events:none;
-    left:20.86%; width:58.27%; top:30.22%; height:39.56%;
-    transform:rotate(180deg);
+    left:20.86%; width:58.27%;
   }
   .home-plate-overlay polygon{ fill:#FFFFFF; fill-opacity:0.12; stroke:#000000; stroke-opacity:0.35; stroke-width:2; }
+  /* behind_pitcher: point near box 2 (top), wide edge across the middle of
+     boxes 7/8/9 (bottom) -- the raw polygon (wide edge at its own top,
+     point at its own bottom) rotated 180deg to flip that. Unchanged from
+     before this task. */
+  .home-plate-overlay.behind-pitcher{ top:30.22%; height:39.56%; transform:rotate(180deg); }
+  /* behind_catcher (new): point down, landing in the outer-ring cell
+     directly below box 8 (row 4, col 2 0-indexed) -- one full cell-pitch
+     (55px = 19.78% of 278px) below the behind_pitcher point's row, hence
+     30.22% + 19.78% = 50.00%. Wide edge across the middle of boxes 4/5/6,
+     the strike zone's own middle row -- also its own vertical center
+     (50.00%), one row above the tip. No rotation: the raw polygon's
+     natural orientation (wide edge at its own top, point at its own
+     bottom) already matches point-down without any transform. */
+  .home-plate-overlay.behind-catcher{ top:50%; height:39.57%; }
 
   .zone-cell-flash{ --flash-fg:#F1ECDD; animation:cellFlash 1.4s ease forwards; }
   .zone-cell-flash.flash-strike{ --flash-bg:#2E8B57; }
@@ -1770,32 +1787,36 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
   const silhouette = clickable
     ? renderBatterSilhouette(batterSide, insideColumnOnScreenLeft(chartingPerspective, batterSide))
     : '';
-  // U5: behind_pitcher draws the plate INSIDE .zone-grid (an extra
-  // absolutely-positioned child, overlaying the cells) instead of as a
-  // sibling below it. The history call site never passes a perspective, so
-  // it always falls through to the unchanged behind_catcher markup.
-  return chartingPerspective === 'behind_pitcher'
+  // Both live perspectives now draw the plate INSIDE .zone-grid (an extra
+  // absolutely-positioned child, overlaying the cells) -- anchored to the
+  // grid element itself, never to .zone-wrap (which carries the phone-only
+  // margin-bottom reserving the batter-side pill's band; a percentage-
+  // positioned plate against THAT would drift on phone widths). History
+  // never passes a chartingPerspective, so it always falls through to the
+  // unchanged, below-grid, non-translucent markup.
+  return chartingPerspective
     ? `<div class="zone-grid">${cells}${plate}${silhouette}</div>`
     : `<div class="zone-grid">${cells}${silhouette}</div>${plate}`;
 }
 
-/* Simple pentagon. Behind the catcher (default, and always for
-   history/heat-map -- see mirrorCol's comment): flat edge faces the
-   pitcher (top), point faces the catcher/viewer (bottom), below the grid,
-   sized off the grid via CSS. Behind the pitcher: the same shape rotated
-   180deg via CSS (not a second hand-authored polygon), drawn OVER the
-   grid as a translucent spatial cue -- point near box 2, wide edge across
-   the middle of boxes 7/8/9, pointer-events:none so taps pass through to
-   the cells beneath it. */
+/* One pentagon shape for the live grid, in both perspectives -- CSS
+   modifier classes (.behind-pitcher / .behind-catcher, see their own
+   comments) reposition/rotate it, never a second hand-authored polygon.
+   History/heat-map (chartingPerspective falsy) instead gets the original,
+   unchanged, opaque below-grid plate -- that view always shows canonical,
+   unmirrored data (see mirrorCol's comment), independent of any session's
+   own perspective, so its plate stays independent of perspective too. */
 function renderHomePlate(chartingPerspective){
-  if(chartingPerspective === 'behind_pitcher'){
-    return `<svg class="home-plate-overlay" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Home plate (behind pitcher)">
+  if(!chartingPerspective){
+    return `<div class="home-plate-wrap"><svg class="home-plate" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Home plate">
       <polygon points="4,4 96,4 96,32 50,56 4,32"></polygon>
-    </svg>`;
+    </svg></div>`;
   }
-  return `<div class="home-plate-wrap"><svg class="home-plate" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Home plate">
+  const modeClass = chartingPerspective === 'behind_pitcher' ? 'behind-pitcher' : 'behind-catcher';
+  const sideLabel = chartingPerspective === 'behind_pitcher' ? 'behind pitcher' : 'behind catcher';
+  return `<svg class="home-plate-overlay ${modeClass}" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Home plate (${sideLabel})">
     <polygon points="4,4 96,4 96,32 50,56 4,32"></polygon>
-  </svg></div>`;
+  </svg>`;
 }
 
 /* ---------- RENDER: SESSION VIEW (pitcher only) ---------- */

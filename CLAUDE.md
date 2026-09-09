@@ -17,6 +17,24 @@ Data follows the player. Sessions belong to the pitcher permanently; a team's vi
 - Deletion remains available: the pitcher may delete their own sessions, the coach may delete their team's. Every deletion leaves a visible tombstone in history showing the date, the number of pitches thrown, that it was deleted, and which account deleted it (player or team). Deleted sessions are excluded from all stats, trends, and reports.
 Until Track R ships: inviting an already-registered email must fail honestly ("existing account — coming soon"), never auto-add and never half-succeed silently.
 
+## Charting surface decisions (Joel, Aug 29 2026 — Track U)
+- The grid is drawn from the CATCHER'S perspective. Stored pitch coordinates are always physical; the left-handed-batter view mirrors DISPLAY NUMBERING ONLY, never stored data.
+- Grid v2 (U2) is 7×7 with the strike zone at rows/cols 2-4. Boxes are numbered 1-49 per a Joel-approved diagram committed to the repo — that diagram is the canonical numbering spec, and the mapping lives in ONE shared module used by both charting and report rendering (never duplicated).
+- Legacy 5×5 sessions are never migrated or touched; they render through the legacy path permanently.
+- Batter side (RHB/LHB) is stored on every pitch charted after U2; it is a simulated-batter toggle, distinct from profiles.throws (the pitcher's hand).
+- Reports are HTML pages at unguessable URLs, content frozen at save time; PDF generation is retired with U4. Anyone with the link can view — that is the chosen trust model.
+
+**Zone numbering protocol (D8, Sept 9 2026).** Boxes 1/4/7 are ALWAYS the inside
+column, 2/5/8 middle, 3/6/9 outside — in every charting perspective and for either
+batter side. Rows never flip. A zone number is a display label computed at render
+time from the stored catcher-frame coordinate plus batter side (`zoneNumberFor`),
+never stored and never a second copy of the mapping. Labels therefore mirror on
+screen with perspective (and, after U2, batter side) so the low column is always on
+the batter's side; the "Inside" accuracy highlight must always sit under the 1/4/7
+labels. Reports and history always render the catcher's view, labeled as such.
+Stored coordinates stay catcher-frame, always — this protocol changes nothing about
+storage.
+
 ## What this is
 
 Knuckleball (knuckleballonline.com) is a bullpen session tracking app for pitching coaches and pitchers: two-tap pitch charting on a 5×5 zone grid (target vs. actual), pitch types, velocity, heat maps, accuracy percentages (including a "relative accuracy" mode), trend charts, and an emailed PDF session report. Charting typically happens on an **iPhone/iPad, often with no wifi** — never assume network availability in the tracker flow.

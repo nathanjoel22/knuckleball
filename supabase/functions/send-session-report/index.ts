@@ -172,7 +172,11 @@ async function buildReportPdf(payload: any): Promise<Uint8Array> {
   drawZoneGrid(page1, { x: gridX, y: gridY, size: gridSize })
   drawPitchDots(page1, { x: gridX, y: gridY, size: gridSize, pitches, colorFn: (t) => colorForType(t, allTypes) })
   drawLegend(page1, { x: gridX + gridSize + 30, y: gridY + gridSize - 14, types: allTypes, colorFn: (t) => colorForType(t, allTypes), font: regular })
-  page1.drawText('Each dot is one pitch, colored by type. Numbers mark the standard 1–9 strike zone.', {
+  // D8 (Sept 9 2026): this report has no perspective logic and never will --
+  // it draws stored (catcher-frame) coordinates directly, always 1 top-left,
+  // regardless of which side a session was charted from. Caption says so
+  // explicitly rather than leaving it implicit.
+  page1.drawText('Each dot is one pitch, colored by type. Numbers mark the standard 1–9 strike zone (catcher’s view).', {
     x: 40, y: gridY - 20, size: 8, font: regular, color: COLORS.faint
   })
 

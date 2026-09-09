@@ -537,9 +537,18 @@ function currentPitcher(){
   return state.roster.find(p => p.id === state.currentPitcherId) || null;
 }
 function isStrikeCell(row, col){ return row >= 1 && row <= 3 && col >= 1 && col <= 3; }
-function zoneNumber(row, col){
-  if(!isStrikeCell(row, col)) return null;
-  return (row - 1) * 3 + (col - 1) + 1; // 1 (top-left) ... 9 (bottom-right), standard baseball numbering
+// Zone numbering protocol (D8, Sept 9 2026): 1/4/7 = inside, 2/5/8 = middle,
+// 3/6/9 = outside, ALWAYS. Rows never flip. Inputs are CATCHER-FRAME
+// coordinates (the stored frame) -- callers convert screen coordinates to
+// catcher-frame via the existing U5 transform (perspectiveCol) first; this
+// function itself has no perspective awareness, on purpose, so there is
+// only one mirror expression in the whole file. batterSide: 'R' (default
+// until U2) | 'L'. Returns 1-9 for strike-zone cells, null otherwise.
+// Never stored -- a zone number is a display label, not a cell identity.
+function zoneNumberFor(cRow, cCol, batterSide = 'R'){
+  if(cRow < 1 || cRow > 3 || cCol < 1 || cCol > 3) return null;
+  const colFromInside = batterSide === 'R' ? cCol : 4 - cCol; // RHB inside = catcher-frame LEFT
+  return (cRow - 1) * 3 + colFromInside;
 }
 function isAccurate(pitch){
   return pitch.targetRow === pitch.actualRow && pitch.targetCol === pitch.actualCol;
@@ -1568,7 +1577,12 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
     for(let row=0; row<GRID_SIZE; row++){
       for(let col=0; col<GRID_SIZE; col++){
         const inZone = isStrikeCell(row,col);
-        const num = zoneNumber(row,col);
+        // D8: the label at this SCREEN cell is whatever number its
+        // catcher-frame equivalent would get -- the same perspectiveCol
+        // conversion used at capture, so the number shown here is always
+        // exactly the number that will end up in the pitch log for a tap
+        // here (see the pitch-log comment below).
+        const num = zoneNumberFor(row, perspectiveCol(col, chartingPerspective));
         const isTarget = pendingTarget && pendingTarget.row === row && pendingTarget.col === col;
         const isFlash = flashCell && flashCell.row === row && flashCell.col === col;
         const isGlow = glowCells && glowCells.has(row+'-'+col);
@@ -1591,7 +1605,9 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
         const key = row+'-'+col;
         const count = heat[key] || 0;
         const inZone = isStrikeCell(row,col);
-        const num = zoneNumber(row,col);
+        // D8: history/heat-map rows ARE stored (catcher-frame) coordinates
+        // already -- no transform, always "Catcher's view" (see caption).
+        const num = zoneNumberFor(row, col);
         const intensity = count / maxCount;
         const bg = `background:${heatColor(intensity)};opacity:${0.4 + 0.5*intensity};`;
         const cls = 'zone-cell' + (inZone ? ' in-zone' : '');
@@ -1711,11 +1727,15 @@ function renderSessionView(){
     const accurate = isAccurate(pt);
     const relAccurate = isRelativelyAccurate(pt);
     const veloText = (pt.velo !== null && pt.velo !== undefined) ? `${pt.velo} mph · ` : '';
-    // U5: stored columns are canonical; converted back to the CURRENT
-    // session's screen frame so this matches what the charter actually
-    // tapped, not the raw stored value (see mirrorCol's comment).
-    const targetNum = zoneNumber(pt.targetRow, perspectiveCol(pt.targetCol, chartingPerspective));
-    const actualNum = zoneNumber(pt.actualRow, perspectiveCol(pt.actualCol, chartingPerspective));
+    // D8: pt.targetCol/actualCol are ALREADY catcher-frame (stored), so no
+    // conversion here -- zoneNumberFor on the stored value directly
+    // reproduces exactly the number the grid showed at the moment this
+    // pitch was tapped (see the grid-legend comment above). Converting
+    // again here (U5's original approach, before D8) would un-mirror it
+    // back toward screen space and disagree with the grid's own label for
+    // the same pitch.
+    const targetNum = zoneNumberFor(pt.targetRow, pt.targetCol);
+    const actualNum = zoneNumberFor(pt.actualRow, pt.actualCol);
     const modeTag = pt.accuracyMode ? ` <span style="color:#7C9CBF;">[${ACCURACY_MODE_LABELS[pt.accuracyMode]}${relAccurate ? ' ✓' : ''}]</span>` : '';
     const locText = `${targetNum ? 'aimed '+targetNum : 'aimed ball'} → ${actualNum ? 'landed '+actualNum : 'landed ball'}${accurate ? ' ✓' : ''}${modeTag}`;
     return `<div class="pitch-log-row">
@@ -1937,7 +1957,7 @@ function renderHistoryView(){
         </div>
         ${expanded ? `
         <div class="session-card-body">
-          <div class="zone-wrap">${renderZoneGrid(s.pitches, false)}<div class="zone-caption">Location heat map</div></div>
+          <div class="zone-wrap">${renderZoneGrid(s.pitches, false)}<div class="zone-caption">Location heat map · Catcher's view</div></div>
           <div style="flex:1;min-width:220px;">
             <table class="breakdown-table">
               <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th><th>Relative Acc%</th></tr></thead>

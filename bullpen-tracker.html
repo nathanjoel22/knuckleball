@@ -259,19 +259,45 @@
   .hint-msg{ font-size:12px; color:var(--clay); min-height:16px; }
 
   .zone-wrap{ display:flex; flex-direction:column; align-items:center; gap:10px; width:100%; }
-  /* U2a: silhouette sits BESIDE the grid, never overlapping it (unlike the
-     translucent home-plate overlay) -- a plain flex row so it never
-     competes with a charting cell for tap area. */
-  .zone-row{ display:flex; align-items:center; justify-content:center; gap:12px; }
-  .batter-silhouette{
-    display:flex; flex-direction:column; align-items:center; gap:4px; flex-shrink:0;
-    min-width:44px; min-height:44px; padding:6px 8px; background:transparent;
-    border:1.5px solid var(--border-strong); border-radius:8px; color:var(--chalk-dim);
+  /* U2a batter silhouette (Joel's traced source, Sept 9 2026 -- rules are
+     in batter-silhouette.html's own history/comments, binding). position:
+     absolute against .zone-grid (already position:relative, see below) and
+     takes part in NO layout flow -- a layout-sibling version shipped once
+     and pushed the home plate out of position; do not repeat that. Only
+     --kb-batter-h and --kb-batter-gap are meant to be tuned. */
+  .kb-batter{
+    position:absolute; bottom:0;
+    --kb-batter-h:112%; --kb-batter-gap:6px;
+    height:var(--kb-batter-h); aspect-ratio:167/504;
+    min-width:44px; padding:0; border:0; background:none; cursor:pointer;
+    -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+    color:#1a1a1a; opacity:.85; transition:opacity .12s ease;
   }
-  .batter-silhouette:hover{ border-color:var(--amber); color:var(--amber-bright); }
-  .batter-svg{ width:28px; height:52px; }
-  .batter-silhouette.on-right .batter-svg{ transform:scaleX(-1); }
-  .batter-label{ font-size:10px; font-weight:700; letter-spacing:0.06em; }
+  .kb-batter:active{ opacity:1; }
+  .kb-batter.is-left{ right:100%; margin-right:var(--kb-batter-gap); }
+  .kb-batter.is-right{ left:100%; margin-left:var(--kb-batter-gap); }
+  /* Source figure faces left; mirror it to face the grid when standing on the left. */
+  .kb-batter.is-left .kb-batter__fig{ transform:scaleX(-1); }
+  .kb-batter__fig{ display:block; width:100%; height:100%; fill:currentColor; }
+  .kb-batter__label{
+    /* THIS is the state indicator, not the silhouette -- an RHB seen from
+       behind and an LHB seen from the front are the same shape. Never
+       shrink or bury it. */
+    position:absolute; left:50%; top:calc(100% + 4px); transform:translateX(-50%);
+    white-space:nowrap; font-size:14px; font-weight:800; letter-spacing:.02em; line-height:1;
+    padding:5px 9px; border-radius:999px; background:#1a1a1a; color:#fff; pointer-events:none;
+  }
+  @media (max-width:430px){
+    /* No room in the margin at this width -- overlay the grid's outer edge
+       at low opacity instead (same treatment as the behind-pitcher home
+       plate). Still absolute, still no reflow; only the offset changes.
+       The label stays full-strength and becomes the tap target. */
+    .kb-batter{ opacity:1; }
+    .kb-batter__fig{ opacity:.22; }
+    .kb-batter.is-left{ right:auto; left:0; margin:0; }
+    .kb-batter.is-right{ left:auto; right:0; margin:0; }
+    .kb-batter__label{ pointer-events:auto; }
+  }
   .zone-grid{
     display:grid; grid-template-columns:repeat(5, 52px); grid-template-rows:repeat(5, 52px);
     gap:3px; background:var(--border); padding:3px; border-radius:6px;
@@ -1684,13 +1710,20 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
     }
   }
   const plate = renderHomePlate(chartingPerspective);
+  // U2a: the silhouette is ALWAYS an absolutely-positioned child inside
+  // .zone-grid (never a layout sibling -- that shipped once and pushed the
+  // home plate out of position), only for the live/clickable grid. History
+  // never passes a batterSide, so this is '' there, unchanged from before.
+  const silhouette = clickable
+    ? renderBatterSilhouette(batterSide, insideColumnOnScreenLeft(chartingPerspective, batterSide))
+    : '';
   // U5: behind_pitcher draws the plate INSIDE .zone-grid (an extra
   // absolutely-positioned child, overlaying the cells) instead of as a
   // sibling below it. The history call site never passes a perspective, so
   // it always falls through to the unchanged behind_catcher markup.
   return chartingPerspective === 'behind_pitcher'
-    ? `<div class="zone-grid">${cells}${plate}</div>`
-    : `<div class="zone-grid">${cells}</div>${plate}`;
+    ? `<div class="zone-grid">${cells}${plate}${silhouette}</div>`
+    : `<div class="zone-grid">${cells}${silhouette}</div>${plate}`;
 }
 
 /* Simple pentagon. Behind the catcher (default, and always for
@@ -1759,18 +1792,22 @@ function insideColumnOnScreenLeft(chartingPerspective, batterSide){
   return zoneNumberFor(1, perspectiveCol(1, chartingPerspective), batterSide) === 1;
 }
 
-// Simple inline SVG outline in a batting stance -- IS the control (tap to
-// flip), not decoration. Text label alongside so the state is never just
-// inferred from the drawing. scaleX(-1) on the right side is cosmetic
-// (faces the plate either way) and carries no logic of its own.
+// Joel's traced silhouette (source: batter-silhouette.html, Sept 9 2026).
+// IS the control (tap to flip), not decoration -- position:absolute, no
+// layout flow (see .kb-batter's comment). Side (.is-left/.is-right) comes
+// from insideColumnOnScreenLeft, the SAME U5-transform-derived logic as
+// before; only the markup/CSS changed here, not that decision. The pill
+// label is the actual state indicator (a silhouette alone is ambiguous
+// between handedness and viewpoint), never the figure.
 function renderBatterSilhouette(batterSide, onScreenLeft){
   const label = batterSide === 'R' ? 'RHB' : 'LHB';
-  return `<button class="batter-silhouette${onScreenLeft ? '' : ' on-right'}" onclick="toggleBatterSide()" aria-label="Batter side: ${label}. Tap to switch to ${batterSide === 'R' ? 'left-handed' : 'right-handed'}.">
-    <svg class="batter-svg" viewBox="0 0 40 90" role="img" aria-hidden="true">
-      <circle cx="20" cy="9" r="7"></circle>
-      <path d="M20 16 L18 45 M18 45 L8 80 M18 45 L28 78 M20 22 L8 18 M20 22 L32 32 L40 12" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+  const otherHand = batterSide === 'R' ? 'left' : 'right';
+  const thisHand = batterSide === 'R' ? 'right' : 'left';
+  return `<button type="button" class="kb-batter ${onScreenLeft ? 'is-left' : 'is-right'}" onclick="toggleBatterSide()" aria-label="Pitching to a ${thisHand}-handed batter. Tap to switch to ${otherHand}-handed.">
+    <svg class="kb-batter__fig" viewBox="0 0 167 504" aria-hidden="true" focusable="false">
+      <path d="M48.8 503C44.1 500.1 48.8 492 55.2 492C59.1 492 69.5 486.3 71.1 483.3C71.8 482 73.9 480 75.7 478.9C79.2 476.7 80.1 474.6 79.7 469C79.5 466.1 79.9 465.4 81.7 465.2C86 464.6 86.3 462.8 84 452.3C81.7 441.7 78.8 431.4 76 423.5C75 420.8 73.7 416 73 413C72.4 410 71.4 406.1 70.9 404.5C70.4 402.9 68.8 397.5 67.4 392.7C64.7 383.7 61 379 56.7 379C54.8 379 40.4 371.6 37.8 369.3C33.8 365.7 27.8 353.9 27.8 349.4C27.8 340.6 61.5 290.3 75.9 277.5C86 268.7 89.1 260.2 85.3 252.2C83.3 247.8 74 233.5 68.6 226.5C54.5 207.8 47.5 197.8 45.4 193.3C42.8 187.4 42.1 187.1 39.5 190C38.3 191.3 36.4 192 34 192C31.9 192 27.8 193.3 24.4 195C15.8 199.4 7.7 198.9 2.3 193.8C-1.5 190.3 -1 180.3 3.1 175.9C7.9 170.8 9 168.8 9 165.5C9 163.8 9.9 160.9 11 159C17.3 147.9 17.2 148.3 17.1 136.5C16.9 124.5 18 121.8 24.3 118.3C25.9 117.5 26.1 116.7 25.3 112.9L24.4 108.5L19.7 108.5C13.6 108.5 13.5 107.4 19 103.5L23.5 100.3L24 89.7C24.7 76.5 25.3 75.7 39.3 70.1C45.2 67.7 58.6 69.2 66.1 73.1C72.4 76.4 71.1 77.6 103.4 39C111.8 29 122.5 16.9 133.4 5.3C138.8 -0.6 141.2 -1.2 145.4 2.1C151.6 7 151.4 7.3 113.7 45.1C74.2 84.7 75.4 83.2 77.1 89.2C77.8 91.6 78.3 98.1 78.4 103.7C78.5 113.3 78.6 114 80.5 114.1C81.6 114.2 88.2 114.1 95.1 114C109.3 113.8 112.1 114.6 116.3 120.2C119.8 124.9 120.4 127.3 120.5 138C120.6 145.4 121.1 148.5 122.8 152.3C124 155 125.6 161.9 126.5 168.8C128.5 184.1 135.6 212.4 138.5 217C139.8 219 143.5 223.8 146.7 227.6C149.9 231.4 153.8 236.3 155.3 238.5C156.7 240.7 159.2 243.8 160.6 245.5C165.6 251.2 167 255.6 167 266.5C167 283.8 164.5 290.2 151.2 306.3C142.5 316.9 134.4 328 125 342C118.5 351.7 111.8 360.7 104.8 369.2C100.1 374.9 100.1 375.4 106.5 382.8C116.4 394.2 122.8 399.3 126.5 398.7C129.1 398.3 130.9 398.8 134.6 401.3C137.2 403.1 139.8 404.8 140.4 405.1C142 406.1 150.7 408 153.4 408C156.9 408 161 411.7 161 414.9C161 418.3 152.8 435.3 150.3 437.1C147 439.5 145 443.3 145 447.1C145 451.8 138.5 465.6 132.6 473.8C128.5 479.3 127.6 480 124.6 480C119.3 480 118.5 478.2 118.4 465.1C118.3 441.8 113.9 427.9 107.5 430.4C103.9 431.7 107.3 468.1 111.5 473.1C113 475 113.9 477.7 114.3 482.4C114.6 486 115.5 490.8 116.1 492.9C118.8 502.1 114.9 504.5 98.5 503.6C85.5 502.9 87.1 502.9 67.5 503.5C56.3 503.9 49.9 503.7 48.8 503Z"></path>
     </svg>
-    <span class="batter-label mono">${label}</span>
+    <span class="kb-batter__label">vs ${label}</span>
   </button>`;
 }
 
@@ -1790,7 +1827,6 @@ function renderSessionView(){
   const stats = sessionStats(pitches);
   const chartingPerspective = sessionPerspective(state.activeSession);
   const currentBatterSide = sessionBatterSide(state.activeSession);
-  const silhouetteOnLeft = insideColumnOnScreenLeft(chartingPerspective, currentBatterSide);
   const typeChips = p.pitchTypes.map(t => {
     const color = colorForType(p, t);
     const selected = state.selectedType === t;
@@ -1871,11 +1907,7 @@ function renderSessionView(){
         <div class="hint-msg">${state.hint}</div>
         <div>
           <div class="zone-wrap">
-            <div class="zone-row">
-              ${silhouetteOnLeft ? renderBatterSilhouette(currentBatterSide, true) : ''}
-              ${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}
-              ${silhouetteOnLeft ? '' : renderBatterSilhouette(currentBatterSide, false)}
-            </div>
+            ${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}
             <div class="zone-caption">${zoneCaption}</div>
           </div>
         </div>

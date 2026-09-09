@@ -45,9 +45,16 @@ const COLORS = {
 
 function isStrikeCell(row: number, col: number) { return row >= 1 && row <= 3 && col >= 1 && col <= 3 }
 function isAccurate(p: any) { return p.targetRow === p.actualRow && p.targetCol === p.actualCol }
+// U2a: batter_side back-compat (this packet, approach f) -- a stale
+// cached client can post a pitch shaped before this shipped, so fall back
+// to 'R' rather than throwing when it's absent or null. Must match
+// isRelativelyAccurate() in bullpen-tracker.html exactly -- same trap as
+// TYPE_PALETTE_HEX, and this exact pair of tests shipped inverted once
+// already (fixed Sept 8).
 function isRelativelyAccurate(p: any) {
   const mode = p.accuracyMode
   if (!mode) return isAccurate(p)
+  const batterSide = p.batterSide || 'R'
   switch (mode) {
     case 'ring': {
       const dRow = Math.abs(p.actualRow - p.targetRow)
@@ -56,13 +63,11 @@ function isRelativelyAccurate(p: any) {
     }
     case 'nothingUp': return p.actualRow >= 3
     case 'nothingLow': return p.actualRow <= 1
-    // Inside/outside is relative to BATTER HANDEDNESS; this mapping assumes
-    // a right-handed batter (for a RHB, inside = the pitcher's-glove-side
-    // columns, i.e. col 0-1 / the 1-4-7 column and left of it). U2 (batter
-    // side stored per pitch) is where this becomes dynamic instead of fixed.
-    // Must match isRelativelyAccurate() in bullpen-tracker.html exactly.
-    case 'nothingAway': return p.actualCol <= 1   // "Inside" -- left two columns only
-    case 'nothingInside': return p.actualCol >= 3 // "Outside" -- right two columns only
+    // "Inside" (nothingAway) / "Outside" (nothingInside): for a RHB,
+    // inside is catcher-frame LEFT (cols 0-1); for a LHB the same
+    // physical side of the plate is the RIGHT columns (3-4).
+    case 'nothingAway': return batterSide === 'R' ? p.actualCol <= 1 : p.actualCol >= 3
+    case 'nothingInside': return batterSide === 'R' ? p.actualCol >= 3 : p.actualCol <= 1
     default: return isAccurate(p)
   }
 }

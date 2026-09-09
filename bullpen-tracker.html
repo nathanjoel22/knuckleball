@@ -259,6 +259,19 @@
   .hint-msg{ font-size:12px; color:var(--clay); min-height:16px; }
 
   .zone-wrap{ display:flex; flex-direction:column; align-items:center; gap:10px; width:100%; }
+  /* U2a: silhouette sits BESIDE the grid, never overlapping it (unlike the
+     translucent home-plate overlay) -- a plain flex row so it never
+     competes with a charting cell for tap area. */
+  .zone-row{ display:flex; align-items:center; justify-content:center; gap:12px; }
+  .batter-silhouette{
+    display:flex; flex-direction:column; align-items:center; gap:4px; flex-shrink:0;
+    min-width:44px; min-height:44px; padding:6px 8px; background:transparent;
+    border:1.5px solid var(--border-strong); border-radius:8px; color:var(--chalk-dim);
+  }
+  .batter-silhouette:hover{ border-color:var(--amber); color:var(--amber-bright); }
+  .batter-svg{ width:28px; height:52px; }
+  .batter-silhouette.on-right .batter-svg{ transform:scaleX(-1); }
+  .batter-label{ font-size:10px; font-weight:700; letter-spacing:0.06em; }
   .zone-grid{
     display:grid; grid-template-columns:repeat(5, 52px); grid-template-rows:repeat(5, 52px);
     gap:3px; background:var(--border); padding:3px; border-radius:6px;
@@ -572,6 +585,18 @@ function sessionPerspective(session){
 }
 const PERSPECTIVE_PREF_KEY = 'lastChartingPerspective';
 
+// U2a -- batter side. Live (in-session, not-yet-saved) value defaults to
+// 'R'; NOT remembered across sessions like chartingPerspective is (Joel,
+// Sept 9: perspective is a habit of where a coach stands, batter side
+// varies freely within one pen, so a remembered value would be wrong as
+// often as right). Reads state.activeSession.currentBatterSide, which is
+// part of the persisted draft object (same mechanism chartingPerspective
+// already relies on), not a separate top-level UI field -- so it survives
+// a tab-kill mid-LHB-sequence instead of silently resetting to RHB.
+function sessionBatterSide(session){
+  return (session && session.currentBatterSide) || 'R';
+}
+
 const ACCURACY_MODE_LABELS = {
   ring: 'Accuracy Ring',
   nothingUp: 'Low',
@@ -585,9 +610,20 @@ const ACCURACY_MODE_LABELS = {
 // pitch's actual location alone (regardless of target) — a deliberate
 // choice matching how a coach might say "just stay down" for a
 // session, rather than demanding an exact spot.
+// U2a: inside/outside now follows the pitch's OWN recorded batter side
+// (falls back to 'R' for legacy pitches with no batter_side -- CLAUDE.md
+// landmine 9, a stale cached client could also post a pitch missing this
+// field). Read off the pitch object itself, not a second function
+// parameter -- several callers below pass this function bare to
+// .filter(), which would otherwise silently receive the array index as a
+// second argument. This exact pair of tests shipped inverted once already
+// (fixed Sept 8) and must change in lockstep with the identical copy in
+// supabase/functions/send-session-report/index.ts -- same trap as
+// TYPE_PALETTE_HEX.
 function isRelativelyAccurate(pitch){
   const mode = pitch.accuracyMode;
   if(!mode) return isAccurate(pitch);
+  const batterSide = pitch.batterSide || 'R';
   switch(mode){
     case 'ring': {
       const dRow = Math.abs(pitch.actualRow - pitch.targetRow);
@@ -596,12 +632,12 @@ function isRelativelyAccurate(pitch){
     }
     case 'nothingUp': return pitch.actualRow >= 3;       // bottom two rows only
     case 'nothingLow': return pitch.actualRow <= 1;      // top two rows only
-    // Inside/outside is relative to BATTER HANDEDNESS; this mapping assumes
-    // a right-handed batter (for a RHB, inside = the pitcher's-glove-side
-    // columns, i.e. col 0-1 / the 1-4-7 column and left of it). U2 (batter
-    // side stored per pitch) is where this becomes dynamic instead of fixed.
-    case 'nothingAway': return pitch.actualCol <= 1;     // "Inside" -- left two columns only
-    case 'nothingInside': return pitch.actualCol >= 3;   // "Outside" -- right two columns only
+    // "Inside" (key nothingAway) / "Outside" (key nothingInside): for a
+    // RHB, inside is the catcher-frame LEFT columns (0-1); for a LHB the
+    // same physical side of the plate is the RIGHT columns (3-4) -- the
+    // rule flips with batter side, the column numbers it tests do not.
+    case 'nothingAway': return batterSide === 'R' ? pitch.actualCol <= 1 : pitch.actualCol >= 3;
+    case 'nothingInside': return batterSide === 'R' ? pitch.actualCol >= 3 : pitch.actualCol <= 1;
     default: return isAccurate(pitch);
   }
 }
@@ -1078,7 +1114,10 @@ function draftKey(){ return 'draft:' + state.currentPitcherId + ':' + state.curr
 // is only ever read in one spot rather than duplicated at each call site.
 async function freshActiveSession(){
   const lastPerspective = await storGet(PERSPECTIVE_PREF_KEY);
-  return { pitches: [], startedAt: Date.now(), chartingPerspective: lastPerspective || 'behind_catcher' };
+  // U2a: currentBatterSide always starts 'R' -- deliberately NOT remembered
+  // across sessions like chartingPerspective is (see sessionBatterSide's
+  // comment).
+  return { pitches: [], startedAt: Date.now(), chartingPerspective: lastPerspective || 'behind_catcher', currentBatterSide: 'R' };
 }
 async function refreshDraftState(){
   if(!state.currentPitcherId){ state.draftAvailable = false; state.activeSession = null; return; }
@@ -1100,8 +1139,10 @@ async function refreshDraftState(){
 }
 window.resumeDraft = function(){
   state.activeSession = state.pendingDraft;
-  // Defensive: a draft persisted before U5 shipped won't carry this field.
+  // Defensive: a draft persisted before U5/U2a shipped won't carry these
+  // fields.
   state.activeSession.chartingPerspective = sessionPerspective(state.activeSession);
+  state.activeSession.currentBatterSide = sessionBatterSide(state.activeSession);
   state.draftAvailable = false;
   render();
 };
@@ -1125,6 +1166,15 @@ window.selectPerspective = async function(newPerspective){
   if(state.activeSession.pitches.length > 0) return; // locked after the first pitch
   state.activeSession.chartingPerspective = newPerspective;
   await storSet(PERSPECTIVE_PREF_KEY, newPerspective);
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// U2a: unlike perspective, batter side is NEVER locked -- it varies freely
+// within one pen (approach g). Flipping only affects pitches charted AFTER
+// this call; already-logged pitches keep whatever batterSide they were
+// captured with (see handleZoneTap and isRelativelyAccurate's comments).
+window.toggleBatterSide = async function(){
+  state.activeSession.currentBatterSide = sessionBatterSide(state.activeSession) === 'R' ? 'L' : 'R';
   await storSet(draftKey(), state.activeSession);
   render();
 };
@@ -1172,12 +1222,18 @@ window.handleZoneTap = async function(row, col){
   // columns are converted to the canonical catcher frame right here, once,
   // before anything reaches storage -- see mirrorCol's comment above.
   const chartingPerspective = sessionPerspective(state.activeSession);
+  // U2a: batterSide is frozen onto the pitch at the moment of capture, read
+  // from whatever the live toggle currently says -- permanently theirs
+  // regardless of how many times the toggle flips later in the same
+  // session (approach g).
+  const batterSide = sessionBatterSide(state.activeSession);
   state.activeSession.pitches.push({
     id: genUUID(),
     type: state.selectedType, velo: veloVal,
     targetRow: target.row, targetCol: perspectiveCol(target.col, chartingPerspective),
     actualRow: row, actualCol: perspectiveCol(col, chartingPerspective),
     accuracyMode: state.selectedAccuracyMode,
+    batterSide,
     ts: Date.now()
   });
   state.pendingTarget = null;
@@ -1421,6 +1477,10 @@ async function syncOutbox(){
       target_row: p.targetRow, target_col: p.targetCol,
       actual_row: p.actualRow, actual_col: p.actualCol,
       accuracy_mode: p.accuracyMode || null,
+      // U2a: per-pitch, not per-session (see the migration's comment) --
+      // null for a pitch queued before this shipped, same defensive
+      // fallback pattern as charting_perspective above.
+      batter_side: p.batterSide || null,
       ts: new Date(p.ts).toISOString()
     }));
     try{
@@ -1450,7 +1510,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by_role, pitch_count, charting_perspective, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, ts)')
+    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by_role, pitch_count, charting_perspective, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, ts)')
     .eq('pitcher_id', pitcherId)
     .eq('team_id', teamId)
     .order('started_at', { ascending: false });
@@ -1471,6 +1531,11 @@ async function loadSessionsForCurrentSelection(){
       targetRow: p.target_row, targetCol: p.target_col,
       actualRow: p.actual_row, actualCol: p.actual_col,
       accuracyMode: p.accuracy_mode || null,
+      // U2a: NULL on legacy pitches, on purpose (no default, no backfill --
+      // see the migration). isRelativelyAccurate falls back to 'R' itself
+      // when this is absent, so legacy sessions keep reporting exactly as
+      // they did before this shipped.
+      batterSide: p.batter_side || null,
       ts: new Date(p.ts).getTime()
     }))
   }));
@@ -1554,13 +1619,13 @@ function heatColor(intensity){
 // mirroring is distance-preserving when applied identically to both
 // points) -- but the returned Set stays keyed by SCREEN row-col, so the
 // caller's existing cell-matching logic needs no change.
-function relativelyAccurateCells(targetRow, targetCol, mode, chartingPerspective){
+function relativelyAccurateCells(targetRow, targetCol, mode, chartingPerspective, batterSide){
   const set = new Set();
   const canonTargetCol = perspectiveCol(targetCol, chartingPerspective);
   for(let r=0; r<GRID_SIZE; r++){
     for(let c=0; c<GRID_SIZE; c++){
       const canonCol = perspectiveCol(c, chartingPerspective);
-      if(isRelativelyAccurate({ accuracyMode: mode, targetRow, targetCol: canonTargetCol, actualRow: r, actualCol: canonCol })){
+      if(isRelativelyAccurate({ accuracyMode: mode, targetRow, targetCol: canonTargetCol, actualRow: r, actualCol: canonCol, batterSide })){
         set.add(r+'-'+c);
       }
     }
@@ -1568,11 +1633,11 @@ function relativelyAccurateCells(targetRow, targetCol, mode, chartingPerspective
   return set;
 }
 
-function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPerspective){
+function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPerspective, batterSide){
   let cells = '';
   if(clickable){
     const glowCells = (pendingTarget && state.selectedAccuracyMode)
-      ? relativelyAccurateCells(pendingTarget.row, pendingTarget.col, state.selectedAccuracyMode, chartingPerspective)
+      ? relativelyAccurateCells(pendingTarget.row, pendingTarget.col, state.selectedAccuracyMode, chartingPerspective, batterSide)
       : null;
     for(let row=0; row<GRID_SIZE; row++){
       for(let col=0; col<GRID_SIZE; col++){
@@ -1581,8 +1646,9 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
         // catcher-frame equivalent would get -- the same perspectiveCol
         // conversion used at capture, so the number shown here is always
         // exactly the number that will end up in the pitch log for a tap
-        // here (see the pitch-log comment below).
-        const num = zoneNumberFor(row, perspectiveCol(col, chartingPerspective));
+        // here (see the pitch-log comment below). Live batterSide, since
+        // this is "what would the NEXT tap here be labeled right now."
+        const num = zoneNumberFor(row, perspectiveCol(col, chartingPerspective), batterSide);
         const isTarget = pendingTarget && pendingTarget.row === row && pendingTarget.col === col;
         const isFlash = flashCell && flashCell.row === row && flashCell.col === col;
         const isGlow = glowCells && glowCells.has(row+'-'+col);
@@ -1684,6 +1750,30 @@ function renderPerspectiveToggle(){
   return `<div><div class="field-label" style="margin-bottom:8px;">Charting perspective</div><div class="chip-row">${chips}</div>${lockedNote}</div>`;
 }
 
+// U2a (D8): box "1" is always the inside column. Asking zoneNumberFor
+// directly whether screen col 1 (the zone's leftmost) is currently
+// labeled "1" -- through the SAME perspectiveCol conversion every other
+// label uses -- is what makes the silhouette's side provably the same
+// side as the 1/4/7 labels, with no second side-picking expression.
+function insideColumnOnScreenLeft(chartingPerspective, batterSide){
+  return zoneNumberFor(1, perspectiveCol(1, chartingPerspective), batterSide) === 1;
+}
+
+// Simple inline SVG outline in a batting stance -- IS the control (tap to
+// flip), not decoration. Text label alongside so the state is never just
+// inferred from the drawing. scaleX(-1) on the right side is cosmetic
+// (faces the plate either way) and carries no logic of its own.
+function renderBatterSilhouette(batterSide, onScreenLeft){
+  const label = batterSide === 'R' ? 'RHB' : 'LHB';
+  return `<button class="batter-silhouette${onScreenLeft ? '' : ' on-right'}" onclick="toggleBatterSide()" aria-label="Batter side: ${label}. Tap to switch to ${batterSide === 'R' ? 'left-handed' : 'right-handed'}.">
+    <svg class="batter-svg" viewBox="0 0 40 90" role="img" aria-hidden="true">
+      <circle cx="20" cy="9" r="7"></circle>
+      <path d="M20 16 L18 45 M18 45 L8 80 M18 45 L28 78 M20 22 L8 18 M20 22 L32 32 L40 12" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>
+    <span class="batter-label mono">${label}</span>
+  </button>`;
+}
+
 function renderSessionView(){
   const p = currentPitcher();
   if(state.draftAvailable){
@@ -1699,6 +1789,8 @@ function renderSessionView(){
   const pitches = state.activeSession.pitches;
   const stats = sessionStats(pitches);
   const chartingPerspective = sessionPerspective(state.activeSession);
+  const currentBatterSide = sessionBatterSide(state.activeSession);
+  const silhouetteOnLeft = insideColumnOnScreenLeft(chartingPerspective, currentBatterSide);
   const typeChips = p.pitchTypes.map(t => {
     const color = colorForType(p, t);
     const selected = state.selectedType === t;
@@ -1734,8 +1826,10 @@ function renderSessionView(){
     // again here (U5's original approach, before D8) would un-mirror it
     // back toward screen space and disagree with the grid's own label for
     // the same pitch.
-    const targetNum = zoneNumberFor(pt.targetRow, pt.targetCol);
-    const actualNum = zoneNumberFor(pt.actualRow, pt.actualCol);
+    // U2a: THIS pitch's own recorded batterSide, not the live toggle --
+    // flipping the toggle later must not relabel already-logged rows.
+    const targetNum = zoneNumberFor(pt.targetRow, pt.targetCol, pt.batterSide || 'R');
+    const actualNum = zoneNumberFor(pt.actualRow, pt.actualCol, pt.batterSide || 'R');
     const modeTag = pt.accuracyMode ? ` <span style="color:#7C9CBF;">[${ACCURACY_MODE_LABELS[pt.accuracyMode]}${relAccurate ? ' ✓' : ''}]</span>` : '';
     const locText = `${targetNum ? 'aimed '+targetNum : 'aimed ball'} → ${actualNum ? 'landed '+actualNum : 'landed ball'}${accurate ? ' ✓' : ''}${modeTag}`;
     return `<div class="pitch-log-row">
@@ -1777,7 +1871,11 @@ function renderSessionView(){
         <div class="hint-msg">${state.hint}</div>
         <div>
           <div class="zone-wrap">
-            ${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, sessionPerspective(state.activeSession))}
+            <div class="zone-row">
+              ${silhouetteOnLeft ? renderBatterSilhouette(currentBatterSide, true) : ''}
+              ${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}
+              ${silhouetteOnLeft ? '' : renderBatterSilhouette(currentBatterSide, false)}
+            </div>
             <div class="zone-caption">${zoneCaption}</div>
           </div>
         </div>

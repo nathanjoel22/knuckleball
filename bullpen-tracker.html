@@ -206,7 +206,14 @@
   .tab-btn.active{ color:var(--amber); border-bottom-color:var(--amber); }
 
   /* SESSION VIEW */
-  .session-grid-layout{ display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  /* Always stacked -- one layout, not a row-above-some-width/column-below-it
+     split. Previously `flex-wrap:wrap` let .controls-panel and .log-panel
+     sit side by side whenever the container was wide enough to fit both
+     min-widths; removing wrap (and flex-start, which would otherwise
+     shrink both panels to their own content width once direction is
+     column) means they always stack full-width, matching what iPhone
+     already did by accident of running out of room. */
+  .session-grid-layout{ display:flex; flex-direction:column; gap:26px; }
   .panel{ background:var(--field-panel); border:1px solid var(--border); border-radius:10px; padding:18px; }
   .controls-panel{ display:flex; flex-direction:column; gap:14px; min-width:260px; flex:1; }
   .chip-row{ display:flex; flex-wrap:wrap; gap:10px; }
@@ -259,6 +266,48 @@
   .hint-msg{ font-size:12px; color:var(--clay); min-height:16px; }
 
   .zone-wrap{ display:flex; flex-direction:column; align-items:center; gap:10px; width:100%; }
+  /* CHANGE 2 fix: reserve gutters for the batter silhouette so it never
+     overlaps a sibling -- in row #app layout (>860px), that sibling is the
+     pitcher-list sidebar sitting immediately left of .main. .zone-grid is a
+     FIXED 278px square in this width range (see its own rule, below) --
+     height:112% x aspect-ratio 167/504 puts the silhouette at ~103px wide,
+     plus --kb-batter-gap's 6px, so each side needs ~109px; 115px below
+     gives a small safety margin. (If --kb-batter-h or --kb-batter-gap is
+     ever retuned, per .kb-batter's own comment, this number needs
+     rechecking -- it's a hand computation, not a live calc() off those
+     custom properties, since they're declared scoped to .kb-batter itself.)
+     Deliberately max-width (a fixed px figure), NOT width:fit-content:
+     .zone-wrap also contains .zone-caption, whose text length changes as
+     pitches log ("Tap where you're aiming" vs "Now tap where it actually
+     landed...") -- fit-content sizing would sniff the caption's own
+     max-content width as an input, so the reserved gutter would shift
+     width depending on which caption happened to be showing. A fixed
+     max-width (278px grid + 2x115px gutter = 508px) is immune to that: the
+     caption just wraps inside the same 278px content column the grid
+     occupies, never influencing the box's size.
+     max-width, not width: .zone-wrap can still be its normal width:100% up
+     to that cap, so at ANY .controls-panel width above 508px (guaranteed
+     across the whole >860px range -- checked the narrowest case, 861px
+     total viewport, and .controls-panel is already ~517px there) the extra
+     space becomes ADDITIONAL margin via align-self:center, never less than
+     the guaranteed 115px. Under border-box (global *), max-width includes
+     the padding, so content width inside = 508 - 2x115 = 278px exactly --
+     zero slack left for flex's own centering math to redistribute, which
+     is what makes the padding an actual guarantee rather than get
+     cancelled out by .zone-wrap's width:100%+align-items:center (a plain
+     percentage width leaves centering to freely split ALL leftover space,
+     padding included, so padding alone on an unconstrained width does NOT
+     reliably reserve anything -- tested this by hand before landing here).
+     >860px only: below it #app itself stacks (sidebar moves above .main,
+     not beside it), so there is no sibling left to overlap, and the
+     existing width:100% centering already has generous incidental
+     clearance there (checked: iPad portrait alone leaves >200px spare on
+     each side) -- no equivalent fixed-px treatment needed. This uses the
+     SAME 860px breakpoint .zone-grid's own rule already keys off, not a
+     new one. */
+  @media (min-width:861px){
+    .zone-wrap{ max-width:508px; padding:0 115px; align-self:center; }
+  }
   /* U2a batter silhouette (Joel's traced source, Sept 9 2026 -- rules are
      in batter-silhouette.html's own history/comments, binding). position:
      absolute against .zone-grid (already position:relative, see below) and
@@ -271,7 +320,7 @@
     height:var(--kb-batter-h); aspect-ratio:167/504;
     min-width:44px; padding:0; border:0; background:none; cursor:pointer;
     -webkit-tap-highlight-color:transparent; touch-action:manipulation;
-    color:#1a1a1a; opacity:.85; transition:opacity .12s ease;
+    color:#D3D3D3; opacity:1; transition:opacity .12s ease;
   }
   .kb-batter:active{ opacity:1; }
   .kb-batter.is-left{ right:100%; margin-right:var(--kb-batter-gap); }

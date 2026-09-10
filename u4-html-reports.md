@@ -6,7 +6,7 @@
 
 | Question | Decision |
 |---|---|
-| Storage & links | **Frozen self-contained HTML file** in a **public** Supabase Storage bucket, unguessable filename, permanent URL. Downloads allowed, listing blocked. |
+| Storage & links | **Frozen self-contained HTML file** in a **public** Supabase Storage bucket, unguessable filename, permanent URL. Downloads allowed, listing blocked. **AMENDED Sept 10 — see Amendment 1 at the foot of this doc:** Supabase forces `text/plain` on all HTML from `*.supabase.co`, so the file is not linked directly. It is fetched and rendered by a small `report.html` shell page on knuckleballonline.com, and the emailed link points there. The stored file itself is unchanged. |
 | Why not signed URLs | A signed URL is tied to the project's JWT secret. If that ever rotates, every report link ever emailed dies at once — an unrecoverable break of the "links live forever" trust model. |
 | Why not a live report page | A stored-payload page means maintaining one renderer that must render every historical payload shape forever, including 5×5 reports after U2b moves to 7×7. Files don't have that problem. |
 | Deleted sessions | **The report dies with the session.** U4 records the file path on the session row so P1-15 can delete the object. |
@@ -237,3 +237,82 @@ Escalate if:     anon listing of the bucket cannot be blocked while keeping
 **CLAUDE.md landmine 5** said reports are computed client-side and can never be regenerated. After U4 the report still cannot be *recomputed*, but it no longer needs to be — the rendered artifact itself is stored permanently and can be re-sent forever. The practical limitation the landmine describes goes away even though the architecture that caused it does not.
 
 **The sample reports' zone naming.** The three sample PDFs in this project label zones "Top-Left", "Mid-Right" and so on. Under D8 those names are ambiguous: "left" depends on both viewpoint and batter handedness. U4 replaces them — physical language on the mixed plots, 1–9 numbering inside the per-side blocks, which is exactly where those numbers are well-defined.
+
+---
+
+## Amendment 1 — Supabase forces text/plain; reports are served through a shell page on knuckleballonline.com (Sept 10, 2026)
+
+**What was found.** During Phase 1, Claude Code discovered that Supabase rewrites `Content-Type: text/html` to `text/plain` on every response from `*.supabase.co` — Storage objects *and* Edge Function responses alike. This is a deliberate, long-standing platform restriction to stop arbitrary pages being hosted on their shared domain, not a bug and not a configuration mistake. Supabase's own position is that HTML responses require a paid custom domain. Verified directly: a report object returns `content-type: text/plain` alongside `content-security-policy: default-src 'none'; sandbox` and `x-content-type-options: nosniff`.
+
+**The fix, and why it is better than the original plan.** The content-type override only matters when a browser *navigates* to the URL and has to decide how to interpret the response. It is irrelevant to a `fetch()`, which returns bytes. Knuckleballonline.com already serves HTML correctly on GitHub Pages. So the report file stays exactly where the packet put it, and a small page on the existing site fetches and renders it.
+
+Confirmed viable by direct test: the Storage response carries `access-control-allow-origin: *`, so the cross-origin fetch is permitted. The CSP and nosniff headers on that response apply only to direct navigation and do not affect a fetch.
+
+Two things this improves over the original design, beyond merely working:
+
+- **The link lives on Joel's domain.** `knuckleballonline.com/report.html?r=<token>` rather than a `supabase.co` URL. This report's job is to travel between coaches and carry a signup path; the domain it arrives on is part of that.
+- **A sandboxed iframe cannot execute scripts at all.** The injection risk that motivated the escaping rules in (d) becomes contained by construction rather than by vigilance. The escaping rules still stand — belt and braces — but a single mistake is no longer sufficient to cause harm.
+
+**What stays exactly as specced:** the frozen self-contained HTML file, the public bucket, the unguessable object name, one report per session, reuse on re-send, `sessions.report_path`, and every content and framing rule. The file itself remains JavaScript-free.
+
+**What changes:**
+
+```
+  (k) NEW STATIC PAGE: report.html, in the repo, served by GitHub Pages.
+      - Reads the report token from the query string (?r=<token>).
+      - VALIDATE THE TOKEN BEFORE USING IT. Accept only the exact expected
+        shape (hex, expected length) with a strict regex. Never interpolate an
+        unvalidated query-string value into the Storage URL — that is how a
+        crafted ?r= value turns this page into a fetch-anything proxy.
+      - Fetches the object as TEXT from the public bucket.
+      - Renders it into <iframe sandbox srcdoc="...">. The sandbox attribute
+        must NOT include allow-scripts and must NOT include allow-same-origin.
+        An opaque origin with no script execution is the entire point.
+      - Sizes the iframe to fill the viewport and scroll internally. Content
+        height cannot be measured across an opaque origin, so do not try.
+      - Error states, all handled plainly and without a raw stack trace:
+        object missing (deleted session, or a bad token), network failure,
+        malformed token.
+      - A coach must be able to KEEP the report: offer a save/download of the
+        fetched HTML. Printing directly out of a sandboxed iframe is fiddly and
+        a download the coach opens locally is an acceptable answer — but the
+        report must not be a thing that can only ever be looked at.
+
+  (l) EMAIL LINK FORMAT. send-session-report now emails
+      https://knuckleballonline.com/report.html?r=<token>, not the Storage URL.
+      The Storage URL is an implementation detail and should not appear in any
+      email, ever — if it does, recipients get a plain-text wall.
+
+  (m) SERVICE WORKER — CHECK THIS. sw.js is scoped to the whole origin. If it
+      has a catch-all navigation fallback to the app shell, opening
+      /report.html could serve the TRACKER instead of the report. Verify
+      explicitly that /report.html is served correctly with the service worker
+      active, on a device that already has the app cached. This is landmine 9
+      wearing a new hat.
+```
+
+**New acceptance checks:**
+
+```
+                 16. Opening the emailed link on desktop and on a phone renders
+                     the report inline. No download step, no plain-text wall.
+                 17. A crafted token — wrong shape, path traversal, an absolute
+                     URL — is rejected by report.html without issuing a fetch.
+                     Show the attempts and the behavior.
+                 18. The iframe has no allow-scripts and no allow-same-origin.
+                     Confirm by reading the rendered DOM, not the source.
+                 19. With the service worker active on a device that already has
+                     the app cached, /report.html still serves the report and
+                     not the tracker shell (check (m)).
+                 20. A token whose object does not exist shows a clean message,
+                     not an error dump. This is also what a coach sees after
+                     P1-15 deletes a session, so the wording should suit that:
+                     the report is gone, not the app is broken.
+                 21. The report can be saved or printed from the page.
+```
+
+**Rejected alternatives, recorded so they are not revisited:**
+
+- **Supabase Pro plus the custom domain add-on** (~$25/mo plus ~$10/mo). The officially sanctioned fix and genuinely clean. Also fixes landmine 7 (free projects pausing when inactive) and improves backups, so the money is not pure cost. Rejected for now because the shell page is free and gets a better domain on the link. **Reconsider if** the shell page proves fragile, or when Pro is wanted for the pausing and backup reasons on its own merits.
+- **Committing reports to the repo via the GitHub API.** Free and renders correctly, but requires a repo-write credential in Edge Function env vars and grows the codebase with every report forever. The shell page gets the same domain benefit with neither cost.
+- **`Content-Disposition: attachment` to force a download.** Verified working and free, but "download it, find it, open it" on a phone is a poor first impression for the one artifact designed to travel. Acceptable only as a temporary unblock.

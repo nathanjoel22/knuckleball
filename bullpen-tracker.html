@@ -72,7 +72,7 @@
   /* SIDEBAR */
   .sidebar{
     width:280px; flex-shrink:0;
-    background:var(--field-panel);
+    background:#64B39A; /* Joel Sept 18 2026 -- was --field-panel */
     border-right:1px solid var(--border);
     padding:22px 18px;
     display:flex; flex-direction:column; gap:16px;
@@ -214,7 +214,11 @@
      column) means they always stack full-width, matching what iPhone
      already did by accident of running out of room. */
   .session-grid-layout{ display:flex; flex-direction:column; gap:26px; }
-  .panel{ background:var(--field-panel); border:1px solid var(--border); border-radius:10px; padding:18px; }
+  /* .panel is only .controls-panel (charting) and .log-panel (pitch log/
+     recent pitches, review) -- confirmed via grep, nothing else uses this
+     class. .session-card (History) and .contacts-panel have their own
+     separate --field-panel declarations and are untouched by this. */
+  .panel{ background:#64B39A; /* Joel Sept 18 2026 -- was --field-panel */ border:1px solid var(--border); border-radius:10px; padding:18px; }
   .controls-panel{ display:flex; flex-direction:column; gap:14px; min-width:260px; flex:1; }
   .chip-row{ display:flex; flex-wrap:wrap; gap:10px; }
   .type-chip{

@@ -145,6 +145,60 @@
   }
   .invite-btn:hover{ border-color:var(--amber); color:var(--amber); }
 
+  /* R0: invite LINK panel, replacing the old email-invite box. */
+  .invite-link-panel{
+    background:var(--field-panel-2); border:1px solid var(--border-strong);
+    border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px;
+  }
+  .invite-link-row{ display:flex; gap:6px; }
+  .invite-link-text{
+    flex:1; min-width:0; background:var(--field-dark); border:1px solid var(--border-strong);
+    border-radius:5px; color:var(--chalk-dim); padding:7px 9px; font-size:11.5px;
+    font-family:'IBM Plex Mono',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .invite-link-copy-btn{
+    flex-shrink:0; background:var(--field-dark); border:1px solid var(--border-strong);
+    color:var(--chalk-dim); border-radius:5px; padding:7px 10px; font-size:11.5px; font-weight:600;
+  }
+  .invite-link-copy-btn:hover{ border-color:var(--amber); color:var(--amber); }
+  .invite-regen-row{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .invite-regen-btn{
+    background:none; border:none; color:var(--chalk-faint); font-size:11.5px;
+    text-decoration:underline; padding:0;
+  }
+  .invite-regen-btn:hover{ color:var(--red); }
+  .invite-regen-warn{
+    font-size:12px; color:var(--chalk-dim); line-height:1.5; margin:0;
+  }
+  .invite-regen-confirm-row{ display:flex; gap:8px; margin-top:6px; }
+
+  /* R0: verification badge + remove control on a coach's roster items. */
+  .verify-badge{
+    font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;
+    padding:2px 6px; border-radius:20px; background:rgba(193,122,69,0.18); color:var(--clay);
+    margin-left:6px; flex-shrink:0;
+  }
+  .roster-item-remove{
+    background:none; border:none; color:var(--chalk-faint); font-size:12px;
+    padding:2px 4px; flex-shrink:0;
+  }
+  .roster-item-remove:hover{ color:var(--red); }
+
+  /* R0: deferred-verification banner, shown to a pitcher whose account
+     email isn't confirmed. Persistent, never a blocking modal (Joel's own
+     requirement -- they can look around). */
+  .verify-banner{
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px;
+    background:rgba(193,122,69,0.12); border:1px solid var(--clay-dim); border-radius:8px;
+    padding:12px 16px; margin-bottom:16px;
+  }
+  .verify-banner p{ margin:0; font-size:13px; color:var(--chalk-dim); flex:1; min-width:220px; }
+  .verify-banner-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+  .change-email-form{
+    background:var(--field-panel-2); border:1px solid var(--border-strong);
+    border-radius:8px; padding:14px; display:flex; flex-direction:column; gap:10px; margin-bottom:16px;
+  }
+
   .sign-out-btn{
     margin-top:auto; background:transparent; border:1px solid var(--border);
     color:var(--chalk-faint); border-radius:6px; padding:9px; font-size:12.5px;
@@ -635,6 +689,13 @@ let state = {
   currentTeamId: null,
   roster: [],               // (coach view) mapped pitcher objects on current team
   currentPitcherId: null,
+  myVerification: { email: null, emailConfirmed: false },   // R0: fail closed until my_verification_status() says otherwise
+  changeEmailOpen: false,
+  changeEmailStatus: null,
+  verifyResendStatus: null,
+  inviteCopyStatus: null,
+  regenerateArmed: false,
+  regenerateBusy: false,
   sessions: [],
   view: 'session',          // session | history | trends
   activeSession: null,
@@ -693,6 +754,17 @@ function colorForType(pitcher, type){
 function currentPitcher(){
   if(!isCoach()) return mapProfile(state.profile);
   return state.roster.find(p => p.id === state.currentPitcherId) || null;
+}
+// R0 item (g), UI half: whether the currently-viewed pitcher's OWN account
+// email is confirmed -- source differs by who's asking, since currentPitcher()
+// returns two different shapes (state.roster has emailConfirmed per pitcher,
+// from get_roster_verification; a pitcher viewing their own profile isn't
+// in their own roster array at all, so that comes from my_verification_status
+// via state.myVerification instead). The server-side gate in
+// send-session-report is the real enforcement; this only drives what the
+// UI shows and sends -- see that function's own comment.
+function currentPitcherVerified(p){
+  return isCoach() ? !!(p && p.emailConfirmed) : !!state.myVerification.emailConfirmed;
 }
 function isStrikeCell(row, col){ return row >= 1 && row <= 3 && col >= 1 && col <= 3; }
 // Zone numbering protocol (D8, Sept 9 2026): 1/4/7 = inside, 2/5/8 = middle,
@@ -819,6 +891,7 @@ function applyCachedContext(cached){
   state.roster = cached.roster || [];
   state.currentTeamId = cached.currentTeamId;
   state.currentPitcherId = cached.currentPitcherId;
+  state.myVerification = cached.myVerification || { email: null, emailConfirmed: false };
   state.view = isCoach() ? 'history' : 'session';
 }
 
@@ -962,6 +1035,17 @@ async function loadFullContextOnline(alreadyPainted){
   }
   state.profile = profile;
 
+  // R0: best-effort, matches profile/teams/roster's own "cached fast path
+  // shows stale, this reconcile pass refreshes it" treatment -- a failure
+  // here just leaves whatever was cached (fail closed: still unverified
+  // until proven otherwise, never the other way).
+  try{
+    const { data: verRows } = await netTimeout(supabaseClient.rpc('my_verification_status'));
+    if(verRows && verRows.length){
+      state.myVerification = { email: verRows[0].email, emailConfirmed: verRows[0].email_confirmed };
+    }
+  }catch(e){ /* keep whatever was cached */ }
+
   try{ await netTimeout(loadTeams()); }
   catch(e){ if(giveUp()) return; }
 
@@ -1049,7 +1133,11 @@ function readPersistedSessionRaw(){
 
 async function loadTeams(){
   if(isCoach()){
-    const { data } = await supabaseClient.from('teams').select('id, name').eq('coach_id', state.profile.id).order('created_at');
+    // R0: invite_token is on this same row, readable under the existing
+    // "Coaches manage own teams" policy -- no new RPC needed for a coach
+    // to see their OWN team's token (only the logged-out join page, which
+    // can't rely on RLS at all, goes through resolve_team_invite instead).
+    const { data } = await supabaseClient.from('teams').select('id, name, invite_token').eq('coach_id', state.profile.id).order('created_at');
     state.teams = data || [];
   } else {
     const { data } = await supabaseClient.from('pitcher_teams').select('team_id, teams(id, name)').eq('pitcher_id', state.profile.id);
@@ -1071,7 +1159,8 @@ async function saveLastKnownContext(){
     teams: state.teams,
     roster: state.roster,
     currentTeamId: state.currentTeamId,
-    currentPitcherId: state.currentPitcherId
+    currentPitcherId: state.currentPitcherId,
+    myVerification: state.myVerification
   });
 }
 
@@ -1084,7 +1173,7 @@ window.signOut = async function(){
 window.onTeamChange = async function(teamId, skipRender){
   state.currentTeamId = teamId;
   state.expandedSessionId = null;
-  state.inviteOpen = false;
+  state.regenerateArmed = false;
   state.hint = '';
   clearDeleteState();
 
@@ -1109,6 +1198,21 @@ async function loadRosterForTeam(teamId){
     .eq('team_id', teamId);
   if(error){ console.error('loadRosterForTeam failed', error); state.roster = []; return; }
   state.roster = (data || []).map(r => r.profiles).filter(Boolean).map(mapProfile);
+
+  // R0: verification status per pitcher, via the one sanctioned read path
+  // (get_roster_verification -- auth.users itself is never exposed to
+  // PostgREST/RLS). Best-effort: a failure here shouldn't block the
+  // roster from rendering, just leaves emailConfirmed undefined, which
+  // the UI treats the same as "unverified" (fail closed, never show a
+  // report-recipient as usable when its status is unknown).
+  const { data: verRows } = await supabaseClient.rpc('get_roster_verification', { p_team_id: teamId });
+  const verByPitcher = {};
+  (verRows || []).forEach(v => { verByPitcher[v.pitcher_id] = v; });
+  state.roster.forEach(p => {
+    const v = verByPitcher[p.id];
+    p.accountEmail = v ? v.email : null;
+    p.emailConfirmed = v ? v.email_confirmed : false;
+  });
 }
 
 window.selectPitcher = async function(pitcherId){
@@ -1121,36 +1225,103 @@ window.selectPitcher = async function(pitcherId){
   render();
 };
 
-/* ---------- INVITE A PITCHER (coach only) ---------- */
-window.toggleInvitePanel = function(){
-  state.inviteOpen = !state.inviteOpen;
-  state.inviteStatus = null;
+/* ---------- INVITE LINK (coach only, R0) ----------
+   Replaces the old per-email invite -- see CLAUDE.md D11 / u4-html-reports.md's
+   sibling packet: institutional mail gateways silently quarantine invites
+   from a young sending domain, so onboarding can't depend on email
+   reaching an inbox at all. One link per team, shareable however works
+   (text, GroupMe, read aloud, a QR code); regenerating instantly kills the
+   old one via teams.invite_token's UNIQUE constraint. */
+function inviteLinkFor(team){
+  return window.location.origin + '/join.html?t=' + team.invite_token;
+}
+window.copyInviteLink = async function(){
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  if(!team) return;
+  try{
+    await navigator.clipboard.writeText(inviteLinkFor(team));
+    state.inviteCopyStatus = 'copied';
+  }catch(e){
+    state.inviteCopyStatus = 'error';
+  }
+  render();
+  if(state.inviteCopyStatus === 'copied'){
+    setTimeout(() => { state.inviteCopyStatus = null; render(); }, 2000);
+  }
+};
+window.armRegenerateInvite = function(){
+  state.regenerateArmed = true;
   render();
 };
-window.sendInvite = async function(){
-  const input = document.getElementById('invite-email');
-  const email = (input.value || '').trim();
-  if(!email) return;
-  state.inviteStatus = 'sending';
+window.cancelRegenerateInvite = function(){
+  state.regenerateArmed = false;
   render();
-  try{
-    const res = await fetch(SUPABASE_URL + '/functions/v1/invite-pitcher', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token },
-      body: JSON.stringify({ email, teamId: state.currentTeamId })
-    });
-    const json = await res.json().catch(() => ({}));
-    if(res.ok){
-      state.inviteStatus = 'sent';
-    } else if(json.code === 'existing_account'){
-      // An honest dead-end until the roster-acceptance flow ships (P1-03
-      // hygiene; the real existing-player invite is Track R / R2).
-      state.inviteStatus = 'info:' + (json.error || 'That email already has a Knuckleball account.');
-    } else {
-      state.inviteStatus = 'error:' + (json.error || ('Server responded ' + res.status + '.'));
-    }
-  } catch(err){
-    state.inviteStatus = 'error:Could not reach the server — check your connection and try again.';
+};
+window.confirmRegenerateInvite = async function(){
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  if(!team) return;
+  state.regenerateBusy = true;
+  render();
+  const { data: newToken, error } = await supabaseClient.rpc('rotate_team_invite', { p_team_id: team.id });
+  state.regenerateBusy = false;
+  state.regenerateArmed = false;
+  if(!error && newToken){
+    team.invite_token = newToken;
+  }
+  render();
+};
+
+/* ---------- ROSTER REMOVE (coach only, R0) ----------
+   Already covered by the existing "Coaches remove pitchers from their
+   team" RLS policy on pitcher_teams -- this is a plain delete, no new
+   server-side logic needed. Removing a membership doesn't touch the
+   player's own sessions (they belong to the pitcher permanently, per
+   CLAUDE.md's roster model) -- only this team's view of them. */
+window.removeRosterPitcher = async function(pitcherId){
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  if(!team) return;
+  const { error } = await supabaseClient
+    .from('pitcher_teams')
+    .delete()
+    .eq('pitcher_id', pitcherId)
+    .eq('team_id', team.id);
+  if(error){ console.error('removeRosterPitcher failed', error); return; }
+  await loadRosterForTeam(team.id);
+  if(state.currentPitcherId === pitcherId){
+    state.currentPitcherId = state.roster.length ? state.roster[0].id : null;
+  }
+  render();
+};
+
+/* ---------- DEFERRED VERIFICATION (R0) ----------
+   Banner state + actions for a pitcher whose account email isn't
+   confirmed yet. Resend uses the same signup-confirmation email Supabase
+   already sends; Change Email is the actual point of this packet (item f)
+   -- one tap, self-service, no coach or support needed. */
+window.resendVerification = async function(){
+  if(!state.myVerification.email) return;
+  state.verifyResendStatus = 'sending';
+  render();
+  const { error } = await supabaseClient.auth.resend({ type: 'signup', email: state.myVerification.email });
+  state.verifyResendStatus = error ? 'error' : 'sent';
+  render();
+};
+window.toggleChangeEmail = function(){
+  state.changeEmailOpen = !state.changeEmailOpen;
+  state.changeEmailStatus = null;
+  render();
+};
+window.submitChangeEmail = async function(){
+  const input = document.getElementById('change-email-input');
+  const email = (input && input.value || '').trim();
+  if(!email) return;
+  state.changeEmailStatus = 'sending';
+  render();
+  const { error } = await supabaseClient.auth.updateUser({ email });
+  if(error){
+    state.changeEmailStatus = 'error:' + error.message;
+  } else {
+    state.changeEmailStatus = 'sent';
   }
   render();
 };
@@ -1237,10 +1408,13 @@ window.removePitchType = async function(type){
    has no email column — so the fields start from the saved contact_emails
    and are edited by hand. */
 window.saveContactEmails = async function(){
+  // R0: pitcher is no longer a form field -- always the account email
+  // (see contactsPanel's own comment). There is no #contact-pitcher input
+  // anymore to read.
   const emails = {
     coach: (document.getElementById('contact-coach').value || '').trim(),
     pitchingCoach: (document.getElementById('contact-pitching-coach').value || '').trim(),
-    pitcher: (document.getElementById('contact-pitcher').value || '').trim()
+    pitcher: state.myVerification.email || ''
   };
   const { error } = await supabaseClient.from('profiles').update({ contact_emails: emails }).eq('id', state.profile.id);
   if(!error){ state.profile.contact_emails = emails; state.contactsSavedAt = Date.now(); }
@@ -2161,7 +2335,16 @@ function renderHistoryView(){
     }).join('');
 
     const contacts = p.contactEmails || {};
-    const emailList = [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean);
+    // R0 item (g): the pitcher's own address is excluded from the send
+    // entirely, and the UI says why, when unverified -- coach/pitching-coach
+    // addresses aren't tied to a Knuckleball account, so this check only
+    // ever applies to the pitcher slot. This is the UI half only; the real
+    // enforcement is server-side in send-session-report (a client can't
+    // bypass it by including the address anyway -- see that function).
+    const pVerified = currentPitcherVerified(p);
+    const pitcherExcluded = !pVerified && !!contacts.pitcher;
+    const emailList = [contacts.coach, contacts.pitchingCoach, pVerified ? contacts.pitcher : null]
+      .map(e => (e||'').trim()).filter(Boolean);
     const rs = state.reportStatus && state.reportStatus.sessionId === s.id ? state.reportStatus : null;
     const reportPanel = s.pending ? `
       <div class="report-panel">
@@ -2174,6 +2357,7 @@ function renderHistoryView(){
         ${emailList.length
           ? `<p class="report-recipients">To: ${emailList.join(', ')}</p>`
           : `<p class="report-recipients">No contact emails set for ${p.name} yet${isCoach() ? '' : ' — add them under Contacts above'}.</p>`}
+        ${pitcherExcluded ? `<p class="report-recipients" style="color:var(--clay);">${p.name}'s own address isn't verified yet, so it's excluded until they verify.</p>` : ''}
         <button class="btn btn-primary" ${emailList.length ? '' : 'disabled'} onclick="sendSessionReport('${s.id}')">Send report</button>
         ${rs ? `<p class="report-status report-status-${rs.status}">${rs.message}</p>` : ''}
       </div>`;
@@ -2272,7 +2456,13 @@ window.sendSessionReport = async function(sessionId){
   const session = state.sessions.find(s => s.id === sessionId);
   if(!session || !p) return;
   const contacts = p.contactEmails || {};
-  const emails = [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean);
+  // R0 item (g): matches renderHistoryView's own filter -- an unverified
+  // pitcher's own address never goes in the send at all, client-side. The
+  // server-side check (pitcherId below) is what actually can't be
+  // bypassed; this just keeps normal usage from ever hitting that path.
+  const pVerified = currentPitcherVerified(p);
+  const emails = [contacts.coach, contacts.pitchingCoach, pVerified ? contacts.pitcher : null]
+    .map(e => (e||'').trim()).filter(Boolean);
   if(!emails.length) return;
 
   state.reportStatus = { sessionId, status: 'sending', message: 'Sending…' };
@@ -2303,6 +2493,7 @@ window.sendSessionReport = async function(sessionId){
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token },
       body: JSON.stringify({
         emails,
+        pitcherId: p.id,
         pitcherName: p.name,
         date: session.date,
         teamName: team ? team.name : '',
@@ -2341,7 +2532,7 @@ function render(){
   if(!state.teams.length){
     const msg = isCoach()
       ? `<p>You don't have a team yet — something may have gone wrong during signup.</p>`
-      : `<p>You haven't joined a team yet. Ask your coach to send you an invite email.</p>`;
+      : `<p>You haven't joined a team yet. Ask your coach for their team's invite link.</p>`;
     app.innerHTML = `
       <div class="sidebar">
         <div class="brand-block"><div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div><span class="tagline">Always a Step Ahead</span>${renderOfflinePill()}</div>
@@ -2360,35 +2551,44 @@ function render(){
   let sidebarBody;
   if(isCoach()){
     const rosterItems = state.roster.map((p, i) => `
-      <button class="roster-item${p.id===state.currentPitcherId?' active':''}" onclick="selectPitcher('${p.id}')">
-        <div class="roster-item-main">
-          <span class="roster-item-name">${p.name}</span>
-          <span class="roster-item-types">${p.pitchTypes.join(' · ') || 'No pitches set yet'}</span>
-        </div>
-        <span class="roster-item-num">${String(i+1).padStart(2,'0')}</span>
-      </button>`).join('');
+      <div class="roster-item${p.id===state.currentPitcherId?' active':''}" style="display:flex;">
+        <button style="all:unset;flex:1;min-width:0;display:flex;align-items:center;cursor:pointer;" onclick="selectPitcher('${p.id}')">
+          <div class="roster-item-main">
+            <span class="roster-item-name">${p.name}${p.emailConfirmed ? '' : '<span class="verify-badge">Unverified</span>'}</span>
+            <span class="roster-item-types">${p.pitchTypes.join(' · ') || 'No pitches set yet'}</span>
+          </div>
+          <span class="roster-item-num">${String(i+1).padStart(2,'0')}</span>
+        </button>
+        <button class="roster-item-remove" title="Remove ${p.name} from this team" onclick="event.stopPropagation();removeRosterPitcher('${p.id}')">✕</button>
+      </div>`).join('');
 
-    const inviteForm = state.inviteOpen ? `
-      <div class="invite-form">
-        <div>
-          <div class="field-label">Pitcher's email</div>
-          <input id="invite-email" class="text-input" placeholder="pitcher@example.com" style="margin-top:5px;">
+    const team = state.teams.find(t => t.id === state.currentTeamId);
+    // R0: link + copy + regenerate, replacing the old per-email invite box
+    // entirely -- not hidden, not disabled, removed (item (d)).
+    const inviteLinkPanel = team ? `
+      <div class="invite-link-panel">
+        <div class="field-label">Team invite link</div>
+        <div class="invite-link-row">
+          <span class="invite-link-text">${inviteLinkFor(team)}</span>
+          <button class="invite-link-copy-btn" onclick="copyInviteLink()">${state.inviteCopyStatus === 'copied' ? 'Copied!' : 'Copy'}</button>
         </div>
-        <div class="form-row-buttons">
-          <button class="btn btn-primary" onclick="sendInvite()">Send invite</button>
-          <button class="btn btn-ghost" onclick="toggleInvitePanel()">Cancel</button>
+        <div class="invite-regen-row">
+          <span style="font-size:11px;color:var(--chalk-faint);">Rotated ${team.invite_token_rotated_at ? new Date(team.invite_token_rotated_at).toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '—'}</span>
+          ${state.regenerateArmed ? '' : '<button class="invite-regen-btn" onclick="armRegenerateInvite()">Regenerate</button>'}
         </div>
-        ${state.inviteStatus === 'sending' ? '<p class="invite-status invite-status-sending">Sending…</p>' : ''}
-        ${state.inviteStatus === 'sent' ? '<p class="invite-status invite-status-sent">Invite sent.</p>' : ''}
-        ${state.inviteStatus && state.inviteStatus.indexOf('info:') === 0 ? `<p class="invite-status invite-status-info">${state.inviteStatus.slice(5)}</p>` : ''}
-        ${state.inviteStatus && state.inviteStatus.indexOf('error:') === 0 ? `<p class="invite-status invite-status-error">${state.inviteStatus.slice(6)}</p>` : ''}
-      </div>` : `<button class="invite-btn" onclick="toggleInvitePanel()">+ Invite pitcher</button>`;
+        ${state.regenerateArmed ? `
+          <p class="invite-regen-warn">This makes a new link and the current one stops working immediately — anyone who hasn't joined yet with the old link will need the new one.</p>
+          <div class="invite-regen-confirm-row">
+            <button class="btn btn-primary" style="background:var(--red);" ${state.regenerateBusy ? 'disabled' : ''} onclick="confirmRegenerateInvite()">${state.regenerateBusy ? 'Regenerating…' : 'Regenerate now'}</button>
+            <button class="btn btn-ghost" ${state.regenerateBusy ? 'disabled' : ''} onclick="cancelRegenerateInvite()">Cancel</button>
+          </div>` : ''}
+      </div>` : '';
 
     sidebarBody = `
       ${teamSelector}
       <div class="roster-label">Roster</div>
       <div class="roster-list">${rosterItems || '<p style="color:var(--chalk-faint);font-size:12.5px;">No pitchers on this team yet.</p>'}</div>
-      ${inviteForm}`;
+      ${inviteLinkPanel}`;
   } else {
     sidebarBody = `
       ${teamSelector}
@@ -2422,13 +2622,21 @@ function render(){
 
     const contacts = p.contactEmails || {};
     const coachFieldValue = contacts.coach || '';
-    const pitcherFieldValue = contacts.pitcher || '';
+    // R0: "your email" is no longer free-text -- it's always this account's
+    // real email, so the report-recipient gate in send-session-report
+    // (item g) is checking something a client can't just type around.
+    // Read-only here; the ONLY way to change it is the verify banner's
+    // Change Email action above, which is the actual account email change.
+    const myEmail = state.myVerification.email || '';
     const contactsPanel = (!isCoach() && state.contactsOpen) ? `
       <div class="contacts-panel">
         <div class="field"><span class="field-label">Coach email</span><input class="text-input" id="contact-coach" value="${coachFieldValue}" placeholder="coach@example.com"></div>
         <div class="field"><span class="field-label">Additional contact (optional)</span><input class="text-input" id="contact-pitching-coach" value="${contacts.pitchingCoach||''}" placeholder="e.g. pitching coach"></div>
-        <div class="field"><span class="field-label">Your email</span><input class="text-input" id="contact-pitcher" value="${pitcherFieldValue}" placeholder="you@example.com"></div>
-        <p style="flex-basis:100%;margin:-4px 0 0;font-size:11.5px;color:var(--chalk-faint);">These are the addresses the session report is emailed to — edit or clear any field as needed.</p>
+        <div class="field">
+          <span class="field-label">Your email</span>
+          <input class="text-input" value="${myEmail}${state.myVerification.emailConfirmed ? '' : ' (unverified)'}" disabled style="opacity:0.7;">
+        </div>
+        <p style="flex-basis:100%;margin:-4px 0 0;font-size:11.5px;color:var(--chalk-faint);">Coach email is who the report is also cc'd to — edit or clear it as needed. Your own email always follows your account (change it above if it's wrong).</p>
         <div class="contacts-save-row">
           <button class="btn btn-primary" onclick="saveContactEmails()">Save</button>
           ${state.contactsSavedAt ? '<span class="contacts-saved-msg">Saved</span>' : ''}
@@ -2441,7 +2649,32 @@ function render(){
            <button class="tab-btn${state.view==='trends'?' active':''}" onclick="setView('trends')">Trends</button>
          </div>`;
 
+    // R0 item (e): persistent banner, never a blocking modal -- a pitcher
+    // can look around while unverified. Item (f): Change Email is one tap
+    // from here, not a separate settings hunt.
+    const verifyBanner = (!isCoach() && !state.myVerification.emailConfirmed) ? `
+      <div class="verify-banner">
+        <p>Verify your email so we can send you your reports. ${state.verifyResendStatus === 'sent' ? 'Verification email sent — check your inbox.' : ''}${state.verifyResendStatus === 'error' ? 'Could not resend — try again in a moment.' : ''}</p>
+        <div class="verify-banner-actions">
+          <button class="btn btn-ghost" ${state.verifyResendStatus === 'sending' ? 'disabled' : ''} onclick="resendVerification()">${state.verifyResendStatus === 'sending' ? 'Sending…' : 'Resend'}</button>
+          <button class="btn btn-primary" onclick="toggleChangeEmail()">${state.changeEmailOpen ? 'Cancel' : 'Change Email'}</button>
+        </div>
+      </div>` : '';
+
+    const changeEmailForm = (!isCoach() && state.changeEmailOpen) ? `
+      <div class="change-email-form">
+        <p style="margin:0;font-size:12.5px;color:var(--chalk-dim);">Use an email you check on your phone. School addresses often block our mail.</p>
+        <div class="field"><span class="field-label">New email</span><input class="text-input" id="change-email-input" type="email" placeholder="you@example.com"></div>
+        <div class="contacts-save-row">
+          <button class="btn btn-primary" ${state.changeEmailStatus === 'sending' ? 'disabled' : ''} onclick="submitChangeEmail()">${state.changeEmailStatus === 'sending' ? 'Sending…' : 'Send verification'}</button>
+          ${state.changeEmailStatus === 'sent' ? '<span class="contacts-saved-msg">Check the new address for a confirmation link.</span>' : ''}
+        </div>
+        ${state.changeEmailStatus && state.changeEmailStatus.indexOf('error:') === 0 ? `<p class="error-msg" style="margin:0;">${state.changeEmailStatus.slice(6)}</p>` : ''}
+      </div>` : '';
+
     main = `
+      ${verifyBanner}
+      ${changeEmailForm}
       <div class="pitcher-header">
         <div>
           <h2 class="display">${p.name}</h2>

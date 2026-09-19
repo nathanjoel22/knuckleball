@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Join a team · Knuckleball</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --field-dark:#0F241B; --field-panel:#183527; --field-panel-2:#1F4230;
+    --chalk:#F1ECDD; --chalk-dim:#B7C2B4; --chalk-faint:#7C8C82;
+    --clay:#C17A45; --amber:#E8A83D; --amber-bright:#F5C365; --red:#C0453B;
+    --border:rgba(241,236,221,0.12); --border-strong:rgba(241,236,221,0.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:var(--field-dark);
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(232,168,61,0.08), transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(193,122,69,0.08), transparent 45%);
+    color:var(--chalk); font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  ::selection{ background:var(--amber); color:var(--field-dark); }
+  .display{ font-family:'Teko', sans-serif; font-weight:600; letter-spacing:0.01em; }
+  a{ color:var(--chalk-faint); text-decoration:none; font-size:13px; }
+  a:hover{ color:var(--chalk); }
+  button{ font-family:inherit; cursor:pointer; }
+  input{ font-family:inherit; }
+  button:focus-visible, input:focus-visible, a:focus-visible{ outline:2px solid var(--amber-bright); outline-offset:3px; }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
+
+  .card{
+    width:100%; max-width:400px; background:var(--field-panel); border:1.5px solid var(--border-strong);
+    border-radius:14px; padding:38px 34px; display:flex; flex-direction:column; gap:20px;
+  }
+  .brand-block{ display:flex; flex-direction:column; gap:4px; }
+  .brand{ display:flex; align-items:baseline; gap:8px; }
+  .brand-mark{ width:10px; height:10px; border-radius:2px; background:var(--amber); transform:rotate(45deg); margin-bottom:3px; }
+  .brand h1{ font-size:22px; line-height:1; margin:0; letter-spacing:0.02em; }
+  .brand span{ color:var(--amber); }
+  .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:0.16em; color:var(--chalk-faint); }
+  h2.display{ font-size:34px; margin:0; line-height:1; }
+  p.sub{ font-size:13px; color:var(--chalk-dim); margin:0; }
+
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--chalk-faint); }
+  .text-input{
+    background:var(--field-dark); border:1px solid var(--border-strong); border-radius:6px;
+    color:var(--chalk); padding:11px 12px; font-size:14px; width:100%;
+  }
+  .text-input::placeholder{ color:var(--chalk-faint); }
+  .text-input:focus{ border-color:var(--amber); }
+
+  .btn-primary{
+    background:var(--amber); color:var(--field-dark); border:none; border-radius:7px;
+    padding:12px 14px; font-size:14px; font-weight:700; letter-spacing:0.02em;
+  }
+  .btn-primary:hover{ background:var(--amber-bright); }
+  .btn-primary:disabled{ opacity:0.6; cursor:not-allowed; }
+
+  .error-msg{ font-size:12.5px; color:var(--red); min-height:16px; }
+  .info-msg{ font-size:13px; color:var(--chalk-dim); line-height:1.5; background:var(--field-panel-2); border:1px solid var(--border-strong); border-radius:8px; padding:14px; }
+
+  .foot-row{ display:flex; justify-content:space-between; align-items:center; }
+  .step-hidden{ display:none; }
+  .spinner-msg{ font-size:13px; color:var(--chalk-dim); text-align:center; }
+</style>
+</head>
+<body>
+  <!-- Shown first, always, while the token is being resolved -- never the
+       form and never a raw error, per item (b)/(c) and check 2. -->
+  <div class="card" id="loading-card">
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <p class="spinner-msg">Loading invite…</p>
+  </div>
+
+  <div class="card step-hidden" id="invalid-card">
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <h2 class="display">Link no longer valid</h2>
+    <div class="info-msg">This invite link has expired or was replaced with a new one. Ask your coach for a current link.</div>
+    <a href="index.html">&larr; Back to Knuckleball</a>
+  </div>
+
+  <form class="card step-hidden" id="join-form" autocomplete="off">
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <div>
+      <h2 class="display" id="join-heading">Join a team</h2>
+      <p class="sub">Chart your bullpens, see your history, and share reports with your coach.</p>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="full-name">Full name</label>
+      <input class="text-input" id="full-name" placeholder="Your name" autofocus>
+    </div>
+    <div class="field">
+      <label class="field-label" for="email">Email</label>
+      <input class="text-input" id="email" type="email" placeholder="Use one you check on your phone" autocomplete="email">
+    </div>
+    <div class="field">
+      <label class="field-label" for="password">Password</label>
+      <input class="text-input" id="password" type="password" placeholder="At least 8 characters" autocomplete="new-password">
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+    <button type="submit" class="btn-primary" id="submit-btn">Create account &amp; join</button>
+    <div class="foot-row">
+      <a href="index.html">&larr; Back</a>
+      <a href="login.html">Already have an account? Log in</a>
+    </div>
+  </form>
+
+  <!-- Only reached if this Supabase project's "Confirm email" setting is
+       (or ever becomes) ON -- the intended R0 configuration has it OFF, so
+       signUp() should return a session immediately and this card should
+       never show in practice. It's still here, matching coach-signup.html's
+       own defensive pattern, for the case it's ever re-enabled: sets
+       emailRedirectTo to THIS exact page (token included) at signup time
+       below, so clicking the confirmation link lands back here with a real
+       session and the token still in the URL, and init()'s own
+       session-first check (below) picks up and finishes the join from
+       there -- no separate recovery path needed. -->
+  <div class="card step-hidden" id="confirm-card">
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <h2 class="display">Check your email</h2>
+    <div class="info-msg">We sent a confirmation link to your email. Click it on this device to finish joining.</div>
+  </div>
+
+  <div class="card step-hidden" id="joining-card">
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <p class="spinner-msg">Joining…</p>
+  </div>
+
+<script src="supabase-config.js"></script>
+<script>
+  function showCard(id){
+    ['loading-card','invalid-card','join-form','confirm-card','joining-card'].forEach(cid => {
+      document.getElementById(cid).classList.toggle('step-hidden', cid !== id);
+    });
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const token = (params.get('t') || '').trim();
+
+  const form = document.getElementById('join-form');
+  const errorEl = document.getElementById('error-msg');
+  const submitBtn = document.getElementById('submit-btn');
+  let teamName = '';
+
+  // Finish joining once we know there's a real session -- reached either
+  // right after signUp() below (the expected path, Confirm email OFF) or
+  // on a fresh load of this exact URL after clicking a confirmation link
+  // (the defensive path, Confirm email ON). Same completion logic either
+  // way, so there's exactly one place this happens.
+  async function completeJoin(){
+    showCard('joining-card');
+    // Idempotent (P1-12 pattern): no-ops if the profile already exists.
+    // Metadata (full_name, intended_role) was set at signUp() time, so no
+    // args needed here, same as coach-signup.html.
+    await supabaseClient.rpc('ensure_account_setup');
+    const { data, error } = await supabaseClient.rpc('join_team_via_invite', { p_token: token });
+    if(error || !data || data.error){
+      showCard('invalid-card');
+      return;
+    }
+    window.location.href = 'bullpen-tracker.html';
+  }
+
+  async function init(){
+    if(!token){
+      showCard('invalid-card');
+      return;
+    }
+
+    // Session-first: if we already have one (a fresh confirmation-link
+    // return, or just an already-logged-in browser), skip straight to
+    // completing the join -- never show the signup form to someone who
+    // doesn't need it.
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if(session){
+      await completeJoin();
+      return;
+    }
+
+    const { data: rows, error } = await supabaseClient.rpc('resolve_team_invite', { p_token: token });
+    if(error || !rows || !rows.length){
+      showCard('invalid-card');
+      return;
+    }
+    teamName = rows[0].team_name;
+    document.getElementById('join-heading').textContent = 'Join ' + teamName;
+    showCard('join-form');
+  }
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    errorEl.textContent = '';
+
+    const fullName = document.getElementById('full-name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    if(!fullName || !email || !password){
+      errorEl.textContent = 'Fill in every field to continue.';
+      return;
+    }
+    if(password.length < 8){
+      errorEl.textContent = 'Password should be at least 8 characters.';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating account…';
+
+    const { data: signUpData, error: signUpErr } = await supabaseClient.auth.signUp({
+      email, password,
+      options: {
+        data: { full_name: fullName, intended_role: 'pitcher' },
+        emailRedirectTo: window.location.href
+      }
+    });
+    if(signUpErr){
+      errorEl.textContent = signUpErr.message;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Create account & join';
+      return;
+    }
+
+    if(!signUpData.session){
+      showCard('confirm-card');
+      return;
+    }
+
+    await completeJoin();
+  });
+
+  init();
+</script>
+</body>
+</html>

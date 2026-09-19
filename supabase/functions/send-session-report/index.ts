@@ -305,12 +305,30 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: corsHeaders })
   }
 
-  const { emails, pitcherName, date, teamName, pitchTypes, pitches, stats, history } = body
-  if (!emails || !emails.length || !pitcherName || !Array.isArray(pitches) || !stats) {
-    return new Response(JSON.stringify({ error: 'emails, pitcherName, pitches, and stats are required' }), { status: 400, headers: corsHeaders })
+  const { emails, pitcherName, pitcherId, date, teamName, pitchTypes, pitches, stats, history } = body
+  if (!emails || !emails.length || !pitcherName || !pitcherId || !Array.isArray(pitches) || !stats) {
+    return new Response(JSON.stringify({ error: 'emails, pitcherName, pitcherId, pitches, and stats are required' }), { status: 400, headers: corsHeaders })
   }
   if (!Array.isArray(emails) || emails.length > MAX_RECIPIENTS || !emails.every((e: any) => typeof e === 'string' && EMAIL_RE.test(e))) {
     return new Response(JSON.stringify({ error: `emails must be an array of up to ${MAX_RECIPIENTS} valid addresses` }), { status: 400, headers: corsHeaders })
+  }
+
+  // R0 item (g): server-side enforcement of the unverified-pitcher report
+  // block -- the UI already filters this, but a crafted payload must not
+  // be able to bypass it. pitcher_email_report_blocked is a SECURITY
+  // DEFINER function (the only way to read auth.users.email_confirmed_at
+  // at all); called with the CALLER's own JWT, same as auth.getUser()
+  // above -- never service-role, so this function never grants more than
+  // any authenticated caller could already ask for a yes/no answer to.
+  const { data: blocked, error: blockedErr } = await callerClient.rpc('pitcher_email_report_blocked', {
+    p_pitcher_id: pitcherId,
+    p_emails: emails
+  })
+  if (blockedErr) {
+    return new Response(JSON.stringify({ error: 'Could not verify recipient eligibility: ' + blockedErr.message }), { status: 500, headers: corsHeaders })
+  }
+  if (blocked) {
+    return new Response(JSON.stringify({ error: 'This pitcher\'s account email is not yet verified and cannot receive reports.' }), { status: 403, headers: corsHeaders })
   }
 
   const dateStr = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''

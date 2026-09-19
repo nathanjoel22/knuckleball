@@ -72,7 +72,7 @@
   /* SIDEBAR */
   .sidebar{
     width:280px; flex-shrink:0;
-    background:#64B39A; /* Joel Sept 18 2026 -- was --field-panel */
+    background:#D2DAD7; /* Joel Sept 18 2026 -- was #64B39A, was --field-panel before that */
     border-right:1px solid var(--border);
     padding:22px 18px;
     display:flex; flex-direction:column; gap:16px;
@@ -128,10 +128,17 @@
   .roster-item{
     display:flex; align-items:center; justify-content:space-between; gap:8px;
     background:transparent; border:1px solid transparent; border-radius:6px;
-    padding:10px 10px; text-align:left; color:var(--chalk); cursor:pointer; width:100%;
+    padding:10px 10px; text-align:left; cursor:pointer; width:100%;
+    /* Default state has no background chip of its own -- sits directly on
+       .sidebar, which is #D2DAD7 (light) now. --chalk (near-white) was fine
+       when .sidebar was dark; on light it's nearly invisible. :hover/.active
+       below get their own dark --field-panel-2 chip, so THEY switch back to
+       chalk over that dark surface -- only the plain/inactive state needs
+       to differ from before. */
+    color:var(--field-dark);
   }
-  .roster-item:hover{ background:var(--field-panel-2); }
-  .roster-item.active{ background:var(--field-panel-2); border-color:var(--border-strong); }
+  .roster-item:hover{ background:var(--field-panel-2); color:var(--chalk); }
+  .roster-item.active{ background:var(--field-panel-2); border-color:var(--border-strong); color:var(--chalk); }
   .roster-item.active .roster-item-num{ color:var(--amber); }
   .roster-item-main{ display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
   .roster-item-name{ font-weight:600; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -140,8 +147,12 @@
 
   .invite-btn{
     display:flex; align-items:center; justify-content:center; gap:6px;
-    background:transparent; border:1px dashed var(--border-strong);
-    color:var(--chalk-dim); border-radius:6px; padding:10px; font-size:13px; font-weight:600;
+    background:transparent;
+    /* Same fix as .roster-item and .velo-toggle-row -- chalk-dim text and a
+       near-white translucent border were fine on the old dark .sidebar,
+       both nearly invisible on the new #D2DAD7. */
+    border:1px dashed rgba(15,36,27,0.28);
+    color:#5B6660; border-radius:6px; padding:10px; font-size:13px; font-weight:600;
   }
   .invite-btn:hover{ border-color:var(--amber); color:var(--amber); }
 
@@ -218,7 +229,7 @@
      recent pitches, review) -- confirmed via grep, nothing else uses this
      class. .session-card (History) and .contacts-panel have their own
      separate --field-panel declarations and are untouched by this. */
-  .panel{ background:#64B39A; /* Joel Sept 18 2026 -- was --field-panel */ border:1px solid var(--border); border-radius:10px; padding:18px; }
+  .panel{ background:#D2DAD7; /* Joel Sept 18 2026 -- was #64B39A, was --field-panel before that */ border:1px solid var(--border); border-radius:10px; padding:18px; }
   .controls-panel{ display:flex; flex-direction:column; gap:14px; min-width:260px; flex:1; }
   .chip-row{ display:flex; flex-wrap:wrap; gap:10px; }
   .type-chip{
@@ -243,10 +254,10 @@
   .pitch-counter-num{ font-family:'Teko',sans-serif; font-size:22px; line-height:1; color:var(--amber-bright); }
   .add-type-inline{ display:flex; gap:6px; align-items:center; }
   .add-type-inline input{ flex:1; padding:6px 8px; font-size:12.5px; }
-  .add-type-inline button{ background:none; border:1px solid var(--border-strong); color:var(--chalk-dim); border-radius:5px; padding:6px 10px; font-size:12px; }
+  .add-type-inline button{ background:none; border:1px solid rgba(15,36,27,0.28); color:#5B6660; border-radius:5px; padding:6px 10px; font-size:12px; }
   .add-type-inline button:hover{ color:var(--amber); border-color:var(--amber); }
 
-  .velo-toggle-row{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--chalk-dim); }
+  .velo-toggle-row{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:#5B6660; }
   .velo-toggle-row input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--amber); cursor:pointer; }
   .velo-slider-row{ display:flex; align-items:center; gap:14px; }
   .velo-slider-row.disabled{ opacity:0.4; }
@@ -324,7 +335,11 @@
     height:var(--kb-batter-h); aspect-ratio:167/504;
     min-width:44px; padding:0; border:0; background:none; cursor:pointer;
     -webkit-tap-highlight-color:transparent; touch-action:manipulation;
-    color:#D3D3D3; opacity:1; transition:opacity .12s ease;
+    /* The silhouette pops out of .zone-grid (still dark) into .zone-wrap /
+       .controls-panel, which is #D2DAD7 (light) now -- #D3D3D3 was already
+       barely visible there. Darkened to a mid slate grey for real contrast
+       against the light panel. */
+    color:#6B7280; opacity:1; transition:opacity .12s ease;
   }
   .kb-batter:active{ opacity:1; }
   .kb-batter.is-left{ right:100%; margin-right:var(--kb-batter-gap); }

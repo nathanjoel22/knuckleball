@@ -621,6 +621,33 @@
   .throws-btn{ min-height:44px; min-width:88px; padding:10px 16px; border-radius:22px; border:1.5px solid var(--border-strong); background:transparent; color:var(--chalk-dim); font-size:14px; font-weight:600; }
   .throws-btn.selected{ background:var(--amber); border-color:var(--amber); color:var(--field-dark); }
   .mix-prompt{ margin:8px 0 0; font-size:12px; color:var(--amber); }
+  /* LEADERBOARD (U8) */
+  .lb-page{ display:flex; flex-direction:column; gap:14px; max-width:640px; }
+  .lb-controls{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .lb-team-select{ max-width:100%; }
+  .lb-toggle{ display:flex; gap:8px; flex-wrap:wrap; }
+  .lb-sub{ margin:0; font-size:12px; color:var(--chalk-faint); }
+  .lb-asof{ margin:0; font-size:12.5px; color:var(--amber); }
+  .lb-section{ display:flex; flex-direction:column; gap:2px; }
+  .lb-title{ margin:0 0 6px; font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--chalk-faint); font-weight:600; }
+  .lb-empty{ margin:0; font-size:12.5px; color:var(--chalk-faint); }
+  .lb-row{ display:grid; grid-template-columns:22px 22px minmax(0,1fr) auto; column-gap:8px; align-items:center; padding:8px 8px; border-radius:6px; }
+  .lb-row.me{ background:var(--field-panel-2); box-shadow:inset 0 0 0 1px var(--amber); }
+  .lb-row.unq{ opacity:0.5; }
+  .lb-rank{ font-family:'Teko',sans-serif; font-size:20px; color:var(--chalk-faint); text-align:right; }
+  .lb-star{ width:20px; height:20px; display:block; }
+  .lb-star-gap{ display:block; width:20px; height:20px; }
+  .lb-name{ font-weight:600; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .lb-num{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--chalk-faint); font-weight:500; }
+  .lb-val{ font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:600; color:var(--amber-bright); text-align:right; }
+  .lb-val-btn{ background:none; border:1px dashed var(--amber); border-radius:5px; padding:2px 8px; cursor:pointer; }
+  .lb-unq-note{ font-size:11.5px; color:var(--chalk-faint); font-weight:500; }
+  .lb-n{ grid-column:3 / 5; font-size:11px; color:var(--chalk-faint); }
+  .lb-exclude-panel{ grid-column:1 / -1; display:flex; flex-direction:column; gap:8px; margin-top:6px; padding:10px; border:1px solid var(--border-strong); border-radius:6px; font-size:13px; }
+  .lb-exclude-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+  .lb-exclude-note{ font-size:11.5px; color:var(--chalk-faint); }
+  .lb-undo{ grid-column:auto; }
+  .edit-error{ margin:4px 0 0; font-size:11.5px; color:var(--clay); }
   .zone-row{ display:flex; flex-direction:column; gap:6px; padding:8px 0; border-top:1px solid var(--border); }
   .zone-paint{ display:flex; flex-direction:column; gap:12px; align-items:flex-start; }
   .zone-cell.zone-painted{ background:rgba(232,168,61,0.5); box-shadow:inset 0 0 0 2px var(--amber); }
@@ -711,7 +738,7 @@ const PITCH_CATALOG = [
 ];
 function pitchLabel(name){
   const c = PITCH_CATALOG.find(x => x.name === name);
-  return c ? c.abbr : name;
+  return c ? c.abbr : escHtml(name);   // unknown (legacy free-text) names are user input
 }
 const TYPE_PALETTE = ['#E8A83D','#6FA287','#C17A45','#C0453B','#7C9CBF','#B98CCB','#D4C15B','#4FA8A8'];
 const GRID_SIZE = 5;
@@ -764,6 +791,14 @@ let state = {
   draftAvailable: false,
   pendingDraft: null,
   contactsOpen: false,
+  lbTeamId: null,           // U8: which team's board is showing (remembered per device)
+  lbWindow: 'week',         // U8: week | month | all
+  lbCat: 'velocity',        // U8: velocity | accuracy | strike -- which ranked list is showing
+  lb: null,                 // U8: { teamId, win, data, fetchedAt, status: loading|ok|offline|error, error }
+  lbExcludeOpen: null,      // U8 (coach): pitch id whose 'Exclude this reading' panel is open
+  lbBusy: false,
+  editVeloError: '',        // (g) inline message when the edit-pitch velocity is rejected
+  editVeloDraft: '',
   uniformEditKey: null,     // 'pitcherId:teamId' while the uniform-number editor is open
   uniformMsg: '',           // one-line notice, e.g. after a conflict
   uniformMsgKey: null,      // which 'pitcherId:teamId' row the notice belongs to
@@ -1730,11 +1765,11 @@ function uniformRowHtml(teamId, pitcherId, label){
   const editing = state.uniformEditKey === key;
   const msg = (state.uniformMsgKey === key && state.uniformMsg) ? `<span class="uniform-msg">${state.uniformMsg}</span>` : '';
   if(t.number !== null && !editing){
-    return `<div class="uniform-field"><span class="field-label">${label}</span>
+    return `<div class="uniform-field"><span class="field-label">${escHtml(label)}</span>
       <div class="uniform-locked"><span class="uniform-locked-num">${t.number}</span>
       <button class="btn btn-ghost" onclick="editUniformNumber('${teamId}','${pitcherId}')">Change number</button></div>${msg}</div>`;
   }
-  return `<div class="uniform-field"><span class="field-label">${label}</span>
+  return `<div class="uniform-field"><span class="field-label">${escHtml(label)}</span>
     <div class="uniform-locked"><input id="uniform-input-${teamId}" class="text-input" type="number" inputmode="numeric" min="0" max="99" placeholder="—" value="${t.number === null ? '' : t.number}" onkeydown="if(event.key==='Enter')saveUniformNumber('${teamId}','${pitcherId}')">
     <button class="btn btn-primary" onclick="saveUniformNumber('${teamId}','${pitcherId}')">Save</button>
     ${t.number !== null ? '<button class="btn btn-ghost" onclick="cancelUniformEdit()">Cancel</button>' : ''}</div>${msg}</div>`;
@@ -1910,6 +1945,14 @@ const VELO_EMA_ALPHA = 0.15;
 // before this timestamp is left out of the centering average. Pitches charted
 // after it count normally.
 const U6_CUTOFF_TS = 1789965601000;
+// LOCKSTEP PAIR with public.is_default_velo_reading() in
+// supabase/migrations/20260921090000_u8_team_leaderboard.sql (same value, 65, and the same
+// cutoff: 1789965601 s = 2026-09-21 04:40:01 UTC). The team leaderboard applies the SQL copy;
+// everything in this file uses this one. A velocity of exactly 65 on a pitch charted before
+// the cutoff is the old slider's untouched default, i.e. NO reading. Stored pitches are never
+// changed -- this only decides what counts. Change both together or a pitcher's numbers will
+// differ between the app and the leaderboard.
+function isDefaultVeloReading(pt){ return pt.velo === 65 && pt.ts < U6_CUTOFF_TS; }
 function veloVisible(){ return window.matchMedia('(max-width:500px)').matches ? 5 : 7; }
 // Exponential moving average of the pitcher's most recent 100 recorded velocities
 // for this pitch type (oldest -> newest). Seeded with the plain average of the
@@ -1942,7 +1985,7 @@ async function rebuildVeloHistory(serverSessions){
     seen.add(sessionId);
     (pitches || []).forEach(pt => {
       if(pt.velo === null || pt.velo === undefined) return;
-      if(pt.velo === 65 && pt.ts < U6_CUTOFF_TS) return;
+      if(isDefaultVeloReading(pt)) return;
       rows.push({ type: pt.type, velo: pt.velo, ts: pt.ts });
     });
   };
@@ -2108,10 +2151,12 @@ window.removePitch = async function(realIdx){
 };
 window.startEditDraftRow = function(realIdx){
   state.editDraftRow = realIdx;
+  state.editVeloError = '';
   render();
 };
 window.cancelEditDraftRow = function(){
   state.editDraftRow = null;
+  state.editVeloError = '';
   render();
 };
 window.saveEditDraftRow = async function(realIdx){
@@ -2121,9 +2166,21 @@ window.saveEditDraftRow = async function(realIdx){
   const veloEl = document.getElementById('edit-draft-velo');
   if(typeEl && typeEl.value) pitch.type = typeEl.value;
   if(veloEl){
-    const v = veloEl.value.trim();
-    pitch.velo = v === '' ? null : Math.max(0, Math.min(110, parseInt(v, 10) || 0));
+    const raw = veloEl.value.trim();
+    if(raw === '' || !Number.isFinite(Number(raw))){
+      pitch.velo = null;                       // blank or non-numeric: no reading, never 0
+    } else {
+      const n = Number(raw);
+      if(!Number.isInteger(n) || n < VELO_MIN || n > VELO_MAX){
+        state.editVeloError = `Enter a whole number from ${VELO_MIN} to ${VELO_MAX} mph.`;
+        state.editVeloDraft = raw;
+        render();
+        return;                                // rejected: nothing is saved
+      }
+      pitch.velo = n;
+    }
   }
+  state.editVeloError = '';
   state.editDraftRow = null;
   await storSet(draftKey(), state.activeSession);
   render();
@@ -2403,7 +2460,11 @@ function clearDeleteState(){
   state.deleteConfirmText = '';
   state.deleteError = null;
 }
-window.setView = function(v){ state.view = v; state.profileMsg = ''; state.uniformEditKey = null; clearDeleteState(); render(); };
+window.setView = function(v){
+  if(v === 'leaderboard' && !hasLeaderboard()) v = 'session';
+  state.view = v; state.profileMsg = ''; state.uniformEditKey = null; state.lbExcludeOpen = null; clearDeleteState(); render();
+  if(v === 'leaderboard') loadLeaderboard();
+};
 window.toggleSessionExpand = function(id){
   state.expandedSessionId = state.expandedSessionId === id ? null : id;
   clearDeleteState();
@@ -2422,7 +2483,7 @@ function sessionStats(pitches){
   const zonePitches = pitches.filter(p => p.inAccuracyZone === true || p.inAccuracyZone === false);
   const zoneTotal = zonePitches.length;
   const zoneHits = zonePitches.filter(p => p.inAccuracyZone === true).length;
-  const velos = pitches.map(p => p.velo).filter(v => v !== null && v !== undefined);
+  const velos = pitches.filter(p => !isDefaultVeloReading(p)).map(p => p.velo).filter(v => v !== null && v !== undefined);
   const hasVelo = velos.length > 0;
   const avgVelo = hasVelo ? Math.round(velos.reduce((a,b)=>a+b,0) / velos.length) : null;
   const minVelo = hasVelo ? Math.min(...velos) : null;
@@ -2432,7 +2493,7 @@ function sessionStats(pitches){
     if(!byType[p.type]) byType[p.type] = { count:0, velos:[], strikes:0, accurate:0, relativeAccurate:0, zoneTotal:0, zoneHits:0 };
     if(p.inAccuracyZone === true || p.inAccuracyZone === false){ byType[p.type].zoneTotal++; if(p.inAccuracyZone) byType[p.type].zoneHits++; }
     byType[p.type].count++;
-    if(p.velo !== null && p.velo !== undefined) byType[p.type].velos.push(p.velo);
+    if(p.velo !== null && p.velo !== undefined && !isDefaultVeloReading(p)) byType[p.type].velos.push(p.velo);
     if(isStrikeCell(p.actualRow, p.actualCol)) byType[p.type].strikes++;
     if(isAccurate(p)) byType[p.type].accurate++;
     if(isRelativelyAccurate(p)) byType[p.type].relativeAccurate++;
@@ -2636,7 +2697,7 @@ function renderSessionView(){
   const typeChips = pitchTypesFor(p).map(t => {
     const color = colorForType(p, t);
     const selected = state.selectedType === t;
-    return `<button class="type-chip${selected?' selected':''}" style="${selected ? `background:${color};border-color:${color};` : `color:${color};border-color:${color}55;`}" onclick="selectType('${t.replace(/'/g,"\\'")}')">${pitchLabel(t)}</button>`;
+    return `<button class="type-chip${selected?' selected':''}" style="${selected ? `background:${color};border-color:${color};` : `color:${color};border-color:${color}55;`}" onclick="selectType(${escHtml(JSON.stringify(t))})">${pitchLabel(t)}</button>`;
   }).join('');
 
   const logRows = pitches.slice().reverse().slice(0, 12).map((pt, i) => {
@@ -2644,13 +2705,14 @@ function renderSessionView(){
     const color = colorForType(p, pt.type);
     if(state.editDraftRow === realIdx){
       const typeOpts = pitchTypesFor(p).map(t =>
-        `<option value="${String(t).replace(/"/g,'&quot;')}" ${t===pt.type?'selected':''}>${pitchLabel(t)}</option>`).join('');
+        `<option value="${escHtml(t)}" ${t===pt.type?'selected':''}>${pitchLabel(t)}</option>`).join('');
       return `<div class="pitch-log-row editing">
         <div class="edit-row-fields">
           <select id="edit-draft-type" class="edit-mini">${typeOpts}</select>
-          <input id="edit-draft-velo" class="edit-mini edit-velo" type="number" inputmode="numeric" min="0" max="110"
-            placeholder="mph" value="${(pt.velo!==null&&pt.velo!==undefined)?pt.velo:''}">
+          <input id="edit-draft-velo" class="edit-mini edit-velo" type="number" inputmode="numeric" min="${VELO_MIN}" max="${VELO_MAX}" step="1"
+            placeholder="mph" value="${state.editVeloError ? state.editVeloDraft : ((pt.velo!==null&&pt.velo!==undefined)?pt.velo:'')}">
         </div>
+        ${state.editVeloError ? `<p class="edit-error">${state.editVeloError}</p>` : ''}
         <div class="edit-row-actions">
           <button class="undo-btn" onclick="saveEditDraftRow(${realIdx})">Save</button>
           <button class="undo-btn" onclick="cancelEditDraftRow()">Cancel</button>
@@ -2696,7 +2758,7 @@ function renderSessionView(){
           <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
           <div class="chip-row">${typeChips}</div>
           ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
-            ? `${p.name} hasn't added any pitches yet. Add them in their profile to start charting.`
+            ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
             : 'Add your pitches in Profile to start charting.'}</p>
           <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
         </div>
@@ -2806,7 +2868,7 @@ function renderHistoryView(){
     .concat(state.sessions).concat(tombstones)
     .sort((a,b) => b.date - a.date);
   if(!combined.length){
-    return `<div class="empty-hist">No saved sessions yet for ${p.name}${isCoach() ? '' : ' — finish a bullpen session to see it here'}.</div>`;
+    return `<div class="empty-hist">No saved sessions yet for ${escHtml(p.name)}${isCoach() ? '' : ' — finish a bullpen session to see it here'}.</div>`;
   }
   return combined.map(s => {
     const dateStr = new Date(s.date).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
@@ -2829,7 +2891,7 @@ function renderHistoryView(){
     const expanded = state.expandedSessionId === s.id;
     const typeRows = Object.entries(stats.byType).map(([type, t]) => {
       const color = colorForType(p, type);
-      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${type}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${t.strikePct}%</td><td class="mono">${t.accuracyPct}%</td><td class="mono">${stats.hasZone ? (t.hasZone ? t.zoneAccuracyPct + '% (' + t.zoneTotal + ')' : '—') : t.relativeAccuracyPct + '%'}</td></tr>`;
+      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${escHtml(type)}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${t.strikePct}%</td><td class="mono">${t.accuracyPct}%</td><td class="mono">${stats.hasZone ? (t.hasZone ? t.zoneAccuracyPct + '% (' + t.zoneTotal + ')' : '—') : t.relativeAccuracyPct + '%'}</td></tr>`;
     }).join('');
 
     const contacts = p.contactEmails || {};
@@ -2855,10 +2917,10 @@ function renderHistoryView(){
       <div class="report-panel">
         <div class="field-label">Email this report</div>
         ${!pVerified
-          ? `<p class="report-recipients" style="color:var(--clay);">No report can be sent until ${p.name} verifies their email.</p>`
+          ? `<p class="report-recipients" style="color:var(--clay);">No report can be sent until ${escHtml(p.name)} verifies their email.</p>`
           : emailList.length
-            ? `<p class="report-recipients">To: ${emailList.join(', ')}</p>`
-            : `<p class="report-recipients">No contact emails set for ${p.name} yet${isCoach() ? '' : ' — add them under Contacts above'}.</p>`}
+            ? `<p class="report-recipients">To: ${escHtml(emailList.join(', '))}</p>`
+            : `<p class="report-recipients">No contact emails set for ${escHtml(p.name)} yet${isCoach() ? '' : ' — add them under Contacts above'}.</p>`}
         <button class="btn btn-primary" ${emailList.length ? '' : 'disabled'} onclick="sendSessionReport('${s.id}')">Send report</button>
         ${rs ? `<p class="report-status report-status-${rs.status}">${rs.message}</p>` : ''}
       </div>`;
@@ -3028,7 +3090,7 @@ function renderRelAccuracySection(p){
       const open = state.zonePaint && state.zonePaint.pitcherId === p.id && state.zonePaint.type === t;
       return `<div class="zone-row">
         <div class="profile-row"><strong>${pitchLabel(t)}</strong>
-          <button class="btn btn-ghost" onclick="${open ? 'cancelZonePaint()' : `openZonePaint('${t.replace(/'/g, "\\'")}')`}">${open ? 'Close' : 'Edit zones'}</button></div>
+          <button class="btn btn-ghost" onclick="${open ? 'cancelZonePaint()' : `openZonePaint(${escHtml(JSON.stringify(t))})`}">${open ? 'Close' : 'Edit zones'}</button></div>
         <p class="profile-note">${stat('vs RHB', r)} · ${stat('vs LHB', l)}</p>
         ${open ? renderZonePainter() : ''}
       </div>`;
@@ -3043,11 +3105,184 @@ function renderRelAccuracySection(p){
   </div>`;
 }
 
+/* ---------- LEADERBOARD (U8) ----------
+   One server call, get_team_leaderboard(team, window), returns per-pitcher aggregates only
+   (the function checks membership; nothing here widens what a pitcher can read). The last
+   board loaded is cached on-device per team and window, so offline it still shows, labelled
+   "as of". None of this ever runs on the charting path. */
+const LB_WINDOWS = [['week', 'Week'], ['month', 'Month'], ['all', 'All-time']];
+const LB_CATS = [['velocity', 'Velocity'], ['accuracy', 'Accuracy'], ['strike', 'Strike %']];
+function hasLeaderboard(){ return state.teams.length > 0; }   // cached membership: works offline
+function escHtml(v){
+  return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+function lbUserKey(){ return state.session ? state.session.user.id : ''; }
+function lbCacheKey(teamId, win){ return 'lb:' + lbUserKey() + ':' + teamId + ':' + win; }
+async function lbActiveTeamId(){
+  const ids = state.teams.map(t => t.id);
+  if(state.lbTeamId && ids.includes(state.lbTeamId)) return state.lbTeamId;
+  let remembered = null;
+  try{ remembered = await storGet('lbTeam:' + lbUserKey()); }catch(e){}
+  if(remembered && ids.includes(remembered)) return remembered;
+  return ids.includes(state.currentTeamId) ? state.currentTeamId : (ids[0] || null);
+}
+async function loadLeaderboard(){
+  if(!hasLeaderboard() || !state.session) return;
+  const teamId = await lbActiveTeamId();
+  if(!teamId) return;
+  state.lbTeamId = teamId;
+  const win = state.lbWindow;
+  let cached = null;
+  try{ cached = await storGet(lbCacheKey(teamId, win)); }catch(e){}
+  state.lb = { teamId, win, data: cached ? cached.data : null, fetchedAt: cached ? cached.fetchedAt : null, status: isOnline() ? 'loading' : 'offline', error: '' };
+  render();
+  if(!isOnline()) return;                       // offline: show the cached board, "as of"
+  const fresh = (extra) => Object.assign({}, state.lb, extra);
+  const still = () => state.lb && state.lb.teamId === teamId && state.lb.win === win;
+  try{
+    const { data, error } = await supabaseClient.rpc('get_team_leaderboard', { p_team_id: teamId, p_window: win });
+    if(error) throw error;
+    const rec = { data, fetchedAt: Date.now() };
+    await storSet(lbCacheKey(teamId, win), rec);
+    if(still()){ state.lb = fresh({ data, fetchedAt: rec.fetchedAt, status: 'ok' }); render(); }
+  }catch(e){
+    const refused = e && /not allowed|not authenticated/i.test(e.message || '');
+    if(still()){ state.lb = fresh({ status: refused ? 'refused' : (state.lb.data ? 'stale' : 'error'), error: (e && e.message) || '' }); render(); }
+  }
+}
+window.setLbTeam = async function(teamId){
+  state.lbTeamId = teamId;
+  state.lbExcludeOpen = null;
+  try{ await storSet('lbTeam:' + lbUserKey(), teamId); }catch(e){}
+  loadLeaderboard();
+};
+window.setLbWindow = function(win){
+  state.lbWindow = win;
+  state.lbExcludeOpen = null;
+  loadLeaderboard();
+};
+window.setLbCat = function(cat){
+  state.lbCat = cat;
+  state.lbExcludeOpen = null;
+  render();      // same data, different list: no reload
+};
+window.openLbExclude = function(pitchId){ state.lbExcludeOpen = (state.lbExcludeOpen === pitchId) ? null : pitchId; render(); };
+window.excludeLbReading = async function(pitchId){
+  if(state.lbBusy || !state.lb) return;
+  state.lbBusy = true; render();
+  const { error } = await supabaseClient.from('leaderboard_exclusions').insert({ pitch_id: pitchId, team_id: state.lb.teamId });
+  state.lbBusy = false;
+  state.lbExcludeOpen = null;
+  if(error){ state.lb = Object.assign({}, state.lb, { error: 'Could not exclude that reading. Try again.' }); render(); return; }
+  await loadLeaderboard();
+};
+window.restoreLbReading = async function(pitchId){
+  if(state.lbBusy || !state.lb) return;
+  state.lbBusy = true; render();
+  const { error } = await supabaseClient.from('leaderboard_exclusions').delete().eq('pitch_id', pitchId).eq('team_id', state.lb.teamId);
+  state.lbBusy = false;
+  if(error){ state.lb = Object.assign({}, state.lb, { error: 'Could not restore that reading. Try again.' }); render(); return; }
+  await loadLeaderboard();
+};
+// Inline SVG stars (no images, no icon library): gold, silver, bronze for ranks 1-3.
+function lbStar(rank){
+  const fill = rank === 1 ? '#D4AF37' : rank === 2 ? '#A8A9AD' : rank === 3 ? '#CD7F32' : null;
+  if(!fill) return '<span class="lb-star-gap"></span>';
+  const label = rank === 1 ? 'First place' : rank === 2 ? 'Second place' : 'Third place';
+  return `<svg class="lb-star" viewBox="0 0 24 24" role="img" aria-label="${label}"><path fill="${fill}" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>`;
+}
+function lbWhen(ms){
+  return new Date(ms).toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+}
+function lbDate(iso){
+  return new Date(iso).toLocaleDateString('en-US', { timeZone:'America/New_York', month:'short', day:'numeric', year:'numeric' });
+}
+function lbRow(r, unit, minimum, isCoach, cat){
+  const unq = r.qualified === false;
+  const rank = (r.rank === undefined || r.rank === null) ? '' : r.rank;
+  const num = (r.number === undefined || r.number === null) ? '' : ` <span class="lb-num">#${escHtml(r.number)}</span>`;
+  let val;
+  if(unq){
+    val = `<span class="lb-val lb-unq-note">not enough pitches (${r.pitch_count} of ${minimum})</span>`;
+  } else if(cat === 'velocity' && isCoach && rank === 1 && r.peak_pitch_id){
+    val = `<button class="lb-val lb-val-btn" onclick="openLbExclude('${escHtml(r.peak_pitch_id)}')" title="Review this reading">${escHtml(r.value)}${unit}</button>`;
+  } else {
+    val = `<span class="lb-val">${escHtml(r.value)}${unit}</span>`;
+  }
+  let extra = '';
+  if(cat === 'velocity' && isCoach && state.lbExcludeOpen && state.lbExcludeOpen === r.peak_pitch_id){
+    extra = `<div class="lb-exclude-panel">
+      <span>Peak reading: <strong>${escHtml(r.value)} mph</strong> on ${escHtml(lbDate(r.peak_pitch_ts))}.</span>
+      <span class="lb-exclude-actions">
+        <button class="btn btn-primary" style="background:var(--red);" ${state.lbBusy ? 'disabled' : ''} onclick="excludeLbReading('${escHtml(r.peak_pitch_id)}')">${state.lbBusy ? 'Excluding…' : 'Exclude this reading'}</button>
+        <button class="btn btn-ghost" onclick="openLbExclude(null)">Cancel</button>
+      </span>
+      <span class="lb-exclude-note">The pitch itself is not changed in History or reports. The next-highest reading takes over.</span>
+    </div>`;
+  }
+  return `<div class="lb-row${r.is_me ? ' me' : ''}${unq ? ' unq' : ''}">
+    <span class="lb-rank">${rank}</span><span class="lb-star-cell">${unq ? '' : lbStar(rank)}</span>
+    <span class="lb-name">${escHtml(r.name)}${num}</span>${val}
+    <span class="lb-n">${unq ? '' : `${r.pitch_count} pitch${r.pitch_count === 1 ? '' : 'es'}`}</span>
+    ${extra}
+  </div>`;
+}
+function lbSection(title, rows, unit, minimum, isCoach, cat, emptyMsg){
+  return `<div class="panel lb-section">${title ? `<h3 class="lb-title">${title}</h3>` : ''}
+    ${rows.length ? rows.map(r => lbRow(r, unit, minimum, isCoach, cat)).join('') : `<p class="lb-empty">${emptyMsg}</p>`}
+  </div>`;
+}
+function renderLeaderboardView(){
+  if(!hasLeaderboard()) return `<div class="empty-hist">Join a team to see its leaderboard.</div>`;
+  const lb = state.lb;
+  const teams = state.teams;
+  const teamId = (lb && lb.teamId) || state.lbTeamId || state.currentTeamId || (teams[0] && teams[0].id);
+  const picker = teams.length > 1
+    ? `<select class="team-select lb-team-select" onchange="setLbTeam(this.value)">${teams.map(t => `<option value="${escHtml(t.id)}" ${t.id === teamId ? 'selected' : ''}>${escHtml(t.name)}</option>`).join('')}</select>`
+    : '';
+  const toggle = `<div class="lb-toggle">${LB_WINDOWS.map(([k, label]) => `<button class="throws-btn${state.lbWindow === k ? ' selected' : ''}" onclick="setLbWindow('${k}')">${label}</button>`).join('')}</div>`;
+  const catToggle = `<div class="lb-toggle lb-cats">${LB_CATS.map(([k, label]) => `<button class="throws-btn${state.lbCat === k ? ' selected' : ''}" onclick="setLbCat('${k}')">${label}</button>`).join('')}</div>`;
+  let body;
+  const data = lb && lb.data;
+  if(!lb || (!data && (lb.status === 'loading'))){
+    body = `<p class="lb-empty">Loading the leaderboard…</p>`;
+  } else if(lb.status === 'refused'){
+    body = `<p class="lb-empty">The leaderboard isn't available for this team.</p>`;
+  } else if(!data){
+    body = `<p class="lb-empty">${lb.status === 'offline' ? "You're offline, and this board hasn't been loaded on this device yet." : "Couldn't load the leaderboard. Try again in a moment."}</p>`;
+  } else {
+    const min = data.minimum;
+    const windowLabel = data.window === 'week' ? 'This week' : data.window === 'month' ? 'This month' : 'All time';
+    const stamp = data.generated_at ? new Date(data.generated_at).getTime() : lb.fetchedAt;
+    const stale = lb.status === 'offline' || lb.status === 'stale';
+    const cat = state.lbCat;
+    const listRows = cat === 'accuracy' ? (data.accuracy || []) : cat === 'strike' ? (data.strike || []) : (data.velocity || []);
+    const unit = cat === 'velocity' ? ' mph' : '%';
+    const emptyMsg = cat === 'velocity' ? 'No velocity readings yet.' : 'No pitches charted yet.';
+    body = `
+      <p class="lb-sub">${windowLabel}${cat === 'velocity' ? ' · highest recorded velocity' : ` · needs ${min} pitches to be ranked`}</p>
+      ${stale ? `<p class="lb-asof">${lb.status === 'offline' ? "You're offline. " : "Couldn't refresh. "}Showing the last board, as of ${escHtml(lbWhen(stamp))}.</p>` : ''}
+      ${lbSection('', listRows, unit, min, data.is_coach, cat, emptyMsg)}
+      ${cat === 'velocity' && data.is_coach && (data.excluded || []).length ? `<div class="panel lb-section"><h3 class="lb-title">Excluded readings</h3>
+        ${(data.excluded).map(e => `<div class="lb-row"><span class="lb-name">${escHtml(e.name)}</span>
+          <span class="lb-val">${escHtml(e.value)} mph</span><span class="lb-n">${escHtml(lbDate(e.pitch_ts))}</span>
+          <button class="btn btn-ghost lb-undo" ${state.lbBusy ? 'disabled' : ''} onclick="restoreLbReading('${escHtml(e.pitch_id)}')">Undo</button></div>`).join('')}
+      </div>` : ''}`;
+  }
+  return `<div class="lb-page">
+    <div class="lb-controls">${picker}${toggle}</div>
+    ${catToggle}
+    ${lb && lb.error && lb.status !== 'refused' && lb.status !== 'stale' && lb.status !== 'error' ? `<p class="profile-msg">${escHtml(lb.error)}</p>` : ''}
+    ${body}
+  </div>`;
+}
+
 /* ---------- RENDER: PROFILE (U7) ---------- */
 function renderTabs(){
   return `<div class="tabs">
     <button class="tab-btn${state.view==='session'?' active':''}" onclick="setView('session')">${state.draftAvailable ? 'Resume Session' : 'New Session'}</button>
     <button class="tab-btn${state.view==='history'?' active':''}" onclick="setView('history')">History</button>
+    ${hasLeaderboard() ? `<button class="tab-btn${state.view==='leaderboard'?' active':''}" onclick="setView('leaderboard')">Leaderboard</button>` : ''}
     <button class="tab-btn${state.view==='profile'?' active':''}" onclick="setView('profile')">Profile</button>
   </div>`;
 }
@@ -3064,10 +3299,10 @@ function renderEmailSection(){
         <button class="btn btn-primary" ${state.changeEmailStatus === 'sending' ? 'disabled' : ''} onclick="submitChangeEmail()">${state.changeEmailStatus === 'sending' ? 'Sending…' : 'Send verification'}</button>
         ${state.changeEmailStatus === 'sent' ? '<span class="contacts-saved-msg">Check the new address for a confirmation link.</span>' : ''}
       </div>
-      ${state.changeEmailStatus && state.changeEmailStatus.indexOf('error:') === 0 ? `<p class="error-msg" style="margin:0;">${state.changeEmailStatus.slice(6)}</p>` : ''}
+      ${state.changeEmailStatus && state.changeEmailStatus.indexOf('error:') === 0 ? `<p class="error-msg" style="margin:0;">${escHtml(state.changeEmailStatus.slice(6))}</p>` : ''}
     </div>` : '';
   return `<div class="profile-section"><h3>Email</h3>
-    <div class="profile-row"><span style="font-size:14px;">${email}</span>${badge}
+    <div class="profile-row"><span style="font-size:14px;">${escHtml(email)}</span>${badge}
       <button class="btn btn-ghost" onclick="toggleChangeEmail()">${state.changeEmailOpen ? 'Cancel' : 'Change email'}</button></div>
     ${form}</div>`;
 }
@@ -3081,7 +3316,7 @@ function renderPasswordSection(){
       <button class="btn btn-primary" ${st === 'sending' ? 'disabled' : ''} onclick="submitChangePassword()">${st === 'sending' ? 'Updating…' : 'Update password'}</button>
       ${st === 'saved' ? '<span class="contacts-saved-msg">Password updated.</span>' : ''}
     </div>
-    ${st && st.indexOf('error:') === 0 ? `<p class="error-msg" style="margin:0;">${st.slice(6)}</p>` : ''}</div>`;
+    ${st && st.indexOf('error:') === 0 ? `<p class="error-msg" style="margin:0;">${escHtml(st.slice(6))}</p>` : ''}</div>`;
 }
 function renderThrowsSection(p){
   return `<div class="profile-section"><h3>Throws</h3>
@@ -3092,7 +3327,7 @@ function renderThrowsSection(p){
 }
 function renderPitchMixSection(p){
   const chips = (p.pitchTypes || []).map(t =>
-    `<span class="pitch-chip" style="background:${colorForType(p, t)};">${pitchLabel(t)} <span onclick="removePitchType('${t.replace(/'/g, "\\'")}')" style="cursor:pointer;margin-left:4px;">✕</span></span>`
+    `<span class="pitch-chip" style="background:${colorForType(p, t)};">${pitchLabel(t)} <span onclick="removePitchType(${escHtml(JSON.stringify(t))})" style="cursor:pointer;margin-left:4px;">✕</span></span>`
   ).join('') || `<span style="color:var(--chalk-faint);font-size:12.5px;">No pitches set yet</span>`;
   const remaining = PITCH_CATALOG.filter(c => !(p.pitchTypes || []).includes(c.name));
   return `<div class="profile-section"><h3>Pitch mix</h3>
@@ -3131,7 +3366,7 @@ function renderPitcherProfileView(){
   const team = state.teams.find(t => t.id === state.currentTeamId);
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
   return `<div class="profile-page">
-    <div class="profile-row"><h2 class="display" style="margin:0;">${p.name}'s profile</h2></div>
+    <div class="profile-row"><h2 class="display" style="margin:0;">${escHtml(p.name)}'s profile</h2></div>
     ${msg}
     <div class="profile-section"><h3>Uniform number</h3>${uniformRowHtml(state.currentTeamId, p.id, 'Uniform # · ' + (team ? team.name : ''))}</div>
     ${renderThrowsSection(p)}
@@ -3238,10 +3473,10 @@ function render(){
     return;
   }
 
-  const teamOptions = state.teams.map(t => `<option value="${t.id}" ${t.id===state.currentTeamId?'selected':''}>${t.name}</option>`).join('');
+  const teamOptions = state.teams.map(t => `<option value="${escHtml(t.id)}" ${t.id===state.currentTeamId?'selected':''}>${escHtml(t.name)}</option>`).join('');
   const teamSelector = state.teams.length > 1
     ? `<div class="team-select-wrap"><span class="roster-label">Team</span><select class="team-select" onchange="onTeamChange(this.value)">${teamOptions}</select></div>`
-    : `<div class="team-select-wrap"><span class="roster-label">Team</span><div style="font-size:14px;font-weight:600;">${state.teams[0].name}</div></div>`;
+    : `<div class="team-select-wrap"><span class="roster-label">Team</span><div style="font-size:14px;font-weight:600;">${escHtml(state.teams[0].name)}</div></div>`;
 
   let sidebarBody;
   let phoneFooter = '';   // phones only: the coach's invite link + sign out, rendered below the page content
@@ -3251,15 +3486,15 @@ function render(){
         <div class="roster-item${p.id===state.currentPitcherId?' active':''}" style="display:flex;">
           <button style="all:unset;flex:1;min-width:0;display:flex;align-items:center;cursor:pointer;" onclick="selectPitcher('${p.id}')">
             <div class="roster-item-main">
-              <span class="roster-item-name">${p.name}${p.throws ? `<span class="throws-tag">${p.throws}HP</span>` : ''}${p.emailConfirmed ? '' : '<span class="verify-badge">Unverified</span>'}</span>
+              <span class="roster-item-name">${escHtml(p.name)}${p.throws ? `<span class="throws-tag">${p.throws}HP</span>` : ''}${p.emailConfirmed ? '' : '<span class="verify-badge">Unverified</span>'}</span>
               <span class="roster-item-types">${p.pitchTypes.map(pitchLabel).join(' · ') || 'No pitches set yet'}</span>
             </div>
             <span class="roster-item-num">${p.uniformNumber === null ? '—' : p.uniformNumber}</span>
           </button>
-          <button class="roster-item-remove" title="Remove ${p.name} from this team" onclick="event.stopPropagation();armRemoveRosterPitcher('${p.id}')">✕</button>
+          <button class="roster-item-remove" title="Remove ${escHtml(p.name)} from this team" onclick="event.stopPropagation();armRemoveRosterPitcher('${p.id}')">✕</button>
         </div>
         ${state.removeArmedPitcherId === p.id ? `
-          <div class="invite-regen-warn" style="padding:0 4px 8px;">Removes ${p.name} from this team's roster and emails them to let them know. Their sessions and stats aren't deleted -- only this team's view of them.</div>
+          <div class="invite-regen-warn" style="padding:0 4px 8px;">Removes ${escHtml(p.name)} from this team's roster and emails them to let them know. Their sessions and stats aren't deleted -- only this team's view of them.</div>
           <div class="invite-regen-confirm-row" style="padding:0 4px 8px;">
             <button class="btn btn-primary" style="background:var(--red);" ${state.removeBusy ? 'disabled' : ''} onclick="confirmRemoveRosterPitcher('${p.id}')">${state.removeBusy ? 'Removing…' : 'Remove now'}</button>
             <button class="btn btn-ghost" ${state.removeBusy ? 'disabled' : ''} onclick="cancelRemoveRosterPitcher()">Cancel</button>
@@ -3301,7 +3536,7 @@ function render(){
     sidebarBody = `
       ${teamSelector}
       <div class="roster-label">Signed in as</div>
-      <div style="font-size:14px;font-weight:600;">${state.profile.full_name}</div>`;
+      <div style="font-size:14px;font-weight:600;">${escHtml(state.profile.full_name)}</div>`;
   }
 
   const sidebar = `
@@ -3322,6 +3557,7 @@ function render(){
   if(!p){
     main = renderTabs() + (state.view === 'profile'
       ? renderProfileView()
+      : state.view === 'leaderboard' ? renderLeaderboardView()
       : `<div class="empty-state"><div class="display">No pitcher selected</div><p>Invite a pitcher to this team to get started.</p></div>`);
   } else {
     const arsenalChips = p.pitchTypes.map(t => {
@@ -3339,11 +3575,11 @@ function render(){
     const myEmail = state.myVerification.email || '';
     const contactsPanel = (!isCoach() && state.contactsOpen) ? `
       <div class="contacts-panel">
-        <div class="field"><span class="field-label">Coach email</span><input class="text-input" id="contact-coach" value="${coachFieldValue}" placeholder="coach@example.com"></div>
-        <div class="field"><span class="field-label">Additional contact (optional)</span><input class="text-input" id="contact-pitching-coach" value="${contacts.pitchingCoach||''}" placeholder="e.g. pitching coach"></div>
+        <div class="field"><span class="field-label">Coach email</span><input class="text-input" id="contact-coach" value="${escHtml(coachFieldValue)}" placeholder="coach@example.com"></div>
+        <div class="field"><span class="field-label">Additional contact (optional)</span><input class="text-input" id="contact-pitching-coach" value="${escHtml(contacts.pitchingCoach||'')}" placeholder="e.g. pitching coach"></div>
         <div class="field">
           <span class="field-label">Your email</span>
-          <input class="text-input" value="${myEmail}${state.myVerification.emailConfirmed ? '' : ' (unverified)'}" disabled style="opacity:0.7;">
+          <input class="text-input" value="${escHtml(myEmail)}${state.myVerification.emailConfirmed ? '' : ' (unverified)'}" disabled style="opacity:0.7;">
         </div>
         <p style="flex-basis:100%;margin:-4px 0 0;font-size:11.5px;color:var(--chalk-faint);">Coach email is who the report is also cc'd to — edit or clear it as needed. Your own email always follows your account (change it above if it's wrong).</p>
         <div class="contacts-save-row">
@@ -3369,7 +3605,7 @@ function render(){
     const headerHtml = `
       <div class="pitcher-header">
         <div>
-          <h2 class="display">${p.name}</h2>
+          <h2 class="display">${escHtml(p.name)}</h2>
           <div class="pitcher-sub">${arsenalChips}</div>
         </div>
         <div class="pitcher-header-actions">
@@ -3382,10 +3618,11 @@ function render(){
 
     main = `
       ${verifyBanner}
-      ${state.view === 'profile' ? '' : headerHtml}
+      ${(state.view === 'profile' || state.view === 'leaderboard') ? '' : headerHtml}
       ${tabs}
       ${state.view === 'session' ? renderSessionView()
         : state.view === 'profile' ? renderProfileView()
+        : state.view === 'leaderboard' ? renderLeaderboardView()
         : state.view === 'pitcherProfile' ? renderPitcherProfileView()
         : renderHistoryView()}
     `;

@@ -247,6 +247,9 @@
 
   .pitcher-header{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
   .pitcher-header h2{ font-family:'Teko',sans-serif; font-size:44px; font-weight:600; margin:0; line-height:1; }
+  .pitcher-header-actions{ display:flex; gap:10px; align-items:flex-end; }
+  .uniform-field{ display:flex; flex-direction:column; gap:4px; }
+  .uniform-field input{ width:72px; padding:6px 8px; text-align:center; }
   .pitcher-sub{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
   .pitch-chip{
     font-size:11px; font-weight:600; padding:4px 9px; border-radius:20px; letter-spacing:0.02em;
@@ -770,7 +773,7 @@ function genUUID(){
   });
 }
 function mapProfile(row){
-  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {} };
+  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, uniformNumber: null };
 }
 function isCoach(){ return state.profile && state.profile.role === 'coach'; }
 function colorForType(pitcher, type){
@@ -1166,8 +1169,8 @@ async function loadTeams(){
     const { data } = await supabaseClient.from('teams').select('id, name, invite_token').eq('coach_id', state.profile.id).order('created_at');
     state.teams = data || [];
   } else {
-    const { data } = await supabaseClient.from('pitcher_teams').select('team_id, teams(id, name)').eq('pitcher_id', state.profile.id);
-    state.teams = (data || []).map(r => r.teams).filter(Boolean);
+    const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name)').eq('pitcher_id', state.profile.id);
+    state.teams = (data || []).filter(r => r.teams).map(r => ({ ...r.teams, uniform_number: r.uniform_number }));
   }
 }
 
@@ -1220,10 +1223,23 @@ window.onTeamChange = async function(teamId, skipRender){
 async function loadRosterForTeam(teamId){
   const { data, error } = await supabaseClient
     .from('pitcher_teams')
-    .select('profiles(id, full_name, pitch_types, contact_emails)')
+    .select('uniform_number, profiles(id, full_name, pitch_types, contact_emails)')
     .eq('team_id', teamId);
   if(error){ console.error('loadRosterForTeam failed', error); state.roster = []; return; }
-  state.roster = (data || []).map(r => r.profiles).filter(Boolean).map(mapProfile);
+  state.roster = (data || []).filter(r => r.profiles).map(r => {
+    const p = mapProfile(r.profiles);
+    p.uniformNumber = (r.uniform_number === null || r.uniform_number === undefined) ? null : r.uniform_number;
+    return p;
+  });
+  // Numerical order by uniform number; pitchers who haven't set one yet go last
+  // (alphabetical among themselves) so the list stays stable.
+  state.roster.sort((a, b) => {
+    const an = a.uniformNumber, bn = b.uniformNumber;
+    if(an !== null && bn !== null && an !== bn) return an - bn;
+    if(an !== null && bn === null) return -1;
+    if(an === null && bn !== null) return 1;
+    return String(a.name).localeCompare(String(b.name));
+  });
 
   // R0: verification status per pitcher, via the one sanctioned read path
   // (get_roster_verification -- auth.users itself is never exposed to
@@ -1533,6 +1549,24 @@ window.saveContactEmails = async function(){
   };
   const { error } = await supabaseClient.from('profiles').update({ contact_emails: emails }).eq('id', state.profile.id);
   if(!error){ state.profile.contact_emails = emails; state.contactsSavedAt = Date.now(); }
+  render();
+};
+window.saveUniformNumber = async function(){
+  const el = document.getElementById('uniform-input');
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  if(!el || !team) return;
+  const raw = (el.value || '').trim();
+  let val = null;
+  if(raw !== ''){
+    val = Number(raw);
+    if(!Number.isInteger(val) || val < 0 || val > 99){
+      alert('Enter a uniform number from 0 to 99.');
+      el.value = team.uniform_number === null || team.uniform_number === undefined ? '' : team.uniform_number;
+      return;
+    }
+  }
+  const { error } = await supabaseClient.rpc('set_my_uniform_number', { p_team_id: team.id, p_number: val });
+  if(!error) team.uniform_number = val;
   render();
 };
 window.toggleContactsPanel = async function(){
@@ -2682,7 +2716,7 @@ function render(){
               <span class="roster-item-name">${p.name}${p.emailConfirmed ? '' : '<span class="verify-badge">Unverified</span>'}</span>
               <span class="roster-item-types">${p.pitchTypes.map(pitchLabel).join(' · ') || 'No pitches set yet'}</span>
             </div>
-            <span class="roster-item-num">${String(i+1).padStart(2,'0')}</span>
+            <span class="roster-item-num">${p.uniformNumber === null ? '—' : p.uniformNumber}</span>
           </button>
           <button class="roster-item-remove" title="Remove ${p.name} from this team" onclick="event.stopPropagation();armRemoveRosterPitcher('${p.id}')">✕</button>
         </div>
@@ -2812,7 +2846,17 @@ function render(){
           <h2 class="display">${p.name}</h2>
           <div class="pitcher-sub">${arsenalChips}</div>
         </div>
-        ${!isCoach() ? `<button class="btn btn-ghost" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>` : ''}
+        ${!isCoach() ? `<div class="pitcher-header-actions">
+          ${(() => {
+            const t = state.teams.find(x => x.id === state.currentTeamId);
+            if(!t) return '';
+            const n = (t.uniform_number === null || t.uniform_number === undefined) ? '' : t.uniform_number;
+            return `<label class="uniform-field"><span class="field-label">${state.teams.length > 1 ? 'Uniform # · ' + t.name : 'Uniform #'}</span>
+              <input id="uniform-input" class="text-input" type="number" inputmode="numeric" min="0" max="99" placeholder="—" value="${n}" onchange="saveUniformNumber()">
+            </label>`;
+          })()}
+          <button class="btn btn-ghost" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>
+        </div>` : ''}
       </div>
       ${contactsPanel}
       ${tabs}

@@ -609,9 +609,17 @@
   .report-status-sent{ color:#6FA287; }
   .report-status-error{ color:var(--red); }
 
-  /* TRENDS */
-  .trend-panel{ display:flex; flex-direction:column; gap:6px; }
-  .trend-title{ font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--chalk-faint); }
+  /* PROFILE (U7) */
+  .profile-page{ display:flex; flex-direction:column; gap:18px; max-width:560px; }
+  .profile-section{ display:flex; flex-direction:column; gap:10px; }
+  .profile-section h3{ margin:0; font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--chalk-faint); font-weight:600; }
+  .profile-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .profile-note{ margin:0; font-size:12px; color:var(--chalk-faint); }
+  .profile-msg{ margin:0; font-size:12.5px; color:var(--clay); }
+  .throws-btn{ min-height:44px; min-width:88px; padding:10px 16px; border-radius:22px; border:1.5px solid var(--border-strong); background:transparent; color:var(--chalk-dim); font-size:14px; font-weight:600; }
+  .throws-btn.selected{ background:var(--amber); border-color:var(--amber); color:var(--field-dark); }
+  .mix-prompt{ margin:8px 0 0; font-size:12px; color:var(--amber); }
+  .switch-disabled{ opacity:0.5; display:flex; gap:10px; align-items:center; font-size:14px; }
 
   @media (max-width: 860px){
     #app{ flex-direction:column; }
@@ -735,7 +743,7 @@ let state = {
   removeArmedPitcherId: null,
   removeBusy: false,
   sessions: [],
-  view: 'session',          // session | history | trends
+  view: 'session',          // session | history | profile | pitcherProfile (coach editing the selected pitcher)
   activeSession: null,
   selectedType: null,
   selectedAccuracyMode: null,
@@ -752,6 +760,9 @@ let state = {
   contactsOpen: false,
   uniformEditKey: null,     // 'pitcherId:teamId' while the uniform-number editor is open
   uniformMsg: '',           // one-line notice, e.g. after a conflict
+  uniformMsgKey: null,      // which 'pitcherId:teamId' row the notice belongs to
+  profileMsg: '',           // U7: one-line notice on the Profile pages
+  passwordStatus: null,     // U7: null | 'sending' | 'saved' | 'error:<msg>'
   contactsSavedAt: null,
   inviteOpen: false,
   inviteStatus: null,
@@ -786,11 +797,16 @@ function genUUID(){
   });
 }
 function mapProfile(row){
-  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, uniformNumber: null };
+  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, throws: row.throws || null, uniformNumber: null };
 }
 function isCoach(){ return state.profile && state.profile.role === 'coach'; }
+// The pitch types New Session offers: the pitcher's own mix, or -- if they haven't
+// set one up yet -- every pitch, so charting is never blocked (U7).
+function pitchTypesFor(p){
+  return (p && p.pitchTypes && p.pitchTypes.length) ? p.pitchTypes : PITCH_CATALOG.map(c => c.name);
+}
 function colorForType(pitcher, type){
-  const idx = pitcher.pitchTypes.indexOf(type);
+  const idx = pitchTypesFor(pitcher).indexOf(type);
   return TYPE_PALETTE[idx >= 0 ? idx % TYPE_PALETTE.length : 0];
 }
 function currentPitcher(){
@@ -934,7 +950,7 @@ function applyCachedContext(cached){
   state.currentTeamId = cached.currentTeamId;
   state.currentPitcherId = cached.currentPitcherId;
   state.myVerification = cached.myVerification || { email: null, emailConfirmed: false };
-  state.view = isCoach() ? 'history' : 'session';
+  state.view = 'session';   // U7: always open on New Session (a draft, if any, shows Resume Session)
 }
 
 async function init(){
@@ -1224,7 +1240,10 @@ window.onTeamChange = async function(teamId, skipRender){
   if(isCoach()){
     await loadRosterForTeam(teamId);
     state.currentPitcherId = state.roster.length ? state.roster[0].id : null;
-    state.view = 'history';
+    if(skipRender) adoptDraftPitcher();   // launch: land on the pitcher whose session is in progress
+    // Launch (skipRender) always opens on New Session; a coach who switches teams
+    // from the dropdown still lands on History, as before.
+    state.view = skipRender ? 'session' : 'history';
   } else {
     state.currentPitcherId = state.profile.id;
     state.view = 'session';
@@ -1234,6 +1253,15 @@ window.onTeamChange = async function(teamId, skipRender){
   await saveLastKnownContext();
   if(!skipRender) render();
 };
+// On-device only (localStorage, no network): if the coach has an unfinished draft
+// for a rostered pitcher on this team, select that pitcher so launch opens into it.
+function adoptDraftPitcher(){
+  if(!isCoach() || !state.currentTeamId) return;
+  const has = id => { try{ const d = JSON.parse(localStorage.getItem('draft:' + id + ':' + state.currentTeamId)); return !!(d && d.pitches && d.pitches.length); }catch(e){ return false; } };
+  if(state.currentPitcherId && has(state.currentPitcherId)) return;
+  const hit = state.roster.find(r => has(r.id));
+  if(hit) state.currentPitcherId = hit.id;
+}
 
 // Numerical order by uniform number; pitchers who haven't set one yet go last
 // (alphabetical among themselves) so the list stays stable.
@@ -1250,7 +1278,7 @@ function sortRoster(){
 async function loadRosterForTeam(teamId){
   const { data, error } = await supabaseClient
     .from('pitcher_teams')
-    .select('uniform_number, profiles(id, full_name, pitch_types, contact_emails)')
+    .select('uniform_number, profiles(id, full_name, pitch_types, contact_emails, throws)')
     .eq('team_id', teamId);
   if(error){ console.error('loadRosterForTeam failed', error); state.roster = []; return; }
   state.roster = (data || []).filter(r => r.profiles).map(r => {
@@ -1532,32 +1560,101 @@ window.submitAccountSetup = async function(role){
   await init();
 };
 
-/* ---------- PITCH ARSENAL (pitcher edits own only) ---------- */
+/* ---------- PITCH MIX + THROWS (Profile pages; pitcher edits own, coach edits a rostered pitcher) ----------
+   A pitcher writes their own row directly (pitch_types / throws are the only
+   profile columns clients may update); a coach goes through coach_set_pitch_types /
+   coach_set_throws, which only accept a pitcher on one of the coach's own teams. */
+async function savePitchMix(types){
+  let ok = false;
+  if(isCoach()){
+    const p = currentPitcher();
+    if(!p) return false;
+    const { error } = await supabaseClient.rpc('coach_set_pitch_types', { p_pitcher_id: p.id, p_types: types });
+    ok = !error;
+    if(ok) p.pitchTypes = types;
+  } else {
+    const { error } = await supabaseClient.from('profiles').update({ pitch_types: types }).eq('id', state.profile.id);
+    ok = !error;
+    if(ok) state.profile.pitch_types = types;
+  }
+  state.profileMsg = ok ? '' : 'Could not save. Check your connection and try again.';
+  if(ok) await saveLastKnownContext();   // New Session reads the mix offline from this snapshot
+  return ok;
+}
 window.addPitchType = async function(){
   const input = document.getElementById('new-type-input');
-  const val = (input.value || '').trim();
-  if(!val) return;
-  const types = [...(state.profile.pitch_types || [])];
+  const val = (input && input.value || '').trim();
+  const p = currentPitcher();
+  if(!val || !p) return;
+  const types = [...(p.pitchTypes || [])];
   if(!types.includes(val)) types.push(val);
-  const { error } = await supabaseClient.from('profiles').update({ pitch_types: types }).eq('id', state.profile.id);
-  if(!error) state.profile.pitch_types = types;
-  input.value = '';
+  await savePitchMix(types);
   render();
 };
 window.removePitchType = async function(type){
-  const types = (state.profile.pitch_types || []).filter(t => t !== type);
-  const { error } = await supabaseClient.from('profiles').update({ pitch_types: types }).eq('id', state.profile.id);
-  if(!error) state.profile.pitch_types = types;
+  const p = currentPitcher();
+  if(!p) return;
+  await savePitchMix((p.pitchTypes || []).filter(t => t !== type));
   if(state.selectedType === type) state.selectedType = null;
   render();
 };
+window.setThrows = async function(val){
+  const p = currentPitcher();
+  if(!p) return;
+  const next = (p.throws === val) ? null : val;   // tapping the selected side clears it
+  let ok = false;
+  if(isCoach()){
+    const { error } = await supabaseClient.rpc('coach_set_throws', { p_pitcher_id: p.id, p_throws: next });
+    ok = !error;
+    if(ok) p.throws = next;
+  } else {
+    const { error } = await supabaseClient.from('profiles').update({ throws: next }).eq('id', state.profile.id);
+    ok = !error;
+    if(ok) state.profile.throws = next;
+  }
+  state.profileMsg = ok ? '' : 'Could not save. Check your connection and try again.';
+  if(ok) await saveLastKnownContext();
+  render();
+};
+window.submitChangePassword = async function(){
+  const c = document.getElementById('current-password');
+  const a = document.getElementById('new-password');
+  const b = document.getElementById('confirm-password');
+  const cur = c ? c.value : '';
+  const pw = a ? a.value : '';
+  const cf = b ? b.value : '';
+  if(!cur){ state.passwordStatus = 'error:Enter your current password.'; render(); return; }
+  if(pw.length < 8){ state.passwordStatus = 'error:Password should be at least 8 characters.'; render(); return; }
+  if(pw !== cf){ state.passwordStatus = "error:The two passwords don't match."; render(); return; }
+  state.passwordStatus = 'sending';
+  render();
+  // Confirm the CURRENT password first (someone on an unlocked phone shouldn't be able
+  // to change it). Supabase's own "Secure password change" is off on both projects, so
+  // this check is done here by signing in again with the current password; only if that
+  // succeeds do we set the new one.
+  const email = state.myVerification.email || (state.session && state.session.user && state.session.user.email) || '';
+  const { error: authErr } = await supabaseClient.auth.signInWithPassword({ email, password: cur });
+  if(authErr){
+    state.passwordStatus = 'error:Your current password is incorrect.';
+    render();
+    return;
+  }
+  const { error } = await supabaseClient.auth.updateUser({ password: pw });
+  state.passwordStatus = error ? 'error:' + error.message : 'saved';
+  render();
+};
+window.goToProfileEmail = function(){
+  state.view = 'profile';
+  state.changeEmailOpen = true;
+  state.changeEmailStatus = null;
+  render();
+};
+window.openPitcherProfile = function(){
+  state.view = 'pitcherProfile';
+  state.profileMsg = '';
+  render();
+};
 
-/* ---------- CONTACT EMAILS (pitcher edits own only) ----------
-   The report recipient emails are whatever is in the boxes when Save is
-   clicked. There is no server-side source to pre-fill them from — a user's
-   email lives in auth.users, which PostgREST doesn't expose, and profiles
-   has no email column — so the fields start from the saved contact_emails
-   and are edited by hand. */
 window.saveContactEmails = async function(){
   // R0: pitcher is no longer a form field -- always the account email
   // (see contactsPanel's own comment). There is no #contact-pitcher input
@@ -1575,21 +1672,36 @@ window.saveContactEmails = async function(){
    One value per pitcher per team (pitcher_teams.uniform_number). Once set it
    shows locked with a "Change number" button. Pitcher and coach both write it
    through set_uniform_number(), which refuses a save if the number changed since
-   this screen loaded (conflict) and hands back the current value instead. */
-function uniformTarget(){
-  const teamId = state.currentTeamId;
-  if(!teamId) return null;
+   this screen loaded (conflict) and hands back the current value instead.
+   U7: edited from the Profile pages, one row per team. */
+function uniformTargetFor(teamId, pitcherId){
+  if(!teamId || !pitcherId) return null;
   if(isCoach()){
-    const p = state.roster.find(x => x.id === state.currentPitcherId);
-    return p ? { teamId, pitcherId: p.id, number: p.uniformNumber, apply: n => { p.uniformNumber = n; sortRoster(); } } : null;
+    const p = state.roster.find(x => x.id === pitcherId);
+    return (p && teamId === state.currentTeamId)
+      ? { teamId, pitcherId, number: p.uniformNumber, apply: n => { p.uniformNumber = n; sortRoster(); } } : null;
   }
   const t = state.teams.find(x => x.id === teamId);
-  return t ? { teamId, pitcherId: state.profile.id, number: (t.uniform_number === undefined ? null : t.uniform_number), apply: n => { t.uniform_number = n; } } : null;
+  return t ? { teamId, pitcherId, number: (t.uniform_number === undefined ? null : t.uniform_number), apply: n => { t.uniform_number = n; } } : null;
 }
-window.editUniformNumber = function(){
-  const t = uniformTarget();
-  if(!t) return;
-  state.uniformEditKey = t.pitcherId + ':' + t.teamId;
+function uniformRowHtml(teamId, pitcherId, label){
+  const t = uniformTargetFor(teamId, pitcherId);
+  if(!t) return '';
+  const key = pitcherId + ':' + teamId;
+  const editing = state.uniformEditKey === key;
+  const msg = (state.uniformMsgKey === key && state.uniformMsg) ? `<span class="uniform-msg">${state.uniformMsg}</span>` : '';
+  if(t.number !== null && !editing){
+    return `<div class="uniform-field"><span class="field-label">${label}</span>
+      <div class="uniform-locked"><span class="uniform-locked-num">${t.number}</span>
+      <button class="btn btn-ghost" onclick="editUniformNumber('${teamId}','${pitcherId}')">Change number</button></div>${msg}</div>`;
+  }
+  return `<div class="uniform-field"><span class="field-label">${label}</span>
+    <div class="uniform-locked"><input id="uniform-input-${teamId}" class="text-input" type="number" inputmode="numeric" min="0" max="99" placeholder="—" value="${t.number === null ? '' : t.number}" onkeydown="if(event.key==='Enter')saveUniformNumber('${teamId}','${pitcherId}')">
+    <button class="btn btn-primary" onclick="saveUniformNumber('${teamId}','${pitcherId}')">Save</button>
+    ${t.number !== null ? '<button class="btn btn-ghost" onclick="cancelUniformEdit()">Cancel</button>' : ''}</div>${msg}</div>`;
+}
+window.editUniformNumber = function(teamId, pitcherId){
+  state.uniformEditKey = pitcherId + ':' + teamId;
   state.uniformMsg = '';
   render();
 };
@@ -1597,16 +1709,17 @@ window.cancelUniformEdit = function(){
   state.uniformEditKey = null;
   render();
 };
-window.saveUniformNumber = async function(){
-  const t = uniformTarget();
-  const el = document.getElementById('uniform-input');
+window.saveUniformNumber = async function(teamId, pitcherId){
+  const t = uniformTargetFor(teamId, pitcherId);
+  const el = document.getElementById('uniform-input-' + teamId);
   if(!t || !el) return;
+  const key = pitcherId + ':' + teamId;
   const raw = (el.value || '').trim();
   let val = null;
   if(raw !== ''){
     val = Number(raw);
     if(!Number.isInteger(val) || val < 0 || val > 99){
-      state.uniformMsg = 'Enter a uniform number from 0 to 99.';
+      state.uniformMsg = 'Enter a uniform number from 0 to 99.'; state.uniformMsgKey = key;
       render();
       return;
     }
@@ -1614,6 +1727,7 @@ window.saveUniformNumber = async function(){
   const { data, error } = await supabaseClient.rpc('set_uniform_number', {
     p_team_id: t.teamId, p_pitcher_id: t.pitcherId, p_number: val, p_expected: t.number
   });
+  state.uniformMsgKey = key;
   if(error){
     state.uniformMsg = 'Could not save the number. Try again.';
     render();
@@ -1631,6 +1745,7 @@ window.saveUniformNumber = async function(){
   t.apply(val);
   state.uniformEditKey = null;
   state.uniformMsg = '';
+  await saveLastKnownContext();
   render();
 };
 // Pull the latest numbers from the server (a coach edit shows up for the
@@ -2240,7 +2355,7 @@ function clearDeleteState(){
   state.deleteConfirmText = '';
   state.deleteError = null;
 }
-window.setView = function(v){ state.view = v; clearDeleteState(); render(); };
+window.setView = function(v){ state.view = v; state.profileMsg = ''; state.uniformEditKey = null; clearDeleteState(); render(); };
 window.toggleSessionExpand = function(id){
   state.expandedSessionId = state.expandedSessionId === id ? null : id;
   clearDeleteState();
@@ -2491,7 +2606,7 @@ function renderSessionView(){
   const stats = sessionStats(pitches);
   const chartingPerspective = sessionPerspective(state.activeSession);
   const currentBatterSide = sessionBatterSide(state.activeSession);
-  const typeChips = p.pitchTypes.map(t => {
+  const typeChips = pitchTypesFor(p).map(t => {
     const color = colorForType(p, t);
     const selected = state.selectedType === t;
     return `<button class="type-chip${selected?' selected':''}" style="${selected ? `background:${color};border-color:${color};` : `color:${color};border-color:${color}55;`}" onclick="selectType('${t.replace(/'/g,"\\'")}')">${pitchLabel(t)}</button>`;
@@ -2501,7 +2616,7 @@ function renderSessionView(){
     const realIdx = pitches.length - 1 - i;
     const color = colorForType(p, pt.type);
     if(state.editDraftRow === realIdx){
-      const typeOpts = p.pitchTypes.map(t =>
+      const typeOpts = pitchTypesFor(p).map(t =>
         `<option value="${String(t).replace(/"/g,'&quot;')}" ${t===pt.type?'selected':''}>${pitchLabel(t)}</option>`).join('');
       return `<div class="pitch-log-row editing">
         <div class="edit-row-fields">
@@ -2552,14 +2667,7 @@ function renderSessionView(){
         <div>
           <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
           <div class="chip-row">${typeChips}</div>
-          ${!isCoach() ? `
-          <div class="add-type-inline" style="margin-top:8px;">
-            <select id="new-type-input" class="text-input">
-              <option value="">Add a pitch…</option>
-              ${PITCH_CATALOG.filter(c => !p.pitchTypes.includes(c.name)).map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
-            </select>
-            <button onclick="addPitchType()">Add</button>
-          </div>` : (p.pitchTypes.length ? '' : `<p style="color:var(--chalk-faint);font-size:12px;margin-top:8px;">${p.name} hasn't set up their pitch arsenal yet — they can add pitch types from their own login.</p>`)}
+          ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach() ? `${p.name} hasn't set a pitch mix, so every pitch type is shown. Set it in their profile.` : 'Set up your pitch mix in Profile.'}</p>`}
         </div>
         <div class="accuracy-count-row">
           <div class="accuracy-select-col">
@@ -2773,50 +2881,103 @@ function renderHistoryView(){
   }).join('');
 }
 
-/* ---------- RENDER: TRENDS VIEW ---------- */
-function renderTrendsView(){
+/* ---------- RENDER: PROFILE (U7) ---------- */
+function renderTabs(){
+  return `<div class="tabs">
+    <button class="tab-btn${state.view==='session'?' active':''}" onclick="setView('session')">${state.draftAvailable ? 'Resume Session' : 'New Session'}</button>
+    <button class="tab-btn${state.view==='history'?' active':''}" onclick="setView('history')">History</button>
+    <button class="tab-btn${state.view==='profile'?' active':''}" onclick="setView('profile')">Profile</button>
+  </div>`;
+}
+function renderEmailSection(){
+  const email = state.myVerification.email || (state.session && state.session.user && state.session.user.email) || '';
+  const badge = isCoach() ? '' : (state.myVerification.emailConfirmed
+    ? '<span class="profile-note">verified</span>'
+    : '<span class="profile-note" style="color:var(--clay);">unverified</span>');
+  const form = state.changeEmailOpen ? `
+    <div class="change-email-form">
+      <p style="margin:0;font-size:12.5px;color:var(--chalk-dim);">Use an email you check on your phone. School addresses often block our mail.</p>
+      <div class="field"><span class="field-label">New email</span><input class="text-input" id="change-email-input" type="email" placeholder="you@example.com"></div>
+      <div class="contacts-save-row">
+        <button class="btn btn-primary" ${state.changeEmailStatus === 'sending' ? 'disabled' : ''} onclick="submitChangeEmail()">${state.changeEmailStatus === 'sending' ? 'Sending…' : 'Send verification'}</button>
+        ${state.changeEmailStatus === 'sent' ? '<span class="contacts-saved-msg">Check the new address for a confirmation link.</span>' : ''}
+      </div>
+      ${state.changeEmailStatus && state.changeEmailStatus.indexOf('error:') === 0 ? `<p class="error-msg" style="margin:0;">${state.changeEmailStatus.slice(6)}</p>` : ''}
+    </div>` : '';
+  return `<div class="profile-section"><h3>Email</h3>
+    <div class="profile-row"><span style="font-size:14px;">${email}</span>${badge}
+      <button class="btn btn-ghost" onclick="toggleChangeEmail()">${state.changeEmailOpen ? 'Cancel' : 'Change email'}</button></div>
+    ${form}</div>`;
+}
+function renderPasswordSection(){
+  const st = state.passwordStatus;
+  return `<div class="profile-section"><h3>Password</h3>
+    <div class="field"><span class="field-label">Current password</span><input class="text-input" id="current-password" type="password" autocomplete="current-password"></div>
+    <div class="field"><span class="field-label">New password</span><input class="text-input" id="new-password" type="password" autocomplete="new-password" placeholder="At least 8 characters"></div>
+    <div class="field"><span class="field-label">Confirm new password</span><input class="text-input" id="confirm-password" type="password" autocomplete="new-password"></div>
+    <div class="profile-row">
+      <button class="btn btn-primary" ${st === 'sending' ? 'disabled' : ''} onclick="submitChangePassword()">${st === 'sending' ? 'Updating…' : 'Update password'}</button>
+      ${st === 'saved' ? '<span class="contacts-saved-msg">Password updated.</span>' : ''}
+    </div>
+    ${st && st.indexOf('error:') === 0 ? `<p class="error-msg" style="margin:0;">${st.slice(6)}</p>` : ''}</div>`;
+}
+function renderThrowsSection(p){
+  return `<div class="profile-section"><h3>Throws</h3>
+    <div class="profile-row">
+      <button class="throws-btn${p.throws === 'L' ? ' selected' : ''}" onclick="setThrows('L')">Left</button>
+      <button class="throws-btn${p.throws === 'R' ? ' selected' : ''}" onclick="setThrows('R')">Right</button>
+    </div></div>`;
+}
+function renderPitchMixSection(p){
+  const chips = (p.pitchTypes || []).map(t =>
+    `<span class="pitch-chip" style="background:${colorForType(p, t)};">${pitchLabel(t)} <span onclick="removePitchType('${t.replace(/'/g, "\\'")}')" style="cursor:pointer;margin-left:4px;">✕</span></span>`
+  ).join('') || `<span style="color:var(--chalk-faint);font-size:12.5px;">No pitches set yet</span>`;
+  const remaining = PITCH_CATALOG.filter(c => !(p.pitchTypes || []).includes(c.name));
+  return `<div class="profile-section"><h3>Pitch mix</h3>
+    <div class="pitcher-sub" style="margin:0;">${chips}</div>
+    <div class="add-type-inline">
+      <select id="new-type-input" class="text-input">
+        <option value="">Add a pitch…</option>
+        ${remaining.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+      </select>
+      <button onclick="addPitchType()">Add</button>
+    </div></div>`;
+}
+function renderProfileView(){
+  const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
+  if(isCoach()){
+    return `<div class="profile-page">${renderEmailSection()}${renderPasswordSection()}</div>`;
+  }
   const p = currentPitcher();
-  if(!p || state.sessions.length < 2){
-    return `<div class="empty-hist">Log at least 2 sessions${p ? ' for ' + p.name : ''} to see trends over time.</div>`;
-  }
-  const ordered = state.sessions.slice().sort((a,b) => a.date - b.date);
-  const points = ordered.map(s => ({ date: s.date, stats: sessionStats(s.pitches) }));
-  const anyVelo = points.some(pt => pt.stats.hasVelo);
-  const anyRelative = points.some(pt => pt.stats.usesRelativeMode);
-
-  function barChart(title, valueFn, unit, maxHint){
-    const vals = points.map(valueFn).filter(v => v !== null && v !== undefined);
-    const max = Math.max(maxHint || 0, ...vals) * 1.15;
-    const w = 640, h = 140;
-    const barW = Math.min(56, (w - 20) / points.length - 10);
-    const bars = points.map((pt, i) => {
-      const x = 10 + i * ((w-20)/points.length);
-      const val = valueFn(pt);
-      if(val === null || val === undefined){
-        const dn = new Date(pt.date).toLocaleDateString(undefined,{month:'numeric',day:'numeric'});
-        return `<g><text x="${10 + i * ((w-20)/points.length) + barW/2}" y="${h-24}" text-anchor="middle" fill="#7C8C82" font-family="IBM Plex Mono" font-size="12">—</text><text x="${10 + i * ((w-20)/points.length) + barW/2}" y="${h-4}" text-anchor="middle" fill="#7C8C82" font-family="IBM Plex Sans" font-size="10">${dn}</text></g>`;
-      }
-      const barH = max ? (val/max) * (h-30) : 0;
-      const y = h - 20 - barH;
-      const d = new Date(pt.date).toLocaleDateString(undefined,{month:'numeric',day:'numeric'});
-      return `<g>
-        <rect x="${x}" y="${y}" width="${barW}" height="${barH}" fill="var(--amber)" rx="3"></rect>
-        <text x="${x+barW/2}" y="${y-6}" text-anchor="middle" fill="#F1ECDD" font-family="IBM Plex Mono" font-size="12">${val}${unit}</text>
-        <text x="${x+barW/2}" y="${h-4}" text-anchor="middle" fill="#7C8C82" font-family="IBM Plex Sans" font-size="10">${d}</text>
-      </g>`;
-    }).join('');
-    return `<div class="trend-panel panel"><div class="trend-title">${title}</div>
-      <svg width="100%" viewBox="0 0 ${w} ${h}" style="overflow:visible;"><line x1="0" y1="${h-20}" x2="${w}" y2="${h-20}" stroke="#F1ECDD" stroke-opacity="0.15"></line>${bars}</svg>
-    </div>`;
-  }
-
-  return `
-    <div style="display:flex;flex-direction:column;gap:20px;">
-      ${barChart('Strike % by session', pt => pt.stats.strikePct, '%', 100)}
-      ${barChart('Accuracy % by session', pt => pt.stats.accuracyPct, '%', 100)}
-      ${anyRelative ? barChart('Relative accuracy % by session', pt => pt.stats.relativeAccuracyPct, '%', 100) : ''}
-      ${anyVelo ? barChart('Average velocity by session', pt => pt.stats.hasVelo ? pt.stats.avgVelo : null, ' mph', 0) : `<div class="empty-hist">No velocity data recorded across these sessions.</div>`}
-    </div>`;
+  const uniformRows = state.teams.map(t => uniformRowHtml(t.id, state.profile.id, 'Uniform # · ' + t.name)).join('')
+    || '<p class="profile-note">Join a team to set a uniform number.</p>';
+  return `<div class="profile-page">
+    ${msg}
+    <div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>
+    ${renderThrowsSection(p)}
+    ${renderEmailSection()}
+    ${renderPasswordSection()}
+    ${renderPitchMixSection(p)}
+    <div class="profile-section"><h3>Relative accuracy</h3>
+      <label class="switch-disabled"><input type="checkbox" disabled> Off <span class="profile-note">Coming soon</span></label>
+    </div>
+  </div>`;
+}
+// Coach editing a rostered pitcher: pitch mix, throws and this team's uniform number only.
+// Never their email or password (those aren't in this table and no function exposes them).
+function renderPitcherProfileView(){
+  const p = currentPitcher();
+  if(!p) return `<div class="empty-hist">No pitcher selected.</div>`;
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
+  return `<div class="profile-page">
+    <div class="profile-row"><h2 class="display" style="margin:0;">${p.name}'s profile</h2></div>
+    ${msg}
+    <div class="profile-section"><h3>Uniform number</h3>${uniformRowHtml(state.currentTeamId, p.id, 'Uniform # · ' + (team ? team.name : ''))}</div>
+    ${renderThrowsSection(p)}
+    ${renderPitchMixSection(p)}
+    <p class="profile-note">Email and password are managed by the player.</p>
+  </div>`;
 }
 
 /* ---------- EMAIL REPORT ---------- */
@@ -2992,12 +3153,13 @@ function render(){
   const p = currentPitcher();
   let main;
   if(!p){
-    main = `<div class="empty-state"><div class="display">No pitcher selected</div><p>Invite a pitcher to this team to get started.</p></div>`;
+    main = renderTabs() + (state.view === 'profile'
+      ? renderProfileView()
+      : `<div class="empty-state"><div class="display">No pitcher selected</div><p>Invite a pitcher to this team to get started.</p></div>`);
   } else {
     const arsenalChips = p.pitchTypes.map(t => {
       const c = colorForType(p, t);
-      const removable = !isCoach();
-      return `<span class="pitch-chip" style="background:${c};">${pitchLabel(t)}${removable ? ` <span onclick="removePitchType('${t.replace(/'/g,"\\'")}')" style="cursor:pointer;margin-left:4px;">✕</span>` : ''}</span>`;
+      return `<span class="pitch-chip" style="background:${c};">${pitchLabel(t)}</span>`;
     }).join('') || `<span style="color:var(--chalk-faint);font-size:12.5px;">No pitches set yet</span>`;
 
     const contacts = p.contactEmails || {};
@@ -3023,11 +3185,7 @@ function render(){
         </div>
       </div>` : '';
 
-    const tabs = `<div class="tabs">
-           <button class="tab-btn${state.view==='session'?' active':''}" onclick="setView('session')">${state.draftAvailable ? 'Resume Session' : 'New Session'}</button>
-           <button class="tab-btn${state.view==='history'?' active':''}" onclick="setView('history')">History</button>
-           <button class="tab-btn${state.view==='trends'?' active':''}" onclick="setView('trends')">Trends</button>
-         </div>`;
+    const tabs = renderTabs();
 
     // R0 item (e): persistent banner, never a blocking modal -- a pitcher
     // can look around while unverified. Item (f): Change Email is one tap
@@ -3037,52 +3195,32 @@ function render(){
         <p>Verify your email so we can send you your reports. ${state.verifyResendStatus === 'sent' ? 'Verification email sent — check your inbox.' : ''}${state.verifyResendStatus === 'error' ? 'Could not resend — try again in a moment.' : ''}</p>
         <div class="verify-banner-actions">
           <button class="btn btn-ghost" ${state.verifyResendStatus === 'sending' ? 'disabled' : ''} onclick="resendVerification()">${state.verifyResendStatus === 'sending' ? 'Sending…' : 'Resend'}</button>
-          <button class="btn btn-primary" onclick="toggleChangeEmail()">${state.changeEmailOpen ? 'Cancel' : 'Change Email'}</button>
+          <button class="btn btn-ghost" onclick="goToProfileEmail()">Wrong email? Change it in Profile</button>
         </div>
       </div>` : '';
 
-    const changeEmailForm = (!isCoach() && state.changeEmailOpen) ? `
-      <div class="change-email-form">
-        <p style="margin:0;font-size:12.5px;color:var(--chalk-dim);">Use an email you check on your phone. School addresses often block our mail.</p>
-        <div class="field"><span class="field-label">New email</span><input class="text-input" id="change-email-input" type="email" placeholder="you@example.com"></div>
-        <div class="contacts-save-row">
-          <button class="btn btn-primary" ${state.changeEmailStatus === 'sending' ? 'disabled' : ''} onclick="submitChangeEmail()">${state.changeEmailStatus === 'sending' ? 'Sending…' : 'Send verification'}</button>
-          ${state.changeEmailStatus === 'sent' ? '<span class="contacts-saved-msg">Check the new address for a confirmation link.</span>' : ''}
-        </div>
-        ${state.changeEmailStatus && state.changeEmailStatus.indexOf('error:') === 0 ? `<p class="error-msg" style="margin:0;">${state.changeEmailStatus.slice(6)}</p>` : ''}
-      </div>` : '';
-
-    main = `
-      ${verifyBanner}
-      ${changeEmailForm}
+    const headerHtml = `
       <div class="pitcher-header">
         <div>
           <h2 class="display">${p.name}</h2>
           <div class="pitcher-sub">${arsenalChips}</div>
         </div>
         <div class="pitcher-header-actions">
-          ${(() => {
-            const t = uniformTarget();
-            if(!t) return '';
-            const editing = state.uniformEditKey === t.pitcherId + ':' + t.teamId;
-            const label = (isCoach() ? 'Uniform #' : (state.teams.length > 1 ? 'Uniform # · ' + ((state.teams.find(x => x.id === t.teamId) || {}).name || '') : 'Uniform #'));
-            const msg = state.uniformMsg ? `<span class="uniform-msg">${state.uniformMsg}</span>` : '';
-            if(t.number !== null && !editing){
-              return `<div class="uniform-field"><span class="field-label">${label}</span>
-                <div class="uniform-locked"><span class="uniform-locked-num">${t.number}</span>
-                <button class="btn btn-ghost" onclick="editUniformNumber()">Change number</button></div>${msg}</div>`;
-            }
-            return `<div class="uniform-field"><span class="field-label">${label}</span>
-              <div class="uniform-locked"><input id="uniform-input" class="text-input" type="number" inputmode="numeric" min="0" max="99" placeholder="—" value="${t.number === null ? '' : t.number}" onkeydown="if(event.key==='Enter')saveUniformNumber()">
-              <button class="btn btn-primary" onclick="saveUniformNumber()">Save</button>
-              ${t.number !== null ? '<button class="btn btn-ghost" onclick="cancelUniformEdit()">Cancel</button>' : ''}</div>${msg}</div>`;
-          })()}
-          ${!isCoach() ? `<button class="btn btn-ghost" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>` : ''}
+          ${isCoach()
+            ? `<button class="btn btn-ghost" onclick="openPitcherProfile()">Pitcher profile</button>`
+            : `<button class="btn btn-ghost" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>`}
         </div>
       </div>
-      ${contactsPanel}
+      ${contactsPanel}`;
+
+    main = `
+      ${verifyBanner}
+      ${state.view === 'profile' ? '' : headerHtml}
       ${tabs}
-      ${state.view==='session' ? renderSessionView() : state.view==='trends' ? renderTrendsView() : renderHistoryView()}
+      ${state.view === 'session' ? renderSessionView()
+        : state.view === 'profile' ? renderProfileView()
+        : state.view === 'pitcherProfile' ? renderPitcherProfileView()
+        : renderHistoryView()}
     `;
   }
 

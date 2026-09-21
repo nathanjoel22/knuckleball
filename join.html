@@ -197,6 +197,12 @@
       }
     } catch (e) { /* recoverable via Resend */ }
     const { data, error } = await supabaseClient.rpc('join_team_via_invite', { p_token: token });
+    // A coach opening a team link (e.g. testing it) is not a pitcher: nothing
+    // to join, just take them to their app.
+    if(data && data.error === 'coach_cannot_join'){
+      window.location.href = 'bullpen-tracker.html';
+      return;
+    }
     if(error || !data || data.error){
       showCard('invalid-card');
       return;

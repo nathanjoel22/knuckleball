@@ -315,20 +315,27 @@ Deno.serve(async (req) => {
 
   // R0 item (g): server-side enforcement of the unverified-pitcher report
   // block -- the UI already filters this, but a crafted payload must not
-  // be able to bypass it. pitcher_email_report_blocked is a SECURITY
-  // DEFINER function (the only way to read auth.users.email_confirmed_at
-  // at all); called with the CALLER's own JWT, same as auth.getUser()
-  // above -- never service-role, so this function never grants more than
-  // any authenticated caller could already ask for a yes/no answer to.
-  const { data: blocked, error: blockedErr } = await callerClient.rpc('pitcher_email_report_blocked', {
-    p_pitcher_id: pitcherId,
-    p_emails: emails
+  // be able to bypass it. Caught live during the staging walkthrough
+  // (check 8): the previous version only blocked a send when the
+  // pitcher's OWN address was in the recipient list, so a report for an
+  // unverified pitcher's session still reached a coach/pitching-coach
+  // address fine. Joel's call: if the pitcher of record hasn't verified,
+  // NOBODY receives a report for their session -- not the coach, not a
+  // pitching coach -- until they do, since the data's provenance isn't
+  // trustworthy until the identity behind it is. is_pitcher_verified is a
+  // SECURITY DEFINER function (the only sanctioned way to read
+  // profiles.email_verified_at for an arbitrary pitcher_id); called with
+  // the CALLER's own JWT, same as auth.getUser() above -- never
+  // service-role, so this function never grants more than any
+  // authenticated caller could already ask for a yes/no answer to.
+  const { data: verified, error: verifiedErr } = await callerClient.rpc('is_pitcher_verified', {
+    p_pitcher_id: pitcherId
   })
-  if (blockedErr) {
-    return new Response(JSON.stringify({ error: 'Could not verify recipient eligibility: ' + blockedErr.message }), { status: 500, headers: corsHeaders })
+  if (verifiedErr) {
+    return new Response(JSON.stringify({ error: 'Could not verify pitcher eligibility: ' + verifiedErr.message }), { status: 500, headers: corsHeaders })
   }
-  if (blocked) {
-    return new Response(JSON.stringify({ error: 'This pitcher\'s account email is not yet verified and cannot receive reports.' }), { status: 403, headers: corsHeaders })
+  if (!verified) {
+    return new Response(JSON.stringify({ error: 'This pitcher\'s account email is not yet verified. No report can be sent for their sessions until they verify.' }), { status: 403, headers: corsHeaders })
   }
 
   const dateStr = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''

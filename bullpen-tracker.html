@@ -696,6 +696,8 @@ let state = {
   inviteCopyStatus: null,
   regenerateArmed: false,
   regenerateBusy: false,
+  removeArmedPitcherId: null,
+  removeBusy: false,
   sessions: [],
   view: 'session',          // session | history | trends
   activeSession: null,
@@ -1272,20 +1274,54 @@ window.confirmRegenerateInvite = async function(){
 };
 
 /* ---------- ROSTER REMOVE (coach only, R0) ----------
-   Already covered by the existing "Coaches remove pitchers from their
-   team" RLS policy on pitcher_teams -- this is a plain delete, no new
-   server-side logic needed. Removing a membership doesn't touch the
-   player's own sessions (they belong to the pitcher permanently, per
-   CLAUDE.md's roster model) -- only this team's view of them. */
-window.removeRosterPitcher = async function(pitcherId){
+   The delete itself is already covered by the existing "Coaches remove
+   pitchers from their team" RLS policy on pitcher_teams -- no new
+   server-side logic needed for that part. Removing a membership doesn't
+   touch the player's own sessions (they belong to the pitcher
+   permanently, per CLAUDE.md's roster model) -- only this team's view of
+   them.
+   Two-step arm/confirm (no native confirm()), matching the invite-link
+   Regenerate pattern -- fixes a real gap against CLAUDE.md's own Roster &
+   visibility model, which already calls for "explicit confirmation" on
+   removal; this was a plain unconfirmed delete until caught live during
+   the R0 staging walkthrough.
+   confirmRemoveRosterPitcher also fires a best-effort notification email
+   to the removed player BEFORE deleting the row -- get_removal_notice_info
+   needs the pitcher_teams row to still exist to verify who's being
+   notified and on whose authority, so the notice attempt has to happen
+   first. The removal itself proceeds regardless of whether that call or
+   the email send succeeds -- never block a coach's removal on a Resend
+   hiccup. */
+window.armRemoveRosterPitcher = function(pitcherId){
+  state.removeArmedPitcherId = pitcherId;
+  render();
+};
+window.cancelRemoveRosterPitcher = function(){
+  state.removeArmedPitcherId = null;
+  render();
+};
+window.confirmRemoveRosterPitcher = async function(pitcherId){
   const team = state.teams.find(t => t.id === state.currentTeamId);
   if(!team) return;
+  state.removeBusy = true;
+  render();
+  try{
+    if(typeof REMOVAL_NOTICE_URL !== 'undefined' && REMOVAL_NOTICE_URL.indexOf('YOUR_') !== 0){
+      await fetch(REMOVAL_NOTICE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token },
+        body: JSON.stringify({ pitcherId, teamId: team.id })
+      });
+    }
+  }catch(e){ /* best-effort -- removal proceeds regardless */ }
   const { error } = await supabaseClient
     .from('pitcher_teams')
     .delete()
     .eq('pitcher_id', pitcherId)
     .eq('team_id', team.id);
-  if(error){ console.error('removeRosterPitcher failed', error); return; }
+  state.removeBusy = false;
+  state.removeArmedPitcherId = null;
+  if(error){ console.error('removeRosterPitcher failed', error); render(); return; }
   await loadRosterForTeam(team.id);
   if(state.currentPitcherId === pitcherId){
     state.currentPitcherId = state.roster.length ? state.roster[0].id : null;
@@ -1302,8 +1338,24 @@ window.resendVerification = async function(){
   if(!state.myVerification.email) return;
   state.verifyResendStatus = 'sending';
   render();
-  const { error } = await supabaseClient.auth.resend({ type: 'signup', email: state.myVerification.email });
-  state.verifyResendStatus = error ? 'error' : 'sent';
+  // R0 follow-up: this used to call supabaseClient.auth.resend({type:'signup'}),
+  // Supabase's OWN confirmation resend -- with "Confirm email" off, Supabase
+  // never sent that email in the first place, so that call would silently
+  // no-op forever. Verification is ours now; resend goes through our own
+  // send-verification-email function, same auth pattern as sendSessionReport.
+  try{
+    if(typeof VERIFY_EMAIL_URL === 'undefined' || VERIFY_EMAIL_URL.indexOf('YOUR_') === 0){
+      throw new Error('not configured');
+    }
+    const res = await fetch(VERIFY_EMAIL_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token }
+    });
+    if(!res.ok) throw new Error('send failed');
+    state.verifyResendStatus = 'sent';
+  }catch(e){
+    state.verifyResendStatus = 'error';
+  }
   render();
 };
 window.toggleChangeEmail = function(){
@@ -1320,9 +1372,30 @@ window.submitChangeEmail = async function(){
   const { error } = await supabaseClient.auth.updateUser({ email });
   if(error){
     state.changeEmailStatus = 'error:' + error.message;
-  } else {
-    state.changeEmailStatus = 'sent';
+    render();
+    return;
   }
+  // R0 follow-up: safe to fire our own verification email right away only
+  // because staging has "Secure email change" off, so updateUser() above
+  // already applied auth.users.email synchronously -- with that setting
+  // on, this would fire to the address being REPLACED, not the new one
+  // (confirmed empirically during the staging walkthrough; see the
+  // migration that added the email_verified_at reset to
+  // generate_email_verify_token for the full account of that failure
+  // mode). Never re-enable that setting without revisiting this.
+  try{
+    if(typeof VERIFY_EMAIL_URL !== 'undefined' && VERIFY_EMAIL_URL.indexOf('YOUR_') !== 0){
+      await fetch(VERIFY_EMAIL_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token }
+      });
+    }
+  }catch(e){ /* recoverable via the Resend button */ }
+  state.changeEmailStatus = 'sent';
+  // Reflect the change immediately rather than waiting for the next
+  // background reconcile -- the banner should show the new (unverified)
+  // address right away, matching what generate_email_verify_token just did.
+  state.myVerification = { email, emailConfirmed: false };
   render();
 };
 
@@ -2335,16 +2408,18 @@ function renderHistoryView(){
     }).join('');
 
     const contacts = p.contactEmails || {};
-    // R0 item (g): the pitcher's own address is excluded from the send
-    // entirely, and the UI says why, when unverified -- coach/pitching-coach
-    // addresses aren't tied to a Knuckleball account, so this check only
-    // ever applies to the pitcher slot. This is the UI half only; the real
-    // enforcement is server-side in send-session-report (a client can't
-    // bypass it by including the address anyway -- see that function).
+    // R0 item (g), revised after check 8 on staging: the block is on the
+    // WHOLE send, not just the pitcher's own address -- a report for an
+    // unverified pitcher's session doesn't go to a coach or pitching-coach
+    // address either, since the data's provenance isn't trustworthy until
+    // the identity behind it is verified. This is the UI half only; the
+    // real enforcement is server-side in send-session-report, gated on
+    // is_pitcher_verified (a client can't bypass it by hand-crafting a
+    // payload -- see that function).
     const pVerified = currentPitcherVerified(p);
-    const pitcherExcluded = !pVerified && !!contacts.pitcher;
-    const emailList = [contacts.coach, contacts.pitchingCoach, pVerified ? contacts.pitcher : null]
-      .map(e => (e||'').trim()).filter(Boolean);
+    const emailList = pVerified
+      ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean)
+      : [];
     const rs = state.reportStatus && state.reportStatus.sessionId === s.id ? state.reportStatus : null;
     const reportPanel = s.pending ? `
       <div class="report-panel">
@@ -2354,10 +2429,11 @@ function renderHistoryView(){
       </div>` : `
       <div class="report-panel">
         <div class="field-label">Email this report</div>
-        ${emailList.length
-          ? `<p class="report-recipients">To: ${emailList.join(', ')}</p>`
-          : `<p class="report-recipients">No contact emails set for ${p.name} yet${isCoach() ? '' : ' — add them under Contacts above'}.</p>`}
-        ${pitcherExcluded ? `<p class="report-recipients" style="color:var(--clay);">${p.name}'s own address isn't verified yet, so it's excluded until they verify.</p>` : ''}
+        ${!pVerified
+          ? `<p class="report-recipients" style="color:var(--clay);">No report can be sent until ${p.name} verifies their email.</p>`
+          : emailList.length
+            ? `<p class="report-recipients">To: ${emailList.join(', ')}</p>`
+            : `<p class="report-recipients">No contact emails set for ${p.name} yet${isCoach() ? '' : ' — add them under Contacts above'}.</p>`}
         <button class="btn btn-primary" ${emailList.length ? '' : 'disabled'} onclick="sendSessionReport('${s.id}')">Send report</button>
         ${rs ? `<p class="report-status report-status-${rs.status}">${rs.message}</p>` : ''}
       </div>`;
@@ -2456,13 +2532,16 @@ window.sendSessionReport = async function(sessionId){
   const session = state.sessions.find(s => s.id === sessionId);
   if(!session || !p) return;
   const contacts = p.contactEmails || {};
-  // R0 item (g): matches renderHistoryView's own filter -- an unverified
-  // pitcher's own address never goes in the send at all, client-side. The
-  // server-side check (pitcherId below) is what actually can't be
-  // bypassed; this just keeps normal usage from ever hitting that path.
+  // R0 item (g), revised after check 8 on staging: matches
+  // renderHistoryView's own filter -- an unverified pitcher blocks the
+  // WHOLE send client-side, not just their own address. The server-side
+  // check (pitcherId below, gated on is_pitcher_verified) is what
+  // actually can't be bypassed; this just keeps normal usage from ever
+  // hitting that path.
   const pVerified = currentPitcherVerified(p);
-  const emails = [contacts.coach, contacts.pitchingCoach, pVerified ? contacts.pitcher : null]
-    .map(e => (e||'').trim()).filter(Boolean);
+  const emails = pVerified
+    ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean)
+    : [];
   if(!emails.length) return;
 
   state.reportStatus = { sessionId, status: 'sending', message: 'Sending…' };
@@ -2551,15 +2630,23 @@ function render(){
   let sidebarBody;
   if(isCoach()){
     const rosterItems = state.roster.map((p, i) => `
-      <div class="roster-item${p.id===state.currentPitcherId?' active':''}" style="display:flex;">
-        <button style="all:unset;flex:1;min-width:0;display:flex;align-items:center;cursor:pointer;" onclick="selectPitcher('${p.id}')">
-          <div class="roster-item-main">
-            <span class="roster-item-name">${p.name}${p.emailConfirmed ? '' : '<span class="verify-badge">Unverified</span>'}</span>
-            <span class="roster-item-types">${p.pitchTypes.join(' · ') || 'No pitches set yet'}</span>
-          </div>
-          <span class="roster-item-num">${String(i+1).padStart(2,'0')}</span>
-        </button>
-        <button class="roster-item-remove" title="Remove ${p.name} from this team" onclick="event.stopPropagation();removeRosterPitcher('${p.id}')">✕</button>
+      <div class="roster-item-wrap">
+        <div class="roster-item${p.id===state.currentPitcherId?' active':''}" style="display:flex;">
+          <button style="all:unset;flex:1;min-width:0;display:flex;align-items:center;cursor:pointer;" onclick="selectPitcher('${p.id}')">
+            <div class="roster-item-main">
+              <span class="roster-item-name">${p.name}${p.emailConfirmed ? '' : '<span class="verify-badge">Unverified</span>'}</span>
+              <span class="roster-item-types">${p.pitchTypes.join(' · ') || 'No pitches set yet'}</span>
+            </div>
+            <span class="roster-item-num">${String(i+1).padStart(2,'0')}</span>
+          </button>
+          <button class="roster-item-remove" title="Remove ${p.name} from this team" onclick="event.stopPropagation();armRemoveRosterPitcher('${p.id}')">✕</button>
+        </div>
+        ${state.removeArmedPitcherId === p.id ? `
+          <div class="invite-regen-warn" style="padding:0 4px 8px;">Removes ${p.name} from this team's roster and emails them to let them know. Their sessions and stats aren't deleted -- only this team's view of them.</div>
+          <div class="invite-regen-confirm-row" style="padding:0 4px 8px;">
+            <button class="btn btn-primary" style="background:var(--red);" ${state.removeBusy ? 'disabled' : ''} onclick="confirmRemoveRosterPitcher('${p.id}')">${state.removeBusy ? 'Removing…' : 'Remove now'}</button>
+            <button class="btn btn-ghost" ${state.removeBusy ? 'disabled' : ''} onclick="cancelRemoveRosterPitcher()">Cancel</button>
+          </div>` : ''}
       </div>`).join('');
 
     const team = state.teams.find(t => t.id === state.currentTeamId);

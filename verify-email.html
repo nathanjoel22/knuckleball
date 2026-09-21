@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verify your email · Knuckleball</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --field-dark:#0F241B; --field-panel:#183527; --field-panel-2:#1F4230;
+    --chalk:#F1ECDD; --chalk-dim:#B7C2B4; --chalk-faint:#7C8C82;
+    --clay:#C17A45; --amber:#E8A83D; --amber-bright:#F5C365; --red:#C0453B;
+    --border:rgba(241,236,221,0.12); --border-strong:rgba(241,236,221,0.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:var(--field-dark);
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(232,168,61,0.08), transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(193,122,69,0.08), transparent 45%);
+    color:var(--chalk); font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  ::selection{ background:var(--amber); color:var(--field-dark); }
+  .display{ font-family:'Teko', sans-serif; font-weight:600; letter-spacing:0.01em; }
+  a{ color:var(--chalk-faint); text-decoration:none; font-size:13px; }
+  a:hover{ color:var(--chalk); }
+  a:focus-visible{ outline:2px solid var(--amber-bright); outline-offset:3px; }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
+
+  .card{
+    width:100%; max-width:400px; background:var(--field-panel); border:1.5px solid var(--border-strong);
+    border-radius:14px; padding:38px 34px; display:flex; flex-direction:column; gap:20px;
+  }
+  .brand-block{ display:flex; flex-direction:column; gap:4px; }
+  .brand{ display:flex; align-items:baseline; gap:8px; }
+  .brand-mark{ width:10px; height:10px; border-radius:2px; background:var(--amber); transform:rotate(45deg); margin-bottom:3px; }
+  .brand h1{ font-size:22px; line-height:1; margin:0; letter-spacing:0.02em; }
+  .brand span{ color:var(--amber); }
+  .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:0.16em; color:var(--chalk-faint); }
+  h2.display{ font-size:34px; margin:0; line-height:1; }
+
+  .info-msg{ font-size:13px; color:var(--chalk-dim); line-height:1.5; background:var(--field-panel-2); border:1px solid var(--border-strong); border-radius:8px; padding:14px; }
+  .spinner-msg{ font-size:13px; color:var(--chalk-dim); text-align:center; }
+  .step-hidden{ display:none; }
+</style>
+</head>
+<body>
+  <!-- Shown first, always, while verify_email() is running -- never a raw
+       error before we actually know the result. -->
+  <div class="card" id="loading-card">
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <p class="spinner-msg">Verifying…</p>
+  </div>
+
+  <div class="card step-hidden" id="ok-card">
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <h2 class="display">Email verified</h2>
+    <div class="info-msg">Your account email is verified. You're all set.</div>
+    <a href="bullpen-tracker.html">&rarr; Back to Knuckleball</a>
+  </div>
+
+  <div class="card step-hidden" id="invalid-card">
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <h2 class="display">Link no longer valid</h2>
+    <div class="info-msg">This verification link has expired or was already used. Open Knuckleball and use the Resend button on the verify-email banner to get a new one.</div>
+    <a href="bullpen-tracker.html">&rarr; Back to Knuckleball</a>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script>
+  function showCard(id){
+    ['loading-card','ok-card','invalid-card'].forEach(cid => {
+      document.getElementById(cid).classList.toggle('step-hidden', cid !== id);
+    });
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const token = (params.get('t') || '').trim();
+
+  async function init(){
+    if(!token){
+      showCard('invalid-card');
+      return;
+    }
+    const { data, error } = await supabaseClient.rpc('verify_email', { p_token: token });
+    if(error || !data || !data.ok){
+      showCard('invalid-card');
+      return;
+    }
+    showCard('ok-card');
+  }
+
+  init();
+</script>
+</body>
+</html>

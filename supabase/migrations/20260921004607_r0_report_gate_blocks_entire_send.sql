@@ -1,0 +1,45 @@
+-- R0 follow-up — the report gate blocks the whole send, not just the
+-- pitcher's own address.
+--
+-- Why: pitcher_email_report_blocked(p_pitcher_id, p_emails) only blocked a
+-- send when the pitcher's OWN unverified account email was literally
+-- present in the recipient list. Caught live during the staging
+-- walkthrough (check 8): a report for an unverified pitcher's session
+-- still went through fine to a coach/pitching-coach address, since that
+-- address was never the pitcher's own. Joel's call: if the pitcher of
+-- record hasn't verified, no report for their session goes to ANYONE --
+-- not the coach, not a pitching coach -- until they do. The data's
+-- provenance isn't trustworthy until the identity behind it is.
+--
+-- This makes pitcher_email_report_blocked's whole "does p_emails contain
+-- the blocked address" check the wrong shape entirely -- the send is
+-- gated on the pitcher's verification status alone, which is exactly
+-- what is_pitcher_verified(p_pitcher_id) already answers (added in the
+-- first R0 migration, unused by any client code until now). Dropping
+-- pitcher_email_report_blocked rather than leaving it beside
+-- is_pitcher_verified as an unused, narrower sibling -- exactly the "one
+-- function reading something that no longer means what it used to" shape
+-- that caused the email_confirmed_at bug this session already found once.
+
+drop function if exists public.pitcher_email_report_blocked(uuid, text[]);
+
+-- ---------------------------------------------------------------------------------
+-- ROLLBACK (no auto-down; write a new migration with this body if you need to
+-- revert):
+--
+--   create or replace function public.pitcher_email_report_blocked(p_pitcher_id uuid, p_emails text[])
+--   returns boolean
+--   language sql security definer set search_path = ''
+--   as $$
+--     select exists (
+--       select 1 from auth.users u join public.profiles pr on pr.id = u.id
+--       where u.id = p_pitcher_id and pr.email_verified_at is null
+--         and lower(u.email) = any (select lower(e) from unnest(p_emails) as e))
+--   $$;
+--   revoke all on function public.pitcher_email_report_blocked(uuid, text[]) from public, anon;
+--   grant execute on function public.pitcher_email_report_blocked(uuid, text[]) to authenticated;
+--
+--   -- Also revert supabase/functions/send-session-report/index.ts back to
+--   -- calling pitcher_email_report_blocked with the recipient array, and
+--   -- redeploy.
+-- ---------------------------------------------------------------------------------

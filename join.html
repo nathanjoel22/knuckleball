@@ -150,6 +150,7 @@
   </div>
 
 <script src="supabase-config.js"></script>
+<script src="report-config.js"></script>
 <script>
   function showCard(id){
     ['loading-card','invalid-card','join-form','confirm-card','joining-card'].forEach(cid => {
@@ -176,6 +177,25 @@
     // Metadata (full_name, intended_role) was set at signUp() time, so no
     // args needed here, same as coach-signup.html.
     await supabaseClient.rpc('ensure_account_setup');
+    // R0 follow-up: send our own verification email now that the profile
+    // row is guaranteed to exist -- generate_email_verify_token() writes
+    // to that row, so calling this before ensure_account_setup() above
+    // would silently generate a token nobody could ever redeem. Best
+    // effort: a failed send here must never block a new pitcher from
+    // using the app -- that's the entire point of deferred verification.
+    // The verify banner's Resend button (bullpen-tracker.html) is the
+    // recovery path if this silently fails. Same fetch/auth pattern as
+    // sendSessionReport there -- the function authenticates via the
+    // caller's own session, not a shared secret.
+    try {
+      const { data: { session: s } } = await supabaseClient.auth.getSession();
+      if(s && typeof VERIFY_EMAIL_URL !== 'undefined' && VERIFY_EMAIL_URL.indexOf('YOUR_') !== 0){
+        await fetch(VERIFY_EMAIL_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }
+        });
+      }
+    } catch (e) { /* recoverable via Resend */ }
     const { data, error } = await supabaseClient.rpc('join_team_via_invite', { p_token: token });
     if(error || !data || data.error){
       showCard('invalid-card');

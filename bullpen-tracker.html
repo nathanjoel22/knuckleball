@@ -293,7 +293,7 @@
   .pitch-counter{ display:flex; flex-direction:column; align-items:flex-end; gap:24px; flex-shrink:0; }
   .pitch-counter-num{ font-family:'Teko',sans-serif; font-size:22px; line-height:1; color:var(--amber-bright); }
   .add-type-inline{ display:flex; gap:6px; align-items:center; }
-  .add-type-inline input{ flex:1; padding:6px 8px; font-size:12.5px; }
+  .add-type-inline input, .add-type-inline select{ flex:1; padding:6px 8px; font-size:12.5px; }
   .add-type-inline button{ background:none; border:1px solid var(--border-strong); color:var(--chalk-dim); border-radius:5px; padding:6px 10px; font-size:12px; }
   .add-type-inline button:hover{ color:var(--amber); border-color:var(--amber); }
 
@@ -663,6 +663,29 @@
 
 <script>
 /* ---------- CONSTANTS ---------- */
+// The only pitches a pitcher can add. `name` is what gets stored in
+// profiles.pitch_types and on each pitch row (unchanged plain strings, so
+// reports and history are unaffected); `abbr` is display-only, shown before
+// the name. Pitches saved before this list existed (free text) still render
+// as typed -- pitchLabel falls back to the raw string.
+const PITCH_CATALOG = [
+  { abbr:'4SFB', name:'Four Seam Fastball' },
+  { abbr:'2SFB', name:'Two Seam Fastball' },
+  { abbr:'CU',   name:'Cutter' },
+  { abbr:'SK',   name:'Sinker' },
+  { abbr:'CH',   name:'Changeup' },
+  { abbr:'CB',   name:'Curveball' },
+  { abbr:'SL',   name:'Slider' },
+  { abbr:'KN',   name:'Knuckleball' },
+  { abbr:'SW',   name:'Sweeper' },
+  { abbr:'SV',   name:'Slurve' },
+  { abbr:'FR',   name:'Forkball' },
+  { abbr:'SP',   name:'Splitter' }
+];
+function pitchLabel(name){
+  const c = PITCH_CATALOG.find(x => x.name === name);
+  return c ? c.abbr + ' ' + c.name : name;
+}
 const TYPE_PALETTE = ['#E8A83D','#6FA287','#C17A45','#C0453B','#7C9CBF','#B98CCB','#D4C15B','#4FA8A8'];
 const GRID_SIZE = 5;
 
@@ -2219,7 +2242,7 @@ function renderSessionView(){
   const typeChips = p.pitchTypes.map(t => {
     const color = colorForType(p, t);
     const selected = state.selectedType === t;
-    return `<button class="type-chip${selected?' selected':''}" style="${selected ? `background:${color};border-color:${color};` : `color:${color};border-color:${color}55;`}" onclick="selectType('${t.replace(/'/g,"\\'")}')">${t}</button>`;
+    return `<button class="type-chip${selected?' selected':''}" style="${selected ? `background:${color};border-color:${color};` : `color:${color};border-color:${color}55;`}" onclick="selectType('${t.replace(/'/g,"\\'")}')">${pitchLabel(t)}</button>`;
   }).join('');
 
   const logRows = pitches.slice().reverse().slice(0, 12).map((pt, i) => {
@@ -2227,7 +2250,7 @@ function renderSessionView(){
     const color = colorForType(p, pt.type);
     if(state.editDraftRow === realIdx){
       const typeOpts = p.pitchTypes.map(t =>
-        `<option value="${String(t).replace(/"/g,'&quot;')}" ${t===pt.type?'selected':''}>${t}</option>`).join('');
+        `<option value="${String(t).replace(/"/g,'&quot;')}" ${t===pt.type?'selected':''}>${pitchLabel(t)}</option>`).join('');
       return `<div class="pitch-log-row editing">
         <div class="edit-row-fields">
           <select id="edit-draft-type" class="edit-mini">${typeOpts}</select>
@@ -2258,7 +2281,7 @@ function renderSessionView(){
     const modeTag = pt.accuracyMode ? ` <span style="color:#7C9CBF;">[${ACCURACY_MODE_LABELS[pt.accuracyMode]}${relAccurate ? ' ✓' : ''}]</span>` : '';
     const locText = `${targetNum ? 'aimed '+targetNum : 'aimed ball'} → ${actualNum ? 'landed '+actualNum : 'landed ball'}${accurate ? ' ✓' : ''}${modeTag}`;
     return `<div class="pitch-log-row">
-      <span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pt.type}</span> · ${veloText}${strike ? 'Strike' : 'Ball'} · <span style="color:var(--chalk-faint);">${locText}</span></span>
+      <span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pitchLabel(pt.type)}</span> · ${veloText}${strike ? 'Strike' : 'Ball'} · <span style="color:var(--chalk-faint);">${locText}</span></span>
       <span class="pitch-row-actions">
         <button class="undo-btn" onclick="startEditDraftRow(${realIdx})">edit</button>
         <button class="row-x-btn" onclick="removePitch(${realIdx})" title="Remove this pitch" aria-label="Remove this pitch">✕</button>
@@ -2279,7 +2302,10 @@ function renderSessionView(){
           <div class="chip-row">${typeChips}</div>
           ${!isCoach() ? `
           <div class="add-type-inline" style="margin-top:8px;">
-            <input id="new-type-input" class="text-input" placeholder="Add a pitch (e.g. Splitter)" onkeydown="if(event.key==='Enter')addPitchType()">
+            <select id="new-type-input" class="text-input">
+              <option value="">Add a pitch…</option>
+              ${PITCH_CATALOG.filter(c => !p.pitchTypes.includes(c.name)).map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+            </select>
             <button onclick="addPitchType()">Add</button>
           </div>` : (p.pitchTypes.length ? '' : `<p style="color:var(--chalk-faint);font-size:12px;margin-top:8px;">${p.name} hasn't set up their pitch arsenal yet — they can add pitch types from their own login.</p>`)}
         </div>
@@ -2654,7 +2680,7 @@ function render(){
           <button style="all:unset;flex:1;min-width:0;display:flex;align-items:center;cursor:pointer;" onclick="selectPitcher('${p.id}')">
             <div class="roster-item-main">
               <span class="roster-item-name">${p.name}${p.emailConfirmed ? '' : '<span class="verify-badge">Unverified</span>'}</span>
-              <span class="roster-item-types">${p.pitchTypes.join(' · ') || 'No pitches set yet'}</span>
+              <span class="roster-item-types">${p.pitchTypes.map(pitchLabel).join(' · ') || 'No pitches set yet'}</span>
             </div>
             <span class="roster-item-num">${String(i+1).padStart(2,'0')}</span>
           </button>
@@ -2723,7 +2749,7 @@ function render(){
     const arsenalChips = p.pitchTypes.map(t => {
       const c = colorForType(p, t);
       const removable = !isCoach();
-      return `<span class="pitch-chip" style="background:${c};">${t}${removable ? ` <span onclick="removePitchType('${t.replace(/'/g,"\\'")}')" style="cursor:pointer;margin-left:4px;">✕</span>` : ''}</span>`;
+      return `<span class="pitch-chip" style="background:${c};">${pitchLabel(t)}${removable ? ` <span onclick="removePitchType('${t.replace(/'/g,"\\'")}')" style="cursor:pointer;margin-left:4px;">✕</span>` : ''}</span>`;
     }).join('') || `<span style="color:var(--chalk-faint);font-size:12.5px;">No pitches set yet</span>`;
 
     const contacts = p.contactEmails || {};

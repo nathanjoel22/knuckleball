@@ -159,8 +159,15 @@ async function buildReportPdf(payload: any): Promise<Uint8Array> {
     ['ACCURACY %', stats.accuracyPct + '%']
   ]
   if (stats.usesRelativeMode) statItems.push(['RELATIVE ACC %', stats.relativeAccuracyPct + '%'])
+  // U7B: zone accuracy is the headline when zone data exists, exact-hit stays beside it.
+  // Both come from the client's STORED per-pitch results (pitches[].inAccuracyZone); this
+  // function never recomputes zone results, so repainting a zone can't change a re-sent report.
+  if (stats.hasZone) {
+    statItems[2] = ['EXACT HIT %', stats.accuracyPct + '%']
+    statItems.splice(2, 0, ['ZONE ACC %', stats.zoneAccuracyPct + '%'])
+  }
   statItems.push(['AVG MPH', stats.hasVelo ? String(stats.avgVelo) : '—'])
-  const statSpacing = statItems.length > 4 ? 108 : 135
+  const statSpacing = statItems.length > 5 ? 90 : statItems.length > 4 ? 108 : 135
   let sx = 40
   for (const [label, val] of statItems) {
     page1.drawText(val, { x: sx, y, size: 24, font: bold, color: COLORS.fieldDark })
@@ -200,6 +207,8 @@ async function buildReportPdf(payload: any): Promise<Uint8Array> {
       const accurate = typePitches.filter(isAccurate).length
       const relativeAccurate = typePitches.filter(isRelativelyAccurate).length
       const usesRelative = typePitches.some((p: any) => p.accuracyMode)
+      const zonePitches = typePitches.filter((p: any) => p.inAccuracyZone === true || p.inAccuracyZone === false)
+      const zoneHits = zonePitches.filter((p: any) => p.inAccuracyZone === true).length
       const strikePct = Math.round((strikes / typePitches.length) * 100)
       const accuracyPct = Math.round((accurate / typePitches.length) * 100)
       const relativeAccuracyPct = Math.round((relativeAccurate / typePitches.length) * 100)
@@ -208,7 +217,8 @@ async function buildReportPdf(payload: any): Promise<Uint8Array> {
       const gy = rowY - miniSize
       page.drawCircle({ x: x + 5, y: rowY + 14, size: 5, color: colorForType(type, allTypes) })
       const relText = usesRelative ? `  ·  ${relativeAccuracyPct}% relative` : ''
-      page.drawText(`${type}  ·  ${typePitches.length} pitches  ·  ${strikePct}% strikes  ·  ${accuracyPct}% accuracy${relText}`, {
+      const zoneText = zonePitches.length ? `  ·  ${Math.round((zoneHits / zonePitches.length) * 100)}% zone (${zonePitches.length})` : ''
+      page.drawText(`${type}  ·  ${typePitches.length} pitches  ·  ${strikePct}% strikes  ·  ${accuracyPct}% ${zonePitches.length ? 'exact' : 'accuracy'}${zoneText}${relText}`, {
         x: x + 16, y: rowY + 10, size: 9, font: bold, color: COLORS.fieldDark
       })
       drawZoneGrid(page, { x, y: gy, size: miniSize })

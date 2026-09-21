@@ -619,7 +619,9 @@
   .throws-btn{ min-height:44px; min-width:88px; padding:10px 16px; border-radius:22px; border:1.5px solid var(--border-strong); background:transparent; color:var(--chalk-dim); font-size:14px; font-weight:600; }
   .throws-btn.selected{ background:var(--amber); border-color:var(--amber); color:var(--field-dark); }
   .mix-prompt{ margin:8px 0 0; font-size:12px; color:var(--amber); }
-  .switch-disabled{ opacity:0.5; display:flex; gap:10px; align-items:center; font-size:14px; }
+  .zone-row{ display:flex; flex-direction:column; gap:6px; padding:8px 0; border-top:1px solid var(--border); }
+  .zone-paint{ display:flex; flex-direction:column; gap:12px; align-items:flex-start; }
+  .zone-cell.zone-painted{ background:rgba(232,168,61,0.5); box-shadow:inset 0 0 0 2px var(--amber); }
 
   @media (max-width: 860px){
     #app{ flex-direction:column; }
@@ -746,7 +748,6 @@ let state = {
   view: 'session',          // session | history | profile | pitcherProfile (coach editing the selected pitcher)
   activeSession: null,
   selectedType: null,
-  selectedAccuracyMode: null,
   veloTargetIdx: null,      // U6: index of the last recorded pitch that may still take a velocity (null = locked)
   veloHistory: null,        // U6: on-device { 'pitcherId:teamId': { pitchType: [recent velos, oldest->newest] } }
   veloStripKey: null,       // U6: what the strip was last centered for, so re-renders keep its scroll position
@@ -762,6 +763,9 @@ let state = {
   uniformMsg: '',           // one-line notice, e.g. after a conflict
   uniformMsgKey: null,      // which 'pitcherId:teamId' row the notice belongs to
   profileMsg: '',           // U7: one-line notice on the Profile pages
+  zones: {},                // U7B: { pitcherId: { pitchType: { R: ['row-col', ...], L: [...] } } }, catcher frame
+  zonePaint: null,          // U7B: the zone being painted { pitcherId, type, side, cells }
+  zoneMsg: '',
   passwordStatus: null,     // U7: null | 'sending' | 'saved' | 'error:<msg>'
   contactsSavedAt: null,
   inviteOpen: false,
@@ -797,7 +801,7 @@ function genUUID(){
   });
 }
 function mapProfile(row){
-  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, throws: row.throws || null, uniformNumber: null };
+  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, throws: row.throws || null, relativeAccuracy: !!row.relative_accuracy_enabled, uniformNumber: null };
 }
 function isCoach(){ return state.profile && state.profile.role === 'coach'; }
 // The pitch types New Session offers: the pitcher's own mix, or -- if they haven't
@@ -947,6 +951,7 @@ function applyCachedContext(cached){
   state.profile = cached.profile;
   state.teams = cached.teams || [];
   state.roster = cached.roster || [];
+  state.zones = cached.zones || {};
   state.currentTeamId = cached.currentTeamId;
   state.currentPitcherId = cached.currentPitcherId;
   state.myVerification = cached.myVerification || { email: null, emailConfirmed: false };
@@ -1217,6 +1222,7 @@ async function saveLastKnownContext(){
     profile: state.profile,
     teams: state.teams,
     roster: state.roster,
+    zones: state.zones,
     currentTeamId: state.currentTeamId,
     currentPitcherId: state.currentPitcherId,
     myVerification: state.myVerification
@@ -1249,6 +1255,7 @@ window.onTeamChange = async function(teamId, skipRender){
     state.view = 'session';
   }
   await loadSessionsForCurrentSelection();
+  await loadZones();
   await refreshDraftState();
   await saveLastKnownContext();
   if(!skipRender) render();
@@ -1261,6 +1268,32 @@ function adoptDraftPitcher(){
   if(state.currentPitcherId && has(state.currentPitcherId)) return;
   const hit = state.roster.find(r => has(r.id));
   if(hit) state.currentPitcherId = hit.id;
+}
+
+/* ---------- ACCURACY ZONES (U7 Phase B) ----------
+   Per pitcher, per pitch type, per batter side: the catcher-frame cells ('row-col')
+   that count as accurate. The pitcher's relative-accuracy switch and zones apply no
+   matter who is charting. Cached with the roster snapshot so charting reads them
+   with no network. */
+function zoneCellsFor(pitcherId, type, side){
+  const z = state.zones[pitcherId];
+  const c = z && z[type] && z[type][side];
+  return (c && c.length) ? c : null;
+}
+async function loadZones(){
+  try{
+    const ids = isCoach() ? state.roster.map(r => r.id) : (state.profile ? [state.profile.id] : []);
+    if(!ids.length) return;
+    const { data, error } = await supabaseClient.from('accuracy_zones').select('pitcher_id, pitch_type, batter_side, cells').in('pitcher_id', ids);
+    if(error || !data) return;                    // offline / failed: keep the cached zones
+    const fresh = {};
+    ids.forEach(id => { fresh[id] = {}; });
+    data.forEach(r => {
+      const byType = fresh[r.pitcher_id] || (fresh[r.pitcher_id] = {});
+      (byType[r.pitch_type] = byType[r.pitch_type] || {})[r.batter_side] = r.cells || [];
+    });
+    state.zones = Object.assign({}, state.zones, fresh);
+  }catch(e){ /* best-effort */ }
 }
 
 // Numerical order by uniform number; pitchers who haven't set one yet go last
@@ -1278,7 +1311,7 @@ function sortRoster(){
 async function loadRosterForTeam(teamId){
   const { data, error } = await supabaseClient
     .from('pitcher_teams')
-    .select('uniform_number, profiles(id, full_name, pitch_types, contact_emails, throws)')
+    .select('uniform_number, profiles(id, full_name, pitch_types, contact_emails, throws, relative_accuracy_enabled)')
     .eq('team_id', teamId);
   if(error){ console.error('loadRosterForTeam failed', error); state.roster = []; return; }
   state.roster = (data || []).filter(r => r.profiles).map(r => {
@@ -1810,7 +1843,6 @@ async function refreshDraftState(){
     state.activeSession = await freshActiveSession();
   }
   state.selectedType = null;
-  state.selectedAccuracyMode = null;
   state.pendingTarget = null;
   state.veloTargetIdx = null;
   state.flashCell = null;
@@ -1835,10 +1867,6 @@ window.discardDraft = async function(){
 window.selectType = function(type){
   state.selectedType = type;
   state.hint = '';
-  render();
-};
-window.selectAccuracyMode = function(mode){
-  state.selectedAccuracyMode = (state.selectedAccuracyMode === mode) ? null : mode;
   render();
 };
 window.selectPerspective = async function(newPerspective){
@@ -2022,12 +2050,22 @@ window.handleZoneTap = async function(row, col){
   // regardless of how many times the toggle flips later in the same
   // session (approach g).
   const batterSide = sessionBatterSide(state.activeSession);
+  // U7B: score against the PITCHER's zone for this pitch type and batter side, if their
+  // relative-accuracy switch is on and one is painted. Stored on the pitch now (with a copy
+  // of the cells) so repainting a zone later never changes a saved session. Zones are in
+  // catcher frame, and the tapped column is normalized to it here, like every coordinate.
+  const chartPitcher = currentPitcher();
+  const zoneCells = (chartPitcher && chartPitcher.relativeAccuracy)
+    ? zoneCellsFor(state.currentPitcherId, state.selectedType, batterSide) : null;
+  const inAccuracyZone = zoneCells ? zoneCells.includes(row + '-' + perspectiveCol(col, chartingPerspective)) : null;
   state.activeSession.pitches.push({
     id: genUUID(),
     type: state.selectedType, velo: null,
     targetRow: target.row, targetCol: perspectiveCol(target.col, chartingPerspective),
     actualRow: row, actualCol: perspectiveCol(col, chartingPerspective),
-    accuracyMode: state.selectedAccuracyMode,
+    accuracyMode: null,   // U7B: the old per-session modes are retired for new pitches; zone result below
+    inAccuracyZone,
+    accuracyZoneCells: zoneCells ? zoneCells.slice() : null,
     batterSide,
     ts: Date.now()
   });
@@ -2277,6 +2315,8 @@ async function syncOutbox(){
       target_row: p.targetRow, target_col: p.targetCol,
       actual_row: p.actualRow, actual_col: p.actualCol,
       accuracy_mode: p.accuracyMode || null,
+      in_accuracy_zone: (p.inAccuracyZone === true || p.inAccuracyZone === false) ? p.inAccuracyZone : null,
+      accuracy_zone_cells: p.accuracyZoneCells || null,
       // U2a: per-pitch, not per-session (see the migration's comment) --
       // null for a pitch queued before this shipped, same defensive
       // fallback pattern as charting_perspective above.
@@ -2310,7 +2350,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by_role, pitch_count, charting_perspective, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, ts)')
+    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by_role, pitch_count, charting_perspective, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts)')
     .eq('pitcher_id', pitcherId)
     .eq('team_id', teamId)
     .order('started_at', { ascending: false });
@@ -2331,6 +2371,8 @@ async function loadSessionsForCurrentSelection(){
       targetRow: p.target_row, targetCol: p.target_col,
       actualRow: p.actual_row, actualCol: p.actual_col,
       accuracyMode: p.accuracy_mode || null,
+      inAccuracyZone: (p.in_accuracy_zone === true || p.in_accuracy_zone === false) ? p.in_accuracy_zone : null,
+      accuracyZoneCells: p.accuracy_zone_cells || null,
       // U2a: NULL on legacy pitches, on purpose (no default, no backfill --
       // see the migration). isRelativelyAccurate falls back to 'R' itself
       // when this is absent, so legacy sessions keep reporting exactly as
@@ -2369,6 +2411,11 @@ function sessionStats(pitches){
   const accurate = pitches.filter(isAccurate).length;
   const relativeAccurate = pitches.filter(isRelativelyAccurate).length;
   const usesRelativeMode = pitches.some(p => p.accuracyMode);
+  // U7B: zone accuracy reads the STORED result (never recomputed from today's zones), and only
+  // over pitches that had a zone -- so the denominator is shown alongside the percentage.
+  const zonePitches = pitches.filter(p => p.inAccuracyZone === true || p.inAccuracyZone === false);
+  const zoneTotal = zonePitches.length;
+  const zoneHits = zonePitches.filter(p => p.inAccuracyZone === true).length;
   const velos = pitches.map(p => p.velo).filter(v => v !== null && v !== undefined);
   const hasVelo = velos.length > 0;
   const avgVelo = hasVelo ? Math.round(velos.reduce((a,b)=>a+b,0) / velos.length) : null;
@@ -2376,7 +2423,8 @@ function sessionStats(pitches){
   const maxVelo = hasVelo ? Math.max(...velos) : null;
   const byType = {};
   pitches.forEach(p => {
-    if(!byType[p.type]) byType[p.type] = { count:0, velos:[], strikes:0, accurate:0, relativeAccurate:0 };
+    if(!byType[p.type]) byType[p.type] = { count:0, velos:[], strikes:0, accurate:0, relativeAccurate:0, zoneTotal:0, zoneHits:0 };
+    if(p.inAccuracyZone === true || p.inAccuracyZone === false){ byType[p.type].zoneTotal++; if(p.inAccuracyZone) byType[p.type].zoneHits++; }
     byType[p.type].count++;
     if(p.velo !== null && p.velo !== undefined) byType[p.type].velos.push(p.velo);
     if(isStrikeCell(p.actualRow, p.actualCol)) byType[p.type].strikes++;
@@ -2391,12 +2439,15 @@ function sessionStats(pitches){
     t.strikePct = Math.round((t.strikes / t.count) * 100);
     t.accuracyPct = Math.round((t.accurate / t.count) * 100);
     t.relativeAccuracyPct = Math.round((t.relativeAccurate / t.count) * 100);
+    t.hasZone = t.zoneTotal > 0;
+    t.zoneAccuracyPct = t.hasZone ? Math.round((t.zoneHits / t.zoneTotal) * 100) : null;
   });
   return {
     total, strikes, strikePct: total ? Math.round((strikes/total)*100) : 0,
     accurate, accuracyPct: total ? Math.round((accurate/total)*100) : 0,
     relativeAccurate, relativeAccuracyPct: total ? Math.round((relativeAccurate/total)*100) : 0,
     usesRelativeMode,
+    hasZone: zoneTotal > 0, zoneTotal, zoneHits, zoneAccuracyPct: zoneTotal ? Math.round((zoneHits / zoneTotal) * 100) : null,
     hasVelo, avgVelo, minVelo, maxVelo, byType
   };
 }
@@ -2415,30 +2466,16 @@ function heatColor(intensity){
 }
 
 /* ---------- RENDER: ZONE GRID ---------- */
-// U5: targetCol/each probed col are converted to canonical before testing
-// isRelativelyAccurate (safe for every mode, including ring, since
-// mirroring is distance-preserving when applied identically to both
-// points) -- but the returned Set stays keyed by SCREEN row-col, so the
-// caller's existing cell-matching logic needs no change.
-function relativelyAccurateCells(targetRow, targetCol, mode, chartingPerspective, batterSide){
-  const set = new Set();
-  const canonTargetCol = perspectiveCol(targetCol, chartingPerspective);
-  for(let r=0; r<GRID_SIZE; r++){
-    for(let c=0; c<GRID_SIZE; c++){
-      const canonCol = perspectiveCol(c, chartingPerspective);
-      if(isRelativelyAccurate({ accuracyMode: mode, targetRow, targetCol: canonTargetCol, actualRow: r, actualCol: canonCol, batterSide })){
-        set.add(r+'-'+c);
-      }
-    }
-  }
-  return set;
-}
-
 function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPerspective, batterSide){
   let cells = '';
   if(clickable){
-    const glowCells = (pendingTarget && state.selectedAccuracyMode)
-      ? relativelyAccurateCells(pendingTarget.row, pendingTarget.col, state.selectedAccuracyMode, chartingPerspective, batterSide)
+    // U7B: on tap 1, light the pitcher's zone for (this pitch type, current batter side).
+    // Zones are stored in catcher frame; the grid is drawn in the charter's screen frame.
+    const gp = currentPitcher();
+    const zoneNow = (pendingTarget && state.selectedType && gp && gp.relativeAccuracy)
+      ? zoneCellsFor(state.currentPitcherId, state.selectedType, batterSide) : null;
+    const glowCells = zoneNow
+      ? new Set(zoneNow.map(k => { const [zr, zc] = k.split('-').map(Number); return zr + '-' + perspectiveCol(zc, chartingPerspective); }))
       : null;
     for(let row=0; row<GRID_SIZE; row++){
       for(let col=0; col<GRID_SIZE; col++){
@@ -2525,22 +2562,6 @@ function renderHomePlate(chartingPerspective){
 }
 
 /* ---------- RENDER: SESSION VIEW (pitcher only) ---------- */
-function renderAccuracyModeSelect(){
-  const options = [
-    { key: '', label: 'Target' },
-    { key: 'ring', label: 'Accuracy Ring' },
-    { key: 'nothingUp', label: 'Low' },
-    { key: 'nothingLow', label: 'High' },
-    { key: 'nothingAway', label: 'Inside' },
-    { key: 'nothingInside', label: 'Outside' }
-  ];
-  const optionsHtml = options.map(opt => {
-    const selected = (state.selectedAccuracyMode || '') === opt.key;
-    return `<option value="${opt.key}" ${selected ? 'selected' : ''}>${opt.label}</option>`;
-  }).join('');
-  return `<select class="team-select accuracy-select" onchange="selectAccuracyMode(this.value || null)">${optionsHtml}</select>`;
-}
-
 // U5: session-start "prompt" is a persistent, always-visible toggle (this
 // codebase has no modal/dialog pattern anywhere) rather than a one-shot
 // dismissible dialog -- pre-filled from the device's remembered last
@@ -2578,11 +2599,11 @@ function insideColumnOnScreenLeft(chartingPerspective, batterSide){
 // before; only the markup/CSS changed here, not that decision. The pill
 // label is the actual state indicator (a silhouette alone is ambiguous
 // between handedness and viewpoint), never the figure.
-function renderBatterSilhouette(batterSide, onScreenLeft){
+function renderBatterSilhouette(batterSide, onScreenLeft, onclickJs = 'toggleBatterSide()'){
   const label = batterSide === 'R' ? 'RHB' : 'LHB';
   const otherHand = batterSide === 'R' ? 'left' : 'right';
   const thisHand = batterSide === 'R' ? 'right' : 'left';
-  return `<button type="button" class="kb-batter ${onScreenLeft ? 'is-left' : 'is-right'}" onclick="toggleBatterSide()" aria-label="Pitching to a ${thisHand}-handed batter. Tap to switch to ${otherHand}-handed.">
+  return `<button type="button" class="kb-batter ${onScreenLeft ? 'is-left' : 'is-right'}" onclick="${onclickJs}" aria-label="Pitching to a ${thisHand}-handed batter. Tap to switch to ${otherHand}-handed.">
     <svg class="kb-batter__fig" viewBox="0 0 167 504" aria-hidden="true" focusable="false">
       <path d="M48.8 503C44.1 500.1 48.8 492 55.2 492C59.1 492 69.5 486.3 71.1 483.3C71.8 482 73.9 480 75.7 478.9C79.2 476.7 80.1 474.6 79.7 469C79.5 466.1 79.9 465.4 81.7 465.2C86 464.6 86.3 462.8 84 452.3C81.7 441.7 78.8 431.4 76 423.5C75 420.8 73.7 416 73 413C72.4 410 71.4 406.1 70.9 404.5C70.4 402.9 68.8 397.5 67.4 392.7C64.7 383.7 61 379 56.7 379C54.8 379 40.4 371.6 37.8 369.3C33.8 365.7 27.8 353.9 27.8 349.4C27.8 340.6 61.5 290.3 75.9 277.5C86 268.7 89.1 260.2 85.3 252.2C83.3 247.8 74 233.5 68.6 226.5C54.5 207.8 47.5 197.8 45.4 193.3C42.8 187.4 42.1 187.1 39.5 190C38.3 191.3 36.4 192 34 192C31.9 192 27.8 193.3 24.4 195C15.8 199.4 7.7 198.9 2.3 193.8C-1.5 190.3 -1 180.3 3.1 175.9C7.9 170.8 9 168.8 9 165.5C9 163.8 9.9 160.9 11 159C17.3 147.9 17.2 148.3 17.1 136.5C16.9 124.5 18 121.8 24.3 118.3C25.9 117.5 26.1 116.7 25.3 112.9L24.4 108.5L19.7 108.5C13.6 108.5 13.5 107.4 19 103.5L23.5 100.3L24 89.7C24.7 76.5 25.3 75.7 39.3 70.1C45.2 67.7 58.6 69.2 66.1 73.1C72.4 76.4 71.1 77.6 103.4 39C111.8 29 122.5 16.9 133.4 5.3C138.8 -0.6 141.2 -1.2 145.4 2.1C151.6 7 151.4 7.3 113.7 45.1C74.2 84.7 75.4 83.2 77.1 89.2C77.8 91.6 78.3 98.1 78.4 103.7C78.5 113.3 78.6 114 80.5 114.1C81.6 114.2 88.2 114.1 95.1 114C109.3 113.8 112.1 114.6 116.3 120.2C119.8 124.9 120.4 127.3 120.5 138C120.6 145.4 121.1 148.5 122.8 152.3C124 155 125.6 161.9 126.5 168.8C128.5 184.1 135.6 212.4 138.5 217C139.8 219 143.5 223.8 146.7 227.6C149.9 231.4 153.8 236.3 155.3 238.5C156.7 240.7 159.2 243.8 160.6 245.5C165.6 251.2 167 255.6 167 266.5C167 283.8 164.5 290.2 151.2 306.3C142.5 316.9 134.4 328 125 342C118.5 351.7 111.8 360.7 104.8 369.2C100.1 374.9 100.1 375.4 106.5 382.8C116.4 394.2 122.8 399.3 126.5 398.7C129.1 398.3 130.9 398.8 134.6 401.3C137.2 403.1 139.8 404.8 140.4 405.1C142 406.1 150.7 408 153.4 408C156.9 408 161 411.7 161 414.9C161 418.3 152.8 435.3 150.3 437.1C147 439.5 145 443.3 145 447.1C145 451.8 138.5 465.6 132.6 473.8C128.5 479.3 127.6 480 124.6 480C119.3 480 118.5 478.2 118.4 465.1C118.3 441.8 113.9 427.9 107.5 430.4C103.9 431.7 107.3 468.1 111.5 473.1C113 475 113.9 477.7 114.3 482.4C114.6 486 115.5 490.8 116.1 492.9C118.8 502.1 114.9 504.5 98.5 503.6C85.5 502.9 87.1 502.9 67.5 503.5C56.3 503.9 49.9 503.7 48.8 503Z"></path>
     </svg>
@@ -2645,7 +2666,8 @@ function renderSessionView(){
     // flipping the toggle later must not relabel already-logged rows.
     const targetNum = zoneNumberFor(pt.targetRow, pt.targetCol, pt.batterSide || 'R');
     const actualNum = zoneNumberFor(pt.actualRow, pt.actualCol, pt.batterSide || 'R');
-    const modeTag = pt.accuracyMode ? ` <span style="color:#7C9CBF;">[${ACCURACY_MODE_LABELS[pt.accuracyMode]}${relAccurate ? ' ✓' : ''}]</span>` : '';
+    const modeTag = pt.accuracyMode ? ` <span style="color:#7C9CBF;">[${ACCURACY_MODE_LABELS[pt.accuracyMode]}${relAccurate ? ' ✓' : ''}]</span>`
+      : (pt.inAccuracyZone === true || pt.inAccuracyZone === false) ? ` <span style="color:#7C9CBF;">[Zone${pt.inAccuracyZone ? ' ✓' : ''}]</span>` : '';
     const locText = `${targetNum ? 'aimed '+targetNum : 'aimed ball'} → ${actualNum ? 'landed '+actualNum : 'landed ball'}${accurate ? ' ✓' : ''}${modeTag}`;
     return `<div class="pitch-log-row">
       <span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pitchLabel(pt.type)}</span> · ${veloText}${strike ? 'Strike' : 'Ball'} · <span style="color:var(--chalk-faint);">${locText}</span></span>
@@ -2670,10 +2692,6 @@ function renderSessionView(){
           ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach() ? `${p.name} hasn't set a pitch mix, so every pitch type is shown. Set it in their profile.` : 'Set up your pitch mix in Profile.'}</p>`}
         </div>
         <div class="accuracy-count-row">
-          <div class="accuracy-select-col">
-            <div class="field-label">Relative accuracy</div>
-            ${renderAccuracyModeSelect()}
-          </div>
           <div class="pitch-counter">
             <span class="field-label">Pitch count</span>
             <span class="pitch-counter-num mono">${stats.total}</span>
@@ -2697,6 +2715,7 @@ function renderSessionView(){
           <div class="stat-box"><span class="stat-num mono">${stats.strikePct}%</span><span class="stat-lbl">Strikes</span></div>
           <div class="stat-box"><span class="stat-num mono">${stats.accuracyPct}%</span><span class="stat-lbl">Accuracy</span></div>
           ${stats.usesRelativeMode ? `<div class="stat-box"><span class="stat-num mono">${stats.relativeAccuracyPct}%</span><span class="stat-lbl">Relative Acc.</span></div>` : ''}
+          ${stats.hasZone ? `<div class="stat-box"><span class="stat-num mono">${stats.zoneAccuracyPct}%</span><span class="stat-lbl">Zone Acc. (${stats.zoneTotal})</span></div>` : ''}
           <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="stat-lbl">Avg mph</span></div>
           <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.minVelo+'–'+stats.maxVelo : '—'}</span><span class="stat-lbl">Range</span></div>
         </div>
@@ -2801,7 +2820,7 @@ function renderHistoryView(){
     const expanded = state.expandedSessionId === s.id;
     const typeRows = Object.entries(stats.byType).map(([type, t]) => {
       const color = colorForType(p, type);
-      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${type}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${t.strikePct}%</td><td class="mono">${t.accuracyPct}%</td><td class="mono">${t.relativeAccuracyPct}%</td></tr>`;
+      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${type}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${t.strikePct}%</td><td class="mono">${t.accuracyPct}%</td><td class="mono">${t.relativeAccuracyPct}%</td>${stats.hasZone ? `<td class="mono">${t.hasZone ? t.zoneAccuracyPct + '% (' + t.zoneTotal + ')' : '—'}</td>` : ''}</tr>`;
     }).join('');
 
     const contacts = p.contactEmails || {};
@@ -2861,7 +2880,10 @@ function renderHistoryView(){
           <div class="session-meta">
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
             <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
-            <div class="meta-item"><span class="meta-num mono">${stats.accuracyPct}%</span><span class="meta-lbl">Accuracy</span></div>
+            ${stats.hasZone
+              ? `<div class="meta-item"><span class="meta-num mono">${stats.zoneAccuracyPct}%</span><span class="meta-lbl">Zone Acc. (${stats.zoneTotal})</span></div>
+                 <div class="meta-item"><span class="meta-num mono">${stats.accuracyPct}%</span><span class="meta-lbl">Exact hit</span></div>`
+              : `<div class="meta-item"><span class="meta-num mono">${stats.accuracyPct}%</span><span class="meta-lbl">Accuracy</span></div>`}
             <div class="meta-item"><span class="meta-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="meta-lbl">Avg mph</span></div>
           </div>
         </div>
@@ -2870,7 +2892,7 @@ function renderHistoryView(){
           <div class="zone-wrap">${renderZoneGrid(s.pitches, false)}<div class="zone-caption">Location heat map · Catcher's view</div></div>
           <div style="flex:1;min-width:220px;">
             <table class="breakdown-table">
-              <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th><th>Relative Acc%</th></tr></thead>
+              <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th><th>Relative Acc%</th>${stats.hasZone ? '<th>Zone Acc%</th>' : ''}</tr></thead>
               <tbody>${typeRows}</tbody>
             </table>
             ${reportPanel}
@@ -2879,6 +2901,137 @@ function renderHistoryView(){
         </div>` : ''}
       </div>`;
   }).join('');
+}
+
+/* ---------- ACCURACY ZONE PAINTER (Profile) ---------- */
+window.setRelativeAccuracy = async function(on){
+  const p = currentPitcher();
+  if(!p) return;
+  let ok = false;
+  if(isCoach()){
+    const { error } = await supabaseClient.rpc('coach_set_relative_accuracy', { p_pitcher_id: p.id, p_enabled: !!on });
+    ok = !error;
+    if(ok) p.relativeAccuracy = !!on;
+  } else {
+    const { error } = await supabaseClient.from('profiles').update({ relative_accuracy_enabled: !!on }).eq('id', state.profile.id);
+    ok = !error;
+    if(ok) state.profile.relative_accuracy_enabled = !!on;
+  }
+  state.profileMsg = ok ? '' : 'Could not save. Check your connection and try again.';
+  if(!on) state.zonePaint = null;
+  if(ok) await saveLastKnownContext();
+  render();
+};
+window.openZonePaint = function(type){
+  const p = currentPitcher();
+  if(!p) return;
+  state.zonePaint = { pitcherId: p.id, type, side: 'R', cells: (zoneCellsFor(p.id, type, 'R') || []).slice() };
+  state.zoneMsg = '';
+  render();
+};
+window.zonePaintSide = function(side){
+  const zp = state.zonePaint;
+  if(!zp || zp.side === side) return;
+  zp.side = side;
+  zp.cells = (zoneCellsFor(zp.pitcherId, zp.type, side) || []).slice();
+  state.zoneMsg = '';
+  render();
+};
+window.zonePaintFlipSide = function(){
+  const zp = state.zonePaint;
+  if(zp) window.zonePaintSide(zp.side === 'R' ? 'L' : 'R');
+};
+window.paintZoneCell = function(row, col){
+  const zp = state.zonePaint;
+  if(!zp) return;
+  const k = row + '-' + col;
+  const i = zp.cells.indexOf(k);
+  if(i >= 0) zp.cells.splice(i, 1); else zp.cells.push(k);
+  render();
+};
+window.cancelZonePaint = function(){ state.zonePaint = null; state.zoneMsg = ''; render(); };
+function setLocalZone(pitcherId, type, side, cells){
+  const byType = (state.zones[pitcherId] = state.zones[pitcherId] || {});
+  const bySide = (byType[type] = byType[type] || {});
+  if(cells) bySide[side] = cells; else delete bySide[side];
+}
+window.saveZonePaint = async function(){
+  const zp = state.zonePaint;
+  if(!zp) return;
+  if(!zp.cells.length){ state.zoneMsg = 'Tap at least one cell, or use Clear to remove this zone.'; render(); return; }
+  const { error } = await supabaseClient.from('accuracy_zones').upsert(
+    { pitcher_id: zp.pitcherId, pitch_type: zp.type, batter_side: zp.side, cells: zp.cells },
+    { onConflict: 'pitcher_id,pitch_type,batter_side' });
+  if(error){ state.zoneMsg = 'Could not save. Check your connection and try again.'; render(); return; }
+  setLocalZone(zp.pitcherId, zp.type, zp.side, zp.cells.slice());
+  state.zoneMsg = 'Saved.';
+  await saveLastKnownContext();   // charting reads zones offline from this snapshot
+  render();
+};
+window.clearZonePaint = async function(){
+  const zp = state.zonePaint;
+  if(!zp) return;
+  const { error } = await supabaseClient.from('accuracy_zones').delete()
+    .eq('pitcher_id', zp.pitcherId).eq('pitch_type', zp.type).eq('batter_side', zp.side);
+  if(error){ state.zoneMsg = 'Could not clear. Check your connection and try again.'; render(); return; }
+  setLocalZone(zp.pitcherId, zp.type, zp.side, null);
+  zp.cells = [];
+  state.zoneMsg = 'Cleared.';
+  await saveLastKnownContext();
+  render();
+};
+function renderZonePainter(){
+  const zp = state.zonePaint;
+  let cells = '';
+  for(let row = 0; row < GRID_SIZE; row++){
+    for(let col = 0; col < GRID_SIZE; col++){
+      const num = zoneNumberFor(row, col, zp.side);
+      const painted = zp.cells.indexOf(row + '-' + col) >= 0;
+      const cls = 'zone-cell' + (isStrikeCell(row, col) ? ' in-zone' : '') + ' clickable' + (painted ? ' zone-painted' : '');
+      cells += `<div class="${cls}" onclick="paintZoneCell(${row},${col})">${num !== null ? `<span class="zone-number">${num}</span>` : ''}</div>`;
+    }
+  }
+  // Catcher's view: a RHB stands on the LEFT, a LHB on the right (D8).
+  const onLeft = insideColumnOnScreenLeft('behind_catcher', zp.side);
+  const grid = `<div class="zone-grid">${cells}${renderHomePlate('behind_catcher')}${renderBatterSilhouette(zp.side, onLeft, 'zonePaintFlipSide()')}</div>`;
+  const saved = zoneCellsFor(zp.pitcherId, zp.type, zp.side);
+  return `<div class="zone-paint">
+    <div class="profile-row">
+      <button class="throws-btn${zp.side === 'R' ? ' selected' : ''}" onclick="zonePaintSide('R')">vs RHB</button>
+      <button class="throws-btn${zp.side === 'L' ? ' selected' : ''}" onclick="zonePaintSide('L')">vs LHB</button>
+    </div>
+    <div class="zone-wrap">${grid}<div class="zone-caption">Catcher's view · tap the cells that count as accurate</div></div>
+    <div class="profile-row">
+      <button class="btn btn-primary" onclick="saveZonePaint()">Save zone</button>
+      <button class="btn btn-ghost" onclick="clearZonePaint()" ${saved ? '' : 'disabled'}>Clear</button>
+      <button class="btn btn-ghost" onclick="cancelZonePaint()">Close</button>
+    </div>
+    ${state.zoneMsg ? `<p class="profile-note">${state.zoneMsg}</p>` : ''}
+  </div>`;
+}
+function renderRelAccuracySection(p){
+  const on = !!p.relativeAccuracy;
+  let zones = '';
+  if(on){
+    zones = (p.pitchTypes || []).map(t => {
+      const r = zoneCellsFor(p.id, t, 'R'), l = zoneCellsFor(p.id, t, 'L');
+      const stat = (label, c) => `${label}: ${c ? c.length + ' cell' + (c.length === 1 ? '' : 's') : 'Not set (exact accuracy will be used)'}`;
+      const open = state.zonePaint && state.zonePaint.pitcherId === p.id && state.zonePaint.type === t;
+      return `<div class="zone-row">
+        <div class="profile-row"><strong>${pitchLabel(t)}</strong>
+          <button class="btn btn-ghost" onclick="${open ? 'cancelZonePaint()' : `openZonePaint('${t.replace(/'/g, "\\'")}')`}">${open ? 'Close' : 'Edit zones'}</button></div>
+        <p class="profile-note">${stat('vs RHB', r)} · ${stat('vs LHB', l)}</p>
+        ${open ? renderZonePainter() : ''}
+      </div>`;
+    }).join('') || '<p class="profile-note">Add pitches to your pitch mix first, then paint their zones.</p>';
+  }
+  return `<div class="profile-section"><h3>Relative accuracy</h3>
+    <label class="profile-row" style="gap:10px;font-size:14px;">
+      <input type="checkbox" ${on ? 'checked' : ''} onchange="setRelativeAccuracy(this.checked)"> ${on ? 'On' : 'Off'}
+    </label>
+    <p class="profile-note">Off: a pitch is accurate only if it lands on the exact target cell. On: paint the zone that counts for each pitch, separately against right- and left-handed hitters.</p>
+    ${zones}
+  </div>`;
 }
 
 /* ---------- RENDER: PROFILE (U7) ---------- */
@@ -2958,9 +3111,7 @@ function renderProfileView(){
     ${renderEmailSection()}
     ${renderPasswordSection()}
     ${renderPitchMixSection(p)}
-    <div class="profile-section"><h3>Relative accuracy</h3>
-      <label class="switch-disabled"><input type="checkbox" disabled> Off <span class="profile-note">Coming soon</span></label>
-    </div>
+    ${renderRelAccuracySection(p)}
   </div>`;
 }
 // Coach editing a rostered pitcher: pitch mix, throws and this team's uniform number only.
@@ -2976,6 +3127,7 @@ function renderPitcherProfileView(){
     <div class="profile-section"><h3>Uniform number</h3>${uniformRowHtml(state.currentTeamId, p.id, 'Uniform # · ' + (team ? team.name : ''))}</div>
     ${renderThrowsSection(p)}
     ${renderPitchMixSection(p)}
+    ${renderRelAccuracySection(p)}
     <p class="profile-note">Email and password are managed by the player.</p>
   </div>`;
 }
@@ -3008,7 +3160,7 @@ window.sendSessionReport = async function(sessionId){
     const sStats = sessionStats(s.pitches);
     const byType = {};
     Object.entries(sStats.byType).forEach(([type, t]) => {
-      byType[type] = { accuracyPct: t.accuracyPct, relativeAccuracyPct: t.relativeAccuracyPct, strikePct: t.strikePct, count: t.count };
+      byType[type] = { accuracyPct: t.accuracyPct, relativeAccuracyPct: t.relativeAccuracyPct, zoneAccuracyPct: t.zoneAccuracyPct, strikePct: t.strikePct, count: t.count };
     });
     return {
       date: s.date,
@@ -3036,6 +3188,7 @@ window.sendSessionReport = async function(sessionId){
           total: stats.total, strikePct: stats.strikePct,
           accuracyPct: stats.accuracyPct,
           relativeAccuracyPct: stats.relativeAccuracyPct, usesRelativeMode: stats.usesRelativeMode,
+          hasZone: stats.hasZone, zoneTotal: stats.zoneTotal, zoneAccuracyPct: stats.zoneAccuracyPct,
           avgVelo: stats.avgVelo, hasVelo: stats.hasVelo
         },
         history

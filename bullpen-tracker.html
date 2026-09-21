@@ -303,26 +303,32 @@
   .add-type-inline button{ background:none; border:1px solid var(--border-strong); color:var(--chalk-dim); border-radius:5px; padding:6px 10px; font-size:12px; }
   .add-type-inline button:hover{ color:var(--amber); border-color:var(--amber); }
 
-  .velo-toggle-row{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--chalk-dim); }
-  .velo-toggle-row input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--amber); cursor:pointer; }
-  .velo-slider-row{ display:flex; align-items:center; gap:14px; }
-  .velo-slider-row.disabled{ opacity:0.4; }
-  .velo-slider-row input[type="range"]{
-    flex:1; -webkit-appearance:none; appearance:none; height:6px; border-radius:3px;
-    background:linear-gradient(90deg, var(--amber) 0%, var(--amber) var(--fill,50%), var(--field-dark) var(--fill,50%), var(--field-dark) 100%);
-    outline-offset:4px;
+  /* U6 velocity strip: 7 whole-mph values visible (5 on phones), scrolls across 40-105 with snap. */
+  .velo-strip-wrap{ display:flex; align-items:stretch; gap:6px; }
+  .velo-strip-wrap.disabled{ opacity:0.4; }
+  .velo-strip{
+    flex:1; min-width:0; display:flex; overflow-x:auto; overflow-y:hidden;
+    scroll-snap-type:x mandatory; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+    border:1px solid var(--border-strong); border-radius:8px; background:var(--field-dark);
   }
-  .velo-slider-row input[type="range"]::-webkit-slider-thumb{
-    -webkit-appearance:none; width:20px; height:20px; border-radius:50%;
-    background:var(--amber-bright); border:2px solid var(--field-dark); cursor:pointer;
-    box-shadow:0 0 0 1px var(--border-strong);
+  .velo-strip::-webkit-scrollbar{ display:none; }
+  .velo-strip{ --velo-visible:7; }
+  @media (max-width:500px){ .velo-strip{ --velo-visible:5; } }   /* phones: 5 cells so each stays >= 44px wide */
+  .velo-cell{
+    flex:0 0 calc(100% / var(--velo-visible, 7)); scroll-snap-align:center; min-height:48px;
+    background:transparent; border:0; border-right:1px solid var(--border-strong);
+    color:var(--chalk-dim); font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:600; padding:0;
   }
-  .velo-slider-row input[type="range"]::-moz-range-thumb{
-    width:20px; height:20px; border-radius:50%; background:var(--amber-bright);
-    border:2px solid var(--field-dark); cursor:pointer;
+  .velo-cell:last-child{ border-right:0; }
+  .velo-cell.typical{ box-shadow:inset 0 0 0 2px var(--amber); color:var(--amber-bright); }
+  .velo-cell.selected{ background:var(--amber); color:var(--field-dark); box-shadow:none; }
+  .velo-cell:disabled{ cursor:not-allowed; }
+  .velo-arrow{
+    flex:0 0 32px; min-height:48px; background:var(--field-dark); border:1px solid var(--border-strong);
+    border-radius:8px; color:var(--chalk-dim); font-size:20px; padding:0;
   }
-  .velo-slider-row input[type="range"]:disabled{ cursor:not-allowed; }
-  .velo-readout{ font-size:22px; color:var(--amber-bright); min-width:70px; text-align:right; }
+  .velo-arrow:disabled{ cursor:not-allowed; }
+  .velo-help{ margin-top:6px; font-size:11.5px; color:var(--chalk-faint); }
 
   .hint-msg{ font-size:12px; color:var(--clay); min-height:16px; }
 
@@ -402,7 +408,7 @@
        carried the state anyway -- drop it entirely. The pill becomes the
        whole control: a large, centered target sitting in a RESERVED BAND
        below the grid (.zone-grid's own margin-bottom, below), so it can't
-       be mis-tapped while aiming and can't overlap the velocity slider.
+       be mis-tapped while aiming and can't overlap the velocity strip.
        Replaces the previous <=430px low-opacity-overlay treatment.
        bottom is NEGATIVE here on purpose: the reserved band lives in
        .zone-grid's MARGIN (see the .zone-grid rule below), which sits
@@ -733,8 +739,10 @@ let state = {
   activeSession: null,
   selectedType: null,
   selectedAccuracyMode: null,
-  velo: 65,
-  recordVelocity: true,
+  veloTargetIdx: null,      // U6: index of the last recorded pitch that may still take a velocity (null = locked)
+  veloHistory: null,        // U6: on-device { 'pitcherId:teamId': { pitchType: [recent velos, oldest->newest] } }
+  veloStripKey: null,       // U6: what the strip was last centered for, so re-renders keep its scroll position
+  veloScrollLeft: 0,
   flashCell: null,
   pendingTarget: null,
   expandedSessionId: null,
@@ -957,6 +965,7 @@ async function init(){
   state.setupNeeded = null;
   await refreshOutboxState();
 
+  await loadVeloHistory();   // U6: on-device velocity history, so the strip can center with no network
   const cached = await storGet(lastKnownKey(session.user.id));
   const online = isOnline();
 
@@ -1688,6 +1697,7 @@ async function refreshDraftState(){
   state.selectedType = null;
   state.selectedAccuracyMode = null;
   state.pendingTarget = null;
+  state.veloTargetIdx = null;
   state.flashCell = null;
   state.editDraftRow = null;
 }
@@ -1732,30 +1742,132 @@ window.toggleBatterSide = async function(){
   await storSet(draftKey(), state.activeSession);
   render();
 };
-window.toggleRecordVelocity = function(checked){
-  state.recordVelocity = checked;
+/* ---------- VELOCITY STRIP (U6) ----------
+   Velocity is added AFTER a pitch is recorded: tap 2 (where it landed) records
+   the pitch with velocity null, and until the next pitch's first tap the strip
+   attaches a tapped value to that last pitch. Not tapping leaves it null (shown
+   as a dash). The strip centers on this pitcher's typical velocity for the pitch
+   type -- 75 until they have 3 recorded, then the average of the most recent
+   100. Nothing is ever pre-selected. */
+const VELO_MIN = 40, VELO_MAX = 105, VELO_DEFAULT_CENTER = 75, VELO_MIN_SAMPLES = 3, VELO_RECENT = 100;
+// Before U6 the slider recorded an untouched default of 65 into real sessions
+// (81% of recorded velocities in production were exactly 65). Those can't be
+// told apart from real 65s, so a velocity of exactly 65 on a pitch charted
+// before this timestamp is left out of the centering average. Pitches charted
+// after it count normally.
+const U6_CUTOFF_TS = 1789965601000;
+function veloVisible(){ return window.matchMedia('(max-width:500px)').matches ? 5 : 7; }
+function veloCenter(velos){
+  if(velos.length < VELO_MIN_SAMPLES) return VELO_DEFAULT_CENTER;
+  const recent = velos.slice(-VELO_RECENT);
+  const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
+  return Math.max(VELO_MIN, Math.min(VELO_MAX, Math.round(avg)));
+}
+function veloHistoryKey(){ return 'veloHistory:' + (state.session ? state.session.user.id : ''); }
+async function loadVeloHistory(){
+  if(state.veloHistory) return;
+  state.veloHistory = (await storGet(veloHistoryKey())) || {};
+}
+function veloBucketKey(){ return state.currentPitcherId + ':' + state.currentTeamId; }
+// Rebuild this pitcher+team's cached velocities from data we just loaded from the
+// server plus any sessions still queued to sync. Only ever called after a
+// successful server load, so an offline start can't wipe the cache.
+async function rebuildVeloHistory(serverSessions){
+  await loadVeloHistory();
+  const seen = new Set();
+  const rows = [];
+  const take = (sessionId, pitches) => {
+    if(seen.has(sessionId)) return;
+    seen.add(sessionId);
+    (pitches || []).forEach(pt => {
+      if(pt.velo === null || pt.velo === undefined) return;
+      if(pt.velo === 65 && pt.ts < U6_CUTOFF_TS) return;
+      rows.push({ type: pt.type, velo: pt.velo, ts: pt.ts });
+    });
+  };
+  (serverSessions || []).forEach(sess => take(sess.id, sess.pitches));
+  (state.outbox || []).filter(it => it.pitcherId === state.currentPitcherId && it.teamId === state.currentTeamId)
+    .forEach(it => take(it.id, it.pitches));
+  rows.sort((a, b) => a.ts - b.ts);
+  const byType = {};
+  rows.forEach(r => { (byType[r.type] = byType[r.type] || []).push(r.velo); });
+  Object.keys(byType).forEach(t => { byType[t] = byType[t].slice(-VELO_RECENT); });
+  state.veloHistory[veloBucketKey()] = byType;
+  await storSet(veloHistoryKey(), state.veloHistory);
+}
+// Offline-safe: add a just-ended session's velocities to the cache directly.
+async function appendVeloHistory(pitcherId, teamId, pitches){
+  await loadVeloHistory();
+  const k = pitcherId + ':' + teamId;
+  const byType = state.veloHistory[k] || (state.veloHistory[k] = {});
+  (pitches || []).slice().sort((a, b) => a.ts - b.ts).forEach(pt => {
+    if(pt.velo === null || pt.velo === undefined) return;
+    (byType[pt.type] = byType[pt.type] || []).push(pt.velo);
+    byType[pt.type] = byType[pt.type].slice(-VELO_RECENT);
+  });
+  await storSet(veloHistoryKey(), state.veloHistory);
+}
+function veloCenterFor(type){
+  const hist = ((state.veloHistory || {})[veloBucketKey()] || {})[type] || [];
+  const live = ((state.activeSession && state.activeSession.pitches) || [])
+    .filter(pt => pt.type === type && pt.velo !== null && pt.velo !== undefined)
+    .map(pt => pt.velo);
+  return veloCenter(hist.concat(live));
+}
+function veloStripActive(){
+  const pitches = state.activeSession && state.activeSession.pitches;
+  return state.veloTargetIdx !== null && !!pitches && !!pitches[state.veloTargetIdx]
+    && !state.pendingTarget && state.editDraftRow === null;
+}
+window.recordVelo = async function(v){
+  if(!veloStripActive()) return;
+  state.activeSession.pitches[state.veloTargetIdx].velo = v;
+  await storSet(draftKey(), state.activeSession);
   render();
 };
-window.onVeloSlide = function(val){
-  state.velo = parseInt(val);
-  const readout = document.getElementById('velo-readout');
-  if(readout) readout.textContent = state.velo + ' mph';
-  const slider = document.getElementById('velo-slider');
-  if(slider) slider.style.setProperty('--fill', ((state.velo/110)*100) + '%');
+window.veloStripShift = function(dir){
+  const strip = document.getElementById('velo-strip');
+  if(!strip) return;
+  strip.scrollBy({ left: dir * 3 * (strip.clientWidth / veloVisible()), behavior: 'smooth' });
 };
-function attachVeloSliderHandlers(){
-  const slider = document.getElementById('velo-slider');
-  if(!slider) return;
-  slider.style.setProperty('--fill', ((state.velo/110)*100) + '%');
-  slider.addEventListener('keydown', function(e){
-    if(e.key === 'Tab'){
-      e.preventDefault();
-      let v = parseInt(this.value) || 0;
-      v = e.shiftKey ? Math.max(0, v - 10) : Math.min(110, v + 10);
-      this.value = v;
-      window.onVeloSlide(v);
-    }
-  });
+function renderVeloStrip(){
+  const active = veloStripActive();
+  const target = active ? state.activeSession.pitches[state.veloTargetIdx] : null;
+  const type = target ? target.type : state.selectedType;
+  const center = type ? veloCenterFor(type) : VELO_DEFAULT_CENTER;
+  let cells = '';
+  for(let v = VELO_MIN; v <= VELO_MAX; v++){
+    const cls = 'velo-cell' + (v === center ? ' typical' : '') + (target && target.velo === v ? ' selected' : '');
+    cells += `<button class="${cls}" ${active ? '' : 'disabled'} onclick="recordVelo(${v})">${v}</button>`;
+  }
+  const help = active
+    ? `Tap the velocity for pitch ${state.veloTargetIdx + 1}, or skip it — a skipped pitch shows a dash.`
+    : (state.pendingTarget ? 'Tap where it landed to finish this pitch, then add its velocity.' : 'Velocity opens after each pitch is recorded.');
+  return `
+    <div class="velo-strip-wrap${active ? '' : ' disabled'}">
+      <button class="velo-arrow" ${active ? '' : 'disabled'} onclick="veloStripShift(-1)" aria-label="Lower speeds">‹</button>
+      <div class="velo-strip" id="velo-strip" data-key="${state.veloTargetIdx}|${type}|${center}|${veloVisible()}" data-center="${center}">${cells}</div>
+      <button class="velo-arrow" ${active ? '' : 'disabled'} onclick="veloStripShift(1)" aria-label="Higher speeds">›</button>
+    </div>
+    <div class="velo-help">${help}</div>`;
+}
+// Runs after each render: center the strip on the typical value, but keep the
+// scroll position across re-renders that don't change what it's centered for.
+function attachVeloStrip(){
+  const strip = document.getElementById('velo-strip');
+  if(!strip) return;
+  const visible = veloVisible();
+  const cellW = strip.clientWidth / visible;
+  const key = strip.getAttribute('data-key');
+  if(key === state.veloStripKey){
+    strip.scrollLeft = state.veloScrollLeft;
+  } else {
+    const center = parseInt(strip.getAttribute('data-center'), 10);
+    strip.scrollLeft = (center - VELO_MIN - Math.floor(visible / 2)) * cellW;
+    state.veloStripKey = key;
+    state.veloScrollLeft = strip.scrollLeft;
+  }
+  strip.addEventListener('scroll', () => { state.veloScrollLeft = strip.scrollLeft; }, { passive: true });
 }
 
 window.handleZoneTap = async function(row, col){
@@ -1764,13 +1876,15 @@ window.handleZoneTap = async function(row, col){
   state.hint = '';
 
   if(!state.pendingTarget){
+    // Tap 1 of a new pitch: the previous pitch's velocity is now locked as it
+    // stands, and the strip stays off until this pitch's tap 2.
     state.pendingTarget = { row, col };
+    state.veloTargetIdx = null;
     render();
     return;
   }
 
   const target = state.pendingTarget;
-  const veloVal = state.recordVelocity ? state.velo : null;
   const strike = isStrikeCell(row, col);
   // U5: the single normalize-at-capture point. Tapped (screen-frame)
   // columns are converted to the canonical catcher frame right here, once,
@@ -1783,7 +1897,7 @@ window.handleZoneTap = async function(row, col){
   const batterSide = sessionBatterSide(state.activeSession);
   state.activeSession.pitches.push({
     id: genUUID(),
-    type: state.selectedType, velo: veloVal,
+    type: state.selectedType, velo: null,
     targetRow: target.row, targetCol: perspectiveCol(target.col, chartingPerspective),
     actualRow: row, actualCol: perspectiveCol(col, chartingPerspective),
     accuracyMode: state.selectedAccuracyMode,
@@ -1791,6 +1905,7 @@ window.handleZoneTap = async function(row, col){
     ts: Date.now()
   });
   state.pendingTarget = null;
+  state.veloTargetIdx = state.activeSession.pitches.length - 1;
   await storSet(draftKey(), state.activeSession);
   const flashKey = uid();
   state.flashCell = { row, col, strike, key: flashKey };
@@ -1815,6 +1930,7 @@ window.resetTarget = function(){
 window.removePitch = async function(realIdx){
   state.activeSession.pitches.splice(realIdx, 1);
   state.pendingTarget = null;
+  state.veloTargetIdx = null;
   if(state.editDraftRow === realIdx) state.editDraftRow = null;
   await storSet(draftKey(), state.activeSession);
   render();
@@ -1875,9 +1991,12 @@ window.endSession = async function(){
   await enqueueOutboxItem(state.session.user.id, item);
   await storDelete(draftKey());
 
+  await appendVeloHistory(item.pitcherId, item.teamId, item.pitches);
+
   state.activeSession = await freshActiveSession();
   state.selectedType = null;
   state.pendingTarget = null;
+  state.veloTargetIdx = null;
   state.editDraftRow = null;
   state.saving = false;
   await refreshOutboxState();
@@ -2097,6 +2216,7 @@ async function loadSessionsForCurrentSelection(){
   // calc (stats, trends, report history) excludes them for free. They render
   // only as tombstones in the history view.
   state.sessions = all.filter(s => !s.deletedAt);
+  rebuildVeloHistory(state.sessions).catch(e => console.error('velo history cache failed', e));
   state.deletedSessions = all.filter(s => s.deletedAt);
 }
 
@@ -2386,7 +2506,7 @@ function renderSessionView(){
     const strike = isStrikeCell(pt.actualRow, pt.actualCol);
     const accurate = isAccurate(pt);
     const relAccurate = isRelativelyAccurate(pt);
-    const veloText = (pt.velo !== null && pt.velo !== undefined) ? `${pt.velo} mph · ` : '';
+    const veloText = (pt.velo !== null && pt.velo !== undefined) ? `${pt.velo} mph · ` : '— · ';
     // D8: pt.targetCol/actualCol are ALREADY catcher-frame (stored), so no
     // conversion here -- zoneNumberFor on the stored value directly
     // reproduces exactly the number the grid showed at the moment this
@@ -2448,15 +2568,7 @@ function renderSessionView(){
         </div>
         <div>
           <div class="field-label" style="margin-bottom:8px;">Velocity</div>
-          <label class="velo-toggle-row">
-            <input type="checkbox" ${state.recordVelocity ? 'checked' : ''} onchange="toggleRecordVelocity(this.checked)">
-            Record velocity
-          </label>
-          <div class="velo-slider-row${state.recordVelocity ? '' : ' disabled'}" style="margin-top:8px;">
-            <input type="range" id="velo-slider" min="0" max="110" step="1" value="${state.velo}"
-              ${state.recordVelocity ? '' : 'disabled'} oninput="onVeloSlide(this.value)">
-            <span id="velo-readout" class="velo-readout mono">${state.recordVelocity ? state.velo + ' mph' : '—'}</span>
-          </div>
+          ${renderVeloStrip()}
         </div>
       </div>
       <div class="panel log-panel">
@@ -2661,13 +2773,17 @@ function renderTrendsView(){
   const anyRelative = points.some(pt => pt.stats.usesRelativeMode);
 
   function barChart(title, valueFn, unit, maxHint){
-    const vals = points.map(valueFn);
+    const vals = points.map(valueFn).filter(v => v !== null && v !== undefined);
     const max = Math.max(maxHint || 0, ...vals) * 1.15;
     const w = 640, h = 140;
     const barW = Math.min(56, (w - 20) / points.length - 10);
     const bars = points.map((pt, i) => {
       const x = 10 + i * ((w-20)/points.length);
       const val = valueFn(pt);
+      if(val === null || val === undefined){
+        const dn = new Date(pt.date).toLocaleDateString(undefined,{month:'numeric',day:'numeric'});
+        return `<g><text x="${10 + i * ((w-20)/points.length) + barW/2}" y="${h-24}" text-anchor="middle" fill="#7C8C82" font-family="IBM Plex Mono" font-size="12">—</text><text x="${10 + i * ((w-20)/points.length) + barW/2}" y="${h-4}" text-anchor="middle" fill="#7C8C82" font-family="IBM Plex Sans" font-size="10">${dn}</text></g>`;
+      }
       const barH = max ? (val/max) * (h-30) : 0;
       const y = h - 20 - barH;
       const d = new Date(pt.date).toLocaleDateString(undefined,{month:'numeric',day:'numeric'});
@@ -2687,7 +2803,7 @@ function renderTrendsView(){
       ${barChart('Strike % by session', pt => pt.stats.strikePct, '%', 100)}
       ${barChart('Accuracy % by session', pt => pt.stats.accuracyPct, '%', 100)}
       ${anyRelative ? barChart('Relative accuracy % by session', pt => pt.stats.relativeAccuracyPct, '%', 100) : ''}
-      ${anyVelo ? barChart('Average velocity by session', pt => pt.stats.hasVelo ? pt.stats.avgVelo : 0, ' mph', 0) : `<div class="empty-hist">No velocity data recorded across these sessions.</div>`}
+      ${anyVelo ? barChart('Average velocity by session', pt => pt.stats.hasVelo ? pt.stats.avgVelo : null, ' mph', 0) : `<div class="empty-hist">No velocity data recorded across these sessions.</div>`}
     </div>`;
 }
 
@@ -2959,7 +3075,7 @@ function render(){
   }
 
   app.innerHTML = sidebar + `<div class="main">${main}</div>`;
-  attachVeloSliderHandlers();
+  attachVeloStrip();
 }
 
 init();

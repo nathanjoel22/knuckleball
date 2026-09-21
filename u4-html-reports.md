@@ -1,5 +1,7 @@
 # U4 — HTML reports replace PDF, with vs-RHB / vs-LHB breakdowns
 
+> **STATUS: PAUSED (Sept 21 2026).** U4 is on hold and not part of `main`. The work is preserved on the unmerged branch `u4-wip` (commit `e9bf363`: renderer, `20260910021104_u4_reports_storage.sql`, `report.html`). Production never received it. Staging had it applied and was rolled back on Sept 21 (dropped `sessions.report_path` / `report_generated_at`, deleted the `reports` bucket, marked `20260910021104` reverted). To revive: merge `u4-wip` into `main` (expect conflicts in `bullpen-tracker.html`, `sw.js`, and `send-session-report`, which R0 also changed), then push the migration to staging first, per `DEPLOY.md`.
+
 **Design decisions taken by Joel, Sept 10 2026.** This supersedes the U4 packet in `claude/task-packets.md`, which stays as history. Sequenced by D9: after U2a (shipped), before program #1 onboards.
 
 ## Decisions settled before build

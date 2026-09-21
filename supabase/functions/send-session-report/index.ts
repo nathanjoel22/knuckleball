@@ -158,13 +158,13 @@ async function buildReportPdf(payload: any): Promise<Uint8Array> {
     ['STRIKE %', stats.strikePct + '%'],
     ['ACCURACY %', stats.accuracyPct + '%']
   ]
-  if (stats.usesRelativeMode) statItems.push(['RELATIVE ACC %', stats.relativeAccuracyPct + '%'])
-  // U7B: zone accuracy is the headline when zone data exists, exact-hit stays beside it.
+  if (stats.usesRelativeMode && !stats.hasZone) statItems.push(['RELATIVE ACC %', stats.relativeAccuracyPct + '%'])
+  // U7B: relative accuracy (the pitcher's painted zones) is the headline when it exists, exact-hit stays beside it.
   // Both come from the client's STORED per-pitch results (pitches[].inAccuracyZone); this
   // function never recomputes zone results, so repainting a zone can't change a re-sent report.
   if (stats.hasZone) {
     statItems[2] = ['EXACT HIT %', stats.accuracyPct + '%']
-    statItems.splice(2, 0, ['ZONE ACC %', stats.zoneAccuracyPct + '%'])
+    statItems.splice(2, 0, ['RELATIVE ACC %', stats.zoneAccuracyPct + '%'])
   }
   statItems.push(['AVG MPH', stats.hasVelo ? String(stats.avgVelo) : '—'])
   const statSpacing = statItems.length > 5 ? 90 : statItems.length > 4 ? 108 : 135
@@ -216,8 +216,8 @@ async function buildReportPdf(payload: any): Promise<Uint8Array> {
       const x = colX[col]
       const gy = rowY - miniSize
       page.drawCircle({ x: x + 5, y: rowY + 14, size: 5, color: colorForType(type, allTypes) })
-      const relText = usesRelative ? `  ·  ${relativeAccuracyPct}% relative` : ''
-      const zoneText = zonePitches.length ? `  ·  ${Math.round((zoneHits / zonePitches.length) * 100)}% zone (${zonePitches.length})` : ''
+      const relText = (usesRelative && !zonePitches.length) ? `  ·  ${relativeAccuracyPct}% relative` : ''
+      const zoneText = zonePitches.length ? `  ·  ${Math.round((zoneHits / zonePitches.length) * 100)}% relative (${zonePitches.length})` : ''
       page.drawText(`${type}  ·  ${typePitches.length} pitches  ·  ${strikePct}% strikes  ·  ${accuracyPct}% ${zonePitches.length ? 'exact' : 'accuracy'}${zoneText}${relText}`, {
         x: x + 16, y: rowY + 10, size: 9, font: bold, color: COLORS.fieldDark
       })

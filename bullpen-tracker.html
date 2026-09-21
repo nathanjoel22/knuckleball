@@ -804,10 +804,11 @@ function mapProfile(row){
   return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, throws: row.throws || null, relativeAccuracy: !!row.relative_accuracy_enabled, uniformNumber: null };
 }
 function isCoach(){ return state.profile && state.profile.role === 'coach'; }
-// The pitch types New Session offers: the pitcher's own mix, or -- if they haven't
-// set one up yet -- every pitch, so charting is never blocked (U7).
+// The pitch types New Session offers: exactly the pitcher's own mix. A pitcher who
+// hasn't added any pitches yet has none to chart until they do (Joel, Sept 21: no
+// fallback list) -- New Session shows a prompt pointing at Profile instead.
 function pitchTypesFor(p){
-  return (p && p.pitchTypes && p.pitchTypes.length) ? p.pitchTypes : PITCH_CATALOG.map(c => c.name);
+  return (p && p.pitchTypes) ? p.pitchTypes : [];
 }
 function colorForType(pitcher, type){
   const idx = pitchTypesFor(pitcher).indexOf(type);
@@ -2411,7 +2412,7 @@ function sessionStats(pitches){
   const accurate = pitches.filter(isAccurate).length;
   const relativeAccurate = pitches.filter(isRelativelyAccurate).length;
   const usesRelativeMode = pitches.some(p => p.accuracyMode);
-  // U7B: zone accuracy reads the STORED result (never recomputed from today's zones), and only
+  // U7B: relative accuracy (zone-based) reads the STORED result (never recomputed from today's zones), and only
   // over pitches that had a zone -- so the denominator is shown alongside the percentage.
   const zonePitches = pitches.filter(p => p.inAccuracyZone === true || p.inAccuracyZone === false);
   const zoneTotal = zonePitches.length;
@@ -2667,7 +2668,7 @@ function renderSessionView(){
     const targetNum = zoneNumberFor(pt.targetRow, pt.targetCol, pt.batterSide || 'R');
     const actualNum = zoneNumberFor(pt.actualRow, pt.actualCol, pt.batterSide || 'R');
     const modeTag = pt.accuracyMode ? ` <span style="color:#7C9CBF;">[${ACCURACY_MODE_LABELS[pt.accuracyMode]}${relAccurate ? ' ✓' : ''}]</span>`
-      : (pt.inAccuracyZone === true || pt.inAccuracyZone === false) ? ` <span style="color:#7C9CBF;">[Zone${pt.inAccuracyZone ? ' ✓' : ''}]</span>` : '';
+      : (pt.inAccuracyZone === true || pt.inAccuracyZone === false) ? ` <span style="color:#7C9CBF;">[Relative${pt.inAccuracyZone ? ' ✓' : ''}]</span>` : '';
     const locText = `${targetNum ? 'aimed '+targetNum : 'aimed ball'} → ${actualNum ? 'landed '+actualNum : 'landed ball'}${accurate ? ' ✓' : ''}${modeTag}`;
     return `<div class="pitch-log-row">
       <span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pitchLabel(pt.type)}</span> · ${veloText}${strike ? 'Strike' : 'Ball'} · <span style="color:var(--chalk-faint);">${locText}</span></span>
@@ -2689,7 +2690,10 @@ function renderSessionView(){
         <div>
           <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
           <div class="chip-row">${typeChips}</div>
-          ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach() ? `${p.name} hasn't set a pitch mix, so every pitch type is shown. Set it in their profile.` : 'Set up your pitch mix in Profile.'}</p>`}
+          ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
+            ? `${p.name} hasn't added any pitches yet. Add them in their profile to start charting.`
+            : 'Add your pitches in Profile to start charting.'}</p>
+          <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
         </div>
         <div class="accuracy-count-row">
           <div class="pitch-counter">
@@ -2714,8 +2718,8 @@ function renderSessionView(){
           <div class="stat-box"><span class="stat-num mono">${stats.total}</span><span class="stat-lbl">Pitches</span></div>
           <div class="stat-box"><span class="stat-num mono">${stats.strikePct}%</span><span class="stat-lbl">Strikes</span></div>
           <div class="stat-box"><span class="stat-num mono">${stats.accuracyPct}%</span><span class="stat-lbl">Accuracy</span></div>
-          ${stats.usesRelativeMode ? `<div class="stat-box"><span class="stat-num mono">${stats.relativeAccuracyPct}%</span><span class="stat-lbl">Relative Acc.</span></div>` : ''}
-          ${stats.hasZone ? `<div class="stat-box"><span class="stat-num mono">${stats.zoneAccuracyPct}%</span><span class="stat-lbl">Zone Acc. (${stats.zoneTotal})</span></div>` : ''}
+          ${(stats.usesRelativeMode && !stats.hasZone) ? `<div class="stat-box"><span class="stat-num mono">${stats.relativeAccuracyPct}%</span><span class="stat-lbl">Relative Acc.</span></div>` : ''}
+          ${stats.hasZone ? `<div class="stat-box"><span class="stat-num mono">${stats.zoneAccuracyPct}%</span><span class="stat-lbl">Relative Acc. (${stats.zoneTotal})</span></div>` : ''}
           <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="stat-lbl">Avg mph</span></div>
           <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.minVelo+'–'+stats.maxVelo : '—'}</span><span class="stat-lbl">Range</span></div>
         </div>
@@ -2820,7 +2824,7 @@ function renderHistoryView(){
     const expanded = state.expandedSessionId === s.id;
     const typeRows = Object.entries(stats.byType).map(([type, t]) => {
       const color = colorForType(p, type);
-      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${type}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${t.strikePct}%</td><td class="mono">${t.accuracyPct}%</td><td class="mono">${t.relativeAccuracyPct}%</td>${stats.hasZone ? `<td class="mono">${t.hasZone ? t.zoneAccuracyPct + '% (' + t.zoneTotal + ')' : '—'}</td>` : ''}</tr>`;
+      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${type}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${t.strikePct}%</td><td class="mono">${t.accuracyPct}%</td><td class="mono">${stats.hasZone ? (t.hasZone ? t.zoneAccuracyPct + '% (' + t.zoneTotal + ')' : '—') : t.relativeAccuracyPct + '%'}</td></tr>`;
     }).join('');
 
     const contacts = p.contactEmails || {};
@@ -2881,7 +2885,7 @@ function renderHistoryView(){
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
             <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
             ${stats.hasZone
-              ? `<div class="meta-item"><span class="meta-num mono">${stats.zoneAccuracyPct}%</span><span class="meta-lbl">Zone Acc. (${stats.zoneTotal})</span></div>
+              ? `<div class="meta-item"><span class="meta-num mono">${stats.zoneAccuracyPct}%</span><span class="meta-lbl">Relative Acc. (${stats.zoneTotal})</span></div>
                  <div class="meta-item"><span class="meta-num mono">${stats.accuracyPct}%</span><span class="meta-lbl">Exact hit</span></div>`
               : `<div class="meta-item"><span class="meta-num mono">${stats.accuracyPct}%</span><span class="meta-lbl">Accuracy</span></div>`}
             <div class="meta-item"><span class="meta-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="meta-lbl">Avg mph</span></div>
@@ -2892,7 +2896,7 @@ function renderHistoryView(){
           <div class="zone-wrap">${renderZoneGrid(s.pitches, false)}<div class="zone-caption">Location heat map · Catcher's view</div></div>
           <div style="flex:1;min-width:220px;">
             <table class="breakdown-table">
-              <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th><th>Relative Acc%</th>${stats.hasZone ? '<th>Zone Acc%</th>' : ''}</tr></thead>
+              <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th><th>Relative Acc%</th></tr></thead>
               <tbody>${typeRows}</tbody>
             </table>
             ${reportPanel}
@@ -3160,7 +3164,7 @@ window.sendSessionReport = async function(sessionId){
     const sStats = sessionStats(s.pitches);
     const byType = {};
     Object.entries(sStats.byType).forEach(([type, t]) => {
-      byType[type] = { accuracyPct: t.accuracyPct, relativeAccuracyPct: t.relativeAccuracyPct, zoneAccuracyPct: t.zoneAccuracyPct, strikePct: t.strikePct, count: t.count };
+      byType[type] = { accuracyPct: t.accuracyPct, relativeAccuracyPct: t.hasZone ? t.zoneAccuracyPct : t.relativeAccuracyPct, strikePct: t.strikePct, count: t.count };
     });
     return {
       date: s.date,

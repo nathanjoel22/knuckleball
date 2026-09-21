@@ -155,6 +155,7 @@
     flex:1; min-width:0; background:var(--field-dark); border:1px solid var(--border-strong);
     border-radius:5px; color:var(--chalk-dim); padding:7px 9px; font-size:11.5px;
     font-family:'IBM Plex Mono',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    user-select:all; -webkit-user-select:all;
   }
   .invite-link-copy-btn{
     flex-shrink:0; background:var(--field-dark); border:1px solid var(--border-strong);
@@ -1237,19 +1238,37 @@ window.selectPitcher = async function(pitcherId){
 function inviteLinkFor(team){
   return window.location.origin + '/join.html?t=' + team.invite_token;
 }
+// navigator.clipboard is unavailable or rejected in some contexts (non-HTTPS,
+// certain in-app browsers / PWA modes), so fall back to a selected textarea +
+// execCommand('copy'), which needs no permission but must run synchronously
+// inside the click.
+function copyTextFallback(text){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px;';
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try{ ok = document.execCommand('copy'); }catch(e){ ok = false; }
+  document.body.removeChild(ta);
+  return ok;
+}
 window.copyInviteLink = async function(){
   const team = state.teams.find(t => t.id === state.currentTeamId);
   if(!team) return;
+  const link = inviteLinkFor(team);
+  let ok = false;
   try{
-    await navigator.clipboard.writeText(inviteLinkFor(team));
-    state.inviteCopyStatus = 'copied';
+    await navigator.clipboard.writeText(link);
+    ok = true;
   }catch(e){
-    state.inviteCopyStatus = 'error';
+    ok = copyTextFallback(link);
   }
+  state.inviteCopyStatus = ok ? 'copied' : 'error';
   render();
-  if(state.inviteCopyStatus === 'copied'){
-    setTimeout(() => { state.inviteCopyStatus = null; render(); }, 2000);
-  }
+  setTimeout(() => { state.inviteCopyStatus = null; render(); }, ok ? 2000 : 4000);
 };
 window.armRegenerateInvite = function(){
   state.regenerateArmed = true;
@@ -2657,7 +2676,7 @@ function render(){
         <div class="field-label">Team invite link</div>
         <div class="invite-link-row">
           <span class="invite-link-text">${inviteLinkFor(team)}</span>
-          <button class="invite-link-copy-btn" onclick="copyInviteLink()">${state.inviteCopyStatus === 'copied' ? 'Copied!' : 'Copy'}</button>
+          <button class="invite-link-copy-btn" onclick="copyInviteLink()">${state.inviteCopyStatus === 'copied' ? 'Copied!' : state.inviteCopyStatus === 'error' ? 'Copy failed' : 'Copy'}</button>
         </div>
         <div class="invite-regen-row">
           <span style="font-size:11px;color:var(--chalk-faint);">Rotated ${team.invite_token_rotated_at ? new Date(team.invite_token_rotated_at).toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '—'}</span>

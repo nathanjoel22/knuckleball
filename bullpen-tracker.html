@@ -135,6 +135,7 @@
   .roster-item.active .roster-item-num{ color:var(--amber); }
   .roster-item-main{ display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
   .roster-item-name{ font-weight:600; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .throws-tag{ margin-left:7px; font-size:10.5px; font-weight:700; letter-spacing:.05em; color:var(--amber); vertical-align:1px; }
   .roster-item-types{ font-size:11px; color:var(--chalk-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .roster-item-num{ font-family:'Teko',sans-serif; font-size:20px; color:var(--chalk-faint); flex-shrink:0; }
 
@@ -206,6 +207,7 @@
     font-weight:600; text-align:center;
   }
   .sign-out-btn:hover{ border-color:var(--red); color:var(--red); }
+  .phone-footer{ display:none; }   /* shown on phones only, see the max-width:500px block */
 
   .outbox-badge{
     display:flex; align-items:center; justify-content:space-between; gap:8px;
@@ -646,6 +648,9 @@
   }
 
   @media (max-width:500px){
+    /* Coach on a phone: invite link + Sign out live at the bottom of the page, not the top. */
+    .hide-phone{ display:none !important; }
+    .phone-footer{ display:flex; flex-direction:column; gap:14px; padding:4px 16px 28px; }
     /* RESERVED BAND for the phone pitch-pill (see .kb-batter's media block
        above). .zone-grid IS the real "grid wrapper" the silhouette is
        positioned against (already position:relative, see its comment) --
@@ -3239,13 +3244,14 @@ function render(){
     : `<div class="team-select-wrap"><span class="roster-label">Team</span><div style="font-size:14px;font-weight:600;">${state.teams[0].name}</div></div>`;
 
   let sidebarBody;
+  let phoneFooter = '';   // phones only: the coach's invite link + sign out, rendered below the page content
   if(isCoach()){
     const rosterItems = state.roster.map((p, i) => `
       <div class="roster-item-wrap">
         <div class="roster-item${p.id===state.currentPitcherId?' active':''}" style="display:flex;">
           <button style="all:unset;flex:1;min-width:0;display:flex;align-items:center;cursor:pointer;" onclick="selectPitcher('${p.id}')">
             <div class="roster-item-main">
-              <span class="roster-item-name">${p.name}${p.emailConfirmed ? '' : '<span class="verify-badge">Unverified</span>'}</span>
+              <span class="roster-item-name">${p.name}${p.throws ? `<span class="throws-tag">${p.throws}HP</span>` : ''}${p.emailConfirmed ? '' : '<span class="verify-badge">Unverified</span>'}</span>
               <span class="roster-item-types">${p.pitchTypes.map(pitchLabel).join(' · ') || 'No pitches set yet'}</span>
             </div>
             <span class="roster-item-num">${p.uniformNumber === null ? '—' : p.uniformNumber}</span>
@@ -3282,11 +3288,15 @@ function render(){
           </div>` : ''}
       </div>` : '';
 
+    // On iPad and laptop the invite link stays in the sidebar, as before. On phones the
+    // sidebar copy is hidden and the same panel + Sign out render again at the very bottom
+    // of the page (after End session & save), so they sit at the end of the scroll.
     sidebarBody = `
       ${teamSelector}
       <div class="roster-label">Roster</div>
       <div class="roster-list">${rosterItems || '<p style="color:var(--chalk-faint);font-size:12.5px;">No pitchers on this team yet.</p>'}</div>
-      ${inviteLinkPanel}`;
+      <div class="hide-phone">${inviteLinkPanel}</div>`;
+    phoneFooter = `<div class="phone-footer">${inviteLinkPanel}<button class="sign-out-btn" onclick="signOut()">Sign out</button></div>`;
   } else {
     sidebarBody = `
       ${teamSelector}
@@ -3304,7 +3314,7 @@ function render(){
       </div>
       ${sidebarBody}
       ${renderOutboxBadge()}
-      <button class="sign-out-btn" onclick="signOut()">Sign out</button>
+      <button class="sign-out-btn${isCoach() ? ' hide-phone' : ''}" onclick="signOut()">Sign out</button>
     </div>`;
 
   const p = currentPitcher();
@@ -3381,7 +3391,7 @@ function render(){
     `;
   }
 
-  app.innerHTML = sidebar + `<div class="main">${main}</div>`;
+  app.innerHTML = sidebar + `<div class="main">${main}</div>` + phoneFooter;
   attachVeloStrip();
 }
 

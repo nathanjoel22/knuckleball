@@ -1747,9 +1747,14 @@ window.toggleBatterSide = async function(){
    the pitch with velocity null, and until the next pitch's first tap the strip
    attaches a tapped value to that last pitch. Not tapping leaves it null (shown
    as a dash). The strip centers on this pitcher's typical velocity for the pitch
-   type -- 75 until they have 3 recorded, then the average of the most recent
-   100. Nothing is ever pre-selected. */
+   type -- 75 until they have 3 recorded, then an exponential moving average of
+   their most recent 100. Nothing is ever pre-selected. */
 const VELO_MIN = 40, VELO_MAX = 105, VELO_DEFAULT_CENTER = 75, VELO_MIN_SAMPLES = 3, VELO_RECENT = 100;
+// How fast the center follows new pitches (exponential moving average). 0.15 puts
+// half the weight on roughly the last 4-5 recorded pitches: quick enough to track
+// a pitcher warming up or tiring within a pen, slow enough that one wild pitch
+// doesn't yank the strip. Raise for faster, lower for steadier.
+const VELO_EMA_ALPHA = 0.15;
 // Before U6 the slider recorded an untouched default of 65 into real sessions
 // (81% of recorded velocities in production were exactly 65). Those can't be
 // told apart from real 65s, so a velocity of exactly 65 on a pitch charted
@@ -1757,11 +1762,18 @@ const VELO_MIN = 40, VELO_MAX = 105, VELO_DEFAULT_CENTER = 75, VELO_MIN_SAMPLES 
 // after it count normally.
 const U6_CUTOFF_TS = 1789965601000;
 function veloVisible(){ return window.matchMedia('(max-width:500px)').matches ? 5 : 7; }
+// Exponential moving average of the pitcher's most recent 100 recorded velocities
+// for this pitch type (oldest -> newest). Seeded with the plain average of the
+// first 3, then every later pitch is folded in as it is recorded, so recent
+// pitches count most. Fewer than 3 recorded: the 75 default.
 function veloCenter(velos){
   if(velos.length < VELO_MIN_SAMPLES) return VELO_DEFAULT_CENTER;
   const recent = velos.slice(-VELO_RECENT);
-  const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
-  return Math.max(VELO_MIN, Math.min(VELO_MAX, Math.round(avg)));
+  let ema = recent.slice(0, VELO_MIN_SAMPLES).reduce((a, b) => a + b, 0) / VELO_MIN_SAMPLES;
+  for(let i = VELO_MIN_SAMPLES; i < recent.length; i++){
+    ema += VELO_EMA_ALPHA * (recent[i] - ema);
+  }
+  return Math.max(VELO_MIN, Math.min(VELO_MAX, Math.round(ema)));
 }
 function veloHistoryKey(){ return 'veloHistory:' + (state.session ? state.session.user.id : ''); }
 async function loadVeloHistory(){

@@ -665,8 +665,8 @@
 /* ---------- CONSTANTS ---------- */
 // The only pitches a pitcher can add. `name` is what gets stored in
 // profiles.pitch_types and on each pitch row (unchanged plain strings, so
-// reports and history are unaffected); `abbr` is display-only, shown before
-// the name. Pitches saved before this list existed (free text) still render
+// reports and history are unaffected); `abbr` is display-only and is what
+// the app shows everywhere except the add-a-pitch dropdown. Pitches saved before this list existed (free text) still render
 // as typed -- pitchLabel falls back to the raw string.
 const PITCH_CATALOG = [
   { abbr:'4SFB', name:'Four Seam Fastball' },
@@ -684,7 +684,7 @@ const PITCH_CATALOG = [
 ];
 function pitchLabel(name){
   const c = PITCH_CATALOG.find(x => x.name === name);
-  return c ? c.abbr + ' ' + c.name : name;
+  return c ? c.abbr : name;
 }
 const TYPE_PALETTE = ['#E8A83D','#6FA287','#C17A45','#C0453B','#7C9CBF','#B98CCB','#D4C15B','#4FA8A8'];
 const GRID_SIZE = 5;

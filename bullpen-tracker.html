@@ -250,6 +250,9 @@
   .pitcher-header-actions{ display:flex; gap:10px; align-items:flex-end; }
   .uniform-field{ display:flex; flex-direction:column; gap:4px; }
   .uniform-field input{ width:72px; padding:6px 8px; text-align:center; }
+  .uniform-locked{ display:flex; gap:8px; align-items:center; }
+  .uniform-locked-num{ font-family:'Teko',sans-serif; font-size:26px; line-height:1; min-width:36px; text-align:center; color:var(--amber); }
+  .uniform-msg{ font-size:11.5px; color:var(--chalk-faint); max-width:260px; }
   .pitcher-sub{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
   .pitch-chip{
     font-size:11px; font-weight:600; padding:4px 9px; border-radius:20px; letter-spacing:0.02em;
@@ -739,6 +742,8 @@ let state = {
   draftAvailable: false,
   pendingDraft: null,
   contactsOpen: false,
+  uniformEditKey: null,     // 'pitcherId:teamId' while the uniform-number editor is open
+  uniformMsg: '',           // one-line notice, e.g. after a conflict
   contactsSavedAt: null,
   inviteOpen: false,
   inviteStatus: null,
@@ -1201,6 +1206,7 @@ window.signOut = async function(){
 /* ---------- TEAM / ROSTER ---------- */
 window.onTeamChange = async function(teamId, skipRender){
   state.currentTeamId = teamId;
+  state.uniformEditKey = null; state.uniformMsg = '';
   state.expandedSessionId = null;
   state.regenerateArmed = false;
   state.hint = '';
@@ -1220,6 +1226,18 @@ window.onTeamChange = async function(teamId, skipRender){
   if(!skipRender) render();
 };
 
+// Numerical order by uniform number; pitchers who haven't set one yet go last
+// (alphabetical among themselves) so the list stays stable.
+function sortRoster(){
+  state.roster.sort((a, b) => {
+    const an = a.uniformNumber, bn = b.uniformNumber;
+    if(an !== null && bn !== null && an !== bn) return an - bn;
+    if(an !== null && bn === null) return -1;
+    if(an === null && bn !== null) return 1;
+    return String(a.name).localeCompare(String(b.name));
+  });
+}
+
 async function loadRosterForTeam(teamId){
   const { data, error } = await supabaseClient
     .from('pitcher_teams')
@@ -1231,15 +1249,7 @@ async function loadRosterForTeam(teamId){
     p.uniformNumber = (r.uniform_number === null || r.uniform_number === undefined) ? null : r.uniform_number;
     return p;
   });
-  // Numerical order by uniform number; pitchers who haven't set one yet go last
-  // (alphabetical among themselves) so the list stays stable.
-  state.roster.sort((a, b) => {
-    const an = a.uniformNumber, bn = b.uniformNumber;
-    if(an !== null && bn !== null && an !== bn) return an - bn;
-    if(an !== null && bn === null) return -1;
-    if(an === null && bn !== null) return 1;
-    return String(a.name).localeCompare(String(b.name));
-  });
+  sortRoster();
 
   // R0: verification status per pitcher, via the one sanctioned read path
   // (get_roster_verification -- auth.users itself is never exposed to
@@ -1259,6 +1269,7 @@ async function loadRosterForTeam(teamId){
 
 window.selectPitcher = async function(pitcherId){
   state.currentPitcherId = pitcherId;
+  state.uniformEditKey = null; state.uniformMsg = '';
   state.expandedSessionId = null;
   clearDeleteState();
   await loadSessionsForCurrentSelection();
@@ -1551,24 +1562,99 @@ window.saveContactEmails = async function(){
   if(!error){ state.profile.contact_emails = emails; state.contactsSavedAt = Date.now(); }
   render();
 };
+/* ---------- UNIFORM NUMBER (pitcher for themself, coach for their roster) ----------
+   One value per pitcher per team (pitcher_teams.uniform_number). Once set it
+   shows locked with a "Change number" button. Pitcher and coach both write it
+   through set_uniform_number(), which refuses a save if the number changed since
+   this screen loaded (conflict) and hands back the current value instead. */
+function uniformTarget(){
+  const teamId = state.currentTeamId;
+  if(!teamId) return null;
+  if(isCoach()){
+    const p = state.roster.find(x => x.id === state.currentPitcherId);
+    return p ? { teamId, pitcherId: p.id, number: p.uniformNumber, apply: n => { p.uniformNumber = n; sortRoster(); } } : null;
+  }
+  const t = state.teams.find(x => x.id === teamId);
+  return t ? { teamId, pitcherId: state.profile.id, number: (t.uniform_number === undefined ? null : t.uniform_number), apply: n => { t.uniform_number = n; } } : null;
+}
+window.editUniformNumber = function(){
+  const t = uniformTarget();
+  if(!t) return;
+  state.uniformEditKey = t.pitcherId + ':' + t.teamId;
+  state.uniformMsg = '';
+  render();
+};
+window.cancelUniformEdit = function(){
+  state.uniformEditKey = null;
+  render();
+};
 window.saveUniformNumber = async function(){
+  const t = uniformTarget();
   const el = document.getElementById('uniform-input');
-  const team = state.teams.find(t => t.id === state.currentTeamId);
-  if(!el || !team) return;
+  if(!t || !el) return;
   const raw = (el.value || '').trim();
   let val = null;
   if(raw !== ''){
     val = Number(raw);
     if(!Number.isInteger(val) || val < 0 || val > 99){
-      alert('Enter a uniform number from 0 to 99.');
-      el.value = team.uniform_number === null || team.uniform_number === undefined ? '' : team.uniform_number;
+      state.uniformMsg = 'Enter a uniform number from 0 to 99.';
+      render();
       return;
     }
   }
-  const { error } = await supabaseClient.rpc('set_my_uniform_number', { p_team_id: team.id, p_number: val });
-  if(!error) team.uniform_number = val;
+  const { data, error } = await supabaseClient.rpc('set_uniform_number', {
+    p_team_id: t.teamId, p_pitcher_id: t.pitcherId, p_number: val, p_expected: t.number
+  });
+  if(error){
+    state.uniformMsg = 'Could not save the number. Try again.';
+    render();
+    return;
+  }
+  if(data && data.conflict){
+    t.apply(data.current === undefined ? null : data.current);
+    state.uniformEditKey = null;
+    state.uniformMsg = data.current === null || data.current === undefined
+      ? 'This number was just cleared by someone else. Showing the latest.'
+      : `This number was just changed to ${data.current} by someone else. Showing the latest.`;
+    render();
+    return;
+  }
+  t.apply(val);
+  state.uniformEditKey = null;
+  state.uniformMsg = '';
   render();
 };
+// Pull the latest numbers from the server (a coach edit shows up for the
+// pitcher and vice versa) without disturbing anything else on screen.
+async function refreshUniformNumbers(){
+  if(!state.profile || !state.currentTeamId || state.uniformEditKey) return;
+  try{
+    let changed = false;
+    if(isCoach()){
+      const { data } = await supabaseClient.from('pitcher_teams').select('pitcher_id, uniform_number').eq('team_id', state.currentTeamId);
+      (data || []).forEach(r => {
+        const p = state.roster.find(x => x.id === r.pitcher_id);
+        const n = r.uniform_number === undefined ? null : r.uniform_number;
+        if(p && p.uniformNumber !== n){ p.uniformNumber = n; changed = true; }
+      });
+      if(changed) sortRoster();
+    } else {
+      const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number').eq('pitcher_id', state.profile.id);
+      (data || []).forEach(r => {
+        const t = state.teams.find(x => x.id === r.team_id);
+        const n = r.uniform_number === undefined ? null : r.uniform_number;
+        if(t && (t.uniform_number === undefined ? null : t.uniform_number) !== n){ t.uniform_number = n; changed = true; }
+      });
+    }
+    // Don't yank a form out from under someone who is typing in it.
+    const ae = document.activeElement;
+    const typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'SELECT' || ae.tagName === 'TEXTAREA');
+    if(changed && !typing) render();
+  }catch(e){ /* best-effort */ }
+}
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible') refreshUniformNumbers();
+});
 window.toggleContactsPanel = async function(){
   state.contactsOpen = !state.contactsOpen;
   state.contactsSavedAt = null;
@@ -2846,17 +2932,25 @@ function render(){
           <h2 class="display">${p.name}</h2>
           <div class="pitcher-sub">${arsenalChips}</div>
         </div>
-        ${!isCoach() ? `<div class="pitcher-header-actions">
+        <div class="pitcher-header-actions">
           ${(() => {
-            const t = state.teams.find(x => x.id === state.currentTeamId);
+            const t = uniformTarget();
             if(!t) return '';
-            const n = (t.uniform_number === null || t.uniform_number === undefined) ? '' : t.uniform_number;
-            return `<label class="uniform-field"><span class="field-label">${state.teams.length > 1 ? 'Uniform # · ' + t.name : 'Uniform #'}</span>
-              <input id="uniform-input" class="text-input" type="number" inputmode="numeric" min="0" max="99" placeholder="—" value="${n}" onchange="saveUniformNumber()">
-            </label>`;
+            const editing = state.uniformEditKey === t.pitcherId + ':' + t.teamId;
+            const label = (isCoach() ? 'Uniform #' : (state.teams.length > 1 ? 'Uniform # · ' + ((state.teams.find(x => x.id === t.teamId) || {}).name || '') : 'Uniform #'));
+            const msg = state.uniformMsg ? `<span class="uniform-msg">${state.uniformMsg}</span>` : '';
+            if(t.number !== null && !editing){
+              return `<div class="uniform-field"><span class="field-label">${label}</span>
+                <div class="uniform-locked"><span class="uniform-locked-num">${t.number}</span>
+                <button class="btn btn-ghost" onclick="editUniformNumber()">Change number</button></div>${msg}</div>`;
+            }
+            return `<div class="uniform-field"><span class="field-label">${label}</span>
+              <div class="uniform-locked"><input id="uniform-input" class="text-input" type="number" inputmode="numeric" min="0" max="99" placeholder="—" value="${t.number === null ? '' : t.number}" onkeydown="if(event.key==='Enter')saveUniformNumber()">
+              <button class="btn btn-primary" onclick="saveUniformNumber()">Save</button>
+              ${t.number !== null ? '<button class="btn btn-ghost" onclick="cancelUniformEdit()">Cancel</button>' : ''}</div>${msg}</div>`;
           })()}
-          <button class="btn btn-ghost" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>
-        </div>` : ''}
+          ${!isCoach() ? `<button class="btn btn-ghost" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>` : ''}
+        </div>
       </div>
       ${contactsPanel}
       ${tabs}

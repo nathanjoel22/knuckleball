@@ -124,6 +124,24 @@
     font-size:11px; text-transform:uppercase; letter-spacing:0.12em;
     color:var(--chalk-faint); margin:4px 0 -4px;
   }
+  .roster-toggle-btn{
+    all:unset; display:flex; align-items:center; justify-content:space-between; gap:8px;
+    cursor:pointer; padding:4px 0; margin:0 0 -4px; min-height:32px;
+  }
+  .roster-toggle-btn .roster-label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .roster-chevron{
+    flex-shrink:0; color:var(--chalk-faint); font-size:11px; line-height:1;
+    transition:transform 200ms ease; transform:rotate(0deg);
+  }
+  .roster-chevron.open{ transform:rotate(180deg); }
+  /* Collapse animation: overflow-hidden max-height + opacity, ~200ms, so the list
+     visibly rolls up/down rather than just vanishing. max-height's open value only
+     needs to exceed the tallest real roster; it doesn't have to match exactly. */
+  .roster-collapse{
+    max-height:2000px; opacity:1; overflow:hidden;
+    transition:max-height 200ms ease, opacity 150ms ease, margin-top 200ms ease;
+  }
+  .roster-collapse.collapsed{ max-height:0; opacity:0; margin-top:-6px; }
   .roster-list{ display:flex; flex-direction:column; gap:6px; overflow-y:auto; }
   .roster-item{
     display:flex; align-items:center; justify-content:space-between; gap:8px;
@@ -260,10 +278,19 @@
     font-size:11px; font-weight:600; padding:4px 9px; border-radius:20px; letter-spacing:0.02em;
     border:1px solid var(--border-strong); color:var(--field-dark);
   }
-  .tabs{ display:flex; gap:4px; border-bottom:1px solid var(--border); }
+  /* gap:4px is the ONLY inter-tab spacing (the .tab-btn margin-right below was a redundant
+     18px stacked on top of it -- removing it is what makes 4 tabs, including "Leaderboard",
+     fit on one line at 375px, the narrowest supported width (iPhone SE/mini); see the same
+     removal for letter-spacing and the reduced horizontal padding below).
+     padding-right adds real clearance from the true screen edge (not just .main's own
+     padding) and grows under env(safe-area-inset-right) for a landscape notch/rounded
+     corner -- inert today since no page here sets viewport-fit=cover, so the env() call
+     currently always resolves to 0 and only the 8px floor applies; kept as forward-compatible
+     groundwork per the request. */
+  .tabs{ display:flex; gap:4px; border-bottom:1px solid var(--border); padding-right:max(8px, env(safe-area-inset-right)); }
   .tab-btn{
     background:none; border:none; color:var(--chalk-faint); font-size:13px; font-weight:600;
-    padding:10px 4px; margin-right:18px; border-bottom:2px solid transparent; text-transform:uppercase; letter-spacing:0.06em;
+    padding:10px 3px; border-bottom:2px solid transparent; text-transform:uppercase; white-space:nowrap;
   }
   .tab-btn:hover{ color:var(--chalk); }
   .tab-btn.active{ color:var(--amber); border-bottom-color:var(--amber); }
@@ -797,6 +824,7 @@ let state = {
   lb: null,                 // U8: { teamId, win, data, fetchedAt, status: loading|ok|offline|error, error }
   lbExcludeOpen: null,      // U8 (coach): pitch id whose 'Exclude this reading' panel is open
   lbBusy: false,
+  rosterCollapsed: false,   // coach only: roster list rolled up once a pitcher is selected
   editVeloError: '',        // (g) inline message when the edit-pitch velocity is rejected
   editVeloDraft: '',
   uniformEditKey: null,     // 'pitcherId:teamId' while the uniform-number editor is open
@@ -1288,6 +1316,7 @@ window.onTeamChange = async function(teamId, skipRender){
     await loadRosterForTeam(teamId);
     state.currentPitcherId = state.roster.length ? state.roster[0].id : null;
     if(skipRender) adoptDraftPitcher();   // launch: land on the pitcher whose session is in progress
+    state.rosterCollapsed = false;   // a fresh team load always starts with the roster open
     // Launch (skipRender) always opens on New Session; a coach who switches teams
     // from the dropdown still lands on History, as before.
     state.view = skipRender ? 'session' : 'history';
@@ -1378,8 +1407,13 @@ async function loadRosterForTeam(teamId){
   });
 }
 
+window.toggleRosterCollapsed = function(){
+  state.rosterCollapsed = !state.rosterCollapsed;
+  render();
+};
 window.selectPitcher = async function(pitcherId){
   state.currentPitcherId = pitcherId;
+  state.rosterCollapsed = true;   // picking a pitcher rolls the list up; unchanged otherwise
   state.uniformEditKey = null; state.uniformMsg = '';
   state.expandedSessionId = null;
   clearDeleteState();
@@ -3280,7 +3314,7 @@ function renderLeaderboardView(){
 /* ---------- RENDER: PROFILE (U7) ---------- */
 function renderTabs(){
   return `<div class="tabs">
-    <button class="tab-btn${state.view==='session'?' active':''}" onclick="setView('session')">${state.draftAvailable ? 'Resume Session' : 'New Session'}</button>
+    <button class="tab-btn${state.view==='session'?' active':''}" onclick="setView('session')">${state.draftAvailable ? 'Resume' : 'New Session'}</button>
     <button class="tab-btn${state.view==='history'?' active':''}" onclick="setView('history')">History</button>
     ${hasLeaderboard() ? `<button class="tab-btn${state.view==='leaderboard'?' active':''}" onclick="setView('leaderboard')">Leaderboard</button>` : ''}
     <button class="tab-btn${state.view==='profile'?' active':''}" onclick="setView('profile')">Profile</button>
@@ -3526,10 +3560,22 @@ function render(){
     // On iPad and laptop the invite link stays in the sidebar, as before. On phones the
     // sidebar copy is hidden and the same panel + Sign out render again at the very bottom
     // of the page (after End session & save), so they sit at the end of the scroll.
+    // Collapsing roster: once a pitcher is picked, the list rolls up and the Roster
+    // button itself shows who's selected, so a coach always sees who he's charting
+    // without the list taking up space. Pure UI state (state.rosterCollapsed) --
+    // no network call, and selectPitcher's own behavior is unchanged.
+    const collapsed = state.rosterCollapsed;
+    const selectedForLabel = state.roster.find(x => x.id === state.currentPitcherId);
+    const rosterLabel = collapsed && selectedForLabel ? `Roster · ${escHtml(selectedForLabel.name)}` : 'Roster';
     sidebarBody = `
       ${teamSelector}
-      <div class="roster-label">Roster</div>
-      <div class="roster-list">${rosterItems || '<p style="color:var(--chalk-faint);font-size:12.5px;">No pitchers on this team yet.</p>'}</div>
+      <button class="roster-toggle-btn" onclick="toggleRosterCollapsed()" aria-expanded="${collapsed ? 'false' : 'true'}">
+        <span class="roster-label" style="margin:0;">${rosterLabel}</span>
+        <span class="roster-chevron${collapsed ? '' : ' open'}">▾</span>
+      </button>
+      <div class="roster-collapse${collapsed ? ' collapsed' : ''}">
+        <div class="roster-list">${rosterItems || '<p style="color:var(--chalk-faint);font-size:12.5px;">No pitchers on this team yet.</p>'}</div>
+      </div>
       <div class="hide-phone">${inviteLinkPanel}</div>`;
     phoneFooter = `<div class="phone-footer">${inviteLinkPanel}<button class="sign-out-btn" onclick="signOut()">Sign out</button></div>`;
   } else {

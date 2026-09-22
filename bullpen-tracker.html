@@ -374,18 +374,14 @@
   }
   .type-chip.selected{ color:var(--field-dark); border-color:transparent; }
   .type-chip:disabled{ opacity:0.5; cursor:not-allowed; }
-  /* Two side-by-side label-over-value columns: "Relative accuracy" above
-     its dropdown, "Pitch count" above its number, so both labels line up
-     on row 1 and the dropdown + number line up together on row 2. */
+  /* Used to hold this pitch counter beside a "Relative accuracy" dropdown
+     (removed in U7 -- relative accuracy now lives in Profile); kept as the
+     wrapper since renderSessionView still nests .pitch-counter inside it. */
   .accuracy-count-row{ display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
-  .accuracy-select-col{ display:flex; flex-direction:column; gap:8px; min-width:0; }
-  .accuracy-select{ width:150px; }
-  /* gap is bigger than .accuracy-select-col's on purpose: the dropdown box
-     (with its border/padding) is taller than the bare number text, so this
-     extra gap equalizes the two columns' total heights -- with equal
-     heights, .accuracy-count-row's align-items:flex-end lines up both the
-     labels on top AND the dropdown/number on the bottom at the same time. */
-  .pitch-counter{ display:flex; flex-direction:column; align-items:center; gap:24px; flex-shrink:0; }
+  /* Row, not stacked: the badge sits left of the label, flush with the pitch-type
+     chips and the grid below (not centered under its own label -- Joel, Sept 22:
+     that read as inset/indented against everything else in this column). */
+  .pitch-counter{ display:flex; flex-direction:row; align-items:center; gap:10px; flex-shrink:0; }
   .pitch-counter-num{ font-family:'Teko',sans-serif; font-size:22px; line-height:1; color:var(--field-dark); }
   .pitch-count-badge{
     width:44px; height:44px; padding:0;
@@ -2891,8 +2887,8 @@ function renderSessionView(){
         </div>
         <div class="accuracy-count-row">
           <div class="pitch-counter">
-            <span class="field-label">Pitch count</span>
             <span class="pitch-counter-num pitch-count-badge mono">${stats.total}</span>
+            <span class="field-label">Pitch count</span>
           </div>
         </div>
         <div class="hint-msg">${state.hint}</div>

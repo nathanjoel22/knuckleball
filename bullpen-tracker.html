@@ -364,7 +364,10 @@
   .panel{ background:var(--card-bg); border:1px solid var(--border); border-radius:10px; padding:22px; box-shadow:0 1px 3px rgba(15,36,27,0.06); }
   .controls-panel{ display:flex; flex-direction:column; gap:18px; min-width:260px; flex:1; }
   .chip-row{ display:flex; flex-wrap:wrap; gap:10px; }
-  .type-chip{
+  /* .pitch-count-badge shares this block's shape/border/sizing so the pitch-count
+     badge (below) and the pitch-type chips stay visually consistent -- see its own
+     comment for the one thing it overrides (a fixed width instead of a minimum). */
+  .type-chip, .pitch-count-badge{
     display:inline-flex; align-items:center; justify-content:center;
     min-height:44px; min-width:44px; padding:10px 16px; border-radius:22px; font-size:14px; font-weight:600;
     border:1.5px solid var(--border-strong); background:transparent; color:var(--ink-dim);
@@ -382,8 +385,12 @@
      extra gap equalizes the two columns' total heights -- with equal
      heights, .accuracy-count-row's align-items:flex-end lines up both the
      labels on top AND the dropdown/number on the bottom at the same time. */
-  .pitch-counter{ display:flex; flex-direction:column; align-items:flex-end; gap:24px; flex-shrink:0; }
+  .pitch-counter{ display:flex; flex-direction:column; align-items:center; gap:24px; flex-shrink:0; }
   .pitch-counter-num{ font-family:'Teko',sans-serif; font-size:22px; line-height:1; color:var(--field-dark); }
+  .pitch-count-badge{
+    width:44px; height:44px; padding:0;
+    background:var(--surface); /* same green as the 3x3 strike-zone cells, see .zone-cell.in-zone */
+  }
   .add-type-inline{ display:flex; gap:6px; align-items:center; }
   .add-type-inline input, .add-type-inline select{ flex:1; padding:6px 8px; font-size:12.5px; }
   .add-type-inline button{ background:none; border:1px solid var(--border-strong); color:var(--ink-dim); border-radius:5px; padding:6px 10px; font-size:12px; }
@@ -2885,7 +2892,7 @@ function renderSessionView(){
         <div class="accuracy-count-row">
           <div class="pitch-counter">
             <span class="field-label">Pitch count</span>
-            <span class="pitch-counter-num mono">${stats.total}</span>
+            <span class="pitch-counter-num pitch-count-badge mono">${stats.total}</span>
           </div>
         </div>
         <div class="hint-msg">${state.hint}</div>

@@ -15,7 +15,7 @@
 // stale-while-revalidate fetch handler below is the offline/secondary
 // path -- it is not what ships a code change. This bump is a required
 // step in DEPLOY.md ("Frontend: deploy to production").
-const CACHE_VERSION = 'kb-shell-v59';
+const CACHE_VERSION = 'kb-shell-v60';
 
 const PRECACHE_URLS = [
   '/',
@@ -85,7 +85,20 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_VERSION);
-    const cached = await cache.match(req);
+    // ignoreSearch: every PRECACHE_URLS entry is stored under its bare path
+    // with no query string, but several of these shell pages are always
+    // VISITED with one (verify-email.html?t=..., join.html?t=..., an
+    // invite/verification link is never bare) -- each of those tokens gets
+    // read from location.search by the page's OWN client-side JS after
+    // load, so the actual HTML/JS shell served is identical either way.
+    // Without this, cache.match's default exact-URL comparison never hits
+    // for any of those links, silently defeating their precaching and
+    // falling through to network-only -- on a flaky connection (or none),
+    // that's the "Offline and not yet cached." fallback below, on exactly
+    // the links (email verification, team invites) where reliability
+    // matters most. Found via a real report: a verification email link
+    // hit this offline page even though verify-email.html was precached.
+    const cached = await cache.match(req, { ignoreSearch: true });
 
     const networkFetch = fetch(req).then((res) => {
       if (res && (res.ok || res.type === 'opaque')) {

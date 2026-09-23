@@ -3552,9 +3552,23 @@ function renderTabs(){
 }
 function renderEmailSection(){
   const email = state.myVerification.email || (state.session && state.session.user && state.session.user.email) || '';
-  const badge = isCoach() ? '' : (state.myVerification.emailConfirmed
+  // U9 follow-up (Joel): a coach's OWN verification now genuinely matters
+  // -- the report gate can block them the same way it always could a
+  // pitcher (found via a real coach account, "Dave Winfield," stuck with
+  // no way to see or fix this). Previously this badge and the resend
+  // affordance were pitcher-only, back when a coach's own status affected
+  // nothing. No separate banner or setup flow for coaches (Joel: they
+  // don't need the pitcher-style setup page) -- just this, in Profile,
+  // same as it always worked for a pitcher.
+  const badge = state.myVerification.emailConfirmed
     ? '<span class="profile-note">verified</span>'
-    : '<span class="profile-note" style="color:var(--clay);">unverified</span>');
+    : '<span class="profile-note" style="color:var(--clay);">unverified</span>';
+  const resendRow = state.myVerification.emailConfirmed ? '' : `
+    <div class="profile-row" style="margin-top:2px;">
+      <button class="btn btn-ghost" ${state.verifyResendStatus === 'sending' ? 'disabled' : ''} onclick="resendVerification()">${state.verifyResendStatus === 'sending' ? 'Sending…' : 'Resend verification email'}</button>
+      ${state.verifyResendStatus === 'sent' ? '<span class="contacts-saved-msg">Check your inbox.</span>' : ''}
+      ${state.verifyResendStatus === 'error' ? '<span class="error-msg">Could not resend — try again in a moment.</span>' : ''}
+    </div>`;
   const form = state.changeEmailOpen ? `
     <div class="change-email-form">
       <p style="margin:0;font-size:12.5px;color:var(--ink-dim);">Use an email you check on your phone. School addresses often block our mail.</p>
@@ -3568,6 +3582,7 @@ function renderEmailSection(){
   return `<div class="profile-section"><h3>Email</h3>
     <div class="profile-row"><span style="font-size:14px;">${escHtml(email)}</span>${badge}
       <button class="btn btn-ghost" onclick="toggleChangeEmail()">${state.changeEmailOpen ? 'Cancel' : 'Change email'}</button></div>
+    ${resendRow}
     ${form}</div>`;
 }
 function renderPasswordSection(){

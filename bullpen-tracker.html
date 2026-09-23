@@ -995,6 +995,18 @@ function currentPitcherVerified(p){
 function currentPitcherOnTeam(p){
   return isCoach() ? true : !!(state.teams && state.teams.length);
 }
+// U4b coach-gate (Joel, Sept 2026, after a staging investigation found an
+// unverified coach could sign up, get an invite link, have a verified
+// pitcher join and chart a pen, and still generate/view/send that pen's
+// report -- nothing ever checked the COACH's own identity). Mirrors the
+// server-side check in send-session-report exactly: when a COACH is
+// viewing someone else's session, THEIR OWN email must be verified too.
+// A pitcher viewing their own session doesn't need this separately --
+// currentPitcherVerified(p) already reads state.myVerification for that
+// case, since there p IS the caller.
+function currentCallerVerified(){
+  return isCoach() ? !!state.myVerification.emailConfirmed : true;
+}
 function isStrikeCell(row, col){ return row >= 1 && row <= 3 && col >= 1 && col <= 3; }
 // Zone numbering protocol (D8, Sept 9 2026): 1/4/7 = inside, 2/5/8 = middle,
 // 3/6/9 = outside, ALWAYS. Rows never flip. Inputs are CATCHER-FRAME
@@ -3047,7 +3059,8 @@ function renderHistoryView(){
     // hand-crafting a payload -- see that function).
     const pVerified = currentPitcherVerified(p);
     const pOnTeam = currentPitcherOnTeam(p);
-    const pEligible = pVerified && pOnTeam;
+    const callerVerified = currentCallerVerified();
+    const pEligible = pVerified && pOnTeam && callerVerified;
     const emailList = pEligible
       ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean)
       : [];
@@ -3068,7 +3081,11 @@ function renderHistoryView(){
       <div class="report-panel">
         <div class="field-label">Email this report</div>
         ${!pEligible
-          ? `<p class="report-recipients" style="color:var(--clay);">No report can be sent until ${escHtml(p.name)} ${!pVerified ? 'verifies their email' : 'is on a team'}.</p>`
+          ? `<p class="report-recipients" style="color:var(--clay);">${!pVerified
+              ? `No report can be sent until ${escHtml(p.name)} verifies their email.`
+              : !pOnTeam
+                ? `No report can be sent until ${escHtml(p.name)} is on a team.`
+                : `No report can be sent until you verify your own account email.`}</p>`
           : emailList.length
             ? `<p class="report-recipients">To: ${escHtml(emailList.join(', '))}</p>`
             : `<p class="report-recipients">No contact emails set for ${escHtml(p.name)} yet${isCoach() ? '' : ' — add them under Contacts above'}.</p>`}
@@ -3611,14 +3628,15 @@ window.sendSessionReport = async function(sessionId){
   const session = state.sessions.find(s => s.id === sessionId);
   if(!session || !p) return;
   const contacts = p.contactEmails || {};
-  // R0 item (g), revised after check 8 on staging, extended U4b Phase 2:
-  // matches renderHistoryView's own filter -- an ineligible pitcher
-  // (unverified email, OR not currently on a team) blocks the WHOLE send
-  // client-side, not just their own address. The server-side check
-  // (pitcherId below, gated on is_pitcher_report_eligible) is what
-  // actually can't be bypassed; this just keeps normal usage from ever
-  // hitting that path.
-  const pEligible = currentPitcherVerified(p) && currentPitcherOnTeam(p);
+  // R0 item (g), revised after check 8 on staging, extended U4b Phase 2 and
+  // its coach-gate follow-up: matches renderHistoryView's own filter -- an
+  // ineligible pitcher (unverified email, OR not currently on a team) OR
+  // an unverified CALLING COACH blocks the WHOLE send client-side, not
+  // just the pitcher's own address. The server-side checks (pitcherId
+  // below, gated on is_pitcher_report_eligible, plus the caller's own
+  // my_verification_status check) are what actually can't be bypassed;
+  // this just keeps normal usage from ever hitting that path.
+  const pEligible = currentPitcherVerified(p) && currentPitcherOnTeam(p) && currentCallerVerified();
   const emails = pEligible
     ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean)
     : [];

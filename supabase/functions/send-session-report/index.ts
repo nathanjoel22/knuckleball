@@ -131,6 +131,37 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'pitcherId does not match the session\'s pitcher.' }), { status: 400, headers: corsHeaders })
   }
 
+  // Coach-side gate (added after a Joel-directed staging investigation,
+  // Sept 2026): is_pitcher_report_eligible above only ever checks the
+  // PITCHER named in the payload -- an unverified coach could otherwise
+  // sign up, get a team + invite link, have a verified pitcher join and
+  // chart a pen, and still generate/view/send that pen's report, since
+  // nothing checked the COACH's own identity. The session-ownership read
+  // just above already proves that if the caller isn't the pitcher
+  // themselves, RLS has confirmed they're this session's team coach (only
+  // "Pitchers manage own sessions" or "Coaches manage sessions for their
+  // team" can pass it) -- so right here, and only here, is where it's
+  // actually true to say "this caller is acting as a coach." Reuses
+  // my_verification_status() (the same RPC that already powers the
+  // verify-your-email banner) rather than inventing a new function for it.
+  // Deliberately NOT folded into is_pitcher_report_eligible itself -- that
+  // function's name and job stay "is the pitcher eligible," unchanged;
+  // this is a second, independent question about the caller.
+  if (user.id !== pitcherId) {
+    const { data: callerStatus, error: callerStatusErr } = await callerClient.rpc('my_verification_status')
+    if (callerStatusErr) {
+      return new Response(JSON.stringify({ error: 'Could not verify your own account status: ' + callerStatusErr.message }), { status: 500, headers: corsHeaders })
+    }
+    // Fail closed on anything but an explicit true, matching R0's own
+    // stated posture (state.myVerification defaults to emailConfirmed:
+    // false client-side until proven otherwise) -- an empty/malformed
+    // result must never read as "verified."
+    const callerVerified = Array.isArray(callerStatus) && callerStatus[0]?.email_confirmed === true
+    if (!callerVerified) {
+      return new Response(JSON.stringify({ error: 'Your own account email must be verified before you can generate or share a report for your team.' }), { status: 403, headers: corsHeaders })
+    }
+  }
+
   let reportPath: string = session.report_path
 
   if (!reportPath) {

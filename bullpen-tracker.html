@@ -255,6 +255,12 @@
     padding:2px 6px; border-radius:20px; background:rgba(193,122,69,0.18); color:var(--clay);
     margin-left:6px; flex-shrink:0;
   }
+  /* U9 follow-up: was inline inside .roster-item-name, sharing its
+     white-space:nowrap/ellipsis -- a long name + throws-tag could clip the
+     badge mid-pill right where it ran into the uniform number (Joel:
+     "runs into the number 25"). Now its own row under the pitch-type line,
+     never subject to that truncation regardless of name length. */
+  .roster-verify-badge{ align-self:flex-start; margin-left:0; margin-top:1px; }
   .roster-item-remove{
     background:none; border:none; color:var(--ink-faint); font-size:12px;
     padding:2px 4px; flex-shrink:0;
@@ -3971,8 +3977,9 @@ function render(){
         <div class="roster-item${p.id===state.currentPitcherId?' active':''}" style="display:flex;">
           <button style="all:unset;flex:1;min-width:0;display:flex;align-items:center;cursor:pointer;" onclick="selectPitcher('${p.id}')">
             <div class="roster-item-main">
-              <span class="roster-item-name">${escHtml(p.name)}${p.throws ? `<span class="throws-tag">${p.throws}HP</span>` : ''}${p.emailConfirmed ? '' : '<span class="verify-badge">Unverified</span>'}</span>
+              <span class="roster-item-name">${escHtml(p.name)}${p.throws ? `<span class="throws-tag">${p.throws}HP</span>` : ''}</span>
               <span class="roster-item-types">${p.pitchTypes.map(pitchLabel).join(' · ') || 'No pitches set yet'}</span>
+              ${p.emailConfirmed ? '' : '<span class="verify-badge roster-verify-badge">Unverified</span>'}
             </div>
             <span class="roster-item-num">${p.uniformNumber === null ? '—' : p.uniformNumber}</span>
           </button>

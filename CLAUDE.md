@@ -37,7 +37,7 @@ storage.
 
 ## What this is
 
-Knuckleball (knuckleballonline.com) is a bullpen session tracking app for pitching coaches and pitchers: two-tap pitch charting on a 5×5 zone grid (target vs. actual), pitch types, velocity, heat maps, accuracy percentages (including a "relative accuracy" mode), trend charts, and an emailed PDF session report. Charting typically happens on an **iPhone/iPad, often with no wifi** — never assume network availability in the tracker flow.
+Knuckleball (knuckleballonline.com) is a bullpen session tracking app for pitching coaches and pitchers: two-tap pitch charting on a 5×5 zone grid (target vs. actual), pitch types, velocity, heat maps, accuracy percentages (including a "relative accuracy" mode), trend charts, and an emailed link to a frozen HTML session report. Charting typically happens on an **iPhone/iPad, often with no wifi** — never assume network availability in the tracker flow.
 
 **Operator context that changes how you work:** the owner (Joel) is a solo, part-time developer, newer to the terminal, on a Mac. Prefer copy-paste one-liners, explain what commands do, and never assume a CI system, a second environment, or another human reviewer exists unless DEPLOY.md says so. Current scale: 1–3 teams. Bias every decision toward simple and operable over scalable.
 
@@ -45,8 +45,8 @@ Knuckleball (knuckleballonline.com) is a bullpen session tracking app for pitchi
 
 - **Frontend:** static HTML/CSS/vanilla JS, hosted on GitHub Pages, DNS via Cloudflare. No framework, no build step, no bundler. Keep it that way — do not introduce npm, React, TypeScript, or a build pipeline without explicit approval.
 - **Backend:** Supabase — Postgres with RLS, Auth (email), Edge Functions (Deno). Project ref: `fkgccjhuimkkbupbanxp`.
-- **Email:** Resend (report emails with PDF attachments; auth email SMTP per SETUP.md).
-- **Edge Functions:** `supabase/functions/invite-pitcher/index.ts` (coach invites a pitcher — verifies the caller's JWT, checks team ownership under RLS, uses the admin client only for `inviteUserByEmail`) and `supabase/functions/send-session-report/index.ts` (builds the PDF with pdf-lib from a client-supplied payload and sends via Resend; it does not read the database).
+- **Email:** Resend (report emails link to a frozen HTML report — see U4/U4b below; auth email SMTP per SETUP.md).
+- **Edge Functions:** `supabase/functions/invite-pitcher/index.ts` (coach invites a pitcher — verifies the caller's JWT, checks team ownership under RLS, uses the admin client only for `inviteUserByEmail`) and `supabase/functions/send-session-report/index.ts` (U4/U4b, PDF retired — builds a self-contained HTML report from a client-supplied pitch payload, uploads it to the public `reports` storage bucket at an unguessable token filename, and emails a `report.html?r=<token>` link instead of an attachment; the admin/service-role client is used only for that one storage upload, never for reading `sessions` — that read/write goes through the caller's own RLS-scoped client. Gated on `is_pitcher_report_eligible` — verified email AND currently on a team, the latter a deliberate temporary restriction until solo pitcher accounts exist).
 
 ## Schema and RLS
 
@@ -82,7 +82,7 @@ Function secrets live in Supabase (`supabase secrets list`): `SUPABASE_URL`, `SU
 2. **Missing foreign keys** once broke coach roster display (PostgREST embedding needs real FKs). When adding tables/columns, add the FKs.
 3. **Profile-creation timing:** the profile row is created after email confirmation, with delay. Never assume a profile exists immediately after signup; handle its absence.
 4. **`TYPE_PALETTE` sync:** the pitch-type color palette is duplicated in the tracker page and in `send-session-report/index.ts` (`TYPE_PALETTE_HEX`) and must match exactly, in order. Change both or neither.
-5. **Client-computed reports:** the report payload (pitches, stats, history) is computed client-side and never stored server-side; a report cannot be regenerated later. Accepted limitation — don't "fix" it in passing.
+5. **Client-computed reports:** the underlying pitches/history in the report payload are still client-supplied, not recomputed authoritatively from the database — accepted limitation, don't "fix" it in passing. This changed as of U4b in one way: the RENDERED report itself is now stored (`sessions.report_path`, the frozen file in the `reports` bucket) and deliberately never regenerated once set — every resend reuses the exact same file, so a later payload drift (e.g. new history) can't silently change a report someone already has the link to.
 6. **Supabase default auth SMTP has tiny rate limits.** Bulk invites can silently fail mid-batch unless custom SMTP is configured (task P1-04 / SETUP.md).
 7. **Free-tier Supabase projects pause when inactive** — relevant off-season. Check project status before diagnosing "the database is down".
 8. **Offline is the normal case** for the tracker page: in-progress sessions autosave to localStorage, completed sessions queue and sync (tasks P0-03/P1-01). Never add code to the charting/save path that requires a network round-trip to keep charting. Data persistence and app availability are two separate problems — localStorage keeps the pitches, the service worker (P0-06) keeps the app openable offline. A field test proved that without the second, the first is unreachable.

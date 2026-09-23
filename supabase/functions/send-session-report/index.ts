@@ -1,9 +1,28 @@
 // Deploy with: supabase functions deploy send-session-report
 // Requires these secrets set on your Supabase project (see SETUP.md):
-//   RESEND_API_KEY, REPORT_FROM_EMAIL, SUPABASE_URL, SUPABASE_ANON_KEY
+//   RESEND_API_KEY, REPORT_FROM_EMAIL, SUPABASE_URL, SUPABASE_ANON_KEY,
+//   SUPABASE_SERVICE_ROLE_KEY (platform-injected, not set by hand)
+//
+// U4/U4b: PDF generation is retired. This function now builds a frozen,
+// self-contained HTML report (buildReportHtml, in template.ts) and uploads
+// it to the public `reports` storage bucket instead of attaching a PDF.
+// The emailed message is a link to report.html?r=<token>, not an
+// attachment. See CLAUDE.md's "Charting surface decisions" and
+// supabase/migrations/20260922120000_u4_reports_storage.sql.
+//
+// Unlike the old PDF version, this function DOES read (and once, write)
+// the database -- but only the one `sessions` row named by the caller's own
+// payload, through the CALLER's own RLS-scoped client, never service-role.
+// Service-role is used for exactly one thing: uploading the object to the
+// `reports` bucket, which has no INSERT policy for authenticated users by
+// design (see the migration's comments on why there's no SELECT policy
+// either). This mirrors invite-pitcher's precedent of an admin client
+// scoped to one specific operation, never used for anything else.
 
-import { PDFDocument, StandardFonts, rgb } from 'https://esm.sh/pdf-lib@1.17.1'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { buildReportHtml, type ReportPayload } from './template.ts'
+import { escapeHtml } from './helpers.ts'
+import type { Pitch, HistoryEntry } from './compute.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,278 +32,22 @@ const corsHeaders = {
 
 const MAX_RECIPIENTS = 3
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const REPORT_SITE_ORIGIN = 'https://knuckleballonline.com'
 
-function escapeHtml(str: string): string {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
+// Must match TOKEN_RE in report.html EXACTLY -- that check is the only
+// thing standing between a crafted ?r= value and report.html becoming a
+// fetch-anything proxy for the reports bucket.
+function randomReportToken(): string {
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  return [...bytes].map(b => b.toString(16).padStart(2, '0')).join('') + '.html'
 }
 
-// Must match TYPE_PALETTE in bullpen-tracker.html exactly, so a pitch
-// type is always the same color in the app and in the emailed PDF.
-const TYPE_PALETTE_HEX = ['#E8A83D', '#6FA287', '#C17A45', '#C0453B', '#7C9CBF', '#B98CCB', '#D4C15B', '#4FA8A8']
-
-function hexToRgb(hex: string) {
-  const h = hex.replace('#', '')
-  return rgb(parseInt(h.substring(0, 2), 16) / 255, parseInt(h.substring(2, 4), 16) / 255, parseInt(h.substring(4, 6), 16) / 255)
-}
-
-const COLORS = {
-  fieldDark: rgb(15 / 255, 36 / 255, 27 / 255),
-  fieldPanel: rgb(24 / 255, 53 / 255, 39 / 255),
-  chalk: rgb(0.97, 0.96, 0.93),
-  darkText: rgb(0.09, 0.14, 0.11),
-  faint: rgb(0.45, 0.5, 0.47),
-  amber: hexToRgb('#E8A83D'),
-  border: rgb(0.85, 0.85, 0.82),
-  white: rgb(1, 1, 1)
-}
-
-function isStrikeCell(row: number, col: number) { return row >= 1 && row <= 3 && col >= 1 && col <= 3 }
-function isAccurate(p: any) { return p.targetRow === p.actualRow && p.targetCol === p.actualCol }
-// U2a: batter_side back-compat (this packet, approach f) -- a stale
-// cached client can post a pitch shaped before this shipped, so fall back
-// to 'R' rather than throwing when it's absent or null. Must match
-// isRelativelyAccurate() in bullpen-tracker.html exactly -- same trap as
-// TYPE_PALETTE_HEX, and this exact pair of tests shipped inverted once
-// already (fixed Sept 8).
-function isRelativelyAccurate(p: any) {
-  const mode = p.accuracyMode
-  if (!mode) return isAccurate(p)
-  const batterSide = p.batterSide || 'R'
-  switch (mode) {
-    case 'ring': {
-      const dRow = Math.abs(p.actualRow - p.targetRow)
-      const dCol = Math.abs(p.actualCol - p.targetCol)
-      return Math.max(dRow, dCol) <= 1
-    }
-    case 'nothingUp': return p.actualRow >= 3
-    case 'nothingLow': return p.actualRow <= 1
-    // "Inside" (nothingAway) / "Outside" (nothingInside): for a RHB,
-    // inside is catcher-frame LEFT (cols 0-1); for a LHB the same
-    // physical side of the plate is the RIGHT columns (3-4).
-    case 'nothingAway': return batterSide === 'R' ? p.actualCol <= 1 : p.actualCol >= 3
-    case 'nothingInside': return batterSide === 'R' ? p.actualCol >= 3 : p.actualCol <= 1
-    default: return isAccurate(p)
-  }
-}
-function zoneNumber(row: number, col: number) {
-  if (!isStrikeCell(row, col)) return null
-  return (row - 1) * 3 + (col - 1) + 1
-}
-function colorForType(type: string, allTypes: string[]) {
-  const idx = allTypes.indexOf(type)
-  return hexToRgb(TYPE_PALETTE_HEX[idx >= 0 ? idx % TYPE_PALETTE_HEX.length : 0])
-}
-
-function drawZoneGrid(page: any, opts: { x: number; y: number; size: number }) {
-  const { x, y, size } = opts
-  const cell = size / 5
-  page.drawRectangle({ x, y, width: size, height: size, borderColor: COLORS.border, borderWidth: 1, color: COLORS.white })
-  for (let row = 0; row < 5; row++) {
-    for (let col = 0; col < 5; col++) {
-      const cx = x + col * cell
-      const cy = y + (4 - row) * cell
-      const inZone = isStrikeCell(row, col)
-      page.drawRectangle({
-        x: cx, y: cy, width: cell, height: cell,
-        borderColor: COLORS.border, borderWidth: 0.5,
-        color: inZone ? COLORS.fieldPanel : COLORS.white, opacity: inZone ? 0.07 : 1
-      })
-      const num = zoneNumber(row, col)
-      if (num !== null) page.drawText(String(num), { x: cx + 3, y: cy + cell - 9, size: 6.5, color: COLORS.faint })
-    }
-  }
-}
-
-function cellCenter(x: number, y: number, size: number, row: number, col: number) {
-  const cell = size / 5
-  return { cx: x + col * cell + cell / 2, cy: y + (4 - row) * cell + cell / 2, cell }
-}
-
-function drawPitchDots(page: any, opts: { x: number; y: number; size: number; pitches: any[]; colorFn: (t: string) => any; dotRadius?: number }) {
-  const { x, y, size, pitches, colorFn } = opts
-  const dotRadius = opts.dotRadius ?? 3.2
-  const counts: Record<string, number> = {}
-  for (const p of pitches) {
-    const key = p.actualRow + '-' + p.actualCol
-    const idx = counts[key] || 0
-    counts[key] = idx + 1
-    const { cx, cy, cell } = cellCenter(x, y, size, p.actualRow, p.actualCol)
-    const angle = idx * 137.508 * (Math.PI / 180)
-    const radius = idx === 0 ? 0 : Math.min(cell * 0.32, 2.5 + idx * 1.8)
-    const dx = radius * Math.cos(angle)
-    const dy = radius * Math.sin(angle)
-    page.drawCircle({ x: cx + dx, y: cy + dy, size: dotRadius, color: colorFn(p.type), borderColor: COLORS.white, borderWidth: 0.6 })
-  }
-}
-
-function drawLegend(page: any, opts: { x: number; y: number; types: string[]; colorFn: (t: string) => any; font: any }) {
-  let x = opts.x
-  const { y, types, colorFn, font } = opts
-  for (const t of types) {
-    page.drawCircle({ x: x + 4, y: y + 3, size: 4, color: colorFn(t) })
-    page.drawText(t, { x: x + 12, y, size: 9, font, color: COLORS.darkText })
-    x += 12 + font.widthOfTextAtSize(t, 9) + 16
-  }
-}
-
-async function buildReportPdf(payload: any): Promise<Uint8Array> {
-  const { pitcherName, dateStr, teamName, stats, pitches, allTypes, history } = payload
-  const doc = await PDFDocument.create()
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold)
-  const regular = await doc.embedFont(StandardFonts.Helvetica)
-
-  function newPage(subtitle: string) {
-    const page = doc.addPage([612, 792])
-    page.drawRectangle({ x: 0, y: 702, width: 612, height: 90, color: COLORS.fieldDark })
-    page.drawText('KNUCKLEBALL', { x: 40, y: 760, size: 20, font: bold, color: COLORS.amber })
-    page.drawText('ALWAYS A STEP AHEAD', { x: 40, y: 746, size: 7, font: regular, color: rgb(0.7, 0.75, 0.72) })
-    page.drawText(subtitle, { x: 40, y: 718, size: 11, font: regular, color: COLORS.chalk })
-    page.drawText(pitcherName, { x: 340, y: 756, size: 15, font: bold, color: COLORS.chalk })
-    page.drawText(dateStr, { x: 340, y: 738, size: 9.5, font: regular, color: rgb(0.75, 0.8, 0.77) })
-    if (teamName) page.drawText(teamName, { x: 340, y: 724, size: 9, font: regular, color: rgb(0.7, 0.75, 0.72) })
-    return page
-  }
-
-  // ---------- PAGE 1: overview + all-pitches location plot ----------
-  const page1 = newPage('Bullpen Session Report')
-  let y = 660
-  const statItems: [string, string][] = [
-    ['PITCHES', String(stats.total)],
-    ['STRIKE %', stats.strikePct + '%'],
-    ['ACCURACY %', stats.accuracyPct + '%']
-  ]
-  if (stats.usesRelativeMode && !stats.hasZone) statItems.push(['RELATIVE ACC %', stats.relativeAccuracyPct + '%'])
-  // U7B: relative accuracy (the pitcher's painted zones) is the headline when it exists, exact-hit stays beside it.
-  // Both come from the client's STORED per-pitch results (pitches[].inAccuracyZone); this
-  // function never recomputes zone results, so repainting a zone can't change a re-sent report.
-  if (stats.hasZone) {
-    statItems[2] = ['EXACT HIT %', stats.accuracyPct + '%']
-    statItems.splice(2, 0, ['RELATIVE ACC %', stats.zoneAccuracyPct + '%'])
-  }
-  statItems.push(['AVG MPH', stats.hasVelo ? String(stats.avgVelo) : '—'])
-  const statSpacing = statItems.length > 5 ? 90 : statItems.length > 4 ? 108 : 135
-  let sx = 40
-  for (const [label, val] of statItems) {
-    page1.drawText(val, { x: sx, y, size: 24, font: bold, color: COLORS.fieldDark })
-    page1.drawText(label, { x: sx, y: y - 16, size: 7.5, font: regular, color: COLORS.faint })
-    sx += statSpacing
-  }
-
-  y -= 60
-  page1.drawText('ALL PITCHES — LOCATION', { x: 40, y, size: 11, font: bold, color: COLORS.fieldDark })
-  y -= 14
-  const gridSize = 230
-  const gridX = 40
-  const gridY = y - gridSize
-  drawZoneGrid(page1, { x: gridX, y: gridY, size: gridSize })
-  drawPitchDots(page1, { x: gridX, y: gridY, size: gridSize, pitches, colorFn: (t) => colorForType(t, allTypes) })
-  drawLegend(page1, { x: gridX + gridSize + 30, y: gridY + gridSize - 14, types: allTypes, colorFn: (t) => colorForType(t, allTypes), font: regular })
-  // D8 (Sept 9 2026): this report has no perspective logic and never will --
-  // it draws stored (catcher-frame) coordinates directly, always 1 top-left,
-  // regardless of which side a session was charted from. Caption says so
-  // explicitly rather than leaving it implicit.
-  page1.drawText('Each dot is one pitch, colored by type. Numbers mark the standard 1–9 strike zone (catcher’s view).', {
-    x: 40, y: gridY - 20, size: 8, font: regular, color: COLORS.faint
-  })
-
-  // ---------- PAGE 2+: per-pitch-type breakdown ----------
-  const typesWithPitches = allTypes.filter((t: string) => pitches.some((p: any) => p.type === t))
-  if (typesWithPitches.length) {
-    let page = newPage('Pitch Type Breakdown')
-    let rowY = 640
-    let col = 0
-    const colX = [40, 330]
-    const miniSize = 150
-
-    for (const type of typesWithPitches) {
-      const typePitches = pitches.filter((p: any) => p.type === type)
-      const strikes = typePitches.filter((p: any) => isStrikeCell(p.actualRow, p.actualCol)).length
-      const accurate = typePitches.filter(isAccurate).length
-      const relativeAccurate = typePitches.filter(isRelativelyAccurate).length
-      const usesRelative = typePitches.some((p: any) => p.accuracyMode)
-      const zonePitches = typePitches.filter((p: any) => p.inAccuracyZone === true || p.inAccuracyZone === false)
-      const zoneHits = zonePitches.filter((p: any) => p.inAccuracyZone === true).length
-      const strikePct = Math.round((strikes / typePitches.length) * 100)
-      const accuracyPct = Math.round((accurate / typePitches.length) * 100)
-      const relativeAccuracyPct = Math.round((relativeAccurate / typePitches.length) * 100)
-
-      const x = colX[col]
-      const gy = rowY - miniSize
-      page.drawCircle({ x: x + 5, y: rowY + 14, size: 5, color: colorForType(type, allTypes) })
-      const relText = (usesRelative && !zonePitches.length) ? `  ·  ${relativeAccuracyPct}% relative` : ''
-      const zoneText = zonePitches.length ? `  ·  ${Math.round((zoneHits / zonePitches.length) * 100)}% relative (${zonePitches.length})` : ''
-      page.drawText(`${type}  ·  ${typePitches.length} pitches  ·  ${strikePct}% strikes  ·  ${accuracyPct}% ${zonePitches.length ? 'exact' : 'accuracy'}${zoneText}${relText}`, {
-        x: x + 16, y: rowY + 10, size: 9, font: bold, color: COLORS.fieldDark
-      })
-      drawZoneGrid(page, { x, y: gy, size: miniSize })
-      drawPitchDots(page, { x, y: gy, size: miniSize, pitches: typePitches, colorFn: () => colorForType(type, allTypes), dotRadius: 2.6 })
-
-      col++
-      if (col > 1) { col = 0; rowY -= miniSize + 55 }
-      if (rowY - miniSize < 60) {
-        page = newPage('Pitch Type Breakdown (cont.)')
-        rowY = 640
-        col = 0
-      }
-    }
-  }
-
-  // ---------- PAGE 3+: trend charts across sessions ----------
-  function drawTrendPage(subtitle: string, chartTitle: string, valueKey: string) {
-    const page = newPage(subtitle)
-    page.drawText(chartTitle, { x: 40, y: 660, size: 11, font: bold, color: COLORS.fieldDark })
-
-    const chartX = 70, chartYBottom = 140, chartW = 480, chartH = 440
-    page.drawLine({ start: { x: chartX, y: chartYBottom }, end: { x: chartX + chartW, y: chartYBottom }, thickness: 1, color: COLORS.border })
-    page.drawLine({ start: { x: chartX, y: chartYBottom }, end: { x: chartX, y: chartYBottom + chartH }, thickness: 1, color: COLORS.border })
-
-    for (let pct = 0; pct <= 100; pct += 25) {
-      const gy = chartYBottom + (pct / 100) * chartH
-      page.drawLine({ start: { x: chartX, y: gy }, end: { x: chartX + chartW, y: gy }, thickness: 0.5, color: COLORS.border })
-      page.drawText(pct + '%', { x: chartX - 28, y: gy - 3, size: 8, font: regular, color: COLORS.faint })
-    }
-
-    const n = history.length
-    const stepX = n > 1 ? chartW / (n - 1) : 0
-    history.forEach((h: any, i: number) => {
-      const px = chartX + i * stepX
-      page.drawText(h.dateLabel, { x: px - 14, y: chartYBottom - 14, size: 7, font: regular, color: COLORS.faint })
-    })
-
-    for (const type of allTypes) {
-      const pts: { x: number; y: number }[] = []
-      history.forEach((h: any, i: number) => {
-        const t = h.byType && h.byType[type]
-        if (t && t.count > 0) {
-          pts.push({ x: chartX + i * stepX, y: chartYBottom + (t[valueKey] / 100) * chartH })
-        }
-      })
-      const color = colorForType(type, allTypes)
-      for (let i = 0; i < pts.length - 1; i++) {
-        page.drawLine({ start: pts[i], end: pts[i + 1], thickness: 2, color })
-      }
-      for (const pt of pts) page.drawCircle({ x: pt.x, y: pt.y, size: 3, color })
-    }
-    drawLegend(page, { x: chartX, y: chartYBottom + chartH + 20, types: allTypes, colorFn: (t) => colorForType(t, allTypes), font: regular })
-  }
-
-  if (history && history.length >= 2) {
-    drawTrendPage('Accuracy Trend', 'ACCURACY % BY SESSION', 'accuracyPct')
-    drawTrendPage('Relative Accuracy Trend', 'RELATIVE ACCURACY % BY SESSION', 'relativeAccuracyPct')
-  }
-
-  return doc.save()
-}
-
-function toBase64(bytes: Uint8Array): string {
-  let binary = ''
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-  return btoa(binary)
+interface ReportRequestBody extends Omit<ReportPayload, 'pitches' | 'history'> {
+  emails: string[]
+  sessionId: string
+  pitches: Pitch[]
+  history: HistoryEntry[]
 }
 
 Deno.serve(async (req) => {
@@ -299,8 +62,10 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
 
-  // Client scoped to the calling user's own session — used only to confirm
-  // they are a real logged-in Knuckleball user before we send any email.
+  // Scoped to the calling user's own session -- every read/write this
+  // function does against `sessions` goes through THIS client, so RLS (not
+  // this function's own logic) is what decides which session a caller may
+  // touch. Same client used for the identity check, same as before.
   const callerClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } }
   })
@@ -310,34 +75,24 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
   }
 
-  let body: any
+  let body: ReportRequestBody
   try { body = await req.json() } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: corsHeaders })
   }
 
-  const { emails, pitcherName, pitcherId, date, teamName, pitchTypes, pitches, stats, history } = body
-  if (!emails || !emails.length || !pitcherName || !pitcherId || !Array.isArray(pitches) || !stats) {
-    return new Response(JSON.stringify({ error: 'emails, pitcherName, pitcherId, pitches, and stats are required' }), { status: 400, headers: corsHeaders })
+  const { emails, sessionId, pitcherId, pitcherName, pitches } = body
+  if (!emails?.length || !sessionId || !pitcherId || !pitcherName || !Array.isArray(pitches)) {
+    return new Response(JSON.stringify({ error: 'emails, sessionId, pitcherId, pitcherName, and pitches are required' }), { status: 400, headers: corsHeaders })
   }
-  if (!Array.isArray(emails) || emails.length > MAX_RECIPIENTS || !emails.every((e: any) => typeof e === 'string' && EMAIL_RE.test(e))) {
+  if (!Array.isArray(emails) || emails.length > MAX_RECIPIENTS || !emails.every((e) => typeof e === 'string' && EMAIL_RE.test(e))) {
     return new Response(JSON.stringify({ error: `emails must be an array of up to ${MAX_RECIPIENTS} valid addresses` }), { status: 400, headers: corsHeaders })
   }
 
-  // R0 item (g): server-side enforcement of the unverified-pitcher report
-  // block -- the UI already filters this, but a crafted payload must not
-  // be able to bypass it. Caught live during the staging walkthrough
-  // (check 8): the previous version only blocked a send when the
-  // pitcher's OWN address was in the recipient list, so a report for an
-  // unverified pitcher's session still reached a coach/pitching-coach
-  // address fine. Joel's call: if the pitcher of record hasn't verified,
-  // NOBODY receives a report for their session -- not the coach, not a
-  // pitching coach -- until they do, since the data's provenance isn't
-  // trustworthy until the identity behind it is. is_pitcher_verified is a
-  // SECURITY DEFINER function (the only sanctioned way to read
-  // profiles.email_verified_at for an arbitrary pitcher_id); called with
-  // the CALLER's own JWT, same as auth.getUser() above -- never
-  // service-role, so this function never grants more than any
-  // authenticated caller could already ask for a yes/no answer to.
+  // R0 item (g): if the pitcher of record hasn't verified their account
+  // email, nobody receives a report for their sessions until they do --
+  // unchanged from the PDF version. is_pitcher_verified runs as the
+  // CALLER's own JWT (never service-role), so it never grants more than
+  // any authenticated caller could already ask for a yes/no answer to.
   const { data: verified, error: verifiedErr } = await callerClient.rpc('is_pitcher_verified', {
     p_pitcher_id: pitcherId
   })
@@ -348,24 +103,87 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'This pitcher\'s account email is not yet verified. No report can be sent for their sessions until they verify.' }), { status: 403, headers: corsHeaders })
   }
 
-  const dateStr = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
-
-  // Union of every pitch type that appears anywhere, preserving the
-  // pitcher's own arsenal order first, so colors stay stable over time
-  // even if a type gets renamed or dropped later.
-  const allTypes: string[] = Array.isArray(pitchTypes) ? [...pitchTypes] : []
-  for (const p of pitches) if (!allTypes.includes(p.type)) allTypes.push(p.type)
-  if (Array.isArray(history)) {
-    for (const h of history) if (h.byType) for (const t of Object.keys(h.byType)) if (!allTypes.includes(t)) allTypes.push(t)
+  // Design principle (CLAUDE.md): "Reports are never generated from an
+  // unsynced session." Fetching this row through the caller's own
+  // RLS-scoped client both proves the session is really synced AND that
+  // this caller (pitcher or their team's coach) actually has rights to it
+  // -- a caller with no relationship to sessionId simply gets no row back,
+  // same as any other RLS-filtered read.
+  const { data: session, error: sessionErr } = await callerClient
+    .from('sessions')
+    .select('id, pitcher_id, report_path')
+    .eq('id', sessionId)
+    .maybeSingle()
+  if (sessionErr) {
+    return new Response(JSON.stringify({ error: 'Could not look up session: ' + sessionErr.message }), { status: 500, headers: corsHeaders })
+  }
+  if (!session) {
+    return new Response(JSON.stringify({ error: 'Session not found, not synced yet, or not accessible with your account.' }), { status: 403, headers: corsHeaders })
+  }
+  if (session.pitcher_id !== pitcherId) {
+    return new Response(JSON.stringify({ error: 'pitcherId does not match the session\'s pitcher.' }), { status: 400, headers: corsHeaders })
   }
 
-  let pdfBytes: Uint8Array
-  try {
-    pdfBytes = await buildReportPdf({ pitcherName, dateStr, teamName, stats, pitches, allTypes, history })
-  } catch (err) {
-    return new Response(JSON.stringify({ error: 'PDF generation failed: ' + (err as Error).message }), { status: 500, headers: corsHeaders })
+  let reportPath: string = session.report_path
+
+  if (!reportPath) {
+    // Never regenerated once set -- this branch only runs the FIRST time a
+    // report is requested for a given session. Every later "resend" reuses
+    // the same frozen file, so the payload the client sends after this
+    // point can drift (new prior-session history, say) without the report
+    // itself ever silently changing underneath a link someone already has.
+    const payload: ReportPayload = {
+      sessionId: body.sessionId,
+      pitcherId: body.pitcherId,
+      pitcherName: body.pitcherName,
+      uniformNumber: body.uniformNumber ?? null,
+      teamName: body.teamName ?? null,
+      date: body.date,
+      chartingPerspective: body.chartingPerspective ?? null,
+      loggedByCoach: !!body.loggedByCoach,
+      pitchTypes: Array.isArray(body.pitchTypes) ? body.pitchTypes : [],
+      gridSize: body.gridSize,
+      pitches: body.pitches,
+      history: Array.isArray(body.history) ? body.history : []
+    }
+
+    let html: string
+    try {
+      html = buildReportHtml(payload)
+    } catch (err) {
+      return new Response(JSON.stringify({ error: 'Report generation failed: ' + (err as Error).message }), { status: 500, headers: corsHeaders })
+    }
+
+    const token = randomReportToken()
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    // Service-role, used for exactly this one call -- the `reports` bucket
+    // has no INSERT policy for authenticated users (see the migration), so
+    // this is the only way to place the object. Never used for anything
+    // else in this function.
+    const adminClient = createClient(supabaseUrl, serviceKey)
+    const { error: uploadErr } = await adminClient.storage
+      .from('reports')
+      .upload(token, html, { contentType: 'text/html; charset=utf-8', upsert: false })
+    if (uploadErr) {
+      return new Response(JSON.stringify({ error: 'Could not store report: ' + uploadErr.message }), { status: 500, headers: corsHeaders })
+    }
+
+    // Written through the CALLER's own client, not service-role -- the
+    // existing "Pitchers manage own sessions" / "Coaches manage sessions
+    // for their team" RLS policies already grant UPDATE on this row (they
+    // don't restrict which columns), so this needs no elevated access.
+    const { error: updateErr } = await callerClient
+      .from('sessions')
+      .update({ report_path: token, report_generated_at: new Date().toISOString() })
+      .eq('id', sessionId)
+    if (updateErr) {
+      return new Response(JSON.stringify({ error: 'Report was stored but could not be recorded on the session: ' + updateErr.message }), { status: 500, headers: corsHeaders })
+    }
+
+    reportPath = token
   }
-  const pdfBase64 = toBase64(pdfBytes)
+
+  const reportUrl = `${REPORT_SITE_ORIGIN}/report.html?r=${reportPath}`
 
   const resendApiKey = Deno.env.get('RESEND_API_KEY')
   const fromEmail = Deno.env.get('REPORT_FROM_EMAIL')
@@ -373,6 +191,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Server email config missing' }), { status: 500, headers: corsHeaders })
   }
 
+  const dateStr = body.date ? new Date(body.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
   const resendRes = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
@@ -380,8 +199,9 @@ Deno.serve(async (req) => {
       from: fromEmail,
       to: emails,
       subject: `Bullpen Session Report — ${pitcherName}${dateStr ? ' — ' + dateStr : ''}`,
-      html: `<p>Attached is the bullpen session report for ${escapeHtml(pitcherName)}${dateStr ? ' (' + escapeHtml(dateStr) + ')' : ''}.</p>`,
-      attachments: [{ filename: 'session-report.pdf', content: pdfBase64 }]
+      html: `<p>The bullpen session report for ${escapeHtml(pitcherName)}${dateStr ? ' (' + escapeHtml(dateStr) + ')' : ''} is ready.</p>` +
+        `<p><a href="${reportUrl}">View the report</a></p>` +
+        `<p style="color:#7C8C82;font-size:12px">This link works for anyone it's shared with -- there's no login required to view it.</p>`
     })
   })
 
@@ -390,5 +210,5 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Resend send failed: ' + errText }), { status: 502, headers: corsHeaders })
   }
 
-  return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  return new Response(JSON.stringify({ ok: true, reportUrl }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 })

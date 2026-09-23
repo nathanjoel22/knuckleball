@@ -351,13 +351,6 @@
   }
   .tab-btn:hover{ color:var(--field-dark); }
   .tab-btn.active{ color:var(--field-dark); font-weight:700; border-bottom-color:var(--amber); }
-  /* U9: coach's own profile, upper-right of the tab row (this app has no
-     separate page-level header to put it in) -- a plain tab-btn (same look
-     as every other tab, not a separate initials badge), just pushed to the
-     far edge of the same flex row via margin-left:auto. flex-shrink:0 keeps
-     it from being squeezed by the other tab labels at narrow widths
-     (checked at 375px, see U9 acceptance 14). */
-  .corner-profile-btn{ flex-shrink:0; margin-left:auto; }
   /* U9: "Player Profile" is the longest tab label this app has ever had,
      and it now shares the row with the corner control -- confirmed
      overflowing at 375px with the full label (measured: 429px of content
@@ -3535,24 +3528,20 @@ function renderLeaderboardView(){
 // renders currentPitcher() fresh, same as every other pitcher-scoped
 // view -- selectPitcher() never touches state.view, so switching pitchers
 // while already on this tab just re-renders it for the new one). A
-// pitcher's own tab bar is completely unchanged.
+// pitcher's own tab bar is completely unchanged. The coach's own profile
+// is NOT on this row at all (tried a corner control here first -- Joel
+// didn't want it stacking with the pre-existing "Pitcher profile" button
+// in the header above; that button is now repurposed for this instead,
+// see headerHtml's pitcher-header-actions). This row is just the 4 tabs.
 function renderTabs(){
   const fourthTab = isCoach()
     ? `<button class="tab-btn${state.view==='pitcherProfile'?' active':''}" onclick="setView('pitcherProfile')"><span class="tab-label-full">Player Profile</span><span class="tab-label-short">Player</span></button>`
     : `<button class="tab-btn${state.view==='profile'?' active':''}" onclick="setView('profile')">Profile</button>`;
-  // Upper-right corner control, coach only -- opens the coach's OWN
-  // profile (still state.view = 'profile', same view a pitcher's own tab
-  // already used; only the coach's ENTRY POINT to it moved). Plain text
-  // "Profile", not an initials badge (Joel: didn't want the initials).
-  const cornerControl = isCoach()
-    ? `<button class="tab-btn corner-profile-btn${state.view==='profile'?' active':''}" onclick="setView('profile')">Profile</button>`
-    : '';
   return `<div class="tabs">
     <button class="tab-btn${state.view==='session'?' active':''}" onclick="setView('session')">${state.draftAvailable ? 'Resume' : 'New Session'}</button>
     <button class="tab-btn${state.view==='history'?' active':''}" onclick="setView('history')">History</button>
     ${hasLeaderboard() ? `<button class="tab-btn${state.view==='leaderboard'?' active':''}" onclick="setView('leaderboard')"><span class="tab-label-full">Leaderboard</span><span class="tab-label-short">Leaders</span></button>` : ''}
     ${fourthTab}
-    ${cornerControl}
   </div>`;
 }
 function renderEmailSection(){
@@ -4127,7 +4116,7 @@ function render(){
         </div>
         <div class="pitcher-header-actions">
           ${isCoach()
-            ? `<button class="btn btn-ghost" onclick="openPitcherProfile()">Pitcher profile</button>`
+            ? `<button class="btn btn-ghost" onclick="setView('profile')">Profile</button>`
             : `<button class="btn btn-ghost" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>`}
         </div>
       </div>

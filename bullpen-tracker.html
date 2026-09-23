@@ -352,17 +352,12 @@
   .tab-btn:hover{ color:var(--field-dark); }
   .tab-btn.active{ color:var(--field-dark); font-weight:700; border-bottom-color:var(--amber); }
   /* U9: coach's own profile, upper-right of the tab row (this app has no
-     separate page-level header to put it in) -- margin-left:auto pushes it
-     to the far edge of the same flex row the tabs already use, and
-     flex-shrink:0 + a fixed small size keep it from being squeezed by the
-     tab labels at narrow widths (checked at 375px, see U9 acceptance 14). */
-  .corner-profile-btn{
-    flex-shrink:0; margin-left:auto; align-self:center;
-    width:28px; height:28px; border-radius:50%; border:1px solid var(--border-strong);
-    background:var(--surface); color:var(--ink-dim); font-size:11px; font-weight:700;
-    display:flex; align-items:center; justify-content:center; padding:0;
-  }
-  .corner-profile-btn:hover, .corner-profile-btn.active{ border-color:var(--amber); color:var(--field-dark); }
+     separate page-level header to put it in) -- a plain tab-btn (same look
+     as every other tab, not a separate initials badge), just pushed to the
+     far edge of the same flex row via margin-left:auto. flex-shrink:0 keeps
+     it from being squeezed by the other tab labels at narrow widths
+     (checked at 375px, see U9 acceptance 14). */
+  .corner-profile-btn{ flex-shrink:0; margin-left:auto; }
   /* U9: "Player Profile" is the longest tab label this app has ever had,
      and it now shares the row with the corner control -- confirmed
      overflowing at 375px with the full label (measured: 429px of content
@@ -976,10 +971,6 @@ function mapProfile(row){
   return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, throws: row.throws || null, relativeAccuracy: !!row.relative_accuracy_enabled, usesRadarGun: !!row.uses_radar_gun, setupDismissedAt: row.setup_dismissed_at || null, uniformNumber: null };
 }
 function isCoach(){ return state.profile && state.profile.role === 'coach'; }
-// U9: up to two initials for the coach's corner profile control.
-function initials(name){
-  return ((name || '').trim().split(/\s+/).map(w => w[0]).filter(Boolean).slice(0, 2).join('') || '?').toUpperCase();
-}
 // The pitch types New Session offers: exactly the pitcher's own mix. A pitcher who
 // hasn't added any pitches yet has none to chart until they do (Joel, Sept 21: no
 // fallback list) -- New Session shows a prompt pointing at Profile instead.
@@ -1089,15 +1080,24 @@ const PERSPECTIVE_PREF_KEY = 'lastChartingPerspective';
 function sessionBatterSide(session){
   return (session && session.currentBatterSide) || 'R';
 }
-// U9: snapshotted once at session creation/resume (freshActiveSession,
-// resumeDraft below), never re-read live during the pen -- "changing it
-// takes effect on the next session, never mid-pen" (Joel). Same defensive
-// fallback pattern as sessionPerspective/sessionBatterSide, for a draft
-// that predates this field.
+// U9: "changing it takes effect on the next session, never mid-pen"
+// (Joel) -- but freezing it the moment the (possibly still-EMPTY) session
+// object gets constructed was too early: toggling the setting in Profile
+// and then just clicking the New Session tab looked like a glitch,
+// needing a full reload to pick it up, since nothing had actually been
+// charted yet. The real rule is simpler -- once at least one pitch
+// exists, this pen has genuinely started and the setting freezes for the
+// rest of it (reads the snapshot on the session/draft object, defaulting
+// live for a draft that predates this field); until then, an empty
+// session always tracks the CURRENT toggle, so switching to it after a
+// change just works.
 function sessionUsesRadarGun(session){
-  if(session && session.usesRadarGun !== undefined) return session.usesRadarGun;
   const p = currentPitcher();
-  return !!(p && p.usesRadarGun);
+  const live = !!(p && p.usesRadarGun);
+  if(session && session.pitches && session.pitches.length > 0){
+    return session.usesRadarGun !== undefined ? session.usesRadarGun : live;
+  }
+  return live;
 }
 
 const ACCURACY_MODE_LABELS = {
@@ -2069,10 +2069,12 @@ async function freshActiveSession(){
   const lastPerspective = await storGet(PERSPECTIVE_PREF_KEY);
   // U2a: currentBatterSide always starts 'R' -- deliberately NOT remembered
   // across sessions like chartingPerspective is (see sessionBatterSide's
-  // comment). U9: usesRadarGun is captured here, once, from whichever
-  // pitcher is current at the moment charting starts.
-  const p = currentPitcher();
-  return { pitches: [], startedAt: Date.now(), chartingPerspective: lastPerspective || 'behind_catcher', currentBatterSide: 'R', usesRadarGun: !!(p && p.usesRadarGun) };
+  // comment). U9: usesRadarGun is deliberately NOT set here -- an empty,
+  // not-yet-started session always tracks the current live toggle
+  // (sessionUsesRadarGun() ignores this field until pitches.length > 0);
+  // it only gets written once, in handleZoneTap, at the actual moment the
+  // first pitch lands.
+  return { pitches: [], startedAt: Date.now(), chartingPerspective: lastPerspective || 'behind_catcher', currentBatterSide: 'R' };
 }
 async function refreshDraftState(){
   if(!state.currentPitcherId){ state.draftAvailable = false; state.activeSession = null; return; }
@@ -2311,6 +2313,17 @@ window.handleZoneTap = async function(row, col){
   const zoneCells = (chartPitcher && chartPitcher.relativeAccuracy)
     ? zoneCellsFor(state.currentPitcherId, state.selectedType, batterSide) : null;
   const inAccuracyZone = zoneCells ? zoneCells.includes(row + '-' + perspectiveCol(col, chartingPerspective)) : null;
+  // U9: this is the actual freeze point for the radar-gun setting -- right
+  // before the FIRST pitch of the pen lands, while sessionUsesRadarGun()
+  // still reads live (pitches.length is still 0 here). From this line on,
+  // pitches.length > 0 and every later call reads this stored value
+  // instead, so a toggle flip mid-pen can't affect it -- but nothing before
+  // this moment was ever frozen, so switching to New Session right after
+  // changing the toggle in Profile shows the new value immediately, no
+  // reload needed.
+  if(state.activeSession.pitches.length === 0){
+    state.activeSession.usesRadarGun = sessionUsesRadarGun(state.activeSession);
+  }
   state.activeSession.pitches.push({
     id: genUUID(),
     type: state.selectedType, velo: null,
@@ -3529,9 +3542,10 @@ function renderTabs(){
     : `<button class="tab-btn${state.view==='profile'?' active':''}" onclick="setView('profile')">Profile</button>`;
   // Upper-right corner control, coach only -- opens the coach's OWN
   // profile (still state.view = 'profile', same view a pitcher's own tab
-  // already used; only the coach's ENTRY POINT to it moved).
+  // already used; only the coach's ENTRY POINT to it moved). Plain text
+  // "Profile", not an initials badge (Joel: didn't want the initials).
   const cornerControl = isCoach()
-    ? `<button class="corner-profile-btn${state.view==='profile'?' active':''}" onclick="setView('profile')" title="${escHtml(state.profile.full_name)}" aria-label="Your profile">${escHtml(initials(state.profile.full_name))}</button>`
+    ? `<button class="tab-btn corner-profile-btn${state.view==='profile'?' active':''}" onclick="setView('profile')">Profile</button>`
     : '';
   return `<div class="tabs">
     <button class="tab-btn${state.view==='session'?' active':''}" onclick="setView('session')">${state.draftAvailable ? 'Resume' : 'New Session'}</button>

@@ -8,15 +8,17 @@
 -- 1. uses_radar_gun boolean -- the pitcher's own setting, governs whoever
 --    charts him (a coach charting Jake sees the strip iff Jake's toggle is
 --    on). Loaded the same way pitch_types/throws already are (mapProfile(),
---    the offline snapshot in saveLastKnownContext), but "changing it takes
---    effect next session, never mid-pen" needed one more thing on the
---    client: currentPitcher() is re-derived live on every render, so a
---    toggle flipped from the SAME device's own Profile tab mid-pen would
---    otherwise show/hide the strip immediately, unlike a genuinely
---    per-session-frozen value. The client snapshots it once onto the
---    session/draft object itself at creation (freshActiveSession) and
---    resume (resumeDraft), and reads that snapshot (sessionUsesRadarGun()),
---    never the live pitcher, for the rest of that pen.
+--    the offline snapshot in saveLastKnownContext). "Changing it takes
+--    effect next session, never mid-pen" (Joel) needed care on the client:
+--    currentPitcher() is re-derived live on every render, so a naive
+--    read would flip the strip immediately on a toggle change even from
+--    the SAME device's own Profile tab. The freeze point is the pen's
+--    FIRST pitch, not the session object's own creation -- an empty,
+--    not-yet-started session always tracks the live toggle (so switching
+--    tabs right after a change just works, no reload), and the value is
+--    captured once, in handleZoneTap, at the exact moment the first pitch
+--    lands; sessionUsesRadarGun() reads that frozen value for every pitch
+--    after the first, never the live pitcher, for the rest of that pen.
 --
 -- 2. full_name becomes editable -- currently NOT editable by anyone,
 --    anywhere (confirmed by grep before writing this: ensure_account_setup

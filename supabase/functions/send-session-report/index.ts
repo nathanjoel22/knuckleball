@@ -88,19 +88,21 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: `emails must be an array of up to ${MAX_RECIPIENTS} valid addresses` }), { status: 400, headers: corsHeaders })
   }
 
-  // R0 item (g): if the pitcher of record hasn't verified their account
-  // email, nobody receives a report for their sessions until they do --
-  // unchanged from the PDF version. is_pitcher_verified runs as the
-  // CALLER's own JWT (never service-role), so it never grants more than
-  // any authenticated caller could already ask for a yes/no answer to.
-  const { data: verified, error: verifiedErr } = await callerClient.rpc('is_pitcher_verified', {
+  // R0 item (g), extended in U4b Phase 2: nobody receives a report for a
+  // pitcher's sessions unless BOTH their email is verified AND they're
+  // currently on a team -- the latter is a deliberate, temporary
+  // restriction until solo/team-less pitcher accounts are supported (Joel,
+  // Sept 2026). is_pitcher_report_eligible runs as the CALLER's own JWT
+  // (never service-role), so it never grants more than any authenticated
+  // caller could already ask for a yes/no answer to.
+  const { data: eligible, error: eligibleErr } = await callerClient.rpc('is_pitcher_report_eligible', {
     p_pitcher_id: pitcherId
   })
-  if (verifiedErr) {
-    return new Response(JSON.stringify({ error: 'Could not verify pitcher eligibility: ' + verifiedErr.message }), { status: 500, headers: corsHeaders })
+  if (eligibleErr) {
+    return new Response(JSON.stringify({ error: 'Could not verify pitcher eligibility: ' + eligibleErr.message }), { status: 500, headers: corsHeaders })
   }
-  if (!verified) {
-    return new Response(JSON.stringify({ error: 'This pitcher\'s account email is not yet verified. No report can be sent for their sessions until they verify.' }), { status: 403, headers: corsHeaders })
+  if (!eligible) {
+    return new Response(JSON.stringify({ error: 'No report can be sent for this pitcher\'s sessions until their account email is verified and they\'re on a team.' }), { status: 403, headers: corsHeaders })
   }
 
   // Design principle (CLAUDE.md): "Reports are never generated from an
@@ -210,5 +212,8 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Resend send failed: ' + errText }), { status: 502, headers: corsHeaders })
   }
 
-  return new Response(JSON.stringify({ ok: true, reportUrl }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  // reportPath included alongside reportUrl so the client can update its
+  // own local session state (for the "View report" link) without having
+  // to parse a URL or re-fetch the session.
+  return new Response(JSON.stringify({ ok: true, reportUrl, reportPath }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 })

@@ -302,7 +302,7 @@
   }
   .text-input::placeholder{ color:var(--ink-faint); }
   .form-row-buttons{ display:flex; gap:8px; margin-top:2px; }
-  .btn{ border-radius:6px; padding:9px 14px; font-size:13px; font-weight:600; border:1px solid transparent; }
+  .btn{ border-radius:6px; padding:9px 14px; font-size:13px; font-weight:600; border:1px solid transparent; display:inline-block; text-decoration:none; }
   .btn-primary{ background:var(--amber); color:var(--field-dark); }
   .btn-primary:hover{ background:var(--amber-bright); }
   .btn-primary:disabled{ opacity:0.5; cursor:not-allowed; }
@@ -693,6 +693,7 @@
     display:flex; flex-direction:column; gap:8px; align-items:flex-start;
   }
   .report-recipients{ margin:0; font-size:12px; color:var(--ink-faint); }
+  .report-actions{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   .report-status{ margin:0; font-size:12px; }
   .report-status-sending{ color:var(--ink-faint); }
   .report-status-sent{ color:#6FA287; }
@@ -982,6 +983,17 @@ function currentPitcher(){
 // UI shows and sends -- see that function's own comment.
 function currentPitcherVerified(p){
   return isCoach() ? !!(p && p.emailConfirmed) : !!state.myVerification.emailConfirmed;
+}
+// U4b Phase 2, UI half: whether the currently-viewed pitcher currently has
+// ANY team membership -- the second half of the report-eligibility gate
+// (see is_pitcher_report_eligible; this is a deliberate, temporary
+// restriction until solo/team-less pitcher accounts are supported). A
+// coach viewing a session is always looking at it through a specific
+// team's roster/session query, so the pitcher is on a team by construction
+// in that context -- only a pitcher viewing their own sessions needs an
+// actual check, against their own loaded team list.
+function currentPitcherOnTeam(p){
+  return isCoach() ? true : !!(state.teams && state.teams.length);
 }
 function isStrikeCell(row, col){ return row >= 1 && row <= 3 && col >= 1 && col <= 3; }
 // Zone numbering protocol (D8, Sept 9 2026): 1/4/7 = inside, 2/5/8 = middle,
@@ -2533,7 +2545,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by_role, pitch_count, charting_perspective, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts)')
+    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by_role, pitch_count, charting_perspective, report_path, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts)')
     .eq('pitcher_id', pitcherId)
     .eq('team_id', teamId)
     .order('started_at', { ascending: false });
@@ -2549,6 +2561,11 @@ async function loadSessionsForCurrentSelection(){
     // coordinates unmirrored, see mirrorCol's comment) -- carried through
     // for data fidelity and SQL-verifiability only.
     chartingPerspective: s.charting_perspective,
+    // U4b: set the first time a report is generated for this session, never
+    // after -- send-session-report reuses the same frozen file on every
+    // resend. Non-null means "View report" can open it directly, no email
+    // round-trip required.
+    reportPath: s.report_path || null,
     pitches: (s.pitches || []).map(p => ({
       type: p.type, velo: p.velo,
       targetRow: p.target_row, targetCol: p.target_col,
@@ -3018,19 +3035,24 @@ function renderHistoryView(){
     }).join('');
 
     const contacts = p.contactEmails || {};
-    // R0 item (g), revised after check 8 on staging: the block is on the
-    // WHOLE send, not just the pitcher's own address -- a report for an
-    // unverified pitcher's session doesn't go to a coach or pitching-coach
-    // address either, since the data's provenance isn't trustworthy until
-    // the identity behind it is verified. This is the UI half only; the
-    // real enforcement is server-side in send-session-report, gated on
-    // is_pitcher_verified (a client can't bypass it by hand-crafting a
-    // payload -- see that function).
+    // R0 item (g), revised after check 8 on staging, extended U4b Phase 2:
+    // the block is on the WHOLE send, not just the pitcher's own address --
+    // a report for an ineligible pitcher's session doesn't go to a coach or
+    // pitching-coach address either, since the data's provenance isn't
+    // trustworthy until the identity behind it is verified, AND (new) this
+    // is a deliberate temporary restriction to team-affiliated pitchers
+    // only, until solo accounts are supported. This is the UI half only;
+    // the real enforcement is server-side in send-session-report, gated on
+    // is_pitcher_report_eligible (a client can't bypass it by
+    // hand-crafting a payload -- see that function).
     const pVerified = currentPitcherVerified(p);
-    const emailList = pVerified
+    const pOnTeam = currentPitcherOnTeam(p);
+    const pEligible = pVerified && pOnTeam;
+    const emailList = pEligible
       ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean)
       : [];
     const rs = state.reportStatus && state.reportStatus.sessionId === s.id ? state.reportStatus : null;
+    const viewLink = s.reportPath ? `<a class="btn btn-ghost" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>` : '';
     const reportPanel = s.pending ? `
       <div class="report-panel">
         <div class="field-label">Email this report</div>
@@ -3039,12 +3061,15 @@ function renderHistoryView(){
       </div>` : `
       <div class="report-panel">
         <div class="field-label">Email this report</div>
-        ${!pVerified
-          ? `<p class="report-recipients" style="color:var(--clay);">No report can be sent until ${escHtml(p.name)} verifies their email.</p>`
+        ${!pEligible
+          ? `<p class="report-recipients" style="color:var(--clay);">No report can be sent until ${escHtml(p.name)} ${!pVerified ? 'verifies their email' : 'is on a team'}.</p>`
           : emailList.length
             ? `<p class="report-recipients">To: ${escHtml(emailList.join(', '))}</p>`
             : `<p class="report-recipients">No contact emails set for ${escHtml(p.name)} yet${isCoach() ? '' : ' — add them under Contacts above'}.</p>`}
-        <button class="btn btn-primary" ${emailList.length ? '' : 'disabled'} onclick="sendSessionReport('${s.id}')">Send report</button>
+        <div class="report-actions">
+          <button class="btn btn-primary" ${emailList.length ? '' : 'disabled'} onclick="sendSessionReport('${s.id}')">Send report</button>
+          ${viewLink}
+        </div>
         ${rs ? `<p class="report-status report-status-${rs.status}">${rs.message}</p>` : ''}
       </div>`;
 
@@ -3512,14 +3537,15 @@ window.sendSessionReport = async function(sessionId){
   const session = state.sessions.find(s => s.id === sessionId);
   if(!session || !p) return;
   const contacts = p.contactEmails || {};
-  // R0 item (g), revised after check 8 on staging: matches
-  // renderHistoryView's own filter -- an unverified pitcher blocks the
-  // WHOLE send client-side, not just their own address. The server-side
-  // check (pitcherId below, gated on is_pitcher_verified) is what
+  // R0 item (g), revised after check 8 on staging, extended U4b Phase 2:
+  // matches renderHistoryView's own filter -- an ineligible pitcher
+  // (unverified email, OR not currently on a team) blocks the WHOLE send
+  // client-side, not just their own address. The server-side check
+  // (pitcherId below, gated on is_pitcher_report_eligible) is what
   // actually can't be bypassed; this just keeps normal usage from ever
   // hitting that path.
-  const pVerified = currentPitcherVerified(p);
-  const emails = pVerified
+  const pEligible = currentPitcherVerified(p) && currentPitcherOnTeam(p);
+  const emails = pEligible
     ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean)
     : [];
   if(!emails.length) return;
@@ -3527,21 +3553,35 @@ window.sendSessionReport = async function(sessionId){
   state.reportStatus = { sessionId, status: 'sending', message: 'Sending…' };
   render();
 
-  const stats = sessionStats(session.pitches);
   const team = state.teams.find(t => t.id === state.currentTeamId);
 
-  const history = state.sessions.slice().sort((a,b) => a.date - b.date).map(s => {
-    const sStats = sessionStats(s.pitches);
-    const byType = {};
-    Object.entries(sStats.byType).forEach(([type, t]) => {
-      byType[type] = { accuracyPct: t.accuracyPct, relativeAccuracyPct: t.hasZone ? t.zoneAccuracyPct : t.relativeAccuracyPct, strikePct: t.strikePct, count: t.count };
+  // U4b: the renderer computes everything itself from raw pitches -- no
+  // more precomputed stats/per-type history. isDefaultVeloReading is
+  // applied here, once, client-side, exactly as U6 designed: the renderer
+  // trusts velo as given and never carries its own copy of the cutoff.
+  const pitchesForReport = session.pitches.map(pt =>
+    isDefaultVeloReading(pt) ? { ...pt, velo: null } : pt
+  );
+
+  // Prior sessions only (never the one being reported) -- matches the
+  // renderer's own "3+ PRIOR sessions or omit" trend rule. Just the
+  // per-session aggregates the Trends section actually reads, not the old
+  // per-type breakdown the PDF's trend charts used.
+  const history = state.sessions
+    .filter(s => s.id !== sessionId)
+    .slice().sort((a,b) => a.date - b.date)
+    .map(s => {
+      const sStats = sessionStats(s.pitches);
+      return {
+        date: s.date,
+        dateLabel: new Date(s.date).toLocaleDateString(undefined, { month:'numeric', day:'numeric' }),
+        total: sStats.total,
+        strikePct: sStats.strikePct,
+        commandPct: sStats.hasZone ? sStats.zoneAccuracyPct : sStats.accuracyPct,
+        hasVelo: sStats.hasVelo,
+        avgVelo: sStats.avgVelo
+      };
     });
-    return {
-      date: s.date,
-      dateLabel: new Date(s.date).toLocaleDateString(undefined, { month:'numeric', day:'numeric' }),
-      byType
-    };
-  });
 
   try{
     if(typeof SEND_REPORT_URL === 'undefined' || SEND_REPORT_URL.indexOf('YOUR_') === 0){
@@ -3552,26 +3592,29 @@ window.sendSessionReport = async function(sessionId){
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token },
       body: JSON.stringify({
         emails,
+        sessionId,
         pitcherId: p.id,
         pitcherName: p.name,
+        // A pitcher viewing their own profile never gets uniformNumber from
+        // mapProfile() (always null there) -- it lives on their OWN team
+        // membership row instead (state.teams[].uniform_number). A coach's
+        // roster-sourced p.uniformNumber already has the real value.
+        uniformNumber: (p.uniformNumber != null) ? p.uniformNumber : (team && team.uniform_number != null ? team.uniform_number : null),
         date: session.date,
         teamName: team ? team.name : '',
+        chartingPerspective: session.chartingPerspective,
+        loggedByCoach: session.loggedByCoach,
         pitchTypes: p.pitchTypes,
-        pitches: session.pitches,
-        stats: {
-          total: stats.total, strikePct: stats.strikePct,
-          accuracyPct: stats.accuracyPct,
-          relativeAccuracyPct: stats.relativeAccuracyPct, usesRelativeMode: stats.usesRelativeMode,
-          hasZone: stats.hasZone, zoneTotal: stats.zoneTotal, zoneAccuracyPct: stats.zoneAccuracyPct,
-          avgVelo: stats.avgVelo, hasVelo: stats.hasVelo
-        },
+        pitches: pitchesForReport,
         history
       })
     });
-    if(!res.ok) throw new Error('server responded ' + res.status);
+    const body = await res.json().catch(() => ({}));
+    if(!res.ok) throw new Error(body.error || ('server responded ' + res.status));
+    if(body.reportPath) session.reportPath = body.reportPath;
     state.reportStatus = { sessionId, status: 'sent', message: 'Report sent to ' + emails.length + ' recipient(s).' };
   } catch(err){
-    state.reportStatus = { sessionId, status: 'error', message: 'Could not send — email backend may not be deployed yet. See SETUP.md.' };
+    state.reportStatus = { sessionId, status: 'error', message: err.message || 'Could not send — email backend may not be deployed yet. See SETUP.md.' };
   }
   render();
 };

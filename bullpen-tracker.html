@@ -351,6 +351,29 @@
   }
   .tab-btn:hover{ color:var(--field-dark); }
   .tab-btn.active{ color:var(--field-dark); font-weight:700; border-bottom-color:var(--amber); }
+  /* U9: coach's own profile, upper-right of the tab row (this app has no
+     separate page-level header to put it in) -- margin-left:auto pushes it
+     to the far edge of the same flex row the tabs already use, and
+     flex-shrink:0 + a fixed small size keep it from being squeezed by the
+     tab labels at narrow widths (checked at 375px, see U9 acceptance 14). */
+  .corner-profile-btn{
+    flex-shrink:0; margin-left:auto; align-self:center;
+    width:28px; height:28px; border-radius:50%; border:1px solid var(--border-strong);
+    background:var(--surface); color:var(--ink-dim); font-size:11px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; padding:0;
+  }
+  .corner-profile-btn:hover, .corner-profile-btn.active{ border-color:var(--amber); color:var(--field-dark); }
+  /* U9: "Player Profile" is the longest tab label this app has ever had,
+     and it now shares the row with the corner control -- confirmed
+     overflowing at 375px with the full label (measured: 429px of content
+     in a 343px row). Swap to "Player" below the existing phone breakpoint
+     (max-width:500px, same one the velocity strip already uses) rather
+     than shrinking font/padding further, which would affect every tab. */
+  .tab-label-short{ display:none; }
+  @media (max-width:500px){
+    .tab-label-full{ display:none; }
+    .tab-label-short{ display:inline; }
+  }
 
   /* SESSION VIEW */
   /* Always stacked -- one layout, not a row-above-some-width/column-below-it
@@ -904,6 +927,9 @@ let state = {
   uniformMsg: '',           // one-line notice, e.g. after a conflict
   uniformMsgKey: null,      // which 'pitcherId:teamId' row the notice belongs to
   profileMsg: '',           // U7: one-line notice on the Profile pages
+  nameEditOpen: false,      // U9: name-change form open, on whichever profile is showing
+  nameStatus: null,         // U9: null | 'saving' | 'saved' | 'error:<msg>'
+  setupReminderDismissed: false,   // U9: per-session only, never persisted -- resets on reload
   zones: {},                // U7B: { pitcherId: { pitchType: { R: ['row-col', ...], L: [...] } } }, catcher frame
   zonePaint: null,          // U7B: the zone being painted { pitcherId, type, side, cells }
   zoneMsg: '',
@@ -942,9 +968,18 @@ function genUUID(){
   });
 }
 function mapProfile(row){
-  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, throws: row.throws || null, relativeAccuracy: !!row.relative_accuracy_enabled, uniformNumber: null };
+  // U9: usesRadarGun is the PITCHER's own setting -- read here once, same as
+  // pitchTypes/throws, so it flows into saveLastKnownContext()'s offline
+  // snapshot for free and never gets re-read mid-session (an already-open
+  // charting page keeps whatever it read at load, so a toggle change can
+  // never affect the current pen).
+  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, throws: row.throws || null, relativeAccuracy: !!row.relative_accuracy_enabled, usesRadarGun: !!row.uses_radar_gun, setupDismissedAt: row.setup_dismissed_at || null, uniformNumber: null };
 }
 function isCoach(){ return state.profile && state.profile.role === 'coach'; }
+// U9: up to two initials for the coach's corner profile control.
+function initials(name){
+  return ((name || '').trim().split(/\s+/).map(w => w[0]).filter(Boolean).slice(0, 2).join('') || '?').toUpperCase();
+}
 // The pitch types New Session offers: exactly the pitcher's own mix. A pitcher who
 // hasn't added any pitches yet has none to chart until they do (Joel, Sept 21: no
 // fallback list) -- New Session shows a prompt pointing at Profile instead.
@@ -1053,6 +1088,16 @@ const PERSPECTIVE_PREF_KEY = 'lastChartingPerspective';
 // a tab-kill mid-LHB-sequence instead of silently resetting to RHB.
 function sessionBatterSide(session){
   return (session && session.currentBatterSide) || 'R';
+}
+// U9: snapshotted once at session creation/resume (freshActiveSession,
+// resumeDraft below), never re-read live during the pen -- "changing it
+// takes effect on the next session, never mid-pen" (Joel). Same defensive
+// fallback pattern as sessionPerspective/sessionBatterSide, for a draft
+// that predates this field.
+function sessionUsesRadarGun(session){
+  if(session && session.usesRadarGun !== undefined) return session.usesRadarGun;
+  const p = currentPitcher();
+  return !!(p && p.usesRadarGun);
 }
 
 const ACCURACY_MODE_LABELS = {
@@ -1312,6 +1357,18 @@ async function loadFullContextOnline(alreadyPainted){
     catch(e){ if(giveUp()) return; }
   }
 
+  // U9: land a brand-new pitcher on the setup page once (setup_dismissed_at
+  // is null only for a profile created after this shipped -- every
+  // pre-existing profile was backfilled non-null by the migration, so no
+  // returning user is ever surprised by this). Never interrupts an
+  // in-progress pen: refreshDraftState() (inside onTeamChange, just above)
+  // has already populated draftAvailable by this point, so a pitcher
+  // reloading mid-charting resumes their draft exactly as before instead
+  // of landing here.
+  if(!isCoach() && state.profile && !state.profile.setup_dismissed_at && !state.draftAvailable){
+    state.view = 'setup';
+  }
+
   state.setupNeeded = null;
   state.loaded = true;
   await saveLastKnownContext();   // so the next cold start has a fresh cache to paint from
@@ -1491,7 +1548,7 @@ function sortRoster(){
 async function loadRosterForTeam(teamId){
   const { data, error } = await supabaseClient
     .from('pitcher_teams')
-    .select('uniform_number, profiles(id, full_name, pitch_types, contact_emails, throws, relative_accuracy_enabled)')
+    .select('uniform_number, profiles(id, full_name, pitch_types, contact_emails, throws, relative_accuracy_enabled, uses_radar_gun)')
     .eq('team_id', teamId);
   if(error){ console.error('loadRosterForTeam failed', error); state.roster = []; return; }
   state.roster = (data || []).filter(r => r.profiles).map(r => {
@@ -2012,8 +2069,10 @@ async function freshActiveSession(){
   const lastPerspective = await storGet(PERSPECTIVE_PREF_KEY);
   // U2a: currentBatterSide always starts 'R' -- deliberately NOT remembered
   // across sessions like chartingPerspective is (see sessionBatterSide's
-  // comment).
-  return { pitches: [], startedAt: Date.now(), chartingPerspective: lastPerspective || 'behind_catcher', currentBatterSide: 'R' };
+  // comment). U9: usesRadarGun is captured here, once, from whichever
+  // pitcher is current at the moment charting starts.
+  const p = currentPitcher();
+  return { pitches: [], startedAt: Date.now(), chartingPerspective: lastPerspective || 'behind_catcher', currentBatterSide: 'R', usesRadarGun: !!(p && p.usesRadarGun) };
 }
 async function refreshDraftState(){
   if(!state.currentPitcherId){ state.draftAvailable = false; state.activeSession = null; return; }
@@ -2035,10 +2094,11 @@ async function refreshDraftState(){
 }
 window.resumeDraft = function(){
   state.activeSession = state.pendingDraft;
-  // Defensive: a draft persisted before U5/U2a shipped won't carry these
+  // Defensive: a draft persisted before U5/U2a/U9 shipped won't carry these
   // fields.
   state.activeSession.chartingPerspective = sessionPerspective(state.activeSession);
   state.activeSession.currentBatterSide = sessionBatterSide(state.activeSession);
+  state.activeSession.usesRadarGun = sessionUsesRadarGun(state.activeSession);
   state.draftAvailable = false;
   render();
 };
@@ -2927,10 +2987,10 @@ function renderSessionView(){
             <div class="zone-caption">${zoneCaption}</div>
           </div>
         </div>
-        <div>
+        ${sessionUsesRadarGun(state.activeSession) ? `<div>
           <div class="field-label" style="margin-bottom:8px;">Velocity</div>
           ${renderVeloStrip()}
-        </div>
+        </div>` : ''}
       </div>
       <div class="panel log-panel">
         <div class="stat-readout">
@@ -3456,12 +3516,29 @@ function renderLeaderboardView(){
 }
 
 /* ---------- RENDER: PROFILE (U7) ---------- */
+// U9: a coach's own profile moved off the tab bar entirely (into the
+// corner control below); the 4th tab becomes the SELECTED pitcher's
+// profile instead, following the pitcher selector automatically (it
+// renders currentPitcher() fresh, same as every other pitcher-scoped
+// view -- selectPitcher() never touches state.view, so switching pitchers
+// while already on this tab just re-renders it for the new one). A
+// pitcher's own tab bar is completely unchanged.
 function renderTabs(){
+  const fourthTab = isCoach()
+    ? `<button class="tab-btn${state.view==='pitcherProfile'?' active':''}" onclick="setView('pitcherProfile')"><span class="tab-label-full">Player Profile</span><span class="tab-label-short">Player</span></button>`
+    : `<button class="tab-btn${state.view==='profile'?' active':''}" onclick="setView('profile')">Profile</button>`;
+  // Upper-right corner control, coach only -- opens the coach's OWN
+  // profile (still state.view = 'profile', same view a pitcher's own tab
+  // already used; only the coach's ENTRY POINT to it moved).
+  const cornerControl = isCoach()
+    ? `<button class="corner-profile-btn${state.view==='profile'?' active':''}" onclick="setView('profile')" title="${escHtml(state.profile.full_name)}" aria-label="Your profile">${escHtml(initials(state.profile.full_name))}</button>`
+    : '';
   return `<div class="tabs">
     <button class="tab-btn${state.view==='session'?' active':''}" onclick="setView('session')">${state.draftAvailable ? 'Resume' : 'New Session'}</button>
     <button class="tab-btn${state.view==='history'?' active':''}" onclick="setView('history')">History</button>
-    ${hasLeaderboard() ? `<button class="tab-btn${state.view==='leaderboard'?' active':''}" onclick="setView('leaderboard')">Leaderboard</button>` : ''}
-    <button class="tab-btn${state.view==='profile'?' active':''}" onclick="setView('profile')">Profile</button>
+    ${hasLeaderboard() ? `<button class="tab-btn${state.view==='leaderboard'?' active':''}" onclick="setView('leaderboard')"><span class="tab-label-full">Leaderboard</span><span class="tab-label-short">Leaders</span></button>` : ''}
+    ${fourthTab}
+    ${cornerControl}
   </div>`;
 }
 function renderEmailSection(){
@@ -3518,10 +3595,91 @@ function renderPitchMixSection(p){
       <button onclick="addPitchType()">Add</button>
     </div></div>`;
 }
+// U9: name editing, added for the first time (nothing wrote profiles.full_name
+// after account creation before this). `self` distinguishes the two ways
+// this section is used -- true for a coach or pitcher editing THEIR OWN
+// row directly (self-service grant), false for a coach editing a rostered
+// pitcher's name (coach_set_full_name RPC). Unlike setThrows/savePitchMix,
+// isCoach() alone can't tell these apart, since a coach's OWN profile is
+// also isCoach()===true -- hence the explicit parameter.
+function renderNameSection(p, self){
+  const editing = state.nameEditOpen;
+  const form = editing ? `
+    <div class="change-email-form">
+      <div class="field"><span class="field-label">Full name</span><input class="text-input" id="name-input" type="text" value="${escHtml(p.name)}"></div>
+      <div class="contacts-save-row">
+        <button class="btn btn-primary" ${state.nameStatus === 'saving' ? 'disabled' : ''} onclick="submitNameChange(${self})">${state.nameStatus === 'saving' ? 'Saving…' : 'Save'}</button>
+      </div>
+      ${state.nameStatus && state.nameStatus.indexOf('error:') === 0 ? `<p class="error-msg" style="margin:0;">${escHtml(state.nameStatus.slice(6))}</p>` : ''}
+    </div>` : '';
+  return `<div class="profile-section"><h3>Name</h3>
+    <div class="profile-row"><span style="font-size:14px;">${escHtml(p.name)}</span>
+      <button class="btn btn-ghost" onclick="toggleNameEdit()">${editing ? 'Cancel' : 'Change name'}</button></div>
+    ${form}</div>`;
+}
+window.toggleNameEdit = function(){
+  state.nameEditOpen = !state.nameEditOpen;
+  state.nameStatus = null;
+  render();
+};
+window.submitNameChange = async function(self){
+  const input = document.getElementById('name-input');
+  const val = (input && input.value || '').trim();
+  if(!val){ state.nameStatus = 'error:Name cannot be blank.'; render(); return; }
+  state.nameStatus = 'saving';
+  render();
+  let ok = false;
+  if(self){
+    const { error } = await supabaseClient.from('profiles').update({ full_name: val }).eq('id', state.profile.id);
+    ok = !error;
+    if(ok) state.profile.full_name = val;
+  } else {
+    const p = currentPitcher();
+    if(!p) return;
+    const { error } = await supabaseClient.rpc('coach_set_full_name', { p_pitcher_id: p.id, p_name: val });
+    ok = !error;
+    if(ok) p.name = val;
+  }
+  state.nameStatus = ok ? null : 'error:Could not save. Check your connection and try again.';
+  if(ok){ state.nameEditOpen = false; await saveLastKnownContext(); }
+  render();
+};
+// U9: the radar-gun preference. Governs whether the velocity strip
+// appears at all on the charting page for whoever charts this pitcher --
+// see renderSessionView(). `self` works the same way as renderNameSection's.
+function renderRadarGunSection(p, self){
+  const on = p.usesRadarGun === true;
+  return `<div class="profile-section"><h3>Radar gun</h3>
+    <p class="profile-note" style="margin:0 0 8px;">Will ${self ? 'you' : escHtml(p.name)} be using a radar gun while charting?</p>
+    <div class="profile-row">
+      <button class="throws-btn${on ? ' selected' : ''}" onclick="setUsesRadarGun(true, ${self})">Yes</button>
+      <button class="throws-btn${!on ? ' selected' : ''}" onclick="setUsesRadarGun(false, ${self})">No</button>
+    </div></div>`;
+}
+window.setUsesRadarGun = async function(val, self){
+  let ok = false;
+  if(self){
+    const { error } = await supabaseClient.from('profiles').update({ uses_radar_gun: val }).eq('id', state.profile.id);
+    ok = !error;
+    if(ok) state.profile.uses_radar_gun = val;
+  } else {
+    const p = currentPitcher();
+    if(!p) return;
+    const { error } = await supabaseClient.rpc('coach_set_uses_radar_gun', { p_pitcher_id: p.id, p_enabled: val });
+    ok = !error;
+    if(ok) p.usesRadarGun = val;
+  }
+  state.profileMsg = ok ? '' : 'Could not save. Check your connection and try again.';
+  if(ok) await saveLastKnownContext();
+  render();
+};
+// U9: the COACH's own profile (email, password, and now name) -- moved off
+// the tab bar into the upper-right corner control; this function itself is
+// unchanged in what it shows, only how it's reached.
 function renderProfileView(){
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
   if(isCoach()){
-    return `<div class="profile-page">${renderEmailSection()}${renderPasswordSection()}</div>`;
+    return `<div class="profile-page">${msg}${renderNameSection(mapProfile(state.profile), true)}${renderEmailSection()}${renderPasswordSection()}</div>`;
   }
   const p = currentPitcher();
   const uniformRows = state.teams.map(t => uniformRowHtml(t.id, state.profile.id, 'Uniform # · ' + t.name)).join('')
@@ -3530,29 +3688,119 @@ function renderProfileView(){
     ${msg}
     <div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>
     ${renderThrowsSection(p)}
+    ${renderNameSection(p, true)}
     ${renderEmailSection()}
     ${renderPasswordSection()}
     ${renderPitchMixSection(p)}
     ${renderRelAccuracySection(p)}
+    ${renderRadarGunSection(p, true)}
   </div>`;
 }
-// Coach editing a rostered pitcher: pitch mix, throws and this team's uniform number only.
-// Never their email or password (those aren't in this table and no function exposes them).
+// Coach editing a rostered pitcher (U9 adds name to what was already here:
+// pitch mix, throws, this team's uniform number, radar gun). Never email or
+// password -- those aren't in this table and no function exposes them.
 function renderPitcherProfileView(){
   const p = currentPitcher();
-  if(!p) return `<div class="empty-hist">No pitcher selected.</div>`;
+  if(!p) return `<div class="empty-hist">Select a pitcher to see his profile.</div>`;
   const team = state.teams.find(t => t.id === state.currentTeamId);
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
   return `<div class="profile-page">
     <div class="profile-row"><h2 class="display" style="margin:0;">${escHtml(p.name)}'s profile</h2></div>
     ${msg}
+    ${renderNameSection(p, false)}
     <div class="profile-section"><h3>Uniform number</h3>${uniformRowHtml(state.currentTeamId, p.id, 'Uniform # · ' + (team ? team.name : ''))}</div>
     ${renderThrowsSection(p)}
     ${renderPitchMixSection(p)}
     ${renderRelAccuracySection(p)}
+    ${renderRadarGunSection(p, false)}
     <p class="profile-note">Email and password are managed by the player.</p>
   </div>`;
 }
+
+// U9: the post-signup setup page. Composes the SAME section renderers as
+// the Profile tab -- one implementation, two placements, per the packet.
+// Pitcher-only (a coach never lands here); currentPitcher() for a pitcher
+// is always their own mapped profile, same as renderProfileView's pitcher
+// branch. Ends with the radar-gun question, which doubles as the finish
+// action -- there's no separate "Done" button, since answering either way
+// is itself the natural last step of the flow.
+function renderSetupView(){
+  const p = currentPitcher();
+  if(!p) return '';
+  const uniformRows = state.teams.map(t => uniformRowHtml(t.id, state.profile.id, 'Uniform # · ' + t.name)).join('')
+    || '<p class="profile-note">Join a team to set a uniform number.</p>';
+  const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
+  return `<div class="profile-page setup-page">
+    <h2 class="display" style="margin:0 0 2px;">Welcome, ${escHtml(p.name)}</h2>
+    <p class="profile-note" style="margin:0 0 12px;">A few quick things so charting works well for you. Skip it and come back anytime from Profile.</p>
+    ${msg}
+    <div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>
+    ${renderThrowsSection(p)}
+    ${renderPitchMixSection(p)}
+    ${renderRelAccuracySection(p)}
+    <div class="profile-section"><h3>Radar gun</h3>
+      <p class="profile-note" style="margin:0 0 8px;">Will you be using a radar gun while charting?</p>
+      <div class="profile-row">
+        <button class="btn btn-primary" onclick="finishSetup(true)">Yes</button>
+        <button class="btn btn-ghost" onclick="finishSetup(false)">No</button>
+      </div>
+    </div>
+    <p class="profile-note"><a href="#" onclick="dismissSetup();return false;">Set this up later</a></p>
+  </div>`;
+}
+// Answering the radar-gun question either way finishes setup. Optimistic
+// + fire-and-forget on purpose (U9: "setup ... never waits on the network
+// beyond the profile save itself") -- the app is usable immediately either
+// way; if the save fails offline, setup_dismissed_at simply stays null
+// server-side and this page shows again next cold load, which is an
+// acceptable, self-correcting degradation for something explicitly not a
+// gate.
+window.finishSetup = function(gunYes){
+  const now = new Date().toISOString();
+  state.profile.uses_radar_gun = gunYes;
+  state.profile.setup_dismissed_at = now;
+  state.view = 'session';
+  render();
+  supabaseClient.from('profiles').update({ uses_radar_gun: gunYes, setup_dismissed_at: now }).eq('id', state.profile.id)
+    .then(({ error }) => { if(!error) saveLastKnownContext(); });
+};
+window.dismissSetup = function(){
+  const now = new Date().toISOString();
+  state.profile.setup_dismissed_at = now;
+  state.view = 'session';
+  render();
+  supabaseClient.from('profiles').update({ setup_dismissed_at: now }).eq('id', state.profile.id)
+    .then(({ error }) => { if(!error) saveLastKnownContext(); });
+};
+// U9: the ongoing reminder -- separate from the one-time setup landing
+// above, and derived live (never a stored flag) from whether uniform #,
+// throws and pitch mix are ALL set yet. Dismissible per session only
+// (state.setupReminderDismissed is never persisted, so it resets on
+// reload) -- "persists until it's done" means the underlying incompleteness
+// persists, not that the banner can never be closed for now. Verification
+// wins if both would apply (U9 acceptance 7) -- checked by the caller,
+// not here, so this function only ever needs to answer "is setup itself
+// incomplete."
+function setupIncomplete(p){
+  const uniformOk = state.teams.length > 0 && state.teams.every(t => t.uniform_number !== null && t.uniform_number !== undefined);
+  return !uniformOk || !p.throws || !(p.pitchTypes && p.pitchTypes.length);
+}
+function renderSetupReminderBanner(){
+  if(isCoach() || state.view === 'setup' || state.setupReminderDismissed) return '';
+  const p = currentPitcher();
+  if(!p || !setupIncomplete(p)) return '';
+  return `<div class="verify-banner">
+    <p>Finish setting up your profile (uniform #, throw side, pitch mix) so charting works well for you.</p>
+    <div class="verify-banner-actions">
+      <button class="btn btn-ghost" onclick="setView('setup')">Finish setup</button>
+      <button class="btn btn-ghost" onclick="dismissSetupReminderForSession()">Dismiss</button>
+    </div>
+  </div>`;
+}
+window.dismissSetupReminderForSession = function(){
+  state.setupReminderDismissed = true;
+  render();
+};
 
 /* ---------- EMAIL REPORT ---------- */
 // Shared by sendSessionReport and viewSessionReport -- both hit the same
@@ -3801,9 +4049,13 @@ function render(){
   const p = currentPitcher();
   let main;
   if(!p){
+    // U9: 'pitcherProfile' with no pitcher selected has its own message
+    // ("Select a pitcher to see his profile," not this generic one) --
+    // renderPitcherProfileView() already handles p === null itself.
     main = renderTabs() + (state.view === 'profile'
       ? renderProfileView()
       : state.view === 'leaderboard' ? renderLeaderboardView()
+      : state.view === 'pitcherProfile' ? renderPitcherProfileView()
       : `<div class="empty-state"><div class="display">No pitcher selected</div><p>Invite a pitcher to this team to get started.</p></div>`);
   } else {
     const arsenalChips = p.pitchTypes.map(t => {
@@ -3848,6 +4100,11 @@ function render(){
         </div>
       </div>` : '';
 
+    // U9 acceptance 7: verification wins if both would apply -- a stacked
+    // wall of banners is worse than picking one, and an unverified email
+    // is the more urgent of the two.
+    const setupReminderBanner = verifyBanner ? '' : renderSetupReminderBanner();
+
     const headerHtml = `
       <div class="pitcher-header">
         <div>
@@ -3864,12 +4121,14 @@ function render(){
 
     main = `
       ${verifyBanner}
-      ${(state.view === 'profile' || state.view === 'leaderboard') ? '' : headerHtml}
+      ${setupReminderBanner}
+      ${(state.view === 'profile' || state.view === 'leaderboard' || state.view === 'setup') ? '' : headerHtml}
       ${tabs}
       ${state.view === 'session' ? renderSessionView()
         : state.view === 'profile' ? renderProfileView()
         : state.view === 'leaderboard' ? renderLeaderboardView()
         : state.view === 'pitcherProfile' ? renderPitcherProfileView()
+        : state.view === 'setup' ? renderSetupView()
         : renderHistoryView()}
     `;
   }

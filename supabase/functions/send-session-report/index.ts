@@ -44,7 +44,11 @@ function randomReportToken(): string {
 }
 
 interface ReportRequestBody extends Omit<ReportPayload, 'pitches' | 'history'> {
-  emails: string[]
+  // Empty/omitted means "generate (or fetch) the report and hand back its
+  // URL, but don't email anyone" -- the View-report-before-ever-sending
+  // path. Generation and eligibility are unaffected either way; only the
+  // Resend call at the end is conditional on this being non-empty.
+  emails?: string[]
   sessionId: string
   pitches: Pitch[]
   history: HistoryEntry[]
@@ -80,12 +84,13 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: corsHeaders })
   }
 
-  const { emails, sessionId, pitcherId, pitcherName, pitches } = body
-  if (!emails?.length || !sessionId || !pitcherId || !pitcherName || !Array.isArray(pitches)) {
-    return new Response(JSON.stringify({ error: 'emails, sessionId, pitcherId, pitcherName, and pitches are required' }), { status: 400, headers: corsHeaders })
+  const { sessionId, pitcherId, pitcherName, pitches } = body
+  const emails = body.emails ?? []
+  if (!sessionId || !pitcherId || !pitcherName || !Array.isArray(pitches)) {
+    return new Response(JSON.stringify({ error: 'sessionId, pitcherId, pitcherName, and pitches are required' }), { status: 400, headers: corsHeaders })
   }
   if (!Array.isArray(emails) || emails.length > MAX_RECIPIENTS || !emails.every((e) => typeof e === 'string' && EMAIL_RE.test(e))) {
-    return new Response(JSON.stringify({ error: `emails must be an array of up to ${MAX_RECIPIENTS} valid addresses` }), { status: 400, headers: corsHeaders })
+    return new Response(JSON.stringify({ error: `emails must be an array of up to ${MAX_RECIPIENTS} valid addresses (or omitted/empty to generate without sending)` }), { status: 400, headers: corsHeaders })
   }
 
   // R0 item (g), extended in U4b Phase 2: nobody receives a report for a
@@ -187,33 +192,39 @@ Deno.serve(async (req) => {
 
   const reportUrl = `${REPORT_SITE_ORIGIN}/report.html?r=${reportPath}`
 
-  const resendApiKey = Deno.env.get('RESEND_API_KEY')
-  const fromEmail = Deno.env.get('REPORT_FROM_EMAIL')
-  if (!resendApiKey || !fromEmail) {
-    return new Response(JSON.stringify({ error: 'Server email config missing' }), { status: 500, headers: corsHeaders })
-  }
+  // Generation (above) and eligibility already happened unconditionally --
+  // an empty/omitted emails array means "View report" before ever sending:
+  // hand back the URL, skip Resend entirely.
+  if (emails.length) {
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')
+    const fromEmail = Deno.env.get('REPORT_FROM_EMAIL')
+    if (!resendApiKey || !fromEmail) {
+      return new Response(JSON.stringify({ error: 'Server email config missing' }), { status: 500, headers: corsHeaders })
+    }
 
-  const dateStr = body.date ? new Date(body.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
-  const resendRes = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: fromEmail,
-      to: emails,
-      subject: `Bullpen Session Report — ${pitcherName}${dateStr ? ' — ' + dateStr : ''}`,
-      html: `<p>The bullpen session report for ${escapeHtml(pitcherName)}${dateStr ? ' (' + escapeHtml(dateStr) + ')' : ''} is ready.</p>` +
-        `<p><a href="${reportUrl}">View the report</a></p>` +
-        `<p style="color:#7C8C82;font-size:12px">This link works for anyone it's shared with -- there's no login required to view it.</p>`
+    const dateStr = body.date ? new Date(body.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+    const resendRes = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: emails,
+        subject: `Bullpen Session Report — ${pitcherName}${dateStr ? ' — ' + dateStr : ''}`,
+        html: `<p>The bullpen session report for ${escapeHtml(pitcherName)}${dateStr ? ' (' + escapeHtml(dateStr) + ')' : ''} is ready.</p>` +
+          `<p><a href="${reportUrl}">View the report</a></p>` +
+          `<p style="color:#7C8C82;font-size:12px">This link works for anyone it's shared with -- there's no login required to view it.</p>`
+      })
     })
-  })
 
-  if (!resendRes.ok) {
-    const errText = await resendRes.text()
-    return new Response(JSON.stringify({ error: 'Resend send failed: ' + errText }), { status: 502, headers: corsHeaders })
+    if (!resendRes.ok) {
+      const errText = await resendRes.text()
+      return new Response(JSON.stringify({ error: 'Resend send failed: ' + errText }), { status: 502, headers: corsHeaders })
+    }
   }
 
   // reportPath included alongside reportUrl so the client can update its
   // own local session state (for the "View report" link) without having
-  // to parse a URL or re-fetch the session.
-  return new Response(JSON.stringify({ ok: true, reportUrl, reportPath }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  // to parse a URL or re-fetch the session. emailed tells the caller
+  // whether Resend was actually invoked, for status-message wording.
+  return new Response(JSON.stringify({ ok: true, reportUrl, reportPath, emailed: emails.length > 0 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 })

@@ -3052,7 +3052,13 @@ function renderHistoryView(){
       ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean)
       : [];
     const rs = state.reportStatus && state.reportStatus.sessionId === s.id ? state.reportStatus : null;
-    const viewLink = s.reportPath ? `<a class="btn btn-ghost" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>` : '';
+    // U4b follow-up: viewing doesn't need any contact emails set (only
+    // sending does) -- once a report exists it's a plain link; before that,
+    // it's a button that generates one (gated on the same eligibility as
+    // sending, since generating is the same server call either way).
+    const viewControl = s.reportPath
+      ? `<a class="btn btn-ghost" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>`
+      : (pEligible ? `<button class="btn btn-ghost" onclick="viewSessionReport('${s.id}')">View report</button>` : '');
     const reportPanel = s.pending ? `
       <div class="report-panel">
         <div class="field-label">Email this report</div>
@@ -3068,7 +3074,7 @@ function renderHistoryView(){
             : `<p class="report-recipients">No contact emails set for ${escHtml(p.name)} yet${isCoach() ? '' : ' — add them under Contacts above'}.</p>`}
         <div class="report-actions">
           <button class="btn btn-primary" ${emailList.length ? '' : 'disabled'} onclick="sendSessionReport('${s.id}')">Send report</button>
-          ${viewLink}
+          ${viewControl}
         </div>
         ${rs ? `<p class="report-status report-status-${rs.status}">${rs.message}</p>` : ''}
       </div>`;
@@ -3532,6 +3538,74 @@ function renderPitcherProfileView(){
 }
 
 /* ---------- EMAIL REPORT ---------- */
+// Shared by sendSessionReport and viewSessionReport -- both hit the same
+// endpoint with the same session payload, differing only in whether
+// `emails` is non-empty. Kept as ONE function so the two call sites can't
+// drift (the U6-nulling / history-shape rules only need stating once).
+function buildReportPayload(session, p){
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+
+  // U4b: the renderer computes everything itself from raw pitches -- no
+  // more precomputed stats/per-type history. isDefaultVeloReading is
+  // applied here, once, client-side, exactly as U6 designed: the renderer
+  // trusts velo as given and never carries its own copy of the cutoff.
+  const pitchesForReport = session.pitches.map(pt =>
+    isDefaultVeloReading(pt) ? { ...pt, velo: null } : pt
+  );
+
+  // Prior sessions only (never the one being reported) -- matches the
+  // renderer's own "3+ PRIOR sessions or omit" trend rule. Just the
+  // per-session aggregates the Trends section actually reads, not the old
+  // per-type breakdown the PDF's trend charts used.
+  const history = state.sessions
+    .filter(s => s.id !== session.id)
+    .slice().sort((a,b) => a.date - b.date)
+    .map(s => {
+      const sStats = sessionStats(s.pitches);
+      return {
+        date: s.date,
+        dateLabel: new Date(s.date).toLocaleDateString(undefined, { month:'numeric', day:'numeric' }),
+        total: sStats.total,
+        strikePct: sStats.strikePct,
+        commandPct: sStats.hasZone ? sStats.zoneAccuracyPct : sStats.accuracyPct,
+        hasVelo: sStats.hasVelo,
+        avgVelo: sStats.avgVelo
+      };
+    });
+
+  return {
+    sessionId: session.id,
+    pitcherId: p.id,
+    pitcherName: p.name,
+    // A pitcher viewing their own profile never gets uniformNumber from
+    // mapProfile() (always null there) -- it lives on their OWN team
+    // membership row instead (state.teams[].uniform_number). A coach's
+    // roster-sourced p.uniformNumber already has the real value.
+    uniformNumber: (p.uniformNumber != null) ? p.uniformNumber : (team && team.uniform_number != null ? team.uniform_number : null),
+    date: session.date,
+    teamName: team ? team.name : '',
+    chartingPerspective: session.chartingPerspective,
+    loggedByCoach: session.loggedByCoach,
+    pitchTypes: p.pitchTypes,
+    pitches: pitchesForReport,
+    history
+  };
+}
+
+async function callSendReportFunction(payload){
+  if(typeof SEND_REPORT_URL === 'undefined' || SEND_REPORT_URL.indexOf('YOUR_') === 0){
+    throw new Error('not configured');
+  }
+  const res = await fetch(SEND_REPORT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token },
+    body: JSON.stringify(payload)
+  });
+  const body = await res.json().catch(() => ({}));
+  if(!res.ok) throw new Error(body.error || ('server responded ' + res.status));
+  return body;
+}
+
 window.sendSessionReport = async function(sessionId){
   const p = currentPitcher();
   const session = state.sessions.find(s => s.id === sessionId);
@@ -3552,69 +3626,38 @@ window.sendSessionReport = async function(sessionId){
 
   state.reportStatus = { sessionId, status: 'sending', message: 'Sending…' };
   render();
-
-  const team = state.teams.find(t => t.id === state.currentTeamId);
-
-  // U4b: the renderer computes everything itself from raw pitches -- no
-  // more precomputed stats/per-type history. isDefaultVeloReading is
-  // applied here, once, client-side, exactly as U6 designed: the renderer
-  // trusts velo as given and never carries its own copy of the cutoff.
-  const pitchesForReport = session.pitches.map(pt =>
-    isDefaultVeloReading(pt) ? { ...pt, velo: null } : pt
-  );
-
-  // Prior sessions only (never the one being reported) -- matches the
-  // renderer's own "3+ PRIOR sessions or omit" trend rule. Just the
-  // per-session aggregates the Trends section actually reads, not the old
-  // per-type breakdown the PDF's trend charts used.
-  const history = state.sessions
-    .filter(s => s.id !== sessionId)
-    .slice().sort((a,b) => a.date - b.date)
-    .map(s => {
-      const sStats = sessionStats(s.pitches);
-      return {
-        date: s.date,
-        dateLabel: new Date(s.date).toLocaleDateString(undefined, { month:'numeric', day:'numeric' }),
-        total: sStats.total,
-        strikePct: sStats.strikePct,
-        commandPct: sStats.hasZone ? sStats.zoneAccuracyPct : sStats.accuracyPct,
-        hasVelo: sStats.hasVelo,
-        avgVelo: sStats.avgVelo
-      };
-    });
-
   try{
-    if(typeof SEND_REPORT_URL === 'undefined' || SEND_REPORT_URL.indexOf('YOUR_') === 0){
-      throw new Error('not configured');
-    }
-    const res = await fetch(SEND_REPORT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token },
-      body: JSON.stringify({
-        emails,
-        sessionId,
-        pitcherId: p.id,
-        pitcherName: p.name,
-        // A pitcher viewing their own profile never gets uniformNumber from
-        // mapProfile() (always null there) -- it lives on their OWN team
-        // membership row instead (state.teams[].uniform_number). A coach's
-        // roster-sourced p.uniformNumber already has the real value.
-        uniformNumber: (p.uniformNumber != null) ? p.uniformNumber : (team && team.uniform_number != null ? team.uniform_number : null),
-        date: session.date,
-        teamName: team ? team.name : '',
-        chartingPerspective: session.chartingPerspective,
-        loggedByCoach: session.loggedByCoach,
-        pitchTypes: p.pitchTypes,
-        pitches: pitchesForReport,
-        history
-      })
-    });
-    const body = await res.json().catch(() => ({}));
-    if(!res.ok) throw new Error(body.error || ('server responded ' + res.status));
+    const body = await callSendReportFunction(Object.assign({ emails }, buildReportPayload(session, p)));
     if(body.reportPath) session.reportPath = body.reportPath;
     state.reportStatus = { sessionId, status: 'sent', message: 'Report sent to ' + emails.length + ' recipient(s).' };
   } catch(err){
     state.reportStatus = { sessionId, status: 'error', message: err.message || 'Could not send — email backend may not be deployed yet. See SETUP.md.' };
+  }
+  render();
+};
+
+// U4b follow-up (Joel, Sept 2026): "View report" shouldn't require sending
+// an email first -- generation and sending were always two separate steps
+// server-side, just never split at the API level until now. This calls the
+// SAME function with an empty emails array (generate/store, skip Resend
+// entirely -- see index.ts), then the panel's own re-render turns this
+// same control into the real report.html link once session.reportPath is
+// set. No popup-blocker games (opening a tab after an await is unreliable
+// on iOS Safari) -- one extra click on first view is a fine trade for that.
+window.viewSessionReport = async function(sessionId){
+  const session = state.sessions.find(s => s.id === sessionId);
+  if(!session || session.reportPath) return; // already rendered as a real link -- nothing to do
+  const p = currentPitcher();
+  if(!p) return;
+
+  state.reportStatus = { sessionId, status: 'sending', message: 'Generating report…' };
+  render();
+  try{
+    const body = await callSendReportFunction(Object.assign({ emails: [] }, buildReportPayload(session, p)));
+    if(body.reportPath) session.reportPath = body.reportPath;
+    state.reportStatus = null;
+  } catch(err){
+    state.reportStatus = { sessionId, status: 'error', message: err.message || 'Could not generate report.' };
   }
   render();
 };

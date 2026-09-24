@@ -3255,7 +3255,12 @@ window.recordGameResult = async function(result, extra){
   state.gamePendingOutcome = null;
   state.gamePendingHitType = null;
   // Same post-hoc velocity pattern as a bullpen's tap 2: the strip lights
-  // up for the pitch just recorded until the next one starts.
+  // up for the pitch just recorded until the next one starts. The G1
+  // packet's own step order put velocity before result (4, then 5) --
+  // built the other way around instead, and Joel confirmed after review
+  // that's actually right: in real charting he's asking "what was that"
+  // after the play resolves nine times out of ten, not off the gun in the
+  // moment. Recorded here since it overrides the packet's literal order.
   state.veloTargetIdx = s.pitches.length - 1;
   await storSet(draftKey(), s);
   render();

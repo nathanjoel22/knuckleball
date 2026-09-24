@@ -2060,14 +2060,27 @@ window.submitChangeEmail = async function(){
     render();
     return;
   }
-  // R0 follow-up: safe to fire our own verification email right away only
-  // because staging has "Secure email change" off, so updateUser() above
-  // already applied auth.users.email synchronously -- with that setting
-  // on, this would fire to the address being REPLACED, not the new one
-  // (confirmed empirically during the staging walkthrough; see the
-  // migration that added the email_verified_at reset to
-  // generate_email_verify_token for the full account of that failure
-  // mode). Never re-enable that setting without revisiting this.
+  // Change Email's own explicit invalidation step (not a side effect
+  // generate_email_verify_token applies to every caller anymore -- that
+  // version silently un-verified two real pitchers who'd just legitimately
+  // verified and then hit a stale Resend button on an already-open tab;
+  // see 20260925040000). Not swallowed on failure: if this doesn't
+  // succeed, the account would keep showing verified for an address
+  // nobody has confirmed, which is the exact bug being fixed here -- so a
+  // failure here is reported the same way a failed updateUser() is,
+  // rather than pressing on to send a verification email regardless.
+  const { error: invalidateErr } = await supabaseClient.rpc('invalidate_my_email_verification');
+  if(invalidateErr){
+    state.changeEmailStatus = 'error:Your email changed, but we could not clear the old verification. Please try again or contact support.';
+    render();
+    return;
+  }
+  // Safe to fire our own verification email right away only because
+  // staging has "Secure email change" off, so updateUser() above already
+  // applied auth.users.email synchronously -- with that setting on, this
+  // would fire to the address being REPLACED, not the new one (confirmed
+  // empirically during the staging walkthrough). Never re-enable that
+  // setting without revisiting this.
   try{
     if(typeof VERIFY_EMAIL_URL !== 'undefined' && VERIFY_EMAIL_URL.indexOf('YOUR_') !== 0){
       await fetch(VERIFY_EMAIL_URL, {
@@ -2079,7 +2092,7 @@ window.submitChangeEmail = async function(){
   state.changeEmailStatus = 'sent';
   // Reflect the change immediately rather than waiting for the next
   // background reconcile -- the banner should show the new (unverified)
-  // address right away, matching what generate_email_verify_token just did.
+  // address right away, matching invalidate_my_email_verification just did.
   state.myVerification = { email, emailConfirmed: false };
   render();
 };

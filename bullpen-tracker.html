@@ -378,6 +378,43 @@
      column) means they always stack full-width, matching what iPhone
      already did by accident of running out of room. */
   .session-grid-layout{ display:flex; flex-direction:column; gap:32px; }
+  /* G1: the Bullpen/Live Game chooser. "Bigger than Gmail's Compose
+     button" (Joel) -- 64px+ tall tap targets, full width stacked on
+     phone, side by side on iPad (matches the existing >=861px breakpoint
+     used elsewhere in this file for phone-vs-tablet layout calls). */
+  .kind-chooser{ display:flex; flex-direction:column; align-items:center; padding:48px 16px; }
+  .kind-chooser-buttons{ display:flex; flex-direction:column; gap:16px; width:100%; max-width:520px; }
+  .kind-choice-btn{
+    min-height:72px; border-radius:12px; border:none; background:#3D7A57;
+    color:#fff; font-family:'Teko',sans-serif; font-size:28px; font-weight:600;
+    letter-spacing:0.02em; box-shadow:0 2px 6px rgba(15,36,27,0.15);
+  }
+  .kind-choice-btn:hover{ background:#2E6345; }
+  .kind-choice-btn:active{ background:#245036; }
+  @media (min-width:861px){ .kind-chooser-buttons{ flex-direction:row; } }
+  /* G1: the profile-setup modal. This file has no other modal/dialog
+     pattern (see renderPerspectiveToggle's own comment) -- one is
+     introduced here rather than reused from anywhere else. Scrollable on
+     phone (max-height + overflow-y), safe-area aware so it never sits
+     under a notch/home-indicator. */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(15,36,27,0.55);
+    display:flex; align-items:center; justify-content:center;
+    padding:24px 16px; z-index:1000;
+    padding-top:calc(24px + env(safe-area-inset-top, 0px));
+    padding-bottom:calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+  .modal-panel{
+    position:relative; background:var(--card-bg); border-radius:14px;
+    max-width:560px; width:100%; max-height:100%; overflow-y:auto;
+    padding:32px 24px 24px; box-shadow:0 8px 32px rgba(15,36,27,0.35);
+  }
+  .modal-close-x{
+    position:absolute; top:10px; right:10px; width:32px; height:32px;
+    border-radius:50%; border:none; background:transparent; color:var(--ink-faint);
+    font-size:18px; cursor:pointer; line-height:1;
+  }
+  .modal-close-x:hover{ background:rgba(15,36,27,0.08); }
   .panel{ background:var(--card-bg); border:1px solid var(--border); border-radius:10px; padding:22px; box-shadow:0 1px 3px rgba(15,36,27,0.06); }
   .controls-panel{ display:flex; flex-direction:column; gap:18px; min-width:260px; flex:1; }
   .chip-row{ display:flex; flex-wrap:wrap; gap:10px; }
@@ -903,7 +940,31 @@ let state = {
   veloScrollLeft: 0,
   flashCell: null,
   pendingTarget: null,
+  // G1: game-mode equivalents of pendingTarget/veloTargetIdx above -- same
+  // "not part of the saved draft" precedent (an uncommitted tap is an
+  // acceptable small loss if the app dies mid-tap, same as a bullpen's
+  // pending target today). gamePendingPitch holds {row,col,velo} for a
+  // pitch whose location (and optionally velocity) is set but has no
+  // RESULT yet -- never pushed into activeSession.pitches until one is
+  // chosen (a game pitch is never recorded without a result).
+  gamePendingPitch: null,
+  // Which result sub-menu is open: null (the main Ball/Strike/Foul/In
+  // Play/More row) | 'inPlay' (Hit/Out/Error) | 'hitType' (1B/2B/3B/HR)
+  // | 'position' (fielder) | 'more' (the rare endings).
+  gameResultMenu: null,
+  gamePendingOutcome: null,  // 'hit' | 'out' | 'error', while drilling into In Play
+  gamePendingHitType: null,  // '1B'|'2B'|'3B'|'HR', while drilling into a Hit
   expandedSessionId: null,
+  // G1: which kind of session History shows -- 'all' | 'bullpen' | 'game'.
+  // Purely a display filter; never affects what's loaded or synced.
+  historyFilter: 'all',
+  // G1: the profile-setup modal's own visibility, separate from
+  // state.view -- it now overlays whatever view is underneath rather
+  // than replacing it (see finishInit's comment on where this gets set
+  // true, and renderSetupModal). Never persisted: "not shown again that
+  // session" falls out naturally from init() only ever setting this once
+  // per page load.
+  showSetupModal: false,
   hint: '',
   draftAvailable: false,
   pendingDraft: null,
@@ -1364,8 +1425,13 @@ async function loadFullContextOnline(alreadyPainted){
   // has already populated draftAvailable by this point, so a pitcher
   // reloading mid-charting resumes their draft exactly as before instead
   // of landing here.
+  // G1: was `state.view = 'setup'` (a full page, replacing whatever the
+  // pitcher would otherwise land on). Now an overlay instead -- the
+  // Bullpen/Live Game chooser needs to be reachable underneath it on a
+  // brand-new pitcher's very first New Session too, which a full-page
+  // takeover would have blocked.
   if(!isCoach() && state.profile && !state.profile.setup_dismissed_at && !state.draftAvailable){
-    state.view = 'setup';
+    state.showSetupModal = true;
   }
 
   state.setupNeeded = null;
@@ -2072,8 +2138,12 @@ async function freshActiveSession(){
   // not-yet-started session always tracks the current live toggle
   // (sessionUsesRadarGun() ignores this field until pitches.length > 0);
   // it only gets written once, in handleZoneTap, at the actual moment the
-  // first pitch lands.
-  return { pitches: [], startedAt: Date.now(), chartingPerspective: lastPerspective || 'behind_catcher', currentBatterSide: 'R' };
+  // first pitch lands. G1: kind starts null -- the chooser (New Session,
+  // not Resume) is what sets it; renderSessionView() shows the chooser
+  // instead of any charting UI whenever it's still null. The game-only
+  // counters are set by chooseSessionKind() once 'game' is actually
+  // picked, not here, so a bullpen session never carries them at all.
+  return { kind: null, pitches: [], startedAt: Date.now(), chartingPerspective: lastPerspective || 'behind_catcher', currentBatterSide: 'R' };
 }
 async function refreshDraftState(){
   if(!state.currentPitcherId){ state.draftAvailable = false; state.activeSession = null; return; }
@@ -2092,14 +2162,25 @@ async function refreshDraftState(){
   state.veloTargetIdx = null;
   state.flashCell = null;
   state.editDraftRow = null;
+  state.gamePendingPitch = null;
+  state.gameResultMenu = null;
+  state.gamePendingOutcome = null;
+  state.gamePendingHitType = null;
 }
 window.resumeDraft = function(){
   state.activeSession = state.pendingDraft;
-  // Defensive: a draft persisted before U5/U2a/U9 shipped won't carry these
-  // fields.
+  // Defensive: a draft persisted before U5/U2a/U9/G1 shipped won't carry
+  // these fields. A pre-G1 draft has no `kind` at all -- it can only be a
+  // bullpen (the chooser didn't exist yet), so default it rather than
+  // leaving it null (which would show the chooser mid-resume).
   state.activeSession.chartingPerspective = sessionPerspective(state.activeSession);
   state.activeSession.currentBatterSide = sessionBatterSide(state.activeSession);
   state.activeSession.usesRadarGun = sessionUsesRadarGun(state.activeSession);
+  if(!state.activeSession.kind) state.activeSession.kind = 'bullpen';
+  state.gamePendingPitch = null;
+  state.gameResultMenu = null;
+  state.gamePendingOutcome = null;
+  state.gamePendingHitType = null;
   state.draftAvailable = false;
   render();
 };
@@ -2225,8 +2306,12 @@ function veloCenterFor(type){
 }
 function veloStripActive(){
   const pitches = state.activeSession && state.activeSession.pitches;
+  // G1: gamePendingPitch is the game-mode equivalent of pendingTarget here
+  // -- a pitch mid-capture (location tapped, result not chosen yet) has
+  // nothing at veloTargetIdx to attach a reading to, same reasoning as
+  // pendingTarget for a bullpen's tap 1.
   return state.veloTargetIdx !== null && !!pitches && !!pitches[state.veloTargetIdx]
-    && !state.pendingTarget && state.editDraftRow === null;
+    && !state.pendingTarget && !state.gamePendingPitch && state.editDraftRow === null;
 }
 window.recordVelo = async function(v){
   if(!veloStripActive()) return;
@@ -2427,6 +2512,11 @@ window.endSession = async function(){
     startedAt: state.activeSession.startedAt,
     endedAt: Date.now(),
     pitches: state.activeSession.pitches,
+    // G1: 'bullpen' | 'game', locked at the chooser -- see freshActiveSession
+    // and chooseSessionKind. Defensive fallback for a pre-G1 in-flight
+    // draft that somehow reached here (resumeDraft already defaults this,
+    // but endSession has its own callers to be safe for).
+    kind: state.activeSession.kind || 'bullpen',
     chartingPerspective: sessionPerspective(state.activeSession),
     queuedAt: Date.now(),
     lastError: null,
@@ -2442,6 +2532,10 @@ window.endSession = async function(){
   state.pendingTarget = null;
   state.veloTargetIdx = null;
   state.editDraftRow = null;
+  state.gamePendingPitch = null;
+  state.gameResultMenu = null;
+  state.gamePendingOutcome = null;
+  state.gamePendingHitType = null;
   state.saving = false;
   await refreshOutboxState();
   state.view = 'history';
@@ -2533,6 +2627,11 @@ function pendingSessionsForCurrentSelection(){
       date: item.endedAt,
       loggedByCoach: item.loggedBy !== item.pitcherId,
       pitches: item.pitches,
+      // G1: a queued-but-not-yet-synced item still needs to render as its
+      // own kind of card in History before it's ever reached the server --
+      // same defensive fallback as the synced-row mapper in
+      // loadSessionsForCurrentSelection.
+      kind: item.kind || 'bullpen',
       pending: true,
       lastError: item.lastError
     }));
@@ -2586,7 +2685,10 @@ async function syncOutbox(){
       ended_at: new Date(item.endedAt).toISOString(),
       // Defensive fallback: an outbox item queued before U5 shipped won't
       // carry this field.
-      charting_perspective: item.chartingPerspective || 'behind_catcher'
+      charting_perspective: item.chartingPerspective || 'behind_catcher',
+      // G1: defensive fallback for an item queued before this shipped --
+      // every such item is, definitionally, a bullpen.
+      kind: item.kind || 'bullpen'
     };
     const pitchRows = item.pitches.map(p => ({
       id: p.id,
@@ -2600,7 +2702,21 @@ async function syncOutbox(){
       // null for a pitch queued before this shipped, same defensive
       // fallback pattern as charting_perspective above.
       batter_side: p.batterSide || null,
-      ts: new Date(p.ts).toISOString()
+      ts: new Date(p.ts).toISOString(),
+      // G1: denormalized from the session (see the migration's comment on
+      // pitches.kind) -- every pitch in one item shares its session's
+      // kind, never mixed.
+      kind: item.kind || 'bullpen',
+      result: p.result || null,
+      in_play_outcome: p.inPlayOutcome || null,
+      hit_type: p.hitType || null,
+      fielder: p.fielder || null,
+      delivery: p.delivery || null,
+      inning: (p.inning === undefined) ? null : p.inning,
+      outs_before: (p.outsBefore === undefined) ? null : p.outsBefore,
+      balls_before: (p.ballsBefore === undefined) ? null : p.ballsBefore,
+      strikes_before: (p.strikesBefore === undefined) ? null : p.strikesBefore,
+      at_bat_index: (p.atBatIndex === undefined) ? null : p.atBatIndex
     }));
     try{
       const { error: sessErr } = await supabaseClient.from('sessions').upsert(sessionRow, { onConflict: 'id' });
@@ -2629,7 +2745,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by_role, pitch_count, charting_perspective, report_path, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts)')
+    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by_role, pitch_count, charting_perspective, report_path, kind, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index)')
     .eq('pitcher_id', pitcherId)
     .eq('team_id', teamId)
     .order('started_at', { ascending: false });
@@ -2650,6 +2766,9 @@ async function loadSessionsForCurrentSelection(){
     // resend. Non-null means "View report" can open it directly, no email
     // round-trip required.
     reportPath: s.report_path || null,
+    // G1: defensive fallback for a row that predates this column --
+    // every such row is, definitionally, a bullpen.
+    kind: s.kind || 'bullpen',
     pitches: (s.pitches || []).map(p => ({
       type: p.type, velo: p.velo,
       targetRow: p.target_row, targetCol: p.target_col,
@@ -2662,7 +2781,19 @@ async function loadSessionsForCurrentSelection(){
       // when this is absent, so legacy sessions keep reporting exactly as
       // they did before this shipped.
       batterSide: p.batter_side || null,
-      ts: new Date(p.ts).getTime()
+      ts: new Date(p.ts).getTime(),
+      // G1: meaningful only on a game pitch (null on every bullpen pitch,
+      // per the migration's shape constraint).
+      result: p.result || null,
+      inPlayOutcome: p.in_play_outcome || null,
+      hitType: p.hit_type || null,
+      fielder: p.fielder || null,
+      delivery: p.delivery || null,
+      inning: p.inning === null || p.inning === undefined ? null : p.inning,
+      outsBefore: p.outs_before === null || p.outs_before === undefined ? null : p.outs_before,
+      ballsBefore: p.balls_before === null || p.balls_before === undefined ? null : p.balls_before,
+      strikesBefore: p.strikes_before === null || p.strikes_before === undefined ? null : p.strikes_before,
+      atBatIndex: p.at_bat_index === null || p.at_bat_index === undefined ? null : p.at_bat_index
     }))
   }));
   // P1-15: soft-deleted sessions never enter state.sessions, so every existing
@@ -2754,13 +2885,21 @@ function heatColor(intensity){
 }
 
 /* ---------- RENDER: ZONE GRID ---------- */
-function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPerspective, batterSide){
+function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPerspective, batterSide, tapFnName){
+  tapFnName = tapFnName || 'handleZoneTap';
+  // G1: a game pitch has no target, so the U7B "relative accuracy zone"
+  // glow -- which shows where THIS pitch type's target zone is -- is a
+  // bullpen-only concept. Any tap handler other than the default one is,
+  // today, the game-mode handler; skip the glow computation for it rather
+  // than adding a second boolean the two call sites would have to keep in
+  // sync with tapFnName themselves.
+  const isBullpenTap = tapFnName === 'handleZoneTap';
   let cells = '';
   if(clickable){
     // U7B: on tap 1, light the pitcher's zone for (this pitch type, current batter side).
     // Zones are stored in catcher frame; the grid is drawn in the charter's screen frame.
     const gp = currentPitcher();
-    const zoneNow = (pendingTarget && state.selectedType && gp && gp.relativeAccuracy)
+    const zoneNow = (isBullpenTap && pendingTarget && state.selectedType && gp && gp.relativeAccuracy)
       ? zoneCellsFor(state.currentPitcherId, state.selectedType, batterSide) : null;
     const glowCells = zoneNow
       ? new Set(zoneNow.map(k => { const [zr, zc] = k.split('-').map(Number); return zr + '-' + perspectiveCol(zc, chartingPerspective); }))
@@ -2786,7 +2925,7 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
           cls += flashCell.strike ? ' zone-cell-flash flash-strike' : ' zone-cell-flash flash-ball';
           inner += `<span class="flash-letter">${flashCell.strike ? 'K' : 'B'}</span>`;
         }
-        cells += `<div class="${cls}" onclick="handleZoneTap(${row},${col})">${inner}</div>`;
+        cells += `<div class="${cls}" onclick="${tapFnName}(${row},${col})">${inner}</div>`;
       }
     }
   } else {
@@ -2902,6 +3041,447 @@ function renderBatterSilhouette(batterSide, onScreenLeft, onclickJs = 'toggleBat
   </button>`;
 }
 
+// G1: the mode chooser. A bullpen measures intent -> outcome (target vs
+// actual); a game can't know intent, so it measures outcome -> result
+// (where it landed, what happened) -- different enough measurements that
+// mixing them corrupts both, hence asking up front rather than inferring.
+function renderSessionKindChooser(){
+  return `<div class="kind-chooser">
+    <h2 class="display" style="margin:0 0 20px;text-align:center;">What will we be charting today?</h2>
+    <div class="kind-chooser-buttons">
+      <button class="kind-choice-btn" onclick="chooseSessionKind('bullpen')">Bullpen</button>
+      <button class="kind-choice-btn" onclick="chooseSessionKind('game')">Live Game</button>
+    </div>
+  </div>`;
+}
+window.chooseSessionKind = async function(kind){
+  state.activeSession.kind = kind;
+  if(kind === 'game'){
+    // Fresh game state. delivery starts null -- acceptance check 3 wants
+    // the FIRST pitch to actually require an answer, not silently default.
+    state.activeSession.inning = 1;
+    state.activeSession.outs = 0;
+    state.activeSession.balls = 0;
+    state.activeSession.strikes = 0;
+    state.activeSession.atBatIndex = 1;
+    state.activeSession.delivery = null;
+    // Games are usually charted from behind the plate (Joel) -- override
+    // whatever the last BULLPEN charted from, since that's a different
+    // remembered habit. Still just the default; the toggle still shows
+    // and can be changed before the first pitch, same as a bullpen's.
+    state.activeSession.chartingPerspective = 'behind_catcher';
+  }
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+
+/* ---------- LIVE GAME CHARTING (G1) ----------
+   A game pitch is captured in two steps, same shape as a bullpen's two
+   taps but different content: tap the zone (WHERE it landed -- there is
+   no "aim" step, a game has no target), then choose a RESULT (WHAT
+   happened). Nothing is pushed into activeSession.pitches until a result
+   is chosen -- gamePendingPitch holds the in-between {row,col}, same
+   "acceptable small loss on a crash" precedent as pendingTarget/
+   veloTargetIdx above. Once pushed, velocity is attached post-hoc through
+   the SAME renderVeloStrip()/recordVelo() a bullpen uses (veloTargetIdx
+   points at the just-pushed pitch either way) -- no separate velocity
+   mechanism needed. */
+window.handleGameZoneTap = function(row, col){
+  if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
+  if(!state.activeSession.delivery){ state.hint = 'Set or windup first'; render(); return; }
+  state.hint = '';
+  // A re-tap (whether idle or mid-result-menu) starts this pitch's capture
+  // over -- simplest correction path for a mis-tapped location, same
+  // "just tap again" precedent as a bullpen's tap 1 always overwriting a
+  // stale pendingTarget.
+  state.gamePendingPitch = { row, col };
+  state.gameResultMenu = null;
+  state.gamePendingOutcome = null;
+  state.gamePendingHitType = null;
+  state.veloTargetIdx = null;
+  render();
+};
+window.resetGamePendingPitch = function(){
+  state.gamePendingPitch = null;
+  state.gameResultMenu = null;
+  state.gamePendingOutcome = null;
+  state.gamePendingHitType = null;
+  render();
+};
+window.setGameDelivery = async function(d){
+  state.activeSession.delivery = d;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// Opens a sub-menu fresh (from the main Result row) -- clears any outcome/
+// hit-type picked on a previous, abandoned drill-down.
+window.openResultMenu = function(menu){
+  state.gameResultMenu = menu;
+  state.gamePendingOutcome = null;
+  state.gamePendingHitType = null;
+  render();
+};
+// Steps BACK one menu without losing what was already picked deeper in
+// the drill-down (e.g. position's Back must still know outcome was 'hit'
+// so it can return to hitType, not inPlay).
+window.backResultMenu = function(menu){
+  state.gameResultMenu = menu;
+  render();
+};
+window.cancelResultMenu = function(){
+  state.gameResultMenu = null;
+  state.gamePendingOutcome = null;
+  state.gamePendingHitType = null;
+  render();
+};
+window.chooseGameResult = function(result){ return recordGameResult(result, {}); };
+window.chooseMoreResult = function(result){ return recordGameResult(result, {}); };
+window.chooseInPlayOutcome = function(outcome){
+  state.gamePendingOutcome = outcome;
+  // Only a Hit asks how far; Out and Error go straight to fielder.
+  state.gameResultMenu = outcome === 'hit' ? 'hitType' : 'position';
+  render();
+};
+window.chooseHitType = function(type){
+  state.gamePendingHitType = type;
+  state.gameResultMenu = 'position';
+  render();
+};
+window.chooseFielder = function(pos){
+  return recordGameResult('in_play', {
+    inPlayOutcome: state.gamePendingOutcome,
+    hitType: state.gamePendingOutcome === 'hit' ? state.gamePendingHitType : null,
+    fielder: pos
+  });
+};
+// Count/out/inning/batter progression, applied AFTER the pitch that
+// caused it is already pushed (with its own pre-pitch snapshot -- see
+// recordGameResult). Kept as its own function, independent of storage/
+// render, so it's simple to reason about and to unit-test in isolation.
+function applyGameResultProgression(result, inPlayOutcome){
+  const s = state.activeSession;
+  let outsBumped = 0;
+  let endsAtBat = false;
+  switch(result){
+    case 'ball':
+      s.balls++;
+      if(s.balls >= 4) endsAtBat = true;
+      break;
+    case 'strike_looking':
+    case 'strike_swinging':
+      s.strikes++;
+      if(s.strikes >= 3){ endsAtBat = true; outsBumped = 1; }
+      break;
+    case 'foul':
+      // A foul is a strike only below 2 strikes -- never the 3rd strike.
+      if(s.strikes < 2) s.strikes++;
+      break;
+    case 'in_play':
+      endsAtBat = true;
+      if(inPlayOutcome === 'out') outsBumped = 1;
+      break;
+    case 'sac_bunt':
+    case 'sac_fly':
+      endsAtBat = true;
+      outsBumped = 1;
+      break;
+    case 'hbp':
+    case 'dropped_third':
+    case 'interference':
+    case 'other':
+      // Each ends the at-bat; none of these automatically records an out
+      // here (a dropped third strike is a live-ball strikeout -- the
+      // batter may reach safely; +1 out is a manual gameBumpOuts() tap if
+      // the runner is actually retired).
+      endsAtBat = true;
+      break;
+  }
+  if(outsBumped) s.outs += outsBumped;
+  if(s.outs >= 3){
+    s.inning++;
+    s.outs = 0;
+  }
+  if(endsAtBat){
+    s.atBatIndex++;
+    s.balls = 0;
+    s.strikes = 0;
+    // Delivery is asked fresh for every new batter, not carried over --
+    // matches chooseSessionKind's own reasoning for starting it null.
+    s.delivery = null;
+  }
+}
+window.recordGameResult = async function(result, extra){
+  extra = extra || {};
+  const pending = state.gamePendingPitch;
+  if(!pending) return;
+  const s = state.activeSession;
+  const chartingPerspective = sessionPerspective(s);
+  const batterSide = sessionBatterSide(s);
+  // U9: same freeze point as handleZoneTap -- the first pitch of the
+  // session is what locks the radar-gun snapshot, whichever mode charted
+  // it.
+  if(s.pitches.length === 0){
+    s.usesRadarGun = sessionUsesRadarGun(s);
+  }
+  s.pitches.push({
+    id: genUUID(),
+    // Set directly here (not only at sync time, in syncOutbox's pitchRows)
+    // so a queued-but-unsynced pitch's local shape already matches what
+    // it becomes in the DB -- avoids the two ever drifting apart.
+    kind: 'game',
+    type: state.selectedType, velo: null,
+    targetRow: null, targetCol: null,
+    actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
+    accuracyMode: null, inAccuracyZone: null, accuracyZoneCells: null,
+    batterSide,
+    ts: Date.now(),
+    result,
+    inPlayOutcome: extra.inPlayOutcome || null,
+    hitType: extra.hitType || null,
+    fielder: extra.fielder || null,
+    delivery: s.delivery,
+    // The count/inning/at-bat state BEFORE this pitch -- storing "before"
+    // rather than "after" makes each row self-contained and makes undo
+    // trivial (see undoLastGamePitch: it just restores these fields).
+    inning: s.inning,
+    outsBefore: s.outs,
+    ballsBefore: s.balls,
+    strikesBefore: s.strikes,
+    atBatIndex: s.atBatIndex
+  });
+  applyGameResultProgression(result, extra.inPlayOutcome);
+  state.gamePendingPitch = null;
+  state.gameResultMenu = null;
+  state.gamePendingOutcome = null;
+  state.gamePendingHitType = null;
+  // Same post-hoc velocity pattern as a bullpen's tap 2: the strip lights
+  // up for the pitch just recorded until the next one starts.
+  state.veloTargetIdx = s.pitches.length - 1;
+  await storSet(draftKey(), s);
+  render();
+};
+window.undoLastGamePitch = async function(){
+  const s = state.activeSession;
+  const last = s.pitches[s.pitches.length - 1];
+  if(!last) return;
+  s.pitches.pop();
+  // Restore the live counters from the popped pitch's OWN stored "before"
+  // snapshot -- robust across every auto-advance boundary (a walk/K/3rd
+  // out) with no special-casing, because every pitch already carries
+  // exactly the state that was true right before it landed.
+  s.inning = last.inning;
+  s.outs = last.outsBefore;
+  s.balls = last.ballsBefore;
+  s.strikes = last.strikesBefore;
+  s.atBatIndex = last.atBatIndex;
+  s.delivery = last.delivery;
+  state.gamePendingPitch = null;
+  state.gameResultMenu = null;
+  state.gamePendingOutcome = null;
+  state.gamePendingHitType = null;
+  state.veloTargetIdx = null;
+  await storSet(draftKey(), s);
+  render();
+};
+// Manual corrections for game state the pitch stream can't infer on its
+// own (a baserunning out, a mid-at-bat pitcher change, an inning that
+// needs to move on with no more pitches thrown in it).
+window.gameNewBatter = async function(){
+  const s = state.activeSession;
+  s.atBatIndex++;
+  s.balls = 0;
+  s.strikes = 0;
+  s.delivery = null;
+  await storSet(draftKey(), s);
+  render();
+};
+window.gameNewInning = async function(){
+  const s = state.activeSession;
+  s.inning++;
+  s.outs = 0;
+  s.balls = 0;
+  s.strikes = 0;
+  s.atBatIndex++;
+  s.delivery = null;
+  await storSet(draftKey(), s);
+  render();
+};
+window.gameBumpOuts = async function(){
+  const s = state.activeSession;
+  if(s.outs < 2){ s.outs++; } else { s.inning++; s.outs = 0; }
+  await storSet(draftKey(), s);
+  render();
+};
+
+const GAME_RESULT_LABELS = {
+  ball: 'Ball', strike_looking: 'Strike (looking)', strike_swinging: 'Strike (swinging)',
+  foul: 'Foul', in_play: 'In play', hbp: 'HBP', sac_bunt: 'Sac bunt', sac_fly: 'Sac fly',
+  dropped_third: 'Dropped 3rd', interference: 'Interference', other: 'Other'
+};
+function gameResultText(pt){
+  if(pt.result === 'in_play'){
+    const outcomeLabel = { hit: 'Hit', out: 'Out', error: 'Error' }[pt.inPlayOutcome] || 'In play';
+    return [outcomeLabel, pt.hitType, pt.fielder ? ('to ' + pt.fielder) : ''].filter(Boolean).join(' ');
+  }
+  return GAME_RESULT_LABELS[pt.result] || pt.result;
+}
+// Pitches that reach or pass the strike threshold, for a game's own
+// strike% -- distinct from a bullpen's accuracy%, which measures target
+// vs. actual and has no meaning here. A dropped third strike and a sac
+// are still strikes (the ball was put in play, or the batter swung
+// through strike three); a walk/HBP/interference/"other" ending is not.
+const GAME_STRIKE_RESULTS = new Set(['strike_looking', 'strike_swinging', 'foul', 'in_play', 'sac_bunt', 'sac_fly', 'dropped_third']);
+function gameStats(pitches){
+  let k = 0, bb = 0, h = 0, strikeCount = 0, maxInning = 1;
+  pitches.forEach(pt => {
+    if(GAME_STRIKE_RESULTS.has(pt.result)) strikeCount++;
+    if(pt.result === 'dropped_third') k++;
+    if((pt.result === 'strike_looking' || pt.result === 'strike_swinging') && pt.strikesBefore >= 2) k++;
+    if(pt.result === 'ball' && pt.ballsBefore >= 3) bb++;
+    if(pt.result === 'in_play' && pt.inPlayOutcome === 'hit') h++;
+    if(pt.inning > maxInning) maxInning = pt.inning;
+  });
+  const total = pitches.length;
+  return { total, k, bb, h, strikePct: total ? Math.round(100 * strikeCount / total) : 0, innings: maxInning };
+}
+function renderGameStatusBar(){
+  const s = state.activeSession;
+  return `<div class="stat-readout">
+    <div class="stat-box"><span class="stat-num mono">${s.inning}</span><span class="stat-lbl">Inning</span></div>
+    <div class="stat-box"><span class="stat-num mono">${s.outs}</span><span class="stat-lbl">Outs</span></div>
+    <div class="stat-box"><span class="stat-num mono">${s.balls}-${s.strikes}</span><span class="stat-lbl">Count</span></div>
+    <div class="stat-box"><span class="stat-num mono">${s.atBatIndex}</span><span class="stat-lbl">Batter #</span></div>
+  </div>`;
+}
+function renderDeliveryToggle(){
+  const s = state.activeSession;
+  const opts = [{ key: 'windup', label: 'Windup' }, { key: 'set', label: 'Set' }];
+  const chips = opts.map(o => {
+    const selected = s.delivery === o.key;
+    const style = selected ? `background:var(--amber);border-color:var(--amber);` : `color:var(--ink-faint);border-color:var(--border-strong);`;
+    return `<button class="type-chip${selected?' selected':''}" style="${style}" onclick="setGameDelivery('${o.key}')">${o.label}</button>`;
+  }).join('');
+  const label = 'Delivery' + (!s.delivery ? ' — pick one before the next pitch' : '');
+  return `<div><div class="field-label" style="margin-bottom:8px;">${label}</div><div class="chip-row">${chips}</div></div>`;
+}
+function renderGameResultRow(){
+  if(!state.gamePendingPitch) return '';
+  const menu = state.gameResultMenu;
+  const neutral = `color:var(--ink-faint);border-color:var(--border-strong);`;
+  const amber = `background:var(--amber);border-color:var(--amber);`;
+  const green = `color:#3D7A57;border-color:#3D7A57;`;
+  if(menu === 'inPlay'){
+    return `<div><div class="field-label" style="margin-bottom:8px;">In play — what happened?</div><div class="chip-row">
+      <button class="type-chip" style="${green}" onclick="chooseInPlayOutcome('hit')">Hit</button>
+      <button class="type-chip" style="${neutral}" onclick="chooseInPlayOutcome('out')">Out</button>
+      <button class="type-chip" style="${neutral}" onclick="chooseInPlayOutcome('error')">Error</button>
+      <button class="btn btn-ghost" onclick="cancelResultMenu()">Back</button>
+    </div></div>`;
+  }
+  if(menu === 'hitType'){
+    return `<div><div class="field-label" style="margin-bottom:8px;">Hit — how far?</div><div class="chip-row">
+      ${['1B','2B','3B','HR'].map(t => `<button class="type-chip" style="${green}" onclick="chooseHitType('${t}')">${t}</button>`).join('')}
+      <button class="btn btn-ghost" onclick="backResultMenu('inPlay')">Back</button>
+    </div></div>`;
+  }
+  if(menu === 'position'){
+    const back = state.gamePendingOutcome === 'hit' ? 'hitType' : 'inPlay';
+    return `<div><div class="field-label" style="margin-bottom:8px;">Fielder</div><div class="chip-row">
+      ${['P','C','1B','2B','3B','SS','LF','CF','RF'].map(pos => `<button class="type-chip" style="${neutral}" onclick="chooseFielder('${pos}')">${pos}</button>`).join('')}
+      <button class="btn btn-ghost" onclick="backResultMenu('${back}')">Back</button>
+    </div></div>`;
+  }
+  if(menu === 'more'){
+    const more = [
+      { key: 'hbp', label: 'HBP' }, { key: 'sac_bunt', label: 'Sac bunt' }, { key: 'sac_fly', label: 'Sac fly' },
+      { key: 'dropped_third', label: 'Dropped 3rd' }, { key: 'interference', label: 'Interference' }, { key: 'other', label: 'Other' }
+    ];
+    return `<div><div class="field-label" style="margin-bottom:8px;">Other outcomes</div><div class="chip-row">
+      ${more.map(m => `<button class="type-chip" style="${neutral}" onclick="chooseMoreResult('${m.key}')">${m.label}</button>`).join('')}
+      <button class="btn btn-ghost" onclick="cancelResultMenu()">Back</button>
+    </div></div>`;
+  }
+  return `<div><div class="field-label" style="margin-bottom:8px;">Result</div><div class="chip-row">
+    <button class="type-chip" style="${neutral}" onclick="chooseGameResult('ball')">Ball</button>
+    <button class="type-chip" style="${amber}" onclick="chooseGameResult('strike_looking')">Strike (looking)</button>
+    <button class="type-chip" style="${amber}" onclick="chooseGameResult('strike_swinging')">Strike (swinging)</button>
+    <button class="type-chip" style="${neutral}" onclick="chooseGameResult('foul')">Foul</button>
+    <button class="type-chip" style="${green}" onclick="openResultMenu('inPlay')">In Play</button>
+    <button class="type-chip" style="${neutral}" onclick="openResultMenu('more')">More…</button>
+  </div></div>`;
+}
+function renderGameSessionView(p){
+  const s = state.activeSession;
+  const pitches = s.pitches;
+  const stats = gameStats(pitches);
+  const chartingPerspective = sessionPerspective(s);
+  const currentBatterSide = sessionBatterSide(s);
+  const typeChips = pitchTypesFor(p).map(t => {
+    const color = colorForType(p, t);
+    const selected = state.selectedType === t;
+    return `<button class="type-chip${selected?' selected':''}" style="${selected ? `background:${color};border-color:${color};color:${readableTextOn(color)};` : `color:${color};border-color:${color}55;`}" onclick="selectType(${escHtml(JSON.stringify(t))})">${pitchLabel(t)}</button>`;
+  }).join('');
+
+  const logRows = pitches.slice().reverse().slice(0, 12).map(pt => {
+    const color = colorForType(p, pt.type);
+    const veloText = (pt.velo !== null && pt.velo !== undefined) ? `${pt.velo} mph · ` : '';
+    return `<div class="pitch-log-row">
+      <span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pitchLabel(pt.type)}</span> · ${veloText}${gameResultText(pt)} · <span style="color:var(--ink-faint);">Inn ${pt.inning}, ${pt.ballsBefore}-${pt.strikesBefore}, ${pt.outsBefore} out</span></span>
+    </div>`;
+  }).join('') || `<p style="color:var(--ink-faint);font-size:12.5px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
+
+  const zoneCaption = state.gamePendingPitch
+    ? `Now choose what happened <a href="#" onclick="resetGamePendingPitch();return false;" style="color:var(--amber);">(reset location)</a>`
+    : `Tap where the pitch landed`;
+
+  return `
+    <div class="session-grid-layout">
+      <div class="panel controls-panel">
+        ${renderGameStatusBar()}
+        ${renderPerspectiveToggle()}
+        <div>
+          <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
+          <div class="chip-row">${typeChips}</div>
+          ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
+            ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
+            : 'Add your pitches in Profile to start charting.'}</p>
+          <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
+        </div>
+        ${renderDeliveryToggle()}
+        <div class="hint-msg">${state.hint}</div>
+        <div>
+          <div class="zone-wrap">
+            ${renderZoneGrid(pitches, true, state.flashCell, state.gamePendingPitch, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
+            <div class="zone-caption">${zoneCaption}</div>
+          </div>
+        </div>
+        ${renderGameResultRow()}
+        ${sessionUsesRadarGun(s) ? `<div>
+          <div class="field-label" style="margin-bottom:8px;">Velocity</div>
+          ${renderVeloStrip()}
+        </div>` : ''}
+      </div>
+      <div class="panel log-panel">
+        <div class="stat-readout">
+          <div class="stat-box"><span class="stat-num mono">${stats.total}</span><span class="stat-lbl">Pitches</span></div>
+          <div class="stat-box"><span class="stat-num mono">${stats.strikePct}%</span><span class="stat-lbl">Strikes</span></div>
+          <div class="stat-box"><span class="stat-num mono">${stats.k}</span><span class="stat-lbl">K</span></div>
+          <div class="stat-box"><span class="stat-num mono">${stats.bb}</span><span class="stat-lbl">BB</span></div>
+          <div class="stat-box"><span class="stat-num mono">${stats.h}</span><span class="stat-lbl">H</span></div>
+        </div>
+        <div class="field-label">Recent pitches</div>
+        <div class="pitch-log">${logRows}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button class="btn btn-ghost" onclick="undoLastGamePitch()">Undo last pitch</button>
+          <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
+          <button class="btn btn-ghost" onclick="gameBumpOuts()">+1 out</button>
+          <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
+        </div>
+        <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
+      </div>
+    </div>`;
+}
+
 function renderSessionView(){
   const p = currentPitcher();
   if(state.draftAvailable){
@@ -2914,6 +3494,12 @@ function renderSessionView(){
         </div>
       </div>`;
   }
+  // G1: New Session (never Resume, which always already has a kind --
+  // see resumeDraft's defensive default) lands here with kind still null.
+  // Bullpen path below this point is completely unchanged -- acceptance
+  // check 1 is that it's byte-for-byte today's behavior.
+  if(!state.activeSession.kind) return renderSessionKindChooser();
+  if(state.activeSession.kind === 'game') return renderGameSessionView(p);
   const pitches = state.activeSession.pitches;
   const stats = sessionStats(pitches);
   const chartingPerspective = sessionPerspective(state.activeSession);
@@ -3084,17 +3670,90 @@ function renderAccountSetupScreen(){
 }
 
 /* ---------- RENDER: HISTORY VIEW ---------- */
+window.setHistoryFilter = function(f){
+  state.historyFilter = f;
+  render();
+};
+function renderHistoryFilter(){
+  const opts = [{ key: 'all', label: 'All' }, { key: 'bullpen', label: 'Bullpen' }, { key: 'game', label: 'Live Game' }];
+  const chips = opts.map(o => {
+    const selected = state.historyFilter === o.key;
+    const style = selected ? `background:var(--amber);border-color:var(--amber);` : `color:var(--ink-faint);border-color:var(--border-strong);`;
+    return `<button class="type-chip${selected?' selected':''}" style="${style}" onclick="setHistoryFilter('${o.key}')">${o.label}</button>`;
+  }).join('');
+  return `<div class="chip-row" style="margin-bottom:16px;">${chips}</div>`;
+}
 function renderHistoryView(){
   const p = currentPitcher();
   if(!p){ return `<div class="empty-hist">No pitcher selected.</div>`; }
   const tombstones = state.deletedSessions.map(s => ({ ...s, tombstone: true }));
-  const combined = pendingSessionsForCurrentSelection()
+  let combined = pendingSessionsForCurrentSelection()
     .concat(state.sessions).concat(tombstones)
     .sort((a,b) => b.date - a.date);
-  if(!combined.length){
-    return `<div class="empty-hist">No saved sessions yet for ${escHtml(p.name)}${isCoach() ? '' : ' — finish a bullpen session to see it here'}.</div>`;
+  // G1: a tombstone (deleted session) never carried a `kind` before this
+  // shipped either, and its own record doesn't need one to render (no
+  // stats are computed for it) -- only filter the ones that declare one.
+  if(state.historyFilter !== 'all'){
+    combined = combined.filter(s => (s.kind || 'bullpen') === state.historyFilter);
   }
-  return combined.map(s => {
+  if(!combined.length){
+    return `${renderHistoryFilter()}<div class="empty-hist">No saved sessions yet for ${escHtml(p.name)}${isCoach() ? '' : ' — finish a bullpen session to see it here'}.</div>`;
+  }
+  return renderHistoryFilter() + combined.map(s => {
+    // G1: a game session gets its own, much simpler card -- innings,
+    // pitches, K/BB/H, strike% (gameStats -- the same function the live
+    // charting screen uses). Never sessionStats: that computes target-vs-
+    // actual accuracy, which has no meaning for a session with no
+    // targets. Reports aren't built yet for games (compute.ts assumes a
+    // target on every pitch) -- View/Send show disabled with a note
+    // rather than being silently hidden, so it's clear this is coming,
+    // not broken.
+    if(!s.tombstone && (s.kind || 'bullpen') === 'game'){
+      const dateStr = new Date(s.date).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+      const stats = gameStats(s.pitches);
+      const expanded = state.expandedSessionId === s.id;
+      const pendingTag = s.pending ? ` <span class="coach-logged-tag pending-tag">Pending sync${s.lastError ? ' · retrying' : ''}</span>` : '';
+      const deleteZone = s.pending ? '' : (state.deletingSessionId === s.id ? `
+        <div class="delete-zone">
+          <p class="delete-warn">This permanently removes the ${stats.total} pitch${stats.total === 1 ? '' : 'es'} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
+          ${state.deleteError ? `<p class="report-status report-status-error" style="margin:0 0 8px;">${state.deleteError}</p>` : ''}
+          <div class="delete-row">
+            <input id="delete-confirm-input" class="text-input" style="max-width:150px;" placeholder="Type DELETE"
+              value="${String(state.deleteConfirmText).replace(/"/g,'&quot;')}" oninput="onDeleteConfirmInput(this.value)">
+            <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.deleteBusy ? 'disabled' : ''} onclick="confirmDeleteSession()">${state.deleteBusy ? 'Deleting…' : 'Delete session'}</button>
+            <button class="btn btn-ghost" ${state.deleteBusy ? 'disabled' : ''} onclick="cancelDeleteSession()">Cancel</button>
+          </div>
+        </div>` : `
+        <div class="delete-zone"><button class="undo-btn" onclick="startDeleteSession('${s.id}')">Delete this session</button></div>`);
+      return `
+        <div class="session-card">
+          <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
+            <div class="session-date">${dateStr} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ' <span class="coach-logged-tag">Logged by coach</span>' : ''}${pendingTag}</div>
+            <div class="session-meta">
+              <div class="meta-item"><span class="meta-num mono">${stats.innings}</span><span class="meta-lbl">Innings</span></div>
+              <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
+              <div class="meta-item"><span class="meta-num mono">${stats.k}</span><span class="meta-lbl">K</span></div>
+              <div class="meta-item"><span class="meta-num mono">${stats.bb}</span><span class="meta-lbl">BB</span></div>
+              <div class="meta-item"><span class="meta-num mono">${stats.h}</span><span class="meta-lbl">H</span></div>
+              <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
+            </div>
+          </div>
+          ${expanded ? `
+          <div class="session-card-body">
+            <div style="flex:1;min-width:220px;">
+              <div class="report-panel">
+                <div class="field-label">Email this report</div>
+                <p class="report-recipients">Game reports coming soon.</p>
+                <div class="report-actions">
+                  <button class="btn btn-primary" disabled>Send report</button>
+                  <button class="btn btn-ghost" disabled>View report</button>
+                </div>
+              </div>
+              ${deleteZone}
+            </div>
+          </div>` : ''}
+        </div>`;
+    }
     const dateStr = new Date(s.date).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
 
     // P1-15: a deleted session is a tombstone -- not expandable, no stats,
@@ -3772,6 +4431,19 @@ function renderSetupView(){
     <p class="profile-note"><a href="#" onclick="dismissSetup();return false;">Set this up later</a></p>
   </div>`;
 }
+// G1: renderSetupView's own content, unchanged, wrapped in a modal shell
+// instead of shown as a full page -- see showSetupModal's comment. Only
+// ever called when showSetupModal is true; callers re-check isCoach()/
+// draftAvailable themselves (same two guards finishInit used to decide
+// whether to show it at all) since either can change live.
+function renderSetupModal(){
+  return `<div class="modal-overlay" onclick="if(event.target===this) closeSetupModal();">
+    <div class="modal-panel">
+      <button class="modal-close-x" onclick="closeSetupModal()" aria-label="Close">✕</button>
+      ${renderSetupView()}
+    </div>
+  </div>`;
+}
 // Answering the radar-gun question either way finishes setup. Optimistic
 // + fire-and-forget on purpose (U9: "setup ... never waits on the network
 // beyond the profile save itself") -- the app is usable immediately either
@@ -3783,7 +4455,7 @@ window.finishSetup = function(gunYes){
   const now = new Date().toISOString();
   state.profile.uses_radar_gun = gunYes;
   state.profile.setup_dismissed_at = now;
-  state.view = 'session';
+  state.showSetupModal = false;
   render();
   supabaseClient.from('profiles').update({ uses_radar_gun: gunYes, setup_dismissed_at: now }).eq('id', state.profile.id)
     .then(({ error }) => { if(!error) saveLastKnownContext(); });
@@ -3791,10 +4463,22 @@ window.finishSetup = function(gunYes){
 window.dismissSetup = function(){
   const now = new Date().toISOString();
   state.profile.setup_dismissed_at = now;
-  state.view = 'session';
+  state.showSetupModal = false;
   render();
   supabaseClient.from('profiles').update({ setup_dismissed_at: now }).eq('id', state.profile.id)
     .then(({ error }) => { if(!error) saveLastKnownContext(); });
+};
+// G1: the X close -- unlike dismissSetup ("Set this up later"), this never
+// writes setup_dismissed_at. It only hides the modal for the rest of this
+// page load (see showSetupModal's own comment); a fresh cold load still
+// offers setup again, same as before this shipped.
+window.closeSetupModal = function(){
+  state.showSetupModal = false;
+  render();
+};
+window.openSetupModal = function(){
+  state.showSetupModal = true;
+  render();
 };
 // U9: the ongoing reminder -- separate from the one-time setup landing
 // above, and derived live (never a stored flag) from whether uniform #,
@@ -3810,13 +4494,13 @@ function setupIncomplete(p){
   return !uniformOk || !p.throws || !(p.pitchTypes && p.pitchTypes.length);
 }
 function renderSetupReminderBanner(){
-  if(isCoach() || state.view === 'setup' || state.setupReminderDismissed) return '';
+  if(isCoach() || state.showSetupModal || state.setupReminderDismissed) return '';
   const p = currentPitcher();
   if(!p || !setupIncomplete(p)) return '';
   return `<div class="verify-banner">
     <p>Finish setting up your profile (uniform #, throw side, pitch mix) so charting works well for you.</p>
     <div class="verify-banner-actions">
-      <button class="btn btn-ghost" onclick="setView('setup')">Finish setup</button>
+      <button class="btn btn-ghost" onclick="openSetupModal()">Finish setup</button>
       <button class="btn btn-ghost" onclick="dismissSetupReminderForSession()">Dismiss</button>
     </div>
   </div>`;
@@ -4147,18 +4831,24 @@ function render(){
     main = `
       ${verifyBanner}
       ${setupReminderBanner}
-      ${(state.view === 'profile' || state.view === 'leaderboard' || state.view === 'setup') ? '' : headerHtml}
+      ${(state.view === 'profile' || state.view === 'leaderboard') ? '' : headerHtml}
       ${tabs}
       ${state.view === 'session' ? renderSessionView()
         : state.view === 'profile' ? renderProfileView()
         : state.view === 'leaderboard' ? renderLeaderboardView()
         : state.view === 'pitcherProfile' ? renderPitcherProfileView()
-        : state.view === 'setup' ? renderSetupView()
         : renderHistoryView()}
     `;
   }
 
-  app.innerHTML = sidebar + `<div class="main">${main}</div>` + phoneFooter;
+  // G1: the setup modal overlays whatever view is underneath (see
+  // showSetupModal's comment) -- re-check both guards live, since either
+  // can change after showSetupModal was first set true (a coach can't
+  // reach this state at all, but a pitcher could start a draft in another
+  // tab while this one still has the modal flagged on).
+  const setupModalHtml = (state.showSetupModal && !isCoach() && !state.draftAvailable) ? renderSetupModal() : '';
+
+  app.innerHTML = sidebar + `<div class="main">${main}</div>` + phoneFooter + setupModalHtml;
   attachVeloStrip();
 }
 

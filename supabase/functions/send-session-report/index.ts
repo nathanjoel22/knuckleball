@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
   // same as any other RLS-filtered read.
   const { data: session, error: sessionErr } = await callerClient
     .from('sessions')
-    .select('id, pitcher_id, report_path')
+    .select('id, pitcher_id, report_path, kind')
     .eq('id', sessionId)
     .maybeSingle()
   if (sessionErr) {
@@ -129,6 +129,14 @@ Deno.serve(async (req) => {
   }
   if (session.pitcher_id !== pitcherId) {
     return new Response(JSON.stringify({ error: 'pitcherId does not match the session\'s pitcher.' }), { status: 400, headers: corsHeaders })
+  }
+  // G1: a game session has no target on any pitch, so compute.ts's
+  // isExactHit()/miss-tendency math (which assumes one) would silently
+  // produce NaN rather than a real report. Refuse before buildReportHtml
+  // is ever called instead of teaching compute.ts to cope with a shape it
+  // should never see -- a game session simply isn't reportable yet.
+  if (session.kind && session.kind !== 'bullpen') {
+    return new Response(JSON.stringify({ error: 'Reports for Live Game sessions are coming soon -- only bullpen sessions can be reported right now.' }), { status: 400, headers: corsHeaders })
   }
 
   // Coach-side gate (added after a Joel-directed staging investigation,

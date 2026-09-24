@@ -381,17 +381,30 @@
   /* G1: the Bullpen/Live Game chooser. "Bigger than Gmail's Compose
      button" (Joel) -- 64px+ tall tap targets, full width stacked on
      phone, side by side on iPad (matches the existing >=861px breakpoint
-     used elsewhere in this file for phone-vs-tablet layout calls). */
+     used elsewhere in this file for phone-vs-tablet layout calls). Both
+     buttons share one fixed width (never sized off their own text) so
+     "Bullpen" and "Live Game" -- and the Beta tag on the second one --
+     never make the two read as different sizes; align-items/justify-
+     content center the pair under the question in both layouts. */
   .kind-chooser{ display:flex; flex-direction:column; align-items:center; padding:48px 16px; }
-  .kind-chooser-buttons{ display:flex; flex-direction:column; gap:16px; width:100%; max-width:520px; }
+  .kind-chooser-buttons{ display:flex; flex-direction:column; align-items:center; gap:16px; width:100%; }
   .kind-choice-btn{
-    min-height:72px; border-radius:12px; border:none; background:#3D7A57;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; max-width:280px; min-height:72px; border-radius:12px; border:none; background:#3D7A57;
     color:#fff; font-family:'Teko',sans-serif; font-size:28px; font-weight:600;
     letter-spacing:0.02em; box-shadow:0 2px 6px rgba(15,36,27,0.15);
   }
   .kind-choice-btn:hover{ background:#2E6345; }
   .kind-choice-btn:active{ background:#245036; }
-  @media (min-width:861px){ .kind-chooser-buttons{ flex-direction:row; } }
+  /* Small, high-contrast (7.8:1 dark-ink-on-amber) pill -- not part of
+     the button's own Teko display type, so it stays legible at this
+     size instead of going condensed/all-caps like the button label. */
+  .beta-tag{
+    font-family:'IBM Plex Sans',sans-serif; font-size:11px; font-weight:700;
+    letter-spacing:0.04em; text-transform:uppercase; color:var(--field-dark);
+    background:var(--amber); padding:2px 7px; border-radius:999px; line-height:1.4;
+  }
+  @media (min-width:861px){ .kind-chooser-buttons{ flex-direction:row; justify-content:center; } .kind-choice-btn{ width:220px; } }
   /* G1: the profile-setup modal. This file has no other modal/dialog
      pattern (see renderPerspectiveToggle's own comment) -- one is
      introduced here rather than reused from anywhere else. Scrollable on
@@ -3050,7 +3063,7 @@ function renderSessionKindChooser(){
     <h2 class="display" style="margin:0 0 20px;text-align:center;">What will we be charting today?</h2>
     <div class="kind-chooser-buttons">
       <button class="kind-choice-btn" onclick="chooseSessionKind('bullpen')">Bullpen</button>
-      <button class="kind-choice-btn" onclick="chooseSessionKind('game')">Live Game</button>
+      <button class="kind-choice-btn" onclick="chooseSessionKind('game')">Live Game<span class="beta-tag">Beta</span></button>
     </div>
   </div>`;
 }
@@ -4433,7 +4446,10 @@ function renderSetupView(){
         <button class="btn btn-ghost" onclick="finishSetup(false)">No</button>
       </div>
     </div>
-    <p class="profile-note"><a href="#" onclick="dismissSetup();return false;">Set this up later</a></p>
+    <div class="profile-row" style="margin-top:8px;">
+      <button class="btn btn-primary" onclick="dismissSetup()">Save Profile</button>
+      <button class="btn btn-ghost" onclick="dismissSetup()">Set Up Later</button>
+    </div>
   </div>`;
 }
 // G1: renderSetupView's own content, unchanged, wrapped in a modal shell
@@ -4465,6 +4481,13 @@ window.finishSetup = function(gunYes){
   supabaseClient.from('profiles').update({ uses_radar_gun: gunYes, setup_dismissed_at: now }).eq('id', state.profile.id)
     .then(({ error }) => { if(!error) saveLastKnownContext(); });
 };
+// Backs BOTH bottom buttons (Save Profile and Set Up Later) -- every field
+// above (uniform #, throws, pitch mix, radar gun Yes/No) already writes
+// itself the instant it's set, so there is nothing left to persist at the
+// bottom of the form either way. The two labels exist because a user
+// looks for an explicit save affordance regardless of what already
+// happened, not because one path saves and the other discards -- both
+// just close the modal (Joel, Sept 24 2026).
 window.dismissSetup = function(){
   const now = new Date().toISOString();
   state.profile.setup_dismissed_at = now;

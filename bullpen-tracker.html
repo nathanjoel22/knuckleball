@@ -943,6 +943,27 @@ let state = {
   regenerateBusy: false,
   removeArmedPitcherId: null,
   removeBusy: false,
+  // R6: team admin section (coach Profile tab). teamInviteLinks/
+  // teamCoachesList are fetched on demand for the active team, never
+  // cached across a team switch -- see loadCoachAdminData().
+  teamInviteLinks: null,       // {invite_token, invite_token_rotated_at, coach_invite_token, coach_invite_token_rotated_at} | null
+  teamCoachesList: null,       // [{coach_id, full_name, role}] for the active team, any coach can see this
+  coachInviteCopyStatus: null,
+  coachRegenerateArmed: false,
+  coachRegenerateBusy: false,
+  removeCoachArmedId: null,
+  removeCoachBusy: false,
+  handoffTargetId: '',
+  handoffArmed: false,
+  handoffBusy: false,
+  renameTeamOpen: false,
+  renameTeamDraft: '',
+  renameTeamBusy: false,
+  renameTeamError: null,
+  createTeamOpen: false,
+  createTeamDraft: '',
+  createTeamBusy: false,
+  createTeamError: null,
   sessions: [],
   view: 'session',          // session | history | profile | pitcherProfile (coach editing the selected pitcher)
   activeSession: null,
@@ -1044,6 +1065,17 @@ function mapProfile(row){
   return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, throws: row.throws || null, relativeAccuracy: !!row.relative_accuracy_enabled, usesRadarGun: !!row.uses_radar_gun, setupDismissedAt: row.setup_dismissed_at || null, uniformNumber: null };
 }
 function isCoach(){ return state.profile && state.profile.role === 'coach'; }
+// R6: UI-side mirror of is_team_head -- every admin control also hides
+// itself for an assistant (packet approach f: "the helper is the gate;
+// the UI is not" -- meaning the SERVER never trusts this, but a hidden
+// button is still better UX than a click that always fails). Reads
+// myRole off the team_coaches-backed rows loadTeams() now returns.
+function isHeadOfTeam(teamId){
+  if(!isCoach()) return false;
+  const team = state.teams.find(t => t.id === teamId);
+  return !!team && team.myRole === 'head';
+}
+function isHeadOfCurrentTeam(){ return isHeadOfTeam(state.currentTeamId); }
 // The pitch types New Session offers: exactly the pitcher's own mix. A pitcher who
 // hasn't added any pitches yet has none to chart until they do (Joel, Sept 21: no
 // fallback list) -- New Session shows a prompt pointing at Profile instead.
@@ -1511,12 +1543,21 @@ function readPersistedSessionRaw(){
 
 async function loadTeams(){
   if(isCoach()){
-    // R0: invite_token is on this same row, readable under the existing
-    // "Coaches manage own teams" policy -- no new RPC needed for a coach
-    // to see their OWN team's token (only the logged-out join page, which
-    // can't rely on RLS at all, goes through resolve_team_invite instead).
-    const { data } = await supabaseClient.from('teams').select('id, name, invite_token').eq('coach_id', state.profile.id).order('created_at');
-    state.teams = data || [];
+    // R6: a coach's relationship to a team is a membership with a role
+    // (head|assistant), not a property of the account -- reading via
+    // team_coaches (not teams.coach_id) is what makes an assistant-only
+    // coach see any team at all. myRole rides along on each row so the
+    // UI can gate admin controls without a second query per team.
+    // invite_token/coach_invite_token are deliberately NOT selected here
+    // (column-revoked from authenticated as of R6 -- see the migration):
+    // the admin section fetches them separately, head-only, via
+    // get_team_invite_links().
+    const { data } = await supabaseClient
+      .from('team_coaches')
+      .select('role, teams(id, name)')
+      .eq('coach_id', state.profile.id)
+      .order('team_id');
+    state.teams = (data || []).filter(r => r.teams).map(r => ({ ...r.teams, myRole: r.role }));
   } else {
     const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name)').eq('pitcher_id', state.profile.id);
     state.teams = (data || []).filter(r => r.teams).map(r => ({ ...r.teams, uniform_number: r.uniform_number }));
@@ -1652,6 +1693,41 @@ async function loadRosterForTeam(teamId){
   });
 }
 
+// R6: the coach Profile tab's team-admin section, for the ACTIVE team.
+// teamCoachesList (the read-only-for-assistants coaches list) is fetched
+// for any coach; teamInviteLinks (both tokens) only for the head --
+// get_team_invite_links itself would refuse an assistant anyway, but
+// there's no reason to even ask when the section won't show the links to
+// them. Called whenever the Profile view renders for a coach and the
+// active team has changed since the last fetch (renderProfileView),
+// never cached longer than that -- a switch, a handoff, or a removal all
+// need this to be current the next time Profile is opened.
+async function loadCoachAdminData(teamId){
+  if(!teamId) { state.teamInviteLinks = null; state.teamCoachesList = null; return; }
+
+  // team_coaches has TWO foreign keys into profiles (coach_id AND
+  // invited_by), so a bare `profiles(...)` embed is ambiguous to PostgREST
+  // (PGRST201, caught live against real staging -- the mock harness this
+  // was first built against doesn't model embed disambiguation, so this
+  // only surfaced once a real coach with real staff loaded the page).
+  // Naming the FK explicitly resolves it.
+  const { data: staffRows } = await supabaseClient
+    .from('team_coaches')
+    .select('coach_id, role, profiles!team_coaches_coach_id_fkey(full_name)')
+    .eq('team_id', teamId);
+  state.teamCoachesList = (staffRows || [])
+    .filter(r => r.profiles)
+    .map(r => ({ coachId: r.coach_id, role: r.role, name: r.profiles.full_name }))
+    .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : (a.role === 'head' ? -1 : 1)));
+
+  if(isHeadOfTeam(teamId)){
+    const { data, error } = await supabaseClient.rpc('get_team_invite_links', { p_team_id: teamId });
+    state.teamInviteLinks = error ? null : data;
+  } else {
+    state.teamInviteLinks = null;
+  }
+}
+
 window.toggleRosterCollapsed = function(){
   state.rosterCollapsed = !state.rosterCollapsed;
   render();
@@ -1675,8 +1751,18 @@ window.selectPitcher = async function(pitcherId){
    reaching an inbox at all. One link per team, shareable however works
    (text, GroupMe, read aloud, a QR code); regenerating instantly kills the
    old one via teams.invite_token's UNIQUE constraint. */
-function inviteLinkFor(team){
-  return window.location.origin + '/join.html?t=' + team.invite_token;
+// R6: invite_token/coach_invite_token are no longer selectable on the
+// teams row (column-revoked -- see the migration); both live in
+// state.teamInviteLinks, fetched head-only via get_team_invite_links()
+// (loadCoachAdminData). inviteLinkFor/coachInviteLinkFor read from there,
+// not from a `team` object, so every call site needs to have already
+// loaded it -- both are only ever rendered inside the admin section,
+// which does exactly that.
+function inviteLinkFor(){
+  return window.location.origin + '/join.html?t=' + (state.teamInviteLinks && state.teamInviteLinks.invite_token);
+}
+function coachInviteLinkFor(){
+  return window.location.origin + '/join-coach.html?t=' + (state.teamInviteLinks && state.teamInviteLinks.coach_invite_token);
 }
 // navigator.clipboard is unavailable or rejected in some contexts (non-HTTPS,
 // certain in-app browsers / PWA modes), so fall back to a selected textarea +
@@ -1695,10 +1781,7 @@ function copyTextFallback(text){
   document.body.removeChild(ta);
   return ok;
 }
-window.copyInviteLink = async function(){
-  const team = state.teams.find(t => t.id === state.currentTeamId);
-  if(!team) return;
-  const link = inviteLinkFor(team);
+async function copyLinkGeneric(link, statusField){
   let ok = false;
   try{
     await navigator.clipboard.writeText(link);
@@ -1706,10 +1789,12 @@ window.copyInviteLink = async function(){
   }catch(e){
     ok = copyTextFallback(link);
   }
-  state.inviteCopyStatus = ok ? 'copied' : 'error';
+  state[statusField] = ok ? 'copied' : 'error';
   render();
-  setTimeout(() => { state.inviteCopyStatus = null; render(); }, ok ? 2000 : 4000);
-};
+  setTimeout(() => { state[statusField] = null; render(); }, ok ? 2000 : 4000);
+}
+window.copyInviteLink = function(){ return copyLinkGeneric(inviteLinkFor(), 'inviteCopyStatus'); };
+window.copyCoachInviteLink = function(){ return copyLinkGeneric(coachInviteLinkFor(), 'coachInviteCopyStatus'); };
 window.armRegenerateInvite = function(){
   state.regenerateArmed = true;
   render();
@@ -1726,9 +1811,150 @@ window.confirmRegenerateInvite = async function(){
   const { data: newToken, error } = await supabaseClient.rpc('rotate_team_invite', { p_team_id: team.id });
   state.regenerateBusy = false;
   state.regenerateArmed = false;
-  if(!error && newToken){
-    team.invite_token = newToken;
+  if(!error && newToken && state.teamInviteLinks){
+    state.teamInviteLinks.invite_token = newToken;
+    state.teamInviteLinks.invite_token_rotated_at = new Date().toISOString();
   }
+  render();
+};
+window.armRegenerateCoachInvite = function(){
+  state.coachRegenerateArmed = true;
+  render();
+};
+window.cancelRegenerateCoachInvite = function(){
+  state.coachRegenerateArmed = false;
+  render();
+};
+window.confirmRegenerateCoachInvite = async function(){
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  if(!team) return;
+  state.coachRegenerateBusy = true;
+  render();
+  const { data: newToken, error } = await supabaseClient.rpc('rotate_coach_invite', { p_team_id: team.id });
+  state.coachRegenerateBusy = false;
+  state.coachRegenerateArmed = false;
+  if(!error && newToken && state.teamInviteLinks){
+    state.teamInviteLinks.coach_invite_token = newToken;
+    state.teamInviteLinks.coach_invite_token_rotated_at = new Date().toISOString();
+  }
+  render();
+};
+
+/* ---------- TEAM ADMIN: rename / create / remove coach / hand off (R6) ----------
+   Every one of these is refused server-side by the migration's own helpers
+   regardless of what the UI shows -- see is_team_head. The UI gate here is
+   purely so an assistant never sees a control that would only ever error. */
+window.onRenameTeamInput = function(v){ state.renameTeamDraft = v; };
+window.openRenameTeam = function(){
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  state.renameTeamOpen = true;
+  state.renameTeamDraft = team ? team.name : '';
+  state.renameTeamError = null;
+  render();
+};
+window.cancelRenameTeam = function(){
+  state.renameTeamOpen = false;
+  state.renameTeamError = null;
+  render();
+};
+window.submitRenameTeam = async function(){
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  if(!team) return;
+  const el = document.getElementById('rename-team-input');
+  if(el) state.renameTeamDraft = el.value;
+  const name = (state.renameTeamDraft || '').trim();
+  if(!name){ state.renameTeamError = 'Team name cannot be blank.'; render(); return; }
+  state.renameTeamBusy = true;
+  render();
+  const { error } = await supabaseClient.rpc('rename_team', { p_team_id: team.id, p_name: name });
+  state.renameTeamBusy = false;
+  if(error){ state.renameTeamError = 'Could not rename the team. Try again.'; render(); return; }
+  team.name = name;
+  state.renameTeamOpen = false;
+  state.renameTeamError = null;
+  render();
+};
+
+window.onCreateTeamInput = function(v){ state.createTeamDraft = v; };
+window.openCreateTeam = function(){
+  state.createTeamOpen = true;
+  state.createTeamDraft = '';
+  state.createTeamError = null;
+  render();
+};
+window.cancelCreateTeam = function(){
+  state.createTeamOpen = false;
+  state.createTeamError = null;
+  render();
+};
+window.submitCreateTeam = async function(){
+  const el = document.getElementById('create-team-input');
+  if(el) state.createTeamDraft = el.value;
+  const name = (state.createTeamDraft || '').trim();
+  if(!name){ state.createTeamError = 'Team name cannot be blank.'; render(); return; }
+  state.createTeamBusy = true;
+  render();
+  const { data: newTeamId, error } = await supabaseClient.rpc('create_team', { p_name: name });
+  state.createTeamBusy = false;
+  if(error || !newTeamId){ state.createTeamError = 'Could not create the team. Try again.'; render(); return; }
+  state.createTeamOpen = false;
+  await loadTeams();
+  await saveLastKnownContext();
+  // Land the coach on their new (empty) team, same "switch and reload
+  // roster" path the team-select dropdown itself uses.
+  await onTeamChange(newTeamId);
+};
+
+window.armRemoveCoach = function(coachId){
+  state.removeCoachArmedId = coachId;
+  render();
+};
+window.cancelRemoveCoach = function(){
+  state.removeCoachArmedId = null;
+  render();
+};
+window.confirmRemoveCoach = async function(coachId){
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  if(!team) return;
+  state.removeCoachBusy = true;
+  render();
+  const { error } = await supabaseClient.rpc('remove_coach', { p_team_id: team.id, p_coach_id: coachId });
+  state.removeCoachBusy = false;
+  state.removeCoachArmedId = null;
+  if(error){ console.error('remove_coach failed', error); render(); return; }
+  await loadCoachAdminData(team.id);
+  render();
+};
+
+window.setHandoffTarget = function(coachId){
+  state.handoffTargetId = coachId;
+  render();
+};
+window.armHandoff = function(){
+  if(!state.handoffTargetId) return;
+  state.handoffArmed = true;
+  render();
+};
+window.cancelHandoff = function(){
+  state.handoffArmed = false;
+  render();
+};
+window.confirmHandoff = async function(){
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  if(!team || !state.handoffTargetId) return;
+  state.handoffBusy = true;
+  render();
+  const { error } = await supabaseClient.rpc('hand_off_team_head', { p_team_id: team.id, p_new_head_id: state.handoffTargetId });
+  state.handoffBusy = false;
+  state.handoffArmed = false;
+  state.handoffTargetId = '';
+  if(error){ console.error('hand_off_team_head failed', error); render(); return; }
+  // The caller is no longer head of this team -- reload teams (myRole
+  // changed) and the admin section together so the page reflects it
+  // immediately, same as every other admin action here.
+  await loadTeams();
+  await loadCoachAdminData(team.id);
+  await saveLastKnownContext();
   render();
 };
 
@@ -2829,6 +3055,10 @@ window.setView = function(v){
   if(v === 'leaderboard' && !hasLeaderboard()) v = 'session';
   state.view = v; state.profileMsg = ''; state.uniformEditKey = null; state.lbExcludeOpen = null; clearDeleteState(); render();
   if(v === 'leaderboard') loadLeaderboard();
+  // R6: the team-admin section needs the active team's coaching staff (and,
+  // head-only, its invite links) fresh every time Profile is opened -- a
+  // handoff or removal since the last visit must never show stale data.
+  if(v === 'profile' && isCoach()) loadCoachAdminData(state.currentTeamId).then(render);
 };
 window.toggleSessionExpand = function(id){
   state.expandedSessionId = state.expandedSessionId === id ? null : id;
@@ -3701,6 +3931,10 @@ function renderHistoryFilter(){
   }).join('');
   return `<div class="chip-row" style="margin-bottom:16px;">${chips}</div>`;
 }
+// R6: a pitcher can always delete their own sessions, unchanged; a coach
+// needs to be the ACTIVE team's head (Joel: assistants cannot delete team
+// sessions -- narrows delete_session's coach branch to is_team_head).
+function canDeleteSessions(){ return !isCoach() || isHeadOfCurrentTeam(); }
 function renderHistoryView(){
   const p = currentPitcher();
   if(!p){ return `<div class="empty-hist">No pitcher selected.</div>`; }
@@ -3731,7 +3965,7 @@ function renderHistoryView(){
       const stats = gameStats(s.pitches);
       const expanded = state.expandedSessionId === s.id;
       const pendingTag = s.pending ? ` <span class="coach-logged-tag pending-tag">Pending sync${s.lastError ? ' · retrying' : ''}</span>` : '';
-      const deleteZone = s.pending ? '' : (state.deletingSessionId === s.id ? `
+      const deleteZone = (s.pending || !canDeleteSessions()) ? '' : (state.deletingSessionId === s.id ? `
         <div class="delete-zone">
           <p class="delete-warn">This permanently removes the ${stats.total} pitch${stats.total === 1 ? '' : 'es'} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
           ${state.deleteError ? `<p class="report-status report-status-error" style="margin:0 0 8px;">${state.deleteError}</p>` : ''}
@@ -3851,7 +4085,7 @@ function renderHistoryView(){
 
     // P1-15: delete a saved (synced) session. Pending sessions are left to
     // P1-01. No pitch editing anywhere -- delete is the only post-save action.
-    const deleteZone = s.pending ? '' : (state.deletingSessionId === s.id ? `
+    const deleteZone = (s.pending || !canDeleteSessions()) ? '' : (state.deletingSessionId === s.id ? `
       <div class="delete-zone">
         <p class="delete-warn">This permanently removes the ${stats.total} pitch${stats.total === 1 ? '' : 'es'} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
         ${state.deleteError ? `<p class="report-status report-status-error" style="margin:0 0 8px;">${state.deleteError}</p>` : ''}
@@ -4124,20 +4358,24 @@ function lbWhen(ms){
 function lbDate(iso){
   return new Date(iso).toLocaleDateString('en-US', { timeZone:'America/New_York', month:'short', day:'numeric', year:'numeric' });
 }
-function lbRow(r, unit, minimum, isCoach, cat){
+// R6: `isHead`, not `isCoach` -- the exclude control edits what the whole
+// team sees, so it's head-only now (packet approach g), even though any
+// coach can still VIEW the board (data.is_coach, used elsewhere in
+// renderLeaderboardView -- unaffected by this rename).
+function lbRow(r, unit, minimum, isHead, cat){
   const unq = r.qualified === false;
   const rank = (r.rank === undefined || r.rank === null) ? '' : r.rank;
   const num = (r.number === undefined || r.number === null) ? '' : ` <span class="lb-num">#${escHtml(r.number)}</span>`;
   let val;
   if(unq){
     val = `<span class="lb-val lb-unq-note">not enough pitches (${r.pitch_count} of ${minimum})</span>`;
-  } else if(cat === 'velocity' && isCoach && rank === 1 && r.peak_pitch_id){
+  } else if(cat === 'velocity' && isHead && rank === 1 && r.peak_pitch_id){
     val = `<button class="lb-val lb-val-btn" onclick="openLbExclude('${escHtml(r.peak_pitch_id)}')" title="Review this reading">${escHtml(r.value)}${unit}</button>`;
   } else {
     val = `<span class="lb-val">${escHtml(r.value)}${unit}</span>`;
   }
   let extra = '';
-  if(cat === 'velocity' && isCoach && state.lbExcludeOpen && state.lbExcludeOpen === r.peak_pitch_id){
+  if(cat === 'velocity' && isHead && state.lbExcludeOpen && state.lbExcludeOpen === r.peak_pitch_id){
     extra = `<div class="lb-exclude-panel">
       <span>Peak reading: <strong>${escHtml(r.value)} mph</strong> on ${escHtml(lbDate(r.peak_pitch_ts))}.</span>
       <span class="lb-exclude-actions">
@@ -4154,9 +4392,9 @@ function lbRow(r, unit, minimum, isCoach, cat){
     ${extra}
   </div>`;
 }
-function lbSection(title, rows, unit, minimum, isCoach, cat, emptyMsg){
+function lbSection(title, rows, unit, minimum, isHead, cat, emptyMsg){
   return `<div class="panel lb-section">${title ? `<h3 class="lb-title">${title}</h3>` : ''}
-    ${rows.length ? rows.map(r => lbRow(r, unit, minimum, isCoach, cat)).join('') : `<p class="lb-empty">${emptyMsg}</p>`}
+    ${rows.length ? rows.map(r => lbRow(r, unit, minimum, isHead, cat)).join('') : `<p class="lb-empty">${emptyMsg}</p>`}
   </div>`;
 }
 function renderLeaderboardView(){
@@ -4186,14 +4424,18 @@ function renderLeaderboardView(){
     const listRows = cat === 'accuracy' ? (data.accuracy || []) : cat === 'strike' ? (data.strike || []) : (data.velocity || []);
     const unit = cat === 'velocity' ? ' mph' : '%';
     const emptyMsg = cat === 'velocity' ? 'No velocity readings yet.' : 'No pitches charted yet.';
+    // R6: the exclude/restore ACTIONS are head-only (isHead); the excluded
+    // list itself stays visible to any coach (data.is_coach, unchanged) --
+    // it's informational, same as everything else assistants can view.
+    const isHead = isHeadOfTeam(teamId);
     body = `
       <p class="lb-sub">${windowLabel}${cat === 'velocity' ? ' · highest recorded velocity' : ` · needs ${min} pitches to be ranked`}</p>
       ${stale ? `<p class="lb-asof">${lb.status === 'offline' ? "You're offline. " : "Couldn't refresh. "}Showing the last board, as of ${escHtml(lbWhen(stamp))}.</p>` : ''}
-      ${lbSection('', listRows, unit, min, data.is_coach, cat, emptyMsg)}
+      ${lbSection('', listRows, unit, min, isHead, cat, emptyMsg)}
       ${cat === 'velocity' && data.is_coach && (data.excluded || []).length ? `<div class="panel lb-section"><h3 class="lb-title">Excluded readings</h3>
         ${(data.excluded).map(e => `<div class="lb-row"><span class="lb-name">${escHtml(e.name)}</span>
           <span class="lb-val">${escHtml(e.value)} mph</span><span class="lb-n">${escHtml(lbDate(e.pitch_ts))}</span>
-          <button class="btn btn-ghost lb-undo" ${state.lbBusy ? 'disabled' : ''} onclick="restoreLbReading('${escHtml(e.pitch_id)}')">Undo</button></div>`).join('')}
+          ${isHead ? `<button class="btn btn-ghost lb-undo" ${state.lbBusy ? 'disabled' : ''} onclick="restoreLbReading('${escHtml(e.pitch_id)}')">Undo</button>` : ''}</div>`).join('')}
       </div>` : ''}`;
   }
   return `<div class="lb-page">
@@ -4377,10 +4619,132 @@ window.setUsesRadarGun = async function(val, self){
 // U9: the COACH's own profile (email, password, and now name) -- moved off
 // the tab bar into the upper-right corner control; this function itself is
 // unchanged in what it shows, only how it's reached.
+// R6: team admin, for the coach Profile tab's ACTIVE team. Every section
+// is head-gated in the UI (isHeadOfTeam) on top of the server's own
+// is_team_head refusal -- see the handler comments above. Assumes
+// loadCoachAdminData(state.currentTeamId) has already populated
+// teamCoachesList/teamInviteLinks (setView('profile') does this).
+function renderCoachTeamAdmin(){
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  if(!team) return '';
+  const head = isHeadOfTeam(team.id);
+  const staff = state.teamCoachesList;
+
+  const staffRows = staff === null ? '<p class="profile-note">Loading…</p>' : (staff.map(c => {
+    const tag = `<span class="throws-tag">${c.role === 'head' ? 'HEAD' : 'ASSISTANT'}</span>`;
+    let control = '';
+    if(head && c.role === 'assistant'){
+      control = state.removeCoachArmedId === c.coachId
+        ? `<span class="invite-regen-confirm-row">
+             <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.removeCoachBusy?'disabled':''} onclick="confirmRemoveCoach('${c.coachId}')">${state.removeCoachBusy?'Removing…':'Remove now'}</button>
+             <button class="btn btn-ghost" ${state.removeCoachBusy?'disabled':''} onclick="cancelRemoveCoach()">Cancel</button>
+           </span>`
+        : `<button class="undo-btn" onclick="armRemoveCoach('${c.coachId}')">Remove</button>`;
+    }
+    return `<div class="profile-row" style="justify-content:space-between;">
+      <span>${escHtml(c.name)} ${tag}</span>
+      ${control}
+    </div>`;
+  }).join('') || '<p class="profile-note">No coaches found.</p>');
+
+  const assistants = (staff || []).filter(c => c.role === 'assistant');
+  const handoffSection = (head && assistants.length) ? `
+    <div class="profile-section">
+      <h3>Hand off head coach</h3>
+      <p class="profile-note">Head moves to the assistant you pick. You become an assistant on this team; nothing else about your account changes.</p>
+      <div class="profile-row">
+        <select class="text-input" style="max-width:220px;" onchange="setHandoffTarget(this.value)">
+          <option value="">Choose an assistant…</option>
+          ${assistants.map(a => `<option value="${a.coachId}" ${state.handoffTargetId===a.coachId?'selected':''}>${escHtml(a.name)}</option>`).join('')}
+        </select>
+        ${state.handoffArmed ? '' : `<button class="btn btn-ghost" ${state.handoffTargetId?'':'disabled'} onclick="armHandoff()">Hand off</button>`}
+      </div>
+      ${state.handoffArmed ? `
+        <p class="invite-regen-warn">This makes ${escHtml((assistants.find(a=>a.coachId===state.handoffTargetId)||{}).name || 'them')} the head coach immediately. You'll keep full access as an assistant, but lose admin controls for this team.</p>
+        <div class="invite-regen-confirm-row">
+          <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.handoffBusy?'disabled':''} onclick="confirmHandoff()">${state.handoffBusy?'Handing off…':'Confirm hand-off'}</button>
+          <button class="btn btn-ghost" ${state.handoffBusy?'disabled':''} onclick="cancelHandoff()">Cancel</button>
+        </div>` : ''}
+    </div>` : '';
+
+  const linksSection = (head && state.teamInviteLinks) ? `
+    <div class="profile-section">
+      <h3>Invite links</h3>
+      <div class="field-label" style="margin-bottom:6px;">Pitcher invite link</div>
+      <div class="invite-link-panel">
+        <div class="invite-link-row">
+          <span class="invite-link-text">${inviteLinkFor()}</span>
+          <button class="invite-link-copy-btn" onclick="copyInviteLink()">${state.inviteCopyStatus === 'copied' ? 'Copied!' : state.inviteCopyStatus === 'error' ? 'Copy failed' : 'Copy'}</button>
+        </div>
+        <div class="invite-regen-row">
+          <span style="font-size:11px;color:var(--ink-faint);">Rotated ${state.teamInviteLinks.invite_token_rotated_at ? new Date(state.teamInviteLinks.invite_token_rotated_at).toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '—'}</span>
+          ${state.regenerateArmed ? '' : '<button class="invite-regen-btn" onclick="armRegenerateInvite()">Regenerate</button>'}
+        </div>
+        ${state.regenerateArmed ? `
+          <p class="invite-regen-warn">This makes a new link and the current one stops working immediately — anyone who hasn't joined yet with the old link will need the new one.</p>
+          <div class="invite-regen-confirm-row">
+            <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.regenerateBusy?'disabled':''} onclick="confirmRegenerateInvite()">${state.regenerateBusy?'Regenerating…':'Regenerate now'}</button>
+            <button class="btn btn-ghost" ${state.regenerateBusy?'disabled':''} onclick="cancelRegenerateInvite()">Cancel</button>
+          </div>` : ''}
+      </div>
+      <div class="field-label" style="margin:14px 0 6px;">Coach invite link</div>
+      <div class="invite-link-panel">
+        <div class="invite-link-row">
+          <span class="invite-link-text">${coachInviteLinkFor()}</span>
+          <button class="invite-link-copy-btn" onclick="copyCoachInviteLink()">${state.coachInviteCopyStatus === 'copied' ? 'Copied!' : state.coachInviteCopyStatus === 'error' ? 'Copy failed' : 'Copy'}</button>
+        </div>
+        <div class="invite-regen-row">
+          <span style="font-size:11px;color:var(--ink-faint);">Rotated ${state.teamInviteLinks.coach_invite_token_rotated_at ? new Date(state.teamInviteLinks.coach_invite_token_rotated_at).toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '—'}</span>
+          ${state.coachRegenerateArmed ? '' : '<button class="invite-regen-btn" onclick="armRegenerateCoachInvite()">Regenerate</button>'}
+        </div>
+        ${state.coachRegenerateArmed ? `
+          <p class="invite-regen-warn">This makes a new link and the current one stops working immediately.</p>
+          <div class="invite-regen-confirm-row">
+            <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.coachRegenerateBusy?'disabled':''} onclick="confirmRegenerateCoachInvite()">${state.coachRegenerateBusy?'Regenerating…':'Regenerate now'}</button>
+            <button class="btn btn-ghost" ${state.coachRegenerateBusy?'disabled':''} onclick="cancelRegenerateCoachInvite()">Cancel</button>
+          </div>` : ''}
+      </div>
+    </div>` : '';
+
+  const renameSection = head ? `
+    <div class="profile-section">
+      <h3>Team name</h3>
+      ${state.renameTeamOpen ? `
+        <div class="profile-row">
+          <input id="rename-team-input" class="text-input" style="max-width:260px;" value="${escHtml(state.renameTeamDraft)}" oninput="onRenameTeamInput(this.value)">
+          <button class="btn btn-primary" ${state.renameTeamBusy?'disabled':''} onclick="submitRenameTeam()">${state.renameTeamBusy?'Saving…':'Save'}</button>
+          <button class="btn btn-ghost" ${state.renameTeamBusy?'disabled':''} onclick="cancelRenameTeam()">Cancel</button>
+        </div>
+        ${state.renameTeamError ? `<p class="profile-msg">${escHtml(state.renameTeamError)}</p>` : ''}
+      ` : `<div class="profile-row" style="justify-content:space-between;"><strong>${escHtml(team.name)}</strong><button class="btn btn-ghost" onclick="openRenameTeam()">Rename</button></div>`}
+    </div>` : `<div class="profile-section"><h3>Team</h3><div class="profile-row"><strong>${escHtml(team.name)}</strong></div></div>`;
+
+  return `
+    ${renameSection}
+    <div class="profile-section">
+      <h3>Coaching staff</h3>
+      ${staffRows}
+    </div>
+    ${handoffSection}
+    ${linksSection}
+    <div class="profile-section">
+      <h3>Create a team</h3>
+      <p class="profile-note">Start a new team you'll be head of — your account can hold a role on more than one.</p>
+      ${state.createTeamOpen ? `
+        <div class="profile-row">
+          <input id="create-team-input" class="text-input" style="max-width:260px;" placeholder="e.g. Kings Christian Baseball" value="${escHtml(state.createTeamDraft)}" oninput="onCreateTeamInput(this.value)">
+          <button class="btn btn-primary" ${state.createTeamBusy?'disabled':''} onclick="submitCreateTeam()">${state.createTeamBusy?'Creating…':'Create'}</button>
+          <button class="btn btn-ghost" ${state.createTeamBusy?'disabled':''} onclick="cancelCreateTeam()">Cancel</button>
+        </div>
+        ${state.createTeamError ? `<p class="profile-msg">${escHtml(state.createTeamError)}</p>` : ''}
+      ` : `<button class="btn btn-ghost" onclick="openCreateTeam()">Create a team</button>`}
+    </div>
+  `;
+}
 function renderProfileView(){
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
   if(isCoach()){
-    return `<div class="profile-page">${msg}${renderNameSection(mapProfile(state.profile), true)}${renderEmailSection()}${renderPasswordSection()}</div>`;
+    return `<div class="profile-page">${msg}${renderNameSection(mapProfile(state.profile), true)}${renderEmailSection()}${renderPasswordSection()}${renderCoachTeamAdmin()}</div>`;
   }
   const p = currentPitcher();
   const uniformRows = state.teams.map(t => uniformRowHtml(t.id, state.profile.id, 'Uniform # · ' + t.name)).join('')
@@ -4405,6 +4769,24 @@ function renderPitcherProfileView(){
   if(!p) return `<div class="empty-hist">Select a pitcher to see his profile.</div>`;
   const team = state.teams.find(t => t.id === state.currentTeamId);
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
+  // R6: editing a pitcher's profile is head-only (decision table). An
+  // assistant gets a read-only summary here rather than threading a new
+  // mode through five separately-owned section renderers (name/throws/
+  // pitch-mix/rel-accuracy/radar-gun) that heads and self-service pitchers
+  // still use unchanged. The server refuses coach_set_* regardless
+  // (is_head_of_pitcher) -- this is purely the "don't show a control that
+  // would only ever error" half.
+  if(!isHeadOfCurrentTeam()){
+    const uniformNum = (p.uniformNumber === null || p.uniformNumber === undefined) ? '—' : p.uniformNumber;
+    return `<div class="profile-page">
+      <div class="profile-row"><h2 class="display" style="margin:0;">${escHtml(p.name)}'s profile</h2></div>
+      ${msg}
+      <div class="profile-section"><h3>Uniform number</h3><p class="profile-note">${escHtml(String(uniformNum))}${team ? ' · ' + escHtml(team.name) : ''}</p></div>
+      <div class="profile-section"><h3>Throws</h3><p class="profile-note">${p.throws === 'L' ? 'Left' : p.throws === 'R' ? 'Right' : 'Not set'}</p></div>
+      <div class="profile-section"><h3>Pitch mix</h3><p class="profile-note">${(p.pitchTypes || []).map(pitchLabel).join(' · ') || 'No pitches set yet'}</p></div>
+      <p class="profile-note">Only the head coach can edit a pitcher's profile.</p>
+    </div>`;
+  }
   return `<div class="profile-page">
     <div class="profile-row"><h2 class="display" style="margin:0;">${escHtml(p.name)}'s profile</h2></div>
     ${msg}
@@ -4699,6 +5081,10 @@ function render(){
   let sidebarBody;
   let phoneFooter = '';   // phones only: the coach's invite link + sign out, rendered below the page content
   if(isCoach()){
+    // R6: removing a pitcher is head-only now -- the ✕ itself is gone for
+    // an assistant (the server would refuse it anyway; see is_team_head),
+    // never just disabled, so there's nothing there to explain.
+    const canRemovePitcher = isHeadOfCurrentTeam();
     const rosterItems = state.roster.map((p, i) => `
       <div class="roster-item-wrap">
         <div class="roster-item${p.id===state.currentPitcherId?' active':''}" style="display:flex;">
@@ -4710,9 +5096,9 @@ function render(){
             </div>
             <span class="roster-item-num">${p.uniformNumber === null ? '—' : p.uniformNumber}</span>
           </button>
-          <button class="roster-item-remove" title="Remove ${escHtml(p.name)} from this team" onclick="event.stopPropagation();armRemoveRosterPitcher('${p.id}')">✕</button>
+          ${canRemovePitcher ? `<button class="roster-item-remove" title="Remove ${escHtml(p.name)} from this team" onclick="event.stopPropagation();armRemoveRosterPitcher('${p.id}')">✕</button>` : ''}
         </div>
-        ${state.removeArmedPitcherId === p.id ? `
+        ${(canRemovePitcher && state.removeArmedPitcherId === p.id) ? `
           <div class="invite-regen-warn" style="padding:0 4px 8px;">Removes ${escHtml(p.name)} from this team's roster and emails them to let them know. Their sessions and stats aren't deleted -- only this team's view of them.</div>
           <div class="invite-regen-confirm-row" style="padding:0 4px 8px;">
             <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.removeBusy ? 'disabled' : ''} onclick="confirmRemoveRosterPitcher('${p.id}')">${state.removeBusy ? 'Removing…' : 'Remove now'}</button>
@@ -4720,31 +5106,10 @@ function render(){
           </div>` : ''}
       </div>`).join('');
 
-    const team = state.teams.find(t => t.id === state.currentTeamId);
-    // R0: link + copy + regenerate, replacing the old per-email invite box
-    // entirely -- not hidden, not disabled, removed (item (d)).
-    const inviteLinkPanel = team ? `
-      <div class="invite-link-panel">
-        <div class="field-label">Team invite link</div>
-        <div class="invite-link-row">
-          <span class="invite-link-text">${inviteLinkFor(team)}</span>
-          <button class="invite-link-copy-btn" onclick="copyInviteLink()">${state.inviteCopyStatus === 'copied' ? 'Copied!' : state.inviteCopyStatus === 'error' ? 'Copy failed' : 'Copy'}</button>
-        </div>
-        <div class="invite-regen-row">
-          <span style="font-size:11px;color:var(--ink-faint);">Rotated ${team.invite_token_rotated_at ? new Date(team.invite_token_rotated_at).toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '—'}</span>
-          ${state.regenerateArmed ? '' : '<button class="invite-regen-btn" onclick="armRegenerateInvite()">Regenerate</button>'}
-        </div>
-        ${state.regenerateArmed ? `
-          <p class="invite-regen-warn">This makes a new link and the current one stops working immediately — anyone who hasn't joined yet with the old link will need the new one.</p>
-          <div class="invite-regen-confirm-row">
-            <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.regenerateBusy ? 'disabled' : ''} onclick="confirmRegenerateInvite()">${state.regenerateBusy ? 'Regenerating…' : 'Regenerate now'}</button>
-            <button class="btn btn-ghost" ${state.regenerateBusy ? 'disabled' : ''} onclick="cancelRegenerateInvite()">Cancel</button>
-          </div>` : ''}
-      </div>` : '';
-
-    // On iPad and laptop the invite link stays in the sidebar, as before. On phones the
-    // sidebar copy is hidden and the same panel + Sign out render again at the very bottom
-    // of the page (after End session & save), so they sit at the end of the scroll.
+    // R6: the pitcher invite link (and the new coach invite link) moved
+    // off the main page entirely, into the coach Profile tab's admin
+    // section (renderCoachTeamAdmin) -- head-only there too. Nothing
+    // replaces this panel here.
     // Collapsing roster: once a pitcher is picked, the list rolls up and the Roster
     // button itself shows who's selected, so a coach always sees who he's charting
     // without the list taking up space. Pure UI state (state.rosterCollapsed) --
@@ -4760,9 +5125,8 @@ function render(){
       </button>
       <div class="roster-collapse${collapsed ? ' collapsed' : ''}">
         <div class="roster-list">${rosterItems || '<p style="color:var(--ink-faint);font-size:12.5px;">No pitchers on this team yet.</p>'}</div>
-      </div>
-      <div class="hide-phone">${inviteLinkPanel}</div>`;
-    phoneFooter = `<div class="phone-footer">${inviteLinkPanel}<button class="sign-out-btn" onclick="signOut()">Sign out</button></div>`;
+      </div>`;
+    phoneFooter = `<div class="phone-footer"><button class="sign-out-btn" onclick="signOut()">Sign out</button></div>`;
   } else {
     sidebarBody = `
       ${teamSelector}

@@ -1,0 +1,33 @@
+-- R6 follow-up — fix a real permission error caught live during the staging
+-- four-persona walkthrough.
+--
+-- is_team_coach and is_team_member (baseline) are both `grant all ... to
+-- anon` -- deliberately, so an RLS policy that calls them can be evaluated
+-- for an anonymous caller and cleanly return false (auth.uid() is null for
+-- anon, so the comparison is just false, never an error). The new
+-- is_team_head (this session's R6 migration) only granted execute to
+-- authenticated, missing that anon grant.
+--
+-- Consequence: "Coaches manage own teams" on public.teams calls
+-- is_team_head(id) directly in its USING clause. Postgres evaluates every
+-- permissive policy on a table regardless of which one would ultimately
+-- grant access -- if evaluating ANY of them raises an error (here,
+-- "permission denied for function is_team_head", 42501, because anon
+-- lacks EXECUTE), the whole query fails, even though the OTHER policy on
+-- the same table ("Coaches view teams they belong to as staff", via
+-- is_team_coach, already anon-executable) would have safely evaluated to
+-- false on its own. Caught via `resolve_coach_invite` still working for
+-- anon (a SECURITY DEFINER function, unaffected) alongside a direct anon
+-- SELECT on teams returning a hard 401/42501 instead of an empty array.
+--
+-- Fix: grant is_team_head the same anon execute access is_team_coach and
+-- is_team_member already have. Harmless to expose at the EXECUTE level --
+-- STABLE, read-only, and auth.uid() is null for anon so it always
+-- evaluates to false; anon still can't see or affect anything through it.
+--
+-- ---------------------------------------------------------------------------------
+-- ROLLBACK: revoke execute on function public.is_team_head(uuid) from anon;
+-- (not recommended -- reintroduces the exact bug this fixes)
+-- ---------------------------------------------------------------------------------
+
+grant execute on function public.is_team_head(uuid) to anon;

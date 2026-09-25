@@ -18,6 +18,18 @@
 // design (see the migration's comments on why there's no SELECT policy
 // either). This mirrors invite-pitcher's precedent of an admin client
 // scoped to one specific operation, never used for anything else.
+//
+// P1-15: also handles { action: 'deleteReport', sessionId }, the one other
+// place this function's service-role access is needed -- the `reports`
+// bucket has no DELETE policy either (no policy of any kind, confirmed
+// empirically against storage.objects), so removing a report object can
+// only happen with the service-role key, same as placing one. Reuses the
+// exact same caller-JWT trust model: the session lookup below goes through
+// callerClient, so RLS is what proves this caller may touch this session,
+// same as every other branch in this file. Restricted to sessions that are
+// ALREADY soft-deleted (delete_session sets deleted_at first) -- this must
+// never be reachable against a live session's report, which someone may
+// already have the link to.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { buildReportHtml, type ReportPayload } from './template.ts'
@@ -79,11 +91,64 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
   }
 
-  let body: ReportRequestBody
-  try { body = await req.json() } catch {
+  let rawBody: Record<string, unknown>
+  try { rawBody = await req.json() } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: corsHeaders })
   }
 
+  // P1-15 deleteReport branch -- handled entirely separately from the
+  // generate/send path below, before any of that path's field validation
+  // (a delete request has no pitches/pitcherName/etc to validate).
+  if (rawBody.action === 'deleteReport') {
+    const delSessionId = rawBody.sessionId
+    if (typeof delSessionId !== 'string' || !delSessionId) {
+      return new Response(JSON.stringify({ error: 'sessionId is required' }), { status: 400, headers: corsHeaders })
+    }
+
+    const { data: delSession, error: delSessionErr } = await callerClient
+      .from('sessions')
+      .select('id, report_path, deleted_at')
+      .eq('id', delSessionId)
+      .maybeSingle()
+    if (delSessionErr) {
+      return new Response(JSON.stringify({ error: 'Could not look up session: ' + delSessionErr.message }), { status: 500, headers: corsHeaders })
+    }
+    if (!delSession) {
+      return new Response(JSON.stringify({ error: 'Session not found or not accessible with your account.' }), { status: 403, headers: corsHeaders })
+    }
+    // The whole point of this guard: a live session's report must never be
+    // reachable through this action, even by its own pitcher or head coach.
+    if (!delSession.deleted_at) {
+      return new Response(JSON.stringify({ error: 'Session is not deleted -- refusing to remove its report.' }), { status: 400, headers: corsHeaders })
+    }
+    if (!delSession.report_path) {
+      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: corsHeaders })
+    }
+
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const adminClient = createClient(supabaseUrl, serviceKey)
+    const { error: removeErr } = await adminClient.storage.from('reports').remove([delSession.report_path])
+    if (removeErr) {
+      return new Response(JSON.stringify({ error: 'Could not remove stored report: ' + removeErr.message }), { status: 500, headers: corsHeaders })
+    }
+
+    // Through the caller's own client, same as the write in the generate
+    // path below -- the FOR ALL policies already grant this UPDATE.
+    const { error: clearErr } = await callerClient
+      .from('sessions')
+      .update({ report_path: null, report_generated_at: null })
+      .eq('id', delSessionId)
+    if (clearErr) {
+      // The object is already gone at this point -- report_path pointing
+      // at nothing is a display inconsistency, not a data-safety issue, so
+      // this is reported but not treated as a full failure.
+      return new Response(JSON.stringify({ ok: true, warning: 'Report file removed, but the session row could not be updated: ' + clearErr.message }), { status: 200, headers: corsHeaders })
+    }
+
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: corsHeaders })
+  }
+
+  const body = rawBody as unknown as ReportRequestBody
   const { sessionId, pitcherId, pitcherName, pitches } = body
   const emails = body.emails ?? []
   if (!sessionId || !pitcherId || !pitcherName || !Array.isArray(pitches)) {
@@ -118,7 +183,7 @@ Deno.serve(async (req) => {
   // same as any other RLS-filtered read.
   const { data: session, error: sessionErr } = await callerClient
     .from('sessions')
-    .select('id, pitcher_id, report_path, kind')
+    .select('id, pitcher_id, report_path, kind, deleted_at')
     .eq('id', sessionId)
     .maybeSingle()
   if (sessionErr) {
@@ -126,6 +191,15 @@ Deno.serve(async (req) => {
   }
   if (!session) {
     return new Response(JSON.stringify({ error: 'Session not found, not synced yet, or not accessible with your account.' }), { status: 403, headers: corsHeaders })
+  }
+  // P1-15: a deleted session must never generate or resend a report, even
+  // for a caller who still technically has RLS access to the row (RLS on
+  // sessions doesn't know about deleted_at -- see the precondition report).
+  // The UI already can't reach this (tombstones aren't sent/viewed), so
+  // this only matters against a direct call, which is exactly when it
+  // matters most.
+  if (session.deleted_at) {
+    return new Response(JSON.stringify({ error: 'This session has been deleted. No report can be generated or sent for it.' }), { status: 410, headers: corsHeaders })
   }
   if (session.pitcher_id !== pitcherId) {
     return new Response(JSON.stringify({ error: 'pitcherId does not match the session\'s pitcher.' }), { status: 400, headers: corsHeaders })

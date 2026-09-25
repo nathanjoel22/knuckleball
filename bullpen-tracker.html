@@ -741,6 +741,7 @@
     border:1px solid var(--border-strong); padding:2px 7px; border-radius:20px; margin-left:6px; vertical-align:middle;
   }
   .deleted-meta{ font-size:11.5px; color:var(--ink-faint); }
+  .deleted-summary-row{ text-align:center; padding:12px 0 4px; }
   .delete-zone{ margin-top:16px; padding-top:4px; }
   .delete-warn{ margin:0 0 8px; font-size:12.5px; color:var(--ink-dim); line-height:1.5; }
   .delete-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
@@ -1041,7 +1042,8 @@ let state = {
   deletingSessionId: null,  // session with an open typed-confirm delete form (P1-15)
   deleteConfirmText: '',
   deleteBusy: false,
-  deleteError: null
+  deleteError: null,
+  oldTombstonesExpanded: false  // (P1-15) show tombstones older than 90 days
 };
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -1594,6 +1596,7 @@ window.onTeamChange = async function(teamId, skipRender){
   state.currentTeamId = teamId;
   state.uniformEditKey = null; state.uniformMsg = '';
   state.expandedSessionId = null;
+  state.oldTombstonesExpanded = false;
   state.regenerateArmed = false;
   state.hint = '';
   clearDeleteState();
@@ -1737,6 +1740,7 @@ window.selectPitcher = async function(pitcherId){
   state.rosterCollapsed = true;   // picking a pitcher rolls the list up; unchanged otherwise
   state.uniformEditKey = null; state.uniformMsg = '';
   state.expandedSessionId = null;
+  state.oldTombstonesExpanded = false;
   clearDeleteState();
   await loadSessionsForCurrentSelection();
   await refreshDraftState();
@@ -2836,6 +2840,18 @@ window.confirmDeleteSession = async function(){
     return;
   }
 
+  // Best-effort report cleanup: the session is already correctly deleted at
+  // this point (the part that matters -- it's gone from every stat, trend,
+  // and the leaderboard). If this fails, the old report link outlives the
+  // session it describes rather than anything breaking for the user, so it
+  // isn't allowed to block or error out the deletion that already
+  // succeeded -- just logged for later cleanup.
+  if(data && data.report_path){
+    try{
+      await callSendReportFunction({ action: 'deleteReport', sessionId: id });
+    }catch(e){ console.error('report cleanup after delete failed', e); }
+  }
+
   clearDeleteState();
   if(state.expandedSessionId === id) state.expandedSessionId = null;
   await loadSessionsForCurrentSelection();
@@ -2997,7 +3013,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by_role, pitch_count, charting_perspective, report_path, kind, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index)')
+    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index)')
     .eq('pitcher_id', pitcherId)
     .eq('team_id', teamId)
     .order('started_at', { ascending: false });
@@ -3007,7 +3023,9 @@ async function loadSessionsForCurrentSelection(){
     date: new Date(s.started_at).getTime(),
     loggedByCoach: s.logged_by !== s.pitcher_id,
     deletedAt: s.deleted_at ? new Date(s.deleted_at).getTime() : null,
+    deletedBy: s.deleted_by || null,
     deletedByRole: s.deleted_by_role || null,
+    deletedByName: s.deleted_by_name || null,
     pitchCount: s.pitch_count,
     // Not used to adjust rendering (history/heat-map always shows canonical
     // coordinates unmirrored, see mirrorCol's comment) -- carried through
@@ -3964,7 +3982,21 @@ function renderHistoryView(){
   if(!combined.length){
     return `${renderHistoryFilter()}<div class="empty-hist">No saved sessions yet for ${escHtml(p.name)}${isCoach() ? '' : ' — finish a bullpen session to see it here'}.</div>`;
   }
-  return renderHistoryFilter() + combined.map(s => {
+  // P1-15 (d): a tombstone older than 90 days collapses into one summary
+  // line at the bottom of History rather than sitting in the normal
+  // chronological list forever. Rows stay in the DB either way -- this is
+  // purely a rendering choice, computed fresh on every render() so it
+  // needs no state beyond the one expand/collapse toggle.
+  const OLD_TOMBSTONE_MS = 90 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const isOldTombstone = s => s.tombstone && s.deletedAt && (now - s.deletedAt) > OLD_TOMBSTONE_MS;
+  const oldTombstoneCount = combined.filter(isOldTombstone).length;
+  const visible = state.oldTombstonesExpanded ? combined : combined.filter(s => !isOldTombstone(s));
+  const oldSummaryHtml = oldTombstoneCount ? `
+    <div class="deleted-summary-row">
+      <button class="undo-btn" onclick="toggleOldTombstones()">${state.oldTombstonesExpanded ? 'Hide' : ''} ${oldTombstoneCount} deleted session${oldTombstoneCount === 1 ? '' : 's'}</button>
+    </div>` : '';
+  return renderHistoryFilter() + visible.map(s => {
     // G1: a game session gets its own, much simpler card -- innings,
     // pitches, K/BB/H, strike% (gameStats -- the same function the live
     // charting screen uses). Never sessionStats: that computes target-vs-
@@ -3978,7 +4010,8 @@ function renderHistoryView(){
       const stats = gameStats(s.pitches);
       const expanded = state.expandedSessionId === s.id;
       const pendingTag = s.pending ? ` <span class="coach-logged-tag pending-tag">Pending sync${s.lastError ? ' · retrying' : ''}</span>` : '';
-      const deleteZone = (s.pending || !canDeleteSessions()) ? '' : (state.deletingSessionId === s.id ? `
+      const deleteZone = (s.pending || !canDeleteSessions()) ? '' : (!isOnline() ? `
+        <div class="delete-zone"><button class="undo-btn" disabled title="Deleting requires a connection">Connect to delete</button></div>` : (state.deletingSessionId === s.id ? `
         <div class="delete-zone">
           <p class="delete-warn">This permanently removes the ${stats.total} pitch${stats.total === 1 ? '' : 'es'} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
           ${state.deleteError ? `<p class="report-status report-status-error" style="margin:0 0 8px;">${state.deleteError}</p>` : ''}
@@ -3989,7 +4022,7 @@ function renderHistoryView(){
             <button class="btn btn-ghost" ${state.deleteBusy ? 'disabled' : ''} onclick="cancelDeleteSession()">Cancel</button>
           </div>
         </div>` : `
-        <div class="delete-zone"><button class="undo-btn" onclick="startDeleteSession('${s.id}')">Delete this session</button></div>`);
+        <div class="delete-zone"><button class="undo-btn" onclick="startDeleteSession('${s.id}')">Delete this session</button></div>`));
       return `
         <div class="session-card">
           <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
@@ -4024,13 +4057,28 @@ function renderHistoryView(){
     // P1-15: a deleted session is a tombstone -- not expandable, no stats,
     // no report. It only records that an outing happened and was removed.
     if(s.tombstone){
-      const by = s.deletedByRole === 'coach' ? 'the team' : 'the player';
+      const viewerId = state.session ? state.session.user.id : null;
+      // deleted_by_name is a snapshot taken at delete time (P1-15) --
+      // needed because sessions has no FK to profiles to embed through
+      // (deleted_by, like pitcher_id and logged_by, points at auth.users),
+      // and a pitcher has no RLS grant to read a coach's profile row
+      // directly. The pitcher-deleted branch doesn't need the snapshot --
+      // p.name (the pitcher currently being viewed) is already right there.
+      let by;
+      if(viewerId && s.deletedBy === viewerId){
+        by = 'Deleted by you';
+      } else if(s.deletedByRole === 'coach'){
+        by = 'Deleted by ' + (s.deletedByName ? escHtml(s.deletedByName) : 'the coach') + ' (head coach)';
+      } else {
+        by = 'Deleted by ' + escHtml(p.name);
+      }
+      const kindLabel = (s.kind || 'bullpen') === 'game' ? 'Game' : 'Bullpen';
       const delDate = s.deletedAt ? new Date(s.deletedAt).toLocaleDateString(undefined, { month:'short', day:'numeric' }) : '';
       return `
         <div class="session-card session-card-deleted">
           <div class="session-card-head" style="cursor:default;">
             <div class="session-date">${dateStr} <span class="deleted-tag">Deleted</span></div>
-            <div class="deleted-meta">${s.pitchCount != null ? s.pitchCount : '—'} pitch${s.pitchCount === 1 ? '' : 'es'} thrown · removed by ${by}${delDate ? ' · ' + delDate : ''}</div>
+            <div class="deleted-meta">${kindLabel} · ${s.pitchCount != null ? s.pitchCount : '—'} pitch${s.pitchCount === 1 ? '' : 'es'} · ${by}${delDate ? ' · ' + delDate : ''}</div>
           </div>
         </div>`;
     }
@@ -4098,7 +4146,8 @@ function renderHistoryView(){
 
     // P1-15: delete a saved (synced) session. Pending sessions are left to
     // P1-01. No pitch editing anywhere -- delete is the only post-save action.
-    const deleteZone = (s.pending || !canDeleteSessions()) ? '' : (state.deletingSessionId === s.id ? `
+    const deleteZone = (s.pending || !canDeleteSessions()) ? '' : (!isOnline() ? `
+      <div class="delete-zone"><button class="undo-btn" disabled title="Deleting requires a connection">Connect to delete</button></div>` : (state.deletingSessionId === s.id ? `
       <div class="delete-zone">
         <p class="delete-warn">This permanently removes the ${stats.total} pitch${stats.total === 1 ? '' : 'es'} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
         ${state.deleteError ? `<p class="report-status report-status-error" style="margin:0 0 8px;">${state.deleteError}</p>` : ''}
@@ -4109,7 +4158,7 @@ function renderHistoryView(){
           <button class="btn btn-ghost" ${state.deleteBusy ? 'disabled' : ''} onclick="cancelDeleteSession()">Cancel</button>
         </div>
       </div>` : `
-      <div class="delete-zone"><button class="undo-btn" onclick="startDeleteSession('${s.id}')">Delete this session</button></div>`);
+      <div class="delete-zone"><button class="undo-btn" onclick="startDeleteSession('${s.id}')">Delete this session</button></div>`));
 
     return `
       <div class="session-card">
@@ -4138,8 +4187,12 @@ function renderHistoryView(){
           </div>
         </div>` : ''}
       </div>`;
-  }).join('');
+  }).join('') + oldSummaryHtml;
 }
+window.toggleOldTombstones = function(){
+  state.oldTombstonesExpanded = !state.oldTombstonesExpanded;
+  render();
+};
 
 /* ---------- ACCURACY ZONE PAINTER (Profile) ---------- */
 window.setRelativeAccuracy = async function(on){

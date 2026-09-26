@@ -646,6 +646,17 @@
   }
   .field-flow-summary{ font-size:12.5px; color:var(--ink-dim); line-height:1.5; margin:0 0 8px; }
   .field-disabled-reason{ font-size:11.5px; color:var(--clay); margin:6px 0 0; text-align:center; }
+  /* G1b (f): the status-bar diamond -- tap to Adjust Runners. min 44px hit
+     area even though the SVG glyph itself is drawn smaller, same "real tap
+     target is a separate, fixed-size element" rule as the field's own
+     position targets. */
+  .runner-diamond-btn{
+    display:flex; align-items:center; justify-content:center;
+    width:44px; height:44px; min-width:44px; min-height:44px; padding:0;
+    border:none; background:transparent; cursor:pointer;
+  }
+  .runner-diamond-btn:disabled{ cursor:not-allowed; opacity:0.55; }
+  .adjust-runners-panel{ margin-top:4px; padding:14px; }
   @media (max-width:860px){
     .field-wrap{ width:100%; max-width:320px; height:auto; aspect-ratio:1/1; }
   }
@@ -2460,7 +2471,19 @@ async function freshActiveSession(){
 async function refreshDraftState(){
   if(!state.currentPitcherId){ state.draftAvailable = false; state.activeSession = null; return; }
   const draft = await storGet(draftKey());
-  if(draft && draft.pitches && draft.pitches.length){
+  // G1b: a draft is also worth offering even with ZERO committed pitches
+  // if it's mid-flow on a field play or an Adjust Runners event -- caught
+  // by testing the killed-browser/resume path specifically on a game's
+  // FIRST pitch: pre-G1b, a bare pendingTarget/gamePendingPitch with no
+  // pitches yet was low-value enough to lose (an "acceptable small loss on
+  // a crash," documented elsewhere in this file) and this gate never
+  // needed to consider it. The field flow's multi-step state (location,
+  // bb_type, batter result, runner endings) represents real charter effort
+  // that G1b now deliberately preserves everywhere else -- discarding it
+  // here specifically because it happens to be the game's first pitch
+  // would silently contradict that.
+  const hasMidFlowProgress = draft && (draft.gamePendingPitch || draft.fieldPlay || draft.adjustRunners);
+  if(draft && ((draft.pitches && draft.pitches.length) || hasMidFlowProgress)){
     state.draftAvailable = true;
     state.pendingDraft = draft;
     state.activeSession = null;
@@ -2843,6 +2866,11 @@ window.endSession = async function(){
     startedAt: state.activeSession.startedAt,
     endedAt: Date.now(),
     pitches: state.activeSession.pitches,
+    // G1b (h): events[] nests beside pitches[] in the SAME queued item --
+    // one queued item still means one session, per Joel's decision. Empty
+    // for a bullpen (events never exist there) and for a game with no
+    // Adjust Runners taps.
+    events: state.activeSession.events || [],
     // G1: 'bullpen' | 'game', locked at the chooser -- see freshActiveSession
     // and chooseSessionKind. Defensive fallback for a pre-G1 in-flight
     // draft that somehow reached here (resumeDraft already defaults this,
@@ -2867,6 +2895,8 @@ window.endSession = async function(){
   state.activeSession.gameResultMenu = null;
   state.activeSession.gamePendingOutcome = null;
   state.activeSession.gamePendingHitType = null;
+  state.activeSession.fieldPlay = null;
+  state.activeSession.adjustRunners = null;
   state.saving = false;
   await refreshOutboxState();
   state.view = 'history';
@@ -3059,13 +3089,48 @@ async function syncOutbox(){
       outs_before: (p.outsBefore === undefined) ? null : p.outsBefore,
       balls_before: (p.ballsBefore === undefined) ? null : p.ballsBefore,
       strikes_before: (p.strikesBefore === undefined) ? null : p.strikesBefore,
-      at_bat_index: (p.atBatIndex === undefined) ? null : p.atBatIndex
+      at_bat_index: (p.atBatIndex === undefined) ? null : p.atBatIndex,
+      // G1b: the field-flow columns. undefined (a pitch queued before this
+      // shipped, or any non-in-play result this slice) becomes null
+      // explicitly -- same reasoning as every other defensive fallback in
+      // this mapping: an upsert must not leave these columns untouched on
+      // a retry by omitting the key.
+      bb_type: (p.bbType === undefined) ? null : p.bbType,
+      bb_x: (p.bbX === undefined) ? null : p.bbX,
+      bb_y: (p.bbY === undefined) ? null : p.bbY,
+      fielders: (p.fielders === undefined) ? null : p.fielders,
+      runners_before: (p.runnersBefore === undefined) ? null : p.runnersBefore,
+      batter_to: (p.batterTo === undefined) ? null : p.batterTo,
+      runner_advances: (p.runnerAdvances === undefined) ? null : p.runnerAdvances,
+      outs_on_play: (p.outsOnPlay === undefined) ? null : p.outsOnPlay,
+      runs_scored: (p.runsScored === undefined) ? null : p.runsScored,
+      sacrifice: (p.sacrifice === undefined) ? null : p.sacrifice
+    }));
+    // G1b (h): game_events, pitches' sibling in the same queued item.
+    // after_pitch_id relies on pitch ids being client-generated UUIDs
+    // (confirmed in the precondition report) -- inserting pitches first
+    // guarantees the row it references already exists by the time this
+    // runs, every time, including on a retried sync.
+    const eventRows = (item.events || []).map(e => ({
+      id: e.id,
+      session_id: item.id,
+      at_bat_index: (e.atBatIndex === undefined) ? null : e.atBatIndex,
+      after_pitch_id: e.afterPitchId || null,
+      event_type: e.eventType,
+      runners_before: (e.runnersBefore === undefined) ? null : e.runnersBefore,
+      runner_advances: (e.runnerAdvances === undefined) ? null : e.runnerAdvances,
+      outs_on_play: (e.outsOnPlay === undefined) ? null : e.outsOnPlay,
+      runs_scored: (e.runsScored === undefined) ? null : e.runsScored
     }));
     try{
       const { error: sessErr } = await supabaseClient.from('sessions').upsert(sessionRow, { onConflict: 'id' });
       if(sessErr) throw sessErr;
       const { error: pitchErr } = await supabaseClient.from('pitches').upsert(pitchRows, { onConflict: 'id' });
       if(pitchErr) throw pitchErr;
+      if(eventRows.length){
+        const { error: eventErr } = await supabaseClient.from('game_events').upsert(eventRows, { onConflict: 'id' });
+        if(eventErr) throw eventErr;
+      }
       await removeOutboxItem(userId, item.id);
     } catch(err){
       await updateOutboxItem(userId, Object.assign({}, item, {
@@ -3419,6 +3484,13 @@ window.chooseSessionKind = async function(kind){
     // never anywhere else, so a mid-inning walk/hit doesn't wipe runners who
     // are still on base.
     state.activeSession.runners = { 1: false, 2: false, 3: false };
+    // G1b (f)/(h): events[] is pitches[]'s sibling -- runner corrections
+    // with no pitch of their own (Adjust Runners). nextSeq orders BOTH
+    // collections together so "undo the last action" (undoLastGameAction,
+    // below) knows which of the two actually happened most recently,
+    // regardless of which array it lives in.
+    state.activeSession.events = [];
+    state.activeSession.nextSeq = 1;
     // Games are usually charted from behind the plate (Joel) -- override
     // whatever the last BULLPEN charted from, since that's a different
     // remembered habit. Still just the default; the toggle still shows
@@ -3709,6 +3781,11 @@ window.recordGameResult = async function(result, extra){
   }
   s.pitches.push({
     id: genUUID(),
+    // G1b (h): orders this pitch against every OTHER pitch and event in the
+    // session -- what undoLastGameAction (below) compares to find whichever
+    // of the two collections actually happened most recently. Client-only;
+    // never sent to the DB (the outbox mapper doesn't whitelist it).
+    seq: s.nextSeq++,
     // Set directly here (not only at sync time, in syncOutbox's pitchRows)
     // so a queued-but-unsynced pitch's local shape already matches what
     // it becomes in the DB -- avoids the two ever drifting apart.
@@ -3765,36 +3842,53 @@ window.recordGameResult = async function(result, extra){
   await storSet(draftKey(), s);
   render();
 };
-window.undoLastGamePitch = async function(){
+// G1b (f)/(h): "undo the last action," pitch or event, whichever has the
+// higher seq -- the one, shared undo the packet asks for instead of two
+// separate undo buttons that could disagree about what "last" means.
+// Restores from that action's OWN stored "before" snapshot, same pattern
+// pitches already used before events existed.
+window.undoLastGameAction = async function(){
   const s = state.activeSession;
-  const last = s.pitches[s.pitches.length - 1];
-  if(!last) return;
-  s.pitches.pop();
-  // Restore the live counters from the popped pitch's OWN stored "before"
-  // snapshot -- robust across every auto-advance boundary (a walk/K/3rd
-  // out) with no special-casing, because every pitch already carries
-  // exactly the state that was true right before it landed.
-  s.inning = last.inning;
-  s.outs = last.outsBefore;
-  s.balls = last.ballsBefore;
-  s.strikes = last.strikesBefore;
-  s.atBatIndex = last.atBatIndex;
-  s.delivery = last.delivery;
-  // G1b: same "restore from this pitch's own before-snapshot" pattern,
-  // extended to base state. runnersFromBitmask(undefined) decodes to empty
-  // bases for a pitch that predates this column, not a crash.
-  s.runners = runnersFromBitmask(last.runnersBefore);
+  const lastPitch = s.pitches[s.pitches.length - 1];
+  const lastEvent = s.events[s.events.length - 1];
+  if(!lastPitch && !lastEvent) return;
+  const undoingEvent = lastEvent && (!lastPitch || lastEvent.seq > lastPitch.seq);
+  if(undoingEvent){
+    s.events.pop();
+    s.inning = lastEvent.inningBefore;
+    s.outs = lastEvent.outsBeforeCount;
+    s.balls = lastEvent.ballsBefore;
+    s.strikes = lastEvent.strikesBefore;
+    s.atBatIndex = lastEvent.atBatIndexBefore;
+    s.runners = runnersFromBitmask(lastEvent.runnersBefore);
+  } else {
+    const last = lastPitch;
+    s.pitches.pop();
+    s.inning = last.inning;
+    s.outs = last.outsBefore;
+    s.balls = last.ballsBefore;
+    s.strikes = last.strikesBefore;
+    s.atBatIndex = last.atBatIndex;
+    s.delivery = last.delivery;
+    // runnersFromBitmask(undefined) decodes to empty bases for a pitch
+    // that predates this column, not a crash.
+    s.runners = runnersFromBitmask(last.runnersBefore);
+  }
   s.gamePendingPitch = null;
   s.gameResultMenu = null;
   s.gamePendingOutcome = null;
   s.gamePendingHitType = null;
+  s.fieldPlay = null;
+  s.adjustRunners = null;
   state.veloTargetIdx = null;
   await storSet(draftKey(), s);
   render();
 };
 // Manual corrections for game state the pitch stream can't infer on its
-// own (a baserunning out, a mid-at-bat pitcher change, an inning that
-// needs to move on with no more pitches thrown in it).
+// own (a mid-at-bat pitcher change, an inning that needs to move on with
+// no more pitches thrown in it). gameBumpOuts() is REMOVED here (approach
+// f) -- a caught-stealing/pickoff out now has a truthful path through
+// Adjust Runners instead of a manual counter bump with no record of why.
 window.gameNewBatter = async function(){
   const s = state.activeSession;
   s.atBatIndex++;
@@ -3818,15 +3912,149 @@ window.gameNewInning = async function(){
   await storSet(draftKey(), s);
   render();
 };
-window.gameBumpOuts = async function(){
+
+/* ---------- G1b (f): ADJUST RUNNERS ----------
+   From the status-bar diamond, any time between pitches: pick the runner,
+   pick where he went, pick the reason. Writes a game_events row (never a
+   pitch), applies outs/runs/bases, Undo-able as the last action (see
+   undoLastGameAction above). Also the only way left to record a caught-
+   stealing or pickoff out. */
+const ADJUST_REASONS = [
+  ['stolen_base', 'Stolen base'], ['caught_stealing', 'Caught stealing'], ['pickoff', 'Pickoff'],
+  ['wild_pitch', 'Wild pitch'], ['passed_ball', 'Passed ball'], ['balk', 'Balk'], ['other', 'Other']
+];
+window.openAdjustRunners = async function(){
   const s = state.activeSession;
-  // G1b: this manual control (still present -- approach f removes it, not
-  // this slice) can itself produce the 3rd out, so it needs the same
-  // bases-clear-at-3-outs rule applyGameResultProgression already applies.
-  if(s.outs < 2){ s.outs++; } else { s.inning++; s.outs = 0; s.runners = { 1: false, 2: false, 3: false }; }
+  // Only between pitches -- not mid pitch-capture, not mid field-flow.
+  if(s.gamePendingPitch || s.fieldPlay) return;
+  if(!s.runners[1] && !s.runners[2] && !s.runners[3]) return; // nothing to adjust
+  s.adjustRunners = { step: 'runner', runner: null, destination: null };
   await storSet(draftKey(), s);
   render();
 };
+window.cancelAdjustRunners = async function(){
+  state.activeSession.adjustRunners = null;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.backAdjustRunners = async function(){
+  const ar = state.activeSession.adjustRunners;
+  if(!ar) return;
+  ar.step = ar.step === 'reason' ? 'destination' : 'runner';
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.chooseAdjustRunner = async function(base){
+  const ar = state.activeSession.adjustRunners;
+  if(!ar) return;
+  ar.runner = base;
+  ar.step = 'destination';
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.chooseAdjustDestination = async function(dest){
+  const ar = state.activeSession.adjustRunners;
+  if(!ar) return;
+  ar.destination = dest;
+  ar.step = 'reason';
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// A single-runner move can still collide with an existing occupant of the
+// destination base (stealing 2nd when 2nd is already taken) -- decision
+// 8's collision rule, scoped to Adjust Runners' one-move-at-a-time shape.
+function adjustRunnersDisabledReason(ar, s){
+  if(!ar) return 'No adjustment in progress';
+  if(!ar.runner) return 'Choose a runner';
+  if(!ar.destination) return 'Choose where he went';
+  if(['1', '2', '3'].includes(ar.destination)){
+    const destBase = Number(ar.destination);
+    if(destBase !== ar.runner && s.runners[destBase]) return 'That base is already occupied';
+  }
+  return null;
+}
+window.commitAdjustEvent = async function(reason){
+  const s = state.activeSession;
+  const ar = s.adjustRunners;
+  if(!ar || adjustRunnersDisabledReason(ar, s)) return;
+  const before = {
+    inning: s.inning, outs: s.outs, balls: s.balls, strikes: s.strikes,
+    atBatIndex: s.atBatIndex, runnersBefore: runnersBitmask(s.runners)
+  };
+  const toNum = ar.destination === 'out' ? 0 : ar.destination === 'home' ? 4 : Number(ar.destination);
+  const advances = [{ from: ar.runner, to: toNum }];
+  const { outsOnPlay, runsScored } = applyRunnerAdvances(s, advances, null);
+  s.outs += outsOnPlay;
+  if(s.outs >= 3){ s.inning++; s.outs = 0; s.runners = { 1: false, 2: false, 3: false }; }
+  s.events.push({
+    id: genUUID(), seq: s.nextSeq++,
+    eventType: reason,
+    atBatIndex: before.atBatIndex,
+    afterPitchId: s.pitches.length ? s.pitches[s.pitches.length - 1].id : null,
+    runnersBefore: before.runnersBefore, runnerAdvances: advances,
+    outsOnPlay, runsScored,
+    // Client-only undo snapshot -- game_events has no column for these
+    // (only runners_before is schema'd); the outbox mapper doesn't
+    // whitelist them, so they never reach the DB. Undo only ever needs to
+    // reach back into the CURRENT session's own in-memory history, so
+    // nothing is lost by keeping them client-side only.
+    inningBefore: before.inning, outsBeforeCount: before.outs,
+    ballsBefore: before.balls, strikesBefore: before.strikes, atBatIndexBefore: before.atBatIndex
+  });
+  s.adjustRunners = null;
+  await storSet(draftKey(), s);
+  render();
+};
+function renderRunnerDiamond(){
+  const s = state.activeSession;
+  const occ = n => s.runners[n] ? '#111111' : '#ffffff';
+  const canAdjust = !s.gamePendingPitch && !s.fieldPlay && (s.runners[1] || s.runners[2] || s.runners[3]);
+  return `<button class="runner-diamond-btn" ${canAdjust ? '' : 'disabled'} onclick="openAdjustRunners()" title="Adjust runners">
+    <svg viewBox="0 0 40 40" width="32" height="32" role="img" aria-label="Base runners">
+      <rect x="14" y="4" width="10" height="10" transform="rotate(45 19 9)" fill="${occ(2)}" stroke="#0F241B" stroke-width="1.2"/>
+      <rect x="4" y="14" width="10" height="10" transform="rotate(45 9 19)" fill="${occ(3)}" stroke="#0F241B" stroke-width="1.2"/>
+      <rect x="24" y="14" width="10" height="10" transform="rotate(45 29 19)" fill="${occ(1)}" stroke="#0F241B" stroke-width="1.2"/>
+    </svg>
+  </button>`;
+}
+function renderAdjustRunnersFlow(){
+  const s = state.activeSession;
+  const ar = s.adjustRunners;
+  if(!ar) return '';
+  const neutral = `color:var(--ink-faint);border-color:var(--border-strong);`;
+  const baseName = b => (b === 1 ? '1st' : b === 2 ? '2nd' : '3rd');
+  if(ar.step === 'runner'){
+    const occupied = [1, 2, 3].filter(b => s.runners[b]);
+    return `<div class="panel adjust-runners-panel">
+      <div class="field-label" style="margin-bottom:8px;">Adjust runners — which runner?</div>
+      <div class="chip-row">
+        ${occupied.map(b => `<button class="type-chip" style="${neutral}" onclick="chooseAdjustRunner(${b})">Runner on ${baseName(b)}</button>`).join('')}
+        <button class="btn btn-ghost" onclick="cancelAdjustRunners()">Cancel</button>
+      </div>
+    </div>`;
+  }
+  if(ar.step === 'destination'){
+    const opts = [['1', '1st'], ['2', '2nd'], ['3', '3rd'], ['home', 'Home'], ['out', 'Out']].filter(([k]) => k !== String(ar.runner));
+    return `<div class="panel adjust-runners-panel">
+      <div class="field-label" style="margin-bottom:8px;">Runner on ${baseName(ar.runner)} — where did he go?</div>
+      <div class="chip-row">
+        ${opts.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="chooseAdjustDestination('${k}')">${l}</button>`).join('')}
+        <button class="btn btn-ghost" onclick="cancelAdjustRunners()">Cancel</button>
+      </div>
+    </div>`;
+  }
+  if(ar.step === 'reason'){
+    const reason = adjustRunnersDisabledReason(ar, s);
+    return `<div class="panel adjust-runners-panel">
+      <div class="field-label" style="margin-bottom:8px;">Why?</div>
+      ${reason
+        ? `<p class="field-disabled-reason">${escHtml(reason)}</p>`
+        : `<div class="chip-row">${ADJUST_REASONS.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="commitAdjustEvent('${k}')">${l}</button>`).join('')}</div>`}
+      <button class="btn btn-ghost" onclick="backAdjustRunners()">Back</button>
+    </div>`;
+  }
+  return '';
+}
 
 const GAME_RESULT_LABELS = {
   ball: 'Ball', strike_looking: 'Strike (looking)', strike_swinging: 'Strike (swinging)',
@@ -3869,6 +4097,7 @@ function renderGameStatusBar(){
     <div class="stat-box"><span class="stat-num mono">${s.outs}</span><span class="stat-lbl">Outs</span></div>
     <div class="stat-box"><span class="stat-num mono">${s.balls}-${s.strikes}</span><span class="stat-lbl">Count</span></div>
     <div class="stat-box"><span class="stat-num mono">${s.atBatIndex}</span><span class="stat-lbl">Batter #</span></div>
+    <div class="stat-box">${renderRunnerDiamond()}<span class="stat-lbl">Runners</span></div>
   </div>`;
 }
 function renderDeliveryToggle(){
@@ -4259,7 +4488,7 @@ window.commitFieldPlay = async function(){
   if(s.pitches.length === 0) s.usesRadarGun = sessionUsesRadarGun(s);
 
   s.pitches.push({
-    id: genUUID(), kind: 'game',
+    id: genUUID(), seq: s.nextSeq++, kind: 'game',
     type: state.selectedType, velo: null,
     targetRow: null, targetCol: null,
     actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
@@ -4385,6 +4614,7 @@ function renderGameSessionView(p){
     <div class="session-grid-layout">
       <div class="panel controls-panel">
         ${renderGameStatusBar()}
+        ${renderAdjustRunnersFlow()}
         ${renderPerspectiveToggle()}
         <div>
           <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
@@ -4419,9 +4649,8 @@ function renderGameSessionView(p){
         <div class="field-label">Recent pitches</div>
         <div class="pitch-log">${logRows}</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          <button class="btn btn-ghost" onclick="undoLastGamePitch()">Undo last pitch</button>
+          <button class="btn btn-ghost" onclick="undoLastGameAction()">Undo last action</button>
           <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
-          <button class="btn btn-ghost" onclick="gameBumpOuts()">+1 out</button>
           <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
         </div>
         <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>

@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 520" width="600" height="520" role="img" aria-label="Baseball field diagram">
+  <!--
+    Knuckleball field diagram (G1b). Source: Joel's reference image, Sept 26 2026; revised same day
+    (no base cutouts, no coaches' boxes; theme fills; mown criss-cross grass).
+    Colors: grass = warm light green (#D4E6CB) with a criss-cross mow pattern; infield diamond = solid #C1D3BA (the pattern's darkest shade); lines = dark green (#0F241B);
+    dirt = brown (#C9A97C). Bases and the rubber are white; occupied bases fill black.
+    Coordinate convention for stored batted-ball locations (pitches.bb_x, pitches.bb_y):
+      bb_x = px / 600                 (0 = left edge, 0.5 = home plate / center line, 1 = right edge)
+      bb_y = (470 - py) / 370         (0 = home plate, 1 = center-field fence; > 1 is past the fence)
+    Home plate is at (300, 470). Foul lines run at 45 degrees. Fence arc: center (300, 560), r 460.
+    Diamond: 130 px per base path (90 ft). Mound: (300, 383) = 60.5 ft. Infield dirt: center mound, r 137 (95 ft).
+    Position anchors below (data-pos) are the suggested tap targets, at least 44 px in the app.
+  -->
+  <defs>
+    <style>
+      :root { --kb-grass: #D4E6CB; --kb-infield: #C1D3BA; --kb-line: #0F241B; --kb-dirt: #C9A97C; --kb-dirt-line: #A8895E; --kb-occupied: #111111; }
+      .grass { fill: var(--kb-grass); }
+      .mow-a { fill: url(#mowA); }
+      .mow-b { fill: url(#mowB); }
+      .infield { fill: var(--kb-infield); }
+      .dirt  { fill: var(--kb-dirt); }
+      .line  { fill: none; stroke: var(--kb-line); stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; opacity: 0.85; }
+      .dirt-edge { fill: none; stroke: var(--kb-dirt-line); stroke-width: 1.2; }
+      .base  { fill: #ffffff; stroke: var(--kb-line); stroke-width: 1.2; }
+      .base.occupied { fill: var(--kb-occupied); }
+      .rubber { fill: #ffffff; stroke: var(--kb-line); stroke-width: 1; }
+      .pos { fill: none; }
+    </style>
+    <!-- mow stripes: two diagonal patterns overlaid = criss-cross -->
+    <pattern id="mowA" width="28" height="28" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="14" height="28" fill="#0F241B" fill-opacity="0.055"/>
+    </pattern>
+    <pattern id="mowB" width="28" height="28" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+      <rect width="14" height="28" fill="#0F241B" fill-opacity="0.045"/>
+    </pattern>
+    <clipPath id="fair"><path d="M 300 470 L 23 193 A 460 460 0 0 1 577 193 Z"/></clipPath>
+  </defs>
+
+  <!-- fair territory: grass, mown -->
+  <path id="field-grass" class="grass" d="M 300 470 L 23 193 A 460 460 0 0 1 577 193 Z"/>
+  <g clip-path="url(#fair)">
+    <rect class="mow-a" x="0" y="0" width="600" height="520"/>
+    <rect class="mow-b" x="0" y="0" width="600" height="520"/>
+  </g>
+
+  <!-- infield dirt: the sector inside the 95 ft arc -->
+  <path id="infield-dirt" class="dirt" d="M 300 470 L 170 340 A 137 137 0 0 1 430 340 Z"/>
+  <path id="infield-arc" class="dirt-edge" d="M 170 340 A 137 137 0 0 1 430 340"/>
+
+  <!-- infield grass inside the diamond: solid, the darkest shade of the mown grass -->
+  <path id="diamond-grass" class="infield" d="M 300 470 L 392 378 L 300 286 L 208 378 Z"/>
+
+  <!-- home-plate circle and mound circle: dirt -->
+  <circle id="home-circle" class="dirt" cx="300" cy="470" r="26"/>
+  <circle id="mound" class="dirt" cx="300" cy="383" r="18"/>
+  <circle id="mound-edge" class="dirt-edge" cx="300" cy="383" r="18"/>
+
+  <!-- lines: fence, foul lines, base paths -->
+  <path id="fence" class="line" d="M 23 193 A 460 460 0 0 1 577 193"/>
+  <path id="foul-left" class="line" d="M 300 470 L 23 193"/>
+  <path id="foul-right" class="line" d="M 300 470 L 577 193"/>
+  <path id="basepaths" class="line" d="M 300 470 L 392 378 L 300 286 L 208 378 Z"/>
+
+  <!-- rubber (white); in the app the mound circle is the pulsing "Pitch" button -->
+  <rect id="rubber" class="rubber" x="294" y="381" width="12" height="4"/>
+
+  <!-- bases (add class "occupied" to fill black) and home plate -->
+  <rect id="base-1" class="base" data-base="1" x="384" y="370" width="16" height="16" transform="rotate(45 392 378)"/>
+  <rect id="base-2" class="base" data-base="2" x="292" y="278" width="16" height="16" transform="rotate(45 300 286)"/>
+  <rect id="base-3" class="base" data-base="3" x="200" y="370" width="16" height="16" transform="rotate(45 208 378)"/>
+  <polygon id="home-plate" class="base" points="291,464 309,464 309,472 300,480 291,472"/>
+
+  <!-- position anchors: suggested-fielder targets (invisible; the app draws its own hit areas) -->
+  <g id="positions">
+    <circle class="pos" data-pos="P"  cx="300" cy="383" r="22"/>
+    <circle class="pos" data-pos="C"  cx="300" cy="498" r="22"/>
+    <circle class="pos" data-pos="1B" cx="405" cy="358" r="22"/>
+    <circle class="pos" data-pos="2B" cx="352" cy="300" r="22"/>
+    <circle class="pos" data-pos="SS" cx="248" cy="300" r="22"/>
+    <circle class="pos" data-pos="3B" cx="195" cy="358" r="22"/>
+    <circle class="pos" data-pos="LF" cx="150" cy="195" r="22"/>
+    <circle class="pos" data-pos="CF" cx="300" cy="150" r="22"/>
+    <circle class="pos" data-pos="RF" cx="450" cy="195" r="22"/>
+  </g>
+</svg>

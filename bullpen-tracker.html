@@ -5670,12 +5670,17 @@ function buildReportPayload(session, p){
     isDefaultVeloReading(pt) ? { ...pt, velo: null } : pt
   );
 
-  // Prior sessions only (never the one being reported) -- matches the
-  // renderer's own "3+ PRIOR sessions or omit" trend rule. Just the
-  // per-session aggregates the Trends section actually reads, not the old
-  // per-type breakdown the PDF's trend charts used.
+  // Prior BULLPEN sessions only (never the one being reported, and never a
+  // game -- found live in production while working G2: this filter was
+  // missing, so a pitcher who'd logged both kinds already had their games'
+  // pitches silently pulled into sessionStats() here, which computes
+  // target-vs-actual accuracy that has no meaning for a game pitch,
+  // corrupting this pen's own trend section with a meaningless 0%-accuracy
+  // entry. Matches the renderer's own "3+ PRIOR sessions or omit" trend
+  // rule. Just the per-session aggregates the Trends section actually
+  // reads, not the old per-type breakdown the PDF's trend charts used.
   const history = state.sessions
-    .filter(s => s.id !== session.id)
+    .filter(s => s.id !== session.id && (s.kind || 'bullpen') === 'bullpen')
     .slice().sort((a,b) => a.date - b.date)
     .map(s => {
       const sStats = sessionStats(s.pitches);

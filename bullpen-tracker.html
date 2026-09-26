@@ -603,6 +603,53 @@
   .zone-cell.clickable:hover{ outline:2px solid var(--amber); outline-offset:-2px; }
   .zone-caption{ font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.1em; }
 
+  /* G1b (d): the field. Sized to match .zone-grid's own box exactly (278px
+     fixed above 861px, same as the grid) -- report 3's whole point was that
+     the field has to fit the SAME box the grid already does, not a new one.
+     The field-diagram.svg viewBox (600x520) isn't square, so it letterboxes
+     inside this square box via preserveAspectRatio (the SVG's default,
+     restated explicitly in fieldSvgMarkup) -- bars top/bottom, none of this
+     CSS needs to compute that itself. */
+  .field-wrap{ position:relative; width:278px; height:278px; border-radius:6px; overflow:hidden; }
+  .field-wrap svg{ width:100%; height:100%; display:block; }
+  /* Position targets: 44px CSS-pixel circles, positioned by PERCENTAGE from
+     the diagram's own normalized coordinates -- never sized off the SVG's
+     own shapes, which shrink well under 44px the moment this box goes to
+     320px on a phone (report 3's finding). transform centers the target on
+     its point instead of anchoring top-left. */
+  .field-tap-target{
+    position:absolute; width:44px; height:44px; min-width:44px; min-height:44px;
+    transform:translate(-50%,-50%); border-radius:50%; border:1.5px solid transparent;
+    background:rgba(255,255,255,0.01); color:transparent; font-size:9px; padding:0; cursor:pointer;
+  }
+  .field-tap-target:hover, .field-tap-target:focus-visible{ border-color:var(--amber); color:var(--field-dark); background:rgba(232,168,61,0.14); }
+  .field-tap-target.suggested{ border-color:var(--amber); background:rgba(232,168,61,0.22); color:var(--field-dark); }
+  .field-pitch-btn{
+    position:absolute; width:52px; height:52px; transform:translate(-50%,-50%);
+    border-radius:50%; border:2px solid var(--amber); background:var(--amber);
+    color:var(--field-dark); font-weight:700; font-size:11px; letter-spacing:0.02em; cursor:pointer;
+    animation:fieldPitchPulse 1.8s ease-in-out infinite;
+  }
+  .field-pitch-btn:disabled{
+    animation:none; opacity:0.45; cursor:not-allowed;
+    background:var(--card-bg); border-color:var(--border-strong); color:var(--ink-faint);
+  }
+  @keyframes fieldPitchPulse{
+    0%, 100% { box-shadow:0 0 0 0 rgba(232,168,61,0.55); }
+    50%      { box-shadow:0 0 0 10px rgba(232,168,61,0); }
+  }
+  .field-crossfade{ animation:fieldCrossfade 220ms ease; }
+  @keyframes fieldCrossfade{ from{ opacity:0; } to{ opacity:1; } }
+  @media (prefers-reduced-motion: reduce){
+    .field-pitch-btn{ animation:none; }
+    .field-crossfade{ animation:none; }
+  }
+  .field-flow-summary{ font-size:12.5px; color:var(--ink-dim); line-height:1.5; margin:0 0 8px; }
+  .field-disabled-reason{ font-size:11.5px; color:var(--clay); margin:6px 0 0; text-align:center; }
+  @media (max-width:860px){
+    .field-wrap{ width:100%; max-width:320px; height:auto; aspect-ratio:1/1; }
+  }
+
   /* Sized to match the strike zone (the inner 3x3 of cells, rows/cols 1-3 --
      see isStrikeCell), not the full 5x5 grid: 3 cells + 2 internal 3px gaps
      = 3*52 + 2*3 = 162px at the fixed desktop cell size.
@@ -3454,27 +3501,25 @@ window.cancelResultMenu = async function(){
   render();
 };
 window.chooseGameResult = function(result){ return recordGameResult(result, {}); };
-window.chooseMoreResult = function(result){ return recordGameResult(result, {}); };
-window.chooseInPlayOutcome = async function(outcome){
-  state.activeSession.gamePendingOutcome = outcome;
-  // Only a Hit asks how far; Out and Error go straight to fielder.
-  state.activeSession.gameResultMenu = outcome === 'hit' ? 'hitType' : 'position';
-  await storSet(draftKey(), state.activeSession);
-  render();
+// G1b: Dropped 3rd alone drills one step further -- was the batter retired
+// or did he reach? (Joel: "the ability to say whether or not a dropped
+// third strike resulted as an out or not.") Reintroduced here (built once
+// for G2, reverted when G1b was announced, decision 11 says it stands).
+// Every other "more" outcome (HBP, sac bunt/fly, interference, other)
+// still records immediately, same as before.
+window.chooseMoreResult = async function(result){
+  if(result === 'dropped_third'){
+    state.activeSession.gameResultMenu = 'droppedThird';
+    await storSet(draftKey(), state.activeSession);
+    render();
+    return;
+  }
+  return recordGameResult(result, {});
 };
-window.chooseHitType = async function(type){
-  state.activeSession.gamePendingHitType = type;
-  state.activeSession.gameResultMenu = 'position';
-  await storSet(draftKey(), state.activeSession);
-  render();
-};
-window.chooseFielder = function(pos){
-  return recordGameResult('in_play', {
-    inPlayOutcome: state.activeSession.gamePendingOutcome,
-    hitType: state.activeSession.gamePendingOutcome === 'hit' ? state.activeSession.gamePendingHitType : null,
-    fielder: pos
-  });
-};
+window.chooseDroppedThirdOutcome = function(outcome){ return recordGameResult('dropped_third', { inPlayOutcome: outcome }); };
+// G1b (g): chooseInPlayOutcome/chooseHitType/chooseFielder deleted here --
+// In Play now opens the field flow (openFieldFlow, below), which replaces
+// this entire drill-down.
 // G1b: base-state bitmask, matching pitches.runners_before exactly (1st=1,
 // 2nd=2, 3rd=4). A pure encode/decode pair, independent of when or how
 // runners actually get placed on base (that's decision 3's automatic
@@ -3491,45 +3536,141 @@ function runnersFromBitmask(mask){
   // a pre-G1b pitch that never tracked runners at all, not a crash.
   return { 1: !!(mask & 1), 2: !!(mask & 2), 3: !!(mask & 4) };
 }
+// G1b decision 8/9's shared mechanism: given an explicit list of runner
+// moves (the exact {from,to} shape pitches.runner_advances stores -- from
+// is 1/2/3, to is 0=out/1-3=base/4=scored) plus where the BATTER ends up
+// (same 0/4 convention), applies them to the live base state and reports
+// how many outs/runs resulted. This is the ONE place that turns "a list of
+// moves" into outs/runs/base-state -- decision 3's forced-walk chain
+// (forcedWalkAdvances, right below) computes such a list for a walk/HBP/
+// interference/dropped-third-reached; the field flow's hit-type prefill
+// (decision 4, approach e) will compute a different list for a single/
+// double/error/FC, but both call this same function to apply it. Neither
+// can drift from the other on what "an out" or "a run" means here.
+// Clears every FROM base before setting any TO base so multi-runner plays
+// (e.g. runners on 1st AND 3rd both moving) don't depend on array order.
+function applyRunnerAdvances(s, advances, batterTo){
+  let outsOnPlay = 0, runsScored = 0;
+  for(const mv of advances){
+    if(mv.from >= 1 && mv.from <= 3) s.runners[mv.from] = false;
+  }
+  for(const mv of advances){
+    if(mv.to === 0) outsOnPlay++;
+    else if(mv.to === 4) runsScored++;
+    else if(mv.to >= 1 && mv.to <= 3) s.runners[mv.to] = true;
+  }
+  if(batterTo === 0) outsOnPlay++;
+  else if(batterTo === 4) runsScored++;
+  else if(batterTo >= 1 && batterTo <= 3) s.runners[batterTo] = true;
+  return { outsOnPlay, runsScored };
+}
+// Decision 3: the standard force chain for a walk/HBP/catcher's
+// interference/dropped-third-reached -- the batter's forced trip to 1st
+// pushes 1st's occupant to 2nd ONLY IF 1st was occupied, which pushes
+// 2nd's occupant to 3rd only if 2nd was occupied, which pushes 3rd's
+// occupant home only if 3rd was occupied. A runner not in that chain (e.g.
+// alone on 2nd, nobody on 1st) never moves -- not forced. Returns the
+// {from,to} list for applyRunnerAdvances; never mutates s itself.
+function forcedWalkAdvances(s){
+  const advances = [];
+  if(s.runners[1]){
+    if(s.runners[2]){
+      if(s.runners[3]) advances.push({ from: 3, to: 4 });
+      advances.push({ from: 2, to: 3 });
+    }
+    advances.push({ from: 1, to: 2 });
+  }
+  return advances;
+}
 // Count/out/inning/batter progression, applied AFTER the pitch that
 // caused it is already pushed (with its own pre-pitch snapshot -- see
 // recordGameResult). Kept as its own function, independent of storage/
 // render, so it's simple to reason about and to unit-test in isolation.
+// Returns the per-play columns (batterTo/runnerAdvances/outsOnPlay/
+// runsScored) so recordGameResult can attach them to the just-pushed pitch
+// row -- this function only advances the LIVE counters/base-state; it
+// never touches a pitch object itself.
 function applyGameResultProgression(result, inPlayOutcome){
   const s = state.activeSession;
   let outsBumped = 0;
   let endsAtBat = false;
+  let batterTo = null;
+  let runnerAdvances = null;
+  let outsOnPlay = 0;
+  let runsScored = 0;
   switch(result){
     case 'ball':
       s.balls++;
-      if(s.balls >= 4) endsAtBat = true;
+      if(s.balls >= 4){
+        endsAtBat = true;
+        batterTo = 1;
+        runnerAdvances = forcedWalkAdvances(s);
+        ({ outsOnPlay, runsScored } = applyRunnerAdvances(s, runnerAdvances, batterTo));
+      }
       break;
     case 'strike_looking':
     case 'strike_swinging':
       s.strikes++;
-      if(s.strikes >= 3){ endsAtBat = true; outsBumped = 1; }
+      if(s.strikes >= 3){
+        // A real (non-dropped-third) 3rd strike is always caught cleanly --
+        // no runner is ever forced or moves on it.
+        endsAtBat = true; outsBumped = 1;
+        batterTo = 0; runnerAdvances = []; outsOnPlay = 1;
+      }
       break;
     case 'foul':
       // A foul is a strike only below 2 strikes -- never the 3rd strike.
       if(s.strikes < 2) s.strikes++;
       break;
     case 'in_play':
+      // G1b (e): bypassed once the field flow ships -- outs/runs for an
+      // in-play result come from where the runners actually ended (the
+      // field flow calls applyRunnerAdvances directly), never this
+      // fixed 0-or-1 guess. Left as the pre-field-flow fallback for
+      // whatever briefly still reaches this case before (e) lands.
       endsAtBat = true;
-      if(inPlayOutcome === 'out') outsBumped = 1;
+      if(inPlayOutcome === 'out'){ outsBumped = 1; batterTo = 0; outsOnPlay = 1; }
+      else batterTo = 1;
+      runnerAdvances = [];
       break;
     case 'sac_bunt':
     case 'sac_fly':
+      // Legacy-only from here (decision 5/7: the field derives SF/SAC on a
+      // new play; these two result values are never written again after
+      // approach e ships, but a row from before still reads correctly).
       endsAtBat = true;
       outsBumped = 1;
+      batterTo = 0; runnerAdvances = []; outsOnPlay = 1;
       break;
     case 'hbp':
-    case 'dropped_third':
     case 'interference':
+      // Decision 3: same forced chain as a walk.
+      endsAtBat = true;
+      batterTo = 1;
+      runnerAdvances = forcedWalkAdvances(s);
+      ({ outsOnPlay, runsScored } = applyRunnerAdvances(s, runnerAdvances, batterTo));
+      break;
+    case 'dropped_third':
+      // The drill-down (chooseDroppedThirdOutcome) always supplies
+      // inPlayOutcome as exactly 'out' or 'reached'. An out here is a real
+      // out (recorded the same way any other out is -- no separate manual
+      // gameBumpOuts() tap needed, unlike before G1b). 'reached' is the
+      // same forced chain as a walk (decision 3 groups it with walk/HBP/
+      // interference explicitly), since the batter reaching 1st is exactly
+      // what forces the chain regardless of HOW he got there.
+      endsAtBat = true;
+      if(inPlayOutcome === 'out'){
+        outsBumped = 1;
+        batterTo = 0; runnerAdvances = []; outsOnPlay = 1;
+      } else {
+        batterTo = 1;
+        runnerAdvances = forcedWalkAdvances(s);
+        ({ outsOnPlay, runsScored } = applyRunnerAdvances(s, runnerAdvances, batterTo));
+      }
+      break;
     case 'other':
-      // Each ends the at-bat; none of these automatically records an out
-      // here (a dropped third strike is a live-ball strikeout -- the
-      // batter may reach safely; +1 out is a manual gameBumpOuts() tap if
-      // the runner is actually retired).
+      // No defined behavior (packet doesn't specify one) -- ends the
+      // at-bat, invents nothing about outs, runs, or base state.
       endsAtBat = true;
       break;
   }
@@ -3551,6 +3692,7 @@ function applyGameResultProgression(result, inPlayOutcome){
     // matches chooseSessionKind's own reasoning for starting it null.
     s.delivery = null;
   }
+  return { batterTo, runnerAdvances, outsOnPlay, runsScored };
 }
 window.recordGameResult = async function(result, extra){
   extra = extra || {};
@@ -3593,9 +3735,21 @@ window.recordGameResult = async function(result, extra){
     // G1b: written on EVERY game pitch, not only in-play ones (packet
     // decision 1) -- same "before" snapshot pattern as the four fields
     // just above, and what undoLastGamePitch restores base state from.
-    runnersBefore: runnersBitmask(s.runners)
+    runnersBefore: runnersBitmask(s.runners),
+    // G1b: the play's OUTCOME columns (as opposed to runnersBefore, its
+    // precondition) -- null/[]/0 for anything that doesn't end in a
+    // resolved batter/runner state yet (a ball that isn't a walk, a called
+    // strike that isn't a 3rd, a foul). Filled in from
+    // applyGameResultProgression's return value just below, once it's run.
+    batterTo: null, runnerAdvances: null, outsOnPlay: 0, runsScored: 0,
+    sacrifice: null
   });
-  applyGameResultProgression(result, extra.inPlayOutcome);
+  const pushedPitch = s.pitches[s.pitches.length - 1];
+  const playResult = applyGameResultProgression(result, extra.inPlayOutcome);
+  pushedPitch.batterTo = playResult.batterTo;
+  pushedPitch.runnerAdvances = playResult.runnerAdvances;
+  pushedPitch.outsOnPlay = playResult.outsOnPlay;
+  pushedPitch.runsScored = playResult.runsScored;
   state.activeSession.gamePendingPitch = null;
   state.activeSession.gameResultMenu = null;
   state.activeSession.gamePendingOutcome = null;
@@ -3684,6 +3838,9 @@ function gameResultText(pt){
     const outcomeLabel = { hit: 'Hit', out: 'Out', error: 'Error' }[pt.inPlayOutcome] || 'In play';
     return [outcomeLabel, pt.hitType, pt.fielder ? ('to ' + pt.fielder) : ''].filter(Boolean).join(' ');
   }
+  if(pt.result === 'dropped_third'){
+    return 'Dropped 3rd' + (pt.inPlayOutcome === 'out' ? ' (batter out)' : pt.inPlayOutcome === 'reached' ? ' (batter reached)' : '');
+  }
   return GAME_RESULT_LABELS[pt.result] || pt.result;
 }
 // Pitches that reach or pass the strike threshold, for a game's own
@@ -3731,30 +3888,17 @@ function renderGameResultRow(){
   const neutral = `color:var(--ink-faint);border-color:var(--border-strong);`;
   const amber = `background:var(--amber);border-color:var(--amber);`;
   const green = `color:#3D7A57;border-color:#3D7A57;`;
-  if(menu === 'inPlay'){
-    return `<div><div class="field-label" style="margin-bottom:8px;">In play — what happened?</div><div class="chip-row">
-      <button class="type-chip" style="${green}" onclick="chooseInPlayOutcome('hit')">Hit</button>
-      <button class="type-chip" style="${neutral}" onclick="chooseInPlayOutcome('out')">Out</button>
-      <button class="type-chip" style="${neutral}" onclick="chooseInPlayOutcome('error')">Error</button>
-      <button class="btn btn-ghost" onclick="cancelResultMenu()">Back</button>
-    </div></div>`;
-  }
-  if(menu === 'hitType'){
-    return `<div><div class="field-label" style="margin-bottom:8px;">Hit — how far?</div><div class="chip-row">
-      ${['1B','2B','3B','HR'].map(t => `<button class="type-chip" style="${green}" onclick="chooseHitType('${t}')">${t}</button>`).join('')}
-      <button class="btn btn-ghost" onclick="backResultMenu('inPlay')">Back</button>
-    </div></div>`;
-  }
-  if(menu === 'position'){
-    const back = state.activeSession.gamePendingOutcome === 'hit' ? 'hitType' : 'inPlay';
-    return `<div><div class="field-label" style="margin-bottom:8px;">Fielder</div><div class="chip-row">
-      ${['P','C','1B','2B','3B','SS','LF','CF','RF'].map(pos => `<button class="type-chip" style="${neutral}" onclick="chooseFielder('${pos}')">${pos}</button>`).join('')}
-      <button class="btn btn-ghost" onclick="backResultMenu('${back}')">Back</button>
-    </div></div>`;
-  }
+  // G1b (g): the old In Play drill-down (inPlay/hitType/position menus,
+  // chooseInPlayOutcome/chooseHitType/chooseFielder) is DELETED, not
+  // hidden -- "In Play" now opens the field flow (openFieldFlow, below)
+  // instead of this menu. Existing pitch rows charted through the old path
+  // keep their values and still read correctly everywhere (report 5).
   if(menu === 'more'){
+    // G1b (g): sac_bunt/sac_fly leave this menu -- the field derives SF/SAC
+    // on a new play (decision 5). Existing rows with these result values
+    // keep reading correctly (pitches_result_check still allows them).
     const more = [
-      { key: 'hbp', label: 'HBP' }, { key: 'sac_bunt', label: 'Sac bunt' }, { key: 'sac_fly', label: 'Sac fly' },
+      { key: 'hbp', label: 'HBP' },
       { key: 'dropped_third', label: 'Dropped 3rd' }, { key: 'interference', label: 'Interference' }, { key: 'other', label: 'Other' }
     ];
     return `<div><div class="field-label" style="margin-bottom:8px;">Other outcomes</div><div class="chip-row">
@@ -3762,14 +3906,456 @@ function renderGameResultRow(){
       <button class="btn btn-ghost" onclick="cancelResultMenu()">Back</button>
     </div></div>`;
   }
+  if(menu === 'droppedThird'){
+    return `<div><div class="field-label" style="margin-bottom:8px;">Dropped third — what happened?</div><div class="chip-row">
+      <button class="type-chip" style="${green}" onclick="chooseDroppedThirdOutcome('reached')">Batter reached</button>
+      <button class="type-chip" style="${neutral}" onclick="chooseDroppedThirdOutcome('out')">Batter out</button>
+      <button class="btn btn-ghost" onclick="backResultMenu('more')">Back</button>
+    </div></div>`;
+  }
   return `<div><div class="field-label" style="margin-bottom:8px;">Result</div><div class="chip-row">
     <button class="type-chip" style="${neutral}" onclick="chooseGameResult('ball')">Ball</button>
     <button class="type-chip" style="${amber}" onclick="chooseGameResult('strike_looking')">Strike (looking)</button>
     <button class="type-chip" style="${amber}" onclick="chooseGameResult('strike_swinging')">Strike (swinging)</button>
     <button class="type-chip" style="${neutral}" onclick="chooseGameResult('foul')">Foul</button>
-    <button class="type-chip" style="${green}" onclick="openResultMenu('inPlay')">In Play</button>
+    <button class="type-chip" style="${green}" onclick="openFieldFlow()">In Play</button>
     <button class="type-chip" style="${neutral}" onclick="openResultMenu('more')">More…</button>
   </div></div>`;
+}
+
+/* ---------- G1b (d): THE FIELD ----------
+   Tapping In Play flips the zone grid to a baseball field. Geometry/colors
+   come from docs/field-diagram.svg verbatim (inlined below, not fetched --
+   this file has no build step and no external requests on the charting
+   path); if that file is ever revised, FIELD_VIEWBOX/FIELD_POSITIONS and
+   the markup in fieldSvgMarkup() must move with it by hand. */
+const FIELD_VIEWBOX = { w: 600, h: 520 };
+// Copied from field-diagram.svg's own <g id="positions"> circles (cx/cy).
+const FIELD_POSITIONS = [
+  { pos: 'P',  cx: 300, cy: 383 }, { pos: 'C',  cx: 300, cy: 498 },
+  { pos: '1B', cx: 405, cy: 358 }, { pos: '2B', cx: 352, cy: 300 },
+  { pos: 'SS', cx: 248, cy: 300 }, { pos: '3B', cx: 195, cy: 358 },
+  { pos: 'LF', cx: 150, cy: 195 }, { pos: 'CF', cx: 300, cy: 150 }, { pos: 'RF', cx: 450, cy: 195 }
+];
+const FIELD_MOUND = { cx: 300, cy: 383 };
+function fieldPct(cx, cy){
+  return { leftPct: (cx / FIELD_VIEWBOX.w) * 100, topPct: (cy / FIELD_VIEWBOX.h) * 100 };
+}
+// Report 3 / decision 7: "Tap the field... the nearest position lights as
+// the suggested fielder." Straight-line distance in the diagram's own
+// coordinate space -- good enough for "nearest," no need for anything
+// fancier.
+function nearestFielder(bbX, bbY){
+  const px = bbX * FIELD_VIEWBOX.w, py = bbY * FIELD_VIEWBOX.h;
+  let best = null, bestDist = Infinity;
+  for(const p of FIELD_POSITIONS){
+    const d = Math.hypot(p.cx - px, p.cy - py);
+    if(d < bestDist){ bestDist = d; best = p.pos; }
+  }
+  return best;
+}
+// docs/field-diagram.svg's markup, inlined verbatim except for the three
+// base rects, which take the "occupied" class from live base state
+// (occupied = {1,2,3: bool}) -- everything else in the file is static.
+function fieldSvgMarkup(occupied){
+  const occ = (n) => occupied[n] ? ' occupied' : '';
+  return `<svg viewBox="0 0 600 520" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Baseball field diagram">
+    <defs>
+      <style>
+        .grass { fill: #D4E6CB; } .mow-a { fill: url(#mowA); } .mow-b { fill: url(#mowB); }
+        .infield { fill: #C1D3BA; } .dirt { fill: #C9A97C; }
+        .line { fill: none; stroke: #0F241B; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; opacity: 0.85; }
+        .dirt-edge { fill: none; stroke: #A8895E; stroke-width: 1.2; }
+        .base { fill: #ffffff; stroke: #0F241B; stroke-width: 1.2; }
+        .base.occupied { fill: #111111; }
+        .rubber { fill: #ffffff; stroke: #0F241B; stroke-width: 1; }
+        .pos { fill: none; }
+      </style>
+      <pattern id="mowA" width="28" height="28" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="14" height="28" fill="#0F241B" fill-opacity="0.055"/></pattern>
+      <pattern id="mowB" width="28" height="28" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="14" height="28" fill="#0F241B" fill-opacity="0.045"/></pattern>
+      <clipPath id="fair"><path d="M 300 470 L 23 193 A 460 460 0 0 1 577 193 Z"/></clipPath>
+    </defs>
+    <path class="grass" d="M 300 470 L 23 193 A 460 460 0 0 1 577 193 Z"/>
+    <g clip-path="url(#fair)"><rect class="mow-a" x="0" y="0" width="600" height="520"/><rect class="mow-b" x="0" y="0" width="600" height="520"/></g>
+    <path class="dirt" d="M 300 470 L 170 340 A 137 137 0 0 1 430 340 Z"/>
+    <path class="dirt-edge" d="M 170 340 A 137 137 0 0 1 430 340"/>
+    <path class="infield" d="M 300 470 L 392 378 L 300 286 L 208 378 Z"/>
+    <circle class="dirt" cx="300" cy="470" r="26"/>
+    <circle class="dirt" cx="300" cy="383" r="18"/>
+    <circle class="dirt-edge" cx="300" cy="383" r="18"/>
+    <path class="line" d="M 23 193 A 460 460 0 0 1 577 193"/>
+    <path class="line" d="M 300 470 L 23 193"/>
+    <path class="line" d="M 300 470 L 577 193"/>
+    <path class="line" d="M 300 470 L 392 378 L 300 286 L 208 378 Z"/>
+    <rect class="rubber" x="294" y="381" width="12" height="4"/>
+    <rect class="base${occ(1)}" x="384" y="370" width="16" height="16" transform="rotate(45 392 378)"/>
+    <rect class="base${occ(2)}" x="292" y="278" width="16" height="16" transform="rotate(45 300 286)"/>
+    <rect class="base${occ(3)}" x="200" y="370" width="16" height="16" transform="rotate(45 208 378)"/>
+    <polygon class="base" points="291,464 309,464 309,472 300,480 291,472"/>
+  </svg>`;
+}
+// 44px DOM tap targets, positioned by percentage from the diagram's own
+// coordinates -- NEVER the SVG's own shapes, which shrink below 44px the
+// moment the field is letterboxed into a phone-width box (report 3's
+// finding: 320px box / 600px viewBox rules out relying on SVG geometry for
+// a real tap target). suggestedPos gets a highlighted ring; a tap on ANY
+// position (not just the suggested one) sets the play's fielder, matching
+// "the charter can tap a different one."
+function renderFieldPositionTargets(suggestedPos){
+  return FIELD_POSITIONS.map(p => {
+    const { leftPct, topPct } = fieldPct(p.cx, p.cy);
+    const suggested = p.pos === suggestedPos ? ' suggested' : '';
+    return `<button class="field-tap-target${suggested}" style="left:${leftPct}%;top:${topPct}%;" onclick="chooseFieldFielder('${p.pos}')" title="${p.pos}">${p.pos}</button>`;
+  }).join('');
+}
+// The mound circle IS the Pitch button (packet: "The circle around the
+// mound always carries a slightly pulsing 'Pitch' button"). disabledReason
+// is a one-line explanation shown under the field when the play isn't
+// complete enough to commit (report/approach e step 5); null means enabled.
+function renderFieldPitchButton(disabledReason){
+  const { leftPct, topPct } = fieldPct(FIELD_MOUND.cx, FIELD_MOUND.cy);
+  return `<button class="field-pitch-btn" style="left:${leftPct}%;top:${topPct}%;" ${disabledReason ? 'disabled' : ''} onclick="commitFieldPlay()">Pitch</button>`;
+}
+function renderField(fp){
+  const occupied = state.activeSession.runners;
+  const reason = fieldPlayDisabledReason(fp);
+  // Approach e step 5: "If the play is incomplete... the button is not
+  // enabled and says why in one line" -- shown at EVERY step the play is
+  // still incomplete, not only the final runners step, so the reason is
+  // always visible next to the button it explains.
+  return `<div class="field-wrap field-crossfade" onclick="handleFieldTap(event)">
+    ${fieldSvgMarkup(occupied)}
+    ${renderFieldPositionTargets(fp.fielder || null)}
+    ${renderFieldPitchButton(reason)}
+  </div>
+  ${reason ? `<p class="field-disabled-reason">${escHtml(reason)}</p>` : ''}`;
+}
+
+/* ---------- G1b (e): THE FLOW ----------
+   state.activeSession.fieldPlay holds the in-progress play (autosaved like
+   everything else on activeSession, per slice 1's architecture -- Resume
+   restores it mid-flow the same way it restores gamePendingPitch).
+     { step: 'location'|'bbType'|'batterResult'|'runners',
+       bbX, bbY, fielder, fielderSeq: [], bbType, batterResult, runnerEndings: {} } */
+window.openFieldFlow = async function(){
+  if(!state.activeSession.gamePendingPitch) return; // the pitch's own zone tap must already exist
+  state.activeSession.fieldPlay = { step: 'location', bbX: null, bbY: null, fielder: null, fielderSeq: [], bbType: null, batterResult: null, runnerEndings: {} };
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.cancelFieldFlow = async function(){
+  state.activeSession.fieldPlay = null;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.backFieldFlow = async function(step){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  fp.step = step;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// Step 1: any tap on the field's blank area (not a position/Pitch button --
+// see handleFieldTap's own guard) while still on this step. Re-tapping
+// later doesn't relocate the play -- same "one location, confirmed by
+// moving on" shape as the rest of this flow; Cancel is the way back.
+window.tapFieldLocation = async function(xPct, yPct){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp || fp.step !== 'location') return;
+  fp.bbX = Math.round(xPct * 10000) / 10000;
+  fp.bbY = Math.round(yPct * 10000) / 10000;
+  fp.fielder = nearestFielder(fp.bbX, fp.bbY);
+  fp.step = 'bbType';
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// Delegated from the field-wrap's own onclick (see renderField) so a tap
+// anywhere on the field computes percentage coordinates without needing a
+// separate invisible full-field button underneath the position targets.
+// ev.target !== ev.currentTarget means a child (a position or Pitch
+// button) was the real target -- their own onclick already ran; this just
+// declines to ALSO treat that bubbled click as a location tap.
+window.handleFieldTap = async function(ev){
+  if(ev.target !== ev.currentTarget) return;
+  const rect = ev.currentTarget.getBoundingClientRect();
+  await window.tapFieldLocation((ev.clientX - rect.left) / rect.width, (ev.clientY - rect.top) / rect.height);
+};
+// Overriding the suggested fielder -- tappable in every step, not just
+// step 1 (report/decision: "the charter can tap a different one").
+window.chooseFieldFielder = async function(pos){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  fp.fielder = pos;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// Decision 6: an OPTIONAL sequence beyond the primary fielder (e.g. a
+// shortstop-to-second-to-first double play) -- deliberately a separate
+// control from chooseFieldFielder above, which CORRECTS the primary. This
+// APPENDS, capped at 2 (matching "up to two more positions"), and is
+// stored as pitches.fielders (dash-joined, primary first) alongside the
+// unchanged single-fielder column. Letter position codes throughout this
+// app (SS, 2B, 1B, ...), not scorebook digits -- the packet's own "6-4-3"
+// is illustrative of the shape (a joined sequence), not a requirement to
+// convert to numbers nothing else in this codebase uses.
+window.addFieldFielderToSequence = async function(pos){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp || fp.fielderSeq.length >= 2) return;
+  fp.fielderSeq.push(pos);
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.clearFieldFielderSequence = async function(){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  fp.fielderSeq = [];
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.chooseFieldBBType = async function(type){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  fp.bbType = type;
+  fp.step = 'batterResult';
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// Decision 4's prefill, keyed by battertResult, applied to whichever bases
+// were actually occupied before this play. 'stay' means exactly that --
+// not a placeholder for "no runner" (only occupied bases get an entry at
+// all).
+const BATTER_RESULT_TO_BASE = { out: 0, '1B': 1, '2B': 2, '3B': 3, HR: 4, error: 1, fc: 1 };
+function prefillRunnerEndings(runners, batterResult){
+  const endings = {};
+  const occupiedBases = [1, 2, 3].filter(b => runners[b]);
+  if(!occupiedBases.length) return endings;
+  switch(batterResult){
+    case 'out':
+      // "Out: runners hold."
+      occupiedBases.forEach(b => { endings[b] = 'stay'; });
+      break;
+    case '1B':
+    case 'error':
+      // "A single: batter to 1st, every runner up one base." / "Error: like a single."
+      occupiedBases.forEach(b => { const to = b + 1; endings[b] = to >= 4 ? 'home' : String(to); });
+      break;
+    case '2B':
+      // "Double: two."
+      occupiedBases.forEach(b => { const to = b + 2; endings[b] = to >= 4 ? 'home' : String(to); });
+      break;
+    case '3B':
+    case 'HR':
+      // "Triple: everyone scores... HR: everyone scores."
+      occupiedBases.forEach(b => { endings[b] = 'home'; });
+      break;
+    case 'fc': {
+      // "Fielder's choice: batter to 1st, lead runner out." The batter
+      // taking 1st still forces the same chain a walk would (decision 3's
+      // forcedWalkAdvances) -- FC just means the defense converts the
+      // FURTHEST-ALONG forced runner into an out instead of letting the
+      // chain advance him. Caught in testing: prefilling every non-lead
+      // runner as 'stay' put a trailing runner from 1st on the same base
+      // the batter is also taking (a real collision) whenever more than
+      // one runner was in the force chain -- e.g. runners on 1st AND 2nd,
+      // lead retired at 2nd, but the runner from 1st has nowhere to
+      // "stay" once the batter occupies 1st. Reusing the walk's own chain
+      // and only converting its lead link to an out fixes this the same
+      // way for every occupied-base combination, not just the single-
+      // runner case that happened not to expose it.
+      const chain = forcedWalkAdvances({ runners });
+      if(chain.length){
+        const lead = chain.reduce((a, b) => (b.from > a.from ? b : a));
+        chain.forEach(mv => {
+          endings[mv.from] = (mv.from === lead.from) ? 'out' : (mv.to === 4 ? 'home' : String(mv.to));
+        });
+      }
+      break;
+    }
+  }
+  return endings;
+}
+window.chooseFieldBatterResult = async function(result){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  fp.batterResult = result;
+  fp.runnerEndings = prefillRunnerEndings(state.activeSession.runners, result);
+  fp.step = 'runners';
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.setFieldRunnerEnding = async function(base, ending){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  fp.runnerEndings[base] = ending;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+function fieldPlaySummary(fp){
+  const s = state.activeSession;
+  const batterLabel = {
+    out: 'Batter out', '1B': 'Batter to 1st', '2B': 'Batter to 2nd', '3B': 'Batter to 3rd',
+    HR: 'Batter scores (HR)', error: 'Batter to 1st (error)', fc: 'Batter to 1st (FC)'
+  }[fp.batterResult] || '';
+  const parts = [batterLabel];
+  [1, 2, 3].forEach(b => {
+    if(!s.runners[b]) return;
+    const ending = fp.runnerEndings[b] || 'stay';
+    if(ending === 'stay') return;
+    const baseLabel = ending === 'out' ? 'out' : ending === 'home' ? 'scores' : 'to ' + (ending === '1' ? '1st' : ending === '2' ? '2nd' : '3rd');
+    parts.push(`R${b} ${baseLabel}`);
+  });
+  const outsThisPlay = Object.values(fp.runnerEndings).filter(e => e === 'out').length + (fp.batterResult === 'out' ? 1 : 0);
+  parts.push(`${outsThisPlay} out${outsThisPlay === 1 ? '' : 's'}`);
+  return 'Runners look right? ' + parts.join(' · ');
+}
+// Decision 8's validation, run fresh on every render (not just at commit)
+// so the Pitch button's disabled state and its one-line reason are always
+// in sync with whatever's been tapped so far.
+function fieldPlayDisabledReason(fp){
+  if(!fp) return 'No play in progress';
+  if(fp.bbX === null || fp.bbY === null) return 'Tap where the ball landed';
+  if(!fp.fielder) return 'Choose a fielder';
+  if(!fp.bbType) return 'Choose the batted-ball type';
+  if(!fp.batterResult) return 'Choose what happened to the batter';
+  const batterTo = BATTER_RESULT_TO_BASE[fp.batterResult];
+  const destinationBases = Object.values(fp.runnerEndings).filter(e => e === '1' || e === '2' || e === '3');
+  if(batterTo >= 1 && batterTo <= 3) destinationBases.push(String(batterTo));
+  if(new Set(destinationBases).size !== destinationBases.length){
+    return "Two runners can't end on the same base";
+  }
+  const outsThisPlay = Object.values(fp.runnerEndings).filter(e => e === 'out').length + (batterTo === 0 ? 1 : 0);
+  if(state.activeSession.outs + outsThisPlay > 3){
+    return "That's more outs than are left in the inning";
+  }
+  return null;
+}
+window.commitFieldPlay = async function(){
+  const s = state.activeSession;
+  const fp = s.fieldPlay;
+  const pending = s.gamePendingPitch;
+  if(!fp || !pending || fieldPlayDisabledReason(fp)) return;
+
+  const batterTo = BATTER_RESULT_TO_BASE[fp.batterResult];
+  const advances = [];
+  for(const b of [1, 2, 3]){
+    const ending = fp.runnerEndings[b];
+    if(!ending || ending === 'stay') continue;
+    advances.push({ from: b, to: ending === 'out' ? 0 : ending === 'home' ? 4 : Number(ending) });
+  }
+  // Decision 5: sacrifice is derived, never tapped. A run scoring on a fly
+  // out is an SF; a runner advancing on a bunt out is a SAC. Only possible
+  // when the batter himself is out -- a sac by definition costs an out and
+  // gains nothing else for the batting side.
+  let sacrifice = null;
+  if(batterTo === 0){
+    if(fp.bbType === 'fly' && advances.some(a => a.to === 4)) sacrifice = 'SF';
+    else if(fp.bbType === 'bunt' && advances.some(a => a.to !== 0)) sacrifice = 'SAC';
+  }
+  const inPlayOutcome = fp.batterResult === 'out' ? 'out' : fp.batterResult === 'error' ? 'error' : fp.batterResult === 'fc' ? 'fc' : 'hit';
+  const hitType = ['1B', '2B', '3B', 'HR'].includes(fp.batterResult) ? fp.batterResult : null;
+
+  const chartingPerspective = sessionPerspective(s);
+  const batterSide = sessionBatterSide(s);
+  if(s.pitches.length === 0) s.usesRadarGun = sessionUsesRadarGun(s);
+
+  s.pitches.push({
+    id: genUUID(), kind: 'game',
+    type: state.selectedType, velo: null,
+    targetRow: null, targetCol: null,
+    actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
+    accuracyMode: null, inAccuracyZone: null, accuracyZoneCells: null,
+    batterSide, ts: Date.now(),
+    result: 'in_play', inPlayOutcome, hitType,
+    fielder: fp.fielder, fielders: fp.fielderSeq.length ? fp.fielderSeq.join('-') : null,
+    delivery: s.delivery,
+    inning: s.inning, outsBefore: s.outs, ballsBefore: s.balls, strikesBefore: s.strikes, atBatIndex: s.atBatIndex,
+    runnersBefore: runnersBitmask(s.runners),
+    bbType: fp.bbType, bbX: fp.bbX, bbY: fp.bbY,
+    batterTo, runnerAdvances: advances, sacrifice,
+    outsOnPlay: 0, runsScored: 0 // filled in immediately below, once applyRunnerAdvances has run
+  });
+  const pushedPitch = s.pitches[s.pitches.length - 1];
+  const { outsOnPlay, runsScored } = applyRunnerAdvances(s, advances, batterTo);
+  pushedPitch.outsOnPlay = outsOnPlay;
+  pushedPitch.runsScored = runsScored;
+
+  // Decision: "for in_play, bypass [applyGameResultProgression] -- outs and
+  // runs come from the runner endings." Same tail bookkeeping that
+  // function's switch cases share, applied directly here instead of
+  // routing an already-fully-resolved play back through a result-string
+  // switch that was never built to know about multi-out plays.
+  s.outs += outsOnPlay;
+  if(s.outs >= 3){ s.inning++; s.outs = 0; s.runners = { 1: false, 2: false, 3: false }; }
+  s.atBatIndex++;
+  s.balls = 0;
+  s.strikes = 0;
+  s.delivery = null;
+
+  s.gamePendingPitch = null;
+  s.gameResultMenu = null;
+  s.gamePendingOutcome = null;
+  s.gamePendingHitType = null;
+  s.fieldPlay = null;
+  state.veloTargetIdx = s.pitches.length - 1;
+  await storSet(draftKey(), s);
+  render();
+};
+function renderFieldFlow(){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return '';
+  const neutral = `color:var(--ink-faint);border-color:var(--border-strong);`;
+  const amber = `background:var(--amber);border-color:var(--amber);`;
+  const green = `color:#3D7A57;border-color:#3D7A57;`;
+  if(fp.step === 'location'){
+    return `<div><div class="field-label" style="margin-bottom:8px;">Tap the field where the ball went</div>
+      <button class="btn btn-ghost" onclick="cancelFieldFlow()">Cancel</button>
+    </div>`;
+  }
+  if(fp.step === 'bbType'){
+    const types = [['ground', 'Ground'], ['line', 'Line'], ['fly', 'Fly'], ['pop', 'Pop'], ['bunt', 'Bunt']];
+    return `<div><div class="field-label" style="margin-bottom:8px;">What kind?</div><div class="chip-row">
+      ${types.map(([k, l]) => `<button class="type-chip" style="${fp.bbType === k ? amber : neutral}" onclick="chooseFieldBBType('${k}')">${l}</button>`).join('')}
+      <button class="btn btn-ghost" onclick="cancelFieldFlow()">Cancel</button>
+    </div></div>`;
+  }
+  if(fp.step === 'batterResult'){
+    const results = [['out', 'Out'], ['1B', '1B'], ['2B', '2B'], ['3B', '3B'], ['HR', 'HR'], ['error', 'Error'], ['fc', 'FC']];
+    return `<div><div class="field-label" style="margin-bottom:8px;">What happened to the batter?</div><div class="chip-row">
+      ${results.map(([k, l]) => `<button class="type-chip" style="${fp.batterResult === k ? green : neutral}" onclick="chooseFieldBatterResult('${k}')">${l}</button>`).join('')}
+      <button class="btn btn-ghost" onclick="backFieldFlow('bbType')">Back</button>
+    </div></div>`;
+  }
+  if(fp.step === 'runners'){
+    const s = state.activeSession;
+    const occupiedBases = [1, 2, 3].filter(b => s.runners[b]);
+    const baseName = b => (b === 1 ? '1st' : b === 2 ? '2nd' : '3rd');
+    const runnerRows = occupiedBases.map(b => {
+      const current = fp.runnerEndings[b] || 'stay';
+      const opts = [['stay', 'Stays'], ['1', '1st'], ['2', '2nd'], ['3', '3rd'], ['home', 'Home'], ['out', 'Out']]
+        .filter(([k]) => k !== String(b));
+      return `<div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Runner on ${baseName(b)}</div><div class="chip-row">
+        ${opts.map(([k, l]) => `<button class="type-chip" style="${current === k ? amber : neutral}" onclick="setFieldRunnerEnding(${b},'${k}')">${l}</button>`).join('')}
+      </div></div>`;
+    }).join('') || `<p style="color:var(--ink-faint);font-size:12.5px;">No runners on base.</p>`;
+    // Decision 6: optional, up to 2 more fielders beyond the primary --
+    // e.g. a double play. Shown only where a sequence is meaningful.
+    const seqRow = (fp.fielder && fp.fielderSeq.length < 2) ? `
+      <div style="margin-bottom:8px;">
+        <div class="field-label" style="margin-bottom:4px;">Add another fielder (optional -- e.g. a double play)</div>
+        <div class="chip-row">
+          ${FIELD_POSITIONS.map(fpos => `<button class="type-chip" style="${neutral}" onclick="addFieldFielderToSequence('${fpos.pos}')">${fpos.pos}</button>`).join('')}
+        </div>
+      </div>` : '';
+    const seqDisplay = fp.fielderSeq.length ? `<p class="field-flow-summary">Fielders: ${escHtml([fp.fielder, ...fp.fielderSeq].join('-'))} <a href="#" onclick="clearFieldFielderSequence();return false;" style="color:var(--amber);">(clear)</a></p>` : '';
+    return `<div>
+      ${runnerRows}
+      ${seqRow}
+      ${seqDisplay}
+      <p class="field-flow-summary">${escHtml(fieldPlaySummary(fp))}</p>
+      <button class="btn btn-ghost" onclick="backFieldFlow('batterResult')">Back</button>
+    </div>`;
+  }
+  return '';
 }
 function renderGameSessionView(p){
   const s = state.activeSession;
@@ -3812,11 +4398,11 @@ function renderGameSessionView(p){
         <div class="hint-msg">${state.hint}</div>
         <div>
           <div class="zone-wrap">
-            ${renderZoneGrid(pitches, true, state.flashCell, state.activeSession.gamePendingPitch, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
-            <div class="zone-caption">${zoneCaption}</div>
+            ${s.fieldPlay ? renderField(s.fieldPlay) : renderZoneGrid(pitches, true, state.flashCell, state.activeSession.gamePendingPitch, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
+            ${s.fieldPlay ? '' : `<div class="zone-caption">${zoneCaption}</div>`}
           </div>
         </div>
-        ${renderGameResultRow()}
+        ${s.fieldPlay ? renderFieldFlow() : renderGameResultRow()}
         ${sessionUsesRadarGun(s) ? `<div>
           <div class="field-label" style="margin-bottom:8px;">Velocity</div>
           ${renderVeloStrip()}

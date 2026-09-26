@@ -2427,10 +2427,13 @@ async function refreshDraftState(){
   state.veloTargetIdx = null;
   state.flashCell = null;
   state.editDraftRow = null;
-  state.gamePendingPitch = null;
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+  // G1b: gamePendingPitch/gameResultMenu/gamePendingOutcome/gamePendingHitType
+  // moved onto state.activeSession (see resumeDraft's comment) -- no longer
+  // nulled here. In the "pending draft available" branch above,
+  // state.activeSession is null until resumeDraft() actually activates it,
+  // so there'd be nothing to null anyway; in the "fresh session" branch, a
+  // brand-new activeSession simply doesn't have these keys yet (undefined,
+  // same as an explicit null for every falsy check on them).
 }
 window.resumeDraft = function(){
   state.activeSession = state.pendingDraft;
@@ -2442,10 +2445,26 @@ window.resumeDraft = function(){
   state.activeSession.currentBatterSide = sessionBatterSide(state.activeSession);
   state.activeSession.usesRadarGun = sessionUsesRadarGun(state.activeSession);
   if(!state.activeSession.kind) state.activeSession.kind = 'bullpen';
-  state.gamePendingPitch = null;
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+  // G1b: same defensive-default pattern as `kind` just above -- a draft
+  // saved before this shipped has no `runners` at all. Caught by testing
+  // the resume-then-chart-a-new-pitch path directly: without this,
+  // runnersBitmask(undefined) throws the moment the very next pitch is
+  // recorded, crashing charting entirely for anyone resuming an in-flight
+  // game from before this deploy. Empty bases is the only sane default --
+  // there is no way to recover what was actually on base from a draft that
+  // never tracked it.
+  if(state.activeSession.kind === 'game' && !state.activeSession.runners){
+    state.activeSession.runners = { 1: false, 2: false, 3: false };
+  }
+  // G1b: deliberately NOT nulling gamePendingPitch/gameResultMenu/
+  // gamePendingOutcome/gamePendingHitType here anymore -- they live on
+  // state.activeSession now (the object just assigned above from
+  // state.pendingDraft), so whatever mid-flow state was captured in the
+  // last autosave before a crash/close is exactly what should reappear.
+  // A pre-G1b draft simply doesn't have these keys on it at all
+  // (undefined), which every `if(!state.activeSession.gamePendingPitch)`-
+  // style check throughout this file already treats the same as null --
+  // additive, resumes exactly as today for an old draft.
   state.draftAvailable = false;
   render();
 };
@@ -2576,7 +2595,7 @@ function veloStripActive(){
   // nothing at veloTargetIdx to attach a reading to, same reasoning as
   // pendingTarget for a bullpen's tap 1.
   return state.veloTargetIdx !== null && !!pitches && !!pitches[state.veloTargetIdx]
-    && !state.pendingTarget && !state.gamePendingPitch && state.editDraftRow === null;
+    && !state.pendingTarget && !(state.activeSession && state.activeSession.gamePendingPitch) && state.editDraftRow === null;
 }
 window.recordVelo = async function(v){
   if(!veloStripActive()) return;
@@ -2797,10 +2816,10 @@ window.endSession = async function(){
   state.pendingTarget = null;
   state.veloTargetIdx = null;
   state.editDraftRow = null;
-  state.gamePendingPitch = null;
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+  state.activeSession.gamePendingPitch = null;
+  state.activeSession.gameResultMenu = null;
+  state.activeSession.gamePendingOutcome = null;
+  state.activeSession.gamePendingHitType = null;
   state.saving = false;
   await refreshOutboxState();
   state.view = 'history';
@@ -3348,6 +3367,11 @@ window.chooseSessionKind = async function(kind){
     state.activeSession.strikes = 0;
     state.activeSession.atBatIndex = 1;
     state.activeSession.delivery = null;
+    // G1b: base state. Cleared here at game start, at 3 outs, and at a
+    // manual New inning (see applyGameResultProgression and gameNewInning) --
+    // never anywhere else, so a mid-inning walk/hit doesn't wipe runners who
+    // are still on base.
+    state.activeSession.runners = { 1: false, 2: false, 3: false };
     // Games are usually charted from behind the plate (Joel) -- override
     // whatever the last BULLPEN charted from, since that's a different
     // remembered habit. Still just the default; the toggle still shows
@@ -3369,7 +3393,14 @@ window.chooseSessionKind = async function(kind){
    the SAME renderVeloStrip()/recordVelo() a bullpen uses (veloTargetIdx
    points at the just-pushed pitch either way) -- no separate velocity
    mechanism needed. */
-window.handleGameZoneTap = function(row, col){
+// G1b: every one of these now persists (await storSet) before/after
+// mutating pending-flow state, since that state moved onto
+// state.activeSession specifically so it survives a crash/reload (see
+// resumeDraft's comment) -- previously these were bare state.* fields,
+// never saved, an accepted small loss. Still fire-and-forget from the
+// onclick attributes that call them (none of those await), same as every
+// other async handler in this file.
+window.handleGameZoneTap = async function(row, col){
   if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
   if(!state.activeSession.delivery){ state.hint = 'Set or windup first'; render(); return; }
   state.hint = '';
@@ -3377,18 +3408,20 @@ window.handleGameZoneTap = function(row, col){
   // over -- simplest correction path for a mis-tapped location, same
   // "just tap again" precedent as a bullpen's tap 1 always overwriting a
   // stale pendingTarget.
-  state.gamePendingPitch = { row, col };
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+  state.activeSession.gamePendingPitch = { row, col };
+  state.activeSession.gameResultMenu = null;
+  state.activeSession.gamePendingOutcome = null;
+  state.activeSession.gamePendingHitType = null;
   state.veloTargetIdx = null;
+  await storSet(draftKey(), state.activeSession);
   render();
 };
-window.resetGamePendingPitch = function(){
-  state.gamePendingPitch = null;
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+window.resetGamePendingPitch = async function(){
+  state.activeSession.gamePendingPitch = null;
+  state.activeSession.gameResultMenu = null;
+  state.activeSession.gamePendingOutcome = null;
+  state.activeSession.gamePendingHitType = null;
+  await storSet(draftKey(), state.activeSession);
   render();
 };
 window.setGameDelivery = async function(d){
@@ -3398,45 +3431,66 @@ window.setGameDelivery = async function(d){
 };
 // Opens a sub-menu fresh (from the main Result row) -- clears any outcome/
 // hit-type picked on a previous, abandoned drill-down.
-window.openResultMenu = function(menu){
-  state.gameResultMenu = menu;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+window.openResultMenu = async function(menu){
+  state.activeSession.gameResultMenu = menu;
+  state.activeSession.gamePendingOutcome = null;
+  state.activeSession.gamePendingHitType = null;
+  await storSet(draftKey(), state.activeSession);
   render();
 };
 // Steps BACK one menu without losing what was already picked deeper in
 // the drill-down (e.g. position's Back must still know outcome was 'hit'
 // so it can return to hitType, not inPlay).
-window.backResultMenu = function(menu){
-  state.gameResultMenu = menu;
+window.backResultMenu = async function(menu){
+  state.activeSession.gameResultMenu = menu;
+  await storSet(draftKey(), state.activeSession);
   render();
 };
-window.cancelResultMenu = function(){
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+window.cancelResultMenu = async function(){
+  state.activeSession.gameResultMenu = null;
+  state.activeSession.gamePendingOutcome = null;
+  state.activeSession.gamePendingHitType = null;
+  await storSet(draftKey(), state.activeSession);
   render();
 };
 window.chooseGameResult = function(result){ return recordGameResult(result, {}); };
 window.chooseMoreResult = function(result){ return recordGameResult(result, {}); };
-window.chooseInPlayOutcome = function(outcome){
-  state.gamePendingOutcome = outcome;
+window.chooseInPlayOutcome = async function(outcome){
+  state.activeSession.gamePendingOutcome = outcome;
   // Only a Hit asks how far; Out and Error go straight to fielder.
-  state.gameResultMenu = outcome === 'hit' ? 'hitType' : 'position';
+  state.activeSession.gameResultMenu = outcome === 'hit' ? 'hitType' : 'position';
+  await storSet(draftKey(), state.activeSession);
   render();
 };
-window.chooseHitType = function(type){
-  state.gamePendingHitType = type;
-  state.gameResultMenu = 'position';
+window.chooseHitType = async function(type){
+  state.activeSession.gamePendingHitType = type;
+  state.activeSession.gameResultMenu = 'position';
+  await storSet(draftKey(), state.activeSession);
   render();
 };
 window.chooseFielder = function(pos){
   return recordGameResult('in_play', {
-    inPlayOutcome: state.gamePendingOutcome,
-    hitType: state.gamePendingOutcome === 'hit' ? state.gamePendingHitType : null,
+    inPlayOutcome: state.activeSession.gamePendingOutcome,
+    hitType: state.activeSession.gamePendingOutcome === 'hit' ? state.activeSession.gamePendingHitType : null,
     fielder: pos
   });
 };
+// G1b: base-state bitmask, matching pitches.runners_before exactly (1st=1,
+// 2nd=2, 3rd=4). A pure encode/decode pair, independent of when or how
+// runners actually get placed on base (that's decision 3's automatic
+// advances and the field flow's runner-tap step, neither built yet in this
+// slice) -- this only has to be correct for whatever s.runners currently
+// holds, empty or not. Undo (below) is what proves the decode side; the
+// encode side is exercised on every single game pitch already.
+function runnersBitmask(runners){
+  return (runners[1] ? 1 : 0) | (runners[2] ? 2 : 0) | (runners[3] ? 4 : 0);
+}
+function runnersFromBitmask(mask){
+  // Bitwise ops coerce a missing/undefined mask (a pitch row from before
+  // this shipped) to 0 -- decodes to empty bases, a reasonable default for
+  // a pre-G1b pitch that never tracked runners at all, not a crash.
+  return { 1: !!(mask & 1), 2: !!(mask & 2), 3: !!(mask & 4) };
+}
 // Count/out/inning/batter progression, applied AFTER the pitch that
 // caused it is already pushed (with its own pre-pitch snapshot -- see
 // recordGameResult). Kept as its own function, independent of storage/
@@ -3483,6 +3537,11 @@ function applyGameResultProgression(result, inPlayOutcome){
   if(s.outs >= 3){
     s.inning++;
     s.outs = 0;
+    // G1b: bases clear at 3 outs, unconditionally -- true regardless of
+    // which result produced the 3rd out, and true before any forced-advance
+    // or field-flow logic exists to have put a runner there in the first
+    // place.
+    s.runners = { 1: false, 2: false, 3: false };
   }
   if(endsAtBat){
     s.atBatIndex++;
@@ -3495,7 +3554,7 @@ function applyGameResultProgression(result, inPlayOutcome){
 }
 window.recordGameResult = async function(result, extra){
   extra = extra || {};
-  const pending = state.gamePendingPitch;
+  const pending = state.activeSession.gamePendingPitch;
   if(!pending) return;
   const s = state.activeSession;
   const chartingPerspective = sessionPerspective(s);
@@ -3530,13 +3589,17 @@ window.recordGameResult = async function(result, extra){
     outsBefore: s.outs,
     ballsBefore: s.balls,
     strikesBefore: s.strikes,
-    atBatIndex: s.atBatIndex
+    atBatIndex: s.atBatIndex,
+    // G1b: written on EVERY game pitch, not only in-play ones (packet
+    // decision 1) -- same "before" snapshot pattern as the four fields
+    // just above, and what undoLastGamePitch restores base state from.
+    runnersBefore: runnersBitmask(s.runners)
   });
   applyGameResultProgression(result, extra.inPlayOutcome);
-  state.gamePendingPitch = null;
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+  state.activeSession.gamePendingPitch = null;
+  state.activeSession.gameResultMenu = null;
+  state.activeSession.gamePendingOutcome = null;
+  state.activeSession.gamePendingHitType = null;
   // Same post-hoc velocity pattern as a bullpen's tap 2: the strip lights
   // up for the pitch just recorded until the next one starts. The G1
   // packet's own step order put velocity before result (4, then 5) --
@@ -3563,10 +3626,14 @@ window.undoLastGamePitch = async function(){
   s.strikes = last.strikesBefore;
   s.atBatIndex = last.atBatIndex;
   s.delivery = last.delivery;
-  state.gamePendingPitch = null;
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+  // G1b: same "restore from this pitch's own before-snapshot" pattern,
+  // extended to base state. runnersFromBitmask(undefined) decodes to empty
+  // bases for a pitch that predates this column, not a crash.
+  s.runners = runnersFromBitmask(last.runnersBefore);
+  s.gamePendingPitch = null;
+  s.gameResultMenu = null;
+  s.gamePendingOutcome = null;
+  s.gamePendingHitType = null;
   state.veloTargetIdx = null;
   await storSet(draftKey(), s);
   render();
@@ -3591,12 +3658,18 @@ window.gameNewInning = async function(){
   s.strikes = 0;
   s.atBatIndex++;
   s.delivery = null;
+  // G1b: bases clear at a manual New inning the same as they do at 3 outs
+  // (packet: "Cleared at three outs and at New inning").
+  s.runners = { 1: false, 2: false, 3: false };
   await storSet(draftKey(), s);
   render();
 };
 window.gameBumpOuts = async function(){
   const s = state.activeSession;
-  if(s.outs < 2){ s.outs++; } else { s.inning++; s.outs = 0; }
+  // G1b: this manual control (still present -- approach f removes it, not
+  // this slice) can itself produce the 3rd out, so it needs the same
+  // bases-clear-at-3-outs rule applyGameResultProgression already applies.
+  if(s.outs < 2){ s.outs++; } else { s.inning++; s.outs = 0; s.runners = { 1: false, 2: false, 3: false }; }
   await storSet(draftKey(), s);
   render();
 };
@@ -3653,8 +3726,8 @@ function renderDeliveryToggle(){
   return `<div><div class="field-label" style="margin-bottom:8px;">${label}</div><div class="chip-row">${chips}</div></div>`;
 }
 function renderGameResultRow(){
-  if(!state.gamePendingPitch) return '';
-  const menu = state.gameResultMenu;
+  if(!state.activeSession.gamePendingPitch) return '';
+  const menu = state.activeSession.gameResultMenu;
   const neutral = `color:var(--ink-faint);border-color:var(--border-strong);`;
   const amber = `background:var(--amber);border-color:var(--amber);`;
   const green = `color:#3D7A57;border-color:#3D7A57;`;
@@ -3673,7 +3746,7 @@ function renderGameResultRow(){
     </div></div>`;
   }
   if(menu === 'position'){
-    const back = state.gamePendingOutcome === 'hit' ? 'hitType' : 'inPlay';
+    const back = state.activeSession.gamePendingOutcome === 'hit' ? 'hitType' : 'inPlay';
     return `<div><div class="field-label" style="margin-bottom:8px;">Fielder</div><div class="chip-row">
       ${['P','C','1B','2B','3B','SS','LF','CF','RF'].map(pos => `<button class="type-chip" style="${neutral}" onclick="chooseFielder('${pos}')">${pos}</button>`).join('')}
       <button class="btn btn-ghost" onclick="backResultMenu('${back}')">Back</button>
@@ -3718,7 +3791,7 @@ function renderGameSessionView(p){
     </div>`;
   }).join('') || `<p style="color:var(--ink-faint);font-size:12.5px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
 
-  const zoneCaption = state.gamePendingPitch
+  const zoneCaption = state.activeSession.gamePendingPitch
     ? `Now choose what happened <a href="#" onclick="resetGamePendingPitch();return false;" style="color:var(--amber);">(reset location)</a>`
     : `Tap where the pitch landed`;
 
@@ -3739,7 +3812,7 @@ function renderGameSessionView(p){
         <div class="hint-msg">${state.hint}</div>
         <div>
           <div class="zone-wrap">
-            ${renderZoneGrid(pitches, true, state.flashCell, state.gamePendingPitch, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
+            ${renderZoneGrid(pitches, true, state.flashCell, state.activeSession.gamePendingPitch, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
             <div class="zone-caption">${zoneCaption}</div>
           </div>
         </div>

@@ -603,51 +603,20 @@
   .zone-cell.clickable:hover{ outline:2px solid var(--amber); outline-offset:-2px; }
   .zone-caption{ font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.1em; }
 
-  /* G1b-r decision 12: ~15% larger than .zone-grid's own box on each axis
-     (278px -> 320px fixed above 861px; 320px -> 368px max on phones) --
-     decision 6/12's "the field is slightly bigger," now its own box rather
-     than matching the grid's exactly. Still letterboxes the non-square
-     field-diagram.svg viewBox (600x520) via preserveAspectRatio, unchanged. */
-  .field-wrap{ position:relative; width:320px; height:320px; border-radius:6px; overflow:hidden; }
-  .field-wrap svg{ width:100%; height:100%; display:block; }
-  /* G1b-r decision 4/8: position TAPS moved off the field entirely, onto a
-     plain chip row (renderFieldFlow) -- .field-tap-target (44px invisible
-     overlay buttons on the SVG) is retired with it. .field-ball-marker
-     below is the field's own reflection of that row: display-only, never a
-     tap target itself. */
-  .field-ball-marker{
-    position:absolute; width:14px; height:14px; transform:translate(-50%,-50%);
-    border-radius:50%; background:#F1ECDD; border:1.5px solid #0F241B;
-    display:flex; align-items:center; justify-content:center;
-    font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; color:#0F241B;
-    pointer-events:none;
-  }
-  .field-pitch-btn{
-    position:absolute; width:52px; height:52px; transform:translate(-50%,-50%);
-    border-radius:50%; border:2px solid var(--amber); background:var(--amber);
-    color:var(--field-dark); font-weight:700; font-size:11px; letter-spacing:0.02em; cursor:pointer;
-    animation:fieldPitchPulse 1.8s ease-in-out infinite;
-  }
-  .field-pitch-btn:disabled{
-    animation:none; opacity:0.45; cursor:not-allowed;
-    background:var(--card-bg); border-color:var(--border-strong); color:var(--ink-faint);
-  }
-  @keyframes fieldPitchPulse{
-    0%, 100% { box-shadow:0 0 0 0 rgba(232,168,61,0.55); }
-    50%      { box-shadow:0 0 0 10px rgba(232,168,61,0); }
-  }
-  .field-crossfade{ animation:fieldCrossfade 220ms ease; }
-  @keyframes fieldCrossfade{ from{ opacity:0; } to{ opacity:1; } }
-  @media (prefers-reduced-motion: reduce){
-    .field-pitch-btn{ animation:none; }
-    .field-crossfade{ animation:none; }
-  }
-  .field-flow-summary{ font-size:12.5px; color:var(--ink-dim); line-height:1.5; margin:0 0 8px; }
-  .field-disabled-reason{ font-size:11.5px; color:var(--clay); margin:6px 0 0; text-align:center; }
+  /* G1b-r2: the field picture is gone entirely (GameChanger's patent
+     filings) -- every .field-* rule that drew or positioned it (.field-wrap,
+     .field-ball-marker, .field-pitch-btn + its pulse keyframes,
+     .field-crossfade + its keyframes, the two field-wrap breakpoints) is
+     removed here, not hidden. docs/field-diagram.svg stays in the repo for
+     G2's spray chart only -- nothing in the charting screen reads it or its
+     FIELD_POSITIONS coordinates for drawing any more (FIELD_POSITIONS
+     itself stays, in JS, purely as the bb_x/bb_y anchor lookup G1b-r's
+     decision 5 still uses). */
+  .walkthrough-summary{ font-size:12.5px; color:var(--ink-dim); line-height:1.5; margin:0 0 8px; }
+  .walkthrough-disabled-reason{ font-size:11.5px; color:var(--clay); margin:6px 0 0; }
+  .fix-link{ font-size:12px; color:var(--amber); margin-left:6px; cursor:pointer; text-decoration:underline; }
   /* G1b (f): the status-bar diamond -- tap to Adjust Runners. min 44px hit
-     area even though the SVG glyph itself is drawn smaller, same "real tap
-     target is a separate, fixed-size element" rule as the field's own
-     position targets. */
+     area even though the SVG glyph itself is drawn smaller. */
   .runner-diamond-btn{
     display:flex; align-items:center; justify-content:center;
     width:44px; height:44px; min-width:44px; min-height:44px; padding:0;
@@ -655,18 +624,13 @@
   }
   .runner-diamond-btn:disabled{ cursor:not-allowed; opacity:0.55; }
   .adjust-runners-panel{ margin-top:4px; padding:14px; }
-  @media (max-width:860px){
-    .field-wrap{ width:100%; max-width:368px; height:auto; aspect-ratio:1/1; }
-  }
-  @media (min-width:600px) and (max-width:860px){
-    /* Decision 12: "on iPad the field may use the full width of the
-       charting column" -- rather than staying capped at the phone max. */
-    .field-wrap{ max-width:none; }
-  }
-  /* G1b-r decision 2: the scorebook glyph row -- B K ꓘ F H O + -- in the
-     bullpen's own B/K font (.flash-letter's family/weight, Teko 700), sized
-     as a real >=44px tap target since this is the single most-tapped
-     control on the whole game screen (decision 5: fewest taps possible). */
+  /* G1b-r decision 2 (unchanged by G1b-r2): the scorebook glyph row -- B K
+     ꓘ F [In Play] + -- in the bullpen's own B/K font (.flash-letter's
+     family/weight, Teko 700), sized as a real >=44px tap target. The In
+     Play button is the one non-text glyph: docs/batter-icon.png as a CSS
+     mask (acceptance 30: "takes the button's text color") so it's white
+     when the button is selected/pressed and ink-colored otherwise, with no
+     separate light/dark image asset needed. */
   .scorebook-row{ gap:8px; }
   .scorebook-btn{
     min-width:44px; min-height:44px; padding:6px 14px;
@@ -675,40 +639,82 @@
     border-radius:8px; cursor:pointer;
   }
   .scorebook-btn:active{ background:rgba(232,168,61,0.22); border-color:var(--amber); }
+  .scorebook-btn-icon{
+    width:22px; height:22px; background-color:var(--field-dark);
+    -webkit-mask:url('docs/batter-icon.png') center/contain no-repeat;
+    mask:url('docs/batter-icon.png') center/contain no-repeat;
+  }
+  .scorebook-btn:active .scorebook-btn-icon{ background-color:var(--field-dark); }
 
-  /* G1b-r addendum (layout): perspective + delivery share one row -- each
-     keeps its own label+chip-row block (renderPerspectiveToggle/
-     renderDeliveryToggle, both UNCHANGED), this just lays the two blocks
-     out side by side with room to wrap on a narrow phone. Game mode only --
-     bullpen never wraps its own renderPerspectiveToggle() call in this. */
+  /* G1b-r addendum (layout, unchanged by G1b-r2): perspective + delivery
+     share one row -- each keeps its own label+chip-row block
+     (renderPerspectiveToggle/renderDeliveryToggle, both UNCHANGED), this
+     just lays the two blocks out side by side with room to wrap on a
+     narrow phone. Game mode only. */
   .perspective-delivery-row{ display:flex; flex-wrap:wrap; gap:20px; }
   .perspective-delivery-row > div{ flex:1; min-width:180px; }
-  /* Reserved band for the result row, directly above the grid --
-     min-height (not a fixed height: a fixed height plus overflow:visible
-     let the + grid's own two rows visually run into the grid below, since
-     overflow content doesn't push normal-flow siblings down) matching the
-     scorebook glyph row's own natural rendered height (measured: label +
-     one 44px chip row + margins, 64.5px -- 78px leaves a little breathing
-     room). Both the idle (empty) and glyph-row (64.5px) states clamp to
-     this same 78px floor, so they measure byte-identical per the packet's
-     own acceptance; a taller sub-panel (the + grid, in particular) simply
-     grows the band past the floor and pushes the grid down naturally,
-     instead of overlapping it. */
+  /* Reserved band for the result row, directly above the grid (G1b-r2:
+     "above the grid" now literally -- the grid itself never leaves the
+     screen, since In Play no longer replaces it with a field). min-height,
+     not a fixed height, so a taller sub-panel (the + grid's two rows, or
+     the walkthrough's own Hit/Out/Error/FC question) can grow the band and
+     push what's below it down, rather than overlapping. Height matches the
+     scorebook glyph row's own natural rendered height -- see G1b-r
+     addendum's own measurement (78px), unchanged by this packet's move of
+     H/O out from under the glyph row (six buttons instead of seven still
+     fits the same one line). */
   .result-band{ min-height:78px; }
-  /* G1b-r addendum (layout): field left / walk-through rows right, iPad and
-     desktop only (>=700px, per the packet) -- phone keeps the field
-     centered with rows stacked beneath (this block's own mobile-first
-     default, no override needed below 700px). The descendant selector
-     below beats .zone-wrap's own >=861px silhouette-gutter rule (a
-     bullpen-only concern that has no business sizing the field) by
-     specificity, not by editing that shared rule. */
-  .field-flow-layout{ display:flex; flex-direction:column; gap:14px; }
-  .field-flow-rows{ min-width:0; }
+  /* G1b-r2: scorebook cells sit beside the walkthrough on iPad/desktop
+     (>=700px) and above it on phone (this block's own mobile-first default,
+     column, cells row then walkthrough) -- acceptance 28's own layout. */
+  .walkthrough-layout{ display:flex; flex-direction:column; gap:14px; }
+  .walkthrough-rows{ min-width:0; }
   @media (min-width:700px){
-    .field-flow-layout{ flex-direction:row; align-items:flex-start; gap:20px; }
-    .field-flow-layout .zone-wrap{ flex:0 0 auto; width:auto; max-width:none; padding:0; align-self:flex-start; }
-    .field-flow-rows{ flex:1; }
+    .walkthrough-layout{ flex-direction:row; align-items:flex-start; gap:20px; }
+    .walkthrough-layout .scorebook-cells-wrap{ flex:0 0 auto; }
+    .walkthrough-rows{ flex:1; }
   }
+  /* The position swipe row (replaces the field's own tap targets): one
+     scrollable line, no visible scrollbar, chips sized 64x46px minimum
+     (acceptance 34) so it's usable with a thumb on a 320px phone; scroll-
+     snap makes each chip settle into view instead of stopping mid-chip.
+     Deliberately NOT centered/justified -- the last chip needs to sit
+     partially cut off at the right edge at 320px so the row reads as
+     scrollable rather than as "that's all of them." */
+  .position-swipe-row{
+    display:flex; gap:8px; overflow-x:auto; overflow-y:hidden; padding-bottom:4px;
+    scroll-snap-type:x proximity; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  }
+  .position-swipe-row::-webkit-scrollbar{ display:none; }
+  .position-swipe-chip{
+    position:relative; flex:0 0 auto; scroll-snap-align:start;
+    min-width:64px; min-height:46px; padding:0 14px; border-radius:8px;
+    font-size:14px; font-weight:600; border:1.5px solid var(--border-strong);
+    background:var(--card-bg); color:var(--ink-dim); cursor:pointer;
+  }
+  .position-swipe-chip.selected{ background:var(--amber); border-color:var(--amber); color:var(--field-dark); }
+  .position-swipe-badge{
+    position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%;
+    background:var(--field-dark); color:#fff; font-size:10px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; line-height:1;
+  }
+  /* Scorebook cells: inline SVG, display-only (acceptance 36 -- no onclick
+     anywhere in this block), theme via CSS variables so dark mode repaints
+     it for free. One big cell for the batter, one small cell per occupied
+     base to its left/above depending on width. */
+  .scorebook-cells-wrap{ display:flex; flex-wrap:wrap; gap:8px; align-items:flex-start; }
+  .scorebook-cell{ background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:4px; }
+  .scorebook-cell svg{ display:block; }
+  .scorebook-cell-code{ font-family:'IBM Plex Mono',monospace; font-size:9px; fill:var(--ink-dim); }
+  .scorebook-cell-diamond{ fill:none; stroke:var(--border-strong); stroke-width:1.5; }
+  .scorebook-cell-path{ fill:none; stroke-linecap:round; stroke-width:2.5; }
+  .scorebook-cell-path.committed{ stroke:var(--field-dark); }
+  .scorebook-cell-path.pending{ stroke:var(--amber); }
+  .scorebook-cell-scored{ stroke:none; }
+  .scorebook-cell-scored.committed{ fill:var(--field-dark); }
+  .scorebook-cell-scored.pending{ fill:var(--amber); }
+  .scorebook-cell-out-circle{ fill:none; stroke:var(--clay); stroke-width:1.5; }
+  .scorebook-cell-out-num{ font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700; fill:var(--clay); text-anchor:middle; }
 
   /* Sized to match the strike zone (the inner 3x3 of cells, rows/cols 1-3 --
      see isStrikeCell), not the full 5x5 grid: 3 cells + 2 internal 3px gaps
@@ -3695,12 +3701,12 @@ window.cancelResultMenu = async function(){
 // no-drill-down result (kept as a named export since chooseScorebookGlyph
 // and a couple of + grid codes route through it).
 window.chooseGameResult = function(result){ return recordGameResult(result, {}); };
-// Decision 2/3: B, K, ꓘ, F record on the tap, exactly as Ball/Strike/Foul
-// did before this revision. H and O open the field flow instead (decision
-// 3/9) -- see openFieldFlow's new entry-typed shape below. F alone has one
-// more wrinkle: a foul BUNT on two strikes is a strikeout (decision 11),
-// which needs a yes/no prompt before it can record anything, since a tap on
-// F can't otherwise distinguish "just a foul" from "that was a bunt."
+// Decision 2/3 (G1b-r2: In Play replaces the separate H/O glyphs -- see
+// openFieldFlow/chooseWalkthroughEntry): B, K, ꓘ, F record on the tap,
+// exactly as before. F alone has one more wrinkle: a foul BUNT on two
+// strikes is a strikeout (decision 11), which needs a yes/no prompt before
+// it can record anything, since a tap on F can't otherwise distinguish
+// "just a foul" from "that was a bunt."
 // Dispatches on an internal CODE, not the displayed character -- decision 1
 // is explicit that ꓘ ("strike looking") is a real 'K' rendered with
 // transform:scaleX(-1), never the U+A4D8 codepoint ("fonts don't reliably
@@ -3719,8 +3725,7 @@ window.chooseScorebookGlyph = async function(code){
         return;
       }
       return recordGameResult('foul', {});
-    case 'H': return openFieldFlow('H');
-    case 'O': return openFieldFlow('O');
+    case 'INPLAY': return openFieldFlow();
     case 'PLUS':
       state.activeSession.gameResultMenu = 'plus';
       await storSet(draftKey(), state.activeSession);
@@ -3734,19 +3739,17 @@ window.chooseScorebookGlyph = async function(code){
 window.chooseFoulBunt = function(isBunt){
   return recordGameResult('foul', isBunt ? { bunt: true, bbType: 'bunt' } : {});
 };
-// Decision 10: the + grid's grouped short codes. E/FC open the field flow
-// like O (position first, batter prefilled safe at 1st -- openFieldFlow's
-// entry param handles the rest). D3 reuses the existing dropped-third
-// drill-down verbatim, just reached from + now instead of the old "More…"
-// menu (removed). CI is the existing generic interference result,
+// Decision 10, minus E/FC (G1b-r2 moves them under In Play's own Hit/Out/
+// Error/FC question -- "the third and fourth options after In Play," not
+// under +, any more). D3 reuses the existing dropped-third drill-down
+// verbatim, just reached from + instead of the old "More…" menu (removed
+// back in G1b-r). CI is the existing generic interference result,
 // unchanged. BI drills to its own two-way choice (chooseBIOutcome). FT
 // records immediately (a strike, decision 10 -- see applyGameResultProgression's
 // foul_tip case for the strike-three behavior). The four no-pitch codes
 // write a game_events row directly, no field, no location, no further tap.
 window.choosePlusCode = async function(code){
   switch(code){
-    case 'E': return openFieldFlow('E');
-    case 'FC': return openFieldFlow('FC');
     case 'HBP': return recordGameResult('hbp', {});
     case 'D3':
       state.activeSession.gameResultMenu = 'droppedThird';
@@ -4358,7 +4361,7 @@ function renderAdjustRunnersFlow(){
     return `<div class="panel adjust-runners-panel">
       <div class="field-label" style="margin-bottom:8px;">Why?</div>
       ${reason
-        ? `<p class="field-disabled-reason">${escHtml(reason)}</p>`
+        ? `<p class="walkthrough-disabled-reason">${escHtml(reason)}</p>`
         : `<div class="chip-row">${ADJUST_REASONS.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="commitAdjustEvent('${k}')">${l}</button>`).join('')}</div>`}
       <button class="btn btn-ghost" onclick="backAdjustRunners()">Back</button>
     </div>`;
@@ -4454,24 +4457,28 @@ function renderDeliveryToggle(){
   const label = 'Delivery' + (!s.delivery ? ' — pick one before the next pitch' : '');
   return `<div><div class="field-label" style="margin-bottom:8px;">${label}</div><div class="chip-row">${chips}</div></div>`;
 }
-// G1b-r decisions 2/3/10: the old direct Ball/Strike/Foul/In Play/More… row
-// is replaced by the scorebook glyph row (B K ꓘ F H O +) plus the + grid --
-// the old "more" menu (HBP/Dropped 3rd/Interference/Other) is DELETED, not
-// hidden, folded into + (choosePlusCode) instead. Existing pitch rows
-// charted through any of the old paths keep their values and still read
-// correctly everywhere.
+// G1b-r decisions 2/3/10, updated by G1b-r2: six buttons now, not seven --
+// H and O fold into one In Play icon button (opens the walkthrough, which
+// asks Hit/Out/Error/FC as its own first question -- chooseWalkthroughEntry
+// below). The old "more" menu (HBP/Dropped 3rd/Interference/Other) is
+// DELETED, not hidden, folded into + (choosePlusCode) instead. Existing
+// pitch rows charted through any of the old paths keep their values and
+// still read correctly everywhere.
 const SCOREBOOK_GLYPHS = [
   { code: 'B', display: 'B', title: 'Ball' },
   { code: 'K', display: 'K', title: 'Strike swinging' },
   // Decision 1: a real 'K', mirrored with CSS -- never the U+A4D8 codepoint.
   { code: 'KL', display: 'K', mirrored: true, title: 'Strike looking' },
   { code: 'F', display: 'F', title: 'Foul' },
-  { code: 'H', display: 'H', title: 'Hit (opens the field)' },
-  { code: 'O', display: 'O', title: 'Out (opens the field)' },
+  // Acceptance 30: docs/batter-icon.png as a CSS mask (.scorebook-btn-icon),
+  // not an <img> -- masking is what lets it take the button's text color.
+  { code: 'INPLAY', icon: true, title: 'In play' },
   { code: 'PLUS', display: '+', title: 'More outcomes' }
 ];
+// G1b-r2: E and FC move OUT from under + -- they're the walkthrough's own
+// 3rd/4th options after In Play now (chooseWalkthroughEntry), not here.
 const PLUS_GRID_PITCHES = [
-  ['E', 'Error'], ['FC', 'FC'], ['HBP', 'HBP'], ['D3', 'Dropped 3rd'],
+  ['HBP', 'HBP'], ['D3', 'Dropped 3rd'],
   ['CI', "Catcher's interference"], ['BI', "Batter's interference"], ['FT', 'Foul tip']
 ];
 const PLUS_GRID_NO_PITCH = [
@@ -4522,141 +4529,46 @@ function renderGameResultRow(){
   }
 
   // Decision 2: the scorebook glyph row, in the bullpen's own B/K font (see
-  // .scorebook-btn CSS, built off .flash-letter's font-family/weight).
+  // .scorebook-btn CSS, built off .flash-letter's font-family/weight). The
+  // In Play button renders the masked icon instead of text (acceptance 30).
   return `<div><div class="field-label" style="margin-bottom:8px;">Result</div><div class="chip-row scorebook-row">
-    ${SCOREBOOK_GLYPHS.map(g => `<button class="scorebook-btn" ${g.mirrored ? 'style="transform:scaleX(-1);"' : ''} title="${g.title}" onclick="chooseScorebookGlyph('${g.code}')">${g.display}</button>`).join('')}
+    ${SCOREBOOK_GLYPHS.map(g => `<button class="scorebook-btn" ${g.mirrored ? 'style="transform:scaleX(-1);"' : ''} title="${g.title}" onclick="chooseScorebookGlyph('${g.code}')">${g.icon ? '<span class="scorebook-btn-icon"></span>' : g.display}</button>`).join('')}
   </div></div>`;
 }
 
-/* ---------- G1b (d): THE FIELD ----------
-   Tapping In Play flips the zone grid to a baseball field. Geometry/colors
-   come from docs/field-diagram.svg verbatim (inlined below, not fetched --
-   this file has no build step and no external requests on the charting
-   path); if that file is ever revised, FIELD_VIEWBOX/FIELD_POSITIONS and
-   the markup in fieldSvgMarkup() must move with it by hand. */
+// G1b-r2: FIELD_VIEWBOX/FIELD_POSITIONS survive as pure DATA -- the
+// bb_x/bb_y anchor lookup G1b-r's decision 5 established (location = the
+// tapped position's own coordinate from docs/field-diagram.svg, normalized
+// 0-1) is unchanged; only the VISUAL field (fieldSvgMarkup, renderField,
+// the ball markers, the mound Pitch button, fieldPct, FIELD_MOUND, and
+// every .field-* CSS rule) is removed, not the coordinates themselves.
+// Ordered infield-first for the position swipe row below (decision: SS,
+// 2B, 1B, 3B, P, C, LF, CF, RF) -- order has no effect on the anchor
+// lookup (a plain .find by pos), so one list serves both purposes.
 const FIELD_VIEWBOX = { w: 600, h: 520 };
-// Copied from field-diagram.svg's own <g id="positions"> circles (cx/cy).
 const FIELD_POSITIONS = [
+  { pos: 'SS', cx: 248, cy: 300 }, { pos: '2B', cx: 352, cy: 300 },
+  { pos: '1B', cx: 405, cy: 358 }, { pos: '3B', cx: 195, cy: 358 },
   { pos: 'P',  cx: 300, cy: 383 }, { pos: 'C',  cx: 300, cy: 498 },
-  { pos: '1B', cx: 405, cy: 358 }, { pos: '2B', cx: 352, cy: 300 },
-  { pos: 'SS', cx: 248, cy: 300 }, { pos: '3B', cx: 195, cy: 358 },
   { pos: 'LF', cx: 150, cy: 195 }, { pos: 'CF', cx: 300, cy: 150 }, { pos: 'RF', cx: 450, cy: 195 }
 ];
-const FIELD_MOUND = { cx: 300, cy: 383 };
-function fieldPct(cx, cy){
-  return { leftPct: (cx / FIELD_VIEWBOX.w) * 100, topPct: (cy / FIELD_VIEWBOX.h) * 100 };
-}
-// docs/field-diagram.svg's markup, inlined verbatim except for the three
-// base rects, which take the "occupied" class from live base state
-// (occupied = {1,2,3: bool}) -- everything else in the file is static.
-function fieldSvgMarkup(occupied){
-  const occ = (n) => occupied[n] ? ' occupied' : '';
-  return `<svg viewBox="0 0 600 520" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Baseball field diagram">
-    <defs>
-      <style>
-        .grass { fill: #D4E6CB; } .mow-a { fill: url(#mowA); } .mow-b { fill: url(#mowB); }
-        .infield { fill: #C1D3BA; } .dirt { fill: #C9A97C; }
-        .line { fill: none; stroke: #0F241B; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; opacity: 0.85; }
-        .dirt-edge { fill: none; stroke: #A8895E; stroke-width: 1.2; }
-        .base { fill: #ffffff; stroke: #0F241B; stroke-width: 1.2; }
-        .base.occupied { fill: #111111; }
-        .rubber { fill: #ffffff; stroke: #0F241B; stroke-width: 1; }
-        .pos { fill: none; }
-      </style>
-      <pattern id="mowA" width="28" height="28" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="14" height="28" fill="#0F241B" fill-opacity="0.055"/></pattern>
-      <pattern id="mowB" width="28" height="28" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="14" height="28" fill="#0F241B" fill-opacity="0.045"/></pattern>
-      <clipPath id="fair"><path d="M 300 470 L 23 193 A 460 460 0 0 1 577 193 Z"/></clipPath>
-    </defs>
-    <path class="grass" d="M 300 470 L 23 193 A 460 460 0 0 1 577 193 Z"/>
-    <g clip-path="url(#fair)"><rect class="mow-a" x="0" y="0" width="600" height="520"/><rect class="mow-b" x="0" y="0" width="600" height="520"/></g>
-    <path class="dirt" d="M 300 470 L 170 340 A 137 137 0 0 1 430 340 Z"/>
-    <path class="dirt-edge" d="M 170 340 A 137 137 0 0 1 430 340"/>
-    <path class="infield" d="M 300 470 L 392 378 L 300 286 L 208 378 Z"/>
-    <circle class="dirt" cx="300" cy="470" r="26"/>
-    <circle class="dirt" cx="300" cy="383" r="18"/>
-    <circle class="dirt-edge" cx="300" cy="383" r="18"/>
-    <path class="line" d="M 23 193 A 460 460 0 0 1 577 193"/>
-    <path class="line" d="M 300 470 L 23 193"/>
-    <path class="line" d="M 300 470 L 577 193"/>
-    <path class="line" d="M 300 470 L 392 378 L 300 286 L 208 378 Z"/>
-    <rect class="rubber" x="294" y="381" width="12" height="4"/>
-    <rect class="base${occ(1)}" x="384" y="370" width="16" height="16" transform="rotate(45 392 378)"/>
-    <rect class="base${occ(2)}" x="292" y="278" width="16" height="16" transform="rotate(45 300 286)"/>
-    <rect class="base${occ(3)}" x="200" y="370" width="16" height="16" transform="rotate(45 208 378)"/>
-    <polygon class="base" points="291,464 309,464 309,472 300,480 291,472"/>
-  </svg>`;
-}
-// The mound circle IS the Pitch button (packet: "The circle around the
-// mound always carries a slightly pulsing 'Pitch' button"). disabledReason
-// is a one-line explanation shown under the field when the play isn't
-// complete enough to commit; null means enabled.
-function renderFieldPitchButton(disabledReason){
-  const { leftPct, topPct } = fieldPct(FIELD_MOUND.cx, FIELD_MOUND.cy);
-  return `<button class="field-pitch-btn" style="left:${leftPct}%;top:${topPct}%;" ${disabledReason ? 'disabled' : ''} onclick="commitFieldPlay()">Pitch</button>`;
-}
-// G1b-r decision 4: "No tapping the field except Pitch." Position taps now
-// happen on the plain chip row below the field (renderFieldFlow's position
-// row, decision 8) -- the field itself is a pure REFLECTION: a small ball
-// marker at every tapped position, and (via fieldEndingsPreview) bases that
-// turn black as soon as a runner/batter chip's destination would occupy
-// them, even before Pitch is pressed. No onclick on the wrap at all.
-function renderFieldBallMarkers(fp){
-  return fp.positionSeq.map((pos, i) => {
-    const p = FIELD_POSITIONS.find(x => x.pos === pos);
-    if(!p) return '';
-    const { leftPct, topPct } = fieldPct(p.cx, p.cy);
-    const order = fp.positionSeq.length > 1 ? i + 1 : '';
-    return `<div class="field-ball-marker" style="left:${leftPct}%;top:${topPct}%;">${order}</div>`;
-  }).join('');
-}
-// Preview of what COMMITTING RIGHT NOW would leave on base, from the
-// endings picked so far (batter + each occupied runner) -- falls back to
-// the live pre-play state when there's no prefill yet (H before hitType is
-// chosen). A collision (two runners both landing on the same base) can
-// transiently show both bases black; fieldPlayDisabledReason already
-// blocks Pitch until that's resolved, so this is display-only.
-function fieldEndingsPreview(fp){
-  const s = state.activeSession;
-  if(!fp.endings || !Object.keys(fp.endings).length) return s.runners;
-  const preview = { 1: false, 2: false, 3: false };
-  [1, 2, 3].forEach(b => {
-    if(!s.runners[b]) return;
-    const ending = fp.endings[b];
-    if(!ending || ending === 'stay') { preview[b] = true; return; }
-    if(ending === '1' || ending === '2' || ending === '3') preview[Number(ending)] = true;
-  });
-  if(fp.endings.batter === '1' || fp.endings.batter === '2' || fp.endings.batter === '3'){
-    preview[Number(fp.endings.batter)] = true;
-  }
-  return preview;
-}
-function renderField(fp){
-  const reason = fieldPlayDisabledReason(fp);
-  // field-crossfade (unchanged from G1b) still plays once, on the grid ->
-  // field transition itself; it just no longer carries an onclick, since
-  // decision 4 retires all field taps except Pitch.
-  return `<div class="field-wrap field-crossfade">
-    ${fieldSvgMarkup(fieldEndingsPreview(fp))}
-    ${renderFieldBallMarkers(fp)}
-    ${renderFieldPitchButton(reason)}
-  </div>
-  ${reason ? `<p class="field-disabled-reason">${escHtml(reason)}</p>` : ''}`;
-}
 
-/* ---------- G1b-r: THE FLOW, REVISED ----------
+/* ---------- G1b-r2: THE WALK-THROUGH (field picture removed) ----------
    state.activeSession.fieldPlay holds the in-progress play (autosaved like
-   everything else on activeSession, unchanged from G1b's own architecture
-   -- Resume restores it mid-flow the same way it restores gamePendingPitch).
-     { entry: 'H'|'O'|'E'|'FC', hitType: null|'1B'|'2B'|'3B'|'HR',
-       positionSeq: [], bbType: null, endings: { batter, 1, 2, 3 }, editing: null }
-   Decision 9: every row (hit type, position, batted-ball type, runners,
-   summary+Pitch) is visible at once, order doesn't matter, nothing is
-   hidden behind a step -- so, unlike G1b's original field flow, there is no
-   `step` field and no Back button between rows; Cancel is the only way out
-   short of a complete, valid play. Decision 4: the field itself has no tap
-   handler of its own any more (see renderField/renderFieldBallMarkers) --
-   every input here is a plain chip, same family as the rest of this app's
-   chip rows. */
+   everything else on activeSession, unchanged architecture -- Resume
+   restores it mid-walkthrough the same way it restores gamePendingPitch).
+     { entry: null|'H'|'O'|'E'|'FC', hitType: null|'1B'|'2B'|'3B'|'HR',
+       positionSeq: [], bbType: null, endings: { batter, 1, 2, 3 },
+       editing: null, dp: false, fixOpen: false }
+   entry starts null now (In Play alone doesn't fix it -- the charter picks
+   Hit/Out/Error/FC as its own first question, chooseWalkthroughEntry
+   below); fixOpen is new, gating the runner-chip corrector behind the
+   summary line's Fix control instead of always showing it. Everything else
+   -- fieldBatterResultKey, refreshFieldPrefill, prefillRunnerEndings,
+   leadForcedOutEndings, doublePlayEndings, inferredDoublePlaySeq,
+   refreshOutEndings, BATTER_RESULT_TO_BASE, applyRunnerAdvances,
+   forcedWalkAdvances -- is REUSED UNCHANGED from G1b/G1b-r; only what the
+   charter taps and sees to get there is new. */
 // entry fixes the batter's own outcome for O/E/FC immediately (out/error/
 // fc); only H needs a further tap (hit type) before it's known. Returns
 // null for H before that tap -- callers already handle a null key (no
@@ -4683,11 +4595,17 @@ function refreshFieldPrefill(fp){
   const runnerPrefill = prefillRunnerEndings(state.activeSession.runners, key);
   fp.endings = Object.assign({ batter: baseCodeFromNumber(BATTER_RESULT_TO_BASE[key]) }, runnerPrefill);
 }
-window.openFieldFlow = async function(entry){
+// G1b-r2: In Play alone no longer fixes entry -- it opens the walkthrough
+// with entry still null, showing Hit/Out/Error/FC as its own first
+// question (chooseWalkthroughEntry). Tap count is exactly one more than
+// G1b-r's H/O glyphs (In Play + the category, where G1b-r had one glyph);
+// acceptance 31/32 confirm this against the packet's own counts.
+window.openFieldFlow = async function(){
   if(!state.activeSession.gamePendingPitch) return; // the pitch's own zone tap must already exist
-  const fp = { entry, hitType: null, positionSeq: [], bbType: null, endings: {}, editing: null, dp: false };
-  if(entry !== 'H') refreshFieldPrefill(fp); // O/E/FC's batter outcome is fixed already; H waits for a hit-type tap
-  state.activeSession.fieldPlay = fp;
+  state.activeSession.fieldPlay = {
+    entry: null, hitType: null, positionSeq: [], bbType: null,
+    endings: {}, editing: null, dp: false, fixOpen: false
+  };
   await storSet(draftKey(), state.activeSession);
   render();
 };
@@ -4696,11 +4614,34 @@ window.cancelFieldFlow = async function(){
   await storSet(draftKey(), state.activeSession);
   render();
 };
+// Hit/Out/Error/FC -- entry codes are unchanged internally ('H'/'O'/'E'/
+// 'FC') from G1b-r, only the CHOICE presentation is new (a walkthrough
+// question, not four separate top-row glyphs).
+window.chooseWalkthroughEntry = async function(entry){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  fp.entry = entry;
+  fp.hitType = null;
+  if(entry !== 'H') refreshFieldPrefill(fp); // O/E/FC's batter outcome is fixed already; H waits for a hit-type tap
+  else fp.endings = {};
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
 window.chooseFieldHitType = async function(hitType){
   const fp = state.activeSession.fieldPlay;
   if(!fp || fp.entry !== 'H') return;
   fp.hitType = hitType;
   refreshFieldPrefill(fp);
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// Fix (G1b-r2): the runner-chip corrector from G1b-r is no longer always
+// visible -- it's behind this toggle on the summary line, since "nothing
+// here is required on a routine play."
+window.toggleFix = async function(){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  fp.fixOpen = !fp.fixOpen;
   await storSet(draftKey(), state.activeSession);
   render();
 };
@@ -4895,11 +4836,30 @@ function doublePlayEndings(runners, bbType){
 // on addFieldFielderToSequence's predecessor already rejected converting
 // positions to numbers for the stored data; this is display-only).
 const POSITION_SCOREBOOK_NUMBER = { P: 1, C: 2, '1B': 3, '2B': 4, '3B': 5, SS: 6, LF: 7, CF: 8, RF: 9 };
+// G1b-r2: the resulting base state, appended to the summary line -- the
+// packet's own Fix example quotes it verbatim ("6-4-3 . 2 out on the play .
+// bases empty").
+function basesSummaryText(fp){
+  const s = state.activeSession;
+  const key = fieldBatterResultKey(fp);
+  const batterTo = key ? BATTER_RESULT_TO_BASE[key] : null;
+  const finalBases = [];
+  [1, 2, 3].forEach(b => {
+    if(!s.runners[b]) return;
+    const ending = fp.endings[b] || 'stay';
+    if(ending === 'stay') finalBases.push(b);
+    else if(ending === '1' || ending === '2' || ending === '3') finalBases.push(Number(ending));
+  });
+  if(batterTo === 1 || batterTo === 2 || batterTo === 3) finalBases.push(batterTo);
+  if(!finalBases.length) return 'bases empty';
+  if(new Set(finalBases).size === 3) return 'bases loaded';
+  return [...new Set(finalBases)].sort((a, b) => a - b).map(b => `R${b}`).join(', ');
+}
 // Decision 7's one-line summary, redrawn on every render from fp.endings --
-// batterResultKey may still be null (H, hit type not chosen yet). G1b-r
-// addendum: a DP play gets its own scorebook-notation line instead ("6-4-3
-// . 2 out on the play", quoted verbatim from the packet, singular "out"
-// included) -- fp.positionSeq is meaningful here whether dp came from
+// batterResultKey may still be null (no entry chosen, or H before hitType).
+// G1b-r addendum: a DP play gets its own scorebook-notation line instead
+// ("6-4-3 . 2 out on the play", quoted verbatim from the packet, singular
+// "out" included) -- fp.positionSeq is meaningful here whether dp came from
 // inference or the manual chip.
 function fieldPlaySummary(fp){
   const s = state.activeSession;
@@ -4907,12 +4867,12 @@ function fieldPlaySummary(fp){
   if(fp.entry === 'O' && fp.dp){
     const notation = fp.positionSeq.map(pos => POSITION_SCOREBOOK_NUMBER[pos] || pos).join('-');
     const outsThisPlay = [1, 2, 3].filter(b => s.runners[b] && fp.endings[b] === 'out').length + 1;
-    return `${notation} · ${outsThisPlay} out on the play`;
+    return `${notation} · ${outsThisPlay} out on the play · ${basesSummaryText(fp)}`;
   }
   const batterLabel = {
     out: 'Batter out', '1B': 'Batter to 1st', '2B': 'Batter to 2nd', '3B': 'Batter to 3rd',
     HR: 'Batter scores (HR)', error: 'Batter to 1st (error)', fc: 'Batter to 1st (FC)'
-  }[key] || (fp.entry === 'H' ? 'Choose the hit type' : '');
+  }[key] || (!fp.entry ? 'Choose what happened' : fp.entry === 'H' ? 'Choose the hit type' : '');
   const parts = [batterLabel];
   [1, 2, 3].forEach(b => {
     if(!s.runners[b]) return;
@@ -4923,6 +4883,7 @@ function fieldPlaySummary(fp){
   });
   const outsThisPlay = [1, 2, 3].filter(b => s.runners[b] && fp.endings[b] === 'out').length + (key === 'out' ? 1 : 0);
   parts.push(`${outsThisPlay} out${outsThisPlay === 1 ? '' : 's'}`);
+  if(key) parts.push(basesSummaryText(fp));
   return parts.filter(Boolean).join(' · ');
 }
 // Decision 9's validation, run fresh on every render (not just at commit)
@@ -4931,6 +4892,9 @@ function fieldPlaySummary(fp){
 // of order.
 function fieldPlayDisabledReason(fp){
   if(!fp) return 'No play in progress';
+  // G1b-r2: entry itself is no longer fixed the moment the walkthrough
+  // opens (In Play alone doesn't say Hit/Out/Error/FC any more).
+  if(!fp.entry) return 'Choose Hit, Out, Error, or FC';
   if(fp.entry === 'H' && !fp.hitType) return 'Choose the hit type';
   if(!fp.positionSeq.length) return 'Choose where it was fielded';
   if(!fp.bbType) return 'Choose the batted-ball type';
@@ -5036,9 +5000,188 @@ window.commitFieldPlay = async function(){
   await storSet(draftKey(), s);
   render();
 };
-// Decision 9: every row visible at once. Decision 7's chip-then-5-
-// destinations picker is inlined right under the runner row whenever one is
-// open (fp.editing), rather than replacing the whole panel with a step.
+
+/* ---------- G1b-r2: SCOREBOOK CELLS ----------
+   Inline SVG, display-only (never a tap target -- acceptance 36), shown
+   only alongside an active walkthrough (renderGameSessionView's own
+   resultOrWalkthrough). One big cell for the batter (their PENDING outcome,
+   drawn in the accent color until Pitch); one small cell per occupied base,
+   showing that runner's own EXISTING path (ink -- they already reached it
+   on some earlier, already-committed play) plus this play's PROPOSED
+   movement for them (accent), per fp.endings. */
+// Position digits for scorebook notation ONLY (P1 C2 1B3 2B4 3B5 SS6 LF7
+// CF8 RF9) -- distinct from the swipe row's own letter labels; reuses the
+// same mapping G1b-r's addendum already built for the DP summary line.
+function fielderNotation(seq){
+  return (seq || []).filter(Boolean).map(p => POSITION_SCOREBOOK_NUMBER[p] || p).join('-');
+}
+// Which out number (within the CURRENT inning) each out on this play would
+// be -- runners (in base order) first, then the batter, a simple, stated
+// convention rather than an attempt to reconstruct real relay timing.
+function walkthroughOutNumbers(fp){
+  const s = state.activeSession;
+  const numbers = {};
+  let next = s.outs + 1;
+  [1, 2, 3].forEach(b => { if(s.runners[b] && fp.endings[b] === 'out') numbers[b] = next++; });
+  const key = fieldBatterResultKey(fp);
+  if(key && BATTER_RESULT_TO_BASE[key] === 0) numbers.batter = next++;
+  return numbers;
+}
+// The batter's own top-left code for the PENDING play being walked through.
+// DP: the runner who's out gets the sequence UP TO the force (positionSeq
+// minus its last touch); the batter -- out at the LAST position in the
+// sequence -- gets the full sequence. Matches acceptance 32 exactly ("R1's
+// cell shows 6-4" vs "batter's cell shows 6-4-3").
+function walkthroughBatterCode(fp){
+  const key = fieldBatterResultKey(fp);
+  if(!key) return '';
+  if(key === 'out') return fielderNotation(fp.positionSeq);
+  if(key === 'error') return 'E' + (POSITION_SCOREBOOK_NUMBER[fp.positionSeq[0]] || '');
+  if(key === 'fc') return 'FC';
+  return key; // '1B'/'2B'/'3B'/'HR'
+}
+function walkthroughRunnerOutCode(fp){
+  // Only meaningful when this specific runner is the DP's force-out --
+  // stops one touch short of the batter's own full sequence.
+  if(fp.dp && fp.positionSeq.length > 1) return fielderNotation(fp.positionSeq.slice(0, -1));
+  return fielderNotation(fp.positionSeq);
+}
+function walkthroughBBCode(fp){
+  const bbCode = { ground: 'GB', line: 'LD', fly: 'FB', pop: 'PU', bunt: 'BNT' }[fp.bbType];
+  if(!bbCode) return '';
+  return fp.dp ? `${bbCode} · DP` : bbCode;
+}
+// Historical, best-effort: how the runner CURRENTLY on this base most
+// recently reached it -- scans pitches+events (newest seq first) for the
+// last entry that placed a runner on this exact base, and reads that same
+// entry's own result to build the code. Display-only; doesn't attempt a
+// full per-segment provenance chain through multiple earlier advances.
+const GAME_EVENT_SHORT_CODE = {
+  stolen_base: 'SB', caught_stealing: 'CS', pickoff: 'PO', wild_pitch: 'WP',
+  passed_ball: 'PB', balk: 'BLK', intentional_walk: 'IBB', auto_ball: 'BB', auto_strike: 'K'
+};
+function scorebookBatterCode(pt){
+  if(!pt) return '';
+  switch(pt.result){
+    case 'ball': return pt.batterTo === 1 ? 'BB' : '';
+    case 'strike_swinging': return pt.batterTo === 0 ? 'K' : '';
+    case 'strike_looking': return pt.batterTo === 0 ? 'ꓘ' : '';
+    case 'foul_tip': return pt.batterTo === 0 ? 'K' : '';
+    case 'hbp': return 'HBP';
+    case 'interference': return 'CI';
+    case 'batter_interference': return 'BI';
+    case 'dropped_third': return pt.inPlayOutcome === 'out' ? 'K' : `D3 ${fielderNotation([pt.fielder])}`;
+    case 'in_play': {
+      const seq = [pt.fielder, ...(pt.fielders ? pt.fielders.split('-') : [])];
+      const notation = fielderNotation(seq);
+      if(pt.hitType) return pt.hitType;
+      if(pt.inPlayOutcome === 'error') return 'E' + (POSITION_SCOREBOOK_NUMBER[pt.fielder] || '');
+      if(pt.inPlayOutcome === 'fc') return 'FC';
+      if(pt.sacrifice === 'SF') return 'SF' + (POSITION_SCOREBOOK_NUMBER[pt.fielder] || '');
+      if(pt.sacrifice === 'SAC') return `SAC ${notation}`;
+      if(seq.length === 1 && (pt.bbType === 'fly' || pt.bbType === 'line' || pt.bbType === 'pop')){
+        return { fly: 'F', line: 'L', pop: 'P' }[pt.bbType] + (POSITION_SCOREBOOK_NUMBER[pt.fielder] || '');
+      }
+      if(seq.length === 1 && pt.bbType === 'ground') return 'U' + (POSITION_SCOREBOOK_NUMBER[pt.fielder] || '');
+      return notation;
+    }
+    default: return '';
+  }
+}
+function deriveRunnerReachCode(base){
+  const s = state.activeSession;
+  const combined = [
+    ...s.pitches.map(pt => ({ seq: pt.seq, pt })),
+    ...(s.events || []).map(ev => ({ seq: ev.seq, ev }))
+  ].sort((a, b) => b.seq - a.seq);
+  for(const entry of combined){
+    if(entry.pt && (entry.pt.batterTo === base || (entry.pt.runnerAdvances || []).some(a => a.to === base))){
+      return scorebookBatterCode(entry.pt);
+    }
+    if(entry.ev && (entry.ev.runnerAdvances || []).some(a => a.to === base)){
+      return GAME_EVENT_SHORT_CODE[entry.ev.eventType] || '';
+    }
+  }
+  return '';
+}
+// Diamond geometry (a 0-100 box, home at bottom): segment i connects base i
+// to base i+1, wrapping 3 -> home. "Reached" segments come from how far the
+// runner already is (0-3); "pending" segments extend from there to this
+// play's proposed destination (numeric 1/2/3, 'home', or none for
+// 'out'/'stay'/unset).
+const SCOREBOOK_DIAMOND_PTS = { home: [50, 90], 1: [85, 50], 2: [50, 10], 3: [15, 50] };
+const SCOREBOOK_SEGMENTS = [['home', 1], [1, 2], [2, 3], [3, 'home']];
+function reachedSegmentIndices(base){
+  return Array.from({ length: Math.max(0, Math.min(3, base)) }, (_, i) => i);
+}
+function pendingSegmentIndices(fromBase, toCode){
+  if(!toCode || toCode === 'stay' || toCode === 'out') return [];
+  const toBase = toCode === 'home' ? 4 : Number(toCode);
+  const idx = [];
+  for(let i = fromBase; i < toBase; i++) idx.push(i);
+  return idx;
+}
+function renderScorebookCellSvg({ size, reachedIdx, pendingIdx, scoredPending, outNumber, topLeft, topRight, bottomLeft }){
+  const diamondPts = `${SCOREBOOK_DIAMOND_PTS[1].join(',')} ${SCOREBOOK_DIAMOND_PTS[2].join(',')} ${SCOREBOOK_DIAMOND_PTS[3].join(',')} ${SCOREBOOK_DIAMOND_PTS.home.join(',')}`;
+  const seg = (i, cls) => `<path class="scorebook-cell-path ${cls}" d="M ${SCOREBOOK_DIAMOND_PTS[SCOREBOOK_SEGMENTS[i][0]].join(' ')} L ${SCOREBOOK_DIAMOND_PTS[SCOREBOOK_SEGMENTS[i][1]].join(' ')}"/>`;
+  const outCircle = outNumber ? `<circle class="scorebook-cell-out-circle" cx="50" cy="50" r="14"/><text class="scorebook-cell-out-num" x="50" y="54">${outNumber}</text>` : '';
+  return `<div class="scorebook-cell"><svg viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-hidden="true">
+    <polygon class="scorebook-cell-diamond" points="${diamondPts}"/>
+    ${scoredPending ? `<polygon class="scorebook-cell-scored pending" points="${diamondPts}"/>` : ''}
+    ${reachedIdx.map(i => seg(i, 'committed')).join('')}
+    ${pendingIdx.map(i => seg(i, 'pending')).join('')}
+    ${outCircle}
+    ${topLeft ? `<text class="scorebook-cell-code" x="4" y="12">${escHtml(topLeft)}</text>` : ''}
+    ${topRight ? `<text class="scorebook-cell-code" x="96" y="12" text-anchor="end">${escHtml(topRight)}</text>` : ''}
+    ${bottomLeft ? `<text class="scorebook-cell-code" x="4" y="96">${escHtml(bottomLeft)}</text>` : ''}
+  </svg></div>`;
+}
+function renderScorebookCells(fp){
+  const s = state.activeSession;
+  const key = fieldBatterResultKey(fp);
+  const batterTo = key ? BATTER_RESULT_TO_BASE[key] : null;
+  const outNumbers = walkthroughOutNumbers(fp);
+
+  const runnerCells = [1, 2, 3].filter(b => s.runners[b]).map(b => {
+    const ending = fp.endings[b];
+    return `<div>
+      <div style="font-size:10px;color:var(--ink-faint);text-align:center;margin-bottom:2px;">R${b}</div>
+      ${renderScorebookCellSvg({
+        size: 48,
+        reachedIdx: reachedSegmentIndices(b),
+        pendingIdx: pendingSegmentIndices(b, ending),
+        scoredPending: ending === 'home',
+        outNumber: outNumbers[b] || null,
+        topLeft: (ending === 'out') ? walkthroughRunnerOutCode(fp) : deriveRunnerReachCode(b),
+        topRight: null, bottomLeft: null
+      })}
+    </div>`;
+  }).join('');
+
+  const batterCell = `<div>
+    <div style="font-size:10px;color:var(--ink-faint);text-align:center;margin-bottom:2px;">Batter</div>
+    ${renderScorebookCellSvg({
+      size: 72,
+      reachedIdx: [],
+      pendingIdx: pendingSegmentIndices(0, batterTo === null ? null : baseCodeFromNumber(batterTo)),
+      scoredPending: batterTo === 4,
+      outNumber: outNumbers.batter || null,
+      topLeft: walkthroughBatterCode(fp),
+      topRight: walkthroughBBCode(fp),
+      bottomLeft: `${s.balls}-${s.strikes}`
+    })}
+  </div>`;
+
+  return runnerCells + batterCell;
+}
+
+// G1b-r2 section 6: Hit/Out/Error/FC -> the position swipe row -> batted-
+// ball type -> summary line with Fix -> Pitch (full-width, the only
+// commit). Unlike G1b-r's decision 9, entry itself is now its own
+// sequential question (chooseWalkthroughEntry) -- everything from the
+// position row down still appears together once entry (and, for a hit, hit
+// type) is known, same stacked-and-always-visible spirit as before, just
+// for a narrower slice of the flow.
 function renderFieldFlow(){
   const fp = state.activeSession.fieldPlay;
   if(!fp) return '';
@@ -5046,25 +5189,46 @@ function renderFieldFlow(){
   const neutral = `color:var(--ink-faint);border-color:var(--border-strong);`;
   const amber = `background:var(--amber);border-color:var(--amber);`;
 
-  const hitTypeRow = fp.entry === 'H' ? `
-    <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Hit type</div><div class="chip-row">
-      ${['1B', '2B', '3B', 'HR'].map(h => `<button class="type-chip" style="${fp.hitType === h ? amber : neutral}" onclick="chooseFieldHitType('${h}')">${h}</button>`).join('')}
-    </div></div>` : '';
-
-  const positionRow = `
-    <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Position${fp.positionSeq.length > 1 ? ' (tap order = throw order)' : ''}</div><div class="chip-row">
-      ${FIELD_POSITIONS.map(p => {
-        const idx = fp.positionSeq.indexOf(p.pos);
-        const label = idx === -1 ? p.pos : `${p.pos} (${idx + 1})`;
-        return `<button class="type-chip" style="${idx !== -1 ? amber : neutral}" onclick="toggleFieldPosition('${p.pos}')">${label}</button>`;
-      }).join('')}
+  const entryLabels = { H: 'Hit', O: 'Out', E: 'Error', FC: 'FC' };
+  const entryRow = `
+    <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">What happened?</div><div class="chip-row">
+      ${['H', 'O', 'E', 'FC'].map(k => `<button class="type-chip" style="${fp.entry === k ? amber : neutral}" onclick="chooseWalkthroughEntry('${k}')">${entryLabels[k]}</button>`).join('')}
     </div></div>`;
+
+  // Nothing below the entry question exists until entry is chosen (and,
+  // for a hit, until hit type is too) -- matches the exact tap sequence in
+  // acceptance 31/32 (no wasted taps revealing rows with nothing to do yet).
+  if(!fp.entry || (fp.entry === 'H' && !fp.hitType)){
+    const hitTypeRow = fp.entry === 'H' ? `
+      <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Hit type</div><div class="chip-row">
+        ${['1B', '2B', '3B', 'HR'].map(h => `<button class="type-chip" style="${fp.hitType === h ? amber : neutral}" onclick="chooseFieldHitType('${h}')">${h}</button>`).join('')}
+      </div></div>` : '';
+    return `<div>${entryRow}${hitTypeRow}<button class="btn btn-ghost" onclick="cancelFieldFlow()">Cancel</button></div>`;
+  }
+
+  // The position SWIPE row (decision: one scrollable line, 64x46 chips,
+  // infield-first, badges show throw order, second tap removes -- see
+  // .position-swipe-row/.position-swipe-chip CSS). Same fp.positionSeq
+  // mechanism as G1b-r (toggleFieldPosition, unchanged), new presentation.
+  const positionRow = `
+    <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Position${fp.positionSeq.length > 1 ? ' (tap order = throw order)' : ''}</div>
+      <div class="position-swipe-row">
+        ${FIELD_POSITIONS.map(p => {
+          const idx = fp.positionSeq.indexOf(p.pos);
+          return `<button class="position-swipe-chip${idx !== -1 ? ' selected' : ''}" onclick="toggleFieldPosition('${p.pos}')">${p.pos}${idx !== -1 ? `<span class="position-swipe-badge">${idx + 1}</span>` : ''}</button>`;
+        }).join('')}
+      </div>
+    </div>`;
 
   const bbTypeRow = `
     <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Batted-ball type</div><div class="chip-row">
       ${[['ground', 'GB'], ['line', 'LD'], ['fly', 'FB'], ['pop', 'PU'], ['bunt', 'BNT']].map(([k, l]) => `<button class="type-chip" style="${fp.bbType === k ? amber : neutral}" onclick="chooseFieldBBType('${k}')">${l}</button>`).join('')}
     </div></div>`;
 
+  // Fix (G1b-r2): the G1b-r runner-chip corrector (batter/R1/R2/R3 -> 1 · 2
+  // · 3 · home · out) and the DP chip, both UNCHANGED, now hidden behind
+  // this toggle instead of always shown -- "nothing here is required on a
+  // routine play."
   const baseLabel = { '1': '1st', '2': '2nd', '3': '3rd', home: 'Home', out: 'Out' };
   const chipLabel = (key) => {
     if(key === 'batter'){
@@ -5082,9 +5246,6 @@ function renderFieldFlow(){
     const keyArg = typeof key === 'string' ? `'${key}'` : key;
     return `<button class="type-chip" style="${fp.editing === key ? amber : neutral}" onclick="openFieldEndingPicker(${keyArg})">${label}</button>`;
   }).join('');
-  // G1b-r addendum: the manual DP chip, only for O and only when there's at
-  // least one runner to double up -- same occupied-bases gate the R1/R2/R3
-  // chips above already use via chipLabel.
   const dpChip = (fp.entry === 'O' && [1, 2, 3].some(b => s.runners[b]))
     ? `<button class="type-chip" style="${fp.dp ? amber : neutral}" onclick="toggleFieldDP()">DP</button>`
     : '';
@@ -5094,16 +5255,19 @@ function renderFieldFlow(){
     <div class="chip-row" style="margin-top:4px;">
       ${destOptions.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="setFieldEnding(${editingKeyArg},'${k}')">${l}</button>`).join('')}
     </div>` : '';
-  const runnerRow = `
-    <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Runners</div><div class="chip-row">${runnerChips}${dpChip}</div>${editingPicker}</div>`;
+  const fixPanel = fp.fixOpen ? `
+    <div style="margin:8px 0;"><div class="chip-row">${runnerChips}${dpChip}</div>${editingPicker}</div>` : '';
 
+  const reason = fieldPlayDisabledReason(fp);
   return `<div>
-    ${hitTypeRow}
+    ${entryRow}
     ${positionRow}
     ${bbTypeRow}
-    ${runnerRow}
-    <p class="field-flow-summary">${escHtml(fieldPlaySummary(fp))}</p>
-    <button class="btn btn-ghost" onclick="cancelFieldFlow()">Cancel</button>
+    <p class="walkthrough-summary">${escHtml(fieldPlaySummary(fp))} <a href="#" class="fix-link" onclick="toggleFix();return false;">${fp.fixOpen ? 'Close' : 'Fix'}</a></p>
+    ${fixPanel}
+    ${reason ? `<p class="walkthrough-disabled-reason">${escHtml(reason)}</p>` : ''}
+    <button class="btn btn-primary" style="width:100%;" ${reason ? 'disabled' : ''} onclick="commitFieldPlay()">Pitch</button>
+    <button class="btn btn-ghost" style="margin-top:8px;" onclick="cancelFieldFlow()">Cancel</button>
   </div>`;
 }
 function renderGameSessionView(p){
@@ -5145,22 +5309,17 @@ function renderGameSessionView(p){
     ? `Now choose what happened <a href="#" onclick="resetGamePendingPitch();return false;" style="color:var(--amber);">(reset location)</a>`
     : `Tap where the pitch landed`;
 
-  // G1b-r addendum (layout): field-flow gets its own side-by-side wrapper
-  // (field left, walk-through rows right, >=700px only -- CSS handles the
-  // phone fallback of stacking beneath); the non-field-flow state instead
-  // shows the reserved result band directly above the grid, unchanged
-  // height whether or not a pitch is pending (see .result-band's own
-  // comment for why the fixed height is safe to hardcode).
-  const chartingBlock = s.fieldPlay ? `
-    <div class="field-flow-layout">
-      <div class="zone-wrap">${renderField(s.fieldPlay)}</div>
-      <div class="field-flow-rows">${renderFieldFlow()}</div>
+  // G1b-r2 screen order: the grid (3) and velocity (4) are now ALWAYS in
+  // place, never replaced -- In Play no longer swaps the grid out for a
+  // field. Only section 5 (the result band) and sections 6/7 (the
+  // walkthrough + scorebook cells) are mutually exclusive, exactly the same
+  // toggle G1b-r used, just no longer touching the grid either way.
+  const resultOrWalkthrough = s.fieldPlay ? `
+    <div class="walkthrough-layout">
+      <div class="scorebook-cells-wrap">${renderScorebookCells(s.fieldPlay)}</div>
+      <div class="walkthrough-rows">${renderFieldFlow()}</div>
     </div>` : `
-    <div class="result-band">${renderGameResultRow()}</div>
-    <div class="zone-wrap">
-      ${renderZoneGrid(pitches, true, state.flashCell, state.activeSession.gamePendingPitch, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
-      <div class="zone-caption">${zoneCaption}</div>
-    </div>`;
+    <div class="result-band">${renderGameResultRow()}</div>`;
 
   return `
     <div class="session-grid-layout">
@@ -5180,11 +5339,15 @@ function renderGameSessionView(p){
           <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
         </div>
         <div class="hint-msg">${state.hint}</div>
-        ${chartingBlock}
+        <div class="zone-wrap">
+          ${renderZoneGrid(pitches, true, state.flashCell, state.activeSession.gamePendingPitch, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
+          <div class="zone-caption">${zoneCaption}</div>
+        </div>
         ${sessionUsesRadarGun(s) ? `<div>
           <div class="field-label" style="margin-bottom:8px;">Velocity</div>
           ${renderGameVeloStrip()}
         </div>` : ''}
+        ${resultOrWalkthrough}
       </div>
       <div class="panel log-panel">
         <div class="stat-readout">

@@ -81,6 +81,20 @@
     --amber:        #E8A83D;
     --amber-bright: #F5C365;
 
+    /* ---- G1b-r2a: docs/game-screen-reference.html is the Live Game screen's
+       visual spec. Two colors there don't match anything above -- introduced
+       as their own tokens (not magic hex in the rules that use them),
+       exactly the reference's own values, scoped to the game screen only:
+       a chip border a shade darker/greener than --surface-border, and a
+       deeper gold than --amber for the Next Pitch button/position-swipe
+       badge/scorebook cell accents. Everything else the reference uses
+       (status-bar dark, panel/status text, chip.soft bg/border) already
+       matches an existing token exactly (--field-dark, --surface,
+       --surface-border) and reuses it directly, no new variable. ---- */
+    --game-chip-border: #9DBBA9;
+    --game-gold:        #C9A227;
+    --game-panel-bg:    #F7F5EF;
+
     /* ---- Leaderboard medals: gold reuses the accent color (the spec lists
        "leaderboard gold" under the yellow-accent role, not as a separate
        color); silver/bronze are darkened from their original literals
@@ -485,6 +499,11 @@
   }
   .velo-arrow:disabled{ cursor:not-allowed; }
   .velo-help{ margin-top:6px; font-size:11.5px; color:var(--ink-faint); }
+  /* G1b-r2a: game-only wrapper (see renderGameVeloStrip) -- reference's own
+     .velo/.velo .strip b.on: a light-green well and a dark (not amber)
+     selected cell. Scoped so bullpen's own velo strip is untouched. */
+  .game-velo{ background:var(--surface); border-radius:10px; padding:8px 10px; }
+  .game-velo .velo-cell.selected{ background:var(--field-dark); color:var(--surface); }
 
   .hint-msg{ font-size:12px; color:var(--clay); min-height:16px; }
 
@@ -612,9 +631,19 @@
      FIELD_POSITIONS coordinates for drawing any more (FIELD_POSITIONS
      itself stays, in JS, purely as the bb_x/bb_y anchor lookup G1b-r's
      decision 5 still uses). */
-  .walkthrough-summary{ font-size:12.5px; color:var(--ink-dim); line-height:1.5; margin:0 0 8px; }
-  .walkthrough-disabled-reason{ font-size:11.5px; color:var(--clay); margin:6px 0 0; }
-  .fix-link{ font-size:12px; color:var(--amber); margin-left:6px; cursor:pointer; text-decoration:underline; }
+  .walkthrough-summary{
+    font-size:13px; color:var(--ink-dim); line-height:1.5; margin:10px 0 0;
+    display:flex; align-items:center; justify-content:center; gap:10px; text-align:center; flex-wrap:wrap;
+  }
+  .walkthrough-disabled-reason{ font-size:11.5px; color:var(--clay); margin:6px 0 0; text-align:center; }
+  /* G1b-r2a: a real pill button (reference's .fix .edit), not an underlined
+     text link -- uppercase, letter-spaced, bordered in the same sage as the
+     rest of the game screen's chips. */
+  .fix-link{
+    display:inline-block; font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--ink-faint); background:var(--card-bg); border:1.5px solid var(--game-chip-border);
+    border-radius:14px; padding:3px 10px; cursor:pointer; text-decoration:none; white-space:nowrap;
+  }
   /* G1b (f): the status-bar diamond -- tap to Adjust Runners. min 44px hit
      area even though the SVG glyph itself is drawn smaller. */
   .runner-diamond-btn{
@@ -624,35 +653,37 @@
   }
   .runner-diamond-btn:disabled{ cursor:not-allowed; opacity:0.55; }
   .adjust-runners-panel{ margin-top:4px; padding:14px; }
-  /* G1b-r2 update: the result row is icons over captions, not letters --
-     icon-ball/icon-swinging/icon-looking/icon-foul/batter-icon (In Play),
-     each a transparent PNG cut-out used as a CSS mask filled with
-     currentColor (ink on the white button; automatically follows the
-     button's own color in any future selected/dark state, no separate
-     light/dark asset needed) -- only '+' (More) stays a real text glyph, in
-     the bullpen's own B/K font (.flash-letter's family/weight, Teko 700).
-     Buttons are a real >=44px tap target with icons >=40px wide and a
-     small-caps caption beneath, legible at 320px (verified: chip-row wraps
-     the row across two lines there rather than shrinking anything). */
-  .scorebook-row{ gap:8px; }
+  /* G1b-r2a: re-matched to docs/game-screen-reference.html's own .g2/.gc --
+     border var(--game-chip-border) (was --border-strong, a translucent dark
+     rather than the reference's solid sage), tighter padding, and a smaller
+     icon (~26px, was 40px). This deliberately supersedes the G1b-r2 update
+     message's own "icons render at least 40px wide" -- the reference is the
+     newer, more specific visual spec and shows a noticeably smaller icon;
+     flagged in the report rather than silently overridden. Still a real
+     >=44px tap target (min-height unchanged) with a small-caps caption
+     beneath, legible at 320px (chip-row wraps the row across two lines
+     there rather than shrinking anything). '+' (More) stays a real text
+     glyph, in the bullpen's own B/K font (.flash-letter's family/weight,
+     Teko 700). */
+  .scorebook-row{ gap:6px; }
   .scorebook-btn{
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-    min-width:64px; min-height:44px; padding:8px 10px;
-    color:var(--field-dark); background:var(--card-bg); border:1.5px solid var(--border-strong);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    flex:1; min-width:56px; min-height:44px; padding:6px 4px 5px;
+    color:var(--field-dark); background:var(--card-bg); border:1.5px solid var(--game-chip-border);
     border-radius:8px; cursor:pointer;
   }
-  .scorebook-btn:active{ background:rgba(232,168,61,0.22); border-color:var(--amber); }
+  .scorebook-btn:active{ background:var(--field-dark); border-color:var(--field-dark); color:var(--surface); }
   .scorebook-btn-icon{
-    display:block; width:40px; height:26px; background-color:currentColor;
+    display:block; width:26px; height:22px; background-color:currentColor;
     -webkit-mask-size:contain; -webkit-mask-repeat:no-repeat; -webkit-mask-position:center;
     mask-size:contain; mask-repeat:no-repeat; mask-position:center;
   }
   .scorebook-btn-glyph{
-    display:block; font-family:'Teko',sans-serif; font-size:24px; font-weight:700; line-height:1;
+    display:block; font-family:'Teko',sans-serif; font-size:22px; font-weight:700; line-height:1;
   }
   .scorebook-btn-caption{
-    font-size:9.5px; font-weight:600; letter-spacing:0.03em; font-variant:small-caps;
-    color:var(--ink-dim); line-height:1.1;
+    font-size:8.5px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--ink-dim); opacity:0.75; line-height:1.1;
   }
 
   /* G1b-r addendum (layout, unchanged by G1b-r2): perspective + delivery
@@ -684,6 +715,46 @@
     .walkthrough-layout .scorebook-cells-wrap{ flex:0 0 auto; }
     .walkthrough-rows{ flex:1; }
   }
+  /* G1b-r2a item 2: the drop-down panel. .game-panel-header IS the status
+     bar (renderGameStatusBar, content unchanged) restyled to the
+     reference's dark .status, plus a small handle and, while open, Undo at
+     the right. .game-panel-body sits absolutely over .gridwrap (which gets
+     its height from .zone-wrap/the grid alone, since an absolutely
+     positioned child doesn't contribute to it) -- clip-path, not
+     max-height, animates the reveal so the transition is a fixed duration
+     regardless of how tall the actual content is. */
+  .game-panel-header{
+    position:relative; background:var(--field-dark); border-radius:8px;
+    padding:8px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .game-panel-header .stat-readout{ gap:14px; }
+  .game-panel-header .stat-num{ color:var(--surface); }
+  .game-panel-header .stat-lbl{ color:rgba(232,243,236,0.65); }
+  .game-panel-handle{ color:rgba(232,243,236,0.7); font-size:12px; letter-spacing:0.08em; flex:0 0 auto; }
+  .game-panel-undo{
+    flex:0 0 auto; font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--surface); background:transparent; border:1.5px solid rgba(232,243,236,0.4);
+    border-radius:14px; padding:4px 10px; cursor:pointer;
+  }
+  .gridwrap{ position:relative; }
+  .game-panel-body{
+    position:absolute; inset:0; z-index:2; overflow-y:auto; box-sizing:border-box;
+    background:var(--game-panel-bg); border-radius:12px; box-shadow:0 10px 26px rgba(15,36,27,0.28);
+    border:1px solid var(--surface-border); padding:12px;
+    clip-path:inset(0 0 100% 0); pointer-events:none;
+    transition:clip-path 220ms ease;
+  }
+  .game-panel-body.open{ clip-path:inset(0 0 0% 0); pointer-events:auto; }
+  @media (prefers-reduced-motion: reduce){
+    .game-panel-body{ transition:none; }
+  }
+  /* Next Pitch (renamed from Pitch): the reference's own gold .pitch. */
+  .next-pitch-btn{
+    display:block; width:100%; margin-top:10px; background:var(--game-gold); color:var(--field-dark);
+    border:none; border-radius:10px; text-align:center; font-weight:800; padding:11px;
+    font-size:15px; letter-spacing:0.05em; text-transform:uppercase; cursor:pointer;
+  }
+  .next-pitch-btn:disabled{ background:var(--surface-border); color:var(--ink-faint); cursor:not-allowed; }
   /* The position swipe row (replaces the field's own tap targets): one
      scrollable line, no visible scrollbar, chips sized 64x46px minimum
      (acceptance 34) so it's usable with a thumb on a 320px phone; scroll-
@@ -699,32 +770,47 @@
   .position-swipe-chip{
     position:relative; flex:0 0 auto; scroll-snap-align:start;
     min-width:64px; min-height:46px; padding:0 14px; border-radius:8px;
-    font-size:14px; font-weight:600; border:1.5px solid var(--border-strong);
+    font-size:15px; font-weight:700; border:1.5px solid var(--game-chip-border);
     background:var(--card-bg); color:var(--ink-dim); cursor:pointer;
   }
-  .position-swipe-chip.selected{ background:var(--amber); border-color:var(--amber); color:var(--field-dark); }
+  /* G1b-r2a: matches the reference's .chip.on -- solid dark, not amber. */
+  .position-swipe-chip.selected{ background:var(--field-dark); border-color:var(--field-dark); color:var(--surface); }
+  /* G1b-r2a: a gold pill (reference's .seq), not a plain dark circle. */
   .position-swipe-badge{
-    position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%;
-    background:var(--field-dark); color:#fff; font-size:10px; font-weight:700;
-    display:flex; align-items:center; justify-content:center; line-height:1;
+    position:absolute; top:-7px; right:-6px; border-radius:10px;
+    background:var(--game-gold); color:var(--field-dark); font-size:10px; font-weight:800;
+    padding:1px 5px; line-height:1.2;
   }
   /* Scorebook cells: inline SVG, display-only (acceptance 36 -- no onclick
      anywhere in this block), theme via CSS variables so dark mode repaints
      it for free. One big cell for the batter, one small cell per occupied
      base to its left/above depending on width. */
-  .scorebook-cells-wrap{ display:flex; flex-wrap:wrap; gap:8px; align-items:flex-start; }
-  .scorebook-cell{ background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:4px; }
+  /* G1b-r2a: sized/colored to match docs/game-screen-reference.html's own
+     .book/.cell/.lbl -- bottom-aligned row (the small runner cell and the
+     big batter cell share a baseline), bigger cells (170/80, was 72/48),
+     ink-colored 1.5px border (was --border, much lighter), small cells
+     dimmed to 85% opacity (a secondary reading next to the batter's own),
+     and an uppercase small-caps label above each cell matching .lbl. */
+  .scorebook-cells-wrap{ display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; }
+  .scorebook-cell-label{
+    font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-faint);
+    text-align:center; margin-bottom:2px;
+  }
+  .scorebook-cell{ background:var(--card-bg); border:1.5px solid var(--field-dark); border-radius:4px; padding:0; box-sizing:border-box; }
+  .scorebook-cell.small{ opacity:0.85; }
   .scorebook-cell svg{ display:block; }
-  .scorebook-cell-code{ font-family:'IBM Plex Mono',monospace; font-size:9px; fill:var(--ink-dim); }
-  .scorebook-cell-diamond{ fill:none; stroke:var(--border-strong); stroke-width:1.5; }
-  .scorebook-cell-path{ fill:none; stroke-linecap:round; stroke-width:2.5; }
+  .scorebook-cell-code{ font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; }
+  .scorebook-cell-code.strong{ fill:var(--field-dark); }
+  .scorebook-cell-code.muted{ fill:var(--ink-faint); font-weight:600; }
+  .scorebook-cell-diamond{ fill:none; stroke:var(--field-dark); stroke-width:1.5; }
+  .scorebook-cell-path{ fill:none; stroke-linecap:round; stroke-width:5; }
   .scorebook-cell-path.committed{ stroke:var(--field-dark); }
-  .scorebook-cell-path.pending{ stroke:var(--amber); }
+  .scorebook-cell-path.pending{ stroke:var(--game-gold); }
   .scorebook-cell-scored{ stroke:none; }
   .scorebook-cell-scored.committed{ fill:var(--field-dark); }
-  .scorebook-cell-scored.pending{ fill:var(--amber); }
-  .scorebook-cell-out-circle{ fill:none; stroke:var(--clay); stroke-width:1.5; }
-  .scorebook-cell-out-num{ font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700; fill:var(--clay); text-anchor:middle; }
+  .scorebook-cell-scored.pending{ fill:var(--game-gold); }
+  .scorebook-cell-out-circle{ fill:var(--card-bg); stroke:var(--field-dark); stroke-width:1.8; }
+  .scorebook-cell-out-num{ font-family:'IBM Plex Sans',sans-serif; font-size:14px; font-weight:700; fill:var(--field-dark); text-anchor:middle; }
 
   /* Sized to match the strike zone (the inner 3x3 of cells, rows/cols 1-3 --
      see isStrikeCell), not the full 5x5 grid: 3 cells + 2 internal 3px gaps
@@ -2590,6 +2676,14 @@ window.resumeDraft = function(){
   if(state.activeSession.kind === 'game' && !state.activeSession.runners){
     state.activeSession.runners = { 1: false, 2: false, 3: false };
   }
+  // G1b-r2a: same defensive-default pattern -- a draft saved before the
+  // drop-down panel shipped has no panelOpen at all (undefined, falsy),
+  // which would leave a genuinely in-progress pitch/walkthrough invisible
+  // (clipped away, since .game-panel-body needs .open) even though the
+  // data itself resumed fine. Derive it from whatever's actually pending.
+  if(state.activeSession.kind === 'game' && state.activeSession.panelOpen === undefined){
+    state.activeSession.panelOpen = !!(state.activeSession.gamePendingPitch || state.activeSession.fieldPlay);
+  }
   // G1b: deliberately NOT nulling gamePendingPitch/gameResultMenu/
   // gamePendingOutcome/gamePendingHitType here anymore -- they live on
   // state.activeSession now (the object just assigned above from
@@ -2832,13 +2926,17 @@ function renderGameVeloStrip(){
   const help = t
     ? `Editing <strong>${escHtml(t.label)}</strong> — tap the velocity, or skip it.`
     : 'Velocity opens once a pitch is pending or recorded.';
-  return `
+  // G1b-r2a: .game-velo wraps this instance only -- scopes the reference's
+  // dark-selected-cell color to game mode without touching the shared
+  // .velo-cell.selected rule bullpen's own renderVeloStrip also uses.
+  return `<div class="game-velo">
     <div class="velo-strip-wrap${t ? '' : ' disabled'}">
       <button class="velo-arrow" ${t ? '' : 'disabled'} onclick="veloStripShift(-1)" aria-label="Lower speeds">‹</button>
       <div class="velo-strip" id="velo-strip" data-key="${stripKey}" data-center="${center}">${cells}</div>
       <button class="velo-arrow" ${t ? '' : 'disabled'} onclick="veloStripShift(1)" aria-label="Higher speeds">›</button>
     </div>
-    <div class="velo-help">${help}</div>`;
+    <div class="velo-help">${help}</div>
+  </div>`;
 }
 
 window.handleZoneTap = async function(row, col){
@@ -3624,6 +3722,12 @@ window.chooseSessionKind = async function(kind){
     // remembered habit. Still just the default; the toggle still shows
     // and can be changed before the first pitch, same as a bullpen's.
     state.activeSession.chartingPerspective = 'behind_catcher';
+    // G1b-r2a: whether the drop-down panel covers the grid. Not derivable
+    // from gamePendingPitch/fieldPlay alone -- after a direct-record glyph
+    // (B/K/ꓘ/F/etc.) both go back to null but the panel stays open for a
+    // velocity-only edit until Next Pitch, so this needs its own flag. Part
+    // of activeSession -> autosaved for free, same as everything else here.
+    state.activeSession.panelOpen = false;
   }
   await storSet(draftKey(), state.activeSession);
   render();
@@ -3664,6 +3768,8 @@ window.handleGameZoneTap = async function(row, col){
   state.activeSession.gamePendingOutcome = null;
   state.activeSession.gamePendingHitType = null;
   state.veloTargetIdx = null;
+  // G1b-r2a: the location tap is what drops the panel down over the grid.
+  state.activeSession.panelOpen = true;
   await storSet(draftKey(), state.activeSession);
   render();
 };
@@ -3672,6 +3778,9 @@ window.resetGamePendingPitch = async function(){
   state.activeSession.gameResultMenu = null;
   state.activeSession.gamePendingOutcome = null;
   state.activeSession.gamePendingHitType = null;
+  // G1b-r2a: "reset location" closes the panel to reveal the grid again --
+  // there's no other way to re-tap it while the panel covers it.
+  state.activeSession.panelOpen = false;
   await storSet(draftKey(), state.activeSession);
   render();
 };
@@ -4135,6 +4244,8 @@ window.undoLastGameAction = async function(){
   s.gamePendingHitType = null;
   s.fieldPlay = null;
   s.adjustRunners = null;
+  // G1b-r2a: nothing left pending to hold the panel open for.
+  s.panelOpen = false;
   state.veloTargetIdx = null;
   await storSet(draftKey(), s);
   render();
@@ -4328,15 +4439,22 @@ window.commitNoPitchEvent = async function(eventType){
   render();
 };
 
+// G1b-r2a: lives inside the status bar, which is now always on a dark
+// (--field-dark) background as the panel header -- occupied/unoccupied
+// colors flipped to light-on-dark (reference's own .mini/.mini.on: a
+// transparent, light-outlined diamond, filled gold when on) instead of the
+// old white/black pair, which would have been invisible or wrong-contrast
+// on the new background.
 function renderRunnerDiamond(){
   const s = state.activeSession;
-  const occ = n => s.runners[n] ? '#111111' : '#ffffff';
+  const occ = n => s.runners[n] ? 'var(--game-gold)' : 'transparent';
+  const strokeFor = n => s.runners[n] ? 'var(--game-gold)' : 'var(--surface)';
   const canAdjust = !s.gamePendingPitch && !s.fieldPlay && (s.runners[1] || s.runners[2] || s.runners[3]);
   return `<button class="runner-diamond-btn" ${canAdjust ? '' : 'disabled'} onclick="openAdjustRunners()" title="Adjust runners">
     <svg viewBox="0 0 40 40" width="32" height="32" role="img" aria-label="Base runners">
-      <rect x="14" y="4" width="10" height="10" transform="rotate(45 19 9)" fill="${occ(2)}" stroke="#0F241B" stroke-width="1.2"/>
-      <rect x="4" y="14" width="10" height="10" transform="rotate(45 9 19)" fill="${occ(3)}" stroke="#0F241B" stroke-width="1.2"/>
-      <rect x="24" y="14" width="10" height="10" transform="rotate(45 29 19)" fill="${occ(1)}" stroke="#0F241B" stroke-width="1.2"/>
+      <rect x="14" y="4" width="10" height="10" transform="rotate(45 19 9)" fill="${occ(2)}" stroke="${strokeFor(2)}" stroke-width="1.5"/>
+      <rect x="4" y="14" width="10" height="10" transform="rotate(45 9 19)" fill="${occ(3)}" stroke="${strokeFor(3)}" stroke-width="1.5"/>
+      <rect x="24" y="14" width="10" height="10" transform="rotate(45 29 19)" fill="${occ(1)}" stroke="${strokeFor(1)}" stroke-width="1.5"/>
     </svg>
   </button>`;
 }
@@ -4344,7 +4462,9 @@ function renderAdjustRunnersFlow(){
   const s = state.activeSession;
   const ar = s.adjustRunners;
   if(!ar) return '';
-  const neutral = `color:var(--ink-faint);border-color:var(--border-strong);`;
+  // G1b-r2a: matches the reference's chip border exactly (game-only
+  // function, safe to edit directly -- never shared with bullpen).
+  const neutral = `color:var(--ink-faint);border-color:var(--game-chip-border);`;
   const baseName = b => (b === 1 ? '1st' : b === 2 ? '2nd' : '3rd');
   if(ar.step === 'runner'){
     const occupied = [1, 2, 3].filter(b => s.runners[b]);
@@ -4501,7 +4621,8 @@ const PLUS_GRID_NO_PITCH = [
 function renderGameResultRow(){
   if(!state.activeSession.gamePendingPitch) return '';
   const menu = state.activeSession.gameResultMenu;
-  const neutral = `color:var(--ink-faint);border-color:var(--border-strong);`;
+  // G1b-r2a: matches the reference's chip border exactly.
+  const neutral = `color:var(--ink-faint);border-color:var(--game-chip-border);`;
   const green = `color:#3D7A57;border-color:#3D7A57;`;
 
   if(menu === 'plus'){
@@ -5015,7 +5136,35 @@ window.commitFieldPlay = async function(){
   s.gamePendingOutcome = null;
   s.gamePendingHitType = null;
   s.fieldPlay = null;
+  // G1b-r2a: unlike a direct-record glyph (B/K/ꓘ/F), which leaves the panel
+  // open for a velocity-only review until Next Pitch, committing a field
+  // play closes the panel immediately -- Next Pitch IS the commit here, not
+  // a second step after it. Velocity for a field play is edited during the
+  // walkthrough itself, while the panel's already open for other reasons.
+  s.panelOpen = false;
   state.veloTargetIdx = s.pitches.length - 1;
+  await storSet(draftKey(), s);
+  render();
+};
+
+// G1b-r2a: the panel's own shared "Next Pitch" button (screen order 5, its
+// own section below the velocity strip) -- one button for two situations.
+// Mid-walkthrough, it delegates to the existing commitFieldPlay (which now
+// also closes the panel). Otherwise it's either disabled (a result hasn't
+// been chosen yet -- the result row is still showing) or, once a direct-
+// record glyph has already pushed a pitch and the panel is only open for a
+// velocity review, a plain close.
+function nextPitchDisabledReason(){
+  const s = state.activeSession;
+  if(s.fieldPlay) return fieldPlayDisabledReason(s.fieldPlay);
+  if(s.gamePendingPitch) return 'Choose a result first';
+  return null;
+}
+window.nextPitch = async function(){
+  const s = state.activeSession;
+  if(s.fieldPlay) return commitFieldPlay();
+  if(s.gamePendingPitch) return; // disabled -- see nextPitchDisabledReason
+  s.panelOpen = false;
   await storSet(draftKey(), s);
   render();
 };
@@ -5046,6 +5195,18 @@ function walkthroughOutNumbers(fp){
   if(key && BATTER_RESULT_TO_BASE[key] === 0) numbers.batter = next++;
   return numbers;
 }
+// G1b-r2a: the packet's own notation list distinguishes a single-fielder
+// FLY/LINE/POP out (F8/L6/P4) from a single-fielder GROUND out, which is
+// unassisted (U3) -- shared by the live cell (below) and the historical one
+// (scorebookBatterCode) so a routine 1-touch groundout reads the same way
+// whether it's still pending or already in the log.
+function outNotation(seq, bbType){
+  if(seq.length === 1 && (bbType === 'fly' || bbType === 'line' || bbType === 'pop')){
+    return { fly: 'F', line: 'L', pop: 'P' }[bbType] + (POSITION_SCOREBOOK_NUMBER[seq[0]] || '');
+  }
+  if(seq.length === 1 && bbType === 'ground') return 'U' + (POSITION_SCOREBOOK_NUMBER[seq[0]] || '');
+  return fielderNotation(seq);
+}
 // The batter's own top-left code for the PENDING play being walked through.
 // DP: the runner who's out gets the sequence UP TO the force (positionSeq
 // minus its last touch); the batter -- out at the LAST position in the
@@ -5054,7 +5215,7 @@ function walkthroughOutNumbers(fp){
 function walkthroughBatterCode(fp){
   const key = fieldBatterResultKey(fp);
   if(!key) return '';
-  if(key === 'out') return fielderNotation(fp.positionSeq);
+  if(key === 'out') return fp.dp ? fielderNotation(fp.positionSeq) : outNotation(fp.positionSeq, fp.bbType);
   if(key === 'error') return 'E' + (POSITION_SCOREBOOK_NUMBER[fp.positionSeq[0]] || '');
   if(key === 'fc') return 'FC';
   return key; // '1B'/'2B'/'3B'/'HR'
@@ -5092,17 +5253,12 @@ function scorebookBatterCode(pt){
     case 'dropped_third': return pt.inPlayOutcome === 'out' ? 'K' : `D3 ${fielderNotation([pt.fielder])}`;
     case 'in_play': {
       const seq = [pt.fielder, ...(pt.fielders ? pt.fielders.split('-') : [])];
-      const notation = fielderNotation(seq);
       if(pt.hitType) return pt.hitType;
       if(pt.inPlayOutcome === 'error') return 'E' + (POSITION_SCOREBOOK_NUMBER[pt.fielder] || '');
       if(pt.inPlayOutcome === 'fc') return 'FC';
       if(pt.sacrifice === 'SF') return 'SF' + (POSITION_SCOREBOOK_NUMBER[pt.fielder] || '');
-      if(pt.sacrifice === 'SAC') return `SAC ${notation}`;
-      if(seq.length === 1 && (pt.bbType === 'fly' || pt.bbType === 'line' || pt.bbType === 'pop')){
-        return { fly: 'F', line: 'L', pop: 'P' }[pt.bbType] + (POSITION_SCOREBOOK_NUMBER[pt.fielder] || '');
-      }
-      if(seq.length === 1 && pt.bbType === 'ground') return 'U' + (POSITION_SCOREBOOK_NUMBER[pt.fielder] || '');
-      return notation;
+      if(pt.sacrifice === 'SAC') return `SAC ${fielderNotation(seq)}`;
+      return outNotation(seq, pt.bbType);
     }
     default: return '';
   }
@@ -5128,7 +5284,11 @@ function deriveRunnerReachCode(base){
 // runner already is (0-3); "pending" segments extend from there to this
 // play's proposed destination (numeric 1/2/3, 'home', or none for
 // 'out'/'stay'/unset).
-const SCOREBOOK_DIAMOND_PTS = { home: [50, 90], 1: [85, 50], 2: [50, 10], 3: [15, 50] };
+// G1b-r2a: a perfectly symmetric diamond (all four points equidistant from
+// center), matching the reference's own SVG points proportionally --
+// staging's original was slightly skewed (home closer to the edge than the
+// other three).
+const SCOREBOOK_DIAMOND_PTS = { home: [50, 95], 1: [95, 50], 2: [50, 5], 3: [5, 50] };
 const SCOREBOOK_SEGMENTS = [['home', 1], [1, 2], [2, 3], [3, 'home']];
 function reachedSegmentIndices(base){
   return Array.from({ length: Math.max(0, Math.min(3, base)) }, (_, i) => i);
@@ -5140,21 +5300,34 @@ function pendingSegmentIndices(fromBase, toCode){
   for(let i = fromBase; i < toBase; i++) idx.push(i);
   return idx;
 }
+// G1b-r2a: matches the reference's own text treatment -- top-left (how the
+// batter/runner reached or was retired) is bold and full ink; top-right
+// (batted-ball code) and bottom-left (the count) are muted, a secondary
+// reading. Reference draws these as absolutely-positioned HTML spans over
+// the cell rather than SVG text; kept as SVG text here (same visual result,
+// simpler to keep in one element, scales cleanly) -- noted as a deliberate,
+// non-literal match.
 function renderScorebookCellSvg({ size, reachedIdx, pendingIdx, scoredPending, outNumber, topLeft, topRight, bottomLeft }){
   const diamondPts = `${SCOREBOOK_DIAMOND_PTS[1].join(',')} ${SCOREBOOK_DIAMOND_PTS[2].join(',')} ${SCOREBOOK_DIAMOND_PTS[3].join(',')} ${SCOREBOOK_DIAMOND_PTS.home.join(',')}`;
   const seg = (i, cls) => `<path class="scorebook-cell-path ${cls}" d="M ${SCOREBOOK_DIAMOND_PTS[SCOREBOOK_SEGMENTS[i][0]].join(' ')} L ${SCOREBOOK_DIAMOND_PTS[SCOREBOOK_SEGMENTS[i][1]].join(' ')}"/>`;
   const outCircle = outNumber ? `<circle class="scorebook-cell-out-circle" cx="50" cy="50" r="14"/><text class="scorebook-cell-out-num" x="50" y="54">${outNumber}</text>` : '';
-  return `<div class="scorebook-cell"><svg viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-hidden="true">
+  const sizeClass = size === SCOREBOOK_CELL_SMALL ? ' small' : '';
+  return `<div class="scorebook-cell${sizeClass}"><svg viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-hidden="true">
     <polygon class="scorebook-cell-diamond" points="${diamondPts}"/>
     ${scoredPending ? `<polygon class="scorebook-cell-scored pending" points="${diamondPts}"/>` : ''}
     ${reachedIdx.map(i => seg(i, 'committed')).join('')}
     ${pendingIdx.map(i => seg(i, 'pending')).join('')}
     ${outCircle}
-    ${topLeft ? `<text class="scorebook-cell-code" x="4" y="12">${escHtml(topLeft)}</text>` : ''}
-    ${topRight ? `<text class="scorebook-cell-code" x="96" y="12" text-anchor="end">${escHtml(topRight)}</text>` : ''}
-    ${bottomLeft ? `<text class="scorebook-cell-code" x="4" y="96">${escHtml(bottomLeft)}</text>` : ''}
+    ${topLeft ? `<text class="scorebook-cell-code strong" x="4" y="12">${escHtml(topLeft)}</text>` : ''}
+    ${topRight ? `<text class="scorebook-cell-code muted" x="96" y="12" text-anchor="end">${escHtml(topRight)}</text>` : ''}
+    ${bottomLeft ? `<text class="scorebook-cell-code muted" x="4" y="96">${escHtml(bottomLeft)}</text>` : ''}
   </svg></div>`;
 }
+// G1b-r2a: sizes match the reference exactly (170 big / 80 small, vs the
+// original 72/48) -- confirmed via screenshot that both still fit
+// comfortably at 320px alongside the walkthrough column.
+const SCOREBOOK_CELL_BIG = 170;
+const SCOREBOOK_CELL_SMALL = 80;
 function renderScorebookCells(fp){
   const s = state.activeSession;
   const key = fieldBatterResultKey(fp);
@@ -5164,9 +5337,9 @@ function renderScorebookCells(fp){
   const runnerCells = [1, 2, 3].filter(b => s.runners[b]).map(b => {
     const ending = fp.endings[b];
     return `<div>
-      <div style="font-size:10px;color:var(--ink-faint);text-align:center;margin-bottom:2px;">R${b}</div>
+      <div class="scorebook-cell-label">R${b}</div>
       ${renderScorebookCellSvg({
-        size: 48,
+        size: SCOREBOOK_CELL_SMALL,
         reachedIdx: reachedSegmentIndices(b),
         pendingIdx: pendingSegmentIndices(b, ending),
         scoredPending: ending === 'home',
@@ -5178,9 +5351,9 @@ function renderScorebookCells(fp){
   }).join('');
 
   const batterCell = `<div>
-    <div style="font-size:10px;color:var(--ink-faint);text-align:center;margin-bottom:2px;">Batter</div>
+    <div class="scorebook-cell-label">Batter</div>
     ${renderScorebookCellSvg({
-      size: 72,
+      size: SCOREBOOK_CELL_BIG,
       reachedIdx: [],
       pendingIdx: pendingSegmentIndices(0, batterTo === null ? null : baseCodeFromNumber(batterTo)),
       scoredPending: batterTo === 4,
@@ -5191,6 +5364,38 @@ function renderScorebookCells(fp){
     })}
   </div>`;
 
+  return runnerCells + batterCell;
+}
+// G1b-r2a: the panel shows cells whenever it's open, not only mid-
+// walkthrough -- when there's no active fieldPlay (still choosing a glyph,
+// or reviewing velocity after one already recorded), cells fall back to a
+// simpler, committed-only view: runners' own existing reach codes (no
+// pending/yellow anything, since there's no in-progress play to preview),
+// and the batter's cell showing whatever the LAST pitch in the CURRENT
+// at-bat already recorded (blank if the at-bat is fresh, e.g. balls/strikes
+// still building with nothing resolved yet).
+function renderPanelScorebookCells(){
+  const s = state.activeSession;
+  if(s.fieldPlay) return renderScorebookCells(s.fieldPlay);
+
+  const runnerCells = [1, 2, 3].filter(b => s.runners[b]).map(b => `<div>
+    <div class="scorebook-cell-label">R${b}</div>
+    ${renderScorebookCellSvg({
+      size: SCOREBOOK_CELL_SMALL, reachedIdx: reachedSegmentIndices(b), pendingIdx: [], scoredPending: false,
+      outNumber: null, topLeft: deriveRunnerReachCode(b), topRight: null, bottomLeft: null
+    })}
+  </div>`).join('');
+
+  const lastPitch = s.pitches[s.pitches.length - 1];
+  const lastIsCurrentAtBat = lastPitch && lastPitch.atBatIndex === s.atBatIndex;
+  const batterCell = `<div>
+    <div class="scorebook-cell-label">Batter</div>
+    ${renderScorebookCellSvg({
+      size: SCOREBOOK_CELL_BIG, reachedIdx: [], pendingIdx: [], scoredPending: false,
+      outNumber: null, topLeft: lastIsCurrentAtBat ? scorebookBatterCode(lastPitch) : '', topRight: null,
+      bottomLeft: `${s.balls}-${s.strikes}`
+    })}
+  </div>`;
   return runnerCells + batterCell;
 }
 
@@ -5205,8 +5410,11 @@ function renderFieldFlow(){
   const fp = state.activeSession.fieldPlay;
   if(!fp) return '';
   const s = state.activeSession;
-  const neutral = `color:var(--ink-faint);border-color:var(--border-strong);`;
-  const amber = `background:var(--amber);border-color:var(--amber);`;
+  // G1b-r2a: matches the reference's chip border/selected-chip treatment
+  // exactly (solid sage border, solid dark selected instead of translucent
+  // border + amber fill).
+  const neutral = `color:var(--ink-faint);border-color:var(--game-chip-border);`;
+  const amber = `background:var(--field-dark);border-color:var(--field-dark);color:var(--surface);`;
 
   const entryLabels = { H: 'Hit', O: 'Out', E: 'Error', FC: 'FC' };
   const entryRow = `
@@ -5277,16 +5485,17 @@ function renderFieldFlow(){
   const fixPanel = fp.fixOpen ? `
     <div style="margin:8px 0;"><div class="chip-row">${runnerChips}${dpChip}</div>${editingPicker}</div>` : '';
 
-  const reason = fieldPlayDisabledReason(fp);
+  // G1b-r2a: Next Pitch (renamed from Pitch) moves up to be the panel's own
+  // shared button, after the velocity strip -- see renderGameSessionView's
+  // panel body and nextPitch()/nextPitchDisabledReason(). Cancel stays here
+  // (specific to abandoning the walkthrough, not the panel as a whole).
   return `<div>
     ${entryRow}
     ${positionRow}
     ${bbTypeRow}
     <p class="walkthrough-summary">${escHtml(fieldPlaySummary(fp))} <a href="#" class="fix-link" onclick="toggleFix();return false;">${fp.fixOpen ? 'Close' : 'Fix'}</a></p>
     ${fixPanel}
-    ${reason ? `<p class="walkthrough-disabled-reason">${escHtml(reason)}</p>` : ''}
-    <button class="btn btn-primary" style="width:100%;" ${reason ? 'disabled' : ''} onclick="commitFieldPlay()">Pitch</button>
-    <button class="btn btn-ghost" style="margin-top:8px;" onclick="cancelFieldFlow()">Cancel</button>
+    <button class="btn btn-ghost" onclick="cancelFieldFlow()">Cancel</button>
   </div>`;
 }
 function renderGameSessionView(p){
@@ -5328,22 +5537,27 @@ function renderGameSessionView(p){
     ? `Now choose what happened <a href="#" onclick="resetGamePendingPitch();return false;" style="color:var(--amber);">(reset location)</a>`
     : `Tap where the pitch landed`;
 
-  // G1b-r2 screen order: the grid (3) and velocity (4) are now ALWAYS in
-  // place, never replaced -- In Play no longer swaps the grid out for a
-  // field. Only section 5 (the result band) and sections 6/7 (the
-  // walkthrough + scorebook cells) are mutually exclusive, exactly the same
-  // toggle G1b-r used, just no longer touching the grid either way.
-  const resultOrWalkthrough = s.fieldPlay ? `
-    <div class="walkthrough-layout">
-      <div class="scorebook-cells-wrap">${renderScorebookCells(s.fieldPlay)}</div>
-      <div class="walkthrough-rows">${renderFieldFlow()}</div>
-    </div>` : `
-    <div class="result-band">${renderGameResultRow()}</div>`;
+  // G1b-r2a item 2: the panel drops down over the grid after the location
+  // tap and stays down (per screen order 5-7) through the result row,
+  // the walkthrough (only after In Play), the velocity strip, and Next
+  // Pitch -- one shared button now (nextPitch/nextPitchDisabledReason)
+  // instead of renderFieldFlow's own Pitch button. Cells (renderPanel
+  // ScorebookCells) show in every one of these states, not only mid-
+  // walkthrough. panelOpen persists on activeSession -- a killed browser
+  // resumes with the panel down and whatever was in progress intact.
+  const panelOpen = !!s.panelOpen;
+  const resultOrWalkthrough = s.fieldPlay ? renderFieldFlow()
+    : (s.gamePendingPitch ? `<div class="result-band">${renderGameResultRow()}</div>` : '');
+  const nextPitchReason = nextPitchDisabledReason();
 
   return `
     <div class="session-grid-layout">
       <div class="panel controls-panel">
-        ${renderGameStatusBar()}
+        <div class="game-panel-header">
+          ${renderGameStatusBar()}
+          <span class="game-panel-handle">${panelOpen ? '▲' : ''}</span>
+          ${panelOpen ? `<button class="game-panel-undo" onclick="undoLastGameAction()">Undo</button>` : ''}
+        </div>
         ${renderAdjustRunnersFlow()}
         <div class="perspective-delivery-row">
           ${renderPerspectiveToggle()}
@@ -5358,15 +5572,26 @@ function renderGameSessionView(p){
           <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
         </div>
         <div class="hint-msg">${state.hint}</div>
-        <div class="zone-wrap">
-          ${renderZoneGrid(pitches, true, state.flashCell, state.activeSession.gamePendingPitch, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
-          <div class="zone-caption">${zoneCaption}</div>
+        <div class="gridwrap">
+          <div class="zone-wrap">
+            ${renderZoneGrid(pitches, true, state.flashCell, state.activeSession.gamePendingPitch, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
+            <div class="zone-caption">${zoneCaption}</div>
+          </div>
+          <div class="game-panel-body${panelOpen ? ' open' : ''}">
+            <div class="walkthrough-layout">
+              <div class="scorebook-cells-wrap">${renderPanelScorebookCells()}</div>
+              <div class="walkthrough-rows">
+                ${resultOrWalkthrough}
+                ${sessionUsesRadarGun(s) ? `<div>
+                  <div class="field-label" style="margin-bottom:8px;">Velocity</div>
+                  ${renderGameVeloStrip()}
+                </div>` : ''}
+                <button class="next-pitch-btn" ${nextPitchReason ? 'disabled' : ''} onclick="nextPitch()">Next Pitch</button>
+                ${nextPitchReason ? `<p class="walkthrough-disabled-reason">${escHtml(nextPitchReason)}</p>` : ''}
+              </div>
+            </div>
+          </div>
         </div>
-        ${sessionUsesRadarGun(s) ? `<div>
-          <div class="field-label" style="margin-bottom:8px;">Velocity</div>
-          ${renderGameVeloStrip()}
-        </div>` : ''}
-        ${resultOrWalkthrough}
       </div>
       <div class="panel log-panel">
         <div class="stat-readout">

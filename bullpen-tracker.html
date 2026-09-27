@@ -775,9 +775,13 @@
   }
   /* G1b-r2a: matches the reference's .chip.on -- solid dark, not amber. */
   .position-swipe-chip.selected{ background:var(--field-dark); border-color:var(--field-dark); color:var(--surface); }
-  /* G1b-r2a: a gold pill (reference's .seq), not a plain dark circle. */
+  /* G1b-r2a: a gold pill (reference's .seq), not a plain dark circle.
+     Moved fully inside the chip (was top:-7px, poking above it) -- the row
+     it sits in has overflow-y:hidden (needed to suppress a vertical
+     scrollbar from the horizontal scroller), which was clipping the top
+     half of the badge whenever it hung above the chip's own edge. */
   .position-swipe-badge{
-    position:absolute; top:-7px; right:-6px; border-radius:10px;
+    position:absolute; top:3px; right:3px; border-radius:10px;
     background:var(--game-gold); color:var(--field-dark); font-size:10px; font-weight:800;
     padding:1px 5px; line-height:1.2;
   }
@@ -2875,6 +2879,20 @@ function attachVeloStrip(){
   }
   strip.addEventListener('scroll', () => { state.veloScrollLeft = strip.scrollLeft; }, { passive: true });
 }
+// G1b-r2b: .game-panel-body is torn down and recreated on every single
+// render (the whole #app is replaced via innerHTML -- see render() itself),
+// and a freshly created element's scrollTop always starts at 0. Without
+// this, ANY tap inside the open panel -- not just velocity, every position/
+// bbType/glyph tap -- snapped the panel back to its own top, forcing a
+// re-scroll down to reach Next Pitch after every single tap. Same track-
+// in-state-then-restore-after-render pattern attachVeloStrip already uses
+// for its own horizontal scroll, just for the panel's vertical scroll.
+function attachGamePanelScroll(){
+  const body = document.querySelector('.game-panel-body');
+  if(!body) return;
+  body.scrollTop = state.gamePanelScrollTop || 0;
+  body.addEventListener('scroll', () => { state.gamePanelScrollTop = body.scrollTop; }, { passive: true });
+}
 
 /* ---------- G1b-r addendum: GAME MODE'S OWN VELOCITY STRIP ----------
    Bullpen's veloStripActive/renderVeloStrip/recordVelo (above, UNCHANGED --
@@ -3770,6 +3788,10 @@ window.handleGameZoneTap = async function(row, col){
   state.veloTargetIdx = null;
   // G1b-r2a: the location tap is what drops the panel down over the grid.
   state.activeSession.panelOpen = true;
+  // G1b-r2b: a fresh panel for a NEW pitch always starts scrolled to the
+  // top -- otherwise it could open already scrolled partway down, carried
+  // over from wherever the PREVIOUS pitch's walkthrough left off.
+  state.gamePanelScrollTop = 0;
   await storSet(draftKey(), state.activeSession);
   render();
 };
@@ -5438,7 +5460,7 @@ function renderFieldFlow(){
   // .position-swipe-row/.position-swipe-chip CSS). Same fp.positionSeq
   // mechanism as G1b-r (toggleFieldPosition, unchanged), new presentation.
   const positionRow = `
-    <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Position${fp.positionSeq.length > 1 ? ' (tap order = throw order)' : ''}</div>
+    <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Position (tap order = throw order)</div>
       <div class="position-swipe-row">
         ${FIELD_POSITIONS.map(p => {
           const idx = fp.positionSeq.indexOf(p.pos);
@@ -5449,7 +5471,7 @@ function renderFieldFlow(){
 
   const bbTypeRow = `
     <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Batted-ball type</div><div class="chip-row">
-      ${[['ground', 'GB'], ['line', 'LD'], ['fly', 'FB'], ['pop', 'PU'], ['bunt', 'BNT']].map(([k, l]) => `<button class="type-chip" style="${fp.bbType === k ? amber : neutral}" onclick="chooseFieldBBType('${k}')">${l}</button>`).join('')}
+      ${[['ground', 'GB'], ['line', 'LD'], ['fly', 'FB'], ['pop', 'POP'], ['bunt', 'BUNT']].map(([k, l]) => `<button class="type-chip" style="${fp.bbType === k ? amber : neutral}" onclick="chooseFieldBBType('${k}')">${l}</button>`).join('')}
     </div></div>`;
 
   // Fix (G1b-r2): the G1b-r runner-chip corrector (batter/R1/R2/R3 -> 1 · 2
@@ -6972,6 +6994,13 @@ window.viewSessionReport = async function(sessionId){
 /* ---------- MAIN RENDER ---------- */
 function render(){
   const app = document.getElementById('app');
+  // G1b-r2b: capture .game-panel-body's CURRENT scroll position synchronously,
+  // before it's torn down and replaced by the innerHTML rewrite below --
+  // more reliable than a passive 'scroll' listener (attachGamePanelScroll's
+  // first attempt), whose event can lag behind a tap that fires a render
+  // right after a scroll, losing the position anyway.
+  const existingPanelBody = app.querySelector && app.querySelector('.game-panel-body');
+  if(existingPanelBody) state.gamePanelScrollTop = existingPanelBody.scrollTop;
   if(!state.loaded){
     renderBoot();
     return;
@@ -7165,6 +7194,7 @@ function render(){
 
   app.innerHTML = sidebar + `<div class="main">${main}</div>` + phoneFooter + setupModalHtml;
   attachVeloStrip();
+  attachGamePanelScroll();
 }
 
 init();

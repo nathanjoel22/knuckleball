@@ -676,6 +676,40 @@
   }
   .scorebook-btn:active{ background:rgba(232,168,61,0.22); border-color:var(--amber); }
 
+  /* G1b-r addendum (layout): perspective + delivery share one row -- each
+     keeps its own label+chip-row block (renderPerspectiveToggle/
+     renderDeliveryToggle, both UNCHANGED), this just lays the two blocks
+     out side by side with room to wrap on a narrow phone. Game mode only --
+     bullpen never wraps its own renderPerspectiveToggle() call in this. */
+  .perspective-delivery-row{ display:flex; flex-wrap:wrap; gap:20px; }
+  .perspective-delivery-row > div{ flex:1; min-width:180px; }
+  /* Reserved band for the result row, directly above the grid --
+     min-height (not a fixed height: a fixed height plus overflow:visible
+     let the + grid's own two rows visually run into the grid below, since
+     overflow content doesn't push normal-flow siblings down) matching the
+     scorebook glyph row's own natural rendered height (measured: label +
+     one 44px chip row + margins, 64.5px -- 78px leaves a little breathing
+     room). Both the idle (empty) and glyph-row (64.5px) states clamp to
+     this same 78px floor, so they measure byte-identical per the packet's
+     own acceptance; a taller sub-panel (the + grid, in particular) simply
+     grows the band past the floor and pushes the grid down naturally,
+     instead of overlapping it. */
+  .result-band{ min-height:78px; }
+  /* G1b-r addendum (layout): field left / walk-through rows right, iPad and
+     desktop only (>=700px, per the packet) -- phone keeps the field
+     centered with rows stacked beneath (this block's own mobile-first
+     default, no override needed below 700px). The descendant selector
+     below beats .zone-wrap's own >=861px silhouette-gutter rule (a
+     bullpen-only concern that has no business sizing the field) by
+     specificity, not by editing that shared rule. */
+  .field-flow-layout{ display:flex; flex-direction:column; gap:14px; }
+  .field-flow-rows{ min-width:0; }
+  @media (min-width:700px){
+    .field-flow-layout{ flex-direction:row; align-items:flex-start; gap:20px; }
+    .field-flow-layout .zone-wrap{ flex:0 0 auto; width:auto; max-width:none; padding:0; align-self:flex-start; }
+    .field-flow-rows{ flex:1; }
+  }
+
   /* Sized to match the strike zone (the inner 3x3 of cells, rows/cols 1-3 --
      see isStrikeCell), not the full 5x5 grid: 3 cells + 2 internal 3px gaps
      = 3*52 + 2*3 = 162px at the fixed desktop cell size.
@@ -2732,6 +2766,65 @@ function attachVeloStrip(){
   strip.addEventListener('scroll', () => { state.veloScrollLeft = strip.scrollLeft; }, { passive: true });
 }
 
+/* ---------- G1b-r addendum: GAME MODE'S OWN VELOCITY STRIP ----------
+   Bullpen's veloStripActive/renderVeloStrip/recordVelo (above, UNCHANGED --
+   bullpen stays byte-for-byte identical, not just visually) only ever
+   target an already-pushed pitch via veloTargetIdx. The packet's
+   requirement here is different: game mode's strip has to reach a pitch
+   that hasn't been pushed at all yet, while a field play is mid-walkthrough
+   -- gamePendingPitch.velo holds it until recordGameResult/commitFieldPlay
+   copies it onto the real pitch row. A branch inside the shared functions
+   would risk exactly the coupling the "bullpen untouched" requirement is
+   there to prevent, so this is a parallel, separate implementation instead
+   -- same visual chrome (reuses .velo-strip-wrap/.velo-cell/.velo-arrow and
+   the shared veloStripShift/attachVeloStrip, which are purely DOM/id-based
+   and were already shared before this), different binding. */
+function gameVeloTarget(){
+  const s = state.activeSession;
+  if(!s) return null;
+  // "This pitch": mid-capture, whether the glyph row is still showing or a
+  // field play is being walked through -- no pitch row exists yet either
+  // way, so gamePendingPitch itself is what a velocity tap has to reach.
+  if(s.gamePendingPitch) return { kind: 'pending', obj: s.gamePendingPitch, label: 'this pitch' };
+  // "Last pitch": already pushed (a glyph tap, or a field play that just
+  // committed) -- editable until the NEXT grid tap replaces gamePendingPitch
+  // (handleGameZoneTap resets veloTargetIdx to null in the same breath it
+  // creates a fresh one, so the two states never overlap).
+  if(state.veloTargetIdx !== null && s.pitches[state.veloTargetIdx]){
+    return { kind: 'recorded', obj: s.pitches[state.veloTargetIdx], label: 'last pitch' };
+  }
+  return null;
+}
+window.recordGameVelo = async function(v){
+  const t = gameVeloTarget();
+  if(!t) return;
+  t.obj.velo = v;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+function renderGameVeloStrip(){
+  const t = gameVeloTarget();
+  const target = t ? t.obj : null;
+  const type = (target && target.type) || state.selectedType;
+  const center = type ? veloCenterFor(type) : VELO_DEFAULT_CENTER;
+  let cells = '';
+  for(let v = VELO_MIN; v <= VELO_MAX; v++){
+    const cls = 'velo-cell' + (v === center ? ' typical' : '') + (target && target.velo === v ? ' selected' : '');
+    cells += `<button class="${cls}" ${t ? '' : 'disabled'} onclick="recordGameVelo(${v})">${v}</button>`;
+  }
+  const stripKey = `${t ? t.kind : 'none'}|${type}|${center}|${veloVisible()}`;
+  const help = t
+    ? `Editing <strong>${escHtml(t.label)}</strong> — tap the velocity, or skip it.`
+    : 'Velocity opens once a pitch is pending or recorded.';
+  return `
+    <div class="velo-strip-wrap${t ? '' : ' disabled'}">
+      <button class="velo-arrow" ${t ? '' : 'disabled'} onclick="veloStripShift(-1)" aria-label="Lower speeds">‹</button>
+      <div class="velo-strip" id="velo-strip" data-key="${stripKey}" data-center="${center}">${cells}</div>
+      <button class="velo-arrow" ${t ? '' : 'disabled'} onclick="veloStripShift(1)" aria-label="Higher speeds">›</button>
+    </div>
+    <div class="velo-help">${help}</div>`;
+}
+
 window.handleZoneTap = async function(row, col){
   if(state.editDraftRow !== null){ state.hint = 'Finish editing that pitch first'; render(); return; }
   if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
@@ -3546,7 +3639,11 @@ window.handleGameZoneTap = async function(row, col){
   // over -- simplest correction path for a mis-tapped location, same
   // "just tap again" precedent as a bullpen's tap 1 always overwriting a
   // stale pendingTarget.
-  state.activeSession.gamePendingPitch = { row, col };
+  // G1b-r addendum (velocity): velo lives on the pending pitch itself now,
+  // not only on an already-pushed one -- see gameVeloTarget/recordGameVelo.
+  // A fresh tap always starts this field at null, same "re-tapping starts
+  // capture over" precedent as row/col.
+  state.activeSession.gamePendingPitch = { row, col, velo: null };
   state.activeSession.gameResultMenu = null;
   state.activeSession.gamePendingOutcome = null;
   state.activeSession.gamePendingHitType = null;
@@ -3927,7 +4024,10 @@ window.recordGameResult = async function(result, extra){
     // so a queued-but-unsynced pitch's local shape already matches what
     // it becomes in the DB -- avoids the two ever drifting apart.
     kind: 'game',
-    type: state.selectedType, velo: null,
+    // G1b-r addendum (velocity): carries over whatever was entered on the
+    // pending pitch (gameVeloTarget's 'pending' case) while it was still
+    // gamePendingPitch, if anything -- null otherwise, same as before.
+    type: state.selectedType, velo: pending.velo,
     targetRow: null, targetCol: null,
     actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
     accuracyMode: null, inAccuracyZone: null, accuracyZoneCells: null,
@@ -4894,7 +4994,9 @@ window.commitFieldPlay = async function(){
 
   s.pitches.push({
     id: genUUID(), seq: s.nextSeq++, kind: 'game',
-    type: state.selectedType, velo: null,
+    // G1b-r addendum (velocity): carries over whatever was entered while
+    // this play was being walked through (gamePendingPitch.velo).
+    type: state.selectedType, velo: pending.velo,
     targetRow: null, targetCol: null,
     actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
     accuracyMode: null, inAccuracyZone: null, accuracyZoneCells: null,
@@ -5043,13 +5145,32 @@ function renderGameSessionView(p){
     ? `Now choose what happened <a href="#" onclick="resetGamePendingPitch();return false;" style="color:var(--amber);">(reset location)</a>`
     : `Tap where the pitch landed`;
 
+  // G1b-r addendum (layout): field-flow gets its own side-by-side wrapper
+  // (field left, walk-through rows right, >=700px only -- CSS handles the
+  // phone fallback of stacking beneath); the non-field-flow state instead
+  // shows the reserved result band directly above the grid, unchanged
+  // height whether or not a pitch is pending (see .result-band's own
+  // comment for why the fixed height is safe to hardcode).
+  const chartingBlock = s.fieldPlay ? `
+    <div class="field-flow-layout">
+      <div class="zone-wrap">${renderField(s.fieldPlay)}</div>
+      <div class="field-flow-rows">${renderFieldFlow()}</div>
+    </div>` : `
+    <div class="result-band">${renderGameResultRow()}</div>
+    <div class="zone-wrap">
+      ${renderZoneGrid(pitches, true, state.flashCell, state.activeSession.gamePendingPitch, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
+      <div class="zone-caption">${zoneCaption}</div>
+    </div>`;
+
   return `
     <div class="session-grid-layout">
       <div class="panel controls-panel">
         ${renderGameStatusBar()}
         ${renderAdjustRunnersFlow()}
-        ${renderPerspectiveToggle()}
-        ${renderDeliveryToggle()}
+        <div class="perspective-delivery-row">
+          ${renderPerspectiveToggle()}
+          ${renderDeliveryToggle()}
+        </div>
         <div>
           <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
           <div class="chip-row">${typeChips}</div>
@@ -5059,16 +5180,10 @@ function renderGameSessionView(p){
           <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
         </div>
         <div class="hint-msg">${state.hint}</div>
-        <div>
-          <div class="zone-wrap">
-            ${s.fieldPlay ? renderField(s.fieldPlay) : renderZoneGrid(pitches, true, state.flashCell, state.activeSession.gamePendingPitch, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
-            ${s.fieldPlay ? '' : `<div class="zone-caption">${zoneCaption}</div>`}
-          </div>
-        </div>
-        ${s.fieldPlay ? renderFieldFlow() : renderGameResultRow()}
+        ${chartingBlock}
         ${sessionUsesRadarGun(s) ? `<div>
           <div class="field-label" style="margin-bottom:8px;">Velocity</div>
-          ${renderVeloStrip()}
+          ${renderGameVeloStrip()}
         </div>` : ''}
       </div>
       <div class="panel log-panel">

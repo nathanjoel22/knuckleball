@@ -624,27 +624,36 @@
   }
   .runner-diamond-btn:disabled{ cursor:not-allowed; opacity:0.55; }
   .adjust-runners-panel{ margin-top:4px; padding:14px; }
-  /* G1b-r decision 2 (unchanged by G1b-r2): the scorebook glyph row -- B K
-     ꓘ F [In Play] + -- in the bullpen's own B/K font (.flash-letter's
-     family/weight, Teko 700), sized as a real >=44px tap target. The In
-     Play button is the one non-text glyph: docs/batter-icon.png as a CSS
-     mask (acceptance 30: "takes the button's text color") so it's white
-     when the button is selected/pressed and ink-colored otherwise, with no
-     separate light/dark image asset needed. */
+  /* G1b-r2 update: the result row is icons over captions, not letters --
+     icon-ball/icon-swinging/icon-looking/icon-foul/batter-icon (In Play),
+     each a transparent PNG cut-out used as a CSS mask filled with
+     currentColor (ink on the white button; automatically follows the
+     button's own color in any future selected/dark state, no separate
+     light/dark asset needed) -- only '+' (More) stays a real text glyph, in
+     the bullpen's own B/K font (.flash-letter's family/weight, Teko 700).
+     Buttons are a real >=44px tap target with icons >=40px wide and a
+     small-caps caption beneath, legible at 320px (verified: chip-row wraps
+     the row across two lines there rather than shrinking anything). */
   .scorebook-row{ gap:8px; }
   .scorebook-btn{
-    min-width:44px; min-height:44px; padding:6px 14px;
-    font-family:'Teko',sans-serif; font-size:24px; font-weight:700; line-height:1;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    min-width:64px; min-height:44px; padding:8px 10px;
     color:var(--field-dark); background:var(--card-bg); border:1.5px solid var(--border-strong);
     border-radius:8px; cursor:pointer;
   }
   .scorebook-btn:active{ background:rgba(232,168,61,0.22); border-color:var(--amber); }
   .scorebook-btn-icon{
-    width:22px; height:22px; background-color:var(--field-dark);
-    -webkit-mask:url('docs/batter-icon.png') center/contain no-repeat;
-    mask:url('docs/batter-icon.png') center/contain no-repeat;
+    display:block; width:40px; height:26px; background-color:currentColor;
+    -webkit-mask-size:contain; -webkit-mask-repeat:no-repeat; -webkit-mask-position:center;
+    mask-size:contain; mask-repeat:no-repeat; mask-position:center;
   }
-  .scorebook-btn:active .scorebook-btn-icon{ background-color:var(--field-dark); }
+  .scorebook-btn-glyph{
+    display:block; font-family:'Teko',sans-serif; font-size:24px; font-weight:700; line-height:1;
+  }
+  .scorebook-btn-caption{
+    font-size:9.5px; font-weight:600; letter-spacing:0.03em; font-variant:small-caps;
+    color:var(--ink-dim); line-height:1.1;
+  }
 
   /* G1b-r addendum (layout, unchanged by G1b-r2): perspective + delivery
      share one row -- each keeps its own label+chip-row block
@@ -658,12 +667,13 @@
      screen, since In Play no longer replaces it with a field). min-height,
      not a fixed height, so a taller sub-panel (the + grid's two rows, or
      the walkthrough's own Hit/Out/Error/FC question) can grow the band and
-     push what's below it down, rather than overlapping. Height matches the
-     scorebook glyph row's own natural rendered height -- see G1b-r
-     addendum's own measurement (78px), unchanged by this packet's move of
-     H/O out from under the glyph row (six buttons instead of seven still
-     fits the same one line). */
-  .result-band{ min-height:78px; }
+     push what's below it down, rather than overlapping. Height re-measured
+     against the icon-over-caption row (the G1b-r2 icon update made each
+     button noticeably taller than the old single-line letter row): natural
+     height measured at 78.95px, so 80px is the floor both the idle (empty)
+     and populated states clamp to -- caught a real sub-pixel mismatch at
+     78px (78 vs 78.95, NOT identical) before landing on this number. */
+  .result-band{ min-height:80px; }
   /* G1b-r2: scorebook cells sit beside the walkthrough on iPad/desktop
      (>=700px) and above it on phone (this block's own mobile-first default,
      column, cells row then walkthrough) -- acceptance 28's own layout. */
@@ -4464,16 +4474,20 @@ function renderDeliveryToggle(){
 // DELETED, not hidden, folded into + (choosePlusCode) instead. Existing
 // pitch rows charted through any of the old paths keep their values and
 // still read correctly everywhere.
+// G1b-r2 update: icons over captions, not letters -- B/K/ꓘ/F no longer
+// appear as text on the buttons (they still get written by the scorebook
+// cells and the log, both unchanged: scorebookBatterCode/gameResultText
+// aren't touched by this). Each PNG is a transparent cut-out used as a CSS
+// mask filled with currentColor (ink on the white button, and automatically
+// white if the button's own color ever goes light-on-dark, e.g. selected).
+// '+' alone stays a real glyph, in .flash-letter's face (.scorebook-btn-glyph).
 const SCOREBOOK_GLYPHS = [
-  { code: 'B', display: 'B', title: 'Ball' },
-  { code: 'K', display: 'K', title: 'Strike swinging' },
-  // Decision 1: a real 'K', mirrored with CSS -- never the U+A4D8 codepoint.
-  { code: 'KL', display: 'K', mirrored: true, title: 'Strike looking' },
-  { code: 'F', display: 'F', title: 'Foul' },
-  // Acceptance 30: docs/batter-icon.png as a CSS mask (.scorebook-btn-icon),
-  // not an <img> -- masking is what lets it take the button's text color.
-  { code: 'INPLAY', icon: true, title: 'In play' },
-  { code: 'PLUS', display: '+', title: 'More outcomes' }
+  { code: 'B', icon: 'icon-ball.png', caption: 'Ball' },
+  { code: 'K', icon: 'icon-swinging.png', caption: 'Swinging' },
+  { code: 'KL', icon: 'icon-looking.png', caption: 'Looking' },
+  { code: 'F', icon: 'icon-foul.png', caption: 'Foul' },
+  { code: 'INPLAY', icon: 'batter-icon.png', caption: 'In Play' },
+  { code: 'PLUS', glyph: '+', caption: 'More' }
 ];
 // G1b-r2: E and FC move OUT from under + -- they're the walkthrough's own
 // 3rd/4th options after In Play now (chooseWalkthroughEntry), not here.
@@ -4528,11 +4542,16 @@ function renderGameResultRow(){
     </div></div>`;
   }
 
-  // Decision 2: the scorebook glyph row, in the bullpen's own B/K font (see
-  // .scorebook-btn CSS, built off .flash-letter's font-family/weight). The
-  // In Play button renders the masked icon instead of text (acceptance 30).
+  // G1b-r2 update: icon over caption, per SCOREBOOK_GLYPHS above -- the '+'
+  // button alone renders a real glyph (.scorebook-btn-glyph, .flash-letter's
+  // face) instead of an icon.
   return `<div><div class="field-label" style="margin-bottom:8px;">Result</div><div class="chip-row scorebook-row">
-    ${SCOREBOOK_GLYPHS.map(g => `<button class="scorebook-btn" ${g.mirrored ? 'style="transform:scaleX(-1);"' : ''} title="${g.title}" onclick="chooseScorebookGlyph('${g.code}')">${g.icon ? '<span class="scorebook-btn-icon"></span>' : g.display}</button>`).join('')}
+    ${SCOREBOOK_GLYPHS.map(g => `<button class="scorebook-btn" title="${g.caption}" onclick="chooseScorebookGlyph('${g.code}')">
+      ${g.icon
+        ? `<span class="scorebook-btn-icon" style="mask-image:url('docs/${g.icon}');-webkit-mask-image:url('docs/${g.icon}');"></span>`
+        : `<span class="scorebook-btn-glyph">${g.glyph}</span>`}
+      <span class="scorebook-btn-caption">${g.caption}</span>
+    </button>`).join('')}
   </div></div>`;
 }
 

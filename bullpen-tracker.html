@@ -81,6 +81,20 @@
     --amber:        #E8A83D;
     --amber-bright: #F5C365;
 
+    /* ---- G1b-r2a: docs/game-screen-reference.html is the Live Game screen's
+       visual spec. Two colors there don't match anything above -- introduced
+       as their own tokens (not magic hex in the rules that use them),
+       exactly the reference's own values, scoped to the game screen only:
+       a chip border a shade darker/greener than --surface-border, and a
+       deeper gold than --amber for the Next Pitch button/position-swipe
+       badge/scorebook cell accents. Everything else the reference uses
+       (status-bar dark, panel/status text, chip.soft bg/border) already
+       matches an existing token exactly (--field-dark, --surface,
+       --surface-border) and reuses it directly, no new variable. ---- */
+    --game-chip-border: #9DBBA9;
+    --game-gold:        #C9A227;
+    --game-panel-bg:    #F7F5EF;
+
     /* ---- Leaderboard medals: gold reuses the accent color (the spec lists
        "leaderboard gold" under the yellow-accent role, not as a separate
        color); silver/bronze are darkened from their original literals
@@ -485,6 +499,11 @@
   }
   .velo-arrow:disabled{ cursor:not-allowed; }
   .velo-help{ margin-top:6px; font-size:11.5px; color:var(--ink-faint); }
+  /* G1b-r2a: game-only wrapper (see renderGameVeloStrip) -- reference's own
+     .velo/.velo .strip b.on: a light-green well and a dark (not amber)
+     selected cell. Scoped so bullpen's own velo strip is untouched. */
+  .game-velo{ background:var(--surface); border-radius:10px; padding:8px 10px; }
+  .game-velo .velo-cell.selected{ background:var(--field-dark); color:var(--surface); }
 
   .hint-msg{ font-size:12px; color:var(--clay); min-height:16px; }
 
@@ -602,6 +621,195 @@
   .zone-cell.clickable{ cursor:pointer; }
   .zone-cell.clickable:hover{ outline:2px solid var(--amber); outline-offset:-2px; }
   .zone-caption{ font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.1em; }
+
+  /* G1b-r2: the field picture is gone entirely (GameChanger's patent
+     filings) -- every .field-* rule that drew or positioned it (.field-wrap,
+     .field-ball-marker, .field-pitch-btn + its pulse keyframes,
+     .field-crossfade + its keyframes, the two field-wrap breakpoints) is
+     removed here, not hidden. docs/field-diagram.svg stays in the repo for
+     G2's spray chart only -- nothing in the charting screen reads it or its
+     FIELD_POSITIONS coordinates for drawing any more (FIELD_POSITIONS
+     itself stays, in JS, purely as the bb_x/bb_y anchor lookup G1b-r's
+     decision 5 still uses). */
+  .walkthrough-summary{
+    font-size:13px; color:var(--ink-dim); line-height:1.5; margin:10px 0 0;
+    display:flex; align-items:center; justify-content:center; gap:10px; text-align:center; flex-wrap:wrap;
+  }
+  .walkthrough-disabled-reason{ font-size:11.5px; color:var(--clay); margin:6px 0 0; text-align:center; }
+  /* G1b-r2e retired Fix -- "What happened to the runners?" is always shown
+     inline now, so there's nothing left for a separate reveal control to
+     do. .fix-link is gone with it (was the reference's own pill button). */
+  /* G1b (f): the status-bar diamond -- tap to Adjust Runners. min 44px hit
+     area even though the SVG glyph itself is drawn smaller. */
+  .runner-diamond-btn{
+    display:flex; align-items:center; justify-content:center;
+    width:44px; height:44px; min-width:44px; min-height:44px; padding:0;
+    border:none; background:transparent; cursor:pointer;
+  }
+  .runner-diamond-btn:disabled{ cursor:not-allowed; opacity:0.55; }
+  .adjust-runners-panel{ margin-top:4px; padding:14px; }
+  /* G1b-r2a: re-matched to docs/game-screen-reference.html's own .g2/.gc --
+     border var(--game-chip-border) (was --border-strong, a translucent dark
+     rather than the reference's solid sage), tighter padding, and a smaller
+     icon (~26px, was 40px). This deliberately supersedes the G1b-r2 update
+     message's own "icons render at least 40px wide" -- the reference is the
+     newer, more specific visual spec and shows a noticeably smaller icon;
+     flagged in the report rather than silently overridden. Still a real
+     >=44px tap target (min-height unchanged) with a small-caps caption
+     beneath, legible at 320px (chip-row wraps the row across two lines
+     there rather than shrinking anything). '+' (More) stays a real text
+     glyph, in the bullpen's own B/K font (.flash-letter's family/weight,
+     Teko 700). */
+  .scorebook-row{ gap:6px; }
+  .scorebook-btn{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    flex:1; min-width:56px; min-height:44px; padding:6px 4px 5px;
+    color:var(--field-dark); background:var(--card-bg); border:1.5px solid var(--game-chip-border);
+    border-radius:8px; cursor:pointer;
+  }
+  .scorebook-btn:active{ background:var(--field-dark); border-color:var(--field-dark); color:var(--surface); }
+  .scorebook-btn-icon{
+    display:block; width:26px; height:22px; background-color:currentColor;
+    -webkit-mask-size:contain; -webkit-mask-repeat:no-repeat; -webkit-mask-position:center;
+    mask-size:contain; mask-repeat:no-repeat; mask-position:center;
+  }
+  .scorebook-btn-glyph{
+    display:block; font-family:'Teko',sans-serif; font-size:22px; font-weight:700; line-height:1;
+  }
+  .scorebook-btn-caption{
+    font-size:8.5px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--ink-dim); opacity:0.75; line-height:1.1;
+  }
+
+  /* G1b-r addendum (layout, unchanged by G1b-r2): perspective + delivery
+     share one row -- each keeps its own label+chip-row block
+     (renderPerspectiveToggle/renderDeliveryToggle, both UNCHANGED), this
+     just lays the two blocks out side by side with room to wrap on a
+     narrow phone. Game mode only. */
+  .perspective-delivery-row{ display:flex; flex-wrap:wrap; gap:20px; }
+  .perspective-delivery-row > div{ flex:1; min-width:180px; }
+  /* Reserved band for the result row, directly above the grid (G1b-r2:
+     "above the grid" now literally -- the grid itself never leaves the
+     screen, since In Play no longer replaces it with a field). min-height,
+     not a fixed height, so a taller sub-panel (the + grid's two rows, or
+     the walkthrough's own Hit/Out/Error/FC question) can grow the band and
+     push what's below it down, rather than overlapping. Height re-measured
+     against the icon-over-caption row (the G1b-r2 icon update made each
+     button noticeably taller than the old single-line letter row): natural
+     height measured at 78.95px, so 80px is the floor both the idle (empty)
+     and populated states clamp to -- caught a real sub-pixel mismatch at
+     78px (78 vs 78.95, NOT identical) before landing on this number. */
+  .result-band{ min-height:80px; }
+  /* G1b-r2: scorebook cells sit beside the walkthrough on iPad/desktop
+     (>=700px) and above it on phone (this block's own mobile-first default,
+     column, cells row then walkthrough) -- acceptance 28's own layout. */
+  .walkthrough-layout{ display:flex; flex-direction:column; gap:14px; }
+  .walkthrough-rows{ min-width:0; }
+  @media (min-width:700px){
+    .walkthrough-layout{ flex-direction:row; align-items:flex-start; gap:20px; }
+    .walkthrough-layout .scorebook-cells-wrap{ flex:0 0 auto; }
+    .walkthrough-rows{ flex:1; }
+  }
+  /* G1b-r2a item 2: the drop-down panel. .game-panel-header IS the status
+     bar (renderGameStatusBar, content unchanged) restyled to the
+     reference's dark .status, plus a small handle and, while open, Undo at
+     the right. .game-panel-body sits absolutely over .gridwrap (which gets
+     its height from .zone-wrap/the grid alone, since an absolutely
+     positioned child doesn't contribute to it) -- clip-path, not
+     max-height, animates the reveal so the transition is a fixed duration
+     regardless of how tall the actual content is. */
+  .game-panel-header{
+    position:relative; background:var(--field-dark); border-radius:8px;
+    padding:8px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .game-panel-header .stat-readout{ gap:14px; }
+  .game-panel-header .stat-num{ color:var(--surface); }
+  .game-panel-header .stat-lbl{ color:rgba(232,243,236,0.65); }
+  .game-panel-handle{ color:rgba(232,243,236,0.7); font-size:12px; letter-spacing:0.08em; flex:0 0 auto; }
+  .game-panel-undo{
+    flex:0 0 auto; font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--surface); background:transparent; border:1.5px solid rgba(232,243,236,0.4);
+    border-radius:14px; padding:4px 10px; cursor:pointer;
+  }
+  .gridwrap{ position:relative; }
+  .game-panel-body{
+    position:absolute; inset:0; z-index:2; overflow-y:auto; box-sizing:border-box;
+    background:var(--game-panel-bg); border-radius:12px; box-shadow:0 10px 26px rgba(15,36,27,0.28);
+    border:1px solid var(--surface-border); padding:12px;
+    clip-path:inset(0 0 100% 0); pointer-events:none;
+    transition:clip-path 220ms ease;
+  }
+  .game-panel-body.open{ clip-path:inset(0 0 0% 0); pointer-events:auto; }
+  @media (prefers-reduced-motion: reduce){
+    .game-panel-body{ transition:none; }
+  }
+  /* Next Pitch (renamed from Pitch): the reference's own gold .pitch. */
+  .next-pitch-btn{
+    display:block; width:100%; margin-top:10px; background:var(--game-gold); color:var(--field-dark);
+    border:none; border-radius:10px; text-align:center; font-weight:800; padding:11px;
+    font-size:15px; letter-spacing:0.05em; text-transform:uppercase; cursor:pointer;
+  }
+  .next-pitch-btn:disabled{ background:var(--surface-border); color:var(--ink-faint); cursor:not-allowed; }
+  /* The position swipe row (replaces the field's own tap targets): one
+     scrollable line, no visible scrollbar, chips sized 64x46px minimum
+     (acceptance 34) so it's usable with a thumb on a 320px phone; scroll-
+     snap makes each chip settle into view instead of stopping mid-chip.
+     Deliberately NOT centered/justified -- the last chip needs to sit
+     partially cut off at the right edge at 320px so the row reads as
+     scrollable rather than as "that's all of them." */
+  .position-swipe-row{
+    display:flex; gap:8px; overflow-x:auto; overflow-y:hidden; padding-bottom:4px;
+    scroll-snap-type:x proximity; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  }
+  .position-swipe-row::-webkit-scrollbar{ display:none; }
+  .position-swipe-chip{
+    position:relative; flex:0 0 auto; scroll-snap-align:start;
+    min-width:64px; min-height:46px; padding:0 14px; border-radius:8px;
+    font-size:15px; font-weight:700; border:1.5px solid var(--game-chip-border);
+    background:var(--card-bg); color:var(--ink-dim); cursor:pointer;
+  }
+  /* G1b-r2a: matches the reference's .chip.on -- solid dark, not amber. */
+  .position-swipe-chip.selected{ background:var(--field-dark); border-color:var(--field-dark); color:var(--surface); }
+  /* G1b-r2a: a gold pill (reference's .seq), not a plain dark circle.
+     Moved fully inside the chip (was top:-7px, poking above it) -- the row
+     it sits in has overflow-y:hidden (needed to suppress a vertical
+     scrollbar from the horizontal scroller), which was clipping the top
+     half of the badge whenever it hung above the chip's own edge. */
+  .position-swipe-badge{
+    position:absolute; top:3px; right:3px; border-radius:10px;
+    background:var(--game-gold); color:var(--field-dark); font-size:10px; font-weight:800;
+    padding:1px 5px; line-height:1.2;
+  }
+  /* Scorebook cells: inline SVG, display-only (acceptance 36 -- no onclick
+     anywhere in this block), theme via CSS variables so dark mode repaints
+     it for free. One big cell for the batter, one small cell per occupied
+     base to its left/above depending on width. */
+  /* G1b-r2a: sized/colored to match docs/game-screen-reference.html's own
+     .book/.cell/.lbl -- bottom-aligned row (the small runner cell and the
+     big batter cell share a baseline), bigger cells (170/80, was 72/48),
+     ink-colored 1.5px border (was --border, much lighter), small cells
+     dimmed to 85% opacity (a secondary reading next to the batter's own),
+     and an uppercase small-caps label above each cell matching .lbl. */
+  .scorebook-cells-wrap{ display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; }
+  .scorebook-cell-label{
+    font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-faint);
+    text-align:center; margin-bottom:2px;
+  }
+  .scorebook-cell{ background:var(--card-bg); border:1.5px solid var(--field-dark); border-radius:4px; padding:0; box-sizing:border-box; }
+  .scorebook-cell.small{ opacity:0.85; }
+  .scorebook-cell svg{ display:block; }
+  .scorebook-cell-code{ font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; }
+  .scorebook-cell-code.strong{ fill:var(--field-dark); }
+  .scorebook-cell-code.muted{ fill:var(--ink-faint); font-weight:600; }
+  .scorebook-cell-diamond{ fill:none; stroke:var(--field-dark); stroke-width:1.5; }
+  .scorebook-cell-path{ fill:none; stroke-linecap:round; stroke-width:5; }
+  .scorebook-cell-path.committed{ stroke:var(--field-dark); }
+  .scorebook-cell-path.pending{ stroke:var(--game-gold); }
+  .scorebook-cell-scored{ stroke:none; }
+  .scorebook-cell-scored.committed{ fill:var(--field-dark); }
+  .scorebook-cell-scored.pending{ fill:var(--game-gold); }
+  .scorebook-cell-out-circle{ fill:var(--card-bg); stroke:var(--field-dark); stroke-width:1.8; }
+  .scorebook-cell-out-num{ font-family:'IBM Plex Sans',sans-serif; font-size:14px; font-weight:700; fill:var(--field-dark); text-anchor:middle; }
 
   /* Sized to match the strike zone (the inner 3x3 of cells, rows/cols 1-3 --
      see isStrikeCell), not the full 5x5 grid: 3 cells + 2 internal 3px gaps
@@ -992,9 +1200,8 @@ let state = {
   // RESULT yet -- never pushed into activeSession.pitches until one is
   // chosen (a game pitch is never recorded without a result).
   gamePendingPitch: null,
-  // Which result sub-menu is open: null (the main Ball/Strike/Foul/In
-  // Play/More row) | 'inPlay' (Hit/Out/Error) | 'hitType' (1B/2B/3B/HR)
-  // | 'position' (fielder) | 'more' (the rare endings).
+  // Which result sub-menu is open: null (the scorebook glyph row, G1b-r) |
+  // 'plus' (the + grid) | 'droppedThird' | 'bi' | 'biRunnerBase' | 'foulBunt'.
   gameResultMenu: null,
   gamePendingOutcome: null,  // 'hit' | 'out' | 'error', while drilling into In Play
   gamePendingHitType: null,  // '1B'|'2B'|'3B'|'HR', while drilling into a Hit
@@ -2413,7 +2620,19 @@ async function freshActiveSession(){
 async function refreshDraftState(){
   if(!state.currentPitcherId){ state.draftAvailable = false; state.activeSession = null; return; }
   const draft = await storGet(draftKey());
-  if(draft && draft.pitches && draft.pitches.length){
+  // G1b: a draft is also worth offering even with ZERO committed pitches
+  // if it's mid-flow on a field play or an Adjust Runners event -- caught
+  // by testing the killed-browser/resume path specifically on a game's
+  // FIRST pitch: pre-G1b, a bare pendingTarget/gamePendingPitch with no
+  // pitches yet was low-value enough to lose (an "acceptable small loss on
+  // a crash," documented elsewhere in this file) and this gate never
+  // needed to consider it. The field flow's multi-step state (location,
+  // bb_type, batter result, runner endings) represents real charter effort
+  // that G1b now deliberately preserves everywhere else -- discarding it
+  // here specifically because it happens to be the game's first pitch
+  // would silently contradict that.
+  const hasMidFlowProgress = draft && (draft.gamePendingPitch || draft.fieldPlay || draft.adjustRunners);
+  if(draft && ((draft.pitches && draft.pitches.length) || hasMidFlowProgress)){
     state.draftAvailable = true;
     state.pendingDraft = draft;
     state.activeSession = null;
@@ -2427,10 +2646,13 @@ async function refreshDraftState(){
   state.veloTargetIdx = null;
   state.flashCell = null;
   state.editDraftRow = null;
-  state.gamePendingPitch = null;
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+  // G1b: gamePendingPitch/gameResultMenu/gamePendingOutcome/gamePendingHitType
+  // moved onto state.activeSession (see resumeDraft's comment) -- no longer
+  // nulled here. In the "pending draft available" branch above,
+  // state.activeSession is null until resumeDraft() actually activates it,
+  // so there'd be nothing to null anyway; in the "fresh session" branch, a
+  // brand-new activeSession simply doesn't have these keys yet (undefined,
+  // same as an explicit null for every falsy check on them).
 }
 window.resumeDraft = function(){
   state.activeSession = state.pendingDraft;
@@ -2442,10 +2664,34 @@ window.resumeDraft = function(){
   state.activeSession.currentBatterSide = sessionBatterSide(state.activeSession);
   state.activeSession.usesRadarGun = sessionUsesRadarGun(state.activeSession);
   if(!state.activeSession.kind) state.activeSession.kind = 'bullpen';
-  state.gamePendingPitch = null;
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+  // G1b: same defensive-default pattern as `kind` just above -- a draft
+  // saved before this shipped has no `runners` at all. Caught by testing
+  // the resume-then-chart-a-new-pitch path directly: without this,
+  // runnersBitmask(undefined) throws the moment the very next pitch is
+  // recorded, crashing charting entirely for anyone resuming an in-flight
+  // game from before this deploy. Empty bases is the only sane default --
+  // there is no way to recover what was actually on base from a draft that
+  // never tracked it.
+  if(state.activeSession.kind === 'game' && !state.activeSession.runners){
+    state.activeSession.runners = { 1: false, 2: false, 3: false };
+  }
+  // G1b-r2a: same defensive-default pattern -- a draft saved before the
+  // drop-down panel shipped has no panelOpen at all (undefined, falsy),
+  // which would leave a genuinely in-progress pitch/walkthrough invisible
+  // (clipped away, since .game-panel-body needs .open) even though the
+  // data itself resumed fine. Derive it from whatever's actually pending.
+  if(state.activeSession.kind === 'game' && state.activeSession.panelOpen === undefined){
+    state.activeSession.panelOpen = !!(state.activeSession.gamePendingPitch || state.activeSession.fieldPlay);
+  }
+  // G1b: deliberately NOT nulling gamePendingPitch/gameResultMenu/
+  // gamePendingOutcome/gamePendingHitType here anymore -- they live on
+  // state.activeSession now (the object just assigned above from
+  // state.pendingDraft), so whatever mid-flow state was captured in the
+  // last autosave before a crash/close is exactly what should reappear.
+  // A pre-G1b draft simply doesn't have these keys on it at all
+  // (undefined), which every `if(!state.activeSession.gamePendingPitch)`-
+  // style check throughout this file already treats the same as null --
+  // additive, resumes exactly as today for an old draft.
   state.draftAvailable = false;
   render();
 };
@@ -2576,7 +2822,7 @@ function veloStripActive(){
   // nothing at veloTargetIdx to attach a reading to, same reasoning as
   // pendingTarget for a bullpen's tap 1.
   return state.veloTargetIdx !== null && !!pitches && !!pitches[state.veloTargetIdx]
-    && !state.pendingTarget && !state.gamePendingPitch && state.editDraftRow === null;
+    && !state.pendingTarget && !(state.activeSession && state.activeSession.gamePendingPitch) && state.editDraftRow === null;
 }
 window.recordVelo = async function(v){
   if(!veloStripActive()) return;
@@ -2627,6 +2873,83 @@ function attachVeloStrip(){
     state.veloScrollLeft = strip.scrollLeft;
   }
   strip.addEventListener('scroll', () => { state.veloScrollLeft = strip.scrollLeft; }, { passive: true });
+}
+// G1b-r2b: .game-panel-body is torn down and recreated on every single
+// render (the whole #app is replaced via innerHTML -- see render() itself),
+// and a freshly created element's scrollTop always starts at 0. Without
+// this, ANY tap inside the open panel -- not just velocity, every position/
+// bbType/glyph tap -- snapped the panel back to its own top, forcing a
+// re-scroll down to reach Next Pitch after every single tap. Same track-
+// in-state-then-restore-after-render pattern attachVeloStrip already uses
+// for its own horizontal scroll, just for the panel's vertical scroll.
+function attachGamePanelScroll(){
+  const body = document.querySelector('.game-panel-body');
+  if(!body) return;
+  body.scrollTop = state.gamePanelScrollTop || 0;
+  body.addEventListener('scroll', () => { state.gamePanelScrollTop = body.scrollTop; }, { passive: true });
+}
+
+/* ---------- G1b-r addendum: GAME MODE'S OWN VELOCITY STRIP ----------
+   Bullpen's veloStripActive/renderVeloStrip/recordVelo (above, UNCHANGED --
+   bullpen stays byte-for-byte identical, not just visually) only ever
+   target an already-pushed pitch via veloTargetIdx. The packet's
+   requirement here is different: game mode's strip has to reach a pitch
+   that hasn't been pushed at all yet, while a field play is mid-walkthrough
+   -- gamePendingPitch.velo holds it until recordGameResult/commitFieldPlay
+   copies it onto the real pitch row. A branch inside the shared functions
+   would risk exactly the coupling the "bullpen untouched" requirement is
+   there to prevent, so this is a parallel, separate implementation instead
+   -- same visual chrome (reuses .velo-strip-wrap/.velo-cell/.velo-arrow and
+   the shared veloStripShift/attachVeloStrip, which are purely DOM/id-based
+   and were already shared before this), different binding. */
+function gameVeloTarget(){
+  const s = state.activeSession;
+  if(!s) return null;
+  // "This pitch": mid-capture, whether the glyph row is still showing or a
+  // field play is being walked through -- no pitch row exists yet either
+  // way, so gamePendingPitch itself is what a velocity tap has to reach.
+  if(s.gamePendingPitch) return { kind: 'pending', obj: s.gamePendingPitch, label: 'this pitch' };
+  // "Last pitch": already pushed (a glyph tap, or a field play that just
+  // committed) -- editable until the NEXT grid tap replaces gamePendingPitch
+  // (handleGameZoneTap resets veloTargetIdx to null in the same breath it
+  // creates a fresh one, so the two states never overlap).
+  if(state.veloTargetIdx !== null && s.pitches[state.veloTargetIdx]){
+    return { kind: 'recorded', obj: s.pitches[state.veloTargetIdx], label: 'last pitch' };
+  }
+  return null;
+}
+window.recordGameVelo = async function(v){
+  const t = gameVeloTarget();
+  if(!t) return;
+  t.obj.velo = v;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+function renderGameVeloStrip(){
+  const t = gameVeloTarget();
+  const target = t ? t.obj : null;
+  const type = (target && target.type) || state.selectedType;
+  const center = type ? veloCenterFor(type) : VELO_DEFAULT_CENTER;
+  let cells = '';
+  for(let v = VELO_MIN; v <= VELO_MAX; v++){
+    const cls = 'velo-cell' + (v === center ? ' typical' : '') + (target && target.velo === v ? ' selected' : '');
+    cells += `<button class="${cls}" ${t ? '' : 'disabled'} onclick="recordGameVelo(${v})">${v}</button>`;
+  }
+  const stripKey = `${t ? t.kind : 'none'}|${type}|${center}|${veloVisible()}`;
+  const help = t
+    ? `Editing <strong>${escHtml(t.label)}</strong> — tap the velocity, or skip it.`
+    : 'Velocity opens once a pitch is pending or recorded.';
+  // G1b-r2a: .game-velo wraps this instance only -- scopes the reference's
+  // dark-selected-cell color to game mode without touching the shared
+  // .velo-cell.selected rule bullpen's own renderVeloStrip also uses.
+  return `<div class="game-velo">
+    <div class="velo-strip-wrap${t ? '' : ' disabled'}">
+      <button class="velo-arrow" ${t ? '' : 'disabled'} onclick="veloStripShift(-1)" aria-label="Lower speeds">‹</button>
+      <div class="velo-strip" id="velo-strip" data-key="${stripKey}" data-center="${center}">${cells}</div>
+      <button class="velo-arrow" ${t ? '' : 'disabled'} onclick="veloStripShift(1)" aria-label="Higher speeds">›</button>
+    </div>
+    <div class="velo-help">${help}</div>
+  </div>`;
 }
 
 window.handleZoneTap = async function(row, col){
@@ -2777,6 +3100,11 @@ window.endSession = async function(){
     startedAt: state.activeSession.startedAt,
     endedAt: Date.now(),
     pitches: state.activeSession.pitches,
+    // G1b (h): events[] nests beside pitches[] in the SAME queued item --
+    // one queued item still means one session, per Joel's decision. Empty
+    // for a bullpen (events never exist there) and for a game with no
+    // Adjust Runners taps.
+    events: state.activeSession.events || [],
     // G1: 'bullpen' | 'game', locked at the chooser -- see freshActiveSession
     // and chooseSessionKind. Defensive fallback for a pre-G1 in-flight
     // draft that somehow reached here (resumeDraft already defaults this,
@@ -2797,10 +3125,12 @@ window.endSession = async function(){
   state.pendingTarget = null;
   state.veloTargetIdx = null;
   state.editDraftRow = null;
-  state.gamePendingPitch = null;
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+  state.activeSession.gamePendingPitch = null;
+  state.activeSession.gameResultMenu = null;
+  state.activeSession.gamePendingOutcome = null;
+  state.activeSession.gamePendingHitType = null;
+  state.activeSession.fieldPlay = null;
+  state.activeSession.adjustRunners = null;
   state.saving = false;
   await refreshOutboxState();
   state.view = 'history';
@@ -2993,13 +3323,53 @@ async function syncOutbox(){
       outs_before: (p.outsBefore === undefined) ? null : p.outsBefore,
       balls_before: (p.ballsBefore === undefined) ? null : p.ballsBefore,
       strikes_before: (p.strikesBefore === undefined) ? null : p.strikesBefore,
-      at_bat_index: (p.atBatIndex === undefined) ? null : p.atBatIndex
+      at_bat_index: (p.atBatIndex === undefined) ? null : p.atBatIndex,
+      // G1b: the field-flow columns. undefined (a pitch queued before this
+      // shipped, or any non-in-play result this slice) becomes null
+      // explicitly -- same reasoning as every other defensive fallback in
+      // this mapping: an upsert must not leave these columns untouched on
+      // a retry by omitting the key.
+      bb_type: (p.bbType === undefined) ? null : p.bbType,
+      bb_x: (p.bbX === undefined) ? null : p.bbX,
+      bb_y: (p.bbY === undefined) ? null : p.bbY,
+      // G1b-r decision 5: true for every position-derived location (every
+      // in-play/E/FC row in this build -- precise tap-to-locate is
+      // deferred). undefined (a pre-G1b-r row) becomes null, same
+      // defensive fallback as every other field-flow column here.
+      bb_from_position: (p.bbFromPosition === undefined) ? null : p.bbFromPosition,
+      fielders: (p.fielders === undefined) ? null : p.fielders,
+      runners_before: (p.runnersBefore === undefined) ? null : p.runnersBefore,
+      batter_to: (p.batterTo === undefined) ? null : p.batterTo,
+      runner_advances: (p.runnerAdvances === undefined) ? null : p.runnerAdvances,
+      outs_on_play: (p.outsOnPlay === undefined) ? null : p.outsOnPlay,
+      runs_scored: (p.runsScored === undefined) ? null : p.runsScored,
+      sacrifice: (p.sacrifice === undefined) ? null : p.sacrifice
+    }));
+    // G1b (h): game_events, pitches' sibling in the same queued item.
+    // after_pitch_id relies on pitch ids being client-generated UUIDs
+    // (confirmed in the precondition report) -- inserting pitches first
+    // guarantees the row it references already exists by the time this
+    // runs, every time, including on a retried sync.
+    const eventRows = (item.events || []).map(e => ({
+      id: e.id,
+      session_id: item.id,
+      at_bat_index: (e.atBatIndex === undefined) ? null : e.atBatIndex,
+      after_pitch_id: e.afterPitchId || null,
+      event_type: e.eventType,
+      runners_before: (e.runnersBefore === undefined) ? null : e.runnersBefore,
+      runner_advances: (e.runnerAdvances === undefined) ? null : e.runnerAdvances,
+      outs_on_play: (e.outsOnPlay === undefined) ? null : e.outsOnPlay,
+      runs_scored: (e.runsScored === undefined) ? null : e.runsScored
     }));
     try{
       const { error: sessErr } = await supabaseClient.from('sessions').upsert(sessionRow, { onConflict: 'id' });
       if(sessErr) throw sessErr;
       const { error: pitchErr } = await supabaseClient.from('pitches').upsert(pitchRows, { onConflict: 'id' });
       if(pitchErr) throw pitchErr;
+      if(eventRows.length){
+        const { error: eventErr } = await supabaseClient.from('game_events').upsert(eventRows, { onConflict: 'id' });
+        if(eventErr) throw eventErr;
+      }
       await removeOutboxItem(userId, item.id);
     } catch(err){
       await updateOutboxItem(userId, Object.assign({}, item, {
@@ -3348,11 +3718,29 @@ window.chooseSessionKind = async function(kind){
     state.activeSession.strikes = 0;
     state.activeSession.atBatIndex = 1;
     state.activeSession.delivery = null;
+    // G1b: base state. Cleared here at game start, at 3 outs, and at a
+    // manual New inning (see applyGameResultProgression and gameNewInning) --
+    // never anywhere else, so a mid-inning walk/hit doesn't wipe runners who
+    // are still on base.
+    state.activeSession.runners = { 1: false, 2: false, 3: false };
+    // G1b (f)/(h): events[] is pitches[]'s sibling -- runner corrections
+    // with no pitch of their own (Adjust Runners). nextSeq orders BOTH
+    // collections together so "undo the last action" (undoLastGameAction,
+    // below) knows which of the two actually happened most recently,
+    // regardless of which array it lives in.
+    state.activeSession.events = [];
+    state.activeSession.nextSeq = 1;
     // Games are usually charted from behind the plate (Joel) -- override
     // whatever the last BULLPEN charted from, since that's a different
     // remembered habit. Still just the default; the toggle still shows
     // and can be changed before the first pitch, same as a bullpen's.
     state.activeSession.chartingPerspective = 'behind_catcher';
+    // G1b-r2a: whether the drop-down panel covers the grid. Not derivable
+    // from gamePendingPitch/fieldPlay alone -- after a direct-record glyph
+    // (B/K/ꓘ/F/etc.) both go back to null but the panel stays open for a
+    // velocity-only edit until Next Pitch, so this needs its own flag. Part
+    // of activeSession -> autosaved for free, same as everything else here.
+    state.activeSession.panelOpen = false;
   }
   await storSet(draftKey(), state.activeSession);
   render();
@@ -3369,7 +3757,14 @@ window.chooseSessionKind = async function(kind){
    the SAME renderVeloStrip()/recordVelo() a bullpen uses (veloTargetIdx
    points at the just-pushed pitch either way) -- no separate velocity
    mechanism needed. */
-window.handleGameZoneTap = function(row, col){
+// G1b: every one of these now persists (await storSet) before/after
+// mutating pending-flow state, since that state moved onto
+// state.activeSession specifically so it survives a crash/reload (see
+// resumeDraft's comment) -- previously these were bare state.* fields,
+// never saved, an accepted small loss. Still fire-and-forget from the
+// onclick attributes that call them (none of those await), same as every
+// other async handler in this file.
+window.handleGameZoneTap = async function(row, col){
   if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
   if(!state.activeSession.delivery){ state.hint = 'Set or windup first'; render(); return; }
   state.hint = '';
@@ -3377,18 +3772,33 @@ window.handleGameZoneTap = function(row, col){
   // over -- simplest correction path for a mis-tapped location, same
   // "just tap again" precedent as a bullpen's tap 1 always overwriting a
   // stale pendingTarget.
-  state.gamePendingPitch = { row, col };
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+  // G1b-r addendum (velocity): velo lives on the pending pitch itself now,
+  // not only on an already-pushed one -- see gameVeloTarget/recordGameVelo.
+  // A fresh tap always starts this field at null, same "re-tapping starts
+  // capture over" precedent as row/col.
+  state.activeSession.gamePendingPitch = { row, col, velo: null };
+  state.activeSession.gameResultMenu = null;
+  state.activeSession.gamePendingOutcome = null;
+  state.activeSession.gamePendingHitType = null;
   state.veloTargetIdx = null;
+  // G1b-r2a: the location tap is what drops the panel down over the grid.
+  state.activeSession.panelOpen = true;
+  // G1b-r2b: a fresh panel for a NEW pitch always starts scrolled to the
+  // top -- otherwise it could open already scrolled partway down, carried
+  // over from wherever the PREVIOUS pitch's walkthrough left off.
+  state.gamePanelScrollTop = 0;
+  await storSet(draftKey(), state.activeSession);
   render();
 };
-window.resetGamePendingPitch = function(){
-  state.gamePendingPitch = null;
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+window.resetGamePendingPitch = async function(){
+  state.activeSession.gamePendingPitch = null;
+  state.activeSession.gameResultMenu = null;
+  state.activeSession.gamePendingOutcome = null;
+  state.activeSession.gamePendingHitType = null;
+  // G1b-r2a: "reset location" closes the panel to reveal the grid again --
+  // there's no other way to re-tap it while the panel covers it.
+  state.activeSession.panelOpen = false;
+  await storSet(draftKey(), state.activeSession);
   render();
 };
 window.setGameDelivery = async function(d){
@@ -3398,91 +3808,326 @@ window.setGameDelivery = async function(d){
 };
 // Opens a sub-menu fresh (from the main Result row) -- clears any outcome/
 // hit-type picked on a previous, abandoned drill-down.
-window.openResultMenu = function(menu){
-  state.gameResultMenu = menu;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+window.openResultMenu = async function(menu){
+  state.activeSession.gameResultMenu = menu;
+  state.activeSession.gamePendingOutcome = null;
+  state.activeSession.gamePendingHitType = null;
+  await storSet(draftKey(), state.activeSession);
   render();
 };
 // Steps BACK one menu without losing what was already picked deeper in
 // the drill-down (e.g. position's Back must still know outcome was 'hit'
 // so it can return to hitType, not inPlay).
-window.backResultMenu = function(menu){
-  state.gameResultMenu = menu;
+window.backResultMenu = async function(menu){
+  state.activeSession.gameResultMenu = menu;
+  await storSet(draftKey(), state.activeSession);
   render();
 };
-window.cancelResultMenu = function(){
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+window.cancelResultMenu = async function(){
+  state.activeSession.gameResultMenu = null;
+  state.activeSession.gamePendingOutcome = null;
+  state.activeSession.gamePendingHitType = null;
+  await storSet(draftKey(), state.activeSession);
   render();
 };
+// G1b-r: the old direct Ball/Strike(looking)/Strike(swinging)/Foul/In Play/
+// More… row (decision 2/3) is replaced by the scorebook glyph row below
+// (SCOREBOOK_ROW, renderGameResultRow) -- chooseGameResult itself is
+// unchanged and still the one function that pushes a pitch with a fixed,
+// no-drill-down result (kept as a named export since chooseScorebookGlyph
+// and a couple of + grid codes route through it).
 window.chooseGameResult = function(result){ return recordGameResult(result, {}); };
-window.chooseMoreResult = function(result){ return recordGameResult(result, {}); };
-window.chooseInPlayOutcome = function(outcome){
-  state.gamePendingOutcome = outcome;
-  // Only a Hit asks how far; Out and Error go straight to fielder.
-  state.gameResultMenu = outcome === 'hit' ? 'hitType' : 'position';
+// Decision 2/3 (G1b-r2: In Play replaces the separate H/O glyphs -- see
+// openFieldFlow/chooseWalkthroughEntry): B, K, ꓘ, F record on the tap,
+// exactly as before. F alone has one more wrinkle: a foul BUNT on two
+// strikes is a strikeout (decision 11), which needs a yes/no prompt before
+// it can record anything, since a tap on F can't otherwise distinguish
+// "just a foul" from "that was a bunt."
+// Dispatches on an internal CODE, not the displayed character -- decision 1
+// is explicit that ꓘ ("strike looking") is a real 'K' rendered with
+// transform:scaleX(-1), never the U+A4D8 codepoint ("fonts don't reliably
+// carry" it) -- so 'KL' (K, looking) is what SCOREBOOK_GLYPHS actually wires
+// up, and this switch matches that, not the glyph text.
+window.chooseScorebookGlyph = async function(code){
+  switch(code){
+    case 'B': return recordGameResult('ball', {});
+    case 'K': return recordGameResult('strike_swinging', {});
+    case 'KL': return recordGameResult('strike_looking', {});
+    case 'F':
+      if(state.activeSession.strikes === 2){
+        state.activeSession.gameResultMenu = 'foulBunt';
+        await storSet(draftKey(), state.activeSession);
+        render();
+        return;
+      }
+      return recordGameResult('foul', {});
+    case 'INPLAY': return openFieldFlow();
+    case 'PLUS':
+      state.activeSession.gameResultMenu = 'plus';
+      await storSet(draftKey(), state.activeSession);
+      render();
+      return;
+  }
+};
+// Decision 11: only ever reached at exactly two strikes (see above). Yes
+// stores bb_type='bunt' on the foul row and turns it into strike three;
+// No is an ordinary foul, capped at two strikes like any other.
+window.chooseFoulBunt = function(isBunt){
+  return recordGameResult('foul', isBunt ? { bunt: true, bbType: 'bunt' } : {});
+};
+// Decision 10, minus E/FC (G1b-r2 moves them under In Play's own Hit/Out/
+// Error/FC question -- "the third and fourth options after In Play," not
+// under +, any more). D3 reuses the existing dropped-third drill-down
+// verbatim, just reached from + instead of the old "More…" menu (removed
+// back in G1b-r). CI is the existing generic interference result,
+// unchanged. BI drills to its own two-way choice (chooseBIOutcome). FT
+// records immediately (a strike, decision 10 -- see applyGameResultProgression's
+// foul_tip case for the strike-three behavior). The four no-pitch codes
+// write a game_events row directly, no field, no location, no further tap.
+window.choosePlusCode = async function(code){
+  switch(code){
+    case 'HBP': return recordGameResult('hbp', {});
+    case 'D3':
+      state.activeSession.gameResultMenu = 'droppedThird';
+      await storSet(draftKey(), state.activeSession);
+      render();
+      return;
+    case 'CI': return recordGameResult('interference', {});
+    case 'BI':
+      state.activeSession.gameResultMenu = 'bi';
+      await storSet(draftKey(), state.activeSession);
+      render();
+      return;
+    case 'FT': return recordGameResult('foul_tip', {});
+    case 'IBB': return commitNoPitchEvent('intentional_walk');
+    case 'AB': return commitNoPitchEvent('auto_ball');
+    case 'AS': return commitNoPitchEvent('auto_strike');
+    case 'BLK': return commitNoPitchEvent('balk');
+  }
+};
+window.chooseDroppedThirdOutcome = function(outcome){ return recordGameResult('dropped_third', { inPlayOutcome: outcome }); };
+// Decision 10: BI's own drill-down. "Batter out" records immediately;
+// "Runner out" needs one more tap to say which base (only occupied ones are
+// offered -- chooseBIRunnerOut).
+window.chooseBIOutcome = async function(which){
+  if(which === 'batter'){
+    return recordGameResult('batter_interference', {});
+  }
+  state.activeSession.gameResultMenu = 'biRunnerBase';
+  await storSet(draftKey(), state.activeSession);
   render();
 };
-window.chooseHitType = function(type){
-  state.gamePendingHitType = type;
-  state.gameResultMenu = 'position';
-  render();
+window.chooseBIRunnerOut = function(base){
+  return recordGameResult('batter_interference', { biRunnerOut: base });
 };
-window.chooseFielder = function(pos){
-  return recordGameResult('in_play', {
-    inPlayOutcome: state.gamePendingOutcome,
-    hitType: state.gamePendingOutcome === 'hit' ? state.gamePendingHitType : null,
-    fielder: pos
-  });
-};
+// G1b (g): chooseInPlayOutcome/chooseHitType/chooseFielder deleted here --
+// In Play now opens the field flow (openFieldFlow, below), which replaces
+// this entire drill-down.
+// G1b: base-state bitmask, matching pitches.runners_before exactly (1st=1,
+// 2nd=2, 3rd=4). A pure encode/decode pair, independent of when or how
+// runners actually get placed on base (that's decision 3's automatic
+// advances and the field flow's runner-tap step, neither built yet in this
+// slice) -- this only has to be correct for whatever s.runners currently
+// holds, empty or not. Undo (below) is what proves the decode side; the
+// encode side is exercised on every single game pitch already.
+function runnersBitmask(runners){
+  return (runners[1] ? 1 : 0) | (runners[2] ? 2 : 0) | (runners[3] ? 4 : 0);
+}
+function runnersFromBitmask(mask){
+  // Bitwise ops coerce a missing/undefined mask (a pitch row from before
+  // this shipped) to 0 -- decodes to empty bases, a reasonable default for
+  // a pre-G1b pitch that never tracked runners at all, not a crash.
+  return { 1: !!(mask & 1), 2: !!(mask & 2), 3: !!(mask & 4) };
+}
+// G1b decision 8/9's shared mechanism: given an explicit list of runner
+// moves (the exact {from,to} shape pitches.runner_advances stores -- from
+// is 1/2/3, to is 0=out/1-3=base/4=scored) plus where the BATTER ends up
+// (same 0/4 convention), applies them to the live base state and reports
+// how many outs/runs resulted. This is the ONE place that turns "a list of
+// moves" into outs/runs/base-state -- decision 3's forced-walk chain
+// (forcedWalkAdvances, right below) computes such a list for a walk/HBP/
+// interference/dropped-third-reached; the field flow's hit-type prefill
+// (decision 4, approach e) will compute a different list for a single/
+// double/error/FC, but both call this same function to apply it. Neither
+// can drift from the other on what "an out" or "a run" means here.
+// Clears every FROM base before setting any TO base so multi-runner plays
+// (e.g. runners on 1st AND 3rd both moving) don't depend on array order.
+function applyRunnerAdvances(s, advances, batterTo){
+  let outsOnPlay = 0, runsScored = 0;
+  for(const mv of advances){
+    if(mv.from >= 1 && mv.from <= 3) s.runners[mv.from] = false;
+  }
+  for(const mv of advances){
+    if(mv.to === 0) outsOnPlay++;
+    else if(mv.to === 4) runsScored++;
+    else if(mv.to >= 1 && mv.to <= 3) s.runners[mv.to] = true;
+  }
+  if(batterTo === 0) outsOnPlay++;
+  else if(batterTo === 4) runsScored++;
+  else if(batterTo >= 1 && batterTo <= 3) s.runners[batterTo] = true;
+  return { outsOnPlay, runsScored };
+}
+// Decision 3: the standard force chain for a walk/HBP/catcher's
+// interference/dropped-third-reached -- the batter's forced trip to 1st
+// pushes 1st's occupant to 2nd ONLY IF 1st was occupied, which pushes
+// 2nd's occupant to 3rd only if 2nd was occupied, which pushes 3rd's
+// occupant home only if 3rd was occupied. A runner not in that chain (e.g.
+// alone on 2nd, nobody on 1st) never moves -- not forced. Returns the
+// {from,to} list for applyRunnerAdvances; never mutates s itself.
+function forcedWalkAdvances(s){
+  const advances = [];
+  if(s.runners[1]){
+    if(s.runners[2]){
+      if(s.runners[3]) advances.push({ from: 3, to: 4 });
+      advances.push({ from: 2, to: 3 });
+    }
+    advances.push({ from: 1, to: 2 });
+  }
+  return advances;
+}
 // Count/out/inning/batter progression, applied AFTER the pitch that
 // caused it is already pushed (with its own pre-pitch snapshot -- see
 // recordGameResult). Kept as its own function, independent of storage/
 // render, so it's simple to reason about and to unit-test in isolation.
-function applyGameResultProgression(result, inPlayOutcome){
+// Returns the per-play columns (batterTo/runnerAdvances/outsOnPlay/
+// runsScored) so recordGameResult can attach them to the just-pushed pitch
+// row -- this function only advances the LIVE counters/base-state; it
+// never touches a pitch object itself.
+function applyGameResultProgression(result, extra){
+  extra = extra || {};
+  const inPlayOutcome = extra.inPlayOutcome;
   const s = state.activeSession;
   let outsBumped = 0;
   let endsAtBat = false;
+  let batterTo = null;
+  let runnerAdvances = null;
+  let outsOnPlay = 0;
+  let runsScored = 0;
   switch(result){
     case 'ball':
       s.balls++;
-      if(s.balls >= 4) endsAtBat = true;
+      if(s.balls >= 4){
+        endsAtBat = true;
+        batterTo = 1;
+        runnerAdvances = forcedWalkAdvances(s);
+        ({ outsOnPlay, runsScored } = applyRunnerAdvances(s, runnerAdvances, batterTo));
+      }
       break;
     case 'strike_looking':
     case 'strike_swinging':
       s.strikes++;
-      if(s.strikes >= 3){ endsAtBat = true; outsBumped = 1; }
+      if(s.strikes >= 3){
+        // A real (non-dropped-third) 3rd strike is always caught cleanly --
+        // no runner is ever forced or moves on it.
+        endsAtBat = true; outsBumped = 1;
+        batterTo = 0; runnerAdvances = []; outsOnPlay = 1;
+      }
       break;
     case 'foul':
-      // A foul is a strike only below 2 strikes -- never the 3rd strike.
-      if(s.strikes < 2) s.strikes++;
+      // A foul is a strike only below 2 strikes -- never the 3rd strike --
+      // UNLESS it's a foul BUNT with two strikes already (G1b-r decision
+      // 11, chooseScorebookGlyph's own "Bunt?" prompt supplies extra.bunt):
+      // the one way a foul ever becomes strike three.
+      if(extra.bunt && s.strikes === 2){
+        s.strikes = 3;
+        endsAtBat = true; outsBumped = 1;
+        batterTo = 0; runnerAdvances = []; outsOnPlay = 1;
+      } else if(s.strikes < 2){
+        s.strikes++;
+      }
+      break;
+    case 'foul_tip':
+      // G1b-r decision 10: FT is a strike, and -- unlike a plain foul --
+      // CAN be strike three (a caught foul tip is a real strikeout, "a K
+      // swinging" per the packet's own framing of the stat effect; see
+      // gameStats' foul_tip K-counting and GAME_STRIKE_RESULTS above).
+      s.strikes++;
+      if(s.strikes >= 3){
+        endsAtBat = true; outsBumped = 1;
+        batterTo = 0; runnerAdvances = []; outsOnPlay = 1;
+      }
       break;
     case 'in_play':
+      // G1b (e): bypassed once the field flow ships -- outs/runs for an
+      // in-play result come from where the runners actually ended (the
+      // field flow calls applyRunnerAdvances directly), never this
+      // fixed 0-or-1 guess. Left as the pre-field-flow fallback for
+      // whatever briefly still reaches this case before (e) lands.
       endsAtBat = true;
-      if(inPlayOutcome === 'out') outsBumped = 1;
+      if(inPlayOutcome === 'out'){ outsBumped = 1; batterTo = 0; outsOnPlay = 1; }
+      else batterTo = 1;
+      runnerAdvances = [];
       break;
     case 'sac_bunt':
     case 'sac_fly':
+      // Legacy-only from here (decision 5/7: the field derives SF/SAC on a
+      // new play; these two result values are never written again after
+      // approach e ships, but a row from before still reads correctly).
       endsAtBat = true;
       outsBumped = 1;
+      batterTo = 0; runnerAdvances = []; outsOnPlay = 1;
       break;
     case 'hbp':
-    case 'dropped_third':
     case 'interference':
-    case 'other':
-      // Each ends the at-bat; none of these automatically records an out
-      // here (a dropped third strike is a live-ball strikeout -- the
-      // batter may reach safely; +1 out is a manual gameBumpOuts() tap if
-      // the runner is actually retired).
+      // Decision 3: same forced chain as a walk.
       endsAtBat = true;
+      batterTo = 1;
+      runnerAdvances = forcedWalkAdvances(s);
+      ({ outsOnPlay, runsScored } = applyRunnerAdvances(s, runnerAdvances, batterTo));
+      break;
+    case 'dropped_third':
+      // The drill-down (chooseDroppedThirdOutcome) always supplies
+      // inPlayOutcome as exactly 'out' or 'reached'. An out here is a real
+      // out (recorded the same way any other out is -- no separate manual
+      // gameBumpOuts() tap needed, unlike before G1b). 'reached' is the
+      // same forced chain as a walk (decision 3 groups it with walk/HBP/
+      // interference explicitly), since the batter reaching 1st is exactly
+      // what forces the chain regardless of HOW he got there.
+      endsAtBat = true;
+      if(inPlayOutcome === 'out'){
+        outsBumped = 1;
+        batterTo = 0; runnerAdvances = []; outsOnPlay = 1;
+      } else {
+        batterTo = 1;
+        runnerAdvances = forcedWalkAdvances(s);
+        ({ outsOnPlay, runsScored } = applyRunnerAdvances(s, runnerAdvances, batterTo));
+      }
+      break;
+    case 'other':
+      // No defined behavior (packet doesn't specify one) -- ends the
+      // at-bat, invents nothing about outs, runs, or base state.
+      endsAtBat = true;
+      break;
+    case 'batter_interference':
+      // G1b-r decision 10: chooseBIOutcome (below) always supplies exactly
+      // one of these two shapes in extra.
+      if(extra.biRunnerOut){
+        // "Runner out -> pick base": the selected runner is out; the plate
+        // appearance does NOT end -- same batter, same count, continues.
+        // Disclosed interpretation: real-rules treatment of this call
+        // varies and the packet doesn't specify further; batter-out (the
+        // other branch) is the standard case.
+        runnerAdvances = [{ from: extra.biRunnerOut, to: 0 }];
+        ({ outsOnPlay, runsScored } = applyRunnerAdvances(s, runnerAdvances, null));
+        outsBumped = outsOnPlay;
+      } else {
+        // "Batter out": a clean out, runners hold -- interference on the
+        // batter doesn't let anyone advance.
+        endsAtBat = true;
+        outsBumped = 1;
+        batterTo = 0; runnerAdvances = []; outsOnPlay = 1;
+      }
       break;
   }
   if(outsBumped) s.outs += outsBumped;
   if(s.outs >= 3){
     s.inning++;
     s.outs = 0;
+    // G1b: bases clear at 3 outs, unconditionally -- true regardless of
+    // which result produced the 3rd out, and true before any forced-advance
+    // or field-flow logic exists to have put a runner there in the first
+    // place.
+    s.runners = { 1: false, 2: false, 3: false };
   }
   if(endsAtBat){
     s.atBatIndex++;
@@ -3492,10 +4137,11 @@ function applyGameResultProgression(result, inPlayOutcome){
     // matches chooseSessionKind's own reasoning for starting it null.
     s.delivery = null;
   }
+  return { batterTo, runnerAdvances, outsOnPlay, runsScored };
 }
 window.recordGameResult = async function(result, extra){
   extra = extra || {};
-  const pending = state.gamePendingPitch;
+  const pending = state.activeSession.gamePendingPitch;
   if(!pending) return;
   const s = state.activeSession;
   const chartingPerspective = sessionPerspective(s);
@@ -3508,11 +4154,19 @@ window.recordGameResult = async function(result, extra){
   }
   s.pitches.push({
     id: genUUID(),
+    // G1b (h): orders this pitch against every OTHER pitch and event in the
+    // session -- what undoLastGameAction (below) compares to find whichever
+    // of the two collections actually happened most recently. Client-only;
+    // never sent to the DB (the outbox mapper doesn't whitelist it).
+    seq: s.nextSeq++,
     // Set directly here (not only at sync time, in syncOutbox's pitchRows)
     // so a queued-but-unsynced pitch's local shape already matches what
     // it becomes in the DB -- avoids the two ever drifting apart.
     kind: 'game',
-    type: state.selectedType, velo: null,
+    // G1b-r addendum (velocity): carries over whatever was entered on the
+    // pending pitch (gameVeloTarget's 'pending' case) while it was still
+    // gamePendingPitch, if anything -- null otherwise, same as before.
+    type: state.selectedType, velo: pending.velo,
     targetRow: null, targetCol: null,
     actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
     accuracyMode: null, inAccuracyZone: null, accuracyZoneCells: null,
@@ -3522,6 +4176,11 @@ window.recordGameResult = async function(result, extra){
     inPlayOutcome: extra.inPlayOutcome || null,
     hitType: extra.hitType || null,
     fielder: extra.fielder || null,
+    // G1b-r decision 11: the only way a non-field-flow pitch ever carries a
+    // bb_type -- a foul bunt on two strikes (chooseScorebookGlyph's "Bunt?"
+    // prompt supplies extra.bbType). null for every other direct-record
+    // result (B/K/ꓘ and a non-bunt foul).
+    bbType: extra.bbType || null, bbX: null, bbY: null, bbFromPosition: null,
     delivery: s.delivery,
     // The count/inning/at-bat state BEFORE this pitch -- storing "before"
     // rather than "after" makes each row self-contained and makes undo
@@ -3530,13 +4189,29 @@ window.recordGameResult = async function(result, extra){
     outsBefore: s.outs,
     ballsBefore: s.balls,
     strikesBefore: s.strikes,
-    atBatIndex: s.atBatIndex
+    atBatIndex: s.atBatIndex,
+    // G1b: written on EVERY game pitch, not only in-play ones (packet
+    // decision 1) -- same "before" snapshot pattern as the four fields
+    // just above, and what undoLastGamePitch restores base state from.
+    runnersBefore: runnersBitmask(s.runners),
+    // G1b: the play's OUTCOME columns (as opposed to runnersBefore, its
+    // precondition) -- null/[]/0 for anything that doesn't end in a
+    // resolved batter/runner state yet (a ball that isn't a walk, a called
+    // strike that isn't a 3rd, a foul). Filled in from
+    // applyGameResultProgression's return value just below, once it's run.
+    batterTo: null, runnerAdvances: null, outsOnPlay: 0, runsScored: 0,
+    sacrifice: null
   });
-  applyGameResultProgression(result, extra.inPlayOutcome);
-  state.gamePendingPitch = null;
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+  const pushedPitch = s.pitches[s.pitches.length - 1];
+  const playResult = applyGameResultProgression(result, extra);
+  pushedPitch.batterTo = playResult.batterTo;
+  pushedPitch.runnerAdvances = playResult.runnerAdvances;
+  pushedPitch.outsOnPlay = playResult.outsOnPlay;
+  pushedPitch.runsScored = playResult.runsScored;
+  state.activeSession.gamePendingPitch = null;
+  state.activeSession.gameResultMenu = null;
+  state.activeSession.gamePendingOutcome = null;
+  state.activeSession.gamePendingHitType = null;
   // Same post-hoc velocity pattern as a bullpen's tap 2: the strip lights
   // up for the pitch just recorded until the next one starts. The G1
   // packet's own step order put velocity before result (4, then 5) --
@@ -3548,32 +4223,55 @@ window.recordGameResult = async function(result, extra){
   await storSet(draftKey(), s);
   render();
 };
-window.undoLastGamePitch = async function(){
+// G1b (f)/(h): "undo the last action," pitch or event, whichever has the
+// higher seq -- the one, shared undo the packet asks for instead of two
+// separate undo buttons that could disagree about what "last" means.
+// Restores from that action's OWN stored "before" snapshot, same pattern
+// pitches already used before events existed.
+window.undoLastGameAction = async function(){
   const s = state.activeSession;
-  const last = s.pitches[s.pitches.length - 1];
-  if(!last) return;
-  s.pitches.pop();
-  // Restore the live counters from the popped pitch's OWN stored "before"
-  // snapshot -- robust across every auto-advance boundary (a walk/K/3rd
-  // out) with no special-casing, because every pitch already carries
-  // exactly the state that was true right before it landed.
-  s.inning = last.inning;
-  s.outs = last.outsBefore;
-  s.balls = last.ballsBefore;
-  s.strikes = last.strikesBefore;
-  s.atBatIndex = last.atBatIndex;
-  s.delivery = last.delivery;
-  state.gamePendingPitch = null;
-  state.gameResultMenu = null;
-  state.gamePendingOutcome = null;
-  state.gamePendingHitType = null;
+  const lastPitch = s.pitches[s.pitches.length - 1];
+  const lastEvent = s.events[s.events.length - 1];
+  if(!lastPitch && !lastEvent) return;
+  const undoingEvent = lastEvent && (!lastPitch || lastEvent.seq > lastPitch.seq);
+  if(undoingEvent){
+    s.events.pop();
+    s.inning = lastEvent.inningBefore;
+    s.outs = lastEvent.outsBeforeCount;
+    s.balls = lastEvent.ballsBefore;
+    s.strikes = lastEvent.strikesBefore;
+    s.atBatIndex = lastEvent.atBatIndexBefore;
+    s.runners = runnersFromBitmask(lastEvent.runnersBefore);
+  } else {
+    const last = lastPitch;
+    s.pitches.pop();
+    s.inning = last.inning;
+    s.outs = last.outsBefore;
+    s.balls = last.ballsBefore;
+    s.strikes = last.strikesBefore;
+    s.atBatIndex = last.atBatIndex;
+    s.delivery = last.delivery;
+    // runnersFromBitmask(undefined) decodes to empty bases for a pitch
+    // that predates this column, not a crash.
+    s.runners = runnersFromBitmask(last.runnersBefore);
+  }
+  s.gamePendingPitch = null;
+  s.gameResultMenu = null;
+  s.gamePendingOutcome = null;
+  s.gamePendingHitType = null;
+  s.fieldPlay = null;
+  s.adjustRunners = null;
+  // G1b-r2a: nothing left pending to hold the panel open for.
+  s.panelOpen = false;
   state.veloTargetIdx = null;
   await storSet(draftKey(), s);
   render();
 };
 // Manual corrections for game state the pitch stream can't infer on its
-// own (a baserunning out, a mid-at-bat pitcher change, an inning that
-// needs to move on with no more pitches thrown in it).
+// own (a mid-at-bat pitcher change, an inning that needs to move on with
+// no more pitches thrown in it). gameBumpOuts() is REMOVED here (approach
+// f) -- a caught-stealing/pickoff out now has a truthful path through
+// Adjust Runners instead of a manual counter bump with no record of why.
 window.gameNewBatter = async function(){
   const s = state.activeSession;
   s.atBatIndex++;
@@ -3591,40 +4289,306 @@ window.gameNewInning = async function(){
   s.strikes = 0;
   s.atBatIndex++;
   s.delivery = null;
-  await storSet(draftKey(), s);
-  render();
-};
-window.gameBumpOuts = async function(){
-  const s = state.activeSession;
-  if(s.outs < 2){ s.outs++; } else { s.inning++; s.outs = 0; }
+  // G1b: bases clear at a manual New inning the same as they do at 3 outs
+  // (packet: "Cleared at three outs and at New inning").
+  s.runners = { 1: false, 2: false, 3: false };
   await storSet(draftKey(), s);
   render();
 };
 
+/* ---------- G1b (f): ADJUST RUNNERS ----------
+   From the status-bar diamond, any time between pitches: pick the runner,
+   pick where he went, pick the reason. Writes a game_events row (never a
+   pitch), applies outs/runs/bases, Undo-able as the last action (see
+   undoLastGameAction above). Also the only way left to record a caught-
+   stealing or pickoff out. */
+const ADJUST_REASONS = [
+  ['stolen_base', 'Stolen base'], ['caught_stealing', 'Caught stealing'], ['pickoff', 'Pickoff'],
+  ['wild_pitch', 'Wild pitch'], ['passed_ball', 'Passed ball'], ['balk', 'Balk'], ['other', 'Other']
+];
+window.openAdjustRunners = async function(){
+  const s = state.activeSession;
+  // Only between pitches -- not mid pitch-capture, not mid field-flow.
+  if(s.gamePendingPitch || s.fieldPlay) return;
+  if(!s.runners[1] && !s.runners[2] && !s.runners[3]) return; // nothing to adjust
+  s.adjustRunners = { step: 'runner', runner: null, destination: null };
+  await storSet(draftKey(), s);
+  render();
+};
+window.cancelAdjustRunners = async function(){
+  state.activeSession.adjustRunners = null;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.backAdjustRunners = async function(){
+  const ar = state.activeSession.adjustRunners;
+  if(!ar) return;
+  ar.step = ar.step === 'reason' ? 'destination' : 'runner';
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.chooseAdjustRunner = async function(base){
+  const ar = state.activeSession.adjustRunners;
+  if(!ar) return;
+  ar.runner = base;
+  ar.step = 'destination';
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.chooseAdjustDestination = async function(dest){
+  const ar = state.activeSession.adjustRunners;
+  if(!ar) return;
+  ar.destination = dest;
+  ar.step = 'reason';
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// A single-runner move can still collide with an existing occupant of the
+// destination base (stealing 2nd when 2nd is already taken) -- decision
+// 8's collision rule, scoped to Adjust Runners' one-move-at-a-time shape.
+function adjustRunnersDisabledReason(ar, s){
+  if(!ar) return 'No adjustment in progress';
+  if(!ar.runner) return 'Choose a runner';
+  if(!ar.destination) return 'Choose where he went';
+  if(['1', '2', '3'].includes(ar.destination)){
+    const destBase = Number(ar.destination);
+    if(destBase !== ar.runner && s.runners[destBase]) return 'That base is already occupied';
+  }
+  return null;
+}
+window.commitAdjustEvent = async function(reason){
+  const s = state.activeSession;
+  const ar = s.adjustRunners;
+  if(!ar || adjustRunnersDisabledReason(ar, s)) return;
+  const before = {
+    inning: s.inning, outs: s.outs, balls: s.balls, strikes: s.strikes,
+    atBatIndex: s.atBatIndex, runnersBefore: runnersBitmask(s.runners)
+  };
+  const toNum = ar.destination === 'out' ? 0 : ar.destination === 'home' ? 4 : Number(ar.destination);
+  const advances = [{ from: ar.runner, to: toNum }];
+  const { outsOnPlay, runsScored } = applyRunnerAdvances(s, advances, null);
+  s.outs += outsOnPlay;
+  if(s.outs >= 3){ s.inning++; s.outs = 0; s.runners = { 1: false, 2: false, 3: false }; }
+  s.events.push({
+    id: genUUID(), seq: s.nextSeq++,
+    eventType: reason,
+    atBatIndex: before.atBatIndex,
+    afterPitchId: s.pitches.length ? s.pitches[s.pitches.length - 1].id : null,
+    runnersBefore: before.runnersBefore, runnerAdvances: advances,
+    outsOnPlay, runsScored,
+    // Client-only undo snapshot -- game_events has no column for these
+    // (only runners_before is schema'd); the outbox mapper doesn't
+    // whitelist them, so they never reach the DB. Undo only ever needs to
+    // reach back into the CURRENT session's own in-memory history, so
+    // nothing is lost by keeping them client-side only.
+    inningBefore: before.inning, outsBeforeCount: before.outs,
+    ballsBefore: before.balls, strikesBefore: before.strikes, atBatIndexBefore: before.atBatIndex
+  });
+  s.adjustRunners = null;
+  await storSet(draftKey(), s);
+  render();
+};
+
+/* ---------- G1b-r decision 10: NO-PITCH game_events ----------
+   IBB, an automatic ball, an automatic strike, and the fast-path Balk (+
+   grid) -- none is a pitch, none counts toward strike %, each is its own
+   line in the at-bat log. Distinct from commitAdjustEvent above (which
+   never touches balls/strikes/atBatIndex, since a stolen base/pickoff/etc.
+   happens strictly BETWEEN pitches): these four can end an at-bat (IBB
+   always; auto ball/strike when they complete a walk/strikeout) and so
+   share applyGameResultProgression's own count-then-check shape, just
+   against s directly rather than through a pushed pitch row. */
+window.commitNoPitchEvent = async function(eventType){
+  const s = state.activeSession;
+  // G1b-r2c: the old "only between pitches" guard (gamePendingPitch must be
+  // null) made these four permanently unreachable once the drop-down panel
+  // shipped -- the + button they're reached through only exists ON the
+  // result row, which itself only renders once gamePendingPitch is already
+  // set (the location tap is what opens the panel at all now). Still guard
+  // against mid-field-flow (fieldPlay never actually reaches here today,
+  // since + isn't shown then either, but kept defensively). The location
+  // tap that opened the panel is discarded below -- none of these four is a
+  // real pitch, so there's nothing to attach it to.
+  if(s.fieldPlay) return;
+  const before = {
+    inning: s.inning, outs: s.outs, balls: s.balls, strikes: s.strikes,
+    atBatIndex: s.atBatIndex, runnersBefore: runnersBitmask(s.runners)
+  };
+  let advances = [], batterTo = null, outsOnPlay = 0, runsScored = 0, outsBumped = 0, endsAtBat = false;
+  if(eventType === 'intentional_walk'){
+    // Packet: "IBB -> batter to 1st, forced runners advance, new batter."
+    batterTo = 1;
+    advances = forcedWalkAdvances(s);
+    ({ outsOnPlay, runsScored } = applyRunnerAdvances(s, advances, batterTo));
+    endsAtBat = true;
+  } else if(eventType === 'auto_ball'){
+    // Packet: "auto ball -> balls +1 (4 = walk via the same forced-advance
+    // function)."
+    s.balls++;
+    if(s.balls >= 4){
+      batterTo = 1;
+      advances = forcedWalkAdvances(s);
+      ({ outsOnPlay, runsScored } = applyRunnerAdvances(s, advances, batterTo));
+      endsAtBat = true;
+    }
+  } else if(eventType === 'auto_strike'){
+    // Packet: "auto strike -> strikes +1 (3 = K looking)."
+    s.strikes++;
+    if(s.strikes >= 3){
+      outsBumped = 1; outsOnPlay = 1; batterTo = 0;
+      endsAtBat = true;
+    }
+  } else if(eventType === 'balk'){
+    // Standard rule (distinct from Adjust Runners' own 'balk' reason, which
+    // moves exactly one chosen runner): every occupied base advances one,
+    // forced or not, no picking needed -- "no location... tap + directly."
+    advances = [1, 2, 3].filter(b => s.runners[b]).map(b => ({ from: b, to: b === 3 ? 4 : b + 1 }));
+    ({ outsOnPlay, runsScored } = applyRunnerAdvances(s, advances, null));
+  }
+  outsBumped = outsBumped || outsOnPlay;
+  if(outsBumped) s.outs += outsBumped;
+  if(s.outs >= 3){ s.inning++; s.outs = 0; s.runners = { 1: false, 2: false, 3: false }; }
+  if(endsAtBat){ s.atBatIndex++; s.balls = 0; s.strikes = 0; s.delivery = null; }
+  s.events.push({
+    id: genUUID(), seq: s.nextSeq++,
+    eventType,
+    atBatIndex: before.atBatIndex,
+    afterPitchId: s.pitches.length ? s.pitches[s.pitches.length - 1].id : null,
+    runnersBefore: before.runnersBefore, runnerAdvances: advances.length ? advances : null,
+    outsOnPlay, runsScored,
+    inningBefore: before.inning, outsBeforeCount: before.outs,
+    ballsBefore: before.balls, strikesBefore: before.strikes, atBatIndexBefore: before.atBatIndex
+  });
+  // G1b-r2c: none of these four is a pitch -- the location tap that opened
+  // the panel is discarded, and the panel closes (there's no walkthrough or
+  // velocity to review for a no-pitch event).
+  s.gamePendingPitch = null;
+  s.gameResultMenu = null;
+  s.panelOpen = false;
+  await storSet(draftKey(), s);
+  render();
+};
+
+// G1b-r2a: lives inside the status bar, which is now always on a dark
+// (--field-dark) background as the panel header -- occupied/unoccupied
+// colors flipped to light-on-dark (reference's own .mini/.mini.on: a
+// transparent, light-outlined diamond, filled gold when on) instead of the
+// old white/black pair, which would have been invisible or wrong-contrast
+// on the new background.
+function renderRunnerDiamond(){
+  const s = state.activeSession;
+  const occ = n => s.runners[n] ? 'var(--game-gold)' : 'transparent';
+  const strokeFor = n => s.runners[n] ? 'var(--game-gold)' : 'var(--surface)';
+  const canAdjust = !s.gamePendingPitch && !s.fieldPlay && (s.runners[1] || s.runners[2] || s.runners[3]);
+  return `<button class="runner-diamond-btn" ${canAdjust ? '' : 'disabled'} onclick="openAdjustRunners()" title="Adjust runners">
+    <svg viewBox="0 0 40 40" width="32" height="32" role="img" aria-label="Base runners">
+      <rect x="14" y="4" width="10" height="10" transform="rotate(45 19 9)" fill="${occ(2)}" stroke="${strokeFor(2)}" stroke-width="1.5"/>
+      <rect x="4" y="14" width="10" height="10" transform="rotate(45 9 19)" fill="${occ(3)}" stroke="${strokeFor(3)}" stroke-width="1.5"/>
+      <rect x="24" y="14" width="10" height="10" transform="rotate(45 29 19)" fill="${occ(1)}" stroke="${strokeFor(1)}" stroke-width="1.5"/>
+    </svg>
+  </button>`;
+}
+function renderAdjustRunnersFlow(){
+  const s = state.activeSession;
+  const ar = s.adjustRunners;
+  if(!ar) return '';
+  // G1b-r2a: matches the reference's chip border exactly (game-only
+  // function, safe to edit directly -- never shared with bullpen).
+  const neutral = `color:var(--ink-faint);border-color:var(--game-chip-border);`;
+  const baseName = b => (b === 1 ? '1st' : b === 2 ? '2nd' : '3rd');
+  if(ar.step === 'runner'){
+    const occupied = [1, 2, 3].filter(b => s.runners[b]);
+    return `<div class="panel adjust-runners-panel">
+      <div class="field-label" style="margin-bottom:8px;">Adjust runners — which runner?</div>
+      <div class="chip-row">
+        ${occupied.map(b => `<button class="type-chip" style="${neutral}" onclick="chooseAdjustRunner(${b})">Runner on ${baseName(b)}</button>`).join('')}
+        <button class="btn btn-ghost" onclick="cancelAdjustRunners()">Cancel</button>
+      </div>
+    </div>`;
+  }
+  if(ar.step === 'destination'){
+    const opts = [['1', '1st'], ['2', '2nd'], ['3', '3rd'], ['home', 'Home'], ['out', 'Out']].filter(([k]) => k !== String(ar.runner));
+    return `<div class="panel adjust-runners-panel">
+      <div class="field-label" style="margin-bottom:8px;">Runner on ${baseName(ar.runner)} — where did he go?</div>
+      <div class="chip-row">
+        ${opts.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="chooseAdjustDestination('${k}')">${l}</button>`).join('')}
+        <button class="btn btn-ghost" onclick="cancelAdjustRunners()">Cancel</button>
+      </div>
+    </div>`;
+  }
+  if(ar.step === 'reason'){
+    const reason = adjustRunnersDisabledReason(ar, s);
+    return `<div class="panel adjust-runners-panel">
+      <div class="field-label" style="margin-bottom:8px;">Why?</div>
+      ${reason
+        ? `<p class="walkthrough-disabled-reason">${escHtml(reason)}</p>`
+        : `<div class="chip-row">${ADJUST_REASONS.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="commitAdjustEvent('${k}')">${l}</button>`).join('')}</div>`}
+      <button class="btn btn-ghost" onclick="backAdjustRunners()">Back</button>
+    </div>`;
+  }
+  return '';
+}
+
 const GAME_RESULT_LABELS = {
   ball: 'Ball', strike_looking: 'Strike (looking)', strike_swinging: 'Strike (swinging)',
   foul: 'Foul', in_play: 'In play', hbp: 'HBP', sac_bunt: 'Sac bunt', sac_fly: 'Sac fly',
-  dropped_third: 'Dropped 3rd', interference: 'Interference', other: 'Other'
+  dropped_third: 'Dropped 3rd', interference: "Catcher's interference", other: 'Other',
+  // G1b-r decision 10: batter_interference (BI) is new and distinct from
+  // the existing generic interference above, which is CI and unchanged.
+  batter_interference: "Batter's interference", foul_tip: 'Foul tip'
 };
 function gameResultText(pt){
   if(pt.result === 'in_play'){
     const outcomeLabel = { hit: 'Hit', out: 'Out', error: 'Error' }[pt.inPlayOutcome] || 'In play';
     return [outcomeLabel, pt.hitType, pt.fielder ? ('to ' + pt.fielder) : ''].filter(Boolean).join(' ');
   }
+  if(pt.result === 'dropped_third'){
+    return 'Dropped 3rd' + (pt.inPlayOutcome === 'out' ? ' (batter out)' : pt.inPlayOutcome === 'reached' ? ' (batter reached)' : '');
+  }
+  if(pt.result === 'batter_interference'){
+    // G1b-r decision 10: "Batter out" leaves batterTo=0 and no runner
+    // movement; "Runner out -> pick base" leaves batterTo null and exactly
+    // one {from,to:0} in runnerAdvances -- see chooseBIOutcome.
+    if(pt.batterTo === 0) return "Batter's interference (batter out)";
+    const runnerOut = (pt.runnerAdvances || []).find(a => a.to === 0);
+    return "Batter's interference" + (runnerOut ? ` (R${runnerOut.from} out)` : '');
+  }
   return GAME_RESULT_LABELS[pt.result] || pt.result;
+}
+// G1b-r decision 10: "each [no-pitch event] is its own line in the at-bat
+// log" -- renderGameSessionView's log merges pitches and events by seq (see
+// its own combinedLog) so this is reachable at all; also covers Adjust
+// Runners' own event types (stolen_base/caught_stealing/pickoff/wild_pitch/
+// passed_ball/balk/other), which never had their own log line before this.
+const GAME_EVENT_LABELS = {
+  stolen_base: 'Stolen base', caught_stealing: 'Caught stealing', pickoff: 'Pickoff',
+  wild_pitch: 'Wild pitch', passed_ball: 'Passed ball', balk: 'Balk', other: 'Other event',
+  intentional_walk: 'Intentional walk', auto_ball: 'Auto ball', auto_strike: 'Auto strike'
+};
+function gameEventText(ev){
+  const label = GAME_EVENT_LABELS[ev.eventType] || ev.eventType;
+  const parts = [label];
+  (ev.runnerAdvances || []).forEach(a => {
+    const to = a.to === 0 ? 'out' : a.to === 4 ? 'home' : (a.to === 1 ? '1st' : a.to === 2 ? '2nd' : '3rd');
+    parts.push(`R${a.from} to ${to}`);
+  });
+  return parts.join(' · ');
 }
 // Pitches that reach or pass the strike threshold, for a game's own
 // strike% -- distinct from a bullpen's accuracy%, which measures target
 // vs. actual and has no meaning here. A dropped third strike and a sac
 // are still strikes (the ball was put in play, or the batter swung
 // through strike three); a walk/HBP/interference/"other" ending is not.
-const GAME_STRIKE_RESULTS = new Set(['strike_looking', 'strike_swinging', 'foul', 'in_play', 'sac_bunt', 'sac_fly', 'dropped_third']);
+// G1b-r decision 10: foul_tip (FT) is a strike, same as strike_looking/
+// strike_swinging -- it's the only foul that can BE strike three (a plain
+// 'foul' below never can, see applyGameResultProgression's foul case).
+const GAME_STRIKE_RESULTS = new Set(['strike_looking', 'strike_swinging', 'foul', 'foul_tip', 'in_play', 'sac_bunt', 'sac_fly', 'dropped_third']);
 function gameStats(pitches){
   let k = 0, bb = 0, h = 0, strikeCount = 0, maxInning = 1;
   pitches.forEach(pt => {
     if(GAME_STRIKE_RESULTS.has(pt.result)) strikeCount++;
     if(pt.result === 'dropped_third') k++;
-    if((pt.result === 'strike_looking' || pt.result === 'strike_swinging') && pt.strikesBefore >= 2) k++;
+    if((pt.result === 'strike_looking' || pt.result === 'strike_swinging' || pt.result === 'foul_tip') && pt.strikesBefore >= 2) k++;
     if(pt.result === 'ball' && pt.ballsBefore >= 3) bb++;
     if(pt.result === 'in_play' && pt.inPlayOutcome === 'hit') h++;
     if(pt.inning > maxInning) maxInning = pt.inning;
@@ -3639,6 +4603,7 @@ function renderGameStatusBar(){
     <div class="stat-box"><span class="stat-num mono">${s.outs}</span><span class="stat-lbl">Outs</span></div>
     <div class="stat-box"><span class="stat-num mono">${s.balls}-${s.strikes}</span><span class="stat-lbl">Count</span></div>
     <div class="stat-box"><span class="stat-num mono">${s.atBatIndex}</span><span class="stat-lbl">Batter #</span></div>
+    <div class="stat-box">${renderRunnerDiamond()}<span class="stat-lbl">Runners</span></div>
   </div>`;
 }
 function renderDeliveryToggle(){
@@ -3652,51 +4617,980 @@ function renderDeliveryToggle(){
   const label = 'Delivery' + (!s.delivery ? ' — pick one before the next pitch' : '');
   return `<div><div class="field-label" style="margin-bottom:8px;">${label}</div><div class="chip-row">${chips}</div></div>`;
 }
+// G1b-r decisions 2/3/10, updated by G1b-r2: six buttons now, not seven --
+// H and O fold into one In Play icon button (opens the walkthrough, which
+// asks Hit/Out/Error/FC as its own first question -- chooseWalkthroughEntry
+// below). The old "more" menu (HBP/Dropped 3rd/Interference/Other) is
+// DELETED, not hidden, folded into + (choosePlusCode) instead. Existing
+// pitch rows charted through any of the old paths keep their values and
+// still read correctly everywhere.
+// G1b-r2 update: icons over captions, not letters -- B/K/ꓘ/F no longer
+// appear as text on the buttons (they still get written by the scorebook
+// cells and the log, both unchanged: scorebookBatterCode/gameResultText
+// aren't touched by this). Each PNG is a transparent cut-out used as a CSS
+// mask filled with currentColor (ink on the white button, and automatically
+// white if the button's own color ever goes light-on-dark, e.g. selected).
+// '+' alone stays a real glyph, in .flash-letter's face (.scorebook-btn-glyph).
+const SCOREBOOK_GLYPHS = [
+  { code: 'B', icon: 'icon-ball.png', caption: 'Ball' },
+  { code: 'K', icon: 'icon-swinging.png', caption: 'Swinging' },
+  { code: 'KL', icon: 'icon-looking.png', caption: 'Looking' },
+  { code: 'F', icon: 'icon-foul.png', caption: 'Foul' },
+  { code: 'INPLAY', icon: 'batter-icon.png', caption: 'In Play' },
+  { code: 'PLUS', glyph: '+', caption: 'More' }
+];
+// G1b-r2: E and FC move OUT from under + -- they're the walkthrough's own
+// 3rd/4th options after In Play now (chooseWalkthroughEntry), not here.
+// G1b-r2f: Foul tip removed per Joel's request -- deleted, not hidden.
+// foul_tip stays a valid pitches.result value (an existing row can still
+// read correctly everywhere); there's just no way to record a new one.
+const PLUS_GRID_PITCHES = [
+  ['HBP', 'HBP'], ['D3', 'Dropped 3rd'],
+  ['CI', "Catcher's interference"], ['BI', "Batter's interference"]
+];
+const PLUS_GRID_NO_PITCH = [
+  ['IBB', 'Intentional walk'], ['AB', 'Auto ball'], ['AS', 'Auto strike'], ['BLK', 'Balk']
+];
 function renderGameResultRow(){
-  if(!state.gamePendingPitch) return '';
-  const menu = state.gameResultMenu;
-  const neutral = `color:var(--ink-faint);border-color:var(--border-strong);`;
-  const amber = `background:var(--amber);border-color:var(--amber);`;
+  if(!state.activeSession.gamePendingPitch) return '';
+  const menu = state.activeSession.gameResultMenu;
+  // G1b-r2a: matches the reference's chip border exactly.
+  const neutral = `color:var(--ink-faint);border-color:var(--game-chip-border);`;
   const green = `color:#3D7A57;border-color:#3D7A57;`;
-  if(menu === 'inPlay'){
-    return `<div><div class="field-label" style="margin-bottom:8px;">In play — what happened?</div><div class="chip-row">
-      <button class="type-chip" style="${green}" onclick="chooseInPlayOutcome('hit')">Hit</button>
-      <button class="type-chip" style="${neutral}" onclick="chooseInPlayOutcome('out')">Out</button>
-      <button class="type-chip" style="${neutral}" onclick="chooseInPlayOutcome('error')">Error</button>
-      <button class="btn btn-ghost" onclick="cancelResultMenu()">Back</button>
+
+  if(menu === 'plus'){
+    // G1b-r2c: a dropped third strike can only happen ON strike three --
+    // D3 only makes sense to offer once the count is already at 2 strikes.
+    const plusGridPitches = PLUS_GRID_PITCHES.filter(([k]) => k !== 'D3' || state.activeSession.strikes === 2);
+    return `<div>
+      <div class="field-label" style="margin-bottom:8px;">Pitches</div>
+      <div class="chip-row">${plusGridPitches.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="choosePlusCode('${k}')">${l}</button>`).join('')}</div>
+      <div class="field-label" style="margin:10px 0 8px;">No pitch</div>
+      <div class="chip-row">${PLUS_GRID_NO_PITCH.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="choosePlusCode('${k}')">${l}</button>`).join('')}</div>
+      <button class="btn btn-ghost" style="margin-top:8px;" onclick="cancelResultMenu()">Back</button>
+    </div>`;
+  }
+  if(menu === 'droppedThird'){
+    return `<div><div class="field-label" style="margin-bottom:8px;">Dropped third — what happened?</div><div class="chip-row">
+      <button class="type-chip" style="${green}" onclick="chooseDroppedThirdOutcome('reached')">Batter reached</button>
+      <button class="type-chip" style="${neutral}" onclick="chooseDroppedThirdOutcome('out')">Batter out</button>
+      <button class="btn btn-ghost" onclick="backResultMenu('plus')">Back</button>
     </div></div>`;
   }
-  if(menu === 'hitType'){
-    return `<div><div class="field-label" style="margin-bottom:8px;">Hit — how far?</div><div class="chip-row">
-      ${['1B','2B','3B','HR'].map(t => `<button class="type-chip" style="${green}" onclick="chooseHitType('${t}')">${t}</button>`).join('')}
-      <button class="btn btn-ghost" onclick="backResultMenu('inPlay')">Back</button>
+  if(menu === 'bi'){
+    return `<div><div class="field-label" style="margin-bottom:8px;">Batter's interference</div><div class="chip-row">
+      <button class="type-chip" style="${neutral}" onclick="chooseBIOutcome('batter')">Batter out</button>
+      <button class="type-chip" style="${neutral}" onclick="chooseBIOutcome('runner')">Runner out</button>
+      <button class="btn btn-ghost" onclick="backResultMenu('plus')">Back</button>
     </div></div>`;
   }
-  if(menu === 'position'){
-    const back = state.gamePendingOutcome === 'hit' ? 'hitType' : 'inPlay';
-    return `<div><div class="field-label" style="margin-bottom:8px;">Fielder</div><div class="chip-row">
-      ${['P','C','1B','2B','3B','SS','LF','CF','RF'].map(pos => `<button class="type-chip" style="${neutral}" onclick="chooseFielder('${pos}')">${pos}</button>`).join('')}
-      <button class="btn btn-ghost" onclick="backResultMenu('${back}')">Back</button>
+  if(menu === 'biRunnerBase'){
+    const s = state.activeSession;
+    const occupied = [1, 2, 3].filter(b => s.runners[b]);
+    return `<div><div class="field-label" style="margin-bottom:8px;">Which runner is out?</div><div class="chip-row">
+      ${occupied.length ? occupied.map(b => `<button class="type-chip" style="${neutral}" onclick="chooseBIRunnerOut(${b})">R${b}</button>`).join('') : '<p style="color:var(--ink-faint);font-size:12.5px;">No runners on base.</p>'}
+      <button class="btn btn-ghost" onclick="backResultMenu('bi')">Back</button>
     </div></div>`;
   }
-  if(menu === 'more'){
-    const more = [
-      { key: 'hbp', label: 'HBP' }, { key: 'sac_bunt', label: 'Sac bunt' }, { key: 'sac_fly', label: 'Sac fly' },
-      { key: 'dropped_third', label: 'Dropped 3rd' }, { key: 'interference', label: 'Interference' }, { key: 'other', label: 'Other' }
-    ];
-    return `<div><div class="field-label" style="margin-bottom:8px;">Other outcomes</div><div class="chip-row">
-      ${more.map(m => `<button class="type-chip" style="${neutral}" onclick="chooseMoreResult('${m.key}')">${m.label}</button>`).join('')}
-      <button class="btn btn-ghost" onclick="cancelResultMenu()">Back</button>
+  if(menu === 'foulBunt'){
+    return `<div><div class="field-label" style="margin-bottom:8px;">Bunt?</div><div class="chip-row">
+      <button class="type-chip" style="${neutral}" onclick="chooseFoulBunt(true)">Yes</button>
+      <button class="type-chip" style="${neutral}" onclick="chooseFoulBunt(false)">No</button>
     </div></div>`;
   }
-  return `<div><div class="field-label" style="margin-bottom:8px;">Result</div><div class="chip-row">
-    <button class="type-chip" style="${neutral}" onclick="chooseGameResult('ball')">Ball</button>
-    <button class="type-chip" style="${amber}" onclick="chooseGameResult('strike_looking')">Strike (looking)</button>
-    <button class="type-chip" style="${amber}" onclick="chooseGameResult('strike_swinging')">Strike (swinging)</button>
-    <button class="type-chip" style="${neutral}" onclick="chooseGameResult('foul')">Foul</button>
-    <button class="type-chip" style="${green}" onclick="openResultMenu('inPlay')">In Play</button>
-    <button class="type-chip" style="${neutral}" onclick="openResultMenu('more')">More…</button>
+
+  // G1b-r2 update: icon over caption, per SCOREBOOK_GLYPHS above -- the '+'
+  // button alone renders a real glyph (.scorebook-btn-glyph, .flash-letter's
+  // face) instead of an icon.
+  return `<div><div class="field-label" style="margin-bottom:8px;">Result</div><div class="chip-row scorebook-row">
+    ${SCOREBOOK_GLYPHS.map(g => `<button class="scorebook-btn" title="${g.caption}" onclick="chooseScorebookGlyph('${g.code}')">
+      ${g.icon
+        ? `<span class="scorebook-btn-icon" style="mask-image:url('docs/${g.icon}');-webkit-mask-image:url('docs/${g.icon}');"></span>`
+        : `<span class="scorebook-btn-glyph">${g.glyph}</span>`}
+      <span class="scorebook-btn-caption">${g.caption}</span>
+    </button>`).join('')}
   </div></div>`;
+}
+
+// G1b-r2: FIELD_VIEWBOX/FIELD_POSITIONS survive as pure DATA -- the
+// bb_x/bb_y anchor lookup G1b-r's decision 5 established (location = the
+// tapped position's own coordinate from docs/field-diagram.svg, normalized
+// 0-1) is unchanged; only the VISUAL field (fieldSvgMarkup, renderField,
+// the ball markers, the mound Pitch button, fieldPct, FIELD_MOUND, and
+// every .field-* CSS rule) is removed, not the coordinates themselves.
+// Ordered infield-first for the position swipe row below (decision: SS,
+// 2B, 1B, 3B, P, C, LF, CF, RF) -- order has no effect on the anchor
+// lookup (a plain .find by pos), so one list serves both purposes.
+const FIELD_VIEWBOX = { w: 600, h: 520 };
+const FIELD_POSITIONS = [
+  { pos: 'SS', cx: 248, cy: 300 }, { pos: '2B', cx: 352, cy: 300 },
+  { pos: '1B', cx: 405, cy: 358 }, { pos: '3B', cx: 195, cy: 358 },
+  { pos: 'P',  cx: 300, cy: 383 }, { pos: 'C',  cx: 300, cy: 498 },
+  { pos: 'LF', cx: 150, cy: 195 }, { pos: 'CF', cx: 300, cy: 150 }, { pos: 'RF', cx: 450, cy: 195 }
+];
+
+/* ---------- G1b-r2: THE WALK-THROUGH (field picture removed) ----------
+   state.activeSession.fieldPlay holds the in-progress play (autosaved like
+   everything else on activeSession, unchanged architecture -- Resume
+   restores it mid-walkthrough the same way it restores gamePendingPitch).
+     { entry: null|'H'|'O'|'E'|'FC', hitType: null|'1B'|'2B'|'3B'|'HR',
+       positionSeq: [], bbType: null,
+       endings: { batter, 1, 2, 3 -- a runner's own value is 'stay'|'1'|'2'|
+                  '3'|'home'|'outAt1'|'outAt2'|'outAt3'|'outAtHome' },
+       editing: null, pendingOutFor: null }
+   entry starts null now (In Play alone doesn't fix it -- the charter picks
+   Hit/Out/Error/FC as its own first question, chooseWalkthroughEntry
+   below). G1b-r2f retired Fix/fixOpen, the standalone DP toggle, the
+   position-sequence auto-inference, and the manually-tapped DP/DP(Pickoff)/
+   DP(FC) reasons (G1b-r2e) -- nothing about WHY a runner is out is ever
+   tapped directly any more. "Out" for a runner now asks one follow-up, at
+   which base (pendingOutFor gates that second picker), and the whole
+   play's own story -- doubled off, fielder's choice, double play, triple
+   play -- is DERIVED fresh every render (fieldPlayOutLabel/runnerOutKind)
+   from where each runner (and the batter) actually ended up, the same
+   "derived, never tapped" precedent sacrifice already uses. "What happened
+   to the runners?" (renderFieldFlow) still always shows inline whenever a
+   base is occupied, for every entry. Everything else -- fieldBatterResultKey,
+   refreshFieldPrefill, prefillRunnerEndings, leadForcedOutEndings (still
+   used by the FC entry's own prefill), BATTER_RESULT_TO_BASE,
+   applyRunnerAdvances, forcedWalkAdvances -- is REUSED UNCHANGED from
+   G1b/G1b-r; only what the charter taps and sees to get there is new. */
+// entry fixes the batter's own outcome for O/E/FC immediately (out/error/
+// fc); only H needs a further tap (hit type) before it's known. Returns
+// null for H before that tap -- callers already handle a null key (no
+// prefill yet, Pitch stays disabled with 'Choose the hit type').
+function fieldBatterResultKey(fp){
+  if(fp.entry === 'H') return fp.hitType;
+  if(fp.entry === 'O') return 'out';
+  if(fp.entry === 'E') return 'error';
+  if(fp.entry === 'FC') return 'fc';
+  return null;
+}
+function baseCodeFromNumber(n){
+  return n === 0 ? 'out' : n === 4 ? 'home' : String(n);
+}
+// Decision 7: recomputes the WHOLE endings object (batter + every occupied
+// runner) from scratch, prefilled per decision 3 -- reuses
+// prefillRunnerEndings/BATTER_RESULT_TO_BASE verbatim (below), the exact
+// same functions G1b's original flow used, so the prefill RULES themselves
+// (single: everyone up one, FC: lead runner out, etc.) are untouched by
+// this revision, only how they're presented and corrected.
+function refreshFieldPrefill(fp){
+  const key = fieldBatterResultKey(fp);
+  if(!key){ fp.endings = {}; return; }
+  const runnerPrefill = prefillRunnerEndings(state.activeSession.runners, key);
+  fp.endings = Object.assign({ batter: baseCodeFromNumber(BATTER_RESULT_TO_BASE[key]) }, runnerPrefill);
+}
+// G1b-r2: In Play alone no longer fixes entry -- it opens the walkthrough
+// with entry still null, showing Hit/Out/Error/FC as its own first
+// question (chooseWalkthroughEntry). Tap count is exactly one more than
+// G1b-r's H/O glyphs (In Play + the category, where G1b-r had one glyph);
+// acceptance 31/32 confirm this against the packet's own counts.
+window.openFieldFlow = async function(){
+  if(!state.activeSession.gamePendingPitch) return; // the pitch's own zone tap must already exist
+  state.activeSession.fieldPlay = {
+    entry: null, hitType: null, positionSeq: [], bbType: null,
+    endings: {}, editing: null, pendingOutFor: null
+  };
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.cancelFieldFlow = async function(){
+  state.activeSession.fieldPlay = null;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// Hit/Out/Error/FC -- entry codes are unchanged internally ('H'/'O'/'E'/
+// 'FC') from G1b-r, only the CHOICE presentation is new (a walkthrough
+// question, not four separate top-row glyphs).
+window.chooseWalkthroughEntry = async function(entry){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  fp.entry = entry;
+  fp.hitType = null;
+  if(entry !== 'H') refreshFieldPrefill(fp); // O/E/FC's batter outcome is fixed already; H waits for a hit-type tap
+  else fp.endings = {};
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.chooseFieldHitType = async function(hitType){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp || fp.entry !== 'H') return;
+  fp.hitType = hitType;
+  refreshFieldPrefill(fp);
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// Decision 8: one unified list, no separate "correct the primary" control
+// like G1b's original chooseFieldFielder/addFieldFielderToSequence --
+// tapping a chip not yet in the sequence appends it (the FIRST tap becomes
+// the batted-ball location AND the primary `fielder` column at commit,
+// per decision 5; anything after is the rest of pitches.fielders, e.g.
+// SS then 1B stores as fielder='SS', fielders='1B' -- "6-3"). Tapping a
+// chip already in the sequence removes it, per decision 8's own wording.
+// Capped at 4, generous headroom above any real play (a triple play is 3).
+// G1b-r2f: no longer touches fp.endings -- there's no more position-
+// sequence auto-inference to re-run (retired; see this section's own
+// header comment). Position is now purely "who fielded it," independent of
+// who's out and why, which the runner picker's own "at which base" answers.
+window.toggleFieldPosition = async function(pos){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  const idx = fp.positionSeq.indexOf(pos);
+  if(idx === -1){
+    if(fp.positionSeq.length < 4) fp.positionSeq.push(pos);
+  } else {
+    fp.positionSeq.splice(idx, 1);
+  }
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.chooseFieldBBType = async function(type){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  fp.bbType = type;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// Decision 7: tapping the B/R1/R2/R3 chip opens (or, tapped again, closes)
+// its own destination picker; tapping a destination sets it and closes.
+// key is 'batter' or 1/2/3 -- see renderFieldFlow's own chip markup for how
+// each is passed.
+window.openFieldEndingPicker = async function(key){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  fp.editing = (fp.editing === key) ? null : key;
+  // Opening (or re-toggling) the plain destination picker always supersedes
+  // any in-progress "at which base were they out" follow-up (see
+  // setFieldEnding/setFieldOutAtBase below) -- this is how a charter backs
+  // out of that follow-up if they tapped Out by mistake.
+  fp.pendingOutFor = null;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// G1b-r2f: a runner tapping Out never finalizes an ending by itself --
+// Joel's own rule is that doubled-off/fielder's-choice/double-or-triple-play
+// are DERIVED, never tapped, purely from comparing WHERE each runner was put
+// out to where they started and to how many total outs the play recorded.
+// So Out just opens a second, base-specific follow-up (pendingOutFor) --
+// see the "at which base?" picker in renderFieldFlow and
+// setFieldOutAtBase below, which is what actually writes the ending. The
+// batter has no such follow-up: 'out' finalizes immediately for him, same
+// as any other destination.
+window.setFieldEnding = async function(key, code){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  if(code === 'out' && key !== 'batter'){
+    fp.pendingOutFor = key;
+    fp.editing = null;
+  } else {
+    // A runner tapping his OWN current base is the same as "stays" --
+    // stored as the existing 'stay' sentinel (not the numeral) so it's
+    // excluded from runner_advances at commit exactly like an untouched
+    // prefill is, and so the collision check in fieldPlayDisabledReason
+    // doesn't see it as a destination at all.
+    if(typeof key === 'number' && code === String(key)) code = 'stay';
+    fp.endings[key] = code;
+    fp.editing = null;
+  }
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// The "at which base" follow-up itself (base is 1/2/3/4, 4 = home).
+// Stored as outAt1/outAt2/outAt3/outAtHome -- runnerOutKind and
+// fieldPlayOutLabel (both above walkthroughOutNumbers) derive doubled-off/
+// force/tag and FC/DP/TP from this plus the rest of the play, every render,
+// never tapped directly.
+window.setFieldOutAtBase = async function(key, base){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  fp.endings[key] = (base === 4) ? 'outAtHome' : `outAt${base}`;
+  fp.pendingOutFor = null;
+  fp.editing = null;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// Decision 4's prefill, keyed by battertResult, applied to whichever bases
+// were actually occupied before this play. 'stay' means exactly that --
+// not a placeholder for "no runner" (only occupied bases get an entry at
+// all). Unchanged from G1b -- reused verbatim by refreshFieldPrefill above.
+const BATTER_RESULT_TO_BASE = { out: 0, '1B': 1, '2B': 2, '3B': 3, HR: 4, error: 1, fc: 1 };
+function prefillRunnerEndings(runners, batterResult){
+  const endings = {};
+  const occupiedBases = [1, 2, 3].filter(b => runners[b]);
+  if(!occupiedBases.length) return endings;
+  switch(batterResult){
+    case 'out':
+      // "Out: runners hold."
+      occupiedBases.forEach(b => { endings[b] = 'stay'; });
+      break;
+    case '1B':
+    case 'error':
+      // "A single: batter to 1st, every runner up one base." / "Error: like a single."
+      occupiedBases.forEach(b => { const to = b + 1; endings[b] = to >= 4 ? 'home' : String(to); });
+      break;
+    case '2B':
+      // "Double: two."
+      occupiedBases.forEach(b => { const to = b + 2; endings[b] = to >= 4 ? 'home' : String(to); });
+      break;
+    case '3B':
+    case 'HR':
+      // "Triple: everyone scores... HR: everyone scores."
+      occupiedBases.forEach(b => { endings[b] = 'home'; });
+      break;
+    case 'fc':
+      // "Fielder's choice: batter to 1st, lead runner out." The batter
+      // taking 1st still forces the same chain a walk would (decision 3's
+      // forcedWalkAdvances) -- FC just means the defense converts the
+      // FURTHEST-ALONG forced runner into an out instead of letting the
+      // chain advance him. Caught in testing: prefilling every non-lead
+      // runner as 'stay' put a trailing runner from 1st on the same base
+      // the batter is also taking (a real collision) whenever more than
+      // one runner was in the force chain -- e.g. runners on 1st AND 2nd,
+      // lead retired at 2nd, but the runner from 1st has nowhere to
+      // "stay" once the batter occupies 1st. Reusing the walk's own chain
+      // and only converting its lead link to an out fixes this the same
+      // way for every occupied-base combination, not just the single-
+      // runner case that happened not to expose it.
+      Object.assign(endings, leadForcedOutEndings(runners));
+      break;
+  }
+  return endings;
+}
+// Shared by FC's prefill above (still the only caller after G1b-r2f retired
+// the position-sequence double-play auto-inference that used to reuse
+// this too): given the walk's own forced-advance chain, converts ONLY its
+// lead (highest `from`) link to an out -- encoded as outAtX (G1b-r2f;
+// "at the base they were forced to," so runnerOutKind reads it as a real
+// force and fieldPlayOutLabel can label it FC on its own, no separate tap
+// needed) -- letting every other forced runner advance normally. {} when
+// there's no force (1st unoccupied) -- a fielder's choice requires one.
+function leadForcedOutEndings(runners){
+  const endings = {};
+  const chain = forcedWalkAdvances({ runners });
+  if(chain.length){
+    const lead = chain.reduce((a, b) => (b.from > a.from ? b : a));
+    chain.forEach(mv => {
+      endings[mv.from] = (mv.from === lead.from)
+        ? (lead.to === 4 ? 'outAtHome' : `outAt${lead.to}`)
+        : (mv.to === 4 ? 'home' : String(mv.to));
+    });
+  }
+  return endings;
+}
+// Standard scorebook fielding numbers, for the DP summary line below only
+// -- nowhere else in this app uses digit notation (decision 8's own comment
+// on addFieldFielderToSequence's predecessor already rejected converting
+// positions to numbers for the stored data; this is display-only).
+const POSITION_SCOREBOOK_NUMBER = { P: 1, C: 2, '1B': 3, '2B': 4, '3B': 5, SS: 6, LF: 7, CF: 8, RF: 9 };
+// G1b-r2: the resulting base state, appended to the summary line -- the
+// packet's own Fix example quotes it verbatim ("6-4-3 . 2 out on the play .
+// bases empty").
+function basesSummaryText(fp){
+  const s = state.activeSession;
+  const key = fieldBatterResultKey(fp);
+  const batterTo = key ? BATTER_RESULT_TO_BASE[key] : null;
+  const finalBases = [];
+  [1, 2, 3].forEach(b => {
+    if(!s.runners[b]) return;
+    const ending = fp.endings[b] || 'stay';
+    if(ending === 'stay') finalBases.push(b);
+    else if(ending === '1' || ending === '2' || ending === '3') finalBases.push(Number(ending));
+  });
+  if(batterTo === 1 || batterTo === 2 || batterTo === 3) finalBases.push(batterTo);
+  if(!finalBases.length) return 'bases empty';
+  if(new Set(finalBases).size === 3) return 'bases loaded';
+  return [...new Set(finalBases)].sort((a, b) => a - b).map(b => `R${b}`).join(', ');
+}
+// Decision 7's one-line summary, redrawn on every render from fp.endings --
+// batterResultKey may still be null (no entry chosen, or H before hitType).
+// G1b-r2f: a DP/TP play gets its own scorebook-notation line instead
+// ("6-4-3 . 2 out on the play", quoted verbatim from the packet, singular
+// "out" included) -- the label is DERIVED (fieldPlayOutLabel), never
+// tapped, from wherever every runner (and the batter) actually ended up.
+function fieldPlaySummary(fp){
+  const s = state.activeSession;
+  const key = fieldBatterResultKey(fp);
+  const label = fieldPlayOutLabel(fp);
+  const outsThisPlay = [1, 2, 3].filter(b => s.runners[b] && runnerOutKind(b, fp.endings[b]) !== null).length
+    + (key === 'out' ? 1 : 0);
+  if(label === 'DP' || label === 'TP'){
+    const notation = fp.positionSeq.map(pos => POSITION_SCOREBOOK_NUMBER[pos] || pos).join('-');
+    return `${notation} · ${outsThisPlay} out on the play · ${basesSummaryText(fp)}`;
+  }
+  const batterLabel = {
+    out: 'Batter out', '1B': 'Batter to 1st', '2B': 'Batter to 2nd', '3B': 'Batter to 3rd',
+    HR: 'Batter scores (HR)', error: 'Batter to 1st (error)', fc: 'Batter to 1st (FC)'
+  }[key] || (!fp.entry ? 'Choose what happened' : fp.entry === 'H' ? 'Choose the hit type' : '');
+  const parts = [batterLabel];
+  [1, 2, 3].forEach(b => {
+    if(!s.runners[b]) return;
+    const ending = fp.endings[b] || 'stay';
+    if(ending === 'stay') return;
+    const kind = runnerOutKind(b, ending);
+    const baseLabel = kind ? (kind === 'doubled_off' ? 'doubled off' : 'out')
+      : (ending === 'home' ? 'scores' : 'to ' + (ending === '1' ? '1st' : ending === '2' ? '2nd' : '3rd'));
+    parts.push(`R${b} ${baseLabel}`);
+  });
+  parts.push(`${outsThisPlay} out${outsThisPlay === 1 ? '' : 's'}`);
+  if(key) parts.push(basesSummaryText(fp));
+  return parts.filter(Boolean).join(' · ');
+}
+// Decision 9's validation, run fresh on every render (not just at commit)
+// so the Pitch button's disabled state and its one-line reason are always
+// in sync with whatever's been tapped so far, across every row regardless
+// of order.
+function fieldPlayDisabledReason(fp){
+  if(!fp) return 'No play in progress';
+  // G1b-r2: entry itself is no longer fixed the moment the walkthrough
+  // opens (In Play alone doesn't say Hit/Out/Error/FC any more).
+  if(!fp.entry) return 'Choose Hit, Out, Error, or FC';
+  if(fp.entry === 'H' && !fp.hitType) return 'Choose the hit type';
+  if(!fp.positionSeq.length) return 'Choose where it was fielded';
+  if(!fp.bbType) return 'Choose the batted-ball type';
+  const key = fieldBatterResultKey(fp);
+  const batterEnding = fp.endings.batter;
+  if(!key || !batterEnding) return 'Choose what happened to the batter';
+  // G1b-r2f: tapping Out for a runner opens the "at which base" follow-up
+  // (setFieldEnding/setFieldOutAtBase) rather than finalizing immediately --
+  // the play isn't fully recorded until that follow-up is answered.
+  if(fp.pendingOutFor !== null && fp.pendingOutFor !== undefined){
+    return 'Choose which base the runner was out at';
+  }
+  const destinationBases = [1, 2, 3]
+    .map(b => (state.activeSession.runners[b] ? fp.endings[b] : null))
+    .filter(e => e === '1' || e === '2' || e === '3');
+  if(batterEnding === '1' || batterEnding === '2' || batterEnding === '3') destinationBases.push(batterEnding);
+  if(new Set(destinationBases).size !== destinationBases.length){
+    return "Two runners can't end on the same base";
+  }
+  const outsThisPlay = [1, 2, 3].filter(b => state.activeSession.runners[b] && runnerOutKind(b, fp.endings[b]) !== null).length
+    + (batterEnding === 'out' ? 1 : 0);
+  if(state.activeSession.outs + outsThisPlay > 3){
+    return "That's more outs than are left in the inning";
+  }
+  return null;
+}
+window.commitFieldPlay = async function(){
+  const s = state.activeSession;
+  const fp = s.fieldPlay;
+  const pending = s.gamePendingPitch;
+  if(!fp || !pending || fieldPlayDisabledReason(fp)) return;
+
+  const key = fieldBatterResultKey(fp);
+  const batterTo = BATTER_RESULT_TO_BASE[key];
+  const advances = [];
+  for(const b of [1, 2, 3]){
+    if(!s.runners[b]) continue;
+    const ending = fp.endings[b];
+    if(!ending || ending === 'stay') continue;
+    const isOut = ending === 'out' || OUT_AT_BASE_CODE[ending] !== undefined;
+    advances.push({ from: b, to: isOut ? 0 : ending === 'home' ? 4 : Number(ending) });
+  }
+  // Decision 13: sacrifice stays derived, never tapped. A run scoring on a
+  // fly out is an SF; a runner advancing on a bunt out is a SAC. Only
+  // possible when the batter himself is out.
+  let sacrifice = null;
+  if(batterTo === 0){
+    if(fp.bbType === 'fly' && advances.some(a => a.to === 4)) sacrifice = 'SF';
+    else if(fp.bbType === 'bunt' && advances.some(a => a.to !== 0)) sacrifice = 'SAC';
+  }
+  const inPlayOutcome = key === 'out' ? 'out' : key === 'error' ? 'error' : key === 'fc' ? 'fc' : 'hit';
+  const hitType = ['1B', '2B', '3B', 'HR'].includes(key) ? key : null;
+
+  const chartingPerspective = sessionPerspective(s);
+  const batterSide = sessionBatterSide(s);
+  if(s.pitches.length === 0) s.usesRadarGun = sessionUsesRadarGun(s);
+
+  // Decision 5: bb_x/bb_y are the FIRST tapped position's own anchor
+  // coordinate (the ball's location), not a precise tap -- bb_from_position
+  // is true for every row built through this flow. `fielder` is that same
+  // first position; `fielders` is everything tapped after it, dash-joined
+  // (e.g. primary 'SS', fielders '1B' for a 6-3), matching pitches.fielders'
+  // own documented convention unchanged from G1b.
+  const primaryPos = fp.positionSeq[0];
+  const posAnchor = FIELD_POSITIONS.find(p => p.pos === primaryPos);
+  const bbX = posAnchor ? Math.round((posAnchor.cx / FIELD_VIEWBOX.w) * 10000) / 10000 : null;
+  const bbY = posAnchor ? Math.round((posAnchor.cy / FIELD_VIEWBOX.h) * 10000) / 10000 : null;
+
+  s.pitches.push({
+    id: genUUID(), seq: s.nextSeq++, kind: 'game',
+    // G1b-r addendum (velocity): carries over whatever was entered while
+    // this play was being walked through (gamePendingPitch.velo).
+    type: state.selectedType, velo: pending.velo,
+    targetRow: null, targetCol: null,
+    actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
+    accuracyMode: null, inAccuracyZone: null, accuracyZoneCells: null,
+    batterSide, ts: Date.now(),
+    result: 'in_play', inPlayOutcome, hitType,
+    fielder: primaryPos || null, fielders: fp.positionSeq.length > 1 ? fp.positionSeq.slice(1).join('-') : null,
+    delivery: s.delivery,
+    inning: s.inning, outsBefore: s.outs, ballsBefore: s.balls, strikesBefore: s.strikes, atBatIndex: s.atBatIndex,
+    runnersBefore: runnersBitmask(s.runners),
+    bbType: fp.bbType, bbX, bbY, bbFromPosition: true,
+    batterTo, runnerAdvances: advances, sacrifice,
+    outsOnPlay: 0, runsScored: 0 // filled in immediately below, once applyRunnerAdvances has run
+  });
+  const pushedPitch = s.pitches[s.pitches.length - 1];
+  const { outsOnPlay, runsScored } = applyRunnerAdvances(s, advances, batterTo);
+  pushedPitch.outsOnPlay = outsOnPlay;
+  pushedPitch.runsScored = runsScored;
+
+  // Decision: "for in_play, bypass [applyGameResultProgression] -- outs and
+  // runs come from the runner endings." Same tail bookkeeping that
+  // function's switch cases share, applied directly here instead of
+  // routing an already-fully-resolved play back through a result-string
+  // switch that was never built to know about multi-out plays.
+  s.outs += outsOnPlay;
+  if(s.outs >= 3){ s.inning++; s.outs = 0; s.runners = { 1: false, 2: false, 3: false }; }
+  s.atBatIndex++;
+  s.balls = 0;
+  s.strikes = 0;
+  s.delivery = null;
+
+  s.gamePendingPitch = null;
+  s.gameResultMenu = null;
+  s.gamePendingOutcome = null;
+  s.gamePendingHitType = null;
+  s.fieldPlay = null;
+  // G1b-r2a: unlike a direct-record glyph (B/K/ꓘ/F), which leaves the panel
+  // open for a velocity-only review until Next Pitch, committing a field
+  // play closes the panel immediately -- Next Pitch IS the commit here, not
+  // a second step after it. Velocity for a field play is edited during the
+  // walkthrough itself, while the panel's already open for other reasons.
+  s.panelOpen = false;
+  state.veloTargetIdx = s.pitches.length - 1;
+  await storSet(draftKey(), s);
+  render();
+};
+
+// G1b-r2a: the panel's own shared "Next Pitch" button (screen order 5, its
+// own section below the velocity strip) -- one button for two situations.
+// Mid-walkthrough, it delegates to the existing commitFieldPlay (which now
+// also closes the panel). Otherwise it's either disabled (a result hasn't
+// been chosen yet -- the result row is still showing) or, once a direct-
+// record glyph has already pushed a pitch and the panel is only open for a
+// velocity review, a plain close.
+function nextPitchDisabledReason(){
+  const s = state.activeSession;
+  if(s.fieldPlay) return fieldPlayDisabledReason(s.fieldPlay);
+  if(s.gamePendingPitch) return 'Choose a result first';
+  return null;
+}
+window.nextPitch = async function(){
+  const s = state.activeSession;
+  if(s.fieldPlay) return commitFieldPlay();
+  if(s.gamePendingPitch) return; // disabled -- see nextPitchDisabledReason
+  s.panelOpen = false;
+  await storSet(draftKey(), s);
+  render();
+};
+
+/* ---------- G1b-r2: SCOREBOOK CELLS ----------
+   Inline SVG, display-only (never a tap target -- acceptance 36), shown
+   only alongside an active walkthrough (renderGameSessionView's own
+   resultOrWalkthrough). One big cell for the batter (their PENDING outcome,
+   drawn in the accent color until Pitch); one small cell per occupied base,
+   showing that runner's own EXISTING path (ink -- they already reached it
+   on some earlier, already-committed play) plus this play's PROPOSED
+   movement for them (accent), per fp.endings. */
+// Position digits for scorebook notation ONLY (P1 C2 1B3 2B4 3B5 SS6 LF7
+// CF8 RF9) -- distinct from the swipe row's own letter labels; reuses the
+// same mapping G1b-r's addendum already built for the DP summary line.
+function fielderNotation(seq){
+  return (seq || []).filter(Boolean).map(p => POSITION_SCOREBOOK_NUMBER[p] || p).join('-');
+}
+// G1b-r2f: a runner's "out" ending now carries WHERE (outAt1/outAt2/
+// outAt3/outAtHome, set via the "at which base" follow-up -- see
+// renderFieldFlow/setFieldEnding) instead of a flat 'out'. Nothing about
+// WHY is ever tapped directly any more; it's derived from comparing that
+// location to the runner's own starting base, exactly like sacrifice is
+// derived elsewhere in this file, never tapped.
+const OUT_AT_BASE_CODE = { outAt1: 1, outAt2: 2, outAt3: 3, outAtHome: 4 };
+// 'doubled_off' (out at their OWN base -- never actually left it), 'force'
+// (out at the very next base -- the standard force), or 'tag' (out further
+// along than that -- thrown out taking an extra base). null if not an out
+// at all (holding, advancing safely, or scored).
+function runnerOutKind(startBase, ending){
+  const atBase = OUT_AT_BASE_CODE[ending];
+  if(atBase === undefined) return null;
+  if(atBase === startBase) return 'doubled_off';
+  if(atBase === startBase + 1) return 'force';
+  return 'tag';
+}
+// The whole play's own label, from EVERY out on it -- the batter's (fixed
+// by entry: only 'O' ever means the batter himself is out) plus every
+// runner's. Exactly one forced runner and nobody else out = fielder's
+// choice; two total outs = double play; three or more = triple play.
+// "Total outs" counts any kind (a caught fly plus a runner doubled off is
+// still two outs on the same play), but only a FORCE can ever read as
+// fielder's choice specifically -- a double play with nobody forced (say,
+// two runners independently doubled off) still counts by total, just never
+// mislabeled FC.
+function fieldPlayOutLabel(fp){
+  const s = state.activeSession;
+  const key = fieldBatterResultKey(fp);
+  const batterOut = key ? BATTER_RESULT_TO_BASE[key] === 0 : false;
+  const runnerKinds = [1, 2, 3].filter(b => s.runners[b]).map(b => runnerOutKind(b, fp.endings[b])).filter(Boolean);
+  const forcedCount = runnerKinds.filter(k => k === 'force').length;
+  const totalOuts = (batterOut ? 1 : 0) + runnerKinds.length;
+  if(forcedCount === 1 && totalOuts === 1) return 'FC';
+  if(totalOuts === 2) return 'DP';
+  if(totalOuts >= 3) return 'TP';
+  return null;
+}
+// Which out number (within the CURRENT inning) each out on this play would
+// be -- runners (in base order) first, then the batter, a simple, stated
+// convention rather than an attempt to reconstruct real relay timing.
+function walkthroughOutNumbers(fp){
+  const s = state.activeSession;
+  const numbers = {};
+  let next = s.outs + 1;
+  [1, 2, 3].forEach(b => { if(s.runners[b] && runnerOutKind(b, fp.endings[b]) !== null) numbers[b] = next++; });
+  const key = fieldBatterResultKey(fp);
+  if(key && BATTER_RESULT_TO_BASE[key] === 0) numbers.batter = next++;
+  return numbers;
+}
+// G1b-r2a: the packet's own notation list distinguishes a single-fielder
+// FLY/LINE/POP out (F8/L6/P4) from a single-fielder GROUND out, which is
+// unassisted (U3) -- shared by the live cell (below) and the historical one
+// (scorebookBatterCode) so a routine 1-touch groundout reads the same way
+// whether it's still pending or already in the log.
+function outNotation(seq, bbType){
+  if(seq.length === 1 && (bbType === 'fly' || bbType === 'line' || bbType === 'pop')){
+    return { fly: 'F', line: 'L', pop: 'P' }[bbType] + (POSITION_SCOREBOOK_NUMBER[seq[0]] || '');
+  }
+  if(seq.length === 1 && bbType === 'ground') return 'U' + (POSITION_SCOREBOOK_NUMBER[seq[0]] || '');
+  return fielderNotation(seq);
+}
+// The batter's own top-left code for the PENDING play being walked through.
+// DP/TP: the batter gets the full fielding sequence (fieldPlayOutLabel
+// derives the label from every out on the play, not a tapped flag).
+function walkthroughBatterCode(fp){
+  const key = fieldBatterResultKey(fp);
+  if(!key) return '';
+  if(key === 'out'){
+    const label = fieldPlayOutLabel(fp);
+    return (label === 'DP' || label === 'TP') ? fielderNotation(fp.positionSeq) : outNotation(fp.positionSeq, fp.bbType);
+  }
+  if(key === 'error') return 'E' + (POSITION_SCOREBOOK_NUMBER[fp.positionSeq[0]] || '');
+  if(key === 'fc') return 'FC';
+  return key; // '1B'/'2B'/'3B'/'HR'
+}
+// G1b-r2f: a runner's own code comes from HOW they were out (runnerOutKind,
+// derived from where the charter said they were out vs. their own starting
+// base) -- doubled off shows "DO"; a force shows the play's own label
+// (fieldPlayOutLabel: FC with nobody else out, DP/TP with more); anything
+// else (thrown out taking an extra base) is just a plain out, no special
+// label invented for it.
+function walkthroughRunnerOutCode(fp, base){
+  const kind = runnerOutKind(base, fp.endings[base]);
+  if(kind === 'doubled_off') return 'DO';
+  if(kind === 'force') return fieldPlayOutLabel(fp) || 'Out';
+  if(kind === 'tag') return 'Out';
+  return '';
+}
+function walkthroughBBCode(fp){
+  const bbCode = { ground: 'GB', line: 'LD', fly: 'FB', pop: 'PU', bunt: 'BNT' }[fp.bbType];
+  if(!bbCode) return '';
+  const label = fieldPlayOutLabel(fp);
+  return (label === 'DP' || label === 'TP') ? `${bbCode} · ${label}` : bbCode;
+}
+// Historical, best-effort: how the runner CURRENTLY on this base most
+// recently reached it -- scans pitches+events (newest seq first) for the
+// last entry that placed a runner on this exact base, and reads that same
+// entry's own result to build the code. Display-only; doesn't attempt a
+// full per-segment provenance chain through multiple earlier advances.
+const GAME_EVENT_SHORT_CODE = {
+  stolen_base: 'SB', caught_stealing: 'CS', pickoff: 'PO', wild_pitch: 'WP',
+  passed_ball: 'PB', balk: 'BLK', intentional_walk: 'IBB', auto_ball: 'BB', auto_strike: 'K'
+};
+function scorebookBatterCode(pt){
+  if(!pt) return '';
+  switch(pt.result){
+    case 'ball': return pt.batterTo === 1 ? 'BB' : '';
+    case 'strike_swinging': return pt.batterTo === 0 ? 'K' : '';
+    case 'strike_looking': return pt.batterTo === 0 ? 'ꓘ' : '';
+    case 'foul_tip': return pt.batterTo === 0 ? 'K' : '';
+    case 'hbp': return 'HBP';
+    case 'interference': return 'CI';
+    case 'batter_interference': return 'BI';
+    case 'dropped_third': return pt.inPlayOutcome === 'out' ? 'K' : `D3 ${fielderNotation([pt.fielder])}`;
+    case 'in_play': {
+      const seq = [pt.fielder, ...(pt.fielders ? pt.fielders.split('-') : [])];
+      if(pt.hitType) return pt.hitType;
+      if(pt.inPlayOutcome === 'error') return 'E' + (POSITION_SCOREBOOK_NUMBER[pt.fielder] || '');
+      if(pt.inPlayOutcome === 'fc') return 'FC';
+      if(pt.sacrifice === 'SF') return 'SF' + (POSITION_SCOREBOOK_NUMBER[pt.fielder] || '');
+      if(pt.sacrifice === 'SAC') return `SAC ${fielderNotation(seq)}`;
+      return outNotation(seq, pt.bbType);
+    }
+    default: return '';
+  }
+}
+function deriveRunnerReachCode(base){
+  const s = state.activeSession;
+  const combined = [
+    ...s.pitches.map(pt => ({ seq: pt.seq, pt })),
+    ...(s.events || []).map(ev => ({ seq: ev.seq, ev }))
+  ].sort((a, b) => b.seq - a.seq);
+  for(const entry of combined){
+    if(entry.pt && (entry.pt.batterTo === base || (entry.pt.runnerAdvances || []).some(a => a.to === base))){
+      return scorebookBatterCode(entry.pt);
+    }
+    if(entry.ev && (entry.ev.runnerAdvances || []).some(a => a.to === base)){
+      return GAME_EVENT_SHORT_CODE[entry.ev.eventType] || '';
+    }
+  }
+  return '';
+}
+// Diamond geometry (a 0-100 box, home at bottom): segment i connects base i
+// to base i+1, wrapping 3 -> home. "Reached" segments come from how far the
+// runner already is (0-3); "pending" segments extend from there to this
+// play's proposed destination (numeric 1/2/3, 'home', or none for
+// 'out'/'stay'/unset).
+// G1b-r2a: a perfectly symmetric diamond (all four points equidistant from
+// center), matching the reference's own SVG points proportionally --
+// staging's original was slightly skewed (home closer to the edge than the
+// other three).
+const SCOREBOOK_DIAMOND_PTS = { home: [50, 95], 1: [95, 50], 2: [50, 5], 3: [5, 50] };
+const SCOREBOOK_SEGMENTS = [['home', 1], [1, 2], [2, 3], [3, 'home']];
+function reachedSegmentIndices(base){
+  return Array.from({ length: Math.max(0, Math.min(3, base)) }, (_, i) => i);
+}
+function pendingSegmentIndices(fromBase, toCode){
+  if(!toCode || toCode === 'stay' || toCode === 'out' || OUT_AT_BASE_CODE[toCode] !== undefined) return [];
+  const toBase = toCode === 'home' ? 4 : Number(toCode);
+  const idx = [];
+  for(let i = fromBase; i < toBase; i++) idx.push(i);
+  return idx;
+}
+// G1b-r2a: matches the reference's own text treatment -- top-left (how the
+// batter/runner reached or was retired) is bold and full ink; top-right
+// (batted-ball code) and bottom-left (the count) are muted, a secondary
+// reading. Reference draws these as absolutely-positioned HTML spans over
+// the cell rather than SVG text; kept as SVG text here (same visual result,
+// simpler to keep in one element, scales cleanly) -- noted as a deliberate,
+// non-literal match.
+function renderScorebookCellSvg({ size, reachedIdx, pendingIdx, scoredPending, outNumber, topLeft, topRight, bottomLeft }){
+  const diamondPts = `${SCOREBOOK_DIAMOND_PTS[1].join(',')} ${SCOREBOOK_DIAMOND_PTS[2].join(',')} ${SCOREBOOK_DIAMOND_PTS[3].join(',')} ${SCOREBOOK_DIAMOND_PTS.home.join(',')}`;
+  const seg = (i, cls) => `<path class="scorebook-cell-path ${cls}" d="M ${SCOREBOOK_DIAMOND_PTS[SCOREBOOK_SEGMENTS[i][0]].join(' ')} L ${SCOREBOOK_DIAMOND_PTS[SCOREBOOK_SEGMENTS[i][1]].join(' ')}"/>`;
+  const outCircle = outNumber ? `<circle class="scorebook-cell-out-circle" cx="50" cy="50" r="14"/><text class="scorebook-cell-out-num" x="50" y="54">${outNumber}</text>` : '';
+  const sizeClass = size === SCOREBOOK_CELL_SMALL ? ' small' : '';
+  return `<div class="scorebook-cell${sizeClass}"><svg viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-hidden="true">
+    <polygon class="scorebook-cell-diamond" points="${diamondPts}"/>
+    ${scoredPending ? `<polygon class="scorebook-cell-scored pending" points="${diamondPts}"/>` : ''}
+    ${reachedIdx.map(i => seg(i, 'committed')).join('')}
+    ${pendingIdx.map(i => seg(i, 'pending')).join('')}
+    ${outCircle}
+    ${topLeft ? `<text class="scorebook-cell-code strong" x="4" y="12">${escHtml(topLeft)}</text>` : ''}
+    ${topRight ? `<text class="scorebook-cell-code muted" x="96" y="12" text-anchor="end">${escHtml(topRight)}</text>` : ''}
+    ${bottomLeft ? `<text class="scorebook-cell-code muted" x="4" y="96">${escHtml(bottomLeft)}</text>` : ''}
+  </svg></div>`;
+}
+// G1b-r2a: sizes match the reference exactly (170 big / 80 small, vs the
+// original 72/48) -- confirmed via screenshot that both still fit
+// comfortably at 320px alongside the walkthrough column.
+const SCOREBOOK_CELL_BIG = 170;
+const SCOREBOOK_CELL_SMALL = 80;
+function renderScorebookCells(fp){
+  const s = state.activeSession;
+  const key = fieldBatterResultKey(fp);
+  const batterTo = key ? BATTER_RESULT_TO_BASE[key] : null;
+  const outNumbers = walkthroughOutNumbers(fp);
+
+  const runnerCells = [1, 2, 3].filter(b => s.runners[b]).map(b => {
+    const ending = fp.endings[b];
+    return `<div>
+      <div class="scorebook-cell-label">R${b}</div>
+      ${renderScorebookCellSvg({
+        size: SCOREBOOK_CELL_SMALL,
+        reachedIdx: reachedSegmentIndices(b),
+        pendingIdx: pendingSegmentIndices(b, ending),
+        scoredPending: ending === 'home',
+        outNumber: outNumbers[b] || null,
+        topLeft: (runnerOutKind(b, ending) !== null) ? walkthroughRunnerOutCode(fp, b) : deriveRunnerReachCode(b),
+        topRight: null, bottomLeft: null
+      })}
+    </div>`;
+  }).join('');
+
+  const batterCell = `<div>
+    <div class="scorebook-cell-label">Batter</div>
+    ${renderScorebookCellSvg({
+      size: SCOREBOOK_CELL_BIG,
+      reachedIdx: [],
+      pendingIdx: pendingSegmentIndices(0, batterTo === null ? null : baseCodeFromNumber(batterTo)),
+      scoredPending: batterTo === 4,
+      outNumber: outNumbers.batter || null,
+      topLeft: walkthroughBatterCode(fp),
+      topRight: walkthroughBBCode(fp),
+      bottomLeft: `${s.balls}-${s.strikes}`
+    })}
+  </div>`;
+
+  return runnerCells + batterCell;
+}
+// G1b-r2a: the panel shows cells whenever it's open, not only mid-
+// walkthrough -- when there's no active fieldPlay (still choosing a glyph,
+// or reviewing velocity after one already recorded), cells fall back to a
+// simpler, committed-only view: runners' own existing reach codes (no
+// pending/yellow anything, since there's no in-progress play to preview),
+// and the batter's cell showing whatever the LAST pitch in the CURRENT
+// at-bat already recorded (blank if the at-bat is fresh, e.g. balls/strikes
+// still building with nothing resolved yet).
+function renderPanelScorebookCells(){
+  const s = state.activeSession;
+  if(s.fieldPlay) return renderScorebookCells(s.fieldPlay);
+
+  const runnerCells = [1, 2, 3].filter(b => s.runners[b]).map(b => `<div>
+    <div class="scorebook-cell-label">R${b}</div>
+    ${renderScorebookCellSvg({
+      size: SCOREBOOK_CELL_SMALL, reachedIdx: reachedSegmentIndices(b), pendingIdx: [], scoredPending: false,
+      outNumber: null, topLeft: deriveRunnerReachCode(b), topRight: null, bottomLeft: null
+    })}
+  </div>`).join('');
+
+  const lastPitch = s.pitches[s.pitches.length - 1];
+  const lastIsCurrentAtBat = lastPitch && lastPitch.atBatIndex === s.atBatIndex;
+  const batterCell = `<div>
+    <div class="scorebook-cell-label">Batter</div>
+    ${renderScorebookCellSvg({
+      size: SCOREBOOK_CELL_BIG, reachedIdx: [], pendingIdx: [], scoredPending: false,
+      outNumber: null, topLeft: lastIsCurrentAtBat ? scorebookBatterCode(lastPitch) : '', topRight: null,
+      bottomLeft: `${s.balls}-${s.strikes}`
+    })}
+  </div>`;
+  return runnerCells + batterCell;
+}
+
+// G1b-r2 section 6: Hit/Out/Error/FC -> the position swipe row -> batted-
+// ball type -> summary line with Fix -> Pitch (full-width, the only
+// commit). Unlike G1b-r's decision 9, entry itself is now its own
+// sequential question (chooseWalkthroughEntry) -- everything from the
+// position row down still appears together once entry (and, for a hit, hit
+// type) is known, same stacked-and-always-visible spirit as before, just
+// for a narrower slice of the flow.
+function renderFieldFlow(){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return '';
+  const s = state.activeSession;
+  // G1b-r2a: matches the reference's chip border/selected-chip treatment
+  // exactly (solid sage border, solid dark selected instead of translucent
+  // border + amber fill).
+  const neutral = `color:var(--ink-faint);border-color:var(--game-chip-border);`;
+  const amber = `background:var(--field-dark);border-color:var(--field-dark);color:var(--surface);`;
+
+  const entryLabels = { H: 'Hit', O: 'Out', E: 'Error', FC: 'FC' };
+  const entryRow = `
+    <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">What happened?</div><div class="chip-row">
+      ${['H', 'O', 'E', 'FC'].map(k => `<button class="type-chip" style="${fp.entry === k ? amber : neutral}" onclick="chooseWalkthroughEntry('${k}')">${entryLabels[k]}</button>`).join('')}
+    </div></div>`;
+
+  // Nothing below the entry question exists until entry is chosen (and,
+  // for a hit, until hit type is too) -- matches the exact tap sequence in
+  // acceptance 31/32 (no wasted taps revealing rows with nothing to do yet).
+  if(!fp.entry || (fp.entry === 'H' && !fp.hitType)){
+    const hitTypeRow = fp.entry === 'H' ? `
+      <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Hit type</div><div class="chip-row">
+        ${['1B', '2B', '3B', 'HR'].map(h => `<button class="type-chip" style="${fp.hitType === h ? amber : neutral}" onclick="chooseFieldHitType('${h}')">${h}</button>`).join('')}
+      </div></div>` : '';
+    return `<div>${entryRow}${hitTypeRow}<button class="btn btn-ghost" onclick="cancelFieldFlow()">Cancel</button></div>`;
+  }
+
+  // The position SWIPE row (decision: one scrollable line, 64x46 chips,
+  // infield-first, badges show throw order, second tap removes -- see
+  // .position-swipe-row/.position-swipe-chip CSS). Same fp.positionSeq
+  // mechanism as G1b-r (toggleFieldPosition, unchanged), new presentation.
+  const positionRow = `
+    <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Position (tap order = throw order)</div>
+      <div class="position-swipe-row">
+        ${FIELD_POSITIONS.map(p => {
+          const idx = fp.positionSeq.indexOf(p.pos);
+          return `<button class="position-swipe-chip${idx !== -1 ? ' selected' : ''}" onclick="toggleFieldPosition('${p.pos}')">${p.pos}${idx !== -1 ? `<span class="position-swipe-badge">${idx + 1}</span>` : ''}</button>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+  const bbTypeRow = `
+    <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Batted-ball type</div><div class="chip-row">
+      ${[['ground', 'GB'], ['line', 'LD'], ['fly', 'FB'], ['pop', 'POP'], ['bunt', 'BUNT']].map(([k, l]) => `<button class="type-chip" style="${fp.bbType === k ? amber : neutral}" onclick="chooseFieldBBType('${k}')">${l}</button>`).join('')}
+    </div></div>`;
+
+  // "What happened to the runners?" -- unprompted, underneath Batted-ball
+  // type, whenever ANY base is occupied, for EVERY entry. A real
+  // batter+runner outcome is already set the moment hit type/position/
+  // bbType are chosen (the standard prefill), so this never adds a
+  // mandatory tap -- the charter sees the assumed outcome already
+  // highlighted and can correct it if it's wrong, or accept it with zero
+  // extra taps. G1b-r2f: doubled-off/fielder's-choice/double-or-triple-play
+  // are DERIVED (runnerOutKind/fieldPlayOutLabel), never tapped -- a runner
+  // has just the plain 5 destinations (1st/2nd/3rd/Home/Out), same as the
+  // batter, but Out opens a second "at which base?" follow-up (see
+  // setFieldEnding/setFieldOutAtBase) instead of finalizing immediately,
+  // since that base is exactly what the derivation needs.
+  const baseLabel = { '1': '1st', '2': '2nd', '3': '3rd', home: 'Home', out: 'Out' };
+  const chipLabel = (key) => {
+    if(key === 'batter'){
+      const bl = baseLabel[fp.endings.batter];
+      return 'B' + (bl ? `: ${bl}` : '');
+    }
+    if(!s.runners[key]) return null;
+    const ending = fp.endings[key];
+    const kind = runnerOutKind(key, ending);
+    if(kind){
+      const label = kind === 'doubled_off' ? 'Doubled off' : (fieldPlayOutLabel(fp) || 'Out');
+      return `R${key}: ${label}`;
+    }
+    const bl = (!ending || ending === 'stay') ? (key === 1 ? '1st' : key === 2 ? '2nd' : '3rd') : baseLabel[ending];
+    return `R${key}: ${bl}`;
+  };
+  const runnerChips = ['batter', 1, 2, 3].map(key => {
+    const label = chipLabel(key);
+    if(label === null) return '';
+    const keyArg = typeof key === 'string' ? `'${key}'` : key;
+    const active = fp.editing === key || fp.pendingOutFor === key;
+    return `<button class="type-chip" style="${active ? amber : neutral}" onclick="openFieldEndingPicker(${keyArg})">${label}</button>`;
+  }).join('');
+  const destOptions = [['1', '1st'], ['2', '2nd'], ['3', '3rd'], ['home', '⌂ Home'], ['out', '✕ Out']];
+  const editingKeyArg = typeof fp.editing === 'string' ? `'${fp.editing}'` : fp.editing;
+  const editingPicker = fp.editing !== null ? `
+    <div class="chip-row" style="margin-top:4px;">
+      ${destOptions.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="setFieldEnding(${editingKeyArg},'${k}')">${l}</button>`).join('')}
+    </div>` : '';
+  // The "at which base" follow-up (Decision: doubled off/FC/DP/TP are
+  // derived from this, never tapped). Only bases from the runner's own
+  // current base through Home make sense -- a runner can't be put out
+  // behind where he started.
+  const OUT_AT_BASE_LABEL = { 1: '1st', 2: '2nd', 3: '3rd', 4: 'Home' };
+  const outAtPicker = (typeof fp.pendingOutFor === 'number') ? `
+    <div class="chip-row" style="margin-top:4px;">
+      ${Array.from({ length: 4 - fp.pendingOutFor + 1 }, (_, i) => fp.pendingOutFor + i).map(b =>
+        `<button class="type-chip" style="${neutral}" onclick="setFieldOutAtBase(${fp.pendingOutFor},${b})">${OUT_AT_BASE_LABEL[b]}</button>`
+      ).join('')}
+    </div>` : '';
+
+  const anyRunnerOn = [1, 2, 3].some(b => s.runners[b]);
+  const runnerPromptRow = anyRunnerOn ? `
+    <div style="margin-bottom:8px;">
+      <div class="field-label" style="margin-bottom:4px;">What happened to the runners?</div>
+      <div class="chip-row">${runnerChips}</div>
+      ${editingPicker}
+      ${outAtPicker ? `<div class="field-label" style="margin:4px 0 4px;">At which base?</div>${outAtPicker}` : ''}
+    </div>` : '';
+
+  // G1b-r2a: Next Pitch (renamed from Pitch) moves up to be the panel's own
+  // shared button, after the velocity strip -- see renderGameSessionView's
+  // panel body and nextPitch()/nextPitchDisabledReason(). Cancel stays here
+  // (specific to abandoning the walkthrough, not the panel as a whole).
+  return `<div>
+    ${entryRow}
+    ${positionRow}
+    ${bbTypeRow}
+    ${runnerPromptRow}
+    <p class="walkthrough-summary">${escHtml(fieldPlaySummary(fp))}</p>
+    <button class="btn btn-ghost" onclick="cancelFieldFlow()">Cancel</button>
+  </div>`;
 }
 function renderGameSessionView(p){
   const s = state.activeSession;
@@ -3710,23 +5604,59 @@ function renderGameSessionView(p){
     return `<button class="type-chip${selected?' selected':''}" style="${selected ? `background:${color};border-color:${color};color:${readableTextOn(color)};` : `color:${color};border-color:${color}55;`}" onclick="selectType(${escHtml(JSON.stringify(t))})">${pitchLabel(t)}</button>`;
   }).join('');
 
-  const logRows = pitches.slice().reverse().slice(0, 12).map(pt => {
-    const color = colorForType(p, pt.type);
-    const veloText = (pt.velo !== null && pt.velo !== undefined) ? `${pt.velo} mph · ` : '';
+  // G1b-r decision 10: pitches and events merged by seq -- the ONE ordered
+  // log, so a no-pitch event (IBB/auto ball/auto strike/balk, or any Adjust
+  // Runners event) shows up in between the pitches around it, in the order
+  // it actually happened, not off in a separate list.
+  const combinedLog = [
+    ...pitches.map(pt => ({ seq: pt.seq, pt })),
+    ...(s.events || []).map(ev => ({ seq: ev.seq, ev }))
+  ].sort((a, b) => b.seq - a.seq).slice(0, 12);
+  const logRows = combinedLog.map(entry => {
+    if(entry.pt){
+      const pt = entry.pt;
+      const color = colorForType(p, pt.type);
+      const veloText = (pt.velo !== null && pt.velo !== undefined) ? `${pt.velo} mph · ` : '';
+      return `<div class="pitch-log-row">
+        <span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pitchLabel(pt.type)}</span> · ${veloText}${gameResultText(pt)} · <span style="color:var(--ink-faint);">Inn ${pt.inning}, ${pt.ballsBefore}-${pt.strikesBefore}, ${pt.outsBefore} out</span></span>
+      </div>`;
+    }
+    const ev = entry.ev;
     return `<div class="pitch-log-row">
-      <span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pitchLabel(pt.type)}</span> · ${veloText}${gameResultText(pt)} · <span style="color:var(--ink-faint);">Inn ${pt.inning}, ${pt.ballsBefore}-${pt.strikesBefore}, ${pt.outsBefore} out</span></span>
+      <span><span class="plr-dot" style="background:var(--ink-faint);"></span><span class="mono">Event</span> · ${escHtml(gameEventText(ev))} · <span style="color:var(--ink-faint);">Inn ${ev.inningBefore}, ${ev.ballsBefore}-${ev.strikesBefore}, ${ev.outsBeforeCount} out</span></span>
     </div>`;
   }).join('') || `<p style="color:var(--ink-faint);font-size:12.5px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
 
-  const zoneCaption = state.gamePendingPitch
+  const zoneCaption = state.activeSession.gamePendingPitch
     ? `Now choose what happened <a href="#" onclick="resetGamePendingPitch();return false;" style="color:var(--amber);">(reset location)</a>`
     : `Tap where the pitch landed`;
+
+  // G1b-r2a item 2: the panel drops down over the grid after the location
+  // tap and stays down (per screen order 5-7) through the result row,
+  // the walkthrough (only after In Play), the velocity strip, and Next
+  // Pitch -- one shared button now (nextPitch/nextPitchDisabledReason)
+  // instead of renderFieldFlow's own Pitch button. Cells (renderPanel
+  // ScorebookCells) show in every one of these states, not only mid-
+  // walkthrough. panelOpen persists on activeSession -- a killed browser
+  // resumes with the panel down and whatever was in progress intact.
+  const panelOpen = !!s.panelOpen;
+  const resultOrWalkthrough = s.fieldPlay ? renderFieldFlow()
+    : (s.gamePendingPitch ? `<div class="result-band">${renderGameResultRow()}</div>` : '');
+  const nextPitchReason = nextPitchDisabledReason();
 
   return `
     <div class="session-grid-layout">
       <div class="panel controls-panel">
-        ${renderGameStatusBar()}
-        ${renderPerspectiveToggle()}
+        <div class="game-panel-header">
+          ${renderGameStatusBar()}
+          <span class="game-panel-handle">${panelOpen ? '▲' : ''}</span>
+          ${panelOpen ? `<button class="game-panel-undo" onclick="undoLastGameAction()">Undo</button>` : ''}
+        </div>
+        ${renderAdjustRunnersFlow()}
+        <div class="perspective-delivery-row">
+          ${renderPerspectiveToggle()}
+          ${renderDeliveryToggle()}
+        </div>
         <div>
           <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
           <div class="chip-row">${typeChips}</div>
@@ -3735,19 +5665,27 @@ function renderGameSessionView(p){
             : 'Add your pitches in Profile to start charting.'}</p>
           <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
         </div>
-        ${renderDeliveryToggle()}
         <div class="hint-msg">${state.hint}</div>
-        <div>
+        <div class="gridwrap">
           <div class="zone-wrap">
-            ${renderZoneGrid(pitches, true, state.flashCell, state.gamePendingPitch, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
+            ${renderZoneGrid(pitches, true, state.flashCell, state.activeSession.gamePendingPitch, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
             <div class="zone-caption">${zoneCaption}</div>
           </div>
+          <div class="game-panel-body${panelOpen ? ' open' : ''}">
+            <div class="walkthrough-layout">
+              <div class="scorebook-cells-wrap">${renderPanelScorebookCells()}</div>
+              <div class="walkthrough-rows">
+                ${resultOrWalkthrough}
+                ${sessionUsesRadarGun(s) ? `<div>
+                  <div class="field-label" style="margin-bottom:8px;">Velocity</div>
+                  ${renderGameVeloStrip()}
+                </div>` : ''}
+                <button class="next-pitch-btn" ${nextPitchReason ? 'disabled' : ''} onclick="nextPitch()">Next Pitch</button>
+                ${nextPitchReason ? `<p class="walkthrough-disabled-reason">${escHtml(nextPitchReason)}</p>` : ''}
+              </div>
+            </div>
+          </div>
         </div>
-        ${renderGameResultRow()}
-        ${sessionUsesRadarGun(s) ? `<div>
-          <div class="field-label" style="margin-bottom:8px;">Velocity</div>
-          ${renderVeloStrip()}
-        </div>` : ''}
       </div>
       <div class="panel log-panel">
         <div class="stat-readout">
@@ -3760,9 +5698,8 @@ function renderGameSessionView(p){
         <div class="field-label">Recent pitches</div>
         <div class="pitch-log">${logRows}</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          <button class="btn btn-ghost" onclick="undoLastGamePitch()">Undo last pitch</button>
+          <button class="btn btn-ghost" onclick="undoLastGameAction()">Undo last action</button>
           <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
-          <button class="btn btn-ghost" onclick="gameBumpOuts()">+1 out</button>
           <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
         </div>
         <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
@@ -5129,6 +7066,13 @@ window.viewSessionReport = async function(sessionId){
 /* ---------- MAIN RENDER ---------- */
 function render(){
   const app = document.getElementById('app');
+  // G1b-r2b: capture .game-panel-body's CURRENT scroll position synchronously,
+  // before it's torn down and replaced by the innerHTML rewrite below --
+  // more reliable than a passive 'scroll' listener (attachGamePanelScroll's
+  // first attempt), whose event can lag behind a tap that fires a render
+  // right after a scroll, losing the position anyway.
+  const existingPanelBody = app.querySelector && app.querySelector('.game-panel-body');
+  if(existingPanelBody) state.gamePanelScrollTop = existingPanelBody.scrollTop;
   if(!state.loaded){
     renderBoot();
     return;
@@ -5322,6 +7266,7 @@ function render(){
 
   app.innerHTML = sidebar + `<div class="main">${main}</div>` + phoneFooter + setupModalHtml;
   attachVeloStrip();
+  attachGamePanelScroll();
 }
 
 init();

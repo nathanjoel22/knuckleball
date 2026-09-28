@@ -636,14 +636,9 @@
     display:flex; align-items:center; justify-content:center; gap:10px; text-align:center; flex-wrap:wrap;
   }
   .walkthrough-disabled-reason{ font-size:11.5px; color:var(--clay); margin:6px 0 0; text-align:center; }
-  /* G1b-r2a: a real pill button (reference's .fix .edit), not an underlined
-     text link -- uppercase, letter-spaced, bordered in the same sage as the
-     rest of the game screen's chips. */
-  .fix-link{
-    display:inline-block; font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;
-    color:var(--ink-faint); background:var(--card-bg); border:1.5px solid var(--game-chip-border);
-    border-radius:14px; padding:3px 10px; cursor:pointer; text-decoration:none; white-space:nowrap;
-  }
+  /* G1b-r2e retired Fix -- "What happened to the runners?" is always shown
+     inline now, so there's nothing left for a separate reveal control to
+     do. .fix-link is gone with it (was the reference's own pill button). */
   /* G1b (f): the status-bar diamond -- tap to Adjust Runners. min 44px hit
      area even though the SVG glyph itself is drawn smaller. */
   .runner-diamond-btn{
@@ -4737,16 +4732,17 @@ const FIELD_POSITIONS = [
    restores it mid-walkthrough the same way it restores gamePendingPitch).
      { entry: null|'H'|'O'|'E'|'FC', hitType: null|'1B'|'2B'|'3B'|'HR',
        positionSeq: [], bbType: null, endings: { batter, 1, 2, 3 },
-       editing: null, dp: false, fixOpen: false }
+       editing: null, dp: false, outReasons: { [base]: 'force'|'pickoff'|'fc' } }
    entry starts null now (In Play alone doesn't fix it -- the charter picks
    Hit/Out/Error/FC as its own first question, chooseWalkthroughEntry
-   below); fixOpen is new, gating the runner-chip corrector behind the
-   summary line's Fix control instead of always showing it. Everything else
-   -- fieldBatterResultKey, refreshFieldPrefill, prefillRunnerEndings,
-   leadForcedOutEndings, doublePlayEndings, inferredDoublePlaySeq,
-   refreshOutEndings, BATTER_RESULT_TO_BASE, applyRunnerAdvances,
-   forcedWalkAdvances -- is REUSED UNCHANGED from G1b/G1b-r; only what the
-   charter taps and sees to get there is new. */
+   below). G1b-r2e retired Fix/fixOpen and the standalone DP toggle --
+   "What happened to the runners?" (renderFieldFlow) now always shows
+   inline whenever a base is occupied, for every entry, and outReasons is
+   new (per-runner DP notation). Everything else -- fieldBatterResultKey,
+   refreshFieldPrefill, prefillRunnerEndings, leadForcedOutEndings,
+   doublePlayEndings, inferredDoublePlaySeq, BATTER_RESULT_TO_BASE,
+   applyRunnerAdvances, forcedWalkAdvances -- is REUSED UNCHANGED from
+   G1b/G1b-r; only what the charter taps and sees to get there is new. */
 // entry fixes the batter's own outcome for O/E/FC immediately (out/error/
 // fc); only H needs a further tap (hit type) before it's known. Returns
 // null for H before that tap -- callers already handle a null key (no
@@ -4782,7 +4778,12 @@ window.openFieldFlow = async function(){
   if(!state.activeSession.gamePendingPitch) return; // the pitch's own zone tap must already exist
   state.activeSession.fieldPlay = {
     entry: null, hitType: null, positionSeq: [], bbType: null,
-    endings: {}, editing: null, dp: false, fixOpen: false
+    // G1b-r2e: outReasons is new -- { [base]: 'force'|'pickoff'|'fc' },
+    // populated whenever that runner's own ending is 'out' via one of the
+    // three DP-tagged destination options (or the standard force
+    // auto-inference, which now tags itself 'force' too). fixOpen/toggle
+    // DP retired -- see renderFieldFlow's own note.
+    endings: {}, editing: null, dp: false, outReasons: {}
   };
   await storSet(draftKey(), state.activeSession);
   render();
@@ -4813,16 +4814,6 @@ window.chooseFieldHitType = async function(hitType){
   await storSet(draftKey(), state.activeSession);
   render();
 };
-// Fix (G1b-r2): the runner-chip corrector from G1b-r is no longer always
-// visible -- it's behind this toggle on the summary line, since "nothing
-// here is required on a routine play."
-window.toggleFix = async function(){
-  const fp = state.activeSession.fieldPlay;
-  if(!fp) return;
-  fp.fixOpen = !fp.fixOpen;
-  await storSet(draftKey(), state.activeSession);
-  render();
-};
 // G1b-r addendum: a sequence of 3+ positions ending at 1B is a force double
 // play (SS-2B-1B, 2B-SS-1B, 3B-2B-1B, 1B-SS-1B, P-SS-1B, ...); the one
 // 2-long exception is C-1B, since the catcher's own position already IS the
@@ -4836,13 +4827,24 @@ function inferredDoublePlaySeq(seq){
   return seq[0] === 'C';
 }
 // Rebuilds fp.endings for an O entry from its current fp.dp + bbType --
-// called after anything that can change either (a position tap, a bbType
-// tap, or the DP chip itself). Not used for H/E/FC, whose endings are
-// computed once by refreshFieldPrefill at openFieldFlow time.
+// called after anything that can change either (a position or bbType tap).
+// Not used for H/E/FC, whose endings are computed once by
+// refreshFieldPrefill at openFieldFlow time.
 function refreshOutEndings(fp){
   const s = state.activeSession;
   const dpEndings = fp.dp ? doublePlayEndings(s.runners, fp.bbType) : null;
   fp.endings = Object.assign({ batter: 'out' }, dpEndings || prefillRunnerEndings(s.runners, 'out'));
+  // G1b-r2e: the auto-inferred DP tags its own runner 'force', same as the
+  // manual DP option does -- so the notation is consistent whether the
+  // charter tapped anything or the sequence alone gave it away. A manual
+  // outReason set by the charter on a DIFFERENT runner (via setFieldEnding)
+  // is preserved; this only fills in for what the auto-inference itself
+  // just produced.
+  if(dpEndings){
+    Object.keys(dpEndings).forEach(k => {
+      if(dpEndings[k] === 'out') fp.outReasons[k] = fp.outReasons[k] || 'force';
+    });
+  }
 }
 // Decision 8: one unified list, no separate "correct the primary" control
 // like G1b's original chooseFieldFielder/addFieldFielderToSequence --
@@ -4883,19 +4885,15 @@ window.chooseFieldBBType = async function(type){
   await storSet(draftKey(), state.activeSession);
   render();
 };
-// The manual DP chip, for what inference can't see (a caught line/fly/pop
-// with a runner doubled off, an unassisted play, an unusual sequence) --
-// a plain toggle, per the packet's own "tapping DP again clears it."
-window.toggleFieldDP = async function(){
-  const fp = state.activeSession.fieldPlay;
-  if(!fp || fp.entry !== 'O') return;
-  fp.dp = !fp.dp;
-  refreshOutEndings(fp);
-  await storSet(draftKey(), state.activeSession);
-  render();
-};
+// G1b-r2e: the standalone DP toggle is retired -- superseded by the three
+// DP-tagged destination options below (setFieldEnding's dp_force/
+// dp_pickoff/dp_fc), which say WHICH runner and WHY, not just a blanket
+// yes/no for the whole play. The auto-inference (toggleFieldPosition/
+// chooseFieldBBType's own fp.dp computation, unchanged) still sets fp.dp
+// and tags that runner 'force' automatically, zero taps, for the routine
+// grounder-into-a-force-play case.
 // Decision 7: tapping the B/R1/R2/R3 chip opens (or, tapped again, closes)
-// its own 5-destination picker; tapping a destination sets it and closes.
+// its own destination picker; tapping a destination sets it and closes.
 // key is 'batter' or 1/2/3 -- see renderFieldFlow's own chip markup for how
 // each is passed.
 window.openFieldEndingPicker = async function(key){
@@ -4905,16 +4903,34 @@ window.openFieldEndingPicker = async function(key){
   await storSet(draftKey(), state.activeSession);
   render();
 };
+// G1b-r2e: dp_force/dp_pickoff/dp_fc are runner-only options (never offered
+// for 'batter', see renderFieldFlow) that record BOTH the game-state
+// ending ('out', same math as a plain out) and WHY, in fp.outReasons, for
+// the cell/notation to show "DP" / "DP (Pickoff)" / "DP (FC)" instead of a
+// generic out. Picking any of the three marks the whole play a double play
+// (fp.dp); picking anything else for that runner clears their own reason
+// and re-derives fp.dp from whatever reasons (if any) remain.
+const FIELD_ENDING_DP_REASON = { dp_force: 'force', dp_pickoff: 'pickoff', dp_fc: 'fc' };
 window.setFieldEnding = async function(key, code){
   const fp = state.activeSession.fieldPlay;
   if(!fp) return;
-  // A runner tapping his OWN current base is the same as "stays" -- stored
-  // as the existing 'stay' sentinel (not the numeral) so it's excluded from
-  // runner_advances at commit exactly like an untouched prefill is, and so
-  // the collision check in fieldPlayDisabledReason doesn't see it as a
-  // destination at all.
-  if(typeof key === 'number' && code === String(key)) code = 'stay';
-  fp.endings[key] = code;
+  fp.outReasons = fp.outReasons || {};
+  if(FIELD_ENDING_DP_REASON[code] && key !== 'batter'){
+    fp.endings[key] = 'out';
+    fp.outReasons[key] = FIELD_ENDING_DP_REASON[code];
+    fp.dp = true;
+  } else {
+    // A runner tapping his OWN current base is the same as "stays" --
+    // stored as the existing 'stay' sentinel (not the numeral) so it's
+    // excluded from runner_advances at commit exactly like an untouched
+    // prefill is, and so the collision check in fieldPlayDisabledReason
+    // doesn't see it as a destination at all.
+    if(typeof key === 'number' && code === String(key)) code = 'stay';
+    fp.endings[key] = code;
+    delete fp.outReasons[key];
+    fp.dp = Object.keys(fp.outReasons).length > 0
+      || (fp.entry === 'O' && inferredDoublePlaySeq(fp.positionSeq) && fp.bbType === 'ground');
+  }
   fp.editing = null;
   await storSet(draftKey(), state.activeSession);
   render();
@@ -5258,7 +5274,18 @@ function walkthroughBatterCode(fp){
   if(key === 'fc') return 'FC';
   return key; // '1B'/'2B'/'3B'/'HR'
 }
-function walkthroughRunnerOutCode(fp){
+// G1b-r2e: per-runner reason (fp.outReasons[base]) takes priority -- set
+// either by the charter directly (setFieldEnding's dp_force/dp_pickoff/
+// dp_fc) or by the auto-inference tagging itself 'force' (refreshOutEndings).
+// Falls back to the pre-existing heuristic when no reason was ever recorded
+// (a plain tag out, unrelated to any DP).
+function walkthroughRunnerOutCode(fp, base){
+  const reason = fp.outReasons && fp.outReasons[base];
+  if(reason === 'pickoff') return 'DP (PO)';
+  if(reason === 'fc') return 'DP (FC)';
+  if(reason === 'force'){
+    return (fp.positionSeq.length > 1) ? fielderNotation(fp.positionSeq.slice(0, -1)) : fielderNotation(fp.positionSeq);
+  }
   // Only meaningful when this specific runner is the DP's force-out --
   // stops one touch short of the batter's own full sequence.
   if(fp.dp && fp.positionSeq.length > 1) return fielderNotation(fp.positionSeq.slice(0, -1));
@@ -5382,7 +5409,7 @@ function renderScorebookCells(fp){
         pendingIdx: pendingSegmentIndices(b, ending),
         scoredPending: ending === 'home',
         outNumber: outNumbers[b] || null,
-        topLeft: (ending === 'out') ? walkthroughRunnerOutCode(fp) : deriveRunnerReachCode(b),
+        topLeft: (ending === 'out') ? walkthroughRunnerOutCode(fp, b) : deriveRunnerReachCode(b),
         topRight: null, bottomLeft: null
       })}
     </div>`;
@@ -5490,18 +5517,22 @@ function renderFieldFlow(){
       ${[['ground', 'GB'], ['line', 'LD'], ['fly', 'FB'], ['pop', 'POP'], ['bunt', 'BUNT']].map(([k, l]) => `<button class="type-chip" style="${fp.bbType === k ? amber : neutral}" onclick="chooseFieldBBType('${k}')">${l}</button>`).join('')}
     </div></div>`;
 
-  // Fix (G1b-r2): the G1b-r runner-chip corrector (batter/R1/R2/R3 -> 1 · 2
-  // · 3 · home · out) and the DP chip, both UNCHANGED. For O/E/FC it's still
-  // hidden behind the Fix toggle -- "nothing here is required on a routine
-  // play." For H specifically, G1b-r2d shows it INLINE instead, unprompted,
-  // whenever a runner is on base: a single tap already sets a real batter
-  // AND runner outcome via the standard prefill, so there's no separate
-  // confirmation STEP to add taps for -- the charter just sees the assumed
-  // advance already highlighted and can correct it in the same 2 taps
-  // (open the chip, pick the base) Fix always offered, or accept it with
-  // zero extra taps by doing nothing. Fix itself is hidden for H (nothing
-  // left for it to reveal -- DP doesn't apply to a hit anyway).
+  // G1b-r2e: "What happened to the runners?" -- unprompted, underneath
+  // Batted-ball type, whenever ANY base is occupied, for EVERY entry (was
+  // H-only in G1b-r2d; Fix and the standalone DP chip are both retired,
+  // fully superseded by this). A real batter+runner outcome is already set
+  // the moment hit type/position/bbType are chosen (the standard prefill,
+  // or the auto-inferred force DP for a qualifying ground-ball sequence),
+  // so this never adds a mandatory tap -- the charter sees the assumed
+  // outcome already highlighted and can correct it in 2 taps (open the
+  // chip, pick an option) if it's wrong, or accept it with zero extra taps.
+  // Runners (not the batter) get three extra destination options beyond
+  // the usual bases/home/out: DP (a force out -- "should just say DP"),
+  // DP (Pickoff), and DP (FC), each tagging fp.outReasons[base] for the
+  // cell/notation (walkthroughRunnerOutCode) and marking the whole play a
+  // double play (fp.dp).
   const baseLabel = { '1': '1st', '2': '2nd', '3': '3rd', home: 'Home', out: 'Out' };
+  const outReasonLabel = { force: 'DP', pickoff: 'DP (Pickoff)', fc: 'DP (FC)' };
   const chipLabel = (key) => {
     if(key === 'batter'){
       const bl = baseLabel[fp.endings.batter];
@@ -5509,6 +5540,8 @@ function renderFieldFlow(){
     }
     if(!s.runners[key]) return null;
     const ending = fp.endings[key];
+    const reason = fp.outReasons && fp.outReasons[key];
+    if(ending === 'out' && reason) return `R${key}: ${outReasonLabel[reason]}`;
     const bl = (!ending || ending === 'stay') ? (key === 1 ? '1st' : key === 2 ? '2nd' : '3rd') : baseLabel[ending];
     return `R${key}: ${bl}`;
   };
@@ -5518,10 +5551,14 @@ function renderFieldFlow(){
     const keyArg = typeof key === 'string' ? `'${key}'` : key;
     return `<button class="type-chip" style="${fp.editing === key ? amber : neutral}" onclick="openFieldEndingPicker(${keyArg})">${label}</button>`;
   }).join('');
-  const dpChip = (fp.entry === 'O' && [1, 2, 3].some(b => s.runners[b]))
-    ? `<button class="type-chip" style="${fp.dp ? amber : neutral}" onclick="toggleFieldDP()">DP</button>`
-    : '';
-  const destOptions = [['1', '1st'], ['2', '2nd'], ['3', '3rd'], ['home', '⌂ Home'], ['out', '✕ Out']];
+  // The batter's own picker stays the plain 5 options -- DP concepts apply
+  // to a RUNNER being the play's second out, never to the batter himself.
+  const destOptionsRunner = [
+    ['1', '1st'], ['2', '2nd'], ['3', '3rd'], ['home', '⌂ Home'], ['out', '✕ Out'],
+    ['dp_force', 'DP'], ['dp_pickoff', 'DP (Pickoff)'], ['dp_fc', 'DP (FC)']
+  ];
+  const destOptionsBatter = [['1', '1st'], ['2', '2nd'], ['3', '3rd'], ['home', '⌂ Home'], ['out', '✕ Out']];
+  const destOptions = fp.editing === 'batter' ? destOptionsBatter : destOptionsRunner;
   const editingKeyArg = typeof fp.editing === 'string' ? `'${fp.editing}'` : fp.editing;
   const editingPicker = fp.editing !== null ? `
     <div class="chip-row" style="margin-top:4px;">
@@ -5529,16 +5566,12 @@ function renderFieldFlow(){
     </div>` : '';
 
   const anyRunnerOn = [1, 2, 3].some(b => s.runners[b]);
-  const runnerPromptRow = (fp.entry === 'H' && anyRunnerOn) ? `
+  const runnerPromptRow = anyRunnerOn ? `
     <div style="margin-bottom:8px;">
-      <div class="field-label" style="margin-bottom:4px;">Runners -- did they advance as shown?</div>
+      <div class="field-label" style="margin-bottom:4px;">What happened to the runners?</div>
       <div class="chip-row">${runnerChips}</div>
       ${editingPicker}
     </div>` : '';
-  const fixPanel = (fp.entry !== 'H' && fp.fixOpen) ? `
-    <div style="margin:8px 0;"><div class="chip-row">${runnerChips}${dpChip}</div>${editingPicker}</div>` : '';
-  const fixLink = fp.entry !== 'H'
-    ? ` <a href="#" class="fix-link" onclick="toggleFix();return false;">${fp.fixOpen ? 'Close' : 'Fix'}</a>` : '';
 
   // G1b-r2a: Next Pitch (renamed from Pitch) moves up to be the panel's own
   // shared button, after the velocity strip -- see renderGameSessionView's
@@ -5549,8 +5582,7 @@ function renderFieldFlow(){
     ${positionRow}
     ${bbTypeRow}
     ${runnerPromptRow}
-    <p class="walkthrough-summary">${escHtml(fieldPlaySummary(fp))}${fixLink}</p>
-    ${fixPanel}
+    <p class="walkthrough-summary">${escHtml(fieldPlaySummary(fp))}</p>
     <button class="btn btn-ghost" onclick="cancelFieldFlow()">Cancel</button>
   </div>`;
 }

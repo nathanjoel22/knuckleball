@@ -4641,9 +4641,12 @@ const SCOREBOOK_GLYPHS = [
 ];
 // G1b-r2: E and FC move OUT from under + -- they're the walkthrough's own
 // 3rd/4th options after In Play now (chooseWalkthroughEntry), not here.
+// G1b-r2f: Foul tip removed per Joel's request -- deleted, not hidden.
+// foul_tip stays a valid pitches.result value (an existing row can still
+// read correctly everywhere); there's just no way to record a new one.
 const PLUS_GRID_PITCHES = [
   ['HBP', 'HBP'], ['D3', 'Dropped 3rd'],
-  ['CI', "Catcher's interference"], ['BI', "Batter's interference"], ['FT', 'Foul tip']
+  ['CI', "Catcher's interference"], ['BI', "Batter's interference"]
 ];
 const PLUS_GRID_NO_PITCH = [
   ['IBB', 'Intentional walk'], ['AB', 'Auto ball'], ['AS', 'Auto strike'], ['BLK', 'Balk']

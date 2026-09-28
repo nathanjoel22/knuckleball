@@ -4405,9 +4405,16 @@ window.commitAdjustEvent = async function(reason){
    against s directly rather than through a pushed pitch row. */
 window.commitNoPitchEvent = async function(eventType){
   const s = state.activeSession;
-  // Only between pitches -- not mid pitch-capture, not mid field-flow, same
-  // guard as Adjust Runners.
-  if(s.gamePendingPitch || s.fieldPlay) return;
+  // G1b-r2c: the old "only between pitches" guard (gamePendingPitch must be
+  // null) made these four permanently unreachable once the drop-down panel
+  // shipped -- the + button they're reached through only exists ON the
+  // result row, which itself only renders once gamePendingPitch is already
+  // set (the location tap is what opens the panel at all now). Still guard
+  // against mid-field-flow (fieldPlay never actually reaches here today,
+  // since + isn't shown then either, but kept defensively). The location
+  // tap that opened the panel is discarded below -- none of these four is a
+  // real pitch, so there's nothing to attach it to.
+  if(s.fieldPlay) return;
   const before = {
     inning: s.inning, outs: s.outs, balls: s.balls, strikes: s.strikes,
     atBatIndex: s.atBatIndex, runnersBefore: runnersBitmask(s.runners)
@@ -4457,6 +4464,12 @@ window.commitNoPitchEvent = async function(eventType){
     inningBefore: before.inning, outsBeforeCount: before.outs,
     ballsBefore: before.balls, strikesBefore: before.strikes, atBatIndexBefore: before.atBatIndex
   });
+  // G1b-r2c: none of these four is a pitch -- the location tap that opened
+  // the panel is discarded, and the panel closes (there's no walkthrough or
+  // velocity to review for a no-pitch event).
+  s.gamePendingPitch = null;
+  s.gameResultMenu = null;
+  s.panelOpen = false;
   await storSet(draftKey(), s);
   render();
 };
@@ -4648,9 +4661,12 @@ function renderGameResultRow(){
   const green = `color:#3D7A57;border-color:#3D7A57;`;
 
   if(menu === 'plus'){
+    // G1b-r2c: a dropped third strike can only happen ON strike three --
+    // D3 only makes sense to offer once the count is already at 2 strikes.
+    const plusGridPitches = PLUS_GRID_PITCHES.filter(([k]) => k !== 'D3' || state.activeSession.strikes === 2);
     return `<div>
       <div class="field-label" style="margin-bottom:8px;">Pitches</div>
-      <div class="chip-row">${PLUS_GRID_PITCHES.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="choosePlusCode('${k}')">${l}</button>`).join('')}</div>
+      <div class="chip-row">${plusGridPitches.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="choosePlusCode('${k}')">${l}</button>`).join('')}</div>
       <div class="field-label" style="margin:10px 0 8px;">No pitch</div>
       <div class="chip-row">${PLUS_GRID_NO_PITCH.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="choosePlusCode('${k}')">${l}</button>`).join('')}</div>
       <button class="btn btn-ghost" style="margin-top:8px;" onclick="cancelResultMenu()">Back</button>

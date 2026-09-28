@@ -35,8 +35,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { buildReportHtml, type ReportPayload } from './template.ts'
 import { escapeHtml } from './helpers.ts'
 import type { Pitch, HistoryEntry } from './compute.ts'
-// G2 STOP-only (see the previewGameReport branch below) -- NOT used by the
-// normal generate/send path, which still refuses kind='game' untouched.
+// G2 approach (g): the game-report renderer, called below when
+// session.kind === 'game'. summary always comes from compute_game_summary
+// (drafting decision 1) -- GameSummary just names its return shape.
 import { buildGameReportHtml, type GameReportPayload, type GameSummary } from './template_game.ts'
 import type { GamePitch } from './compute_game.ts'
 
@@ -66,8 +67,24 @@ interface ReportRequestBody extends Omit<ReportPayload, 'pitches' | 'history'> {
   // Resend call at the end is conditional on this being non-empty.
   emails?: string[]
   sessionId: string
+  // Bullpen shape (Pitch[]) or game shape (GamePitch[]) depending on the
+  // session's own kind -- see the branch on session.kind below. Kept as
+  // Pitch[] here (matching every field this interface already had) with an
+  // explicit cast at the one place a game payload is actually built from
+  // it, rather than widening this whole interface's type for one branch.
   pitches: Pitch[]
   history: HistoryEntry[]
+  // G2: present only when the client is reporting a kind='game' session
+  // (buildGameReportPayload, bullpen-tracker.html). opponent/recentPens/
+  // gameTrend are trusted from the client -- same accepted trust model the
+  // bullpen path's own pitches/history already have (CLAUDE.md's own
+  // "client-computed reports" landmine, unchanged posture, not widened).
+  // summary is deliberately NOT accepted here -- that's the one number
+  // that must come from compute_game_summary, fetched server-side below,
+  // never the client (drafting decision 1).
+  opponent?: string | null
+  recentPens?: GameReportPayload['recentPens']
+  gameTrend?: GameReportPayload['gameTrend']
 }
 
 Deno.serve(async (req) => {
@@ -152,135 +169,6 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers: corsHeaders })
   }
 
-  // ---------------------------------------------------------------------
-  // G2 STOP-only test action (Sept 2026). Proves the game-report renderer
-  // against a REAL game, per Joel's own build order: "wire the game branch
-  // into send-session-report (keep the kind='game' refusal until the STOP
-  // passes)". The shipped client never sends this action -- no client code
-  // anywhere constructs it -- and it's handled entirely separately, before
-  // the normal payload validation below, so the normal path's kind='game'
-  // refusal (a few lines down) is completely untouched by this addition.
-  //
-  // Real data, hand-assembled fixtures for what isn't built yet: the named
-  // session's pitches and its compute_game_summary() numbers are fetched
-  // fresh from the database through the CALLER's own RLS-scoped client --
-  // never trusted from the request body -- exactly like the real path will
-  // once (b)/(g) ship. recentPens/gameTrend are accepted AS SUPPLIED
-  // fixtures instead, because pooling those from prior sessions is approach
-  // (e)/(f)'s own job (client-side, per the packet) and doesn't exist yet;
-  // inventing that logic here now would risk it disagreeing with whatever
-  // (e)/(f) build for real later.
-  //
-  // Returns the raw HTML directly -- never uploaded to the reports bucket,
-  // never emailed -- purely for Joel to review at the STOP.
-  //
-  // NEVER deploy this branch to production. Staging only, and removed (or
-  // replaced by the real, client-driven path) once approach (g) actually
-  // ships.
-  // ---------------------------------------------------------------------
-  if (rawBody.action === 'previewGameReport') {
-    interface PreviewGameReportBody {
-      sessionId: string
-      pitcherName?: string
-      uniformNumber?: number | null
-      teamName?: string | null
-      date?: number
-      opponent?: string | null
-      chartingPerspective?: 'behind_catcher' | 'behind_pitcher' | null
-      loggedByCoach?: boolean
-      pitchTypes?: string[]
-      gridSize?: number
-      recentPens?: GameReportPayload['recentPens']
-      gameTrend?: GameReportPayload['gameTrend']
-    }
-    const pv = rawBody as unknown as PreviewGameReportBody
-    if (typeof pv.sessionId !== 'string' || !pv.sessionId) {
-      return new Response(JSON.stringify({ error: 'sessionId is required' }), { status: 400, headers: corsHeaders })
-    }
-
-    const { data: gSession, error: gSessionErr } = await callerClient
-      .from('sessions')
-      .select(`id, pitcher_id, kind, deleted_at, pitches(
-        type, velo, actual_row, actual_col, batter_side, ts, result, in_play_outcome,
-        hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index
-      )`)
-      .eq('id', pv.sessionId)
-      .maybeSingle()
-    if (gSessionErr) {
-      return new Response(JSON.stringify({ error: 'Could not look up session: ' + gSessionErr.message }), { status: 500, headers: corsHeaders })
-    }
-    if (!gSession) {
-      return new Response(JSON.stringify({ error: 'Session not found or not accessible with your account.' }), { status: 403, headers: corsHeaders })
-    }
-    if (gSession.deleted_at) {
-      return new Response(JSON.stringify({ error: 'Session is deleted.' }), { status: 410, headers: corsHeaders })
-    }
-    if (gSession.kind !== 'game') {
-      return new Response(JSON.stringify({ error: 'previewGameReport is only for kind=game sessions.' }), { status: 400, headers: corsHeaders })
-    }
-
-    // The ONE definition (drafting decision 1) -- called, never recomputed.
-    const { data: summary, error: summaryErr } = await callerClient.rpc('compute_game_summary', { p_session_id: pv.sessionId })
-    if (summaryErr) {
-      return new Response(JSON.stringify({ error: 'compute_game_summary failed: ' + summaryErr.message }), { status: 500, headers: corsHeaders })
-    }
-    if (summary && typeof summary === 'object' && 'error' in (summary as Record<string, unknown>)) {
-      return new Response(JSON.stringify({ error: 'compute_game_summary: ' + (summary as Record<string, unknown>).error }), { status: 400, headers: corsHeaders })
-    }
-
-    const rawPitches = (gSession as unknown as { pitches: Record<string, unknown>[] }).pitches || []
-    const gamePitches: GamePitch[] = rawPitches.map((pt) => ({
-      type: pt.type as string,
-      velo: pt.velo as number | null,
-      actualRow: pt.actual_row as number,
-      actualCol: pt.actual_col as number,
-      batterSide: pt.batter_side as 'R' | 'L' | null,
-      // pitches.ts is stored/returned as a plain epoch-ms number in every
-      // other reader of this column (compute.ts's own Pitch.ts, the client)
-      // -- handling a string here too only in case PostgREST ever surfaces
-      // it differently for this column type, never observed but cheap to
-      // guard against silently producing NaN sorts in computeAtBatLog.
-      ts: typeof pt.ts === 'string' ? new Date(pt.ts).getTime() : (pt.ts as number),
-      result: pt.result as string,
-      inPlayOutcome: pt.in_play_outcome as GamePitch['inPlayOutcome'],
-      hitType: pt.hit_type as GamePitch['hitType'],
-      fielder: pt.fielder as string | null,
-      delivery: pt.delivery as GamePitch['delivery'],
-      inning: pt.inning as number,
-      outsBefore: pt.outs_before as number,
-      ballsBefore: pt.balls_before as number,
-      strikesBefore: pt.strikes_before as number,
-      atBatIndex: pt.at_bat_index as number | null
-    }))
-
-    const payload: GameReportPayload = {
-      sessionId: pv.sessionId,
-      pitcherId: gSession.pitcher_id as string,
-      pitcherName: pv.pitcherName || 'Test Pitcher',
-      uniformNumber: pv.uniformNumber ?? null,
-      teamName: pv.teamName ?? null,
-      date: pv.date ?? Date.now(),
-      opponent: pv.opponent ?? null,
-      chartingPerspective: pv.chartingPerspective ?? null,
-      loggedByCoach: !!pv.loggedByCoach,
-      pitchTypes: Array.isArray(pv.pitchTypes) ? pv.pitchTypes : [],
-      gridSize: pv.gridSize,
-      pitches: gamePitches,
-      recentPens: pv.recentPens,
-      gameTrend: Array.isArray(pv.gameTrend) ? pv.gameTrend : [],
-      summary: summary as unknown as GameSummary
-    }
-
-    let html: string
-    try {
-      html = buildGameReportHtml(payload)
-    } catch (err) {
-      return new Response(JSON.stringify({ error: 'Game report generation failed: ' + (err as Error).message }), { status: 500, headers: corsHeaders })
-    }
-
-    return new Response(JSON.stringify({ ok: true, html }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-  }
-
   const body = rawBody as unknown as ReportRequestBody
   const { sessionId, pitcherId, pitcherName, pitches } = body
   const emails = body.emails ?? []
@@ -337,14 +225,12 @@ Deno.serve(async (req) => {
   if (session.pitcher_id !== pitcherId) {
     return new Response(JSON.stringify({ error: 'pitcherId does not match the session\'s pitcher.' }), { status: 400, headers: corsHeaders })
   }
-  // G1: a game session has no target on any pitch, so compute.ts's
-  // isExactHit()/miss-tendency math (which assumes one) would silently
-  // produce NaN rather than a real report. Refuse before buildReportHtml
-  // is ever called instead of teaching compute.ts to cope with a shape it
-  // should never see -- a game session simply isn't reportable yet.
-  if (session.kind && session.kind !== 'bullpen') {
-    return new Response(JSON.stringify({ error: 'Reports for Live Game sessions are coming soon -- only bullpen sessions can be reported right now.' }), { status: 400, headers: corsHeaders })
-  }
+  // G2 approach (g): the kind='game' refusal that used to sit here is gone
+  // -- decision 10 is explicit that it comes off client and server in the
+  // SAME deploy as everything else. A game session now branches to its own
+  // payload/renderer a few lines down (session.kind === 'game'); a bullpen
+  // falls through to the exact same buildReportHtml call this file has
+  // always used, untouched (acceptance 14: byte-for-byte identical output).
 
   // Coach-side gate (added after a Joel-directed staging investigation,
   // Sept 2026): is_pitcher_report_eligible above only ever checks the
@@ -385,26 +271,66 @@ Deno.serve(async (req) => {
     // the same frozen file, so the payload the client sends after this
     // point can drift (new prior-session history, say) without the report
     // itself ever silently changing underneath a link someone already has.
-    const payload: ReportPayload = {
-      sessionId: body.sessionId,
-      pitcherId: body.pitcherId,
-      pitcherName: body.pitcherName,
-      uniformNumber: body.uniformNumber ?? null,
-      teamName: body.teamName ?? null,
-      date: body.date,
-      chartingPerspective: body.chartingPerspective ?? null,
-      loggedByCoach: !!body.loggedByCoach,
-      pitchTypes: Array.isArray(body.pitchTypes) ? body.pitchTypes : [],
-      gridSize: body.gridSize,
-      pitches: body.pitches,
-      history: Array.isArray(body.history) ? body.history : []
-    }
-
     let html: string
-    try {
-      html = buildReportHtml(payload)
-    } catch (err) {
-      return new Response(JSON.stringify({ error: 'Report generation failed: ' + (err as Error).message }), { status: 500, headers: corsHeaders })
+
+    if (session.kind === 'game') {
+      // G2 approach (g): the ONE definition (drafting decision 1) -- called
+      // fresh here, never trusted from the client, so this can never
+      // disagree with what History's own game row already showed for the
+      // same session. Everything else in the payload (pitches, opponent,
+      // recentPens, gameTrend) is client-supplied, same accepted trust
+      // model the bullpen path above has always used for its own
+      // pitches/history.
+      const { data: summary, error: summaryErr } = await callerClient.rpc('compute_game_summary', { p_session_id: sessionId })
+      if (summaryErr) {
+        return new Response(JSON.stringify({ error: 'compute_game_summary failed: ' + summaryErr.message }), { status: 500, headers: corsHeaders })
+      }
+      if (summary && typeof summary === 'object' && 'error' in (summary as Record<string, unknown>)) {
+        return new Response(JSON.stringify({ error: 'compute_game_summary: ' + (summary as Record<string, unknown>).error }), { status: 400, headers: corsHeaders })
+      }
+
+      const gamePayload: GameReportPayload = {
+        sessionId: body.sessionId,
+        pitcherId: body.pitcherId,
+        pitcherName: body.pitcherName,
+        uniformNumber: body.uniformNumber ?? null,
+        teamName: body.teamName ?? null,
+        date: body.date,
+        opponent: body.opponent ?? null,
+        chartingPerspective: body.chartingPerspective ?? null,
+        loggedByCoach: !!body.loggedByCoach,
+        pitchTypes: Array.isArray(body.pitchTypes) ? body.pitchTypes : [],
+        gridSize: body.gridSize,
+        pitches: body.pitches as unknown as GamePitch[],
+        recentPens: body.recentPens,
+        gameTrend: Array.isArray(body.gameTrend) ? body.gameTrend : [],
+        summary: summary as unknown as GameSummary
+      }
+      try {
+        html = buildGameReportHtml(gamePayload)
+      } catch (err) {
+        return new Response(JSON.stringify({ error: 'Report generation failed: ' + (err as Error).message }), { status: 500, headers: corsHeaders })
+      }
+    } else {
+      const payload: ReportPayload = {
+        sessionId: body.sessionId,
+        pitcherId: body.pitcherId,
+        pitcherName: body.pitcherName,
+        uniformNumber: body.uniformNumber ?? null,
+        teamName: body.teamName ?? null,
+        date: body.date,
+        chartingPerspective: body.chartingPerspective ?? null,
+        loggedByCoach: !!body.loggedByCoach,
+        pitchTypes: Array.isArray(body.pitchTypes) ? body.pitchTypes : [],
+        gridSize: body.gridSize,
+        pitches: body.pitches,
+        history: Array.isArray(body.history) ? body.history : []
+      }
+      try {
+        html = buildReportHtml(payload)
+      } catch (err) {
+        return new Response(JSON.stringify({ error: 'Report generation failed: ' + (err as Error).message }), { status: 500, headers: corsHeaders })
+      }
     }
 
     const token = randomReportToken()

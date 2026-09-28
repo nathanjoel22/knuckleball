@@ -5491,9 +5491,16 @@ function renderFieldFlow(){
     </div></div>`;
 
   // Fix (G1b-r2): the G1b-r runner-chip corrector (batter/R1/R2/R3 -> 1 · 2
-  // · 3 · home · out) and the DP chip, both UNCHANGED, now hidden behind
-  // this toggle instead of always shown -- "nothing here is required on a
-  // routine play."
+  // · 3 · home · out) and the DP chip, both UNCHANGED. For O/E/FC it's still
+  // hidden behind the Fix toggle -- "nothing here is required on a routine
+  // play." For H specifically, G1b-r2d shows it INLINE instead, unprompted,
+  // whenever a runner is on base: a single tap already sets a real batter
+  // AND runner outcome via the standard prefill, so there's no separate
+  // confirmation STEP to add taps for -- the charter just sees the assumed
+  // advance already highlighted and can correct it in the same 2 taps
+  // (open the chip, pick the base) Fix always offered, or accept it with
+  // zero extra taps by doing nothing. Fix itself is hidden for H (nothing
+  // left for it to reveal -- DP doesn't apply to a hit anyway).
   const baseLabel = { '1': '1st', '2': '2nd', '3': '3rd', home: 'Home', out: 'Out' };
   const chipLabel = (key) => {
     if(key === 'batter'){
@@ -5520,8 +5527,18 @@ function renderFieldFlow(){
     <div class="chip-row" style="margin-top:4px;">
       ${destOptions.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="setFieldEnding(${editingKeyArg},'${k}')">${l}</button>`).join('')}
     </div>` : '';
-  const fixPanel = fp.fixOpen ? `
+
+  const anyRunnerOn = [1, 2, 3].some(b => s.runners[b]);
+  const runnerPromptRow = (fp.entry === 'H' && anyRunnerOn) ? `
+    <div style="margin-bottom:8px;">
+      <div class="field-label" style="margin-bottom:4px;">Runners -- did they advance as shown?</div>
+      <div class="chip-row">${runnerChips}</div>
+      ${editingPicker}
+    </div>` : '';
+  const fixPanel = (fp.entry !== 'H' && fp.fixOpen) ? `
     <div style="margin:8px 0;"><div class="chip-row">${runnerChips}${dpChip}</div>${editingPicker}</div>` : '';
+  const fixLink = fp.entry !== 'H'
+    ? ` <a href="#" class="fix-link" onclick="toggleFix();return false;">${fp.fixOpen ? 'Close' : 'Fix'}</a>` : '';
 
   // G1b-r2a: Next Pitch (renamed from Pitch) moves up to be the panel's own
   // shared button, after the velocity strip -- see renderGameSessionView's
@@ -5531,7 +5548,8 @@ function renderFieldFlow(){
     ${entryRow}
     ${positionRow}
     ${bbTypeRow}
-    <p class="walkthrough-summary">${escHtml(fieldPlaySummary(fp))} <a href="#" class="fix-link" onclick="toggleFix();return false;">${fp.fixOpen ? 'Close' : 'Fix'}</a></p>
+    ${runnerPromptRow}
+    <p class="walkthrough-summary">${escHtml(fieldPlaySummary(fp))}${fixLink}</p>
     ${fixPanel}
     <button class="btn btn-ghost" onclick="cancelFieldFlow()">Cancel</button>
   </div>`;

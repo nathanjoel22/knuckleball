@@ -3111,6 +3111,19 @@ window.endSession = async function(){
     // but endSession has its own callers to be safe for).
     kind: state.activeSession.kind || 'bullpen',
     chartingPerspective: sessionPerspective(state.activeSession),
+    // G2 approach (b): opponent is whatever's in the field right now (never
+    // touched for a bullpen -- undefined there, mapped to null in
+    // syncOutbox same as every other game-only column). The counters are
+    // reconstructed from the session's own live inning/outs -- every
+    // COMPLETED prior inning contributed exactly 3 outs (gameNewInning and
+    // every outs>=3 rollover both enforce this), and Adjust Runners'
+    // manual outs (caught stealing, a pickoff) already flow through the
+    // same s.outs/s.inning via applyRunnerAdvances, so this is genuinely
+    // the total, not just the pitch-derived subset compute_game_summary's
+    // fallback would otherwise have to guess at.
+    opponent: (state.activeSession.kind === 'game' && state.activeSession.opponent) ? state.activeSession.opponent : null,
+    gameFinalInning: state.activeSession.kind === 'game' ? state.activeSession.inning : null,
+    gameOutsRecorded: state.activeSession.kind === 'game' ? ((state.activeSession.inning - 1) * 3 + state.activeSession.outs) : null,
     queuedAt: Date.now(),
     lastError: null,
     lastAttemptAt: null
@@ -3158,6 +3171,19 @@ window.cancelDeleteSession = function(){
   render();
 };
 window.onDeleteConfirmInput = function(v){ state.deleteConfirmText = v; };
+// G2 approach (b): same no-render-on-keystroke pattern as
+// onDeleteConfirmInput above -- app.innerHTML is rebuilt wholesale on every
+// render(), so an input handler that doesn't need to change anything else
+// on screen just updates state directly and lets the browser's own native
+// typing show the keystroke. maxlength=60 caps normal typing; sliced here
+// too in case a paste exceeds it, matching sessions_opponent_length's own
+// cap. Like onDeleteConfirmInput, this value isn't written to the draft
+// until some OTHER action saves it -- endSession() below reads it live
+// from memory regardless, so this only matters for surviving a reload
+// mid-keystroke, same tradeoff that field already accepts.
+window.onGameOpponentInput = function(v){
+  state.activeSession.opponent = v.slice(0, 60);
+};
 window.confirmDeleteSession = async function(){
   const el = document.getElementById('delete-confirm-input');
   if(el) state.deleteConfirmText = el.value;
@@ -3295,7 +3321,17 @@ async function syncOutbox(){
       charting_perspective: item.chartingPerspective || 'behind_catcher',
       // G1: defensive fallback for an item queued before this shipped --
       // every such item is, definitionally, a bullpen.
-      kind: item.kind || 'bullpen'
+      kind: item.kind || 'bullpen',
+      // G2 approach (b): undefined (a bullpen item, or a game item queued
+      // before this shipped) becomes null explicitly -- same defensive
+      // upsert reasoning as every other nullable column in pitchRows below
+      // (an upsert must not leave a column untouched on a retry by omitting
+      // the key). sessions_kind_check's own CHECK already enforces these
+      // stay NULL for a bullpen; this just makes sure a game row's own
+      // first-ever sync actually carries them.
+      opponent: (item.opponent === undefined) ? null : item.opponent,
+      game_final_inning: (item.gameFinalInning === undefined) ? null : item.gameFinalInning,
+      game_outs_recorded: (item.gameOutsRecorded === undefined) ? null : item.gameOutsRecorded
     };
     const pitchRows = item.pitches.map(p => ({
       id: p.id,
@@ -3392,7 +3428,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index)')
+    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index)')
     .eq('pitcher_id', pitcherId)
     .eq('team_id', teamId)
     .order('started_at', { ascending: false });
@@ -3418,6 +3454,9 @@ async function loadSessionsForCurrentSelection(){
     // G1: defensive fallback for a row that predates this column --
     // every such row is, definitionally, a bullpen.
     kind: s.kind || 'bullpen',
+    // G2 approach (b): null for every bullpen and for a game saved without
+    // one -- History/the report both render "Game · <date>" in that case.
+    opponent: s.opponent || null,
     pitches: (s.pitches || []).map(p => ({
       type: p.type, velo: p.velo,
       targetRow: p.target_row, targetCol: p.target_col,
@@ -3718,6 +3757,11 @@ window.chooseSessionKind = async function(kind){
     state.activeSession.strikes = 0;
     state.activeSession.atBatIndex = 1;
     state.activeSession.delivery = null;
+    // G2 approach (b): optional, editable up to save -- null renders as
+    // "Game · <date>" in History/the report; set renders as
+    // "vs <opponent> · <date>" (matches sessions.opponent's own column
+    // comment in the migration). Never touched for a bullpen session.
+    state.activeSession.opponent = null;
     // G1b: base state. Cleared here at game start, at 3 outs, and at a
     // manual New inning (see applyGameResultProgression and gameNewInning) --
     // never anywhere else, so a mid-inning walk/hit doesn't wipe runners who
@@ -5702,6 +5746,11 @@ function renderGameSessionView(p){
           <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
           <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
         </div>
+        <div style="margin:12px 0 8px;">
+          <div class="field-label" style="margin-bottom:4px;">Opponent (optional)</div>
+          <input class="text-input" placeholder="e.g. Eastern" maxlength="60"
+            value="${escHtml(s.opponent || '')}" oninput="onGameOpponentInput(this.value)">
+        </div>
         <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
       </div>
     </div>`;
@@ -5943,19 +5992,59 @@ function renderHistoryView(){
       <button class="undo-btn" onclick="toggleOldTombstones()">${state.oldTombstonesExpanded ? 'Hide' : ''} ${oldTombstoneCount} deleted session${oldTombstoneCount === 1 ? '' : 's'}</button>
     </div>` : '';
   return renderHistoryFilter() + visible.map(s => {
-    // G1: a game session gets its own, much simpler card -- innings,
+    // G1/G2: a game session gets its own, much simpler card -- innings,
     // pitches, K/BB/H, strike% (gameStats -- the same function the live
-    // charting screen uses). Never sessionStats: that computes target-vs-
-    // actual accuracy, which has no meaning for a session with no
-    // targets. Reports aren't built yet for games (compute.ts assumes a
-    // target on every pitch) -- View/Send show disabled with a note
-    // rather than being silently hidden, so it's clear this is coming,
-    // not broken.
+    // charting screen uses; History's OWN display, unlike the report,
+    // still reads this rather than compute_game_summary -- a pre-existing
+    // gap, not introduced by G2). Never sessionStats: that computes target-
+    // vs-actual accuracy, which has no meaning for a session with no
+    // targets. G2 approach (g): Send/View report now work exactly like a
+    // bullpen's (same gate, same messages, same recipients cap -- decision
+    // 10 -- the renderer doesn't know about kinds when gating), reusing the
+    // identical eligibility logic verbatim rather than a second copy.
     if(!s.tombstone && (s.kind || 'bullpen') === 'game'){
       const dateStr = new Date(s.date).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+      const oppLabel = s.opponent ? `vs ${escHtml(s.opponent)} · ${dateStr}` : `Game · ${dateStr}`;
       const stats = gameStats(s.pitches);
       const expanded = state.expandedSessionId === s.id;
       const pendingTag = s.pending ? ` <span class="coach-logged-tag pending-tag">Pending sync${s.lastError ? ' · retrying' : ''}</span>` : '';
+
+      const contacts = p.contactEmails || {};
+      const pVerified = currentPitcherVerified(p);
+      const pOnTeam = currentPitcherOnTeam(p);
+      const callerVerified = currentCallerVerified();
+      const pEligible = pVerified && pOnTeam && callerVerified;
+      const emailList = pEligible
+        ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean)
+        : [];
+      const rs = state.reportStatus && state.reportStatus.sessionId === s.id ? state.reportStatus : null;
+      const viewControl = s.reportPath
+        ? `<a class="btn btn-ghost" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>`
+        : (pEligible ? `<button class="btn btn-ghost" onclick="viewSessionReport('${s.id}')">View report</button>` : '');
+      const reportPanel = s.pending ? `
+        <div class="report-panel">
+          <div class="field-label">Email this report</div>
+          <p class="report-recipients">Available once this session has synced.</p>
+          <button class="btn btn-primary" disabled>Send report</button>
+        </div>` : `
+        <div class="report-panel">
+          <div class="field-label">Email this report</div>
+          ${!pEligible
+            ? `<p class="report-recipients" style="color:var(--clay);">${!pVerified
+                ? `No report can be sent until ${escHtml(p.name)} verifies their email.`
+                : !pOnTeam
+                  ? `No report can be sent until ${escHtml(p.name)} is on a team.`
+                  : `No report can be sent until you verify your own account email.`}</p>`
+            : emailList.length
+              ? `<p class="report-recipients">To: ${escHtml(emailList.join(', '))}</p>`
+              : `<p class="report-recipients">No contact emails set for ${escHtml(p.name)} yet${isCoach() ? '' : ' — add them under Contacts above'}.</p>`}
+          <div class="report-actions">
+            <button class="btn btn-primary" ${emailList.length ? '' : 'disabled'} onclick="sendSessionReport('${s.id}')">Send report</button>
+            ${viewControl}
+          </div>
+          ${rs ? `<p class="report-status report-status-${rs.status}">${rs.message}</p>` : ''}
+        </div>`;
+
       const deleteZone = (s.pending || !canDeleteSessions()) ? '' : (!isOnline() ? `
         <div class="delete-zone"><button class="undo-btn" disabled title="Deleting requires a connection">Connect to delete</button></div>` : (state.deletingSessionId === s.id ? `
         <div class="delete-zone">
@@ -5972,7 +6061,7 @@ function renderHistoryView(){
       return `
         <div class="session-card">
           <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
-            <div class="session-date">${dateStr} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ' <span class="coach-logged-tag">Logged by coach</span>' : ''}${pendingTag}</div>
+            <div class="session-date">${oppLabel} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ' <span class="coach-logged-tag">Logged by coach</span>' : ''}${pendingTag}</div>
             <div class="session-meta">
               <div class="meta-item"><span class="meta-num mono">${stats.innings}</span><span class="meta-lbl">Innings</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
@@ -5985,14 +6074,7 @@ function renderHistoryView(){
           ${expanded ? `
           <div class="session-card-body">
             <div style="flex:1;min-width:220px;">
-              <div class="report-panel">
-                <div class="field-label">Email this report</div>
-                <p class="report-recipients">Game reports coming soon.</p>
-                <div class="report-actions">
-                  <button class="btn btn-primary" disabled>Send report</button>
-                  <button class="btn btn-ghost" disabled>View report</button>
-                </div>
-              </div>
+              ${reportPanel}
               ${deleteZone}
             </div>
           </div>` : ''}
@@ -6992,6 +7074,127 @@ function buildReportPayload(session, p){
   };
 }
 
+// ---------- G2 approach (e): recent bullpens, pooled for real ----------
+// Pools raw pitches from the pitcher's last 5 BULLPEN sessions charted
+// strictly before the game's own date (decision 8: "pens only, never
+// games") into one row per pitch type. Deliberately reuses the exact same
+// per-pitch predicates sessionStats() already uses for a single pen's own
+// strikePct/command% (isStrikeCell, inAccuracyZone, isAccurate) rather than
+// inventing a second definition -- this just applies them over pooled raw
+// pitches from several sessions at once, which is genuinely a new number
+// (there's no existing "5-session" aggregate anywhere to disagree with),
+// not a recomputation of any session's OWN already-shown number.
+// undefined below the 3-pen minimum (content spec section 10) -- the
+// renderer already treats a missing recentPens as "omit the section."
+function buildRecentPensForGame(gameDateMs){
+  const priorPens = state.sessions
+    .filter(s => !s.deletedAt && (s.kind || 'bullpen') === 'bullpen' && s.date < gameDateMs)
+    .slice().sort((a, b) => b.date - a.date)
+    .slice(0, 5);
+  if(priorPens.length < 3) return undefined;
+
+  const pooled = {};
+  priorPens.forEach(s => {
+    s.pitches.forEach(p => {
+      if(!pooled[p.type]) pooled[p.type] = { count: 0, strikes: 0, zoneTotal: 0, zoneHits: 0, exact: 0 };
+      const t = pooled[p.type];
+      t.count++;
+      if(isStrikeCell(p.actualRow, p.actualCol)) t.strikes++;
+      if(p.inAccuracyZone === true || p.inAccuracyZone === false){
+        t.zoneTotal++;
+        if(p.inAccuracyZone) t.zoneHits++;
+      }
+      if(isAccurate(p)) t.exact++;
+    });
+  });
+  const totalPitches = Object.values(pooled).reduce((sum, t) => sum + t.count, 0);
+  if(!totalPitches) return undefined;
+
+  return Object.keys(pooled).map(type => {
+    const t = pooled[type];
+    // Command % prefers zone-accuracy (U7B) when any pooled pitch of this
+    // type has one, same "which mode wins" rule sessionStats already
+    // applies per session -- falls back to exact-hit only when NONE of the
+    // pooled pitches ever had a zone recorded for this type.
+    const commandPct = t.zoneTotal
+      ? Math.round((t.zoneHits / t.zoneTotal) * 100)
+      : Math.round((t.exact / t.count) * 100);
+    return {
+      type,
+      usagePct: Math.round((t.count / totalPitches) * 100),
+      strikePct: Math.round((t.strikes / t.count) * 100),
+      commandPct,
+      commandLabel: t.zoneTotal ? 'zone' : 'exact'
+    };
+  });
+}
+
+// ---------- G2 approach (f): game trends, calling the one definition ----------
+// "Last 6 games including this one, minimum 3" (content spec section 11).
+// Per drafting decision 1, the shared numbers (strike %, first-pitch
+// strike %, K/BB/H) come from compute_game_summary -- the SAME RPC the
+// server calls for this session's own header/tiles -- never recomputed via
+// gameStats() here, so a trend point can never quietly disagree with what
+// that same game's own History row or report header say. avgVelo/hasVelo
+// aren't part of that function's return shape (it has no velocity numbers
+// at all), so those two are computed directly from each session's own
+// already-loaded raw pitches, same isDefaultVeloReading-filtered average
+// every other velocity display in this app uses.
+async function buildGameTrendEntries(gameSessions){
+  const entries = [];
+  for(const s of gameSessions){
+    const { data, error } = await supabaseClient.rpc('compute_game_summary', { p_session_id: s.id });
+    if(error || !data || data.error) continue; // skip a session RLS/RPC can't resolve rather than fail the whole trend
+    const velos = s.pitches.filter(p => !isDefaultVeloReading(p)).map(p => p.velo).filter(v => v !== null && v !== undefined);
+    entries.push({
+      date: s.date,
+      dateLabel: new Date(s.date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' }),
+      strikePct: data.strike_pct,
+      firstPitchStrikePct: data.first_pitch_strike_pct,
+      k: data.k, bb: data.bb, h: data.h,
+      hasVelo: velos.length > 0,
+      avgVelo: velos.length ? Math.round(velos.reduce((a, b) => a + b, 0) / velos.length) : null,
+      pitches: data.pitches
+    });
+  }
+  return entries;
+}
+
+// The game-session sibling of buildReportPayload above. async (unlike its
+// bullpen counterpart) because building gameTrend means RPC calls.
+async function buildGameReportPayload(session, p){
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  const pitchesForReport = session.pitches.map(pt =>
+    isDefaultVeloReading(pt) ? { ...pt, velo: null } : pt
+  );
+
+  const priorGames = state.sessions
+    .filter(s => s.id !== session.id && !s.deletedAt && (s.kind || 'bullpen') === 'game')
+    .slice().sort((a, b) => b.date - a.date)
+    .slice(0, 5);
+  // Chronological order (oldest first), THIS game last -- matches the
+  // packet's own "including this one" framing and how renderGameTrends
+  // reads the array (a plain left-to-right line chart).
+  const trendSessions = priorGames.slice().reverse().concat([session]);
+  const gameTrend = await buildGameTrendEntries(trendSessions);
+
+  return {
+    sessionId: session.id,
+    pitcherId: p.id,
+    pitcherName: p.name,
+    uniformNumber: (p.uniformNumber != null) ? p.uniformNumber : (team && team.uniform_number != null ? team.uniform_number : null),
+    date: session.date,
+    teamName: team ? team.name : null,
+    opponent: session.opponent || null,
+    chartingPerspective: session.chartingPerspective,
+    loggedByCoach: session.loggedByCoach,
+    pitchTypes: p.pitchTypes,
+    pitches: pitchesForReport,
+    recentPens: buildRecentPensForGame(session.date),
+    gameTrend
+  };
+}
+
 async function callSendReportFunction(payload){
   if(typeof SEND_REPORT_URL === 'undefined' || SEND_REPORT_URL.indexOf('YOUR_') === 0){
     throw new Error('not configured');
@@ -7028,7 +7231,12 @@ window.sendSessionReport = async function(sessionId){
   state.reportStatus = { sessionId, status: 'sending', message: 'Sending…' };
   render();
   try{
-    const body = await callSendReportFunction(Object.assign({ emails }, buildReportPayload(session, p)));
+    // G2 approach (g): a game session builds the game-shaped payload
+    // (approach e/f's recentPens/gameTrend included); a bullpen keeps
+    // using buildReportPayload exactly as before -- untouched, so a
+    // bullpen report stays byte-for-byte identical (acceptance 14).
+    const payload = (session.kind === 'game') ? await buildGameReportPayload(session, p) : buildReportPayload(session, p);
+    const body = await callSendReportFunction(Object.assign({ emails }, payload));
     if(body.reportPath) session.reportPath = body.reportPath;
     state.reportStatus = { sessionId, status: 'sent', message: 'Report sent to ' + emails.length + ' recipient(s).' };
   } catch(err){
@@ -7054,7 +7262,8 @@ window.viewSessionReport = async function(sessionId){
   state.reportStatus = { sessionId, status: 'sending', message: 'Generating report…' };
   render();
   try{
-    const body = await callSendReportFunction(Object.assign({ emails: [] }, buildReportPayload(session, p)));
+    const payload = (session.kind === 'game') ? await buildGameReportPayload(session, p) : buildReportPayload(session, p);
+    const body = await callSendReportFunction(Object.assign({ emails: [] }, payload));
     if(body.reportPath) session.reportPath = body.reportPath;
     state.reportStatus = null;
   } catch(err){

@@ -3111,6 +3111,19 @@ window.endSession = async function(){
     // but endSession has its own callers to be safe for).
     kind: state.activeSession.kind || 'bullpen',
     chartingPerspective: sessionPerspective(state.activeSession),
+    // G2 approach (b): opponent is whatever's in the field right now (never
+    // touched for a bullpen -- undefined there, mapped to null in
+    // syncOutbox same as every other game-only column). The counters are
+    // reconstructed from the session's own live inning/outs -- every
+    // COMPLETED prior inning contributed exactly 3 outs (gameNewInning and
+    // every outs>=3 rollover both enforce this), and Adjust Runners'
+    // manual outs (caught stealing, a pickoff) already flow through the
+    // same s.outs/s.inning via applyRunnerAdvances, so this is genuinely
+    // the total, not just the pitch-derived subset compute_game_summary's
+    // fallback would otherwise have to guess at.
+    opponent: (state.activeSession.kind === 'game' && state.activeSession.opponent) ? state.activeSession.opponent : null,
+    gameFinalInning: state.activeSession.kind === 'game' ? state.activeSession.inning : null,
+    gameOutsRecorded: state.activeSession.kind === 'game' ? ((state.activeSession.inning - 1) * 3 + state.activeSession.outs) : null,
     queuedAt: Date.now(),
     lastError: null,
     lastAttemptAt: null
@@ -3158,6 +3171,19 @@ window.cancelDeleteSession = function(){
   render();
 };
 window.onDeleteConfirmInput = function(v){ state.deleteConfirmText = v; };
+// G2 approach (b): same no-render-on-keystroke pattern as
+// onDeleteConfirmInput above -- app.innerHTML is rebuilt wholesale on every
+// render(), so an input handler that doesn't need to change anything else
+// on screen just updates state directly and lets the browser's own native
+// typing show the keystroke. maxlength=60 caps normal typing; sliced here
+// too in case a paste exceeds it, matching sessions_opponent_length's own
+// cap. Like onDeleteConfirmInput, this value isn't written to the draft
+// until some OTHER action saves it -- endSession() below reads it live
+// from memory regardless, so this only matters for surviving a reload
+// mid-keystroke, same tradeoff that field already accepts.
+window.onGameOpponentInput = function(v){
+  state.activeSession.opponent = v.slice(0, 60);
+};
 window.confirmDeleteSession = async function(){
   const el = document.getElementById('delete-confirm-input');
   if(el) state.deleteConfirmText = el.value;
@@ -3295,7 +3321,17 @@ async function syncOutbox(){
       charting_perspective: item.chartingPerspective || 'behind_catcher',
       // G1: defensive fallback for an item queued before this shipped --
       // every such item is, definitionally, a bullpen.
-      kind: item.kind || 'bullpen'
+      kind: item.kind || 'bullpen',
+      // G2 approach (b): undefined (a bullpen item, or a game item queued
+      // before this shipped) becomes null explicitly -- same defensive
+      // upsert reasoning as every other nullable column in pitchRows below
+      // (an upsert must not leave a column untouched on a retry by omitting
+      // the key). sessions_kind_check's own CHECK already enforces these
+      // stay NULL for a bullpen; this just makes sure a game row's own
+      // first-ever sync actually carries them.
+      opponent: (item.opponent === undefined) ? null : item.opponent,
+      game_final_inning: (item.gameFinalInning === undefined) ? null : item.gameFinalInning,
+      game_outs_recorded: (item.gameOutsRecorded === undefined) ? null : item.gameOutsRecorded
     };
     const pitchRows = item.pitches.map(p => ({
       id: p.id,
@@ -3392,7 +3428,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index)')
+    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index)')
     .eq('pitcher_id', pitcherId)
     .eq('team_id', teamId)
     .order('started_at', { ascending: false });
@@ -3418,6 +3454,9 @@ async function loadSessionsForCurrentSelection(){
     // G1: defensive fallback for a row that predates this column --
     // every such row is, definitionally, a bullpen.
     kind: s.kind || 'bullpen',
+    // G2 approach (b): null for every bullpen and for a game saved without
+    // one -- History/the report both render "Game · <date>" in that case.
+    opponent: s.opponent || null,
     pitches: (s.pitches || []).map(p => ({
       type: p.type, velo: p.velo,
       targetRow: p.target_row, targetCol: p.target_col,
@@ -3718,6 +3757,11 @@ window.chooseSessionKind = async function(kind){
     state.activeSession.strikes = 0;
     state.activeSession.atBatIndex = 1;
     state.activeSession.delivery = null;
+    // G2 approach (b): optional, editable up to save -- null renders as
+    // "Game · <date>" in History/the report; set renders as
+    // "vs <opponent> · <date>" (matches sessions.opponent's own column
+    // comment in the migration). Never touched for a bullpen session.
+    state.activeSession.opponent = null;
     // G1b: base state. Cleared here at game start, at 3 outs, and at a
     // manual New inning (see applyGameResultProgression and gameNewInning) --
     // never anywhere else, so a mid-inning walk/hit doesn't wipe runners who
@@ -5701,6 +5745,11 @@ function renderGameSessionView(p){
           <button class="btn btn-ghost" onclick="undoLastGameAction()">Undo last action</button>
           <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
           <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
+        </div>
+        <div style="margin:12px 0 8px;">
+          <div class="field-label" style="margin-bottom:4px;">Opponent (optional)</div>
+          <input class="text-input" placeholder="e.g. Eastern" maxlength="60"
+            value="${escHtml(s.opponent || '')}" oninput="onGameOpponentInput(this.value)">
         </div>
         <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
       </div>

@@ -33,12 +33,16 @@ export interface GamePitch {
   atBatIndex: number | null
 }
 
-// Decision 2: exact strike/ball split, restated here (not imported from the
-// client) because this runs in a different runtime -- kept byte-identical
-// to bullpen-tracker.html's GAME_STRIKE_RESULTS and to
-// compute_game_summary's own copy in the migration. All three must move
-// together if this set ever changes.
-const STRIKE_RESULTS = new Set(['strike_looking', 'strike_swinging', 'foul', 'in_play', 'sac_bunt', 'sac_fly', 'dropped_third'])
+// Decision 2 + Joel's foul-tip ruling (Sept 28, 2026 chat -- not yet a
+// numbered drafting decision, but binding): a foul tip is strike-family
+// like a plain foul (always counts as a strike, whether or not it ends the
+// at-bat) but, unlike a plain foul, CAN be strike three -- a caught foul
+// tip with 2 strikes already is a real strikeout. Restated here (not
+// imported from the client) because this runs in a different runtime --
+// kept byte-identical to bullpen-tracker.html's GAME_STRIKE_RESULTS/gameStats
+// and to compute_game_summary's own copy in the migration. All three must
+// move together if this set ever changes.
+const STRIKE_RESULTS = new Set(['strike_looking', 'strike_swinging', 'foul', 'foul_tip', 'in_play', 'sac_bunt', 'sac_fly', 'dropped_third'])
 const EXCLUDED_FROM_PCT = new Set(['interference', 'other'])
 const THIN_SAMPLE = 5
 
@@ -47,6 +51,12 @@ function countsTowardPct(p: GamePitch): boolean { return !EXCLUDED_FROM_PCT.has(
 function isSwing(p: GamePitch): boolean {
   // Decision 5: swings = swinging strikes + fouls + balls in play. Takes
   // (called strikes, balls) are not swings.
+  // OPEN QUESTION (not yet confirmed by Joel): a foul tip is bat-on-ball
+  // contact by definition, same as a plain foul -- arguably belongs here
+  // too, for the same reason it belongs in STRIKE_RESULTS above. Left OUT
+  // for now since this is a brand-new report-only metric (no existing
+  // client behavior to match, unlike strike %/K), not a drift to fix --
+  // flag before shipping, don't decide silently.
   return p.result === 'strike_swinging' || p.result === 'foul' || p.result === 'in_play'
 }
 function isWhiff(p: GamePitch): boolean { return p.result === 'strike_swinging' }
@@ -56,7 +66,7 @@ function isWhiff(p: GamePitch): boolean { return p.result === 'strike_swinging' 
 // by comment cross-reference since none of the three can literally import
 // the others.
 function isK(p: GamePitch): boolean {
-  return p.result === 'dropped_third' || ((p.result === 'strike_looking' || p.result === 'strike_swinging') && p.strikesBefore >= 2)
+  return p.result === 'dropped_third' || ((p.result === 'strike_looking' || p.result === 'strike_swinging' || p.result === 'foul_tip') && p.strikesBefore >= 2)
 }
 function isBB(p: GamePitch): boolean { return p.result === 'ball' && p.ballsBefore >= 3 }
 function isHit(p: GamePitch): boolean { return p.result === 'in_play' && p.inPlayOutcome === 'hit' }

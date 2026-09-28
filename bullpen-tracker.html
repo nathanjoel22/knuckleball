@@ -4734,16 +4734,25 @@ const FIELD_POSITIONS = [
    everything else on activeSession, unchanged architecture -- Resume
    restores it mid-walkthrough the same way it restores gamePendingPitch).
      { entry: null|'H'|'O'|'E'|'FC', hitType: null|'1B'|'2B'|'3B'|'HR',
-       positionSeq: [], bbType: null, endings: { batter, 1, 2, 3 },
-       editing: null, dp: false, outReasons: { [base]: 'force'|'pickoff'|'fc' } }
+       positionSeq: [], bbType: null,
+       endings: { batter, 1, 2, 3 -- a runner's own value is 'stay'|'1'|'2'|
+                  '3'|'home'|'outAt1'|'outAt2'|'outAt3'|'outAtHome' },
+       editing: null, pendingOutFor: null }
    entry starts null now (In Play alone doesn't fix it -- the charter picks
    Hit/Out/Error/FC as its own first question, chooseWalkthroughEntry
-   below). G1b-r2e retired Fix/fixOpen and the standalone DP toggle --
-   "What happened to the runners?" (renderFieldFlow) now always shows
-   inline whenever a base is occupied, for every entry, and outReasons is
-   new (per-runner DP notation). Everything else -- fieldBatterResultKey,
-   refreshFieldPrefill, prefillRunnerEndings, leadForcedOutEndings,
-   doublePlayEndings, inferredDoublePlaySeq, BATTER_RESULT_TO_BASE,
+   below). G1b-r2f retired Fix/fixOpen, the standalone DP toggle, the
+   position-sequence auto-inference, and the manually-tapped DP/DP(Pickoff)/
+   DP(FC) reasons (G1b-r2e) -- nothing about WHY a runner is out is ever
+   tapped directly any more. "Out" for a runner now asks one follow-up, at
+   which base (pendingOutFor gates that second picker), and the whole
+   play's own story -- doubled off, fielder's choice, double play, triple
+   play -- is DERIVED fresh every render (fieldPlayOutLabel/runnerOutKind)
+   from where each runner (and the batter) actually ended up, the same
+   "derived, never tapped" precedent sacrifice already uses. "What happened
+   to the runners?" (renderFieldFlow) still always shows inline whenever a
+   base is occupied, for every entry. Everything else -- fieldBatterResultKey,
+   refreshFieldPrefill, prefillRunnerEndings, leadForcedOutEndings (still
+   used by the FC entry's own prefill), BATTER_RESULT_TO_BASE,
    applyRunnerAdvances, forcedWalkAdvances -- is REUSED UNCHANGED from
    G1b/G1b-r; only what the charter taps and sees to get there is new. */
 // entry fixes the batter's own outcome for O/E/FC immediately (out/error/
@@ -4781,12 +4790,7 @@ window.openFieldFlow = async function(){
   if(!state.activeSession.gamePendingPitch) return; // the pitch's own zone tap must already exist
   state.activeSession.fieldPlay = {
     entry: null, hitType: null, positionSeq: [], bbType: null,
-    // G1b-r2e: outReasons is new -- { [base]: 'force'|'pickoff'|'fc' },
-    // populated whenever that runner's own ending is 'out' via one of the
-    // three DP-tagged destination options (or the standard force
-    // auto-inference, which now tags itself 'force' too). fixOpen/toggle
-    // DP retired -- see renderFieldFlow's own note.
-    endings: {}, editing: null, dp: false, outReasons: {}
+    endings: {}, editing: null, pendingOutFor: null
   };
   await storSet(draftKey(), state.activeSession);
   render();
@@ -4817,38 +4821,6 @@ window.chooseFieldHitType = async function(hitType){
   await storSet(draftKey(), state.activeSession);
   render();
 };
-// G1b-r addendum: a sequence of 3+ positions ending at 1B is a force double
-// play (SS-2B-1B, 2B-SS-1B, 3B-2B-1B, 1B-SS-1B, P-SS-1B, ...); the one
-// 2-long exception is C-1B, since the catcher's own position already IS the
-// force point at home -- no extra throw needed to notate it (the bases-
-// loaded 2-3 example in the packet is exactly this: R3's forced "base
-// ahead" happens to be home plate).
-function inferredDoublePlaySeq(seq){
-  if(seq.length < 2) return false;
-  if(seq[seq.length - 1] !== '1B') return false;
-  if(seq.length >= 3) return true;
-  return seq[0] === 'C';
-}
-// Rebuilds fp.endings for an O entry from its current fp.dp + bbType --
-// called after anything that can change either (a position or bbType tap).
-// Not used for H/E/FC, whose endings are computed once by
-// refreshFieldPrefill at openFieldFlow time.
-function refreshOutEndings(fp){
-  const s = state.activeSession;
-  const dpEndings = fp.dp ? doublePlayEndings(s.runners, fp.bbType) : null;
-  fp.endings = Object.assign({ batter: 'out' }, dpEndings || prefillRunnerEndings(s.runners, 'out'));
-  // G1b-r2e: the auto-inferred DP tags its own runner 'force', same as the
-  // manual DP option does -- so the notation is consistent whether the
-  // charter tapped anything or the sequence alone gave it away. A manual
-  // outReason set by the charter on a DIFFERENT runner (via setFieldEnding)
-  // is preserved; this only fills in for what the auto-inference itself
-  // just produced.
-  if(dpEndings){
-    Object.keys(dpEndings).forEach(k => {
-      if(dpEndings[k] === 'out') fp.outReasons[k] = fp.outReasons[k] || 'force';
-    });
-  }
-}
 // Decision 8: one unified list, no separate "correct the primary" control
 // like G1b's original chooseFieldFielder/addFieldFielderToSequence --
 // tapping a chip not yet in the sequence appends it (the FIRST tap becomes
@@ -4857,6 +4829,10 @@ function refreshOutEndings(fp){
 // SS then 1B stores as fielder='SS', fielders='1B' -- "6-3"). Tapping a
 // chip already in the sequence removes it, per decision 8's own wording.
 // Capped at 4, generous headroom above any real play (a triple play is 3).
+// G1b-r2f: no longer touches fp.endings -- there's no more position-
+// sequence auto-inference to re-run (retired; see this section's own
+// header comment). Position is now purely "who fielded it," independent of
+// who's out and why, which the runner picker's own "at which base" answers.
 window.toggleFieldPosition = async function(pos){
   const fp = state.activeSession.fieldPlay;
   if(!fp) return;
@@ -4866,14 +4842,6 @@ window.toggleFieldPosition = async function(pos){
   } else {
     fp.positionSeq.splice(idx, 1);
   }
-  if(fp.entry === 'O'){
-    // Addendum: re-inferred fresh on every tap, since order doesn't matter
-    // (decision 9) -- a later position completing the pattern, or an
-    // earlier one being un-tapped and breaking it, both have to take effect
-    // immediately.
-    fp.dp = inferredDoublePlaySeq(fp.positionSeq) && fp.bbType === 'ground';
-    refreshOutEndings(fp);
-  }
   await storSet(draftKey(), state.activeSession);
   render();
 };
@@ -4881,20 +4849,9 @@ window.chooseFieldBBType = async function(type){
   const fp = state.activeSession.fieldPlay;
   if(!fp) return;
   fp.bbType = type;
-  if(fp.entry === 'O'){
-    fp.dp = inferredDoublePlaySeq(fp.positionSeq) && fp.bbType === 'ground';
-    refreshOutEndings(fp);
-  }
   await storSet(draftKey(), state.activeSession);
   render();
 };
-// G1b-r2e: the standalone DP toggle is retired -- superseded by the three
-// DP-tagged destination options below (setFieldEnding's dp_force/
-// dp_pickoff/dp_fc), which say WHICH runner and WHY, not just a blanket
-// yes/no for the whole play. The auto-inference (toggleFieldPosition/
-// chooseFieldBBType's own fp.dp computation, unchanged) still sets fp.dp
-// and tags that runner 'force' automatically, zero taps, for the routine
-// grounder-into-a-force-play case.
 // Decision 7: tapping the B/R1/R2/R3 chip opens (or, tapped again, closes)
 // its own destination picker; tapping a destination sets it and closes.
 // key is 'batter' or 1/2/3 -- see renderFieldFlow's own chip markup for how
@@ -4903,25 +4860,29 @@ window.openFieldEndingPicker = async function(key){
   const fp = state.activeSession.fieldPlay;
   if(!fp) return;
   fp.editing = (fp.editing === key) ? null : key;
+  // Opening (or re-toggling) the plain destination picker always supersedes
+  // any in-progress "at which base were they out" follow-up (see
+  // setFieldEnding/setFieldOutAtBase below) -- this is how a charter backs
+  // out of that follow-up if they tapped Out by mistake.
+  fp.pendingOutFor = null;
   await storSet(draftKey(), state.activeSession);
   render();
 };
-// G1b-r2e: dp_force/dp_pickoff/dp_fc are runner-only options (never offered
-// for 'batter', see renderFieldFlow) that record BOTH the game-state
-// ending ('out', same math as a plain out) and WHY, in fp.outReasons, for
-// the cell/notation to show "DP" / "DP (Pickoff)" / "DP (FC)" instead of a
-// generic out. Picking any of the three marks the whole play a double play
-// (fp.dp); picking anything else for that runner clears their own reason
-// and re-derives fp.dp from whatever reasons (if any) remain.
-const FIELD_ENDING_DP_REASON = { dp_force: 'force', dp_pickoff: 'pickoff', dp_fc: 'fc' };
+// G1b-r2f: a runner tapping Out never finalizes an ending by itself --
+// Joel's own rule is that doubled-off/fielder's-choice/double-or-triple-play
+// are DERIVED, never tapped, purely from comparing WHERE each runner was put
+// out to where they started and to how many total outs the play recorded.
+// So Out just opens a second, base-specific follow-up (pendingOutFor) --
+// see the "at which base?" picker in renderFieldFlow and
+// setFieldOutAtBase below, which is what actually writes the ending. The
+// batter has no such follow-up: 'out' finalizes immediately for him, same
+// as any other destination.
 window.setFieldEnding = async function(key, code){
   const fp = state.activeSession.fieldPlay;
   if(!fp) return;
-  fp.outReasons = fp.outReasons || {};
-  if(FIELD_ENDING_DP_REASON[code] && key !== 'batter'){
-    fp.endings[key] = 'out';
-    fp.outReasons[key] = FIELD_ENDING_DP_REASON[code];
-    fp.dp = true;
+  if(code === 'out' && key !== 'batter'){
+    fp.pendingOutFor = key;
+    fp.editing = null;
   } else {
     // A runner tapping his OWN current base is the same as "stays" --
     // stored as the existing 'stay' sentinel (not the numeral) so it's
@@ -4930,10 +4891,21 @@ window.setFieldEnding = async function(key, code){
     // doesn't see it as a destination at all.
     if(typeof key === 'number' && code === String(key)) code = 'stay';
     fp.endings[key] = code;
-    delete fp.outReasons[key];
-    fp.dp = Object.keys(fp.outReasons).length > 0
-      || (fp.entry === 'O' && inferredDoublePlaySeq(fp.positionSeq) && fp.bbType === 'ground');
+    fp.editing = null;
   }
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+// The "at which base" follow-up itself (base is 1/2/3/4, 4 = home).
+// Stored as outAt1/outAt2/outAt3/outAtHome -- runnerOutKind and
+// fieldPlayOutLabel (both above walkthroughOutNumbers) derive doubled-off/
+// force/tag and FC/DP/TP from this plus the rest of the play, every render,
+// never tapped directly.
+window.setFieldOutAtBase = async function(key, base){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  fp.endings[key] = (base === 4) ? 'outAtHome' : `outAt${base}`;
+  fp.pendingOutFor = null;
   fp.editing = null;
   await storSet(draftKey(), state.activeSession);
   render();
@@ -4985,47 +4957,25 @@ function prefillRunnerEndings(runners, batterResult){
   }
   return endings;
 }
-// Shared by FC's prefill above and a ground-ball double play (G1b-r
-// addendum, doublePlayEndings below): given the walk's own forced-advance
-// chain, converts ONLY its lead (highest `from`) link to an out, letting
-// every other forced runner advance normally. {} when there's no force
-// (1st unoccupied) -- FC never fires without one (a fielder's choice
-// requires a force to exist), but the double-play helper below has to
-// handle that case itself (a caught fly/line/pop has no force at all).
+// Shared by FC's prefill above (still the only caller after G1b-r2f retired
+// the position-sequence double-play auto-inference that used to reuse
+// this too): given the walk's own forced-advance chain, converts ONLY its
+// lead (highest `from`) link to an out -- encoded as outAtX (G1b-r2f;
+// "at the base they were forced to," so runnerOutKind reads it as a real
+// force and fieldPlayOutLabel can label it FC on its own, no separate tap
+// needed) -- letting every other forced runner advance normally. {} when
+// there's no force (1st unoccupied) -- a fielder's choice requires one.
 function leadForcedOutEndings(runners){
   const endings = {};
   const chain = forcedWalkAdvances({ runners });
   if(chain.length){
     const lead = chain.reduce((a, b) => (b.from > a.from ? b : a));
     chain.forEach(mv => {
-      endings[mv.from] = (mv.from === lead.from) ? 'out' : (mv.to === 4 ? 'home' : String(mv.to));
+      endings[mv.from] = (mv.from === lead.from)
+        ? (lead.to === 4 ? 'outAtHome' : `outAt${lead.to}`)
+        : (mv.to === 4 ? 'home' : String(mv.to));
     });
   }
-  return endings;
-}
-// G1b-r addendum: two outs on one play. A ground ball with a force in
-// effect converts the FORCE chain's lead runner to an out (identical to
-// FC's own logic -- reused, not reimplemented) while every other forced
-// runner still advances. Anything else that can produce a double play --a
-// caught line/fly/pop with a runner doubled off, a ground ball with no
-// force in effect (nobody on 1st), or an unassisted play -- has no force
-// to route through applyRunnerAdvances at all: only the LEAD OCCUPIED
-// runner (not necessarily a forced one) is out, and every other runner
-// simply holds, since nobody is compelled to move on a caught ball.
-function doublePlayEndings(runners, bbType){
-  const occupiedBases = [1, 2, 3].filter(b => runners[b]);
-  if(!occupiedBases.length) return null;
-  if(bbType === 'ground'){
-    const forced = leadForcedOutEndings(runners);
-    if(Object.keys(forced).length){
-      const endings = {};
-      occupiedBases.forEach(b => { endings[b] = 'stay'; });
-      return Object.assign(endings, forced);
-    }
-  }
-  const lead = Math.max(...occupiedBases);
-  const endings = {};
-  occupiedBases.forEach(b => { endings[b] = (b === lead) ? 'out' : 'stay'; });
   return endings;
 }
 // Standard scorebook fielding numbers, for the DP summary line below only
@@ -5054,16 +5004,18 @@ function basesSummaryText(fp){
 }
 // Decision 7's one-line summary, redrawn on every render from fp.endings --
 // batterResultKey may still be null (no entry chosen, or H before hitType).
-// G1b-r addendum: a DP play gets its own scorebook-notation line instead
+// G1b-r2f: a DP/TP play gets its own scorebook-notation line instead
 // ("6-4-3 . 2 out on the play", quoted verbatim from the packet, singular
-// "out" included) -- fp.positionSeq is meaningful here whether dp came from
-// inference or the manual chip.
+// "out" included) -- the label is DERIVED (fieldPlayOutLabel), never
+// tapped, from wherever every runner (and the batter) actually ended up.
 function fieldPlaySummary(fp){
   const s = state.activeSession;
   const key = fieldBatterResultKey(fp);
-  if(fp.entry === 'O' && fp.dp){
+  const label = fieldPlayOutLabel(fp);
+  const outsThisPlay = [1, 2, 3].filter(b => s.runners[b] && runnerOutKind(b, fp.endings[b]) !== null).length
+    + (key === 'out' ? 1 : 0);
+  if(label === 'DP' || label === 'TP'){
     const notation = fp.positionSeq.map(pos => POSITION_SCOREBOOK_NUMBER[pos] || pos).join('-');
-    const outsThisPlay = [1, 2, 3].filter(b => s.runners[b] && fp.endings[b] === 'out').length + 1;
     return `${notation} · ${outsThisPlay} out on the play · ${basesSummaryText(fp)}`;
   }
   const batterLabel = {
@@ -5075,10 +5027,11 @@ function fieldPlaySummary(fp){
     if(!s.runners[b]) return;
     const ending = fp.endings[b] || 'stay';
     if(ending === 'stay') return;
-    const baseLabel = ending === 'out' ? 'out' : ending === 'home' ? 'scores' : 'to ' + (ending === '1' ? '1st' : ending === '2' ? '2nd' : '3rd');
+    const kind = runnerOutKind(b, ending);
+    const baseLabel = kind ? (kind === 'doubled_off' ? 'doubled off' : 'out')
+      : (ending === 'home' ? 'scores' : 'to ' + (ending === '1' ? '1st' : ending === '2' ? '2nd' : '3rd'));
     parts.push(`R${b} ${baseLabel}`);
   });
-  const outsThisPlay = [1, 2, 3].filter(b => s.runners[b] && fp.endings[b] === 'out').length + (key === 'out' ? 1 : 0);
   parts.push(`${outsThisPlay} out${outsThisPlay === 1 ? '' : 's'}`);
   if(key) parts.push(basesSummaryText(fp));
   return parts.filter(Boolean).join(' · ');
@@ -5098,6 +5051,12 @@ function fieldPlayDisabledReason(fp){
   const key = fieldBatterResultKey(fp);
   const batterEnding = fp.endings.batter;
   if(!key || !batterEnding) return 'Choose what happened to the batter';
+  // G1b-r2f: tapping Out for a runner opens the "at which base" follow-up
+  // (setFieldEnding/setFieldOutAtBase) rather than finalizing immediately --
+  // the play isn't fully recorded until that follow-up is answered.
+  if(fp.pendingOutFor !== null && fp.pendingOutFor !== undefined){
+    return 'Choose which base the runner was out at';
+  }
   const destinationBases = [1, 2, 3]
     .map(b => (state.activeSession.runners[b] ? fp.endings[b] : null))
     .filter(e => e === '1' || e === '2' || e === '3');
@@ -5105,7 +5064,7 @@ function fieldPlayDisabledReason(fp){
   if(new Set(destinationBases).size !== destinationBases.length){
     return "Two runners can't end on the same base";
   }
-  const outsThisPlay = [1, 2, 3].filter(b => state.activeSession.runners[b] && fp.endings[b] === 'out').length
+  const outsThisPlay = [1, 2, 3].filter(b => state.activeSession.runners[b] && runnerOutKind(b, fp.endings[b]) !== null).length
     + (batterEnding === 'out' ? 1 : 0);
   if(state.activeSession.outs + outsThisPlay > 3){
     return "That's more outs than are left in the inning";
@@ -5125,7 +5084,8 @@ window.commitFieldPlay = async function(){
     if(!s.runners[b]) continue;
     const ending = fp.endings[b];
     if(!ending || ending === 'stay') continue;
-    advances.push({ from: b, to: ending === 'out' ? 0 : ending === 'home' ? 4 : Number(ending) });
+    const isOut = ending === 'out' || OUT_AT_BASE_CODE[ending] !== undefined;
+    advances.push({ from: b, to: isOut ? 0 : ending === 'home' ? 4 : Number(ending) });
   }
   // Decision 13: sacrifice stays derived, never tapped. A run scoring on a
   // fly out is an SF; a runner advancing on a bunt out is a SAC. Only
@@ -5240,6 +5200,45 @@ window.nextPitch = async function(){
 function fielderNotation(seq){
   return (seq || []).filter(Boolean).map(p => POSITION_SCOREBOOK_NUMBER[p] || p).join('-');
 }
+// G1b-r2f: a runner's "out" ending now carries WHERE (outAt1/outAt2/
+// outAt3/outAtHome, set via the "at which base" follow-up -- see
+// renderFieldFlow/setFieldEnding) instead of a flat 'out'. Nothing about
+// WHY is ever tapped directly any more; it's derived from comparing that
+// location to the runner's own starting base, exactly like sacrifice is
+// derived elsewhere in this file, never tapped.
+const OUT_AT_BASE_CODE = { outAt1: 1, outAt2: 2, outAt3: 3, outAtHome: 4 };
+// 'doubled_off' (out at their OWN base -- never actually left it), 'force'
+// (out at the very next base -- the standard force), or 'tag' (out further
+// along than that -- thrown out taking an extra base). null if not an out
+// at all (holding, advancing safely, or scored).
+function runnerOutKind(startBase, ending){
+  const atBase = OUT_AT_BASE_CODE[ending];
+  if(atBase === undefined) return null;
+  if(atBase === startBase) return 'doubled_off';
+  if(atBase === startBase + 1) return 'force';
+  return 'tag';
+}
+// The whole play's own label, from EVERY out on it -- the batter's (fixed
+// by entry: only 'O' ever means the batter himself is out) plus every
+// runner's. Exactly one forced runner and nobody else out = fielder's
+// choice; two total outs = double play; three or more = triple play.
+// "Total outs" counts any kind (a caught fly plus a runner doubled off is
+// still two outs on the same play), but only a FORCE can ever read as
+// fielder's choice specifically -- a double play with nobody forced (say,
+// two runners independently doubled off) still counts by total, just never
+// mislabeled FC.
+function fieldPlayOutLabel(fp){
+  const s = state.activeSession;
+  const key = fieldBatterResultKey(fp);
+  const batterOut = key ? BATTER_RESULT_TO_BASE[key] === 0 : false;
+  const runnerKinds = [1, 2, 3].filter(b => s.runners[b]).map(b => runnerOutKind(b, fp.endings[b])).filter(Boolean);
+  const forcedCount = runnerKinds.filter(k => k === 'force').length;
+  const totalOuts = (batterOut ? 1 : 0) + runnerKinds.length;
+  if(forcedCount === 1 && totalOuts === 1) return 'FC';
+  if(totalOuts === 2) return 'DP';
+  if(totalOuts >= 3) return 'TP';
+  return null;
+}
 // Which out number (within the CURRENT inning) each out on this play would
 // be -- runners (in base order) first, then the batter, a simple, stated
 // convention rather than an attempt to reconstruct real relay timing.
@@ -5247,7 +5246,7 @@ function walkthroughOutNumbers(fp){
   const s = state.activeSession;
   const numbers = {};
   let next = s.outs + 1;
-  [1, 2, 3].forEach(b => { if(s.runners[b] && fp.endings[b] === 'out') numbers[b] = next++; });
+  [1, 2, 3].forEach(b => { if(s.runners[b] && runnerOutKind(b, fp.endings[b]) !== null) numbers[b] = next++; });
   const key = fieldBatterResultKey(fp);
   if(key && BATTER_RESULT_TO_BASE[key] === 0) numbers.batter = next++;
   return numbers;
@@ -5265,39 +5264,37 @@ function outNotation(seq, bbType){
   return fielderNotation(seq);
 }
 // The batter's own top-left code for the PENDING play being walked through.
-// DP: the runner who's out gets the sequence UP TO the force (positionSeq
-// minus its last touch); the batter -- out at the LAST position in the
-// sequence -- gets the full sequence. Matches acceptance 32 exactly ("R1's
-// cell shows 6-4" vs "batter's cell shows 6-4-3").
+// DP/TP: the batter gets the full fielding sequence (fieldPlayOutLabel
+// derives the label from every out on the play, not a tapped flag).
 function walkthroughBatterCode(fp){
   const key = fieldBatterResultKey(fp);
   if(!key) return '';
-  if(key === 'out') return fp.dp ? fielderNotation(fp.positionSeq) : outNotation(fp.positionSeq, fp.bbType);
+  if(key === 'out'){
+    const label = fieldPlayOutLabel(fp);
+    return (label === 'DP' || label === 'TP') ? fielderNotation(fp.positionSeq) : outNotation(fp.positionSeq, fp.bbType);
+  }
   if(key === 'error') return 'E' + (POSITION_SCOREBOOK_NUMBER[fp.positionSeq[0]] || '');
   if(key === 'fc') return 'FC';
   return key; // '1B'/'2B'/'3B'/'HR'
 }
-// G1b-r2e: per-runner reason (fp.outReasons[base]) takes priority -- set
-// either by the charter directly (setFieldEnding's dp_force/dp_pickoff/
-// dp_fc) or by the auto-inference tagging itself 'force' (refreshOutEndings).
-// Falls back to the pre-existing heuristic when no reason was ever recorded
-// (a plain tag out, unrelated to any DP).
+// G1b-r2f: a runner's own code comes from HOW they were out (runnerOutKind,
+// derived from where the charter said they were out vs. their own starting
+// base) -- doubled off shows "DO"; a force shows the play's own label
+// (fieldPlayOutLabel: FC with nobody else out, DP/TP with more); anything
+// else (thrown out taking an extra base) is just a plain out, no special
+// label invented for it.
 function walkthroughRunnerOutCode(fp, base){
-  const reason = fp.outReasons && fp.outReasons[base];
-  if(reason === 'pickoff') return 'DP (PO)';
-  if(reason === 'fc') return 'DP (FC)';
-  if(reason === 'force'){
-    return (fp.positionSeq.length > 1) ? fielderNotation(fp.positionSeq.slice(0, -1)) : fielderNotation(fp.positionSeq);
-  }
-  // Only meaningful when this specific runner is the DP's force-out --
-  // stops one touch short of the batter's own full sequence.
-  if(fp.dp && fp.positionSeq.length > 1) return fielderNotation(fp.positionSeq.slice(0, -1));
-  return fielderNotation(fp.positionSeq);
+  const kind = runnerOutKind(base, fp.endings[base]);
+  if(kind === 'doubled_off') return 'DO';
+  if(kind === 'force') return fieldPlayOutLabel(fp) || 'Out';
+  if(kind === 'tag') return 'Out';
+  return '';
 }
 function walkthroughBBCode(fp){
   const bbCode = { ground: 'GB', line: 'LD', fly: 'FB', pop: 'PU', bunt: 'BNT' }[fp.bbType];
   if(!bbCode) return '';
-  return fp.dp ? `${bbCode} · DP` : bbCode;
+  const label = fieldPlayOutLabel(fp);
+  return (label === 'DP' || label === 'TP') ? `${bbCode} · ${label}` : bbCode;
 }
 // Historical, best-effort: how the runner CURRENTLY on this base most
 // recently reached it -- scans pitches+events (newest seq first) for the
@@ -5362,7 +5359,7 @@ function reachedSegmentIndices(base){
   return Array.from({ length: Math.max(0, Math.min(3, base)) }, (_, i) => i);
 }
 function pendingSegmentIndices(fromBase, toCode){
-  if(!toCode || toCode === 'stay' || toCode === 'out') return [];
+  if(!toCode || toCode === 'stay' || toCode === 'out' || OUT_AT_BASE_CODE[toCode] !== undefined) return [];
   const toBase = toCode === 'home' ? 4 : Number(toCode);
   const idx = [];
   for(let i = fromBase; i < toBase; i++) idx.push(i);
@@ -5412,7 +5409,7 @@ function renderScorebookCells(fp){
         pendingIdx: pendingSegmentIndices(b, ending),
         scoredPending: ending === 'home',
         outNumber: outNumbers[b] || null,
-        topLeft: (ending === 'out') ? walkthroughRunnerOutCode(fp, b) : deriveRunnerReachCode(b),
+        topLeft: (runnerOutKind(b, ending) !== null) ? walkthroughRunnerOutCode(fp, b) : deriveRunnerReachCode(b),
         topRight: null, bottomLeft: null
       })}
     </div>`;
@@ -5520,22 +5517,19 @@ function renderFieldFlow(){
       ${[['ground', 'GB'], ['line', 'LD'], ['fly', 'FB'], ['pop', 'POP'], ['bunt', 'BUNT']].map(([k, l]) => `<button class="type-chip" style="${fp.bbType === k ? amber : neutral}" onclick="chooseFieldBBType('${k}')">${l}</button>`).join('')}
     </div></div>`;
 
-  // G1b-r2e: "What happened to the runners?" -- unprompted, underneath
-  // Batted-ball type, whenever ANY base is occupied, for EVERY entry (was
-  // H-only in G1b-r2d; Fix and the standalone DP chip are both retired,
-  // fully superseded by this). A real batter+runner outcome is already set
-  // the moment hit type/position/bbType are chosen (the standard prefill,
-  // or the auto-inferred force DP for a qualifying ground-ball sequence),
-  // so this never adds a mandatory tap -- the charter sees the assumed
-  // outcome already highlighted and can correct it in 2 taps (open the
-  // chip, pick an option) if it's wrong, or accept it with zero extra taps.
-  // Runners (not the batter) get three extra destination options beyond
-  // the usual bases/home/out: DP (a force out -- "should just say DP"),
-  // DP (Pickoff), and DP (FC), each tagging fp.outReasons[base] for the
-  // cell/notation (walkthroughRunnerOutCode) and marking the whole play a
-  // double play (fp.dp).
+  // "What happened to the runners?" -- unprompted, underneath Batted-ball
+  // type, whenever ANY base is occupied, for EVERY entry. A real
+  // batter+runner outcome is already set the moment hit type/position/
+  // bbType are chosen (the standard prefill), so this never adds a
+  // mandatory tap -- the charter sees the assumed outcome already
+  // highlighted and can correct it if it's wrong, or accept it with zero
+  // extra taps. G1b-r2f: doubled-off/fielder's-choice/double-or-triple-play
+  // are DERIVED (runnerOutKind/fieldPlayOutLabel), never tapped -- a runner
+  // has just the plain 5 destinations (1st/2nd/3rd/Home/Out), same as the
+  // batter, but Out opens a second "at which base?" follow-up (see
+  // setFieldEnding/setFieldOutAtBase) instead of finalizing immediately,
+  // since that base is exactly what the derivation needs.
   const baseLabel = { '1': '1st', '2': '2nd', '3': '3rd', home: 'Home', out: 'Out' };
-  const outReasonLabel = { force: 'DP', pickoff: 'DP (Pickoff)', fc: 'DP (FC)' };
   const chipLabel = (key) => {
     if(key === 'batter'){
       const bl = baseLabel[fp.endings.batter];
@@ -5543,8 +5537,11 @@ function renderFieldFlow(){
     }
     if(!s.runners[key]) return null;
     const ending = fp.endings[key];
-    const reason = fp.outReasons && fp.outReasons[key];
-    if(ending === 'out' && reason) return `R${key}: ${outReasonLabel[reason]}`;
+    const kind = runnerOutKind(key, ending);
+    if(kind){
+      const label = kind === 'doubled_off' ? 'Doubled off' : (fieldPlayOutLabel(fp) || 'Out');
+      return `R${key}: ${label}`;
+    }
     const bl = (!ending || ending === 'stay') ? (key === 1 ? '1st' : key === 2 ? '2nd' : '3rd') : baseLabel[ending];
     return `R${key}: ${bl}`;
   };
@@ -5552,20 +5549,25 @@ function renderFieldFlow(){
     const label = chipLabel(key);
     if(label === null) return '';
     const keyArg = typeof key === 'string' ? `'${key}'` : key;
-    return `<button class="type-chip" style="${fp.editing === key ? amber : neutral}" onclick="openFieldEndingPicker(${keyArg})">${label}</button>`;
+    const active = fp.editing === key || fp.pendingOutFor === key;
+    return `<button class="type-chip" style="${active ? amber : neutral}" onclick="openFieldEndingPicker(${keyArg})">${label}</button>`;
   }).join('');
-  // The batter's own picker stays the plain 5 options -- DP concepts apply
-  // to a RUNNER being the play's second out, never to the batter himself.
-  const destOptionsRunner = [
-    ['1', '1st'], ['2', '2nd'], ['3', '3rd'], ['home', '⌂ Home'], ['out', '✕ Out'],
-    ['dp_force', 'DP'], ['dp_pickoff', 'DP (Pickoff)'], ['dp_fc', 'DP (FC)']
-  ];
-  const destOptionsBatter = [['1', '1st'], ['2', '2nd'], ['3', '3rd'], ['home', '⌂ Home'], ['out', '✕ Out']];
-  const destOptions = fp.editing === 'batter' ? destOptionsBatter : destOptionsRunner;
+  const destOptions = [['1', '1st'], ['2', '2nd'], ['3', '3rd'], ['home', '⌂ Home'], ['out', '✕ Out']];
   const editingKeyArg = typeof fp.editing === 'string' ? `'${fp.editing}'` : fp.editing;
   const editingPicker = fp.editing !== null ? `
     <div class="chip-row" style="margin-top:4px;">
       ${destOptions.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="setFieldEnding(${editingKeyArg},'${k}')">${l}</button>`).join('')}
+    </div>` : '';
+  // The "at which base" follow-up (Decision: doubled off/FC/DP/TP are
+  // derived from this, never tapped). Only bases from the runner's own
+  // current base through Home make sense -- a runner can't be put out
+  // behind where he started.
+  const OUT_AT_BASE_LABEL = { 1: '1st', 2: '2nd', 3: '3rd', 4: 'Home' };
+  const outAtPicker = (typeof fp.pendingOutFor === 'number') ? `
+    <div class="chip-row" style="margin-top:4px;">
+      ${Array.from({ length: 4 - fp.pendingOutFor + 1 }, (_, i) => fp.pendingOutFor + i).map(b =>
+        `<button class="type-chip" style="${neutral}" onclick="setFieldOutAtBase(${fp.pendingOutFor},${b})">${OUT_AT_BASE_LABEL[b]}</button>`
+      ).join('')}
     </div>` : '';
 
   const anyRunnerOn = [1, 2, 3].some(b => s.runners[b]);
@@ -5574,6 +5576,7 @@ function renderFieldFlow(){
       <div class="field-label" style="margin-bottom:4px;">What happened to the runners?</div>
       <div class="chip-row">${runnerChips}</div>
       ${editingPicker}
+      ${outAtPicker ? `<div class="field-label" style="margin:4px 0 4px;">At which base?</div>${outAtPicker}` : ''}
     </div>` : '';
 
   // G1b-r2a: Next Pitch (renamed from Pitch) moves up to be the panel's own

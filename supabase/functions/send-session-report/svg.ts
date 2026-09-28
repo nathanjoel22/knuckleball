@@ -77,6 +77,25 @@ export const RESULT_LABELS: Record<ResultCategory, string> = {
   foul: 'Foul', in_play: 'In play', other: 'Other (HBP/interference/etc.)'
 }
 
+// A pitches.result value -> one of the 6 buckets above. Only the 5 named
+// categories get their own bucket (matching the content spec's own list);
+// everything else -- hbp, sac_bunt, sac_fly, dropped_third, interference,
+// batter_interference, other -- piles into 'other', matching RESULT_LABELS'
+// own documented scope ("Other (HBP/interference/etc.)"). foul_tip joins
+// 'foul' (a foul-ball-family outcome, not a separate bucket the spec asked
+// for) -- deliberately NOT folded into STRIKE_RESULTS/is_strike anywhere;
+// this is a location-chart bucket only, unrelated to strike-% counting.
+export function resultCategoryOf(result: string): ResultCategory {
+  switch (result) {
+    case 'ball': return 'ball'
+    case 'strike_looking': return 'called_strike'
+    case 'strike_swinging': return 'swinging_strike'
+    case 'foul': case 'foul_tip': return 'foul'
+    case 'in_play': return 'in_play'
+    default: return 'other'
+  }
+}
+
 export interface ResultPt { row: number; col: number; category: ResultCategory }
 
 export function drawGridByResult(opts: {

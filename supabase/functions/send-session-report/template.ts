@@ -282,7 +282,11 @@ function renderFooter(): string {
   </footer>`
 }
 
-const CSS = `
+// Exported so the G2 game report (template_game.ts) can reuse it verbatim
+// and only append game-specific rules -- this export changes nothing about
+// what buildReportHtml below produces (acceptance 14: bullpen output stays
+// byte-for-byte identical).
+export const CSS = `
   :root{ color-scheme: light; }
   *{ box-sizing:border-box; }
   svg{ max-width:100%; height:auto; display:block; } /* trend/drift charts are drawn at a fixed 560px viewBox width -- without this they blow out the page on a phone instead of scaling down */

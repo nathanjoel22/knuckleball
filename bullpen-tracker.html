@@ -1737,6 +1737,14 @@ function finishInit(){
     window.addEventListener('online', () => { render(); triggerSync(); });
     // Going offline: re-render so the offline indicator appears right away.
     window.addEventListener('offline', () => render());
+    // Stuck-sync fix: follow supabase-js's own session changes instead of
+    // trusting the one read at startup. SIGNED_OUT also arrives from other
+    // tabs (supabase-js relays it over a BroadcastChannel). No awaits in
+    // here -- supabase-js runs this callback inside its auth lock.
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      if(event === 'TOKEN_REFRESHED' && session) state.session = session;
+      else if(event === 'SIGNED_OUT' && isGenuineSignOut()) goToLoginAfterSignOut();
+    });
   }
   triggerSync();
 }
@@ -1758,6 +1766,21 @@ function readPersistedSessionRaw(){
     return null;
   } catch(e){ return null; }
 }
+
+// Stuck-sync fix (Sept 2026): supabase-js never fails a request for lack of
+// a session -- when getSession() has none (expired token + failed refresh)
+// it sends the public anon key instead, so an outbox write reaches Postgres
+// as anonymous and RLS rejects it ("new row violates row-level security
+// policy"). That read as a data error and sat on "Pending sync · retrying"
+// forever with no way back to a login. The design principle's two cases:
+// a GENUINE online sign-out -- supabase-js removes the stored session only
+// on a real credential rejection -- goes to login (the outbox and the
+// in-progress draft live under storage keys signing in never touches, so
+// nothing queued is lost; signing back in syncs it). Anything else --
+// offline, or a refresh that merely couldn't reach the server, which leaves
+// the stored session in place -- never bounces a charter.
+function isGenuineSignOut(){ return isOnline() && !readPersistedSessionRaw(); }
+function goToLoginAfterSignOut(){ window.location.replace('login.html'); }
 
 async function loadTeams(){
   if(isCoach()){
@@ -3297,10 +3320,22 @@ async function syncOutbox(){
   // Bounded (P1-13): getSession() retries a failed refresh for ~20-30s,
   // and this runs at startup via finishInit() -- don't let it stall the
   // "Syncing…" state on a dead network; the upserts below fail fast enough.
+  let liveSession = null, sessionChecked = false;
   try{
     const { data: refreshed } = await netTimeout(supabaseClient.auth.getSession());
-    if(refreshed && refreshed.session) state.session = refreshed.session;
-  }catch(e){ /* keep the current session and let the writes below try */ }
+    liveSession = refreshed && refreshed.session;
+    sessionChecked = true;
+  }catch(e){ /* timed out: inconclusive -- keep the current session and let the writes below try */ }
+  if(liveSession) state.session = liveSession;
+  else if(sessionChecked){
+    // supabase-js answered and has no usable session, so every write below
+    // would go out as anonymous and be rejected by RLS (see isGenuineSignOut).
+    // Don't send them: a genuine sign-out goes to login; otherwise the
+    // refresh just couldn't reach the server -- leave the items pending,
+    // with no misleading error, for the next trigger.
+    if(isGenuineSignOut()) goToLoginAfterSignOut();
+    return;
+  }
 
   const items = await loadOutbox(userId);
   if(!items.length) return;
@@ -3408,6 +3443,9 @@ async function syncOutbox(){
       }
       await removeOutboxItem(userId, item.id);
     } catch(err){
+      // 42501 = RLS rejection. On this user's own rows that only happens
+      // when the write went out anonymous -- the session lapsed mid-sync.
+      if(err && err.code === '42501' && isGenuineSignOut()){ goToLoginAfterSignOut(); return; }
       await updateOutboxItem(userId, Object.assign({}, item, {
         lastError: (err && err.message) || String(err),
         lastAttemptAt: Date.now()

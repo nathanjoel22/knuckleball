@@ -102,7 +102,21 @@ var PRINT_CSS = '<style media="print">' +
   'svg,.grid-row>div,.tiles,.side-block,.trend-grid>*,tr,.ab-row,.legend{ break-inside:avoid; page-break-inside:avoid; }' +
   '</style>';
 
+// Second lock on script execution (the sandbox below is the first): a CSP
+// that forbids every script, placed FIRST in <head> so it governs the whole
+// document. Needed because the frame now shares this page's origin for
+// printing -- the sandbox still withholds allow-scripts, and this makes
+// "no script ever runs in a report" hold even if that ever changed.
+var NO_SCRIPT_CSP = '<meta http-equiv="Content-Security-Policy" content="script-src \'none\'; object-src \'none\'; base-uri \'none\'">';
+
 function withPrintStyles(html){
+  var h = html.match(/<head[^>]*>/i);
+  if(h){
+    var at = h.index + h[0].length;
+    html = html.slice(0, at) + NO_SCRIPT_CSP + html.slice(at);
+  } else {
+    html = NO_SCRIPT_CSP + html;
+  }
   var i = html.search(/<\/head>/i);
   return i >= 0 ? html.slice(0, i) + PRINT_CSS + html.slice(i) : PRINT_CSS + html;
 }
@@ -131,7 +145,11 @@ function downloadReport(){
 
 function printReport(){
   var frame = document.getElementById('report-frame');
-  // contentWindow.print() is one of the handful of cross-origin-safe window
+  // U10 (7): this only works because the frame shares this page's origin
+  // (allow-same-origin, see init). The old note here -- that print() is a
+  // cross-origin-safe method -- was wrong: from an opaque-origin frame it
+  // throws SecurityError, so the catch printed this one-screen shell instead.
+  // Original note: contentWindow.print() is one of the handful of cross-origin-safe window
   // methods (like postMessage/close/focus) -- it works from this
   // (unsandboxed) parent page even though the iframe itself has an opaque
   // origin and cannot run any script of its own.
@@ -174,16 +192,18 @@ async function init(){
 
   var frame = document.createElement('iframe');
   frame.id = 'report-frame';
-  // No allow-scripts, no allow-same-origin: an opaque origin with zero
-  // script execution is the entire point -- this is what makes the escaping
-  // rules in the renderer a second line of defense rather than the only
-  // one. U10 (7): allow-modals is the single exception, and only because
-  // print() is a modal -- without it the browser silently ignores the Print
-  // button's frame.contentWindow.print(), and the only way left to print was
-  // the browser's own menu, which prints this shell with its one-screen-tall
-  // iframe (html/body height:100% below) -- i.e. page 1 only. The report
-  // still runs no script, so nothing inside it can open a dialog itself.
-  frame.setAttribute('sandbox', 'allow-modals');
+  // Zero script execution inside a report is the entire point -- it's what
+  // makes the renderer's escaping rules a second line of defense rather than
+  // the only one. So: NO allow-scripts, ever (plus NO_SCRIPT_CSP inside the
+  // document as a second lock). U10 (7): two tokens, both for printing:
+  //  - allow-same-origin: lets this page call the frame's print(). From an
+  //    opaque origin that call throws SecurityError (verified), and the only
+  //    thing left to print was this shell's one-screen iframe -- page 1.
+  //    Safe WITHOUT allow-scripts: the frame can't run anything, so sharing
+  //    the origin gives the report content no way to act on it. (The unsafe
+  //    combination is allow-same-origin + allow-scripts -- never add that.)
+  //  - allow-modals: print() opens the print dialog, which is a modal.
+  frame.setAttribute('sandbox', 'allow-same-origin allow-modals');
   frame.srcdoc = withPrintStyles(reportText);
   document.getElementById('frame-wrap').appendChild(frame);
   document.getElementById('btn-download').disabled = false;

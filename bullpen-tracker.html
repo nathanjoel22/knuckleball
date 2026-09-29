@@ -430,15 +430,19 @@
     background:var(--amber); padding:2px 7px; border-radius:999px; line-height:1.4;
   }
   @media (min-width:861px){ .kind-chooser-buttons{ flex-direction:row; justify-content:center; } .kind-choice-btn{ width:220px; } }
-  /* U10 (1): back to the chooser, top-left, until the first pitch. Plain
-     text control (not a filled button) so it never competes with charting;
-     44px min height is the tap target, pulled up into the tab row's
-     bottom margin so it adds as little height as possible above the grid. */
-  .back-to-chooser{
-    display:inline-flex; align-items:center; min-height:44px; margin:-6px 0 2px -4px; padding:0 8px;
-    background:none; border:none; color:var(--ink-dim); font:inherit; font-size:14px; font-weight:600; cursor:pointer;
+  /* U10 (1): back to the chooser. Above phone width it's a plain
+     .btn.btn-ghost in the pitcher header's action row -- no extra rules, so
+     it's exactly the size of Contacts/Profile beside it (Joel: "same
+     height"). On phones it's the brand-strip button below. */
+  /* Phone spot: overlaid on the brand strip's right end (position:absolute,
+     so it adds no height to the strip), light-on-dark like the strip. */
+  .brand-block{ position:relative; }
+  .back-to-chooser-brand{
+    position:absolute; right:12px; top:50%; transform:translateY(-50%);
+    min-height:44px; align-items:center; padding:0 14px; border-radius:6px;
+    background:transparent; border:1px solid var(--border-on-dark, rgba(241,236,221,0.25));
+    color:var(--chalk); font:inherit; font-size:13px; font-weight:600; cursor:pointer;
   }
-  .back-to-chooser:hover{ color:var(--field-dark); }
   /* G1: the profile-setup modal. This file has no other modal/dialog
      pattern (see renderPerspectiveToggle's own comment) -- one is
      introduced here rather than reused from anywhere else. Scrollable on
@@ -3844,14 +3848,27 @@ function canGoBackToChooser(){
   return !!(s && s.kind && s.pitches.length === 0 && !s.gamePendingPitch && !s.fieldPlay
     && !s.adjustRunners && !(s.events && s.events.length));
 }
-// Wraps the charting view so Back sits in the SAME block as it -- as a
-// separate child of .main it also took .main's 14-24px flex gap, pushing
-// the grid down further than the button's own height. With nothing to go
-// back from, the view is returned exactly as before (no wrapper at all).
-function withBackToChooser(viewHtml){
-  return canGoBackToChooser()
-    ? `<div><button type="button" class="back-to-chooser" onclick="backToChooser()">‹ Back</button>${viewHtml}</div>`
-    : viewHtml;
+// Placed so it takes NO height (Joel, Sept 29 2026: as its own row above
+// the charting view it pushed the grid ~40px down until the first pitch).
+// Two spots, one per width, never both visible (.hide-phone/.show-phone):
+//  - above phone width: the pitcher header's action row, right of the name
+//    beside Contacts / the coach's Profile, which has room to spare;
+//  - phones: that row would wrap (measured +60px at 390/320), so instead
+//    it overlays the right end of the dark brand strip at the top, which
+//    is already taller than the button and empty on the right.
+// The charting views themselves are untouched by item 1.
+function showBackToChooser(){
+  return state.view === 'session' && !state.draftAvailable && canGoBackToChooser();
+}
+function renderBackToChooserBtn(){
+  return showBackToChooser()
+    ? `<button type="button" class="btn btn-ghost back-to-chooser hide-phone" onclick="backToChooser()">‹ Back</button>`
+    : '';
+}
+function renderBackToChooserBrandBtn(){
+  return showBackToChooser()
+    ? `<button type="button" class="back-to-chooser-brand show-phone" onclick="backToChooser()">‹ Back</button>`
+    : '';
 }
 window.backToChooser = async function(){
   if(!canGoBackToChooser()) return;   // re-checked live: nothing recorded, nothing to lose
@@ -5888,7 +5905,7 @@ function renderSessionView(){
   // Bullpen path below this point is completely unchanged -- acceptance
   // check 1 is that it's byte-for-byte today's behavior.
   if(!state.activeSession.kind) return renderSessionKindChooser();
-  if(state.activeSession.kind === 'game') return withBackToChooser(renderGameSessionView(p));
+  if(state.activeSession.kind === 'game') return renderGameSessionView(p);
   const pitches = state.activeSession.pitches;
   const stats = sessionStats(pitches);
   const chartingPerspective = sessionPerspective(state.activeSession);
@@ -5949,7 +5966,7 @@ function renderSessionView(){
     ? `Now tap where it actually landed <a href="#" onclick="resetTarget();return false;" style="color:var(--amber);">(reset target)</a>`
     : `Tap where you're aiming`;
 
-  return withBackToChooser(`
+  return `
     <div class="session-grid-layout">
       <div class="panel controls-panel">
         ${renderPerspectiveToggle()}
@@ -5993,7 +6010,7 @@ function renderSessionView(){
         <div class="pitch-log">${logRows}</div>
         <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
       </div>
-    </div>`);
+    </div>`;
 }
 
 /* ---------- RENDER: OFFLINE INDICATOR (P1-13) ---------- */
@@ -7493,6 +7510,7 @@ function render(){
         <span class="tagline">Always a Step Ahead</span>
         <span class="role-badge">${isCoach() ? 'Coach' : 'Pitcher'}</span>
         ${renderOfflinePill()}
+        ${renderBackToChooserBrandBtn()}
       </div>
       ${sidebarBody}
       ${renderOutboxBadge()}
@@ -7565,6 +7583,7 @@ function render(){
           <div class="pitcher-sub">${arsenalChips}</div>
         </div>
         <div class="pitcher-header-actions">
+          ${renderBackToChooserBtn()}
           ${isCoach()
             ? `<button class="btn btn-ghost hide-phone" onclick="setView('profile')">Profile</button>`
             : `<button class="btn btn-ghost" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>`}

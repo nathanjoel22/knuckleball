@@ -221,7 +221,14 @@ Run this against staging after any non-trivial change, before touching productio
    `pitcher`), a `pitcher_teams` row, and the invite's `status` flips to `accepted`.
 4. **Session** — as the pitcher, log a session with a few pitches. Confirm the coach can
    see it (same query `loadSessionsForCurrentSelection` uses in `bullpen-tracker.html`).
-5. **Report** — send the session report. Confirm the PDF email arrives and looks correct.
+5. **Report** — send the session report. Confirm the email arrives with a
+   `report.html?r=<token>` link (reports are HTML pages now; there is no PDF attachment).
+   On staging, **the emailed link itself will not work** — `send-session-report` always
+   builds links on `https://knuckleballonline.com`, whose `report.html` reads from
+   *production* storage, and a staging report only exists in *staging* storage. That's
+   expected, not a bug. To check the report, copy the `r=<token>` value from the email
+   and open `http://localhost:8080/report.html?r=<token>` while serving locally with the
+   staging config (above). Confirm it renders and looks correct.
 
 This was run in full against staging on 2026-08-26 (see git history / task record for
 P1-08) — all five steps passed with test data.

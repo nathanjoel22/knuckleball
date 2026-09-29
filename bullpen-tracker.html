@@ -295,6 +295,23 @@
   /* R0: deferred-verification banner, shown to a pitcher whose account
      email isn't confirmed. Persistent, never a blocking modal (Joel's own
      requirement -- they can look around). */
+  /* U10 (3): coach notices -- small red pills at the top of the coach's page. */
+  .coach-notices{ display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; }
+  .coach-notice{
+    display:inline-flex; align-items:center; gap:4px; max-width:100%;
+    background:var(--red-bg); color:var(--chalk); border-radius:999px;
+    padding:3px 4px 3px 12px; font-size:12.5px; font-weight:600; line-height:1.3;
+  }
+  .coach-notice-text{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .coach-notice-x{
+    all:unset; cursor:pointer; flex:none; width:26px; height:26px; border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center; font-size:16px; line-height:1;
+  }
+  .coach-notice-x:hover{ background:rgba(255,255,255,0.15); }
+  .coach-notice-more{
+    all:unset; cursor:pointer; font-size:12.5px; font-weight:700; color:var(--red);
+    padding:6px 4px;
+  }
   .verify-banner{
     display:flex; flex-wrap:wrap; align-items:center; gap:10px;
     background:rgba(193,122,69,0.12); border:1px solid var(--clay-dim); border-radius:8px;
@@ -1244,6 +1261,8 @@ let state = {
   veloScrollLeft: 0,
   flashCell: null,
   pendingTarget: null,
+  coachNotices: null,         // U10 (3): this visit's unseen session notices (coach only)
+  coachNoticesExpanded: false,
   // G1: game-mode equivalents of pendingTarget/veloTargetIdx above -- same
   // "not part of the saved draft" precedent (an uncommitted tap is an
   // acceptable small loss if the app dies mid-tap, same as a bullpen's
@@ -1781,6 +1800,59 @@ function renderBoot(){
 // now" is wired separately, on the button itself. Guarded so re-running init()
 // (e.g. after the account-setup form completes) doesn't stack listeners.
 let syncTriggersWired = false;
+/* ---------- COACH NOTICES (U10 item 3) ----------
+   "Jack Croft logged a Bullpen · Tue Sept 29, 4:12 PM" -- one red pill per
+   session a coach's player (or another coach) saved in the last 7 days,
+   except sessions this coach saved himself. get_coach_notices() (SECURITY
+   DEFINER, see the migration) returns only unseen ones for this coach;
+   they're marked seen the moment they render, stay on screen for the rest
+   of this visit (state lives until the page reloads), and are gone at the
+   next sign-in / app open. Online only: offline there are simply no
+   notices -- no error, and nothing here is ever awaited by charting. */
+let coachNoticesLoaded = false;   // once per page load (= sign-in / app open)
+async function loadCoachNotices(){
+  if(coachNoticesLoaded || !isCoach() || !isOnline()) return;
+  let rows;
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('get_coach_notices'), 8000);
+    if(error) return;   // no session yet / transient -- the next finishInit() tries again
+    rows = Array.isArray(data) ? data : [];
+  }catch(e){ return; }   // timed out: same, silently
+  coachNoticesLoaded = true;
+  if(!rows.length) return;
+  state.coachNotices = rows;
+  state.coachNoticesExpanded = false;
+  render();
+  const uid = state.session && state.session.user && state.session.user.id;
+  if(uid){
+    supabaseClient.from('coach_notice_seen')
+      .upsert(rows.map(n => ({ coach_id: uid, session_id: n.session_id })), { onConflict: 'coach_id,session_id', ignoreDuplicates: true })
+      .then(({ error }) => { if(error) console.error('coach notices: mark seen failed', error); }, () => {});
+  }
+}
+const NOTICE_MONTHS = ['Jan','Feb','Mar','Apr','May','June','July','Aug','Sept','Oct','Nov','Dec'];
+function coachNoticeText(n){
+  const d = new Date(n.ended_at);
+  const when = `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${NOTICE_MONTHS[d.getMonth()]} ${d.getDate()}, ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
+  return `${n.player_name || 'A player'} logged a ${n.kind === 'game' ? 'Live Session' : 'Bullpen'} · ${when}`;
+}
+function renderCoachNotices(){
+  const list = (isCoach() && state.coachNotices) || [];
+  if(!list.length) return '';
+  const shown = state.coachNoticesExpanded ? list : list.slice(0, 3);
+  const more = list.length - shown.length;
+  return `<div class="coach-notices" role="status">
+    ${shown.map(n => `<span class="coach-notice"><span class="coach-notice-text">${escHtml(coachNoticeText(n))}</span><button class="coach-notice-x" aria-label="Dismiss" onclick="dismissCoachNotice('${escHtml(n.session_id)}')">×</button></span>`).join('')}
+    ${more > 0 ? `<button class="coach-notice-more" onclick="expandCoachNotices()">+${more} more</button>` : ''}
+  </div>`;
+}
+// × dismisses early for this visit (it's already marked seen server-side).
+window.dismissCoachNotice = function(sessionId){
+  state.coachNotices = (state.coachNotices || []).filter(n => n.session_id !== sessionId);
+  render();
+};
+window.expandCoachNotices = function(){ state.coachNoticesExpanded = true; render(); };
+
 function finishInit(){
   render();
   if(!syncTriggersWired){
@@ -1799,6 +1871,7 @@ function finishInit(){
     });
   }
   triggerSync();
+  loadCoachNotices();   // U10 (3): background, never awaited -- charting never waits on it
 }
 
 // supabase-js (no custom storageKey configured -- see supabase-config.js)
@@ -7592,6 +7665,7 @@ function render(){
       ${contactsPanel}`;
 
     main = `
+      ${renderCoachNotices()}
       ${verifyBanner}
       ${setupReminderBanner}
       ${(state.view === 'profile' || state.view === 'leaderboard') ? '' : headerHtml}

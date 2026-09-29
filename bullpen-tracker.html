@@ -190,6 +190,17 @@
     background:var(--card-bg); border:1px solid var(--border-strong); border-radius:6px;
     color:var(--field-dark); padding:9px 10px; font-size:13.5px; width:100%;
   }
+  /* U10 (9): coach's team line. Above phone width the Profile button here is
+     hidden (.show-phone) and the row holds only the team selector, laid out
+     exactly as before; on phones it's the coach's Profile control, and the
+     one in the pitcher header is hidden instead (.hide-phone). */
+  .team-line{ display:flex; align-items:flex-end; gap:10px; }
+  .team-line .team-select-wrap{ flex:1 1 auto; min-width:0; }
+  .show-phone{ display:none !important; }
+  @media (max-width:500px){
+    .show-phone{ display:inline-flex !important; }
+    .team-line .coach-profile-link{ min-height:44px; align-items:center; flex:none; }
+  }
 
   .roster-label{
     font-size:11px; text-transform:uppercase; letter-spacing:0.12em;
@@ -419,6 +430,15 @@
     background:var(--amber); padding:2px 7px; border-radius:999px; line-height:1.4;
   }
   @media (min-width:861px){ .kind-chooser-buttons{ flex-direction:row; justify-content:center; } .kind-choice-btn{ width:220px; } }
+  /* U10 (1): back to the chooser, top-left, until the first pitch. Plain
+     text control (not a filled button) so it never competes with charting;
+     44px min height is the tap target, pulled up into the tab row's
+     bottom margin so it adds as little height as possible above the grid. */
+  .back-to-chooser{
+    display:inline-flex; align-items:center; min-height:44px; margin:-6px 0 2px -4px; padding:0 8px;
+    background:none; border:none; color:var(--ink-dim); font:inherit; font-size:14px; font-weight:600; cursor:pointer;
+  }
+  .back-to-chooser:hover{ color:var(--field-dark); }
   /* G1: the profile-setup modal. This file has no other modal/dialog
      pattern (see renderPerspectiveToggle's own comment) -- one is
      introduced here rather than reused from anywhere else. Scrollable on
@@ -1048,6 +1068,34 @@
        0.6 = 3/5 columns and 4.8px accounts for the padding/gap difference
        between 3 cells and 5 (see the desktop comment above for the algebra). */
     .home-plate-wrap{ width:calc(0.6 * min(100%, 320px) - 4.8px); }
+  }
+
+  /* U10 (6): iPad portrait (and anything 501-860px wide). Below 860px the
+     sidebar stacks ABOVE the page, and at 768x1024 it plus the header, tabs
+     and controls pushed the grid's bottom row off-screen (measured: grid
+     bottom at 1079px, 5 of its 60px visible; worse still in Safari, whose
+     toolbars leave ~920px). Nothing clipped it -- it simply started too low.
+     So in this range only, the stacked sidebar becomes one compact wrapped
+     row (brand strip, team, sign-out side by side; roster list and outbox
+     badge still full width), and the page spacing tightens slightly. Phones
+     (<=500px) and >=861px get none of this. */
+  @media (min-width:501px) and (max-width:860px){
+    .sidebar{ flex-direction:row; flex-wrap:wrap; align-items:center; gap:10px 16px; padding:12px 16px; }
+    .brand-block{ flex-direction:row; align-items:center; gap:10px; padding:8px 14px; }
+    .brand h1{ font-size:24px; }
+    .tagline{ display:none; }
+    .role-badge{ margin-top:0; }
+    .sidebar .team-select-wrap, .sidebar .team-line{ flex:1 1 180px; min-width:0; }
+    .sidebar > .roster-label{ margin:0; }
+    .roster-toggle-btn{ flex:1 1 200px; }
+    .roster-collapse, .outbox-badge{ flex:1 1 100%; }
+    .sign-out-btn{ margin-top:0; margin-left:auto; padding:8px 12px; }
+    .main{ padding:14px 16px; gap:14px; }
+    .pitcher-header h2{ font-size:36px; }
+    .pitcher-sub{ margin-top:6px; }
+    .controls-panel{ gap:10px; }
+    .panel{ padding:14px; }
+    .session-grid-layout{ gap:18px; }
   }
 
   @media (max-width:500px){
@@ -3784,6 +3832,35 @@ function renderSessionKindChooser(){
     </div>
   </div>`;
 }
+// U10 (1): "‹ Back" to the chooser, only while nothing has been recorded.
+// For a game that ends at the first zone tap, not the first finished pitch:
+// gamePendingPitch (and field-play / adjust-runners state, or a no-pitch
+// event) already counts as progress for the draft (see refreshDraftState),
+// so Back must not be able to throw it away. A bullpen's tap 1 (the
+// target) is never saved anywhere, so it doesn't hide Back. After this,
+// leaving is only through Save or Discard.
+function canGoBackToChooser(){
+  const s = state.activeSession;
+  return !!(s && s.kind && s.pitches.length === 0 && !s.gamePendingPitch && !s.fieldPlay
+    && !s.adjustRunners && !(s.events && s.events.length));
+}
+// Wraps the charting view so Back sits in the SAME block as it -- as a
+// separate child of .main it also took .main's 14-24px flex gap, pushing
+// the grid down further than the button's own height. With nothing to go
+// back from, the view is returned exactly as before (no wrapper at all).
+function withBackToChooser(viewHtml){
+  return canGoBackToChooser()
+    ? `<div><button type="button" class="back-to-chooser" onclick="backToChooser()">‹ Back</button>${viewHtml}</div>`
+    : viewHtml;
+}
+window.backToChooser = async function(){
+  if(!canGoBackToChooser()) return;   // re-checked live: nothing recorded, nothing to lose
+  await storDelete(draftKey());
+  state.activeSession = await freshActiveSession();
+  state.pendingTarget = null;
+  state.hint = '';
+  render();
+};
 window.chooseSessionKind = async function(kind){
   state.activeSession.kind = kind;
   if(kind === 'game'){
@@ -5811,7 +5888,7 @@ function renderSessionView(){
   // Bullpen path below this point is completely unchanged -- acceptance
   // check 1 is that it's byte-for-byte today's behavior.
   if(!state.activeSession.kind) return renderSessionKindChooser();
-  if(state.activeSession.kind === 'game') return renderGameSessionView(p);
+  if(state.activeSession.kind === 'game') return withBackToChooser(renderGameSessionView(p));
   const pitches = state.activeSession.pitches;
   const stats = sessionStats(pitches);
   const chartingPerspective = sessionPerspective(state.activeSession);
@@ -5872,7 +5949,7 @@ function renderSessionView(){
     ? `Now tap where it actually landed <a href="#" onclick="resetTarget();return false;" style="color:var(--amber);">(reset target)</a>`
     : `Tap where you're aiming`;
 
-  return `
+  return withBackToChooser(`
     <div class="session-grid-layout">
       <div class="panel controls-panel">
         ${renderPerspectiveToggle()}
@@ -5916,7 +5993,7 @@ function renderSessionView(){
         <div class="pitch-log">${logRows}</div>
         <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
       </div>
-    </div>`;
+    </div>`);
 }
 
 /* ---------- RENDER: OFFLINE INDICATOR (P1-13) ---------- */
@@ -6549,7 +6626,11 @@ function renderLeaderboardView(){
     body = `<p class="lb-empty">${lb.status === 'offline' ? "You're offline, and this board hasn't been loaded on this device yet." : "Couldn't load the leaderboard. Try again in a moment."}</p>`;
   } else {
     const min = data.minimum;
-    const windowLabel = data.window === 'week' ? 'This week' : data.window === 'month' ? 'This month' : 'All time';
+    // U10 (2): spell out the rules the board already applies (see
+    // get_team_leaderboard), so a coach can tell why a pen isn't on it:
+    // calendar week/month in Eastern time (not a rolling 7 days), and
+    // bullpens only (live games never count).
+    const windowLabel = (data.window === 'week' ? 'This week (Mon–Sun)' : data.window === 'month' ? 'This month' : 'All time') + ' · bullpens only';
     const stamp = data.generated_at ? new Date(data.generated_at).getTime() : lb.fetchedAt;
     const stale = lb.status === 'offline' || lb.status === 'stale';
     const cat = state.lbCat;
@@ -6885,12 +6966,12 @@ function renderProfileView(){
     ${msg}
     <div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>
     ${renderThrowsSection(p)}
-    ${renderNameSection(p, true)}
-    ${renderEmailSection()}
-    ${renderPasswordSection()}
     ${renderPitchMixSection(p)}
     ${renderRelAccuracySection(p)}
     ${renderRadarGunSection(p, true)}
+    ${renderNameSection(p, true)}
+    ${renderEmailSection()}
+    ${renderPasswordSection()}
   </div>`;
 }
 // Coach editing a rostered pitcher (U9 adds name to what was already here:
@@ -7389,7 +7470,7 @@ function render(){
     const selectedForLabel = state.roster.find(x => x.id === state.currentPitcherId);
     const rosterLabel = collapsed && selectedForLabel ? `Roster · ${escHtml(selectedForLabel.name)}` : 'Roster';
     sidebarBody = `
-      ${teamSelector}
+      <div class="team-line">${teamSelector}<button class="btn btn-ghost show-phone coach-profile-link" onclick="setView('profile')">Profile</button></div>
       <button class="roster-toggle-btn" onclick="toggleRosterCollapsed()" aria-expanded="${collapsed ? 'false' : 'true'}">
         <span class="roster-label" style="margin:0;">${rosterLabel}</span>
         <span class="roster-chevron${collapsed ? '' : ' open'}">▾</span>
@@ -7485,7 +7566,7 @@ function render(){
         </div>
         <div class="pitcher-header-actions">
           ${isCoach()
-            ? `<button class="btn btn-ghost" onclick="setView('profile')">Profile</button>`
+            ? `<button class="btn btn-ghost hide-phone" onclick="setView('profile')">Profile</button>`
             : `<button class="btn btn-ghost" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>`}
         </div>
       </div>

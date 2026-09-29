@@ -75,7 +75,11 @@
 // cares about Content-Type) and renders it into a fully sandboxed iframe.
 // This page itself is a normal part of the site (may use JS, may change
 // over time); the FETCHED report content remains the frozen, self-contained,
-// script-free artifact the renderer produced -- this page never modifies it.
+// script-free artifact the renderer produced -- this page never changes its
+// content. U10 (7): the one thing added at display time is a print-only
+// stylesheet (PRINT_CSS below), so every report -- including ones frozen
+// before this existed -- prints all its pages cleanly. Screen rendering is
+// untouched, and Download still returns the stored file byte-for-byte.
 
 // Must match randomReportToken() in send-session-report/index.ts EXACTLY.
 // This is the only thing standing between a crafted ?r= value and this
@@ -84,6 +88,24 @@
 var TOKEN_RE = /^[0-9a-f]{64}\.html$/;
 
 var reportText = null;
+
+// U10 (7): print rules for the report document itself (it prints from inside
+// the iframe -- see printReport). Breaks fall between sections; a section
+// taller than a page may continue, but never through a chart, a table row,
+// a tile row, or an at-bat log line. .table-scroll's horizontal scroller
+// would otherwise clip wide tables at the right edge of the paper.
+var PRINT_CSS = '<style media="print">' +
+  '@page{ margin:12mm; }' +
+  'html,body{ height:auto !important; overflow:visible !important; }' +
+  '.table-scroll{ overflow:visible !important; }' +
+  'h2,h3{ break-after:avoid; page-break-after:avoid; }' +
+  'svg,.grid-row>div,.tiles,.side-block,.trend-grid>*,tr,.ab-row,.legend{ break-inside:avoid; page-break-inside:avoid; }' +
+  '</style>';
+
+function withPrintStyles(html){
+  var i = html.search(/<\/head>/i);
+  return i >= 0 ? html.slice(0, i) + PRINT_CSS + html.slice(i) : PRINT_CSS + html;
+}
 
 function showState(title, message, isError){
   document.getElementById('frame-wrap').style.display = 'none';
@@ -152,16 +174,31 @@ async function init(){
 
   var frame = document.createElement('iframe');
   frame.id = 'report-frame';
-  // Deliberately empty: no allow-scripts, no allow-same-origin, no tokens
-  // at all. An opaque origin with zero script execution is the entire
-  // point -- this is what makes the escaping rules in the renderer a
-  // second line of defense rather than the only one.
-  frame.setAttribute('sandbox', '');
-  frame.srcdoc = reportText;
+  // No allow-scripts, no allow-same-origin: an opaque origin with zero
+  // script execution is the entire point -- this is what makes the escaping
+  // rules in the renderer a second line of defense rather than the only
+  // one. U10 (7): allow-modals is the single exception, and only because
+  // print() is a modal -- without it the browser silently ignores the Print
+  // button's frame.contentWindow.print(), and the only way left to print was
+  // the browser's own menu, which prints this shell with its one-screen-tall
+  // iframe (html/body height:100% below) -- i.e. page 1 only. The report
+  // still runs no script, so nothing inside it can open a dialog itself.
+  frame.setAttribute('sandbox', 'allow-modals');
+  frame.srcdoc = withPrintStyles(reportText);
   document.getElementById('frame-wrap').appendChild(frame);
   document.getElementById('btn-download').disabled = false;
   document.getElementById('btn-print').disabled = false;
 }
+
+// U10 (7): Cmd/Ctrl+P prints the report (all pages) instead of this shell,
+// which would only print the one screen of iframe that's visible.
+document.addEventListener('keydown', function(e){
+  if((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && (e.key === 'p' || e.key === 'P')
+     && document.getElementById('report-frame')){
+    e.preventDefault();
+    printReport();
+  }
+});
 
 init();
 </script>

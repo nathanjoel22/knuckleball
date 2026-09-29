@@ -63,6 +63,21 @@ $$;
 ALTER FUNCTION "public"."accuracy_zones_stamp"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."can_view_headshot"("p_object_name" "text") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select exists (
+    select 1 from public.pitcher_teams pt
+     where pt.pitcher_id::text || '.jpg' = p_object_name
+       and public.is_team_coach(pt.team_id)
+  );
+$$;
+
+
+ALTER FUNCTION "public"."can_view_headshot"("p_object_name" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."coach_set_full_name"("p_pitcher_id" "uuid", "p_name" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -464,6 +479,30 @@ $$;
 
 
 ALTER FUNCTION "public"."generate_email_verify_token"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_coach_notices"() RETURNS TABLE("session_id" "uuid", "player_name" "text", "kind" "text", "ended_at" timestamp with time zone)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select s.id, pr.full_name, s.kind, s.ended_at
+    from public.sessions s
+    join public.pitcher_teams pt on pt.team_id = s.team_id and pt.pitcher_id = s.pitcher_id
+    join public.profiles pr on pr.id = s.pitcher_id
+   where public.is_team_coach(s.team_id)
+     and s.ended_at > now() - interval '7 days'
+     and s.deleted_at is null
+     and s.logged_by is distinct from auth.uid()
+     and s.started_at >= pt.joined_at
+     and not exists (
+       select 1 from public.coach_notice_seen n
+        where n.coach_id = auth.uid() and n.session_id = s.id
+     )
+   order by s.ended_at desc;
+$$;
+
+
+ALTER FUNCTION "public"."get_coach_notices"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_removal_notice_info"("p_pitcher_id" "uuid", "p_team_id" "uuid") RETURNS TABLE("email" "text", "team_name" "text")
@@ -1207,6 +1246,20 @@ CREATE TABLE IF NOT EXISTS "public"."accuracy_zones" (
 ALTER TABLE "public"."accuracy_zones" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."coach_notice_seen" (
+    "coach_id" "uuid" NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "seen_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."coach_notice_seen" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."coach_notice_seen" IS 'U10 (3): which session notices each coach has already been shown. One row per (coach, session); written by the client the moment the notices render. Own rows only (RLS).';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."game_events" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "session_id" "uuid" NOT NULL,
@@ -1397,8 +1450,9 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "email_verified_at" timestamp with time zone,
     "throws" "text",
     "relative_accuracy_enabled" boolean DEFAULT false NOT NULL,
-    "uses_radar_gun" boolean DEFAULT false NOT NULL,
+    "uses_radar_gun" boolean DEFAULT true NOT NULL,
     "setup_dismissed_at" timestamp with time zone,
+    "headshot_updated_at" timestamp with time zone,
     CONSTRAINT "profiles_full_name_not_blank" CHECK (("btrim"("full_name") <> ''::"text")),
     CONSTRAINT "profiles_role_check" CHECK (("role" = ANY (ARRAY['coach'::"text", 'pitcher'::"text"]))),
     CONSTRAINT "profiles_throws_check" CHECK (("throws" = ANY (ARRAY['L'::"text", 'R'::"text"])))
@@ -1429,12 +1483,12 @@ COMMENT ON COLUMN "public"."profiles"."email_verified_at" IS 'When this profile'
 
 
 COMMENT ON COLUMN "public"."profiles"."uses_radar_gun" IS 'The PITCHER''s own preference (U9): whether the velocity strip appears at
-   all on the charting page, for whoever charts them. Default false -- a
-   pitcher who has never said "yes" to a gun should never see a strip.
-   Changing it never affects an already-open session -- the client
-   snapshots this value onto the session/draft object at creation and
-   resume (see sessionUsesRadarGun() in bullpen-tracker.html), never
-   re-reading it live mid-pen even from the same device.';
+   all on the charting page, for whoever charts them. Default true since U10
+   (Sept 29 2026): Yes unless the player -- or a head coach editing his
+   profile -- has chosen No. Changing it never affects an already-open
+   session -- the client snapshots this value onto the session/draft object
+   at creation and resume (see sessionUsesRadarGun() in bullpen-tracker.html),
+   never re-reading it live mid-pen even from the same device.';
 
 
 
@@ -1444,6 +1498,10 @@ COMMENT ON COLUMN "public"."profiles"."setup_dismissed_at" IS 'When this pitcher
    shipped, so no existing user is suddenly redirected to a page they never
    asked for; they still see the ongoing incomplete-profile reminder banner
    if applicable, which is derived live and does not depend on this column.';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."headshot_updated_at" IS 'U10 (8): when the player last uploaded his headshot (storage bucket headshots, object {id}.jpg); NULL = no photo. Written only by the player himself.';
 
 
 
@@ -1578,6 +1636,11 @@ ALTER TABLE ONLY "public"."accuracy_zones"
 
 
 
+ALTER TABLE ONLY "public"."coach_notice_seen"
+    ADD CONSTRAINT "coach_notice_seen_pkey" PRIMARY KEY ("coach_id", "session_id");
+
+
+
 ALTER TABLE ONLY "public"."game_events"
     ADD CONSTRAINT "game_events_pkey" PRIMARY KEY ("id");
 
@@ -1661,6 +1724,16 @@ ALTER TABLE ONLY "public"."accuracy_zones"
 
 ALTER TABLE ONLY "public"."accuracy_zones"
     ADD CONSTRAINT "accuracy_zones_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."coach_notice_seen"
+    ADD CONSTRAINT "coach_notice_seen_coach_id_fkey" FOREIGN KEY ("coach_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."coach_notice_seen"
+    ADD CONSTRAINT "coach_notice_seen_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."sessions"("id") ON DELETE CASCADE;
 
 
 
@@ -1763,6 +1836,10 @@ CREATE POLICY "Coach manages leaderboard exclusions for own team" ON "public"."l
 
 
 
+CREATE POLICY "Coaches insert own notice-seen rows" ON "public"."coach_notice_seen" FOR INSERT WITH CHECK (("coach_id" = "auth"."uid"()));
+
+
+
 CREATE POLICY "Coaches manage events for their team's sessions" ON "public"."game_events" USING ((EXISTS ( SELECT 1
    FROM "public"."sessions" "s"
   WHERE (("s"."id" = "game_events"."session_id") AND "public"."is_team_coach"("s"."team_id"))))) WITH CHECK ((EXISTS ( SELECT 1
@@ -1792,6 +1869,10 @@ CREATE POLICY "Coaches manage pitches for their team's sessions" ON "public"."pi
 
 
 CREATE POLICY "Coaches manage sessions for their team" ON "public"."sessions" USING ("public"."is_team_coach"("team_id")) WITH CHECK ("public"."is_team_coach"("team_id"));
+
+
+
+CREATE POLICY "Coaches read own notice-seen rows" ON "public"."coach_notice_seen" FOR SELECT USING (("coach_id" = "auth"."uid"()));
 
 
 
@@ -1898,6 +1979,9 @@ CREATE POLICY "Users view own profile" ON "public"."profiles" FOR SELECT USING (
 ALTER TABLE "public"."accuracy_zones" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."coach_notice_seen" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."game_events" ENABLE ROW LEVEL SECURITY;
 
 
@@ -1940,6 +2024,12 @@ GRANT ALL ON FUNCTION "public"."_create_team_with_head"("p_coach_id" "uuid", "p_
 GRANT ALL ON FUNCTION "public"."accuracy_zones_stamp"() TO "anon";
 GRANT ALL ON FUNCTION "public"."accuracy_zones_stamp"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."accuracy_zones_stamp"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."can_view_headshot"("p_object_name" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."can_view_headshot"("p_object_name" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."can_view_headshot"("p_object_name" "text") TO "service_role";
 
 
 
@@ -2000,6 +2090,12 @@ GRANT ALL ON FUNCTION "public"."ensure_account_setup"("p_role" "text", "p_full_n
 REVOKE ALL ON FUNCTION "public"."generate_email_verify_token"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."generate_email_verify_token"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."generate_email_verify_token"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_coach_notices"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_coach_notices"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_coach_notices"() TO "service_role";
 
 
 
@@ -2186,6 +2282,11 @@ GRANT ALL ON TABLE "public"."accuracy_zones" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."coach_notice_seen" TO "authenticated";
+GRANT ALL ON TABLE "public"."coach_notice_seen" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."game_events" TO "anon";
 GRANT ALL ON TABLE "public"."game_events" TO "authenticated";
 GRANT ALL ON TABLE "public"."game_events" TO "service_role";
@@ -2246,6 +2347,10 @@ GRANT UPDATE("uses_radar_gun") ON TABLE "public"."profiles" TO "authenticated";
 
 
 GRANT UPDATE("setup_dismissed_at") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT UPDATE("headshot_updated_at") ON TABLE "public"."profiles" TO "authenticated";
 
 
 

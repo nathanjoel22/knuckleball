@@ -75,7 +75,11 @@
 // cares about Content-Type) and renders it into a fully sandboxed iframe.
 // This page itself is a normal part of the site (may use JS, may change
 // over time); the FETCHED report content remains the frozen, self-contained,
-// script-free artifact the renderer produced -- this page never modifies it.
+// script-free artifact the renderer produced -- this page never changes its
+// content. U10 (7): the one thing added at display time is a print-only
+// stylesheet (PRINT_CSS below), so every report -- including ones frozen
+// before this existed -- prints all its pages cleanly. Screen rendering is
+// untouched, and Download still returns the stored file byte-for-byte.
 
 // Must match randomReportToken() in send-session-report/index.ts EXACTLY.
 // This is the only thing standing between a crafted ?r= value and this
@@ -84,6 +88,38 @@
 var TOKEN_RE = /^[0-9a-f]{64}\.html$/;
 
 var reportText = null;
+
+// U10 (7): print rules for the report document itself (it prints from inside
+// the iframe -- see printReport). Breaks fall between sections; a section
+// taller than a page may continue, but never through a chart, a table row,
+// a tile row, or an at-bat log line. .table-scroll's horizontal scroller
+// would otherwise clip wide tables at the right edge of the paper.
+var PRINT_CSS = '<style media="print">' +
+  '@page{ margin:12mm; }' +
+  'html,body{ height:auto !important; overflow:visible !important; }' +
+  '.table-scroll{ overflow:visible !important; }' +
+  'h2,h3{ break-after:avoid; page-break-after:avoid; }' +
+  'svg,.grid-row>div,.tiles,.side-block,.trend-grid>*,tr,.ab-row,.legend{ break-inside:avoid; page-break-inside:avoid; }' +
+  '</style>';
+
+// Second lock on script execution (the sandbox below is the first): a CSP
+// that forbids every script, placed FIRST in <head> so it governs the whole
+// document. Needed because the frame now shares this page's origin for
+// printing -- the sandbox still withholds allow-scripts, and this makes
+// "no script ever runs in a report" hold even if that ever changed.
+var NO_SCRIPT_CSP = '<meta http-equiv="Content-Security-Policy" content="script-src \'none\'; object-src \'none\'; base-uri \'none\'">';
+
+function withPrintStyles(html){
+  var h = html.match(/<head[^>]*>/i);
+  if(h){
+    var at = h.index + h[0].length;
+    html = html.slice(0, at) + NO_SCRIPT_CSP + html.slice(at);
+  } else {
+    html = NO_SCRIPT_CSP + html;
+  }
+  var i = html.search(/<\/head>/i);
+  return i >= 0 ? html.slice(0, i) + PRINT_CSS + html.slice(i) : PRINT_CSS + html;
+}
 
 function showState(title, message, isError){
   document.getElementById('frame-wrap').style.display = 'none';
@@ -109,7 +145,11 @@ function downloadReport(){
 
 function printReport(){
   var frame = document.getElementById('report-frame');
-  // contentWindow.print() is one of the handful of cross-origin-safe window
+  // U10 (7): this only works because the frame shares this page's origin
+  // (allow-same-origin, see init). The old note here -- that print() is a
+  // cross-origin-safe method -- was wrong: from an opaque-origin frame it
+  // throws SecurityError, so the catch printed this one-screen shell instead.
+  // Original note: contentWindow.print() is one of the handful of cross-origin-safe window
   // methods (like postMessage/close/focus) -- it works from this
   // (unsandboxed) parent page even though the iframe itself has an opaque
   // origin and cannot run any script of its own.
@@ -152,16 +192,33 @@ async function init(){
 
   var frame = document.createElement('iframe');
   frame.id = 'report-frame';
-  // Deliberately empty: no allow-scripts, no allow-same-origin, no tokens
-  // at all. An opaque origin with zero script execution is the entire
-  // point -- this is what makes the escaping rules in the renderer a
-  // second line of defense rather than the only one.
-  frame.setAttribute('sandbox', '');
-  frame.srcdoc = reportText;
+  // Zero script execution inside a report is the entire point -- it's what
+  // makes the renderer's escaping rules a second line of defense rather than
+  // the only one. So: NO allow-scripts, ever (plus NO_SCRIPT_CSP inside the
+  // document as a second lock). U10 (7): two tokens, both for printing:
+  //  - allow-same-origin: lets this page call the frame's print(). From an
+  //    opaque origin that call throws SecurityError (verified), and the only
+  //    thing left to print was this shell's one-screen iframe -- page 1.
+  //    Safe WITHOUT allow-scripts: the frame can't run anything, so sharing
+  //    the origin gives the report content no way to act on it. (The unsafe
+  //    combination is allow-same-origin + allow-scripts -- never add that.)
+  //  - allow-modals: print() opens the print dialog, which is a modal.
+  frame.setAttribute('sandbox', 'allow-same-origin allow-modals');
+  frame.srcdoc = withPrintStyles(reportText);
   document.getElementById('frame-wrap').appendChild(frame);
   document.getElementById('btn-download').disabled = false;
   document.getElementById('btn-print').disabled = false;
 }
+
+// U10 (7): Cmd/Ctrl+P prints the report (all pages) instead of this shell,
+// which would only print the one screen of iframe that's visible.
+document.addEventListener('keydown', function(e){
+  if((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && (e.key === 'p' || e.key === 'P')
+     && document.getElementById('report-frame')){
+    e.preventDefault();
+    printReport();
+  }
+});
 
 init();
 </script>

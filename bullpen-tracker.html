@@ -190,6 +190,17 @@
     background:var(--card-bg); border:1px solid var(--border-strong); border-radius:6px;
     color:var(--field-dark); padding:9px 10px; font-size:13.5px; width:100%;
   }
+  /* U10 (9): coach's team line. Above phone width the Profile button here is
+     hidden (.show-phone) and the row holds only the team selector, laid out
+     exactly as before; on phones it's the coach's Profile control, and the
+     one in the pitcher header is hidden instead (.hide-phone). */
+  .team-line{ display:flex; align-items:flex-end; gap:10px; }
+  .team-line .team-select-wrap{ flex:1 1 auto; min-width:0; }
+  .show-phone{ display:none !important; }
+  @media (max-width:500px){
+    .show-phone{ display:inline-flex !important; }
+    .team-line .coach-profile-link{ min-height:44px; align-items:center; flex:none; }
+  }
 
   .roster-label{
     font-size:11px; text-transform:uppercase; letter-spacing:0.12em;
@@ -284,6 +295,23 @@
   /* R0: deferred-verification banner, shown to a pitcher whose account
      email isn't confirmed. Persistent, never a blocking modal (Joel's own
      requirement -- they can look around). */
+  /* U10 (3): coach notices -- small red pills at the top of the coach's page. */
+  .coach-notices{ display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; }
+  .coach-notice{
+    display:inline-flex; align-items:center; gap:4px; max-width:100%;
+    background:var(--red-bg); color:var(--chalk); border-radius:999px;
+    padding:3px 4px 3px 12px; font-size:12.5px; font-weight:600; line-height:1.3;
+  }
+  .coach-notice-text{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .coach-notice-x{
+    all:unset; cursor:pointer; flex:none; width:26px; height:26px; border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center; font-size:16px; line-height:1;
+  }
+  .coach-notice-x:hover{ background:rgba(255,255,255,0.15); }
+  .coach-notice-more{
+    all:unset; cursor:pointer; font-size:12.5px; font-weight:700; color:var(--red);
+    padding:6px 4px;
+  }
   .verify-banner{
     display:flex; flex-wrap:wrap; align-items:center; gap:10px;
     background:rgba(193,122,69,0.12); border:1px solid var(--clay-dim); border-radius:8px;
@@ -351,6 +379,36 @@
   .uniform-locked-num{ font-family:'Teko',sans-serif; font-size:26px; line-height:1; min-width:36px; text-align:center; color:var(--field-dark); }
   .uniform-msg{ font-size:11.5px; color:var(--ink-faint); max-width:260px; }
   .pitcher-sub{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  /* U10 (8): player header -- photo (or initials), name, "#12". */
+  .pitcher-ident{ display:flex; align-items:center; gap:14px; min-width:0; }
+  /* "Take photo" only where there's a camera to open (touch devices); on a
+     laptop the capture hint is ignored and it would just repeat Upload. */
+  .touch-only{ display:none; }
+  .headshot-setup-row{ display:flex; align-items:flex-start; gap:14px; }
+  .headshot-setup-row .profile-row{ margin-top:0 !important; }
+  @media (pointer:coarse){ .touch-only{ display:inline-block; } }
+  .pitcher-ident-text{ min-width:0; }
+  .pitcher-num{ margin-left:10px; color:var(--ink-faint); font-weight:500; }
+  .headshot{
+    flex:none; width:64px; height:64px; border-radius:50%; object-fit:cover;
+    background:var(--surface); border:1px solid var(--border);
+  }
+  .headshot-initials{
+    display:inline-flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:22px; color:var(--ink-dim); letter-spacing:0.02em;
+  }
+  /* Phones: one compact row -- 40px photo, name and number on one line
+     (ellipsis if long), chips hidden -- no taller than ~56px, so the
+     charting area loses as little room as possible. */
+  @media (max-width:500px){
+    .pitcher-header{ flex-wrap:nowrap; align-items:center; gap:10px; }
+    .pitcher-header .pitcher-ident{ flex:1 1 auto; gap:10px; }
+    .pitcher-header .headshot{ width:40px; height:40px; }
+    .pitcher-header .headshot-initials{ font-size:15px; }
+    .pitcher-header h2{ font-size:28px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .pitcher-header .pitcher-sub{ display:none; }
+    .pitcher-header-actions{ flex:none; }
+  }
   .pitch-chip{
     font-size:11px; font-weight:600; padding:4px 9px; border-radius:20px; letter-spacing:0.02em;
     border:1px solid var(--border-strong); color:var(--field-dark);
@@ -419,6 +477,19 @@
     background:var(--amber); padding:2px 7px; border-radius:999px; line-height:1.4;
   }
   @media (min-width:861px){ .kind-chooser-buttons{ flex-direction:row; justify-content:center; } .kind-choice-btn{ width:220px; } }
+  /* U10 (1): back to the chooser. Above phone width it's a plain
+     .btn.btn-ghost in the pitcher header's action row -- no extra rules, so
+     it's exactly the size of Contacts/Profile beside it (Joel: "same
+     height"). On phones it's the brand-strip button below. */
+  /* Phone spot: overlaid on the brand strip's right end (position:absolute,
+     so it adds no height to the strip), light-on-dark like the strip. */
+  .brand-block{ position:relative; }
+  .back-to-chooser-brand{
+    position:absolute; right:12px; top:50%; transform:translateY(-50%);
+    min-height:44px; align-items:center; padding:0 14px; border-radius:6px;
+    background:transparent; border:1px solid var(--border-on-dark, rgba(241,236,221,0.25));
+    color:var(--chalk); font:inherit; font-size:13px; font-weight:600; cursor:pointer;
+  }
   /* G1: the profile-setup modal. This file has no other modal/dialog
      pattern (see renderPerspectiveToggle's own comment) -- one is
      introduced here rather than reused from anywhere else. Scrollable on
@@ -1050,6 +1121,34 @@
     .home-plate-wrap{ width:calc(0.6 * min(100%, 320px) - 4.8px); }
   }
 
+  /* U10 (6): iPad portrait (and anything 501-860px wide). Below 860px the
+     sidebar stacks ABOVE the page, and at 768x1024 it plus the header, tabs
+     and controls pushed the grid's bottom row off-screen (measured: grid
+     bottom at 1079px, 5 of its 60px visible; worse still in Safari, whose
+     toolbars leave ~920px). Nothing clipped it -- it simply started too low.
+     So in this range only, the stacked sidebar becomes one compact wrapped
+     row (brand strip, team, sign-out side by side; roster list and outbox
+     badge still full width), and the page spacing tightens slightly. Phones
+     (<=500px) and >=861px get none of this. */
+  @media (min-width:501px) and (max-width:860px){
+    .sidebar{ flex-direction:row; flex-wrap:wrap; align-items:center; gap:10px 16px; padding:12px 16px; }
+    .brand-block{ flex-direction:row; align-items:center; gap:10px; padding:8px 14px; }
+    .brand h1{ font-size:24px; }
+    .tagline{ display:none; }
+    .role-badge{ margin-top:0; }
+    .sidebar .team-select-wrap, .sidebar .team-line{ flex:1 1 180px; min-width:0; }
+    .sidebar > .roster-label{ margin:0; }
+    .roster-toggle-btn{ flex:1 1 200px; }
+    .roster-collapse, .outbox-badge{ flex:1 1 100%; }
+    .sign-out-btn{ margin-top:0; margin-left:auto; padding:8px 12px; }
+    .main{ padding:14px 16px; gap:14px; }
+    .pitcher-header h2{ font-size:36px; }
+    .pitcher-sub{ margin-top:6px; }
+    .controls-panel{ gap:10px; }
+    .panel{ padding:14px; }
+    .session-grid-layout{ gap:18px; }
+  }
+
   @media (max-width:500px){
     /* Coach on a phone: invite link + Sign out live at the bottom of the page, not the top. */
     .hide-phone{ display:none !important; }
@@ -1192,6 +1291,11 @@ let state = {
   veloScrollLeft: 0,
   flashCell: null,
   pendingTarget: null,
+  headshots: {},             // U10 (8): pitcherId -> data: URL of his current photo (this device's cache)
+  headshotBusy: false,
+  headshotMsg: '',
+  coachNotices: null,         // U10 (3): this visit's unseen session notices (coach only)
+  coachNoticesExpanded: false,
   // G1: game-mode equivalents of pendingTarget/veloTargetIdx above -- same
   // "not part of the saved draft" precedent (an uncommitted tap is an
   // acceptable small loss if the app dies mid-tap, same as a bullpen's
@@ -1280,7 +1384,7 @@ function mapProfile(row){
   // snapshot for free and never gets re-read mid-session (an already-open
   // charting page keeps whatever it read at load, so a toggle change can
   // never affect the current pen).
-  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, throws: row.throws || null, relativeAccuracy: !!row.relative_accuracy_enabled, usesRadarGun: !!row.uses_radar_gun, setupDismissedAt: row.setup_dismissed_at || null, uniformNumber: null };
+  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, throws: row.throws || null, relativeAccuracy: !!row.relative_accuracy_enabled, usesRadarGun: !!row.uses_radar_gun, setupDismissedAt: row.setup_dismissed_at || null, uniformNumber: null, headshotUpdatedAt: row.headshot_updated_at || null };
 }
 function isCoach(){ return state.profile && state.profile.role === 'coach'; }
 // R6: UI-side mirror of is_team_head -- every admin control also hides
@@ -1729,6 +1833,233 @@ function renderBoot(){
 // now" is wired separately, on the button itself. Guarded so re-running init()
 // (e.g. after the account-setup form completes) doesn't stack listeners.
 let syncTriggersWired = false;
+/* ---------- COACH NOTICES (U10 item 3) ----------
+   "Jack Croft logged a Bullpen · Tue Sept 29, 4:12 PM" -- one red pill per
+   session a coach's player (or another coach) saved in the last 7 days,
+   except sessions this coach saved himself. get_coach_notices() (SECURITY
+   DEFINER, see the migration) returns only unseen ones for this coach;
+   they're marked seen the moment they render, stay on screen for the rest
+   of this visit (state lives until the page reloads), and are gone at the
+   next sign-in / app open. Online only: offline there are simply no
+   notices -- no error, and nothing here is ever awaited by charting. */
+let coachNoticesLoaded = false;   // once per page load (= sign-in / app open)
+async function loadCoachNotices(){
+  if(coachNoticesLoaded || !isCoach() || !isOnline()) return;
+  let rows;
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('get_coach_notices'), 8000);
+    if(error) return;   // no session yet / transient -- the next finishInit() tries again
+    rows = Array.isArray(data) ? data : [];
+  }catch(e){ return; }   // timed out: same, silently
+  coachNoticesLoaded = true;
+  if(!rows.length) return;
+  state.coachNotices = rows;
+  state.coachNoticesExpanded = false;
+  render();
+  const uid = state.session && state.session.user && state.session.user.id;
+  if(uid){
+    supabaseClient.from('coach_notice_seen')
+      .upsert(rows.map(n => ({ coach_id: uid, session_id: n.session_id })), { onConflict: 'coach_id,session_id', ignoreDuplicates: true })
+      .then(({ error }) => { if(error) console.error('coach notices: mark seen failed', error); }, () => {});
+  }
+}
+const NOTICE_MONTHS = ['Jan','Feb','Mar','Apr','May','June','July','Aug','Sept','Oct','Nov','Dec'];
+function coachNoticeText(n){
+  const d = new Date(n.ended_at);
+  const when = `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${NOTICE_MONTHS[d.getMonth()]} ${d.getDate()}, ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
+  return `${n.player_name || 'A player'} logged a ${n.kind === 'game' ? 'Live Session' : 'Bullpen'} · ${when}`;
+}
+function renderCoachNotices(){
+  const list = (isCoach() && state.coachNotices) || [];
+  if(!list.length) return '';
+  const shown = state.coachNoticesExpanded ? list : list.slice(0, 3);
+  const more = list.length - shown.length;
+  return `<div class="coach-notices" role="status">
+    ${shown.map(n => `<span class="coach-notice"><span class="coach-notice-text">${escHtml(coachNoticeText(n))}</span><button class="coach-notice-x" aria-label="Dismiss" onclick="dismissCoachNotice('${escHtml(n.session_id)}')">×</button></span>`).join('')}
+    ${more > 0 ? `<button class="coach-notice-more" onclick="expandCoachNotices()">+${more} more</button>` : ''}
+  </div>`;
+}
+// × dismisses early for this visit (it's already marked seen server-side).
+window.dismissCoachNotice = function(sessionId){
+  state.coachNotices = (state.coachNotices || []).filter(n => n.session_id !== sessionId);
+  render();
+};
+window.expandCoachNotices = function(){ state.coachNoticesExpanded = true; render(); };
+
+/* ---------- HEADSHOTS (U10 item 8) ----------
+   The player's own photo, private bucket `headshots`, object {id}.jpg.
+   Readable only by the player and his coaches (storage policies, see the
+   migration). Each device keeps a copy of the current version in
+   localStorage (headshot:{id} -> { v: headshot_updated_at, data }), so a
+   photo shows offline once it has been seen online, and a missing photo is
+   just initials -- nothing here is ever awaited by charting. */
+function headshotKey(id){ return 'headshot:' + id; }
+function headshotSubjects(){
+  if(isCoach()) return state.roster || [];
+  return state.profile ? [mapProfile(state.profile)] : [];
+}
+function blobToDataUrl(blob){
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
+}
+async function refreshHeadshots(){
+  let changed = false;
+  for(const p of headshotSubjects()){
+    const key = headshotKey(p.id);
+    if(!p.headshotUpdatedAt){
+      if(state.headshots[p.id]){ delete state.headshots[p.id]; changed = true; }
+      storDelete(key);
+      continue;
+    }
+    const cached = await storGet(key);
+    if(cached && cached.v === p.headshotUpdatedAt){
+      if(state.headshots[p.id] !== cached.data){ state.headshots[p.id] = cached.data; changed = true; }
+      continue;
+    }
+    if(!isOnline()) continue;   // offline and not cached yet: initials for now
+    try{
+      const { data: blob, error } = await netTimeout(supabaseClient.storage.from('headshots').download(p.id + '.jpg'), 8000);
+      if(error || !blob) continue;
+      const dataUrl = await blobToDataUrl(blob);
+      await storSet(key, { v: p.headshotUpdatedAt, data: dataUrl });
+      state.headshots[p.id] = dataUrl;
+      changed = true;
+    }catch(e){ /* timed out / offline: try again next time */ }
+  }
+  if(changed) render();
+}
+function initialsOf(name){
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return '?';
+  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+}
+function renderHeadshot(p){
+  const src = p && state.headshots[p.id];
+  return src
+    ? `<img class="headshot" src="${src}" alt="">`
+    : `<span class="headshot headshot-initials" aria-hidden="true">${escHtml(initialsOf(p && p.name))}</span>`;
+}
+function jerseyNumberOf(p){
+  if(isCoach()) return p.uniformNumber;
+  const t = state.teams.find(x => x.id === state.currentTeamId);
+  return t ? t.uniform_number : null;
+}
+// Photo + name + "#12". Used by the page header (coach after tapping a
+// player; the player on his own pages) and at the top of his Profile.
+function renderPlayerIdent(p, withChips, chipsHtml){
+  const num = jerseyNumberOf(p);
+  return `<div class="pitcher-ident">
+      ${renderHeadshot(p)}
+      <div class="pitcher-ident-text">
+        <h2 class="display">${escHtml(p.name)}${(num === null || num === undefined) ? '' : `<span class="pitcher-num">#${escHtml(String(num))}</span>`}</h2>
+        ${withChips ? `<div class="pitcher-sub">${chipsHtml}</div>` : ''}
+      </div>
+    </div>`;
+}
+// Center crop to a square, resize to 256x256, re-encode as JPEG. Drawing to
+// a canvas and re-encoding keeps only pixels -- EXIF (incl. GPS) is gone;
+// the original file never leaves the device. <img> + canvas.toBlob only
+// (no createImageBitmap/OffscreenCanvas): these work on older iOS WebKit.
+function makeHeadshotJpeg(file){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try{
+        const w = img.naturalWidth, h = img.naturalHeight, side = Math.min(w, h);
+        const c = document.createElement('canvas');
+        c.width = 256; c.height = 256;
+        const ctx = c.getContext('2d');
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, (w - side) / 2, (h - side) / 2, side, side, 0, 0, 256, 256);
+        c.toBlob(b => { URL.revokeObjectURL(url); b ? resolve(b) : reject(new Error('Could not process that photo.')); }, 'image/jpeg', 0.85);
+      }catch(e){ URL.revokeObjectURL(url); reject(e); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("That file isn't a photo this device can read.")); };
+    img.src = url;
+  });
+}
+// 'library' = photo library / file picker; 'camera' = open the camera
+// directly (capture="user": front camera, selfie-style -- the camera UI can
+// still switch). Either way the file goes through makeHeadshotJpeg.
+window.pickHeadshot = function(mode){
+  const input = document.getElementById(mode === 'camera' ? 'headshot-camera' : 'headshot-input');
+  if(input) input.click();   // straight from the tap -- iOS requires a user gesture
+};
+window.onHeadshotPicked = async function(input){
+  const file = input.files && input.files[0];
+  input.value = '';
+  if(!file) return;
+  if(!isOnline()){ state.headshotMsg = 'Connect to the internet to change your photo.'; render(); return; }
+  state.headshotBusy = true; state.headshotMsg = ''; render();
+  try{
+    const blob = await makeHeadshotJpeg(file);
+    const id = state.profile.id;
+    const { error: upErr } = await supabaseClient.storage.from('headshots')
+      .upload(id + '.jpg', blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '60' });
+    if(upErr) throw upErr;
+    const ts = new Date().toISOString();
+    const { error: pErr } = await supabaseClient.from('profiles').update({ headshot_updated_at: ts }).eq('id', id);
+    if(pErr) throw pErr;
+    state.profile.headshot_updated_at = ts;
+    const dataUrl = await blobToDataUrl(blob);
+    await storSet(headshotKey(id), { v: ts, data: dataUrl });
+    state.headshots[id] = dataUrl;
+    state.headshotMsg = 'Photo saved.';
+    saveLastKnownContext();
+  }catch(e){
+    state.headshotMsg = "Couldn't save your photo: " + ((e && e.message) || 'unknown error');
+  }
+  state.headshotBusy = false;
+  render();
+};
+window.removeHeadshot = async function(){
+  if(!isOnline()){ state.headshotMsg = 'Connect to the internet to change your photo.'; render(); return; }
+  state.headshotBusy = true; state.headshotMsg = ''; render();
+  try{
+    const id = state.profile.id;
+    const { error: rmErr } = await supabaseClient.storage.from('headshots').remove([id + '.jpg']);
+    if(rmErr) throw rmErr;
+    const { error: pErr } = await supabaseClient.from('profiles').update({ headshot_updated_at: null }).eq('id', id);
+    if(pErr) throw pErr;
+    state.profile.headshot_updated_at = null;
+    delete state.headshots[id];
+    storDelete(headshotKey(id));
+    state.headshotMsg = 'Photo removed.';
+    saveLastKnownContext();
+  }catch(e){
+    state.headshotMsg = "Couldn't remove your photo: " + ((e && e.message) || 'unknown error');
+  }
+  state.headshotBusy = false;
+  render();
+};
+// Profile: the player header (photo, name, #) with the buttons under it.
+function renderHeadshotControls(p){
+  return `<div class="profile-section headshot-section">
+      ${renderPlayerIdent(p, false)}
+      ${renderHeadshotButtons(p)}
+    </div>`;
+}
+// New-player setup box: just the photo and the buttons -- the welcome line
+// above it already says his name.
+function renderSetupHeadshot(p){
+  return `<div class="profile-section headshot-section"><h3>Photo</h3>
+      <div class="headshot-setup-row">${renderHeadshot(p)}<div>${renderHeadshotButtons(p)}</div></div>
+    </div>`;
+}
+function renderHeadshotButtons(p){
+  const has = !!p.headshotUpdatedAt;
+  const busy = state.headshotBusy;
+  return `<div class="profile-row" style="margin-top:12px;">
+        <button class="btn btn-ghost" ${busy ? 'disabled' : ''} onclick="pickHeadshot('library')">${busy ? 'Saving…' : has ? 'Upload new photo' : 'Upload photo'}</button>
+        <button class="btn btn-ghost touch-only" ${busy ? 'disabled' : ''} onclick="pickHeadshot('camera')">Take photo</button>
+        ${has ? `<button class="btn btn-ghost" ${busy ? 'disabled' : ''} onclick="removeHeadshot()">Remove photo</button>` : ''}
+      </div>
+      <input type="file" id="headshot-input" accept="image/*" style="display:none" onchange="onHeadshotPicked(this)">
+      <input type="file" id="headshot-camera" accept="image/*" capture="user" style="display:none" onchange="onHeadshotPicked(this)">
+      <p class="profile-note" style="margin:8px 0 0;">Only your coaches can see your photo.</p>
+      ${state.headshotMsg ? `<p class="profile-msg">${escHtml(state.headshotMsg)}</p>` : ''}`;
+}
+
 function finishInit(){
   render();
   if(!syncTriggersWired){
@@ -1747,6 +2078,8 @@ function finishInit(){
     });
   }
   triggerSync();
+  loadCoachNotices();   // U10 (3): background, never awaited -- charting never waits on it
+  refreshHeadshots();   // U10 (8): same -- cached photos show offline, missing ones never block
 }
 
 // supabase-js (no custom storageKey configured -- see supabase-config.js)
@@ -1909,7 +2242,7 @@ function sortRoster(){
 async function loadRosterForTeam(teamId){
   const { data, error } = await supabaseClient
     .from('pitcher_teams')
-    .select('uniform_number, profiles(id, full_name, pitch_types, contact_emails, throws, relative_accuracy_enabled, uses_radar_gun)')
+    .select('uniform_number, profiles(id, full_name, pitch_types, contact_emails, throws, relative_accuracy_enabled, uses_radar_gun, headshot_updated_at)')
     .eq('team_id', teamId);
   if(error){ console.error('loadRosterForTeam failed', error); state.roster = []; return; }
   state.roster = (data || []).filter(r => r.profiles).map(r => {
@@ -1918,6 +2251,7 @@ async function loadRosterForTeam(teamId){
     return p;
   });
   sortRoster();
+  refreshHeadshots();   // U10 (8): background -- never awaited, never blocks the roster
 
   // R0: verification status per pitcher, via the one sanctioned read path
   // (get_roster_verification -- auth.users itself is never exposed to
@@ -3784,6 +4118,48 @@ function renderSessionKindChooser(){
     </div>
   </div>`;
 }
+// U10 (1): "‹ Back" to the chooser, only while nothing has been recorded.
+// For a game that ends at the first zone tap, not the first finished pitch:
+// gamePendingPitch (and field-play / adjust-runners state, or a no-pitch
+// event) already counts as progress for the draft (see refreshDraftState),
+// so Back must not be able to throw it away. A bullpen's tap 1 (the
+// target) is never saved anywhere, so it doesn't hide Back. After this,
+// leaving is only through Save or Discard.
+function canGoBackToChooser(){
+  const s = state.activeSession;
+  return !!(s && s.kind && s.pitches.length === 0 && !s.gamePendingPitch && !s.fieldPlay
+    && !s.adjustRunners && !(s.events && s.events.length));
+}
+// Placed so it takes NO height (Joel, Sept 29 2026: as its own row above
+// the charting view it pushed the grid ~40px down until the first pitch).
+// Two spots, one per width, never both visible (.hide-phone/.show-phone):
+//  - above phone width: the pitcher header's action row, right of the name
+//    beside Contacts / the coach's Profile, which has room to spare;
+//  - phones: that row would wrap (measured +60px at 390/320), so instead
+//    it overlays the right end of the dark brand strip at the top, which
+//    is already taller than the button and empty on the right.
+// The charting views themselves are untouched by item 1.
+function showBackToChooser(){
+  return state.view === 'session' && !state.draftAvailable && canGoBackToChooser();
+}
+function renderBackToChooserBtn(){
+  return showBackToChooser()
+    ? `<button type="button" class="btn btn-ghost back-to-chooser hide-phone" onclick="backToChooser()">‹ Back</button>`
+    : '';
+}
+function renderBackToChooserBrandBtn(){
+  return showBackToChooser()
+    ? `<button type="button" class="back-to-chooser-brand show-phone" onclick="backToChooser()">‹ Back</button>`
+    : '';
+}
+window.backToChooser = async function(){
+  if(!canGoBackToChooser()) return;   // re-checked live: nothing recorded, nothing to lose
+  await storDelete(draftKey());
+  state.activeSession = await freshActiveSession();
+  state.pendingTarget = null;
+  state.hint = '';
+  render();
+};
 window.chooseSessionKind = async function(kind){
   state.activeSession.kind = kind;
   if(kind === 'game'){
@@ -6549,7 +6925,11 @@ function renderLeaderboardView(){
     body = `<p class="lb-empty">${lb.status === 'offline' ? "You're offline, and this board hasn't been loaded on this device yet." : "Couldn't load the leaderboard. Try again in a moment."}</p>`;
   } else {
     const min = data.minimum;
-    const windowLabel = data.window === 'week' ? 'This week' : data.window === 'month' ? 'This month' : 'All time';
+    // U10 (2): spell out the rules the board already applies (see
+    // get_team_leaderboard), so a coach can tell why a pen isn't on it:
+    // calendar week/month in Eastern time (not a rolling 7 days), and
+    // bullpens only (live games never count).
+    const windowLabel = (data.window === 'week' ? 'This week (Mon–Sun)' : data.window === 'month' ? 'This month' : 'All time') + ' · bullpens only';
     const stamp = data.generated_at ? new Date(data.generated_at).getTime() : lb.fetchedAt;
     const stale = lb.status === 'offline' || lb.status === 'stale';
     const cat = state.lbCat;
@@ -6882,15 +7262,16 @@ function renderProfileView(){
   const uniformRows = state.teams.map(t => uniformRowHtml(t.id, state.profile.id, 'Uniform # · ' + t.name)).join('')
     || '<p class="profile-note">Join a team to set a uniform number.</p>';
   return `<div class="profile-page">
+    ${renderHeadshotControls(p)}
     ${msg}
     <div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>
     ${renderThrowsSection(p)}
-    ${renderNameSection(p, true)}
-    ${renderEmailSection()}
-    ${renderPasswordSection()}
     ${renderPitchMixSection(p)}
     ${renderRelAccuracySection(p)}
     ${renderRadarGunSection(p, true)}
+    ${renderNameSection(p, true)}
+    ${renderEmailSection()}
+    ${renderPasswordSection()}
   </div>`;
 }
 // Coach editing a rostered pitcher (U9 adds name to what was already here:
@@ -6949,6 +7330,7 @@ function renderSetupView(){
     <h2 class="display" style="margin:0 0 2px;">Welcome, ${escHtml(p.name)}</h2>
     <p class="profile-note" style="margin:0 0 12px;">A few quick things so charting works well for you. Skip it and come back anytime from Profile.</p>
     ${msg}
+    ${renderSetupHeadshot(p)}
     <div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>
     ${renderThrowsSection(p)}
     ${renderPitchMixSection(p)}
@@ -7389,7 +7771,7 @@ function render(){
     const selectedForLabel = state.roster.find(x => x.id === state.currentPitcherId);
     const rosterLabel = collapsed && selectedForLabel ? `Roster · ${escHtml(selectedForLabel.name)}` : 'Roster';
     sidebarBody = `
-      ${teamSelector}
+      <div class="team-line">${teamSelector}<button class="btn btn-ghost show-phone coach-profile-link" onclick="setView('profile')">Profile</button></div>
       <button class="roster-toggle-btn" onclick="toggleRosterCollapsed()" aria-expanded="${collapsed ? 'false' : 'true'}">
         <span class="roster-label" style="margin:0;">${rosterLabel}</span>
         <span class="roster-chevron${collapsed ? '' : ' open'}">▾</span>
@@ -7412,6 +7794,7 @@ function render(){
         <span class="tagline">Always a Step Ahead</span>
         <span class="role-badge">${isCoach() ? 'Coach' : 'Pitcher'}</span>
         ${renderOfflinePill()}
+        ${renderBackToChooserBrandBtn()}
       </div>
       ${sidebarBody}
       ${renderOutboxBadge()}
@@ -7479,19 +7862,18 @@ function render(){
 
     const headerHtml = `
       <div class="pitcher-header">
-        <div>
-          <h2 class="display">${escHtml(p.name)}</h2>
-          <div class="pitcher-sub">${arsenalChips}</div>
-        </div>
+        ${renderPlayerIdent(p, true, arsenalChips)}
         <div class="pitcher-header-actions">
+          ${renderBackToChooserBtn()}
           ${isCoach()
-            ? `<button class="btn btn-ghost" onclick="setView('profile')">Profile</button>`
+            ? `<button class="btn btn-ghost hide-phone" onclick="setView('profile')">Profile</button>`
             : `<button class="btn btn-ghost" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>`}
         </div>
       </div>
       ${contactsPanel}`;
 
     main = `
+      ${renderCoachNotices()}
       ${verifyBanner}
       ${setupReminderBanner}
       ${(state.view === 'profile' || state.view === 'leaderboard') ? '' : headerHtml}

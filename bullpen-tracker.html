@@ -379,6 +379,36 @@
   .uniform-locked-num{ font-family:'Teko',sans-serif; font-size:26px; line-height:1; min-width:36px; text-align:center; color:var(--field-dark); }
   .uniform-msg{ font-size:11.5px; color:var(--ink-faint); max-width:260px; }
   .pitcher-sub{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  /* U10 (8): player header -- photo (or initials), name, "#12". */
+  .pitcher-ident{ display:flex; align-items:center; gap:14px; min-width:0; }
+  /* "Take photo" only where there's a camera to open (touch devices); on a
+     laptop the capture hint is ignored and it would just repeat Upload. */
+  .touch-only{ display:none; }
+  .headshot-setup-row{ display:flex; align-items:flex-start; gap:14px; }
+  .headshot-setup-row .profile-row{ margin-top:0 !important; }
+  @media (pointer:coarse){ .touch-only{ display:inline-block; } }
+  .pitcher-ident-text{ min-width:0; }
+  .pitcher-num{ margin-left:10px; color:var(--ink-faint); font-weight:500; }
+  .headshot{
+    flex:none; width:64px; height:64px; border-radius:50%; object-fit:cover;
+    background:var(--surface); border:1px solid var(--border);
+  }
+  .headshot-initials{
+    display:inline-flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:22px; color:var(--ink-dim); letter-spacing:0.02em;
+  }
+  /* Phones: one compact row -- 40px photo, name and number on one line
+     (ellipsis if long), chips hidden -- no taller than ~56px, so the
+     charting area loses as little room as possible. */
+  @media (max-width:500px){
+    .pitcher-header{ flex-wrap:nowrap; align-items:center; gap:10px; }
+    .pitcher-header .pitcher-ident{ flex:1 1 auto; gap:10px; }
+    .pitcher-header .headshot{ width:40px; height:40px; }
+    .pitcher-header .headshot-initials{ font-size:15px; }
+    .pitcher-header h2{ font-size:28px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .pitcher-header .pitcher-sub{ display:none; }
+    .pitcher-header-actions{ flex:none; }
+  }
   .pitch-chip{
     font-size:11px; font-weight:600; padding:4px 9px; border-radius:20px; letter-spacing:0.02em;
     border:1px solid var(--border-strong); color:var(--field-dark);
@@ -1261,6 +1291,9 @@ let state = {
   veloScrollLeft: 0,
   flashCell: null,
   pendingTarget: null,
+  headshots: {},             // U10 (8): pitcherId -> data: URL of his current photo (this device's cache)
+  headshotBusy: false,
+  headshotMsg: '',
   coachNotices: null,         // U10 (3): this visit's unseen session notices (coach only)
   coachNoticesExpanded: false,
   // G1: game-mode equivalents of pendingTarget/veloTargetIdx above -- same
@@ -1351,7 +1384,7 @@ function mapProfile(row){
   // snapshot for free and never gets re-read mid-session (an already-open
   // charting page keeps whatever it read at load, so a toggle change can
   // never affect the current pen).
-  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, throws: row.throws || null, relativeAccuracy: !!row.relative_accuracy_enabled, usesRadarGun: !!row.uses_radar_gun, setupDismissedAt: row.setup_dismissed_at || null, uniformNumber: null };
+  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, throws: row.throws || null, relativeAccuracy: !!row.relative_accuracy_enabled, usesRadarGun: !!row.uses_radar_gun, setupDismissedAt: row.setup_dismissed_at || null, uniformNumber: null, headshotUpdatedAt: row.headshot_updated_at || null };
 }
 function isCoach(){ return state.profile && state.profile.role === 'coach'; }
 // R6: UI-side mirror of is_team_head -- every admin control also hides
@@ -1853,6 +1886,180 @@ window.dismissCoachNotice = function(sessionId){
 };
 window.expandCoachNotices = function(){ state.coachNoticesExpanded = true; render(); };
 
+/* ---------- HEADSHOTS (U10 item 8) ----------
+   The player's own photo, private bucket `headshots`, object {id}.jpg.
+   Readable only by the player and his coaches (storage policies, see the
+   migration). Each device keeps a copy of the current version in
+   localStorage (headshot:{id} -> { v: headshot_updated_at, data }), so a
+   photo shows offline once it has been seen online, and a missing photo is
+   just initials -- nothing here is ever awaited by charting. */
+function headshotKey(id){ return 'headshot:' + id; }
+function headshotSubjects(){
+  if(isCoach()) return state.roster || [];
+  return state.profile ? [mapProfile(state.profile)] : [];
+}
+function blobToDataUrl(blob){
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
+}
+async function refreshHeadshots(){
+  let changed = false;
+  for(const p of headshotSubjects()){
+    const key = headshotKey(p.id);
+    if(!p.headshotUpdatedAt){
+      if(state.headshots[p.id]){ delete state.headshots[p.id]; changed = true; }
+      storDelete(key);
+      continue;
+    }
+    const cached = await storGet(key);
+    if(cached && cached.v === p.headshotUpdatedAt){
+      if(state.headshots[p.id] !== cached.data){ state.headshots[p.id] = cached.data; changed = true; }
+      continue;
+    }
+    if(!isOnline()) continue;   // offline and not cached yet: initials for now
+    try{
+      const { data: blob, error } = await netTimeout(supabaseClient.storage.from('headshots').download(p.id + '.jpg'), 8000);
+      if(error || !blob) continue;
+      const dataUrl = await blobToDataUrl(blob);
+      await storSet(key, { v: p.headshotUpdatedAt, data: dataUrl });
+      state.headshots[p.id] = dataUrl;
+      changed = true;
+    }catch(e){ /* timed out / offline: try again next time */ }
+  }
+  if(changed) render();
+}
+function initialsOf(name){
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return '?';
+  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+}
+function renderHeadshot(p){
+  const src = p && state.headshots[p.id];
+  return src
+    ? `<img class="headshot" src="${src}" alt="">`
+    : `<span class="headshot headshot-initials" aria-hidden="true">${escHtml(initialsOf(p && p.name))}</span>`;
+}
+function jerseyNumberOf(p){
+  if(isCoach()) return p.uniformNumber;
+  const t = state.teams.find(x => x.id === state.currentTeamId);
+  return t ? t.uniform_number : null;
+}
+// Photo + name + "#12". Used by the page header (coach after tapping a
+// player; the player on his own pages) and at the top of his Profile.
+function renderPlayerIdent(p, withChips, chipsHtml){
+  const num = jerseyNumberOf(p);
+  return `<div class="pitcher-ident">
+      ${renderHeadshot(p)}
+      <div class="pitcher-ident-text">
+        <h2 class="display">${escHtml(p.name)}${(num === null || num === undefined) ? '' : `<span class="pitcher-num">#${escHtml(String(num))}</span>`}</h2>
+        ${withChips ? `<div class="pitcher-sub">${chipsHtml}</div>` : ''}
+      </div>
+    </div>`;
+}
+// Center crop to a square, resize to 256x256, re-encode as JPEG. Drawing to
+// a canvas and re-encoding keeps only pixels -- EXIF (incl. GPS) is gone;
+// the original file never leaves the device. <img> + canvas.toBlob only
+// (no createImageBitmap/OffscreenCanvas): these work on older iOS WebKit.
+function makeHeadshotJpeg(file){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try{
+        const w = img.naturalWidth, h = img.naturalHeight, side = Math.min(w, h);
+        const c = document.createElement('canvas');
+        c.width = 256; c.height = 256;
+        const ctx = c.getContext('2d');
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, (w - side) / 2, (h - side) / 2, side, side, 0, 0, 256, 256);
+        c.toBlob(b => { URL.revokeObjectURL(url); b ? resolve(b) : reject(new Error('Could not process that photo.')); }, 'image/jpeg', 0.85);
+      }catch(e){ URL.revokeObjectURL(url); reject(e); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("That file isn't a photo this device can read.")); };
+    img.src = url;
+  });
+}
+// 'library' = photo library / file picker; 'camera' = open the camera
+// directly (capture="user": front camera, selfie-style -- the camera UI can
+// still switch). Either way the file goes through makeHeadshotJpeg.
+window.pickHeadshot = function(mode){
+  const input = document.getElementById(mode === 'camera' ? 'headshot-camera' : 'headshot-input');
+  if(input) input.click();   // straight from the tap -- iOS requires a user gesture
+};
+window.onHeadshotPicked = async function(input){
+  const file = input.files && input.files[0];
+  input.value = '';
+  if(!file) return;
+  if(!isOnline()){ state.headshotMsg = 'Connect to the internet to change your photo.'; render(); return; }
+  state.headshotBusy = true; state.headshotMsg = ''; render();
+  try{
+    const blob = await makeHeadshotJpeg(file);
+    const id = state.profile.id;
+    const { error: upErr } = await supabaseClient.storage.from('headshots')
+      .upload(id + '.jpg', blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '60' });
+    if(upErr) throw upErr;
+    const ts = new Date().toISOString();
+    const { error: pErr } = await supabaseClient.from('profiles').update({ headshot_updated_at: ts }).eq('id', id);
+    if(pErr) throw pErr;
+    state.profile.headshot_updated_at = ts;
+    const dataUrl = await blobToDataUrl(blob);
+    await storSet(headshotKey(id), { v: ts, data: dataUrl });
+    state.headshots[id] = dataUrl;
+    state.headshotMsg = 'Photo saved.';
+    saveLastKnownContext();
+  }catch(e){
+    state.headshotMsg = "Couldn't save your photo: " + ((e && e.message) || 'unknown error');
+  }
+  state.headshotBusy = false;
+  render();
+};
+window.removeHeadshot = async function(){
+  if(!isOnline()){ state.headshotMsg = 'Connect to the internet to change your photo.'; render(); return; }
+  state.headshotBusy = true; state.headshotMsg = ''; render();
+  try{
+    const id = state.profile.id;
+    const { error: rmErr } = await supabaseClient.storage.from('headshots').remove([id + '.jpg']);
+    if(rmErr) throw rmErr;
+    const { error: pErr } = await supabaseClient.from('profiles').update({ headshot_updated_at: null }).eq('id', id);
+    if(pErr) throw pErr;
+    state.profile.headshot_updated_at = null;
+    delete state.headshots[id];
+    storDelete(headshotKey(id));
+    state.headshotMsg = 'Photo removed.';
+    saveLastKnownContext();
+  }catch(e){
+    state.headshotMsg = "Couldn't remove your photo: " + ((e && e.message) || 'unknown error');
+  }
+  state.headshotBusy = false;
+  render();
+};
+// Profile: the player header (photo, name, #) with the buttons under it.
+function renderHeadshotControls(p){
+  return `<div class="profile-section headshot-section">
+      ${renderPlayerIdent(p, false)}
+      ${renderHeadshotButtons(p)}
+    </div>`;
+}
+// New-player setup box: just the photo and the buttons -- the welcome line
+// above it already says his name.
+function renderSetupHeadshot(p){
+  return `<div class="profile-section headshot-section"><h3>Photo</h3>
+      <div class="headshot-setup-row">${renderHeadshot(p)}<div>${renderHeadshotButtons(p)}</div></div>
+    </div>`;
+}
+function renderHeadshotButtons(p){
+  const has = !!p.headshotUpdatedAt;
+  const busy = state.headshotBusy;
+  return `<div class="profile-row" style="margin-top:12px;">
+        <button class="btn btn-ghost" ${busy ? 'disabled' : ''} onclick="pickHeadshot('library')">${busy ? 'Saving…' : has ? 'Upload new photo' : 'Upload photo'}</button>
+        <button class="btn btn-ghost touch-only" ${busy ? 'disabled' : ''} onclick="pickHeadshot('camera')">Take photo</button>
+        ${has ? `<button class="btn btn-ghost" ${busy ? 'disabled' : ''} onclick="removeHeadshot()">Remove photo</button>` : ''}
+      </div>
+      <input type="file" id="headshot-input" accept="image/*" style="display:none" onchange="onHeadshotPicked(this)">
+      <input type="file" id="headshot-camera" accept="image/*" capture="user" style="display:none" onchange="onHeadshotPicked(this)">
+      <p class="profile-note" style="margin:8px 0 0;">Only your coaches can see your photo.</p>
+      ${state.headshotMsg ? `<p class="profile-msg">${escHtml(state.headshotMsg)}</p>` : ''}`;
+}
+
 function finishInit(){
   render();
   if(!syncTriggersWired){
@@ -1872,6 +2079,7 @@ function finishInit(){
   }
   triggerSync();
   loadCoachNotices();   // U10 (3): background, never awaited -- charting never waits on it
+  refreshHeadshots();   // U10 (8): same -- cached photos show offline, missing ones never block
 }
 
 // supabase-js (no custom storageKey configured -- see supabase-config.js)
@@ -2034,7 +2242,7 @@ function sortRoster(){
 async function loadRosterForTeam(teamId){
   const { data, error } = await supabaseClient
     .from('pitcher_teams')
-    .select('uniform_number, profiles(id, full_name, pitch_types, contact_emails, throws, relative_accuracy_enabled, uses_radar_gun)')
+    .select('uniform_number, profiles(id, full_name, pitch_types, contact_emails, throws, relative_accuracy_enabled, uses_radar_gun, headshot_updated_at)')
     .eq('team_id', teamId);
   if(error){ console.error('loadRosterForTeam failed', error); state.roster = []; return; }
   state.roster = (data || []).filter(r => r.profiles).map(r => {
@@ -2043,6 +2251,7 @@ async function loadRosterForTeam(teamId){
     return p;
   });
   sortRoster();
+  refreshHeadshots();   // U10 (8): background -- never awaited, never blocks the roster
 
   // R0: verification status per pitcher, via the one sanctioned read path
   // (get_roster_verification -- auth.users itself is never exposed to
@@ -7053,6 +7262,7 @@ function renderProfileView(){
   const uniformRows = state.teams.map(t => uniformRowHtml(t.id, state.profile.id, 'Uniform # · ' + t.name)).join('')
     || '<p class="profile-note">Join a team to set a uniform number.</p>';
   return `<div class="profile-page">
+    ${renderHeadshotControls(p)}
     ${msg}
     <div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>
     ${renderThrowsSection(p)}
@@ -7120,6 +7330,7 @@ function renderSetupView(){
     <h2 class="display" style="margin:0 0 2px;">Welcome, ${escHtml(p.name)}</h2>
     <p class="profile-note" style="margin:0 0 12px;">A few quick things so charting works well for you. Skip it and come back anytime from Profile.</p>
     ${msg}
+    ${renderSetupHeadshot(p)}
     <div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>
     ${renderThrowsSection(p)}
     ${renderPitchMixSection(p)}
@@ -7651,10 +7862,7 @@ function render(){
 
     const headerHtml = `
       <div class="pitcher-header">
-        <div>
-          <h2 class="display">${escHtml(p.name)}</h2>
-          <div class="pitcher-sub">${arsenalChips}</div>
-        </div>
+        ${renderPlayerIdent(p, true, arsenalChips)}
         <div class="pitcher-header-actions">
           ${renderBackToChooserBtn()}
           ${isCoach()

@@ -339,6 +339,10 @@ export const CSS = `
     body{ background:#FFFFFF; }
     .report-header{ background:#0F241B !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     .section{ page-break-inside:avoid; }
+    /* Location dots (svg.ts drawDots): a dark outline so every dot still
+       reads on a black-and-white printout, where pale pitch-type colors and
+       the translucent halos wash out. CSS beats the SVG stroke attribute. */
+    .kb-dot{ stroke:#1E2A24; }
   }
 `
 

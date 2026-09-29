@@ -6,6 +6,37 @@ import { isStrikeCell, zoneNumber, colorForType, escapeHtml } from './helpers.ts
 
 export interface Pt { row: number; col: number; type: string }
 
+// The ONE pitch-location dot, used by every report grid (drawGrid and
+// drawGridByResult) -- callers only choose the color. Each dot gets a halo
+// (2x radius) in its own color: that's what makes a cluster read as a
+// cluster and a lone pitch stand out from the grid lines. All halos go in
+// one <g opacity> drawn under all dots: group opacity composites the group
+// as a whole, so overlapping halos never stack darker than 0.28 (no mud)
+// and every solid dot, still drawn in pitch order, sits on top with its
+// color clear. The solid dot + outline alone carries the location (see
+// .kb-dot's print rule in template.ts), so halos are never the only cue.
+// Overlapping pitches at the same cell spiral outward (golden-angle
+// jitter), same technique the PDF used. Radius was clamp(cell*0.09, 2.2,
+// 3.6) before -- 3.6 on every 5x5, 260px report grid -- now +25%.
+interface DotPt { row: number; col: number; color: string }
+function drawDots(pitches: DotPt[], cell: number): string {
+  const r = +Math.max(2.75, Math.min(4.5, cell * 0.1125)).toFixed(2)
+  const seen: Record<string, number> = {}
+  let halos = '', dots = ''
+  for (const p of pitches) {
+    const key = p.row + '-' + p.col
+    const idx = seen[key] || 0
+    seen[key] = idx + 1
+    const cx = p.col * cell + cell / 2, cy = p.row * cell + cell / 2
+    const angle = idx * 137.508 * (Math.PI / 180)
+    const radius = idx === 0 ? 0 : Math.min(cell * 0.32, 2.5 + idx * 1.8)
+    const x = (cx + radius * Math.cos(angle)).toFixed(1), y = (cy + radius * Math.sin(angle)).toFixed(1)
+    halos += `<circle cx="${x}" cy="${y}" r="${r * 2}" fill="${p.color}"/>`
+    dots += `<circle class="kb-dot" cx="${x}" cy="${y}" r="${r}" fill="${p.color}" stroke="#FFFFFF" stroke-width="0.8"/>`
+  }
+  return `<g opacity="0.28">${halos}</g>${dots}`
+}
+
 // A location grid. batterSide is null for a MIXED-side plot (physical framing,
 // no 1-9 numbers, no zone names -- per the framing rule); a real side ('R'|'L')
 // draws the D8 numbers and is safe to pair with zone-name callouts elsewhere.
@@ -34,21 +65,7 @@ export function drawGrid(opts: {
     }
   }
 
-  // Overlapping pitches at the same cell spiral outward (golden-angle jitter),
-  // same technique the PDF used -- distinguishable dots, not a solid blob.
-  const seen: Record<string, number> = {}
-  let dots = ''
-  for (const p of pitches) {
-    const key = p.row + '-' + p.col
-    const idx = seen[key] || 0
-    seen[key] = idx + 1
-    const cx = p.col * cell + cell / 2, cy = p.row * cell + cell / 2
-    const angle = idx * 137.508 * (Math.PI / 180)
-    const radius = idx === 0 ? 0 : Math.min(cell * 0.32, 2.5 + idx * 1.8)
-    const dx = radius * Math.cos(angle), dy = radius * Math.sin(angle)
-    const r = Math.max(2.2, Math.min(3.6, cell * 0.09))
-    dots += `<circle cx="${(cx + dx).toFixed(1)}" cy="${(cy + dy).toFixed(1)}" r="${r}" fill="${colorForType(p.type, allTypes)}" stroke="#FFFFFF" stroke-width="0.8"/>`
-  }
+  const dots = drawDots(pitches.map(p => ({ row: p.row, col: p.col, color: colorForType(p.type, allTypes) })), cell)
 
   return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Pitch location grid">` +
     `<rect x="0" y="0" width="${size}" height="${size}" fill="#FFFFFF" stroke="#CFE6D7"/>` + cells + dots + `</svg>`
@@ -122,19 +139,7 @@ export function drawGridByResult(opts: {
     }
   }
 
-  const seen: Record<string, number> = {}
-  let dots = ''
-  for (const p of pitches) {
-    const key = p.row + '-' + p.col
-    const idx = seen[key] || 0
-    seen[key] = idx + 1
-    const cx = p.col * cell + cell / 2, cy = p.row * cell + cell / 2
-    const angle = idx * 137.508 * (Math.PI / 180)
-    const radius = idx === 0 ? 0 : Math.min(cell * 0.32, 2.5 + idx * 1.8)
-    const dx = radius * Math.cos(angle), dy = radius * Math.sin(angle)
-    const r = Math.max(2.2, Math.min(3.6, cell * 0.09))
-    dots += `<circle cx="${(cx + dx).toFixed(1)}" cy="${(cy + dy).toFixed(1)}" r="${r}" fill="${RESULT_COLORS[p.category]}" stroke="#FFFFFF" stroke-width="0.8"/>`
-  }
+  const dots = drawDots(pitches.map(p => ({ row: p.row, col: p.col, color: RESULT_COLORS[p.category] })), cell)
 
   return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Pitch location by result">` +
     `<rect x="0" y="0" width="${size}" height="${size}" fill="#FFFFFF" stroke="#CFE6D7"/>` + cells + dots + `</svg>`

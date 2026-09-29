@@ -94,6 +94,8 @@ operating it (`git config user.name` / `user.email`, and ask if unclear).
 If it isn't Joel, stop and say the change needs Joel. No exceptions for
 "small" or docs-only changes to `main`.
 
+Joel's git identity is `Nathan <joelhauserman@gmail.com>`.
+
 ## Secrets
 
 Function secrets live in Supabase (`supabase secrets list`): `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `INVITE_REDIRECT_URL`, `RESEND_API_KEY`, `REPORT_FROM_EMAIL`. Historical note: a static `REPORT_API_KEY` once shipped in a public `report-config.js` — that pattern (any secret in a frontend file) is banned; if you ever find one, treat it as a live incident and flag it. The service-role key must never appear outside Edge Function env vars. The anon key is public by design; RLS is the actual security boundary.

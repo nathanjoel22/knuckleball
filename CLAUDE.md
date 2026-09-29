@@ -72,6 +72,28 @@ RLS rules of engagement:
 - Migrations and the full procedure: follow `DEPLOY.md`. Staging (`knuckleball-staging`, a second Supabase project, same org as production) gets every change first; production schema changes only after a fresh backup (`BACKUPS.md`).
 - Auth config landmine: Supabase **Site URL / redirect URLs** were once left at `localhost:3000`, breaking every email link. Any auth-flow change: verify these settings.
 
+## Who ships to production
+
+Only Joel ships to production. Jordan Thayer (operations) has access to
+both Supabase projects and the repo, but production changes are Joel's alone.
+
+"Shipping to production" means any of:
+- pushing or merging to `main` (GitHub Pages deploys the live site from it);
+- applying a migration to the production project (fkgccjhuimkkbupbanxp);
+- deploying an Edge Function to production;
+- changing production Auth settings, secrets, storage policies, or RLS
+  in the dashboard;
+- deleting or editing production data.
+
+Jordan, and any Claude Code session he runs, works on staging and on
+branches, and opens pull requests for Joel to merge. Reading production
+(queries, logs, dashboards) is fine for both.
+
+Before any production action, a Claude Code session confirms who is
+operating it (`git config user.name` / `user.email`, and ask if unclear).
+If it isn't Joel, stop and say the change needs Joel. No exceptions for
+"small" or docs-only changes to `main`.
+
 ## Secrets
 
 Function secrets live in Supabase (`supabase secrets list`): `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `INVITE_REDIRECT_URL`, `RESEND_API_KEY`, `REPORT_FROM_EMAIL`. Historical note: a static `REPORT_API_KEY` once shipped in a public `report-config.js` — that pattern (any secret in a frontend file) is banned; if you ever find one, treat it as a live incident and flag it. The service-role key must never appear outside Edge Function env vars. The anon key is public by design; RLS is the actual security boundary.

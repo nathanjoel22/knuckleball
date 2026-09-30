@@ -71,6 +71,35 @@ export function drawGrid(opts: {
     `<rect x="0" y="0" width="${size}" height="${size}" fill="#FFFFFF" stroke="#CFE6D7"/>` + cells + dots + `</svg>`
 }
 
+// U11 (4): one small location grid per pitch type -- catcher's view,
+// physical framing (batterSide null: both sides mixed, so no 1-9 numbers),
+// drawn by the SAME drawGrid -> drawDots as every other report grid (same
+// palette, dots and halos). Each report supplies its own per-type count and
+// strike % so these always match that report's own tables (a bullpen's
+// strike % is location-based, a game's is result-based). A type with very
+// few pitches still gets its grid; the count beside it is the warning.
+export function drawTypeGrids(opts: {
+  gridSize?: number
+  allTypes: string[]
+  pitches: Pt[]
+  stats: Record<string, { count: number; strikePct: number | null }>
+}): string {
+  const cells = opts.allTypes.filter(t => opts.stats[t] && opts.stats[t].count > 0).map(type => {
+    const st = opts.stats[type]
+    const grid = drawGrid({
+      size: 150, gridSize: opts.gridSize, batterSide: null,
+      pitches: opts.pitches.filter(pt => pt.type === type), allTypes: opts.allTypes
+    })
+    const strike = st.strikePct === null ? '' : ` · ${st.strikePct}% strikes`
+    return `<div class="type-grid">
+      <h3><span class="legend-dot" style="background:${colorForType(type, opts.allTypes)}"></span>${escapeHtml(type)}</h3>
+      ${grid}
+      <p class="type-grid-stats">${st.count} pitch${st.count === 1 ? '' : 'es'}${strike}</p>
+    </div>`
+  }).join('')
+  return `<div class="type-grids">${cells}</div>`
+}
+
 export function drawLegend(types: string[]): string {
   return `<div class="legend">${types.map(t =>
     `<span class="legend-item"><span class="legend-dot" style="background:${colorForType(t, types)}"></span>${escapeHtml(t)}</span>`

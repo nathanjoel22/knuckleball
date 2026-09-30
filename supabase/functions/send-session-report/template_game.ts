@@ -8,7 +8,7 @@
 // ============================================================================
 import { escapeHtml, safeNum, colorForType } from './helpers.ts'
 import { ZONE_NAMES } from './helpers.ts'
-import { drawGrid, drawLegend, drawLineChart, drawGridByResult, drawResultLegend, resultCategoryOf } from './svg.ts'
+import { drawGrid, drawLegend, drawLineChart, drawGridByResult, drawResultLegend, resultCategoryOf, drawTypeGrids } from './svg.ts'
 import { CSS as PEN_CSS } from './template.ts'
 import {
   type GamePitch, computeGameByType, computeGameByInning, computeGameByCount,
@@ -151,6 +151,24 @@ function renderPitchingLine(p: GameReportPayload): string {
 }
 
 // ---------- 4. Location charts (by type, then by result) ----------
+// U11 (4): one small grid per pitch type, right after the location charts.
+// Strike % is the SAME result-based strike % the By pitch type table shows
+// (computeGameByType), so the two never disagree.
+function renderTypeGrids(p: GameReportPayload): string {
+  const allTypes = allTypesOf(p)
+  const stats: Record<string, { count: number; strikePct: number | null }> = {}
+  for (const row of computeGameByType(p.pitches, allTypes, p.gridSize)) {
+    if (row) stats[row.type] = { count: row.count, strikePct: row.strikePct }
+  }
+  if (!Object.keys(stats).length) return ''
+  return `
+  <section class="section">
+    <h2>Location by pitch type — catcher's view</h2>
+    ${drawTypeGrids({ gridSize: p.gridSize, allTypes, stats, pitches: p.pitches.map(x => ({ row: x.actualRow, col: x.actualCol, type: x.type })) })}
+    <p class="caption">Where each pitch type went, both batter sides mixed. Strike % counts balls and strikes by result, same as the table below. A small count means read it lightly.</p>
+  </section>`
+}
+
 function renderLocationCharts(p: GameReportPayload): string {
   const allTypes = allTypesOf(p)
   const typeGrid = drawGrid({
@@ -449,6 +467,7 @@ ${renderHeader(p)}
 ${renderSummary(p)}
 ${renderPitchingLine(p)}
 ${renderLocationCharts(p)}
+${renderTypeGrids(p)}
 ${renderByType(p)}
 ${renderByInning(p)}
 ${renderByCount(p)}

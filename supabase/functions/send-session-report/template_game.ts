@@ -6,7 +6,7 @@
 // game-only stylesheet addition below, so the two reports read as one
 // product (content spec: "Same theme and typography as the pen report").
 // ============================================================================
-import { escapeHtml, safeNum, colorForType } from './helpers.ts'
+import { escapeHtml, safeNum, colorForType, timesToHomeLine } from './helpers.ts'
 import { ZONE_NAMES } from './helpers.ts'
 import { drawGrid, drawLegend, drawLineChart, drawGridByResult, drawResultLegend, resultCategoryOf, drawTypeGrids } from './svg.ts'
 import { CSS as PEN_CSS } from './template.ts'
@@ -210,6 +210,7 @@ function renderByType(p: GameReportPayload): string {
       <thead><tr><th>Type</th><th>Usage</th><th>Strike %</th><th>In-zone %</th><th>Whiff %</th><th>Called-strike %</th><th>In-play H/Out/E</th><th>Velocity</th></tr></thead>
       <tbody>${body}</tbody>
     </table></div>
+    ${timesToHomeLine(p.pitches)}
   </section>`
 }
 
@@ -419,7 +420,8 @@ function renderAtBatLog(p: GameReportPayload): string {
       const seq = ab.pitches.map(pt => {
         const g = resultGlyph(pt)
         const veloBit = pt.velo !== null && pt.velo !== undefined ? `${escapeHtml(pt.type)} ${Math.round(pt.velo)}` : escapeHtml(pt.type)
-        return `${veloBit} ${g.glyph}${g.label ? ' ' + g.label : ''}`
+        const ttpBit = typeof pt.timeToPlate === 'number' ? ` ⏱${pt.timeToPlate.toFixed(2)}` : ''   // U11 (7)
+        return `${veloBit} ${g.glyph}${g.label ? ' ' + g.label : ''}${ttpBit}`
       }).join(' · ')
       const ending = ab.incomplete ? 'incomplete' : escapeHtml(ab.ending)
       return `<div class="ab-row"><span class="ab-num">#${ab.atBatIndex} (${sideLabel}, ${deliveryLabel})</span> ${seq} <span class="ab-ending">${ending}</span></div>`

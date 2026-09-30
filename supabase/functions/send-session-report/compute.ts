@@ -14,6 +14,8 @@ export interface Pitch {
   inAccuracyZone: boolean | null
   batterSide: 'R' | 'L' | null
   ts: number
+  delivery?: 'set' | 'windup' | null   // U11 (6): bullpens carry it too now
+  timeToPlate?: number | null           // U11 (7): seconds, when the charter timed it
 }
 
 const THIN_SAMPLE = 5 // spec item 3: below this, show the count beside the percentage

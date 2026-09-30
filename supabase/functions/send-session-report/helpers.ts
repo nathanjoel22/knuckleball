@@ -16,6 +16,15 @@ export const TYPE_PALETTE_HEX = ['#E8A83D', '#6FA287', '#C17A45', '#C0453B', '#7
 // same way the client does; the deployed renderer does not import it.
 export const U6_CUTOFF_TS = 1789965601000
 
+// U11 (7): "Times to home" line, shared by both reports -- '' when no pitch
+// in the session was timed (the normal case).
+export function timesToHomeLine(pitches: { timeToPlate?: number | null }[]): string {
+  const ts = pitches.map(p => p.timeToPlate).filter((v): v is number => typeof v === 'number' && isFinite(v))
+  if (!ts.length) return ''
+  const best = Math.min(...ts), avg = ts.reduce((a, b) => a + b, 0) / ts.length
+  return `<p class="caption"><strong>Times to home</strong> (from the stretch): ${ts.length} timed · best ${best.toFixed(2)} s · average ${avg.toFixed(2)} s</p>`
+}
+
 export function escapeHtml(str: unknown): string {
   return String(str ?? '')
     .replace(/&/g, '&amp;')

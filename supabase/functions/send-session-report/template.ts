@@ -5,7 +5,7 @@
 // trusted. Nothing here reads a database -- it operates purely on the payload
 // object it's given.
 // ============================================================================
-import { escapeHtml, safeNum, colorForType, TYPE_PALETTE_HEX, isStrikeCell } from './helpers.ts'
+import { escapeHtml, safeNum, colorForType, TYPE_PALETTE_HEX, isStrikeCell, timesToHomeLine } from './helpers.ts'
 import { drawGrid, drawLegend, drawLineChart, drawTypeGrids } from './svg.ts'
 import {
   computeSummary, computeCommandDetail, computePerSideBlock, computeExcludedNullSide,
@@ -42,6 +42,10 @@ function renderHeader(p: ReportPayload): string {
   const dateStr = new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   const numBit = p.uniformNumber !== null && p.uniformNumber !== undefined ? ` <span class="header-num">#${escapeHtml(p.uniformNumber)}</span>` : ''
   const chartedBy = p.loggedByCoach ? 'the coaching staff' : escapeHtml(p.pitcherName)
+  // U11 (5): "No batter" when no pitch in the pen had a hitter standing in
+  // (batter_side NULL on every pitch), "Mixed" when some did and some didn't.
+  const sided = p.pitches.filter(x => x.batterSide === 'R' || x.batterSide === 'L').length
+  const batterBit = !p.pitches.length ? '' : sided === 0 ? ' · No batter' : sided < p.pitches.length ? ' · Mixed' : ''
   const perspectiveNote = p.chartingPerspective === 'behind_pitcher'
     ? `<p class="header-note">Charted from behind the pitcher. Every plot in this report is still catcher's view.</p>`
     : ''
@@ -49,7 +53,7 @@ function renderHeader(p: ReportPayload): string {
   <header class="report-header">
     <div class="brand-mark">KNUCKLEBALL<span class="brand-dot">.</span></div>
     <h1>${escapeHtml(p.pitcherName)}${numBit}</h1>
-    <p class="header-meta">${dateStr}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''} · ${p.pitches.length} pitch${p.pitches.length === 1 ? '' : 'es'} · charted by ${chartedBy}</p>
+    <p class="header-meta">${dateStr}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''} · ${p.pitches.length} pitch${p.pitches.length === 1 ? '' : 'es'}${batterBit} · charted by ${chartedBy}</p>
     ${perspectiveNote}
   </header>`
 }
@@ -246,7 +250,16 @@ function renderWorkload(p: ReportPayload): string {
     <h2>Workload and pitch mix</h2>
     <div class="table-scroll"><table class="data-table"><thead><tr><th>Type</th><th>Count</th><th>Usage</th></tr></thead><tbody>${rows}</tbody></table></div>
     ${compare}
+    ${deliverySplitLine(p)}
+    ${timesToHomeLine(p.pitches)}
   </section>`
+}
+// U11 (6): Windup / Set split, only when a pen used both.
+function deliverySplitLine(p: ReportPayload): string {
+  const windup = p.pitches.filter(x => x.delivery === 'windup').length
+  const set = p.pitches.filter(x => x.delivery === 'set').length
+  if (!windup || !set) return ''
+  return `<p class="caption"><strong>Delivery:</strong> ${windup} from the windup · ${set} from the stretch</p>`
 }
 
 // ---------- 8. Trends ----------

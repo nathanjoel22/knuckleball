@@ -31,6 +31,7 @@ export interface GamePitch {
   ballsBefore: number
   strikesBefore: number
   atBatIndex: number | null
+  timeToPlate?: number | null   // U11 (7)
 }
 
 // Decision 2 + Joel's foul-tip ruling (Sept 28, 2026 chat -- not yet a

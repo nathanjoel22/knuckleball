@@ -759,6 +759,17 @@
      narrow phone. Game mode only. */
   .perspective-delivery-row{ display:flex; flex-wrap:wrap; gap:20px; }
   .perspective-delivery-row > div{ flex:1; min-width:180px; }
+  /* U11 (7): the stopwatch sits with Windup / Set. Disabled (greyed) unless Set. */
+  .ttp-btn{
+    font:inherit; font-size:13px; font-weight:700; padding:7px 12px; border-radius:20px; cursor:pointer;
+    background:var(--card-bg); color:var(--field-dark); border:1.5px solid var(--border-strong); min-width:84px;
+  }
+  .ttp-btn:disabled{ opacity:0.4; cursor:not-allowed; }
+  .ttp-btn.ttp-running{ border-color:var(--amber); color:var(--field-dark); }
+  .ttp-btn.ttp-ok{ background:var(--field-dark); color:var(--surface); border-color:var(--field-dark); }
+  .ttp-btn.ttp-bad{ color:var(--red); border-color:var(--red); }
+  /* U11 (5): no batter -- the RHB frame stays, the silhouette flip doesn't. */
+  .no-batter .kb-batter{ display:none; }
   /* Reserved band for the result row, directly above the grid (G1b-r2:
      "above the grid" now literally -- the grid itself never leaves the
      screen, since In Play no longer replaces it with a field). min-height,
@@ -3094,6 +3105,97 @@ window.selectPerspective = async function(newPerspective){
 // within one pen (approach g). Flipping only affects pitches charted AFTER
 // this call; already-logged pitches keep whatever batterSide they were
 // captured with (see handleZoneTap and isRelativelyAccurate's comments).
+/* ---------- U11 (5): BULLPEN "BATTER: NONE / RHB / LHB" ----------
+   Joel, Sept 30: most pens have no hitter standing in. batterMode 'none'
+   (the default for a NEW bullpen) keeps the familiar right-handed frame --
+   grid numbering, zone painting and relative-accuracy scoring all use the
+   RHB definitions (sessionBatterSide stays 'R'; isRelativelyAccurate
+   already falls back to 'R' for a pitch with no side) -- but stores
+   batter_side = NULL on each pitch, so nothing lands in vs-RHB stats, and
+   the silhouette flip is hidden. RHB / LHB behave exactly as before and can
+   be picked mid-pen when a hitter steps in; each pitch keeps the side it
+   was thrown with. A draft/session from before this (no batterMode) is
+   treated as sided -- unchanged behavior. */
+function sessionBatterMode(s){ return (s && s.batterMode) || 'sided'; }
+function isNoBatter(s){ return !!s && s.kind === 'bullpen' && sessionBatterMode(s) === 'none'; }
+window.setBatterMode = async function(mode){
+  const s = state.activeSession;
+  if(mode === 'none'){ s.batterMode = 'none'; s.currentBatterSide = 'R'; }
+  else { s.batterMode = 'sided'; s.currentBatterSide = mode; }
+  await storSet(draftKey(), s);
+  render();
+};
+function renderBatterModeToggle(){
+  const s = state.activeSession;
+  const current = isNoBatter(s) ? 'none' : sessionBatterSide(s);
+  const opts = [['none', 'None'], ['R', 'RHB'], ['L', 'LHB']];
+  const chips = opts.map(([k, l]) => {
+    const on = current === k;
+    const style = on ? `background:var(--amber);border-color:var(--amber);` : `color:var(--ink-faint);border-color:var(--border-strong);`;
+    return `<button class="type-chip${on ? ' selected' : ''}" style="${style}" onclick="setBatterMode('${k}')">${l}</button>`;
+  }).join('');
+  return `<div><div class="field-label" style="margin-bottom:8px;">Batter</div><div class="chip-row">${chips}</div></div>`;
+}
+
+/* ---------- U11 (7): TIME TO HOME (stopwatch) ----------
+   Only under Set (a stretch measurement). Tap 1 = the pitcher's first
+   move, tap 2 = the catcher's glove; the reading shows on the button and
+   attaches to the NEXT pitch recorded (the location tap that follows), then
+   clears. Tapping again before that pitch restarts. A reading nobody uses
+   within 60 s is discarded. 0.80-3.00 s only -- anything else shows red and
+   is never stored (a late start or stop). In-memory on purpose: nothing on
+   the charting path waits on it, and it works offline like everything else. */
+const TTP_MIN = 0.80, TTP_MAX = 3.00, TTP_KEEP_MS = 60000;
+let ttpTicker = null, ttpExpiry = null;
+function ttpState(){ return state.ttp || (state.ttp = { phase: 'idle', startedAt: 0, value: null, stoppedAt: 0 }); }
+function ttpValid(v){ return v !== null && v >= TTP_MIN && v <= TTP_MAX; }
+function ttpReset(){
+  state.ttp = { phase: 'idle', startedAt: 0, value: null, stoppedAt: 0 };
+  clearInterval(ttpTicker); ttpTicker = null;
+  clearTimeout(ttpExpiry); ttpExpiry = null;
+}
+window.tapTimeToPlate = function(){
+  const s = state.activeSession;
+  if(!s || s.delivery !== 'set') return;
+  const t = ttpState();
+  if(t.phase === 'running'){
+    t.phase = 'stopped';
+    t.stoppedAt = Date.now();
+    t.value = Math.round((t.stoppedAt - t.startedAt) / 10) / 100;
+    clearInterval(ttpTicker); ttpTicker = null;
+    clearTimeout(ttpExpiry);
+    ttpExpiry = setTimeout(() => { if(ttpState().phase === 'stopped'){ ttpReset(); render(); } }, TTP_KEEP_MS);
+  } else {                                   // idle or stopped: (re)start
+    ttpReset();
+    const n = ttpState();
+    n.phase = 'running';
+    n.startedAt = Date.now();
+    // Live readout without a full re-render: only the button's text changes.
+    ttpTicker = setInterval(() => {
+      const b = document.getElementById('ttp-btn');
+      if(b) b.textContent = '⏱ ' + ((Date.now() - n.startedAt) / 1000).toFixed(2);
+    }, 50);
+  }
+  render();
+};
+// The reading for the pitch being recorded right now -- then the stopwatch
+// clears, used or not. Only a stopped, in-range, fresh (<= 60 s) reading counts.
+function takeTimeToPlate(){
+  const t = ttpState();
+  const v = (t.phase === 'stopped' && ttpValid(t.value) && Date.now() - t.stoppedAt <= TTP_KEEP_MS) ? t.value : null;
+  if(t.phase !== 'idle') ttpReset();
+  return v;
+}
+function renderTimeToPlateBtn(){
+  const s = state.activeSession;
+  const enabled = !!s && s.delivery === 'set';
+  const t = ttpState();
+  let label = '⏱ Time', cls = 'ttp-btn';
+  if(t.phase === 'running'){ label = '⏱ ' + ((Date.now() - t.startedAt) / 1000).toFixed(2); cls += ' ttp-running'; }
+  else if(t.phase === 'stopped'){ label = '⏱ ' + t.value.toFixed(2); cls += ttpValid(t.value) ? ' ttp-ok' : ' ttp-bad'; }
+  return `<button type="button" id="ttp-btn" class="${cls}" ${enabled ? '' : 'disabled'} title="${enabled ? 'Time to home: tap at first move, tap again at the glove' : 'Time to home is timed from the stretch: choose Set'}" onclick="tapTimeToPlate()">${label}</button>`;
+}
+
 window.toggleBatterSide = async function(){
   state.activeSession.currentBatterSide = sessionBatterSide(state.activeSession) === 'R' ? 'L' : 'R';
   await storSet(draftKey(), state.activeSession);
@@ -3380,7 +3482,11 @@ window.handleZoneTap = async function(row, col){
     accuracyMode: null,   // U7B: the old per-session modes are retired for new pitches; zone result below
     inAccuracyZone,
     accuracyZoneCells: zoneCells ? zoneCells.slice() : null,
-    batterSide,
+    // U11 (5): no hitter standing in -> no side on the pitch (zone scoring
+    // above still used the RHB zones via batterSide).
+    batterSide: isNoBatter(state.activeSession) ? null : batterSide,
+    delivery: state.activeSession.delivery || null,   // U11 (6)
+    timeToPlate: takeTimeToPlate(),                   // U11 (7)
     ts: Date.now()
   });
   state.pendingTarget = null;
@@ -3743,6 +3849,7 @@ async function syncOutbox(){
       hit_type: p.hitType || null,
       fielder: p.fielder || null,
       delivery: p.delivery || null,
+      time_to_plate: (p.timeToPlate === undefined || p.timeToPlate === null) ? null : p.timeToPlate,   // U11 (7)
       inning: (p.inning === undefined) ? null : p.inning,
       outs_before: (p.outsBefore === undefined) ? null : p.outsBefore,
       balls_before: (p.ballsBefore === undefined) ? null : p.ballsBefore,
@@ -3819,7 +3926,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index)')
+    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate)')
     .eq('pitcher_id', pitcherId)
     .eq('team_id', teamId)
     .order('started_at', { ascending: false });
@@ -3868,6 +3975,7 @@ async function loadSessionsForCurrentSelection(){
       hitType: p.hit_type || null,
       fielder: p.fielder || null,
       delivery: p.delivery || null,
+      timeToPlate: (p.time_to_plate === null || p.time_to_plate === undefined) ? null : Number(p.time_to_plate),   // U11 (7)
       inning: p.inning === null || p.inning === undefined ? null : p.inning,
       outsBefore: p.outs_before === null || p.outs_before === undefined ? null : p.outs_before,
       ballsBefore: p.balls_before === null || p.balls_before === undefined ? null : p.balls_before,
@@ -3907,6 +4015,13 @@ window.toggleSessionExpand = function(id){
 };
 
 /* ---------- STATS HELPERS ---------- */
+// U11 (7): History shows the average time to home when any pitch was timed.
+function avgTimeToPlateMeta(pitches){
+  const ts = (pitches || []).map(p => p.timeToPlate).filter(v => typeof v === 'number');
+  if(!ts.length) return '';
+  const avg = ts.reduce((a, b) => a + b, 0) / ts.length;
+  return `<div class="meta-item"><span class="meta-num mono">${avg.toFixed(2)}</span><span class="meta-lbl">Time to home (${ts.length})</span></div>`;
+}
 function sessionStats(pitches){
   const total = pitches.length;
   const strikes = pitches.filter(p => isStrikeCell(p.actualRow, p.actualCol)).length;
@@ -4181,6 +4296,12 @@ window.backToChooser = async function(){
 };
 window.chooseSessionKind = async function(kind){
   state.activeSession.kind = kind;
+  if(kind === 'bullpen'){
+    // U11 (5)/(6): a new pen starts with no hitter standing in, from the windup.
+    state.activeSession.batterMode = 'none';
+    state.activeSession.currentBatterSide = 'R';
+    state.activeSession.delivery = 'windup';
+  }
   if(kind === 'game'){
     // Fresh game state. delivery starts null -- acceptance check 3 wants
     // the FIRST pitch to actually require an answer, not silently default.
@@ -4253,7 +4374,7 @@ window.handleGameZoneTap = async function(row, col){
   // not only on an already-pushed one -- see gameVeloTarget/recordGameVelo.
   // A fresh tap always starts this field at null, same "re-tapping starts
   // capture over" precedent as row/col.
-  state.activeSession.gamePendingPitch = { row, col, velo: null };
+  state.activeSession.gamePendingPitch = { row, col, velo: null, timeToPlate: takeTimeToPlate() };   // U11 (7)
   state.activeSession.gameResultMenu = null;
   state.activeSession.gamePendingOutcome = null;
   state.activeSession.gamePendingHitType = null;
@@ -4279,6 +4400,7 @@ window.resetGamePendingPitch = async function(){
   render();
 };
 window.setGameDelivery = async function(d){
+  if(d !== 'set') ttpReset();   // U11 (7): a time to home only exists under Set
   state.activeSession.delivery = d;
   await storSet(draftKey(), state.activeSession);
   render();
@@ -4644,6 +4766,7 @@ window.recordGameResult = async function(result, extra){
     // pending pitch (gameVeloTarget's 'pending' case) while it was still
     // gamePendingPitch, if anything -- null otherwise, same as before.
     type: state.selectedType, velo: pending.velo,
+    timeToPlate: (pending.timeToPlate === undefined) ? null : pending.timeToPlate,   // U11 (7)
     targetRow: null, targetCol: null,
     actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
     accuracyMode: null, inAccuracyZone: null, accuracyZoneCells: null,
@@ -5092,7 +5215,7 @@ function renderDeliveryToggle(){
     return `<button class="type-chip${selected?' selected':''}" style="${style}" onclick="setGameDelivery('${o.key}')">${o.label}</button>`;
   }).join('');
   const label = 'Delivery' + (!s.delivery ? ' — pick one before the next pitch' : '');
-  return `<div><div class="field-label" style="margin-bottom:8px;">${label}</div><div class="chip-row">${chips}</div></div>`;
+  return `<div><div class="field-label" style="margin-bottom:8px;">${label}</div><div class="chip-row">${chips}${renderTimeToPlateBtn()}</div></div>`;
 }
 // G1b-r decisions 2/3/10, updated by G1b-r2: six buttons now, not seven --
 // H and O fold into one In Play icon button (opens the walkthrough, which
@@ -5595,6 +5718,7 @@ window.commitFieldPlay = async function(){
     // G1b-r addendum (velocity): carries over whatever was entered while
     // this play was being walked through (gamePendingPitch.velo).
     type: state.selectedType, velo: pending.velo,
+    timeToPlate: (pending.timeToPlate === undefined) ? null : pending.timeToPlate,   // U11 (7)
     targetRow: null, targetCol: null,
     actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
     accuracyMode: null, inAccuracyZone: null, accuracyZoneCells: null,
@@ -6270,7 +6394,7 @@ function renderSessionView(){
   return `
     <div class="session-grid-layout">
       <div class="panel controls-panel">
-        ${renderPerspectiveToggle()}
+        <div class="perspective-delivery-row bullpen-setup-row">${renderPerspectiveToggle()}${renderBatterModeToggle()}${renderDeliveryToggle()}</div>
         <div>
           <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
           <div class="chip-row">${typeChips}</div>
@@ -6288,7 +6412,7 @@ function renderSessionView(){
         <div class="hint-msg">${state.hint}</div>
         <div>
           <div class="zone-wrap">
-            ${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}
+            <div class="batter-frame${isNoBatter(state.activeSession) ? ' no-batter' : ''}" style="display:contents;">${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}</div>
             <div class="zone-caption">${zoneCaption}</div>
           </div>
         </div>
@@ -6502,6 +6626,7 @@ function renderHistoryView(){
               <div class="meta-item"><span class="meta-num mono">${stats.bb}</span><span class="meta-lbl">BB</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.h}</span><span class="meta-lbl">H</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
+              ${avgTimeToPlateMeta(s.pitches)}
             </div>
           </div>
           ${expanded ? `
@@ -6633,6 +6758,7 @@ function renderHistoryView(){
                  <div class="meta-item"><span class="meta-num mono">${stats.accuracyPct}%</span><span class="meta-lbl">Exact hit</span></div>`
               : `<div class="meta-item"><span class="meta-num mono">${stats.accuracyPct}%</span><span class="meta-lbl">Accuracy</span></div>`}
             <div class="meta-item"><span class="meta-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="meta-lbl">Avg mph</span></div>
+            ${avgTimeToPlateMeta(s.pitches)}
           </div>
         </div>
         ${expanded ? `

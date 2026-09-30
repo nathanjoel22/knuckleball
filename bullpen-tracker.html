@@ -2075,6 +2075,11 @@ function finishInit(){
     window.addEventListener('online', () => { render(); triggerSync(); });
     // Going offline: re-render so the offline indicator appears right away.
     window.addEventListener('offline', () => render());
+    // U11 (8): an iPad rotating across 860px switches the roster between
+    // "rolls up" and "always open" -- re-render so it follows.
+    const rosterMq = window.matchMedia('(max-width:860px)');
+    if(rosterMq.addEventListener) rosterMq.addEventListener('change', () => render());
+    else if(rosterMq.addListener) rosterMq.addListener(() => render());   // older iOS WebKit
     // Stuck-sync fix: follow supabase-js's own session changes instead of
     // trusting the one read at startup. SIGNED_OUT also arrives from other
     // tabs (supabase-js relays it over a BroadcastChannel). No awaits in
@@ -2311,13 +2316,20 @@ async function loadCoachAdminData(teamId){
   }
 }
 
+// U11 (8), Joel Sept 30: the roster rolls up only where the sidebar stacks
+// ABOVE the grid (phones and iPad portrait, <= 860px -- the same breakpoint
+// the layout already uses). Beside the grid (iPad landscape, laptop) there's
+// room, so the full list always stays open and never collapses.
+function rosterCanCollapse(){
+  return window.matchMedia('(max-width:860px)').matches;
+}
 window.toggleRosterCollapsed = function(){
   state.rosterCollapsed = !state.rosterCollapsed;
   render();
 };
 window.selectPitcher = async function(pitcherId){
   state.currentPitcherId = pitcherId;
-  state.rosterCollapsed = true;   // picking a pitcher rolls the list up; unchanged otherwise
+  state.rosterCollapsed = rosterCanCollapse();   // U11 (8): rolls up only where the roster sits above the grid
   state.uniformEditKey = null; state.uniformMsg = '';
   state.expandedSessionId = null;
   state.oldTombstonesExpanded = false;
@@ -7774,15 +7786,16 @@ function render(){
     // button itself shows who's selected, so a coach always sees who he's charting
     // without the list taking up space. Pure UI state (state.rosterCollapsed) --
     // no network call, and selectPitcher's own behavior is unchanged.
-    const collapsed = state.rosterCollapsed;
+    const canCollapse = rosterCanCollapse();
+    const collapsed = canCollapse && state.rosterCollapsed;
     const selectedForLabel = state.roster.find(x => x.id === state.currentPitcherId);
     const rosterLabel = collapsed && selectedForLabel ? `Roster · ${escHtml(selectedForLabel.name)}` : 'Roster';
     sidebarBody = `
       <div class="team-line">${teamSelector}<button class="btn btn-ghost show-phone coach-profile-link" onclick="setView('profile')">Profile</button></div>
-      <button class="roster-toggle-btn" onclick="toggleRosterCollapsed()" aria-expanded="${collapsed ? 'false' : 'true'}">
+      ${canCollapse ? `<button class="roster-toggle-btn" onclick="toggleRosterCollapsed()" aria-expanded="${collapsed ? 'false' : 'true'}">
         <span class="roster-label" style="margin:0;">${rosterLabel}</span>
         <span class="roster-chevron${collapsed ? '' : ' open'}">▾</span>
-      </button>
+      </button>` : `<div class="roster-label" style="margin:0;">Roster</div>`}
       <div class="roster-collapse${collapsed ? ' collapsed' : ''}">
         <div class="roster-list">${rosterItems || '<p style="color:var(--ink-faint);font-size:12.5px;">No pitchers on this team yet.</p>'}</div>
       </div>`;

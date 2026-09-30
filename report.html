@@ -108,14 +108,21 @@ var PRINT_CSS = '<style media="print">' +
 // printing -- the sandbox still withholds allow-scripts, and this makes
 // "no script ever runs in a report" hold even if that ever changed.
 var NO_SCRIPT_CSP = '<meta http-equiv="Content-Security-Policy" content="script-src \'none\'; object-src \'none\'; base-uri \'none\'">';
+// U11 (2): a link in a report (the footer's knuckleballonline.com) used to
+// navigate the FRAME -- the landing page loaded inside the report, under
+// this shell's Download / Print bar. <base target="_top"> sends every link
+// to the main window instead (with the sandbox's
+// allow-top-navigation-by-user-activation, i.e. only on a real tap). No
+// href on this <base>, so base-uri 'none' above doesn't apply to it.
+var LINKS_TO_TOP = '<base target="_top">';
 
 function withPrintStyles(html){
   var h = html.match(/<head[^>]*>/i);
   if(h){
     var at = h.index + h[0].length;
-    html = html.slice(0, at) + NO_SCRIPT_CSP + html.slice(at);
+    html = html.slice(0, at) + NO_SCRIPT_CSP + LINKS_TO_TOP + html.slice(at);
   } else {
-    html = NO_SCRIPT_CSP + html;
+    html = NO_SCRIPT_CSP + LINKS_TO_TOP + html;
   }
   var i = html.search(/<\/head>/i);
   return i >= 0 ? html.slice(0, i) + PRINT_CSS + html.slice(i) : PRINT_CSS + html;
@@ -144,18 +151,23 @@ function downloadReport(){
 }
 
 function printReport(){
-  var frame = document.getElementById('report-frame');
-  // U10 (7): this only works because the frame shares this page's origin
-  // (allow-same-origin, see init). The old note here -- that print() is a
-  // cross-origin-safe method -- was wrong: from an opaque-origin frame it
-  // throws SecurityError, so the catch printed this one-screen shell instead.
-  // Original note: contentWindow.print() is one of the handful of cross-origin-safe window
-  // methods (like postMessage/close/focus) -- it works from this
-  // (unsandboxed) parent page even though the iframe itself has an opaque
-  // origin and cannot run any script of its own.
-  if(frame && frame.contentWindow){
-    try { frame.contentWindow.print(); } catch(e){ window.print(); }
-  }
+  if(!reportText) return;
+  // U11 (1): print the report as the TOP-LEVEL page, not from inside the
+  // frame. Printing always prints the top-level document on some browsers --
+  // iPhone/iPad Safari even when print() is called on the frame, and every
+  // browser's own File > Print -- and a frame never paginates, so all of
+  // those came out as one screen of report: page 1. Written with the same
+  // no-script lock and print rules the frame gets (withPrintStyles), so the
+  // report still can't run anything; this page's own already-running code is
+  // what calls print(). The normal view comes back when printing ends.
+  // (Download is unaffected: it still hands over the stored file as-is.)
+  var html = withPrintStyles(reportText);
+  document.open();
+  document.write(html);
+  document.close();
+  // Listeners are registered only AFTER document.open(), which clears them.
+  window.addEventListener('afterprint', function(){ window.location.reload(); }, { once: true });
+  setTimeout(function(){ window.print(); }, 60);
 }
 
 async function init(){
@@ -203,7 +215,7 @@ async function init(){
   //    the origin gives the report content no way to act on it. (The unsafe
   //    combination is allow-same-origin + allow-scripts -- never add that.)
   //  - allow-modals: print() opens the print dialog, which is a modal.
-  frame.setAttribute('sandbox', 'allow-same-origin allow-modals');
+  frame.setAttribute('sandbox', 'allow-same-origin allow-modals allow-top-navigation-by-user-activation');
   frame.srcdoc = withPrintStyles(reportText);
   document.getElementById('frame-wrap').appendChild(frame);
   document.getElementById('btn-download').disabled = false;

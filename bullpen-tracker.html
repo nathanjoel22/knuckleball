@@ -1002,6 +1002,13 @@
     padding:2px 7px; border-radius:20px; margin-left:6px; vertical-align:middle;
   }
   .pending-tag{ color:var(--clay); background:rgba(193,122,69,0.14); border-color:rgba(193,122,69,0.4); }
+  /* U11 (3): a tag is one unit -- never split across lines. On phones
+     "Logged by coach" drops to its own short line under the date instead
+     of wrapping mid-phrase beside it. */
+  .coach-logged-tag{ white-space:nowrap; }
+  @media (max-width:500px){
+    .session-date .logged-by-tag{ display:table; margin:4px 0 0; }
+  }
   .session-meta{ display:flex; gap:16px; flex-wrap:wrap; }
   .meta-item{ display:flex; flex-direction:column; align-items:flex-end; }
   .meta-num{ font-family:'Teko',sans-serif; font-size:24px; color:var(--field-dark); line-height:1; }
@@ -6475,7 +6482,7 @@ function renderHistoryView(){
       return `
         <div class="session-card">
           <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
-            <div class="session-date">${oppLabel} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ' <span class="coach-logged-tag">Logged by coach</span>' : ''}${pendingTag}</div>
+            <div class="session-date">${oppLabel} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ' <span class="coach-logged-tag logged-by-tag">Logged by coach</span>' : ''}${pendingTag}</div>
             <div class="session-meta">
               <div class="meta-item"><span class="meta-num mono">${stats.innings}</span><span class="meta-lbl">Innings</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
@@ -6605,7 +6612,7 @@ function renderHistoryView(){
     return `
       <div class="session-card">
         <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
-          <div class="session-date">${dateStr}${s.loggedByCoach ? ' <span class="coach-logged-tag">Logged by coach</span>' : ''}${pendingTag}</div>
+          <div class="session-date">${dateStr}${s.loggedByCoach ? ' <span class="coach-logged-tag logged-by-tag">Logged by coach</span>' : ''}${pendingTag}</div>
           <div class="session-meta">
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
             <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>

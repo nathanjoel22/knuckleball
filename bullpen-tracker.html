@@ -1188,25 +1188,20 @@
   /* ---------- G1b-r3: in-grid play entry (docs/game-grid-reference.html) ---------- */
   .gg-field{
     --gg-fence:#B9D1C4; --gg-grass:#D4E6CB; --gg-dirt:#C9A97C;
-    --gg-ink:#17261D; --gg-border:#9DBBA9; --gg-gold:#C9A227; --gg-dot:#C0392B;
+    --gg-ink:#17261D; --gg-border:#9DBBA9; --gg-gold:#C9A227;
   }
   .gg-cell{ cursor:default; border-color:rgba(15,36,27,0.10) !important; }
   .gg-cell.gg-fence{ background:var(--gg-fence) !important; }
   .gg-cell.gg-grass{ background:var(--gg-grass) !important; }
   .gg-cell.gg-dirt{ background:var(--gg-dirt) !important; }
-  /* Overlay + dot layer: the same tracks, gap and inset as .zone-grid itself,
+  /* Overlay: the same tracks, gap and inset as .zone-grid itself,
      so every box sits exactly on its cells at every width. */
-  .gg-overlay, .gg-dot-layer{
+  .gg-overlay{
     position:absolute; inset:3px; display:grid; gap:3px;
     grid-template-columns:repeat(5, minmax(0, 1fr)); grid-template-rows:repeat(5, minmax(0, 1fr));
   }
   .gg-overlay{ z-index:2; pointer-events:none; }
   .gg-overlay > *{ pointer-events:auto; }
-  .gg-dot-layer{ z-index:3; pointer-events:none; }
-  .gg-dot{
-    align-self:center; justify-self:center; width:18px; height:18px; border-radius:50%;
-    background:var(--gg-dot); opacity:0.6; box-shadow:0 0 0 9px rgba(192,57,43,0.28);
-  }
   .gg-btn{
     position:relative; min-width:0; min-height:44px; margin:1px; padding:2px;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
@@ -1231,35 +1226,35 @@
   .gg-book-tl{ left:7px; top:5px; }
   .gg-book-tr{ right:7px; top:5px; color:#5B6B61; }
   .gg-book-play{ left:50%; top:20px; transform:translateX(-50%); background:var(--gg-gold); color:var(--field-dark); border-radius:8px; padding:1px 6px; font-size:10px !important; white-space:nowrap; max-width:92%; overflow:hidden; text-overflow:ellipsis; }
-  .gg-book-bl{ left:7px; right:7px; bottom:25px; color:#5B6B61; font-weight:600 !important; font-size:10px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .gg-diamond{ position:absolute; left:25%; top:33%; width:50%; height:36%; }
+  .gg-book-bl{ left:7px; right:7px; bottom:5px; color:#5B6B61; font-weight:600 !important; font-size:10px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .gg-diamond{ position:absolute; left:25%; top:33%; width:50%; height:42%; }
   .gg-book-back, .gg-book-fix{
     position:absolute; bottom:3px; font:inherit; font-size:10px; font-weight:700; color:var(--field-dark);
     background:#fff; border:1px solid var(--gg-border); border-radius:8px; padding:3px 6px; cursor:pointer;
   }
   .gg-book-back{ right:4px; }
-  .gg-book-fix{ left:4px; }
-  .gg-velo{
-    margin:1px; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:4px;
-    background:#E8F3EC; border:1.5px solid var(--gg-border); border-radius:9px; padding:4px 6px;
+  .gg-book-fix{ right:4px; left:auto; bottom:22px; }
+  .gg-velo-readout{
+    margin:1px; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    background:#fff; border:1.5px solid var(--gg-border); border-radius:9px; padding:4px;
   }
-  .gg-velo-top{ display:flex; align-items:baseline; gap:6px; }
-  .gg-velo-read{ font-size:24px; font-weight:800; color:var(--gg-ink); line-height:1; }
-  .gg-velo-unit{ font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:#5B6B61; }
-  .gg-noread{ margin-left:auto; font:inherit; font-size:10px; font-weight:700; color:#5B6B61; background:#fff; border:1px solid var(--gg-border); border-radius:8px; padding:4px 8px; cursor:pointer; min-height:28px; }
-  .gg-velo .velo-strip{ --velo-visible:3; }
-  /* 320px phones: 2 speeds across so each stays >= 44px (matches veloVisible).
-     Snap to the start edge -- center-snapping an EVEN count of visible cells
-     leaves half-cells at both ends. The velocity box also tightens so it
-     stays inside its two rows. */
-  @media (max-width:340px){
-    .gg-velo{ gap:2px; padding:3px 4px; }
-    .gg-velo .velo-strip{ --velo-visible:2; }
-    .gg-velo .velo-cell{ scroll-snap-align:start; }
-    .gg-velo-read{ font-size:20px; }
-    .gg-velo-unit{ display:none; }
+  .gg-velo-read{ font-size:30px; font-weight:800; color:var(--gg-ink); line-height:1; }
+  .gg-velo-unit{ font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:#5B6B61; text-align:center; }
+  .gg-noread{ font:inherit; font-size:10px; font-weight:700; color:#5B6B61; background:#fff; border:1px solid var(--gg-border); border-radius:8px; padding:4px 10px; cursor:pointer; min-height:28px; white-space:nowrap; }
+  /* Row 4: the slider. Full grid width, 5 speeds across, center-snapped; the
+     fixed frame marks the center window -- whatever settles in it is picked. */
+  .gg-velo{ margin:1px; min-width:0; display:flex; align-items:stretch; background:#fff; border:1.5px solid var(--gg-border); border-radius:9px; padding:2px; }
+  .gg-velo .game-velo{ flex:1; min-width:0; background:none; padding:0; }
+  .gg-velo .velo-strip-wrap{ position:relative; gap:0; height:100%; }
+  .gg-velo .velo-strip-wrap::after{
+    content:''; position:absolute; top:0; bottom:0; left:40%; width:20%; pointer-events:none;
+    border:2px solid var(--gg-gold); border-radius:8px;
   }
-  .gg-noread{ white-space:nowrap; }
+  .gg-velo .velo-strip{ --velo-visible:5; }
+  .gg-velo .velo-arrow{ display:none; }
+  .gg-velo .velo-help{ display:none; }
+  .gg-velo .velo-cell{ min-height:44px; scroll-snap-align:center; }
+  .gg-back{ font-size:13px; font-weight:800; }
   .gg-velo .velo-help{ display:none; }
   .gg-velo .velo-cell{ min-height:44px; }
   /* Swipe meter inside the grid: no ‹ › arrows -- they took most of the three
@@ -3202,7 +3197,7 @@ function veloVisible(){
   // G1b-r3: the Live Game velocity step draws the strip inside the grid's
   // three right-hand columns -- 3 speeds across keeps each a real tap target
   // there (matches .gg-velo's --velo-visible). Bullpen never has .gg-velo.
-  if(document.querySelector('.gg-velo')) return window.matchMedia('(max-width:340px)').matches ? 2 : 3;   // keep >= 44px per speed
+  if(document.querySelector('.gg-velo')) return 5;   // row 4 spans the whole grid: 5 across keeps each >= 44px even at 320px
   return window.matchMedia('(max-width:500px)').matches ? 5 : 7;
 }
 // Exponential moving average of the pitcher's most recent 100 recorded velocities
@@ -6183,12 +6178,6 @@ window.gridBack = async function(){
 };
 
 // ---- rendering ----
-function ggDotCell(){
-  const s = state.activeSession;
-  if(s.gameDot) return s.gameDot;
-  if(s.gamePendingPitch) return { row: s.gamePendingPitch.row, col: s.gamePendingPitch.col };
-  return null;
-}
 function ggBtn(row, col, inner, onclick, opts){
   opts = opts || {};
   const cls = 'gg-btn' + (opts.on ? ' on' : '') + (opts.cls ? ' ' + opts.cls : '');
@@ -6259,13 +6248,45 @@ function ggVeloArea(){
   const t = gameVeloTarget();
   const v = t ? t.obj.velo : null;
   const has = v !== null && v !== undefined;
-  return `<div class="gg-velo" style="grid-row:1/3;grid-column:3/6;">
-    <div class="gg-velo-top">
-      <span class="gg-velo-read">${has ? escHtml(String(v)) : '—'}</span><span class="gg-velo-unit">${has ? 'mph' : 'no read'}</span>
+  return `<div class="gg-velo-readout" style="grid-row:1/3;grid-column:3/6;">
+      <span class="gg-velo-read">${has ? escHtml(String(v)) : '—'}</span>
+      <span class="gg-velo-unit">${has ? 'mph' : 'slide the bar below'}</span>
       <button type="button" class="gg-noread" onclick="recordGameVelo(null)">No read</button>
-    </div>
-    ${renderGameVeloStrip()}
-  </div>`;
+    </div>`;
+}
+// Joel, Sept 30: the velocity bar is row 4, the full width of the grid, and
+// you SLIDE it -- whichever speed settles in the center window is selected
+// (attachGameVeloSlide). Same strip markup/binding as before
+// (renderGameVeloStrip -> recordGameVelo); tapping a speed still works.
+function ggVeloRow(step){
+  if(step !== 'velo') return '';
+  return `<div class="gg-velo" style="grid-row:4;grid-column:1/6;">${renderGameVeloStrip()}</div>`;
+}
+// Slide-to-select. Only a real touch/drag/wheel counts -- the strip's own
+// centering on each render also fires scroll events, and those must never
+// pick a speed ("nothing is selected until the charter swipes or taps").
+// Selection waits for the scroll to settle (debounced, no scrollend: older
+// iOS WebKit lacks it), then records the centered speed once.
+function attachGameVeloSlide(){
+  const strip = document.querySelector('.gg-velo .velo-strip');
+  if(!strip) return;
+  let userMoved = false, timer = null;
+  const mark = () => { userMoved = true; };
+  strip.addEventListener('touchstart', mark, { passive: true });
+  strip.addEventListener('pointerdown', mark, { passive: true });
+  strip.addEventListener('wheel', mark, { passive: true });
+  strip.addEventListener('scroll', () => {
+    if(!userMoved) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      const r = strip.getBoundingClientRect(), cx = r.left + r.width / 2;
+      const cell = [...strip.querySelectorAll('.velo-cell')].find(c => { const b = c.getBoundingClientRect(); return b.left <= cx && b.right >= cx; });
+      const t = gameVeloTarget();
+      if(!cell || !t) return;
+      const v = parseInt(cell.textContent, 10);
+      if(t.obj.velo !== v) recordGameVelo(v);
+    }, 160);
+  }, { passive: true });
 }
 // Row 3, cols 1-2 (under the scorebook box): Done › for a multi-fielder
 // play once one fielder is in; Next Pitch whenever the play is complete
@@ -6281,6 +6302,10 @@ function ggRow3(step){
   }
   if(step === 'velo' || step === 'ready') return ggNextPitchBtn();
   return '';
+}
+// Joel, Sept 30: Back lives in the bottom-right corner of the grid.
+function ggBackBox(){
+  return `<button type="button" class="gg-btn gg-back" style="grid-row:5;grid-column:5;" onclick="gridBack()">‹ Back</button>`;
 }
 function ggNextPitchBtn(){
   const reason = nextPitchDisabledReason();
@@ -6345,7 +6370,6 @@ function ggScorebookBox(step){
     ${diamond}
     <span class="gg-book-bl">${escHtml(ggRunnerLine())}</span>
     ${fixBtn}
-    <button type="button" class="gg-book-back" onclick="gridBack()">‹ Back</button>
   </div>`;
 }
 function renderGameFieldGrid(){
@@ -6356,11 +6380,12 @@ function renderGameFieldGrid(){
       cells += `<div class="zone-cell gg-cell ${r === 0 ? 'gg-fence' : r <= 2 ? 'gg-grass' : 'gg-dirt'}"></div>`;   // no onclick: display-only
     }
   }
-  const dot = ggDotCell();
+  // Joel, Sept 30: the dot is REMEMBERED (gameDot, on the draft -- Back,
+  // Undo and Resume use it to put the location back) but not drawn once the
+  // grid has turned into the field.
   return `<div class="zone-grid gg-field" data-step="${step}">
     ${cells}
-    <div class="gg-overlay">${ggScorebookBox(step)}${ggChoices(step)}${ggRow3(step)}</div>
-    ${dot ? `<div class="gg-dot-layer" aria-hidden="true"><span class="gg-dot" style="grid-row:${dot.row + 1};grid-column:${dot.col + 1};"></span></div>` : ''}
+    <div class="gg-overlay">${ggScorebookBox(step)}${ggChoices(step)}${ggRow3(step)}${ggVeloRow(step)}${ggBackBox()}</div>
   </div>`;
 }
 function ggCaption(step){
@@ -8189,6 +8214,7 @@ function render(){
 
   app.innerHTML = sidebar + `<div class="main">${main}</div>` + phoneFooter + setupModalHtml;
   attachVeloStrip();
+  attachGameVeloSlide();   // G1b-r3: no-op unless the Live Game velocity row is on screen
   attachGamePanelScroll();
 }
 

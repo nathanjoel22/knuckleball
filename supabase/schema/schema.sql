@@ -1363,6 +1363,7 @@ CREATE TABLE IF NOT EXISTS "public"."pitches" (
     "runs_scored" smallint,
     "sacrifice" "text",
     "bb_from_position" boolean,
+    "time_to_plate" numeric(4,2),
     CONSTRAINT "pitches_accuracy_mode_check" CHECK ((("accuracy_mode" IS NULL) OR ("accuracy_mode" = ANY (ARRAY['ring'::"text", 'nothingUp'::"text", 'nothingLow'::"text", 'nothingAway'::"text", 'nothingInside'::"text"])))),
     CONSTRAINT "pitches_batter_side_check" CHECK ((("batter_side" IS NULL) OR ("batter_side" = ANY (ARRAY['R'::"text", 'L'::"text"])))),
     CONSTRAINT "pitches_batter_to_check" CHECK ((("batter_to" IS NULL) OR (("batter_to" >= 0) AND ("batter_to" <= 4)))),
@@ -1379,7 +1380,8 @@ CREATE TABLE IF NOT EXISTS "public"."pitches" (
     CONSTRAINT "pitches_runners_before_check" CHECK ((("runners_before" IS NULL) OR (("runners_before" >= 0) AND ("runners_before" <= 7)))),
     CONSTRAINT "pitches_runs_scored_check" CHECK ((("runs_scored" IS NULL) OR (("runs_scored" >= 0) AND ("runs_scored" <= 4)))),
     CONSTRAINT "pitches_sacrifice_check" CHECK ((("sacrifice" IS NULL) OR ("sacrifice" = ANY (ARRAY['SF'::"text", 'SAC'::"text"])))),
-    CONSTRAINT "pitches_target_matches_kind" CHECK (((("kind" = 'bullpen'::"text") AND ("target_row" IS NOT NULL) AND ("target_col" IS NOT NULL)) OR (("kind" = 'game'::"text") AND ("target_row" IS NULL) AND ("target_col" IS NULL))))
+    CONSTRAINT "pitches_target_matches_kind" CHECK (((("kind" = 'bullpen'::"text") AND ("target_row" IS NOT NULL) AND ("target_col" IS NOT NULL)) OR (("kind" = 'game'::"text") AND ("target_row" IS NULL) AND ("target_col" IS NULL)))),
+    CONSTRAINT "pitches_time_to_plate_check" CHECK ((("time_to_plate" IS NULL) OR (("time_to_plate" >= 0.80) AND ("time_to_plate" <= 3.00))))
 );
 
 
@@ -1435,6 +1437,10 @@ COMMENT ON COLUMN "public"."pitches"."sacrifice" IS 'SF or SAC, DERIVED after th
 
 
 COMMENT ON COLUMN "public"."pitches"."bb_from_position" IS 'True when bb_x/bb_y are the tapped fielding position''s own anchor coordinate (G1b-r decision 5), not a precise tap. Every in-play/E/FC row in this build has this true -- precise tap-to-locate is a deferred refinement. NULL for every non-in-play pitch and every bullpen pitch.';
+
+
+
+COMMENT ON COLUMN "public"."pitches"."time_to_plate" IS 'U11 (7): time to home from the stretch, in seconds (first move to the catcher''s glove), stopwatch-timed by the charter on this pitch. NULL = not timed. 0.80-3.00 only.';
 
 
 

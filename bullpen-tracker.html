@@ -1212,7 +1212,17 @@
   .gg-btn.on .gg-cap{ color:#CFE6D7; }
   .gg-btn:disabled{ opacity:0.35; cursor:not-allowed; box-shadow:none; }
   .gg-ic{ width:40px; height:30px; max-width:80%; display:block; background:currentColor; mask-size:contain; -webkit-mask-size:contain; mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat; mask-position:center; -webkit-mask-position:center; }
-  .gg-cap{ font-size:9px; letter-spacing:0.06em; text-transform:uppercase; color:#5B6B61; text-align:center; line-height:1.1; }
+  .gg-cap{ max-width:100%; padding:0 3px; box-sizing:border-box; font-size:9px; letter-spacing:0.02em; text-transform:uppercase; color:#5B6B61; text-align:center; line-height:1.15; }
+  /* Narrow phones: captions break only BETWEEN words (never mid-word), and
+     the text steps down so two short lines fit inside a ~45px box. */
+  .cap-short{ display:none; }
+  @media (max-width:360px){
+    .cap-long{ display:none; }
+    .cap-short{ display:inline; }
+    .gg-big{ font-size:16px; }
+    .gg-cap{ font-size:8px; letter-spacing:0; padding:0 2px; }
+    .gg-btn{ gap:1px; }
+  }
   .gg-big{ font-size:20px; font-weight:800; line-height:1; }
   .gg-seq{ position:absolute; top:-7px; right:-5px; background:var(--gg-gold); color:var(--field-dark); border-radius:10px; font-size:10px; padding:1px 6px; font-weight:800; }
   .gg-done{ font-size:15px; font-weight:800; }
@@ -1254,7 +1264,8 @@
   .gg-velo .velo-arrow{ display:none; }
   .gg-velo .velo-help{ display:none; }
   .gg-velo .velo-cell{ min-height:44px; scroll-snap-align:center; }
-  .gg-back{ font-size:13px; font-weight:800; }
+  .gg-back{ font-size:13px; font-weight:800; white-space:nowrap; }
+  @media (max-width:360px){ .gg-back{ font-size:12px; } }
   .gg-velo .velo-help{ display:none; }
   .gg-velo .velo-cell{ min-height:44px; }
   /* Swipe meter inside the grid: no ‹ › arrows -- they took most of the three
@@ -6039,8 +6050,8 @@ const GG_ENTRY_LABEL = { H: 'Hit', O: 'Out', E: 'Error', FC: 'FC' };
 // Decision 1's "More" block, three rows of three. D3 only on two strikes
 // (G1b-r2c rule kept -- Joel, Sept 30); the last four are no-pitch events.
 const GG_MORE = [
-  [['HBP', 'HBP', 'Hit by pitch'], ['D3', 'D3', 'Dropped 3rd'], ['CI', 'CI', "Catcher's int."]],
-  [['BI', 'BI', "Batter's int."], ['FT', 'FT', 'Foul tip'], ['IBB', 'IBB', 'Int. walk']],
+  [['HBP', 'HBP', 'Hit by pitch'], ['D3', 'D3', 'Drop 3rd'], ['CI', 'CI', 'Catcher int.']],
+  [['BI', 'BI', 'Batter int.'], ['FT', 'FT', 'Foul tip'], ['IBB', 'IBB', 'Int. walk']],
   [['AB', 'AB', 'Auto ball'], ['AS', 'AS', 'Auto strike'], ['BLK', 'BLK', 'Balk']]
 ];
 
@@ -6183,11 +6194,19 @@ function ggBtn(row, col, inner, onclick, opts){
   const cls = 'gg-btn' + (opts.on ? ' on' : '') + (opts.cls ? ' ' + opts.cls : '');
   return `<button type="button" class="${cls}" style="grid-row:${row};grid-column:${col};" ${opts.disabled ? 'disabled' : ''} onclick="${onclick}">${inner}${opts.badge ? `<span class="gg-seq">${opts.badge}</span>` : ''}</button>`;
 }
-function ggIcon(file, cap){
-  return `<span class="gg-ic" style="mask-image:url('docs/${file}');-webkit-mask-image:url('docs/${file}');"></span><span class="gg-cap">${escHtml(cap)}</span>`;
+// A caption can carry a shorter form for narrow phones (<= 360px), where a
+// word over ~7 letters can't fit a box without breaking mid-word.
+function ggCap(cap, short){
+  if(!cap) return '';
+  return short
+    ? `<span class="gg-cap"><span class="cap-long">${escHtml(cap)}</span><span class="cap-short">${escHtml(short)}</span></span>`
+    : `<span class="gg-cap">${escHtml(cap)}</span>`;
 }
-function ggBig(big, cap){
-  return `<span class="gg-big">${escHtml(big)}</span>${cap ? `<span class="gg-cap">${escHtml(cap)}</span>` : ''}`;
+function ggIcon(file, cap, short){
+  return `<span class="gg-ic" style="mask-image:url('docs/${file}');-webkit-mask-image:url('docs/${file}');"></span>${ggCap(cap, short)}`;
+}
+function ggBig(big, cap, short){
+  return `<span class="gg-big">${escHtml(big)}</span>${ggCap(cap, short)}`;
 }
 // Six boxes = rows 1-2 x cols 3-5, filled row by row; a nine-box step adds row 3.
 const GG_SLOTS = [[1, 3], [1, 4], [1, 5], [2, 3], [2, 4], [2, 5], [3, 3], [3, 4], [3, 5]];
@@ -6200,7 +6219,7 @@ function ggChoices(step){
   switch(step){
     case 'first': return ggFill([
       { inner: ggIcon('icon-ball.png', 'Ball'), onclick: "gridGlyph('B')" },
-      { inner: ggIcon('icon-swinging.png', 'Swinging'), onclick: "gridGlyph('K')" },
+      { inner: ggIcon('icon-swinging.png', 'Swinging', 'Swing'), onclick: "gridGlyph('K')" },
       { inner: ggIcon('icon-looking.png', 'Looking'), onclick: "gridGlyph('KL')" },
       { inner: ggBig('+', 'More'), onclick: "gridGlyph('PLUS')" },
       { inner: ggIcon('icon-foul.png', 'Foul'), onclick: "gridGlyph('F')" },
@@ -6229,7 +6248,7 @@ function ggChoices(step){
       { inner: ggBig('Out', 'Batter out'), onclick: "gridEntry('O')" },
       ggDpAvailable() ? { inner: ggBig('DP', 'Double play'), onclick: "gridEntry('DP')" } : null,
       { inner: ggBig('E', 'Error'), onclick: "gridEntry('E')" },
-      { inner: ggBig('FC', "Fielder's choice"), onclick: "gridEntry('FC')" }
+      { inner: ggBig('FC', "Fielder's choice", 'Fielder choice'), onclick: "gridEntry('FC')" }
     ]);
     case 'hitType': return ggFill(GG_HIT_TYPES.map(([h, cap]) => ({ inner: ggBig(h, cap), onclick: `gridHitType('${h}')` })));
     case 'bbType': return ggFill(GG_BB_TYPES.map(([k, big, cap]) => ({ inner: ggBig(big, cap), onclick: `gridBBType('${k}')`, on: fp.bbType === k })));
@@ -6254,13 +6273,13 @@ function ggVeloArea(){
       <button type="button" class="gg-noread" onclick="recordGameVelo(null)">No read</button>
     </div>`;
 }
-// Joel, Sept 30: the velocity bar is row 4, the full width of the grid, and
+// Joel, Sept 30: the velocity bar is row 3 (directly above Next Pitch), the full width of the grid, and
 // you SLIDE it -- whichever speed settles in the center window is selected
 // (attachGameVeloSlide). Same strip markup/binding as before
 // (renderGameVeloStrip -> recordGameVelo); tapping a speed still works.
 function ggVeloRow(step){
   if(step !== 'velo') return '';
-  return `<div class="gg-velo" style="grid-row:4;grid-column:1/6;">${renderGameVeloStrip()}</div>`;
+  return `<div class="gg-velo" style="grid-row:3;grid-column:1/6;">${renderGameVeloStrip()}</div>`;
 }
 // Slide-to-select. Only a real touch/drag/wheel counts -- the strip's own
 // centering on each render also fires scroll events, and those must never
@@ -6309,7 +6328,8 @@ function ggBackBox(){
 }
 function ggNextPitchBtn(){
   const reason = nextPitchDisabledReason();
-  return `<button type="button" class="gg-btn gg-next" style="grid-row:3;grid-column:1/3;" ${reason ? 'disabled' : ''} onclick="nextPitch()">Next Pitch</button>`;
+  // Joel, Sept 30: all five columns of row 4, right under the velocity bar.
+  return `<button type="button" class="gg-btn gg-next" style="grid-row:4;grid-column:1/6;" ${reason ? 'disabled' : ''} onclick="nextPitch()">Next Pitch</button>`;
 }
 function ggPlayText(step){
   const s = state.activeSession;

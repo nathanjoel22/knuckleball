@@ -1185,6 +1185,88 @@
       margin-bottom:calc(var(--kb-pill-clear) + var(--kb-pill-h) + 8px);
     }
   }
+  /* ---------- G1b-r3: in-grid play entry (docs/game-grid-reference.html) ---------- */
+  .gg-field{
+    --gg-fence:#B9D1C4; --gg-grass:#D4E6CB; --gg-dirt:#C9A97C;
+    --gg-ink:#17261D; --gg-border:#9DBBA9; --gg-gold:#C9A227; --gg-dot:#C0392B;
+  }
+  .gg-cell{ cursor:default; border-color:rgba(15,36,27,0.10) !important; }
+  .gg-cell.gg-fence{ background:var(--gg-fence) !important; }
+  .gg-cell.gg-grass{ background:var(--gg-grass) !important; }
+  .gg-cell.gg-dirt{ background:var(--gg-dirt) !important; }
+  /* Overlay + dot layer: the same tracks, gap and inset as .zone-grid itself,
+     so every box sits exactly on its cells at every width. */
+  .gg-overlay, .gg-dot-layer{
+    position:absolute; inset:3px; display:grid; gap:3px;
+    grid-template-columns:repeat(5, minmax(0, 1fr)); grid-template-rows:repeat(5, minmax(0, 1fr));
+  }
+  .gg-overlay{ z-index:2; pointer-events:none; }
+  .gg-overlay > *{ pointer-events:auto; }
+  .gg-dot-layer{ z-index:3; pointer-events:none; }
+  .gg-dot{
+    align-self:center; justify-self:center; width:18px; height:18px; border-radius:50%;
+    background:var(--gg-dot); opacity:0.6; box-shadow:0 0 0 9px rgba(192,57,43,0.28);
+  }
+  .gg-btn{
+    position:relative; min-width:0; min-height:44px; margin:1px; padding:2px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    background:#fff; color:var(--gg-ink); border:1.5px solid var(--gg-border); border-radius:9px;
+    box-shadow:0 2px 6px rgba(15,36,27,0.15); font:inherit; cursor:pointer;
+  }
+  .gg-btn.on{ background:var(--field-dark); color:#E8F3EC; border-color:var(--field-dark); }
+  .gg-btn.on .gg-cap{ color:#CFE6D7; }
+  .gg-btn:disabled{ opacity:0.35; cursor:not-allowed; box-shadow:none; }
+  .gg-ic{ width:40px; height:30px; max-width:80%; display:block; background:currentColor; mask-size:contain; -webkit-mask-size:contain; mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat; mask-position:center; -webkit-mask-position:center; }
+  .gg-cap{ font-size:9px; letter-spacing:0.06em; text-transform:uppercase; color:#5B6B61; text-align:center; line-height:1.1; }
+  .gg-big{ font-size:20px; font-weight:800; line-height:1; }
+  .gg-seq{ position:absolute; top:-7px; right:-5px; background:var(--gg-gold); color:var(--field-dark); border-radius:10px; font-size:10px; padding:1px 6px; font-weight:800; }
+  .gg-done{ font-size:15px; font-weight:800; }
+  .gg-next{ background:var(--gg-gold); border-color:var(--gg-gold); font-size:15px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; }
+  .gg-next:disabled{ opacity:0.45; }
+  .gg-book{
+    position:relative; margin:1px; background:#fff; color:var(--gg-ink);
+    border:1.5px solid var(--gg-ink); border-radius:6px; overflow:hidden;
+  }
+  .gg-book > span{ position:absolute; font-size:11px; font-weight:700; }
+  .gg-book-tl{ left:7px; top:5px; }
+  .gg-book-tr{ right:7px; top:5px; color:#5B6B61; }
+  .gg-book-play{ left:50%; top:20px; transform:translateX(-50%); background:var(--gg-gold); color:var(--field-dark); border-radius:8px; padding:1px 6px; font-size:10px !important; white-space:nowrap; max-width:92%; overflow:hidden; text-overflow:ellipsis; }
+  .gg-book-bl{ left:7px; right:7px; bottom:25px; color:#5B6B61; font-weight:600 !important; font-size:10px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .gg-diamond{ position:absolute; left:25%; top:33%; width:50%; height:36%; }
+  .gg-book-back, .gg-book-fix{
+    position:absolute; bottom:3px; font:inherit; font-size:10px; font-weight:700; color:var(--field-dark);
+    background:#fff; border:1px solid var(--gg-border); border-radius:8px; padding:3px 6px; cursor:pointer;
+  }
+  .gg-book-back{ right:4px; }
+  .gg-book-fix{ left:4px; }
+  .gg-velo{
+    margin:1px; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:4px;
+    background:#E8F3EC; border:1.5px solid var(--gg-border); border-radius:9px; padding:4px 6px;
+  }
+  .gg-velo-top{ display:flex; align-items:baseline; gap:6px; }
+  .gg-velo-read{ font-size:24px; font-weight:800; color:var(--gg-ink); line-height:1; }
+  .gg-velo-unit{ font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:#5B6B61; }
+  .gg-noread{ margin-left:auto; font:inherit; font-size:10px; font-weight:700; color:#5B6B61; background:#fff; border:1px solid var(--gg-border); border-radius:8px; padding:4px 8px; cursor:pointer; min-height:28px; }
+  .gg-velo .velo-strip{ --velo-visible:3; }
+  /* 320px phones: 2 speeds across so each stays >= 44px (matches veloVisible).
+     Snap to the start edge -- center-snapping an EVEN count of visible cells
+     leaves half-cells at both ends. The velocity box also tightens so it
+     stays inside its two rows. */
+  @media (max-width:340px){
+    .gg-velo{ gap:2px; padding:3px 4px; }
+    .gg-velo .velo-strip{ --velo-visible:2; }
+    .gg-velo .velo-cell{ scroll-snap-align:start; }
+    .gg-velo-read{ font-size:20px; }
+    .gg-velo-unit{ display:none; }
+  }
+  .gg-noread{ white-space:nowrap; }
+  .gg-velo .velo-help{ display:none; }
+  .gg-velo .velo-cell{ min-height:44px; }
+  /* Swipe meter inside the grid: no ‹ › arrows -- they took most of the three
+     boxes' width (measured: 32px of strip left at 320px). Swipe is the input. */
+  .gg-velo .velo-arrow{ display:none; }
+  .gg-velo .velo-strip-wrap{ gap:0; }
+  .gg-fix{ margin:1px; background:#fff; border:1.5px solid var(--gg-border); border-radius:9px; padding:6px; overflow:auto; display:flex; flex-direction:column; gap:6px; }
 </style>
 </head>
 <body>
@@ -3040,6 +3122,15 @@ window.resumeDraft = function(){
   if(state.activeSession.kind === 'game' && state.activeSession.panelOpen === undefined){
     state.activeSession.panelOpen = !!(state.activeSession.gamePendingPitch || state.activeSession.fieldPlay);
   }
+  // G1b-r3: a draft saved on the in-grid velocity step of an already-
+  // recorded pitch comes back on that same step (veloTargetIdx itself is
+  // in-memory only). An older r2a draft left open with nothing pending gets
+  // the last pitch; one with no pitches at all just closes.
+  if(state.activeSession.kind === 'game' && state.activeSession.panelOpen && !state.activeSession.gamePendingPitch && !state.activeSession.fieldPlay){
+    const pts = state.activeSession.pitches || [];
+    const idx = (state.activeSession.gameVeloIdx !== undefined && state.activeSession.gameVeloIdx !== null) ? state.activeSession.gameVeloIdx : pts.length - 1;
+    if(pts[idx]) state.veloTargetIdx = idx; else state.activeSession.panelOpen = false;
+  }
   // G1b: deliberately NOT nulling gamePendingPitch/gameResultMenu/
   // gamePendingOutcome/gamePendingHitType here anymore -- they live on
   // state.activeSession now (the object just assigned above from
@@ -3107,7 +3198,13 @@ const U6_CUTOFF_TS = 1789965601000;
 // changed -- this only decides what counts. Change both together or a pitcher's numbers will
 // differ between the app and the leaderboard.
 function isDefaultVeloReading(pt){ return pt.velo === 65 && pt.ts < U6_CUTOFF_TS; }
-function veloVisible(){ return window.matchMedia('(max-width:500px)').matches ? 5 : 7; }
+function veloVisible(){
+  // G1b-r3: the Live Game velocity step draws the strip inside the grid's
+  // three right-hand columns -- 3 speeds across keeps each a real tap target
+  // there (matches .gg-velo's --velo-visible). Bullpen never has .gg-velo.
+  if(document.querySelector('.gg-velo')) return window.matchMedia('(max-width:340px)').matches ? 2 : 3;   // keep >= 44px per speed
+  return window.matchMedia('(max-width:500px)').matches ? 5 : 7;
+}
 // Exponential moving average of the pitcher's most recent 100 recorded velocities
 // for this pitch type (oldest -> newest). Seeded with the plain average of the
 // first 3, then every later pitch is folded in as it is recorded, so recent
@@ -4235,6 +4332,11 @@ window.handleGameZoneTap = async function(row, col){
   // A fresh tap always starts this field at null, same "re-tapping starts
   // capture over" precedent as row/col.
   state.activeSession.gamePendingPitch = { row, col, velo: null };
+  // G1b-r3: the dot is remembered for the whole play (drawn above the
+  // in-grid boxes), and survives a resume -- cleared only by Next Pitch or
+  // by Back cancelling this location.
+  state.activeSession.gameDot = { row, col };
+  state.activeSession.gameVeloIdx = null;
   state.activeSession.gameResultMenu = null;
   state.activeSession.gamePendingOutcome = null;
   state.activeSession.gamePendingHitType = null;
@@ -4250,6 +4352,7 @@ window.handleGameZoneTap = async function(row, col){
 };
 window.resetGamePendingPitch = async function(){
   state.activeSession.gamePendingPitch = null;
+  state.activeSession.gameDot = null;
   state.activeSession.gameResultMenu = null;
   state.activeSession.gamePendingOutcome = null;
   state.activeSession.gamePendingHitType = null;
@@ -5109,66 +5212,6 @@ const PLUS_GRID_PITCHES = [
 const PLUS_GRID_NO_PITCH = [
   ['IBB', 'Intentional walk'], ['AB', 'Auto ball'], ['AS', 'Auto strike'], ['BLK', 'Balk']
 ];
-function renderGameResultRow(){
-  if(!state.activeSession.gamePendingPitch) return '';
-  const menu = state.activeSession.gameResultMenu;
-  // G1b-r2a: matches the reference's chip border exactly.
-  const neutral = `color:var(--ink-faint);border-color:var(--game-chip-border);`;
-  const green = `color:#3D7A57;border-color:#3D7A57;`;
-
-  if(menu === 'plus'){
-    // G1b-r2c: a dropped third strike can only happen ON strike three --
-    // D3 only makes sense to offer once the count is already at 2 strikes.
-    const plusGridPitches = PLUS_GRID_PITCHES.filter(([k]) => k !== 'D3' || state.activeSession.strikes === 2);
-    return `<div>
-      <div class="field-label" style="margin-bottom:8px;">Pitches</div>
-      <div class="chip-row">${plusGridPitches.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="choosePlusCode('${k}')">${l}</button>`).join('')}</div>
-      <div class="field-label" style="margin:10px 0 8px;">No pitch</div>
-      <div class="chip-row">${PLUS_GRID_NO_PITCH.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="choosePlusCode('${k}')">${l}</button>`).join('')}</div>
-      <button class="btn btn-ghost" style="margin-top:8px;" onclick="cancelResultMenu()">Back</button>
-    </div>`;
-  }
-  if(menu === 'droppedThird'){
-    return `<div><div class="field-label" style="margin-bottom:8px;">Dropped third — what happened?</div><div class="chip-row">
-      <button class="type-chip" style="${green}" onclick="chooseDroppedThirdOutcome('reached')">Batter reached</button>
-      <button class="type-chip" style="${neutral}" onclick="chooseDroppedThirdOutcome('out')">Batter out</button>
-      <button class="btn btn-ghost" onclick="backResultMenu('plus')">Back</button>
-    </div></div>`;
-  }
-  if(menu === 'bi'){
-    return `<div><div class="field-label" style="margin-bottom:8px;">Batter's interference</div><div class="chip-row">
-      <button class="type-chip" style="${neutral}" onclick="chooseBIOutcome('batter')">Batter out</button>
-      <button class="type-chip" style="${neutral}" onclick="chooseBIOutcome('runner')">Runner out</button>
-      <button class="btn btn-ghost" onclick="backResultMenu('plus')">Back</button>
-    </div></div>`;
-  }
-  if(menu === 'biRunnerBase'){
-    const s = state.activeSession;
-    const occupied = [1, 2, 3].filter(b => s.runners[b]);
-    return `<div><div class="field-label" style="margin-bottom:8px;">Which runner is out?</div><div class="chip-row">
-      ${occupied.length ? occupied.map(b => `<button class="type-chip" style="${neutral}" onclick="chooseBIRunnerOut(${b})">R${b}</button>`).join('') : '<p style="color:var(--ink-faint);font-size:12.5px;">No runners on base.</p>'}
-      <button class="btn btn-ghost" onclick="backResultMenu('bi')">Back</button>
-    </div></div>`;
-  }
-  if(menu === 'foulBunt'){
-    return `<div><div class="field-label" style="margin-bottom:8px;">Bunt?</div><div class="chip-row">
-      <button class="type-chip" style="${neutral}" onclick="chooseFoulBunt(true)">Yes</button>
-      <button class="type-chip" style="${neutral}" onclick="chooseFoulBunt(false)">No</button>
-    </div></div>`;
-  }
-
-  // G1b-r2 update: icon over caption, per SCOREBOOK_GLYPHS above -- the '+'
-  // button alone renders a real glyph (.scorebook-btn-glyph, .flash-letter's
-  // face) instead of an icon.
-  return `<div><div class="field-label" style="margin-bottom:8px;">Result</div><div class="chip-row scorebook-row">
-    ${SCOREBOOK_GLYPHS.map(g => `<button class="scorebook-btn" title="${g.caption}" onclick="chooseScorebookGlyph('${g.code}')">
-      ${g.icon
-        ? `<span class="scorebook-btn-icon" style="mask-image:url('docs/${g.icon}');-webkit-mask-image:url('docs/${g.icon}');"></span>`
-        : `<span class="scorebook-btn-glyph">${g.glyph}</span>`}
-      <span class="scorebook-btn-caption">${g.caption}</span>
-    </button>`).join('')}
-  </div></div>`;
-}
 
 // G1b-r2: FIELD_VIEWBOX/FIELD_POSITIONS survive as pure DATA -- the
 // bb_x/bb_y anchor lookup G1b-r's decision 5 established (location = the
@@ -5637,9 +5680,15 @@ function nextPitchDisabledReason(){
 }
 window.nextPitch = async function(){
   const s = state.activeSession;
-  if(s.fieldPlay) return commitFieldPlay();
-  if(s.gamePendingPitch) return; // disabled -- see nextPitchDisabledReason
-  s.panelOpen = false;
+  if(s.fieldPlay){
+    await commitFieldPlay();          // refuses (and leaves everything as-is) while the play is incomplete
+  } else if(s.gamePendingPitch){
+    return; // disabled -- see nextPitchDisabledReason
+  } else {
+    s.panelOpen = false;
+  }
+  // G1b-r3: the entry is over -- back to the plain zone view.
+  if(!s.panelOpen){ s.gameDot = null; s.gameVeloIdx = null; }
   await storSet(draftKey(), s);
   render();
 };
@@ -5897,30 +5946,6 @@ function renderScorebookCells(fp){
 // and the batter's cell showing whatever the LAST pitch in the CURRENT
 // at-bat already recorded (blank if the at-bat is fresh, e.g. balls/strikes
 // still building with nothing resolved yet).
-function renderPanelScorebookCells(){
-  const s = state.activeSession;
-  if(s.fieldPlay) return renderScorebookCells(s.fieldPlay);
-
-  const runnerCells = [1, 2, 3].filter(b => s.runners[b]).map(b => `<div>
-    <div class="scorebook-cell-label">R${b}</div>
-    ${renderScorebookCellSvg({
-      size: SCOREBOOK_CELL_SMALL, reachedIdx: reachedSegmentIndices(b), pendingIdx: [], scoredPending: false,
-      outNumber: null, topLeft: deriveRunnerReachCode(b), topRight: null, bottomLeft: null
-    })}
-  </div>`).join('');
-
-  const lastPitch = s.pitches[s.pitches.length - 1];
-  const lastIsCurrentAtBat = lastPitch && lastPitch.atBatIndex === s.atBatIndex;
-  const batterCell = `<div>
-    <div class="scorebook-cell-label">Batter</div>
-    ${renderScorebookCellSvg({
-      size: SCOREBOOK_CELL_BIG, reachedIdx: [], pendingIdx: [], scoredPending: false,
-      outNumber: null, topLeft: lastIsCurrentAtBat ? scorebookBatterCode(lastPitch) : '', topRight: null,
-      bottomLeft: `${s.balls}-${s.strikes}`
-    })}
-  </div>`;
-  return runnerCells + batterCell;
-}
 
 // G1b-r2 section 6: Hit/Out/Error/FC -> the position swipe row -> batted-
 // ball type -> summary line with Fix -> Pitch (full-width, the only
@@ -5929,64 +5954,16 @@ function renderPanelScorebookCells(){
 // position row down still appears together once entry (and, for a hit, hit
 // type) is known, same stacked-and-always-visible spirit as before, just
 // for a narrower slice of the flow.
-function renderFieldFlow(){
-  const fp = state.activeSession.fieldPlay;
+// G1b-r3: the r2 "What happened to the runners?" chips, unchanged (same
+// markup, same openFieldEndingPicker/setFieldEnding/setFieldOutAtBase
+// handlers), moved behind the scorebook box's Fix runners button. The
+// prefill still sets every runner's outcome with zero taps; this is only
+// for the odd play.
+function renderRunnerFixPanel(fp){
   if(!fp) return '';
   const s = state.activeSession;
-  // G1b-r2a: matches the reference's chip border/selected-chip treatment
-  // exactly (solid sage border, solid dark selected instead of translucent
-  // border + amber fill).
   const neutral = `color:var(--ink-faint);border-color:var(--game-chip-border);`;
   const amber = `background:var(--field-dark);border-color:var(--field-dark);color:var(--surface);`;
-
-  const entryLabels = { H: 'Hit', O: 'Out', E: 'Error', FC: 'FC' };
-  const entryRow = `
-    <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">What happened?</div><div class="chip-row">
-      ${['H', 'O', 'E', 'FC'].map(k => `<button class="type-chip" style="${fp.entry === k ? amber : neutral}" onclick="chooseWalkthroughEntry('${k}')">${entryLabels[k]}</button>`).join('')}
-    </div></div>`;
-
-  // Nothing below the entry question exists until entry is chosen (and,
-  // for a hit, until hit type is too) -- matches the exact tap sequence in
-  // acceptance 31/32 (no wasted taps revealing rows with nothing to do yet).
-  if(!fp.entry || (fp.entry === 'H' && !fp.hitType)){
-    const hitTypeRow = fp.entry === 'H' ? `
-      <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Hit type</div><div class="chip-row">
-        ${['1B', '2B', '3B', 'HR'].map(h => `<button class="type-chip" style="${fp.hitType === h ? amber : neutral}" onclick="chooseFieldHitType('${h}')">${h}</button>`).join('')}
-      </div></div>` : '';
-    return `<div>${entryRow}${hitTypeRow}<button class="btn btn-ghost" onclick="cancelFieldFlow()">Cancel</button></div>`;
-  }
-
-  // The position SWIPE row (decision: one scrollable line, 64x46 chips,
-  // infield-first, badges show throw order, second tap removes -- see
-  // .position-swipe-row/.position-swipe-chip CSS). Same fp.positionSeq
-  // mechanism as G1b-r (toggleFieldPosition, unchanged), new presentation.
-  const positionRow = `
-    <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Position (tap order = throw order)</div>
-      <div class="position-swipe-row">
-        ${FIELD_POSITIONS.map(p => {
-          const idx = fp.positionSeq.indexOf(p.pos);
-          return `<button class="position-swipe-chip${idx !== -1 ? ' selected' : ''}" onclick="toggleFieldPosition('${p.pos}')">${p.pos}${idx !== -1 ? `<span class="position-swipe-badge">${idx + 1}</span>` : ''}</button>`;
-        }).join('')}
-      </div>
-    </div>`;
-
-  const bbTypeRow = `
-    <div style="margin-bottom:8px;"><div class="field-label" style="margin-bottom:4px;">Batted-ball type</div><div class="chip-row">
-      ${[['ground', 'GB'], ['line', 'LD'], ['fly', 'FB'], ['pop', 'POP'], ['bunt', 'BUNT']].map(([k, l]) => `<button class="type-chip" style="${fp.bbType === k ? amber : neutral}" onclick="chooseFieldBBType('${k}')">${l}</button>`).join('')}
-    </div></div>`;
-
-  // "What happened to the runners?" -- unprompted, underneath Batted-ball
-  // type, whenever ANY base is occupied, for EVERY entry. A real
-  // batter+runner outcome is already set the moment hit type/position/
-  // bbType are chosen (the standard prefill), so this never adds a
-  // mandatory tap -- the charter sees the assumed outcome already
-  // highlighted and can correct it if it's wrong, or accept it with zero
-  // extra taps. G1b-r2f: doubled-off/fielder's-choice/double-or-triple-play
-  // are DERIVED (runnerOutKind/fieldPlayOutLabel), never tapped -- a runner
-  // has just the plain 5 destinations (1st/2nd/3rd/Home/Out), same as the
-  // batter, but Out opens a second "at which base?" follow-up (see
-  // setFieldEnding/setFieldOutAtBase) instead of finalizing immediately,
-  // since that base is exactly what the derivation needs.
   const baseLabel = { '1': '1st', '2': '2nd', '3': '3rd', home: 'Home', out: 'Out' };
   const chipLabel = (key) => {
     if(key === 'batter'){
@@ -6028,28 +6005,371 @@ function renderFieldFlow(){
       ).join('')}
     </div>` : '';
 
-  const anyRunnerOn = [1, 2, 3].some(b => s.runners[b]);
-  const runnerPromptRow = anyRunnerOn ? `
-    <div style="margin-bottom:8px;">
-      <div class="field-label" style="margin-bottom:4px;">What happened to the runners?</div>
-      <div class="chip-row">${runnerChips}</div>
-      ${editingPicker}
-      ${outAtPicker ? `<div class="field-label" style="margin:4px 0 4px;">At which base?</div>${outAtPicker}` : ''}
-    </div>` : '';
+  return `<div class="field-label" style="margin-bottom:4px;">What happened to the runners?</div>
+    <div class="chip-row">${runnerChips}</div>
+    ${editingPicker}
+    ${outAtPicker ? `<div class="field-label" style="margin:4px 0 4px;">At which base?</div>${outAtPicker}` : ''}
+    <p class="walkthrough-summary">${escHtml(fieldPlaySummary(fp))}</p>`;
+}
+/* ---------- G1b-r3: IN-GRID PLAY ENTRY ----------
+   After a location tap in Live Game the 5x5 grid itself becomes the entry
+   surface (Joel, Sept 30 2026; visual spec docs/game-grid-reference.html):
+   the 25 cells turn field colors and go display-only, the scorebook box
+   takes rows 1-2 x cols 1-2, six choice boxes take rows 1-2 x cols 3-5, a
+   nine-choice step adds row 3, and Done › / Next Pitch sit in row 3 x cols
+   1-2. The pitch dot stays on top of all of it (pointer-events:none).
 
-  // G1b-r2a: Next Pitch (renamed from Pitch) moves up to be the panel's own
-  // shared button, after the velocity strip -- see renderGameSessionView's
-  // panel body and nextPitch()/nextPitchDisabledReason(). Cancel stays here
-  // (specific to abandoning the walkthrough, not the panel as a whole).
-  return `<div>
-    ${entryRow}
-    ${positionRow}
-    ${bbTypeRow}
-    ${runnerPromptRow}
-    <p class="walkthrough-summary">${escHtml(fieldPlaySummary(fp))}</p>
-    <button class="btn btn-ghost" onclick="cancelFieldFlow()">Cancel</button>
+   There is deliberately NO second step machine: gridStep() works out the
+   current step from the SAME session fields the r2 panel used
+   (gamePendingPitch, gameResultMenu, fieldPlay, veloTargetIdx), and every
+   box calls the SAME handler the r2 panel called (chooseScorebookGlyph,
+   choosePlusCode, chooseFoulBunt, chooseDroppedThirdOutcome, chooseBIOutcome,
+   chooseBIRunnerOut, chooseWalkthroughEntry, chooseFieldHitType,
+   chooseFieldBBType, toggleFieldPosition, recordGameVelo, nextPitch ->
+   commitFieldPlay). So prefills, forced advances, DP/FC derivation and the
+   stored rows are unchanged by construction. New state is only UI state:
+   gameDot / gameVeloIdx on the session (so Resume restores the exact
+   screen) and fieldPlay.positionsDone / fixOpen / dp.
+
+   Order (decisions 1 & 6): result -> [In Play: Hit/Out/DP/Error/FC ->
+   (hit: how far) -> batted-ball type -> position(s)] -> velocity -> Next
+   Pitch. Ball / Swinging / Looking / Foul still record on the tap (Joel,
+   Sept 30: decision A), then show velocity; Back there undoes that pitch.
+   Radar gun off (U9): no velocity step -- the step before it carries Next
+   Pitch instead of Done ›. */
+const GG_POSITION_ROWS = [['LF', 'CF', 'RF'], ['3B', 'SS', '2B'], ['P', 'C', '1B']];
+const GG_BB_TYPES = [['ground', 'GB', 'Ground'], ['line', 'LD', 'Line'], ['fly', 'FB', 'Fly'], ['pop', 'POP', 'Pop-up'], ['bunt', 'BUNT', 'Bunt']];
+const GG_HIT_TYPES = [['1B', 'Single'], ['2B', 'Double'], ['3B', 'Triple'], ['HR', 'Home run']];
+const GG_ENTRY_LABEL = { H: 'Hit', O: 'Out', E: 'Error', FC: 'FC' };
+// Decision 1's "More" block, three rows of three. D3 only on two strikes
+// (G1b-r2c rule kept -- Joel, Sept 30); the last four are no-pitch events.
+const GG_MORE = [
+  [['HBP', 'HBP', 'Hit by pitch'], ['D3', 'D3', 'Dropped 3rd'], ['CI', 'CI', "Catcher's int."]],
+  [['BI', 'BI', "Batter's int."], ['FT', 'FT', 'Foul tip'], ['IBB', 'IBB', 'Int. walk']],
+  [['AB', 'AB', 'Auto ball'], ['AS', 'AS', 'Auto strike'], ['BLK', 'BLK', 'Balk']]
+];
+
+function ggRadarOn(){ return sessionUsesRadarGun(state.activeSession); }
+function ggMultiFielder(fp){ return fp.entry === 'O' || fp.entry === 'FC'; }
+// A DP shortcut (Joel, Sept 30: option 2) needs a forced runner to turn two
+// on, and room in the inning for two more outs.
+function ggDpAvailable(){
+  const s = state.activeSession;
+  return !!(s.runners && s.runners[1]) && s.outs < 2;
+}
+
+function gridStep(){
+  const s = state.activeSession;
+  if(!s || s.kind !== 'game' || !s.panelOpen) return null;
+  if(!s.gamePendingPitch) return ggRadarOn() ? 'velo' : 'ready';   // a direct-record pitch is in
+  const fp = s.fieldPlay;
+  if(fp){
+    if(fp.fixOpen) return 'fix';
+    if(!fp.entry) return 'inplay';
+    if(fp.entry === 'H' && !fp.hitType) return 'hitType';
+    if(!fp.bbType) return 'bbType';
+    const multi = ggMultiFielder(fp);
+    if(!fp.positionSeq.length) return 'position';
+    if(!ggRadarOn()) return 'position';            // Next Pitch rides on this step instead
+    if(multi && !fp.positionsDone) return 'position';
+    return 'velo';
+  }
+  const menu = s.gameResultMenu;
+  if(menu === 'plus') return 'more';
+  if(menu === 'foulBunt' || menu === 'droppedThird' || menu === 'bi' || menu === 'biRunnerBase') return menu;
+  return 'first';
+}
+
+async function ggSave(){ await storSet(draftKey(), state.activeSession); render(); }
+// Wraps an existing handler. A pushed pitch (a direct-record result) means
+// the velocity step is next: remember which pitch, on the session, so a
+// resumed draft lands back on it. Anything that ended the entry (a no-pitch
+// event) clears the dot with it.
+async function ggAfter(fn){
+  const s = state.activeSession;
+  const before = s.pitches.length;
+  await fn();
+  if(s.pitches.length > before){ s.gameVeloIdx = s.pitches.length - 1; s.panelOpen = true; }
+  if(!s.panelOpen){ s.gameDot = null; s.gameVeloIdx = null; }
+  await ggSave();
+}
+window.gridGlyph = function(code){ return ggAfter(() => chooseScorebookGlyph(code)); };
+window.gridMore = function(code){
+  if(code === 'D3' && state.activeSession.strikes !== 2) return;
+  return ggAfter(() => choosePlusCode(code));
+};
+window.gridFoulBunt = function(isBunt){ return ggAfter(() => chooseFoulBunt(isBunt)); };
+window.gridDroppedThird = function(outcome){ return ggAfter(() => chooseDroppedThirdOutcome(outcome)); };
+window.gridBI = function(which){ return ggAfter(() => chooseBIOutcome(which)); };
+window.gridBIRunner = function(base){ return ggAfter(() => chooseBIRunnerOut(base)); };
+// DP is an Out with the runner prefill FC already uses (leadForcedOutEndings)
+// -- stored exactly like an Out whose lead forced runner was put out via Fix
+// runners; "double play" stays derived (fieldPlayOutLabel), never tapped.
+window.gridEntry = async function(entry){
+  if(entry !== 'DP') return chooseWalkthroughEntry(entry);
+  if(!ggDpAvailable()) return;
+  await chooseWalkthroughEntry('O');
+  const fp = state.activeSession.fieldPlay;
+  fp.dp = true;
+  Object.assign(fp.endings, leadForcedOutEndings(state.activeSession.runners));
+  await ggSave();
+};
+window.gridHitType = function(h){ return chooseFieldHitType(h); };
+window.gridBBType = function(t){ return chooseFieldBBType(t); };
+// Hit / error: one fielder (a second tap replaces, never appends). Out / FC:
+// tap order = throw order, second tap on a badged chip removes it.
+window.gridPosition = async function(pos){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  if(!ggMultiFielder(fp) && fp.positionSeq.length && fp.positionSeq[0] !== pos) fp.positionSeq = [];
+  fp.positionsDone = false;
+  await toggleFieldPosition(pos);
+};
+window.gridPositionsDone = async function(){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp || !fp.positionSeq.length) return;
+  fp.positionsDone = true;
+  await ggSave();
+};
+window.gridFixRunners = async function(){
+  const fp = state.activeSession.fieldPlay;
+  if(!fp) return;
+  fp.fixOpen = !fp.fixOpen;
+  fp.editing = null;
+  await ggSave();
+};
+
+// Back: one level per tap. At the first level it cancels the location tap
+// (nothing was created). On the velocity step after a direct-record result,
+// that pitch already exists, so Back undoes exactly it (decision A) and
+// puts the same location back as pending.
+window.gridBack = async function(){
+  const s = state.activeSession;
+  const step = gridStep();
+  const fp = s.fieldPlay;
+  switch(step){
+    case 'first': s.gameDot = null; return resetGamePendingPitch();
+    case 'more': case 'foulBunt': return cancelResultMenu();
+    case 'droppedThird': case 'bi': return backResultMenu('plus');
+    case 'biRunnerBase': return backResultMenu('bi');
+    case 'fix': fp.fixOpen = false; fp.editing = null; return ggSave();
+    case 'inplay': return cancelFieldFlow();
+    case 'hitType': fp.entry = null; fp.dp = false; fp.endings = {}; return ggSave();
+    case 'bbType':
+      if(fp.entry === 'H'){ fp.hitType = null; fp.endings = {}; }
+      else { fp.entry = null; fp.dp = false; fp.endings = {}; }
+      return ggSave();
+    case 'position':
+      if(fp.positionSeq.length && !ggMultiFielder(fp)){ fp.positionSeq = []; fp.positionsDone = false; return ggSave(); }
+      fp.bbType = null; fp.positionSeq = []; fp.positionsDone = false;
+      return ggSave();
+    case 'velo':
+    case 'ready':
+      if(fp){
+        if(ggMultiFielder(fp)) fp.positionsDone = false; else fp.positionSeq = [];
+        return ggSave();
+      } else {
+        const dot = s.gameDot;
+        await undoLastGameAction();
+        if(dot){
+          s.gamePendingPitch = { row: dot.row, col: dot.col, velo: null };
+          s.gameDot = dot;
+          s.panelOpen = true;
+        }
+        s.gameVeloIdx = null;
+        return ggSave();
+      }
+  }
+};
+
+// ---- rendering ----
+function ggDotCell(){
+  const s = state.activeSession;
+  if(s.gameDot) return s.gameDot;
+  if(s.gamePendingPitch) return { row: s.gamePendingPitch.row, col: s.gamePendingPitch.col };
+  return null;
+}
+function ggBtn(row, col, inner, onclick, opts){
+  opts = opts || {};
+  const cls = 'gg-btn' + (opts.on ? ' on' : '') + (opts.cls ? ' ' + opts.cls : '');
+  return `<button type="button" class="${cls}" style="grid-row:${row};grid-column:${col};" ${opts.disabled ? 'disabled' : ''} onclick="${onclick}">${inner}${opts.badge ? `<span class="gg-seq">${opts.badge}</span>` : ''}</button>`;
+}
+function ggIcon(file, cap){
+  return `<span class="gg-ic" style="mask-image:url('docs/${file}');-webkit-mask-image:url('docs/${file}');"></span><span class="gg-cap">${escHtml(cap)}</span>`;
+}
+function ggBig(big, cap){
+  return `<span class="gg-big">${escHtml(big)}</span>${cap ? `<span class="gg-cap">${escHtml(cap)}</span>` : ''}`;
+}
+// Six boxes = rows 1-2 x cols 3-5, filled row by row; a nine-box step adds row 3.
+const GG_SLOTS = [[1, 3], [1, 4], [1, 5], [2, 3], [2, 4], [2, 5], [3, 3], [3, 4], [3, 5]];
+function ggFill(items){
+  return items.map((it, i) => it ? ggBtn(GG_SLOTS[i][0], GG_SLOTS[i][1], it.inner, it.onclick, it) : '').join('');
+}
+function ggChoices(step){
+  const s = state.activeSession;
+  const fp = s.fieldPlay;
+  switch(step){
+    case 'first': return ggFill([
+      { inner: ggIcon('icon-ball.png', 'Ball'), onclick: "gridGlyph('B')" },
+      { inner: ggIcon('icon-swinging.png', 'Swinging'), onclick: "gridGlyph('K')" },
+      { inner: ggIcon('icon-looking.png', 'Looking'), onclick: "gridGlyph('KL')" },
+      { inner: ggBig('+', 'More'), onclick: "gridGlyph('PLUS')" },
+      { inner: ggIcon('icon-foul.png', 'Foul'), onclick: "gridGlyph('F')" },
+      { inner: ggIcon('batter-icon.png', 'In Play'), onclick: "gridGlyph('INPLAY')" }
+    ]);
+    case 'more': return ggFill(GG_MORE.flat().map(([code, big, cap]) => ({
+      inner: ggBig(big, cap), onclick: `gridMore('${code}')`, disabled: code === 'D3' && s.strikes !== 2
+    })));
+    case 'foulBunt': return ggFill([
+      { inner: ggBig('Yes', 'Bunt'), onclick: 'gridFoulBunt(true)' },
+      { inner: ggBig('No', 'Not a bunt'), onclick: 'gridFoulBunt(false)' }
+    ]);
+    case 'droppedThird': return ggFill([
+      { inner: ggBig('Safe', 'Batter reached'), onclick: "gridDroppedThird('reached')" },
+      { inner: ggBig('Out', 'Batter out'), onclick: "gridDroppedThird('out')" }
+    ]);
+    case 'bi': return ggFill([
+      { inner: ggBig('Batter', 'Batter out'), onclick: "gridBI('batter')" },
+      { inner: ggBig('Runner', 'Runner out'), onclick: "gridBI('runner')" }
+    ]);
+    case 'biRunnerBase': return ggFill([1, 2, 3].filter(b => s.runners[b]).map(b => ({
+      inner: ggBig(b === 1 ? '1st' : b === 2 ? '2nd' : '3rd', 'Runner out'), onclick: `gridBIRunner(${b})`
+    })));
+    case 'inplay': return ggFill([
+      { inner: ggBig('Hit', 'Safe hit'), onclick: "gridEntry('H')" },
+      { inner: ggBig('Out', 'Batter out'), onclick: "gridEntry('O')" },
+      ggDpAvailable() ? { inner: ggBig('DP', 'Double play'), onclick: "gridEntry('DP')" } : null,
+      { inner: ggBig('E', 'Error'), onclick: "gridEntry('E')" },
+      { inner: ggBig('FC', "Fielder's choice"), onclick: "gridEntry('FC')" }
+    ]);
+    case 'hitType': return ggFill(GG_HIT_TYPES.map(([h, cap]) => ({ inner: ggBig(h, cap), onclick: `gridHitType('${h}')` })));
+    case 'bbType': return ggFill(GG_BB_TYPES.map(([k, big, cap]) => ({ inner: ggBig(big, cap), onclick: `gridBBType('${k}')`, on: fp.bbType === k })));
+    case 'position': return ggFill(GG_POSITION_ROWS.flat().map(pos => {
+      const idx = fp.positionSeq.indexOf(pos);
+      return { inner: ggBig(pos, String(POSITION_SCOREBOOK_NUMBER[pos])), onclick: `gridPosition('${pos}')`,
+        on: idx !== -1, badge: (idx !== -1 && ggMultiFielder(fp)) ? String(idx + 1) : '' };
+    }));
+    case 'velo': return ggVeloArea();
+    case 'fix': return `<div class="gg-fix" style="grid-row:1/4;grid-column:3/6;">${renderRunnerFixPanel(fp)}
+        <button type="button" class="btn btn-ghost" onclick="gridFixRunners()">Done fixing</button></div>`;
+    default: return '';
+  }
+}
+function ggVeloArea(){
+  const t = gameVeloTarget();
+  const v = t ? t.obj.velo : null;
+  const has = v !== null && v !== undefined;
+  return `<div class="gg-velo" style="grid-row:1/3;grid-column:3/6;">
+    <div class="gg-velo-top">
+      <span class="gg-velo-read">${has ? escHtml(String(v)) : '—'}</span><span class="gg-velo-unit">${has ? 'mph' : 'no read'}</span>
+      <button type="button" class="gg-noread" onclick="recordGameVelo(null)">No read</button>
+    </div>
+    ${renderGameVeloStrip()}
   </div>`;
 }
+// Row 3, cols 1-2 (under the scorebook box): Done › for a multi-fielder
+// play once one fielder is in; Next Pitch whenever the play is complete
+// (the velocity step, or the step before it with the radar gun off).
+function ggRow3(step){
+  const s = state.activeSession;
+  const fp = s.fieldPlay;
+  if(step === 'position' && fp && fp.positionSeq.length){
+    if(ggRadarOn() && ggMultiFielder(fp)){
+      return `<button type="button" class="gg-btn gg-done" style="grid-row:3;grid-column:1/3;" onclick="gridPositionsDone()">Done ›</button>`;
+    }
+    if(!ggRadarOn()) return ggNextPitchBtn();
+  }
+  if(step === 'velo' || step === 'ready') return ggNextPitchBtn();
+  return '';
+}
+function ggNextPitchBtn(){
+  const reason = nextPitchDisabledReason();
+  return `<button type="button" class="gg-btn gg-next" style="grid-row:3;grid-column:1/3;" ${reason ? 'disabled' : ''} onclick="nextPitch()">Next Pitch</button>`;
+}
+function ggPlayText(step){
+  const s = state.activeSession;
+  const fp = s.fieldPlay;
+  if(step === 'velo' || step === 'ready'){
+    if(!fp){ const last = s.pitches[s.pitches.length - 1]; return last ? gameResultText(last) : ''; }
+  }
+  const menuText = { more: 'More', foulBunt: 'Foul · bunt?', droppedThird: 'Dropped 3rd', bi: "Batter's int.", biRunnerBase: 'BI · which runner?' };
+  if(menuText[step]) return menuText[step];
+  if(!fp) return '';
+  if(!fp.entry) return 'In play';
+  const derived = fieldPlayOutLabel(fp);
+  const head = fp.entry === 'H' ? (fp.hitType || 'Hit') : (derived || (fp.dp ? 'DP' : GG_ENTRY_LABEL[fp.entry]));
+  const bb = (GG_BB_TYPES.find(x => x[0] === fp.bbType) || [])[1];
+  if(fp.entry === 'H' || fp.entry === 'E'){
+    return [head, fp.positionSeq[0] || null, bb || null].filter(Boolean).join(' · ');   // "1B · LF · LD"
+  }
+  const nota = fielderNotation(fp.positionSeq);
+  return [nota || null, head, bb || null].filter(Boolean).join(' · ');                 // "6-4-3 · DP · GB"
+}
+function ggRunnerLine(){
+  const s = state.activeSession;
+  const fp = s.fieldPlay;
+  if(fp && fieldBatterResultKey(fp)){
+    const txt = basesSummaryText(fp);
+    return txt === 'bases empty' ? 'Bases empty' : txt === 'bases loaded' ? 'Bases loaded' : txt.replace(/, /g, ' · ');
+  }
+  const on = [1, 2, 3].filter(b => s.runners[b]).map(b => 'R' + b);
+  return on.length ? on.join(' · ') : 'Bases empty';
+}
+function ggProjectedOuts(){
+  const s = state.activeSession;
+  const fp = s.fieldPlay;
+  if(!fp || !fieldBatterResultKey(fp)) return s.outs;
+  const batterOut = fp.endings.batter === 'out' ? 1 : 0;
+  const runnerOuts = [1, 2, 3].filter(b => s.runners[b] && runnerOutKind(b, fp.endings[b]) !== null).length;
+  return Math.min(3, s.outs + batterOut + runnerOuts);
+}
+function ggScorebookBox(step){
+  const s = state.activeSession;
+  const fp = s.fieldPlay;
+  const outs = ggProjectedOuts();
+  const play = ggPlayText(step);
+  // Bases: home at the bottom, 1st right, 2nd top, 3rd left; occupied = filled.
+  const base = (x, y, on) => `<rect x="${x - 7}" y="${y - 7}" width="14" height="14" transform="rotate(45 ${x} ${y})" fill="${on ? '#17261D' : '#fff'}" stroke="#17261D" stroke-width="2"/>`;
+  const diamond = `<svg class="gg-diamond" viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M50 88 L88 50 L50 12 L12 50 Z" fill="none" stroke="#9DBBA9" stroke-width="2"/>
+      ${base(88, 50, s.runners[1])}${base(50, 12, s.runners[2])}${base(12, 50, s.runners[3])}
+      <path d="M44 84 L56 84 L56 90 L50 95 L44 90 Z" fill="#fff" stroke="#17261D" stroke-width="2"/>
+    </svg>`;
+  const anyRunner = [1, 2, 3].some(b => s.runners[b]);
+  const fixBtn = (fp && fp.entry && anyRunner && step !== 'fix')
+    ? `<button type="button" class="gg-book-fix" onclick="gridFixRunners()">Fix runners</button>` : '';
+  return `<div class="gg-book" style="grid-row:1/3;grid-column:1/3;">
+    <span class="gg-book-tl">${s.balls}-${s.strikes}</span>
+    <span class="gg-book-tr">${outs} OUT</span>
+    ${play ? `<span class="gg-book-play">${escHtml(play)}</span>` : ''}
+    ${diamond}
+    <span class="gg-book-bl">${escHtml(ggRunnerLine())}</span>
+    ${fixBtn}
+    <button type="button" class="gg-book-back" onclick="gridBack()">‹ Back</button>
+  </div>`;
+}
+function renderGameFieldGrid(){
+  const step = gridStep();
+  let cells = '';
+  for(let r = 0; r < 5; r++){
+    for(let c = 0; c < 5; c++){
+      cells += `<div class="zone-cell gg-cell ${r === 0 ? 'gg-fence' : r <= 2 ? 'gg-grass' : 'gg-dirt'}"></div>`;   // no onclick: display-only
+    }
+  }
+  const dot = ggDotCell();
+  return `<div class="zone-grid gg-field" data-step="${step}">
+    ${cells}
+    <div class="gg-overlay">${ggScorebookBox(step)}${ggChoices(step)}${ggRow3(step)}</div>
+    ${dot ? `<div class="gg-dot-layer" aria-hidden="true"><span class="gg-dot" style="grid-row:${dot.row + 1};grid-column:${dot.col + 1};"></span></div>` : ''}
+  </div>`;
+}
+function ggCaption(step){
+  if(step === 'velo') return 'Swipe and tap the speed, or No read — then Next Pitch';
+  if(step === 'ready') return 'Next Pitch when you’re ready';
+  const reason = (step === 'position' || step === 'velo') ? null : null;
+  return reason || 'Choose what happened';
+}
+
 function renderGameSessionView(p){
   const s = state.activeSession;
   const pitches = s.pitches;
@@ -6085,30 +6405,18 @@ function renderGameSessionView(p){
     </div>`;
   }).join('') || `<p style="color:var(--ink-faint);font-size:12.5px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
 
-  const zoneCaption = state.activeSession.gamePendingPitch
-    ? `Now choose what happened <a href="#" onclick="resetGamePendingPitch();return false;" style="color:var(--amber);">(reset location)</a>`
-    : `Tap where the pitch landed`;
-
-  // G1b-r2a item 2: the panel drops down over the grid after the location
-  // tap and stays down (per screen order 5-7) through the result row,
-  // the walkthrough (only after In Play), the velocity strip, and Next
-  // Pitch -- one shared button now (nextPitch/nextPitchDisabledReason)
-  // instead of renderFieldFlow's own Pitch button. Cells (renderPanel
-  // ScorebookCells) show in every one of these states, not only mid-
-  // walkthrough. panelOpen persists on activeSession -- a killed browser
-  // resumes with the panel down and whatever was in progress intact.
-  const panelOpen = !!s.panelOpen;
-  const resultOrWalkthrough = s.fieldPlay ? renderFieldFlow()
-    : (s.gamePendingPitch ? `<div class="result-band">${renderGameResultRow()}</div>` : '');
-  const nextPitchReason = nextPitchDisabledReason();
+  // G1b-r3: the drop-down panel (r2/r2a) and the velocity strip below the
+  // grid are gone from Live Game -- once a location is tapped, the grid
+  // itself becomes the entry surface (renderGameFieldGrid); velocity is its
+  // last in-grid step. Bullpen's strip is untouched.
+  const gridStepNow = gridStep();
+  const zoneCaption = gridStepNow ? ggCaption(gridStepNow) : `Tap where the pitch landed`;
 
   return `
     <div class="session-grid-layout">
       <div class="panel controls-panel">
         <div class="game-panel-header">
           ${renderGameStatusBar()}
-          <span class="game-panel-handle">${panelOpen ? '▲' : ''}</span>
-          ${panelOpen ? `<button class="game-panel-undo" onclick="undoLastGameAction()">Undo</button>` : ''}
         </div>
         ${renderAdjustRunnersFlow()}
         <div class="perspective-delivery-row">
@@ -6126,22 +6434,8 @@ function renderGameSessionView(p){
         <div class="hint-msg">${state.hint}</div>
         <div class="gridwrap">
           <div class="zone-wrap">
-            ${renderZoneGrid(pitches, true, state.flashCell, state.activeSession.gamePendingPitch, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
+            ${gridStepNow ? renderGameFieldGrid() : renderZoneGrid(pitches, true, state.flashCell, null, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
             <div class="zone-caption">${zoneCaption}</div>
-          </div>
-          <div class="game-panel-body${panelOpen ? ' open' : ''}">
-            <div class="walkthrough-layout">
-              <div class="scorebook-cells-wrap">${renderPanelScorebookCells()}</div>
-              <div class="walkthrough-rows">
-                ${resultOrWalkthrough}
-                ${sessionUsesRadarGun(s) ? `<div>
-                  <div class="field-label" style="margin-bottom:8px;">Velocity</div>
-                  ${renderGameVeloStrip()}
-                </div>` : ''}
-                <button class="next-pitch-btn" ${nextPitchReason ? 'disabled' : ''} onclick="nextPitch()">Next Pitch</button>
-                ${nextPitchReason ? `<p class="walkthrough-disabled-reason">${escHtml(nextPitchReason)}</p>` : ''}
-              </div>
-            </div>
           </div>
         </div>
       </div>

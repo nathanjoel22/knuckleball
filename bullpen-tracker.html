@@ -8,6 +8,22 @@
 <script src="supabase-config.js"></script>
 <script src="report-config.js"></script>
 <script>
+  // S1 (softball): theme before first paint -- the signed-in profile's sport
+  // from the offline cold-launch cache (lastKnownContext, P1-13), else the
+  // landing page's remembered choice, else baseball. Synchronous, no network.
+  (function(){
+    var sport = 'baseball';
+    try{
+      var raw = localStorage.getItem('sb-' + new URL(SUPABASE_URL).hostname.split('.')[0] + '-auth-token');
+      var uid = raw && JSON.parse(raw).user && JSON.parse(raw).user.id;
+      var ctx = uid && JSON.parse(localStorage.getItem('lastKnownContext:' + uid) || 'null');
+      if(ctx && ctx.profile && ctx.profile.sport) sport = ctx.profile.sport;
+      else if(localStorage.getItem('kb:sport') === 'softball') sport = 'softball';
+    }catch(e){}
+    document.documentElement.setAttribute('data-sport', sport === 'softball' ? 'softball' : 'baseball');
+  })();
+</script>
+<script>
   // Offline app shell (P0-06) -- lets this page load with no network.
   // Never blocks page load: registration happens after the page's own
   // load event, and any failure is just logged, not surfaced to the user.
@@ -108,7 +124,51 @@
     --border:        rgba(15,36,27,0.10);   /* was rgba(chalk, 0.12) -- translucent chalk-on-dark
                                                 flipped to translucent ink-on-light */
     --border-strong: rgba(15,36,27,0.22);   /* was rgba(chalk, 0.22) */
+    /* ---- S1: theme values that used to be literals (rgb triples are for
+       rgba(var(--x), a) tints and shadows). Data colors -- pitch palette,
+       strike/ball flash, sent/warning statuses, Live Game's gg-* -- stay
+       literal on purpose. ---- */
+    --amber-rgb: 232,168,61;
+    --ink-rgb: 15,36,27;
+    --primary-bg: var(--amber);        /* .btn-primary */
+    --primary-fg: var(--field-dark);
+    --primary-bg-hover: var(--amber-bright);
+    --kind-btn: #3D7A57;               /* Bullpen / Live Game chooser */
+    --kind-btn-hover: #2E6345;
+    --kind-btn-active: #245036;
+    --accent-text: var(--amber);       /* accent-colored text (baseball keeps its yellow link) */
   }
+
+  /* ---------- S1: the softball theme (docs/softball-theme-reference.html) ----------
+     Only theme variables change; pitch colors, strike/ball colors and the
+     plate overlay are identical in both sports. Pink is an accent like
+     baseball's yellow: fills, chips, buttons -- never pink text on light. */
+  html[data-sport="softball"]{
+    --page-bg:        #F7FAFD;
+    --card-bg:        #FFFFFF;
+    --surface:        #EAF4FB;
+    --surface-border: #BFDCEF;
+    --field-dark:     #234B6E;
+    --ink-dim:        #3A5A78;
+    --ink-faint:      #5F7A91;
+    --chalk-dim:      #BCCBD8;
+    --chalk-faint:    #8094A6;
+    --amber:          #F2A7C3;
+    --amber-bright:   #F7C3D7;
+    --amber-rgb:      242,167,195;
+    --ink-rgb:        35,75,110;
+    --border:         rgba(35,75,110,0.10);
+    --border-strong:  rgba(35,75,110,0.22);
+    --primary-bg:     #E27BA2;
+    --primary-fg:     #FFFFFF;
+    --primary-bg-hover: #D4688F;
+    --kind-btn:       #E27BA2;
+    --kind-btn-hover: #D4688F;
+    --kind-btn-active:#C2567D;
+    --accent-text:    var(--field-dark);   /* never pink text on light */
+    --game-chip-border: #9FC3DD;
+  }
+  .zone-note{ font-size:11.5px; color:var(--ink-faint); text-align:center; margin-top:-4px; }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -163,16 +223,16 @@
 
   .role-badge{
     align-self:flex-start; font-size:10px; text-transform:uppercase; letter-spacing:0.1em;
-    color:var(--amber-bright); background:rgba(232,168,61,0.12);
-    border:1px solid rgba(232,168,61,0.3); padding:3px 9px; border-radius:20px; margin-top:2px;
+    color:var(--amber-bright); background:rgba(var(--amber-rgb),0.12);
+    border:1px solid rgba(var(--amber-rgb),0.3); padding:3px 9px; border-radius:20px; margin-top:2px;
   }
 
   /* Offline indicator + instant boot screen (P1-13) */
   .offline-pill{
     align-self:flex-start; display:inline-flex; align-items:center; gap:6px; margin-top:6px;
     font-size:10px; text-transform:uppercase; letter-spacing:0.09em;
-    color:var(--amber-bright); background:rgba(232,168,61,0.12);
-    border:1px solid rgba(232,168,61,0.3); padding:3px 9px; border-radius:20px;
+    color:var(--amber-bright); background:rgba(var(--amber-rgb),0.12);
+    border:1px solid rgba(var(--amber-rgb),0.3); padding:3px 9px; border-radius:20px;
   }
   .offline-pill::before{
     content:''; width:6px; height:6px; border-radius:50%; background:var(--amber-bright); flex-shrink:0;
@@ -360,8 +420,8 @@
   .text-input::placeholder{ color:var(--ink-faint); }
   .form-row-buttons{ display:flex; gap:8px; margin-top:2px; }
   .btn{ border-radius:6px; padding:9px 14px; font-size:13px; font-weight:600; border:1px solid transparent; display:inline-block; text-decoration:none; }
-  .btn-primary{ background:var(--amber); color:var(--field-dark); }
-  .btn-primary:hover{ background:var(--amber-bright); }
+  .btn-primary{ background:var(--primary-bg); color:var(--primary-fg); }
+  .btn-primary:hover{ background:var(--primary-bg-hover); }
   .btn-primary:disabled{ opacity:0.5; cursor:not-allowed; }
   .btn-ghost{ background:transparent; border-color:var(--border-strong); color:var(--ink-dim); }
   .btn-ghost:hover{ border-color:var(--ink-dim); color:var(--field-dark); }
@@ -471,12 +531,12 @@
   .kind-chooser-buttons{ display:flex; flex-direction:column; align-items:center; gap:16px; width:100%; }
   .kind-choice-btn{
     display:flex; align-items:center; justify-content:center; gap:8px;
-    width:100%; max-width:280px; min-height:72px; border-radius:12px; border:none; background:#3D7A57;
+    width:100%; max-width:280px; min-height:72px; border-radius:12px; border:none; background:var(--kind-btn);
     color:#fff; font-family:'Teko',sans-serif; font-size:28px; font-weight:600;
-    letter-spacing:0.02em; box-shadow:0 2px 6px rgba(15,36,27,0.15);
+    letter-spacing:0.02em; box-shadow:0 2px 6px rgba(var(--ink-rgb),0.15);
   }
-  .kind-choice-btn:hover{ background:#2E6345; }
-  .kind-choice-btn:active{ background:#245036; }
+  .kind-choice-btn:hover{ background:var(--kind-btn-hover); }
+  .kind-choice-btn:active{ background:var(--kind-btn-active); }
   /* Small, high-contrast (7.8:1 dark-ink-on-amber) pill -- not part of
      the button's own Teko display type, so it stays legible at this
      size instead of going condensed/all-caps like the button label. */
@@ -505,7 +565,7 @@
      phone (max-height + overflow-y), safe-area aware so it never sits
      under a notch/home-indicator. */
   .modal-overlay{
-    position:fixed; inset:0; background:rgba(15,36,27,0.55);
+    position:fixed; inset:0; background:rgba(var(--ink-rgb),0.55);
     display:flex; align-items:center; justify-content:center;
     padding:24px 16px; z-index:1000;
     padding-top:calc(24px + env(safe-area-inset-top, 0px));
@@ -514,15 +574,15 @@
   .modal-panel{
     position:relative; background:var(--card-bg); border-radius:14px;
     max-width:560px; width:100%; max-height:100%; overflow-y:auto;
-    padding:32px 24px 24px; box-shadow:0 8px 32px rgba(15,36,27,0.35);
+    padding:32px 24px 24px; box-shadow:0 8px 32px rgba(var(--ink-rgb),0.35);
   }
   .modal-close-x{
     position:absolute; top:10px; right:10px; width:32px; height:32px;
     border-radius:50%; border:none; background:transparent; color:var(--ink-faint);
     font-size:18px; cursor:pointer; line-height:1;
   }
-  .modal-close-x:hover{ background:rgba(15,36,27,0.08); }
-  .panel{ background:var(--card-bg); border:1px solid var(--border); border-radius:10px; padding:22px; box-shadow:0 1px 3px rgba(15,36,27,0.06); }
+  .modal-close-x:hover{ background:rgba(var(--ink-rgb),0.08); }
+  .panel{ background:var(--card-bg); border:1px solid var(--border); border-radius:10px; padding:22px; box-shadow:0 1px 3px rgba(var(--ink-rgb),0.06); }
   .controls-panel{ display:flex; flex-direction:column; gap:18px; min-width:260px; flex:1; }
   .chip-row{ display:flex; flex-wrap:wrap; gap:10px; }
   /* .pitch-count-badge shares this block's shape/border/sizing so the pitch-count
@@ -825,7 +885,7 @@
   .gridwrap{ position:relative; }
   .game-panel-body{
     position:absolute; inset:0; z-index:2; overflow-y:auto; box-sizing:border-box;
-    background:var(--game-panel-bg); border-radius:12px; box-shadow:0 10px 26px rgba(15,36,27,0.28);
+    background:var(--game-panel-bg); border-radius:12px; box-shadow:0 10px 26px rgba(var(--ink-rgb),0.28);
     border:1px solid var(--surface-border); padding:12px;
     clip-path:inset(0 0 100% 0); pointer-events:none;
     transition:clip-path 220ms ease;
@@ -959,18 +1019,18 @@
 
   .zone-number{
     position:absolute; top:3px; left:5px; font-family:'IBM Plex Mono',monospace;
-    font-size:9.5px; color:rgba(15,36,27,0.35); pointer-events:none; line-height:1;
+    font-size:9.5px; color:rgba(var(--ink-rgb),0.35); pointer-events:none; line-height:1;
   }
-  .zone-number-heat{ color:rgba(15,36,27,0.55); font-weight:600; }
+  .zone-number-heat{ color:rgba(var(--ink-rgb),0.55); font-weight:600; }
   .zone-count{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; color:var(--field-dark);
   }
-  .zone-cell-target{ outline:2px solid var(--amber); outline-offset:-2px; background:rgba(232,168,61,0.16); }
+  .zone-cell-target{ outline:2px solid var(--amber); outline-offset:-2px; background:rgba(var(--amber-rgb),0.16); }
   .target-dot{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
   .target-dot-core{
     width:12px; height:12px; border-radius:50%; background:var(--amber);
-    box-shadow:0 0 0 4px rgba(232,168,61,0.28); animation:targetPulse 1.1s ease-in-out infinite;
+    box-shadow:0 0 0 4px rgba(var(--amber-rgb),0.28); animation:targetPulse 1.1s ease-in-out infinite;
   }
   @keyframes targetPulse{ 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.15); opacity:0.75; } }
 
@@ -1012,13 +1072,13 @@
   .draft-banner p{ margin:0; font-size:13px; color:var(--ink-dim); }
 
   /* HISTORY */
-  .session-card{ background:var(--card-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 1px 3px rgba(15,36,27,0.06); }
+  .session-card{ background:var(--card-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 1px 3px rgba(var(--ink-rgb),0.06); }
   .session-card-head{ display:flex; align-items:center; justify-content:space-between; padding:16px 20px; gap:14px; flex-wrap:wrap; cursor:pointer; }
   .session-card-head:hover{ background:var(--surface); }
   .session-date{ font-weight:600; font-size:14px; }
   .coach-logged-tag{
     font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em;
-    color:var(--amber-bright); background:rgba(232,168,61,0.12); border:1px solid rgba(232,168,61,0.3);
+    color:var(--amber-bright); background:rgba(var(--amber-rgb),0.12); border:1px solid rgba(var(--amber-rgb),0.3);
     padding:2px 7px; border-radius:20px; margin-left:6px; vertical-align:middle;
   }
   .pending-tag{ color:var(--clay); background:rgba(193,122,69,0.14); border-color:rgba(193,122,69,0.4); }
@@ -1112,7 +1172,7 @@
   .edit-error{ margin:4px 0 0; font-size:11.5px; color:var(--clay); }
   .zone-row{ display:flex; flex-direction:column; gap:6px; padding:8px 0; border-top:1px solid var(--border); }
   .zone-paint{ display:flex; flex-direction:column; gap:12px; align-items:flex-start; }
-  .zone-cell.zone-painted{ background:rgba(232,168,61,0.5); box-shadow:inset 0 0 0 2px var(--amber); }
+  .zone-cell.zone-painted{ background:rgba(var(--amber-rgb),0.5); box-shadow:inset 0 0 0 2px var(--amber); }
 
   @media (max-width: 860px){
     #app{ flex-direction:column; }
@@ -1225,7 +1285,7 @@
   .gg-fieldart{ position:relative; z-index:0; display:block; width:100%; height:100%; pointer-events:none; }
   .gg-cell.gg-clear{
     background:transparent !important; z-index:1;
-    box-shadow:0 0 0 3px var(--surface-border); border-color:rgba(15,36,27,0.08) !important;
+    box-shadow:0 0 0 3px var(--surface-border); border-color:rgba(var(--ink-rgb),0.08) !important;
   }
   /* Overlay: the same tracks, gap and inset as .zone-grid itself,
      so every box sits exactly on its cells at every width. */
@@ -1239,7 +1299,7 @@
     position:relative; min-width:0; min-height:44px; margin:1px; padding:2px;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
     background:#fff; color:var(--gg-ink); border:1.5px solid var(--gg-border); border-radius:9px;
-    box-shadow:0 2px 6px rgba(15,36,27,0.15); font:inherit; cursor:pointer;
+    box-shadow:0 2px 6px rgba(var(--ink-rgb),0.15); font:inherit; cursor:pointer;
   }
   .gg-btn.on{ background:var(--field-dark); color:#E8F3EC; border-color:var(--field-dark); }
   .gg-btn.on .gg-cap{ color:#CFE6D7; }
@@ -1330,7 +1390,15 @@
 // same max-width:500px breakpoint the rest of the app already treats as
 // "phone" (see veloVisible()). Optional; every other entry is one fixed
 // abbreviation on every device, unchanged.
-const PITCH_CATALOG = [
+/* ---------- S1 (Track S): one config per sport ----------
+   Everything that differs between baseball and softball lives here, keyed
+   by sport -- the tracker reads the PROFILE's sport (applySport), never a
+   separate client choice. PITCH_CATALOG / TYPE_PALETTE / VELO_* below are
+   the active sport's values (reassigned by applySport) so every existing
+   use stays as it was. Pitch colors are data, assigned by position in the
+   pitcher's own list exactly as before; each sport has its own 8. Must
+   match send-session-report's SPORT_PALETTE_HEX in meaning, in order. */
+const BASEBALL_PITCH_CATALOG = [
   { abbr:'4SFB', name:'Four Seam Fastball' },
   { abbr:'2SFB', name:'Two Seam Fastball' },
   { abbr:'CU',   name:'Cutter' },
@@ -1345,13 +1413,52 @@ const PITCH_CATALOG = [
   { abbr:'FR',   name:'Forkball' },
   { abbr:'SP',   name:'Splitter' }
 ];
+// Softball (Joel will edit this list -- one line per pitch).
+const SOFTBALL_PITCH_CATALOG = [
+  { abbr:'FB', name:'Fastball' },
+  { abbr:'CH', name:'Change-up' },
+  { abbr:'DR', name:'Drop ball' },
+  { abbr:'RI', name:'Rise ball' },
+  { abbr:'CU', name:'Curveball' },
+  { abbr:'SC', name:'Screwball' },
+  { abbr:'DC', name:'Drop curve' },
+  { abbr:'OS', name:'Off-speed' }
+];
+const SPORTS = {
+  baseball: {
+    catalog: BASEBALL_PITCH_CATALOG,
+    palette: ['#E8A83D','#6FA287','#C17A45','#C0453B','#7C9CBF','#B98CCB','#D4C15B','#4FA8A8'],
+    veloMin: 40, veloMax: 105, veloCenter: 75,
+    hasDelivery: true, hasTimeToPlate: true, hasLeaderboard: true, hasLiveGame: true,
+    zoneNote: ''
+  },
+  softball: {
+    catalog: SOFTBALL_PITCH_CATALOG,
+    palette: ['#E27BA2','#7FB8E0','#6C5B7B','#F6B26B','#4FA3A5','#9B8ADB','#B36B5E','#8C8C8C'],
+    veloMin: 25, veloMax: 85, veloCenter: 50,
+    hasDelivery: false, hasTimeToPlate: false, hasLeaderboard: false, hasLiveGame: false,
+    zoneNote: 'Zone: armpits to top of knees'
+  }
+};
+function currentSport(){ return (state.profile && state.profile.sport === 'softball') ? 'softball' : 'baseball'; }
+function sportCfg(){ return SPORTS[currentSport()]; }
+let PITCH_CATALOG = BASEBALL_PITCH_CATALOG;
+// Called wherever state.profile is set: the active sport's tables + theme.
+function applySport(){
+  const cfg = sportCfg();
+  PITCH_CATALOG = cfg.catalog;
+  TYPE_PALETTE = cfg.palette;
+  VELO_MIN = cfg.veloMin; VELO_MAX = cfg.veloMax; VELO_DEFAULT_CENTER = cfg.veloCenter;
+  document.documentElement.setAttribute('data-sport', currentSport());
+  try{ localStorage.setItem('kb:sport', currentSport()); }catch(e){}
+}
 function pitchLabel(name){
   const c = PITCH_CATALOG.find(x => x.name === name);
   if(!c) return escHtml(name);   // unknown (legacy free-text) names are user input
   if(c.phoneAbbr && window.matchMedia('(max-width:500px)').matches) return c.phoneAbbr;
   return c.abbr;
 }
-const TYPE_PALETTE = ['#E8A83D','#6FA287','#C17A45','#C0453B','#7C9CBF','#B98CCB','#D4C15B','#4FA8A8'];
+let TYPE_PALETTE = SPORTS.baseball.palette;   // the active sport's (applySport)
 const GRID_SIZE = 5;
 
 /* ---------- LOCAL DRAFT SAFETY NET ----------
@@ -1733,6 +1840,7 @@ function netTimeout(thenable, ms){
 
 function applyCachedContext(cached){
   state.profile = cached.profile;
+  applySport();
   state.teams = cached.teams || [];
   state.roster = cached.roster || [];
   state.zones = cached.zones || {};
@@ -1887,6 +1995,7 @@ async function loadFullContextOnline(alreadyPainted){
     return;
   }
   state.profile = profile;
+  applySport();
 
   // R0: best-effort, matches profile/teams/roster's own "cached fast path
   // shows stale, this reconcile pass refreshes it" treatment -- a failure
@@ -3468,7 +3577,10 @@ window.toggleBatterSide = async function(){
    as a dash). The strip centers on this pitcher's typical velocity for the pitch
    type -- 75 until they have 3 recorded, then an exponential moving average of
    their most recent 100. Nothing is ever pre-selected. */
-const VELO_MIN = 40, VELO_MAX = 105, VELO_DEFAULT_CENTER = 75, VELO_MIN_SAMPLES = 3, VELO_RECENT = 100;
+// S1: VELO_MIN / VELO_MAX / VELO_DEFAULT_CENTER are the active sport's (applySport):
+// baseball 40-105, centered at 75; softball 25-85, centered at 50.
+let VELO_MIN = 40, VELO_MAX = 105, VELO_DEFAULT_CENTER = 75;
+const VELO_MIN_SAMPLES = 3, VELO_RECENT = 100;
 // How fast the center follows new pitches (exponential moving average). 0.15 puts
 // half the weight on roughly the last 4-5 recorded pitches: quick enough to track
 // a pitcher warming up or tiring within a pen, slow enough that one wild pitch
@@ -4549,7 +4661,7 @@ function renderSessionKindChooser(){
     <h2 class="display" style="margin:0 0 20px;text-align:center;">What will we be charting today?</h2>
     <div class="kind-chooser-buttons">
       <button class="kind-choice-btn" onclick="chooseSessionKind('bullpen')">Bullpen</button>
-      <button class="kind-choice-btn" onclick="chooseSessionKind('game')">Live Game<span class="beta-tag">Beta</span></button>
+      ${sportCfg().hasLiveGame ? `<button class="kind-choice-btn" onclick="chooseSessionKind('game')">Live Game<span class="beta-tag">Beta</span></button>` : ''}
     </div>
   </div>`;
 }
@@ -4602,7 +4714,7 @@ window.chooseSessionKind = async function(kind){
     // U11 (5)/(6): a new pen starts with no hitter standing in, from the windup.
     state.activeSession.batterMode = 'none';
     state.activeSession.currentBatterSide = 'R';
-    state.activeSession.delivery = 'windup';
+    state.activeSession.delivery = sportCfg().hasDelivery ? 'windup' : null;   // S1: softball has no Set/Windup
   }
   if(kind === 'game'){
     // Fresh game state. delivery starts null -- acceptance check 3 wants
@@ -6953,13 +7065,13 @@ function renderSessionView(){
   }).join('') || `<p style="color:var(--ink-faint);font-size:12.5px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
 
   const zoneCaption = state.pendingTarget
-    ? `Now tap where it actually landed <a href="#" onclick="resetTarget();return false;" style="color:var(--amber);">(reset target)</a>`
+    ? `Now tap where it actually landed <a href="#" onclick="resetTarget();return false;" style="color:var(--accent-text);">(reset target)</a>`
     : `Tap where you're aiming`;
 
   return `
     <div class="session-grid-layout">
       <div class="panel controls-panel">
-        <div class="perspective-delivery-row bullpen-setup-row">${renderPerspectiveToggle()}${renderBatterModeToggle()}${renderDeliveryToggle()}</div>
+        <div class="perspective-delivery-row bullpen-setup-row">${renderPerspectiveToggle()}${renderBatterModeToggle()}${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}</div>
         <div>
           <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
           <div class="chip-row">${typeChips}</div>
@@ -6978,7 +7090,7 @@ function renderSessionView(){
         <div>
           <div class="zone-wrap">
             <div class="batter-frame${isNoBatter(state.activeSession) ? ' no-batter' : ''}" style="display:contents;">${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}</div>
-            <div class="zone-caption">${zoneCaption}</div>
+            <div class="zone-caption">${zoneCaption}</div>${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
           </div>
         </div>
         ${sessionUsesRadarGun(state.activeSession) ? `<div>
@@ -7328,7 +7440,7 @@ function renderHistoryView(){
         </div>
         ${expanded ? `
         <div class="session-card-body">
-          <div class="zone-wrap">${renderZoneGrid(s.pitches, false)}<div class="zone-caption">Location heat map · Catcher's view</div></div>
+          <div class="zone-wrap">${renderZoneGrid(s.pitches, false)}<div class="zone-caption">Location heat map · Catcher's view${sportCfg().zoneNote ? ' · ' + sportCfg().zoneNote : ''}</div></div>
           <div style="flex:1;min-width:220px;">
             <table class="breakdown-table">
               <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th><th>Relative Acc%</th></tr></thead>
@@ -7484,7 +7596,7 @@ function renderRelAccuracySection(p){
    "as of". None of this ever runs on the charting path. */
 const LB_WINDOWS = [['week', 'Week'], ['month', 'Month'], ['all', 'All-time']];
 const LB_CATS = [['velocity', 'Velocity'], ['accuracy', 'Accuracy'], ['strike', 'Strike %']];
-function hasLeaderboard(){ return state.teams.length > 0; }   // cached membership: works offline
+function hasLeaderboard(){ return state.teams.length > 0 && sportCfg().hasLeaderboard; }   // cached membership: works offline; never for softball (S1)
 function escHtml(v){
   return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 }

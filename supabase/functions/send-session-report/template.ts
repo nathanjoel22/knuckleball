@@ -5,7 +5,7 @@
 // trusted. Nothing here reads a database -- it operates purely on the payload
 // object it's given.
 // ============================================================================
-import { escapeHtml, safeNum, colorForType, TYPE_PALETTE_HEX, isStrikeCell, timesToHomeLine } from './helpers.ts'
+import { escapeHtml, safeNum, colorForType, TYPE_PALETTE_HEX, isStrikeCell, timesToHomeLine, themedCss, asSport, type Sport } from './helpers.ts'
 import { drawGrid, drawLegend, drawLineChart, drawTypeGrids } from './svg.ts'
 import {
   computeSummary, computeCommandDetail, computePerSideBlock, computeExcludedNullSide,
@@ -13,6 +13,8 @@ import {
 } from './compute.ts'
 
 export interface ReportPayload {
+  // S1: from the SESSION ROW (index.ts), never from the client's payload.
+  sport?: Sport
   sessionId: string
   pitcherId: string
   pitcherName: string
@@ -250,8 +252,8 @@ function renderWorkload(p: ReportPayload): string {
     <h2>Workload and pitch mix</h2>
     <div class="table-scroll"><table class="data-table"><thead><tr><th>Type</th><th>Count</th><th>Usage</th></tr></thead><tbody>${rows}</tbody></table></div>
     ${compare}
-    ${deliverySplitLine(p)}
-    ${timesToHomeLine(p.pitches)}
+    ${asSport(p.sport) === 'softball' ? '' : deliverySplitLine(p)}
+    ${asSport(p.sport) === 'softball' ? '' : timesToHomeLine(p.pitches)}
   </section>`
 }
 // U11 (6): Windup / Set split, only when a pen used both.
@@ -393,7 +395,7 @@ export function buildReportHtml(p: ReportPayload): string {
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
-<style>${CSS}</style>
+<style>${themedCss(CSS, asSport(p.sport))}</style>
 </head>
 <body>
 <div class="page">

@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Join a coaching staff · Knuckleball</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // S1: theme before first paint from this device's remembered sport
+  // (the landing page's choice); join pages re-theme from the team's sport.
+  (function(){
+    var sp = 'baseball';
+    try{ if(localStorage.getItem('kb:sport') === 'softball') sp = 'softball'; }catch(e){}
+    document.documentElement.setAttribute('data-sport', sp);
+  })();
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -13,14 +22,30 @@
     --chalk:#F1ECDD; --chalk-dim:#B7C2B4; --chalk-faint:#7C8C82;
     --clay:#C17A45; --amber:#E8A83D; --amber-bright:#F5C365; --red:#C0453B;
     --border:rgba(241,236,221,0.12); --border-strong:rgba(241,236,221,0.22);
+    --glow-a:rgba(232,168,61,0.08);
+    --glow-b:rgba(193,122,69,0.08);
+    --amber-rgb:232,168,61;
+  }
+  /* S1: softball (docs/softball-theme-reference.html). Only variables change. */
+  html[data-sport="softball"]{
+    --field-dark:#234B6E;
+    --field-panel:#2B5A82;
+    --field-panel-2:#336896;
+    --chalk-dim:#C4D3E0;
+    --chalk-faint:#9FB5C9;
+    --amber:#F2A7C3;
+    --amber-bright:#F7C3D7;
+    --amber-rgb:242,167,195;
+    --glow-a:rgba(242,167,195,0.10);
+    --glow-b:rgba(127,184,224,0.10);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;}
   body{
     background:var(--field-dark);
     background-image:
-      radial-gradient(circle at 15% 0%, rgba(232,168,61,0.08), transparent 40%),
-      radial-gradient(circle at 85% 100%, rgba(193,122,69,0.08), transparent 45%);
+      radial-gradient(circle at 15% 0%, var(--glow-a), transparent 40%),
+      radial-gradient(circle at 85% 100%, var(--glow-b), transparent 45%);
     color:var(--chalk); font-family:'IBM Plex Sans', sans-serif;
     min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
   }
@@ -175,6 +200,22 @@
   const errorEl = document.getElementById('error-msg');
   const submitBtn = document.getElementById('submit-btn');
   let teamName = '';
+  // S1: the team's sport (from the link) themes this page and becomes the
+  // new account's sport. A join link is the only place a profile's sport is
+  // set without the landing page's chooser.
+  let teamSport = null;
+  function applyTeamSport(sp){
+    teamSport = sp === 'softball' ? 'softball' : 'baseball';
+    document.documentElement.setAttribute('data-sport', teamSport);
+  }
+  // The database refuses a cross-sport join ('sport_mismatch'): say so plainly.
+  function showSportMismatch(){
+    const other = teamSport === 'softball' ? 'baseball' : 'softball';
+    const card = document.getElementById('invalid-card');
+    card.querySelector('h2').textContent = 'Different sport';
+    card.querySelector('.info-msg').textContent = 'This is a ' + (teamSport || 'different') + ' team; your account is ' + other + '. Sign in with an account for the right sport, or ask the coach.';
+    showCard('invalid-card');
+  }
 
   async function completeJoin(){
     showCard('joining-card');
@@ -193,6 +234,7 @@
       }
     } catch (e) { /* recoverable via Resend, same as join.html */ }
     const { data, error } = await supabaseClient.rpc('join_team_as_coach', { p_token: token });
+    if(error && /sport_mismatch/.test(error.message || '')){ showSportMismatch(); return; }
     if(data && data.error === 'pitcher_cannot_join'){
       showCard('refused-card');
       return;
@@ -210,13 +252,16 @@
       return;
     }
 
+    // S1: look the team up first, signed in or not, so the page wears the team's sport.
+    const { data: rows, error } = await supabaseClient.rpc('resolve_coach_invite', { p_token: token });
+    if(!error && rows && rows.length) applyTeamSport(rows[0].team_sport);
+
     const { data: { session } } = await supabaseClient.auth.getSession();
     if(session){
       await completeJoin();
       return;
     }
 
-    const { data: rows, error } = await supabaseClient.rpc('resolve_coach_invite', { p_token: token });
     if(error || !rows || !rows.length){
       showCard('invalid-card');
       return;
@@ -254,10 +299,11 @@
     const { data: signUpData, error: signUpErr } = await supabaseClient.auth.signUp({
       email, password,
       options: {
-        data: { full_name: fullName, intended_role: 'coach' },
+        data: { full_name: fullName, intended_role: 'coach', intended_sport: teamSport || 'baseball' },   // S1: the team's sport
         emailRedirectTo: window.location.href
       }
     });
+    if(!signUpErr){ try{ localStorage.setItem('kb:sport', teamSport || 'baseball'); }catch(e){} }
     if(signUpErr){
       errorEl.textContent = signUpErr.message;
       submitBtn.disabled = false;

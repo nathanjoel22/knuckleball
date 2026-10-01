@@ -33,7 +33,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { buildReportHtml, type ReportPayload } from './template.ts'
-import { escapeHtml } from './helpers.ts'
+import { escapeHtml, useSportPalette, asSport } from './helpers.ts'
 import type { Pitch, HistoryEntry } from './compute.ts'
 // G2 approach (g): the game-report renderer, called below when
 // session.kind === 'game'. summary always comes from compute_game_summary
@@ -204,7 +204,7 @@ Deno.serve(async (req) => {
   // same as any other RLS-filtered read.
   const { data: session, error: sessionErr } = await callerClient
     .from('sessions')
-    .select('id, pitcher_id, report_path, kind, deleted_at')
+    .select('id, pitcher_id, report_path, kind, deleted_at, sport')
     .eq('id', sessionId)
     .maybeSingle()
   if (sessionErr) {
@@ -307,6 +307,7 @@ Deno.serve(async (req) => {
         summary: summary as unknown as GameSummary
       }
       try {
+        useSportPalette(asSport(session.sport))   // S1: every render sets its own palette (module state persists between requests)
         html = buildGameReportHtml(gamePayload)
       } catch (err) {
         return new Response(JSON.stringify({ error: 'Report generation failed: ' + (err as Error).message }), { status: 500, headers: corsHeaders })
@@ -315,6 +316,7 @@ Deno.serve(async (req) => {
       const payload: ReportPayload = {
         sessionId: body.sessionId,
         pitcherId: body.pitcherId,
+        sport: asSport(session.sport),   // S1: the session row's sport, whatever the payload says
         pitcherName: body.pitcherName,
         uniformNumber: body.uniformNumber ?? null,
         teamName: body.teamName ?? null,
@@ -327,6 +329,7 @@ Deno.serve(async (req) => {
         history: Array.isArray(body.history) ? body.history : []
       }
       try {
+        useSportPalette(asSport(session.sport))   // S1
         html = buildReportHtml(payload)
       } catch (err) {
         return new Response(JSON.stringify({ error: 'Report generation failed: ' + (err as Error).message }), { status: 500, headers: corsHeaders })

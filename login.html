@@ -221,6 +221,30 @@
       return;
     }
 
+    // S1 (Joel, Oct 1): the sport picked on the landing page must be the
+    // account's sport. A baseball account can't be signed into from the
+    // softball side (or the reverse) -- sign straight back out and say which
+    // side it belongs to. If the profile can't be read (none yet, or no
+    // connection), let the sign-in through: the app themes from the profile.
+    let chosen = null;
+    try{ chosen = localStorage.getItem('kb:sport'); }catch(e){}
+    if((chosen === 'baseball' || chosen === 'softball') && data && data.user){
+      const { data: prof } = await supabaseClient.from('profiles').select('sport').eq('id', data.user.id).maybeSingle();
+      if(prof && prof.sport && prof.sport !== chosen){
+        await supabaseClient.auth.signOut();
+        const name = prof.sport === 'softball' ? 'Softball' : 'Baseball';
+        errorEl.textContent = 'This is a ' + prof.sport + ' account. Go back and choose ' + name + '. ';
+        const back = document.createElement('a');
+        back.href = 'index.html';
+        back.textContent = '‹ Back to the sport choice';
+        back.style.color = 'inherit';
+        errorEl.appendChild(back);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Log in';
+        return;
+      }
+    }
+
     window.location.href = 'bullpen-tracker.html';
   });
 </script>

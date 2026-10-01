@@ -1343,8 +1343,13 @@
     }
     .wide-right .kb-batter{ --kb-batter-h:var(--kbh, 112%); }
     .wide-right .home-plate-wrap{ width:calc(0.6 * var(--zg, 278px) - 4.8px); }
-    .wide-bottom{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
-    .wide-bottom .ttp-btn{ min-height:38px; }
+    .wide-game{ display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:20px; row-gap:16px; }
+    .wide-game .wide-left{ max-width:180px; }
+    .wide-bl{ grid-column:1; display:flex; align-items:center; }
+    .wide-bl .ttp-btn{ min-height:38px; }
+    .wide-br{ grid-column:2; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
+    .pt-two{ display:grid; grid-template-columns:repeat(2, max-content); }   /* never more than two pitch types across */
+    .wide-hint{ color:var(--clay); text-transform:none; letter-spacing:0; font-size:12.5px; font-weight:600; }
     /* Joel, Oct 1: pen pitch counter to the right of the perspective chips
        (label above both, "Pitch count" on two lines under the badge). */
     .persp-count{ display:grid; grid-template-columns:minmax(0, 1fr) auto; column-gap:8px; }
@@ -7285,34 +7290,33 @@ function renderGameSessionView(p){
           ${renderGameStatusBar()}
         </div>
         ${renderAdjustRunnersFlow()}
-        <div class="wide-cols">
+        <div class="wide-cols wide-game">
           <div class="wide-left">
             ${renderPerspectiveToggle()}
             <div>
               <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
-              <div class="chip-row">${typeChips}</div>
+              <div class="chip-row pt-two">${typeChips}</div>
               ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
                 ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
                 : 'Add your pitches in Profile to start charting.'}</p>
               <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
             </div>
             ${renderDeliveryToggle(true)}
-            <div class="hint-msg">${state.hint}</div>
           </div>
           <div class="wide-right">
             <div class="gridwrap">
               <div class="zone-wrap">
                 ${gridStepNow ? renderGameFieldGrid() : renderZoneGrid(pitches, true, state.flashCell, null, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
-                <div class="zone-caption">${zoneCaption}</div>
+                <div class="zone-caption">${renderWideCaption(zoneCaption)}</div>
               </div>
             </div>
           </div>
-        </div>
-        <div class="wide-bottom">
-          ${renderTimeToPlateBtn()}
-          <button class="btn btn-ghost" onclick="undoLastGameAction()">Undo last action</button>
-          <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
-          <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
+          <div class="wide-bl">${renderTimeToPlateBtn()}</div>
+          <div class="wide-br">
+            <button class="btn btn-ghost" onclick="undoLastGameAction()">Undo last action</button>
+            <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
+            <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
+          </div>
         </div>
       </div>
       <div class="panel log-panel">
@@ -7466,13 +7470,20 @@ function updatePitchStripArrows(){
    as big as the right column allows -- leaving room for the batter
    silhouette on both sides, so the grid never moves when the batter flips --
    but never so tall its bottom (plus caption and 24px) leaves the viewport,
-   and never over 560px. Joel, Oct 1 (r6b): the batter is 90% of the grid's
-   height (was 112%) so the grid gets the width; it no longer rises above the
-   grid. Live Game's Time / Undo / New batter / New inning share one row
-   under both columns (.wide-bottom), counted in the height budget.
+   and never over 560px. Joel, Oct 1 (r6b/r6c): the batter is 80% of the
+   grid's height (was 112%) so the grid gets the width; it no longer rises
+   above the grid. Live Game: pitch types two to a row, a narrower left
+   column, and a bottom row -- Time under the left column, Undo / New batter
+   / New inning centered under the grid -- counted in the height budget.
    If the column is too narrow for 44px cells with the full-size silhouette,
    the grid keeps 44px cells and the silhouette shrinks to fit. Phones never
    get .wide-right (their own layout, G1b-r5). Display only. */
+// Joel, Oct 1 (r6c): no hint line under the left column on iPad/laptop --
+// a hint ("Select a pitch type first", etc.) takes the grid caption's line
+// instead, so a tap that does nothing still says why.
+function renderWideCaption(caption){
+  return state.hint ? `<span class="wide-hint">${escHtml(state.hint)}</span>` : caption;
+}
 function isWideSession(){ return window.matchMedia('(min-width:861px)').matches; }
 // Rotating an iPad crosses 860px without any tap: re-render so the session
 // switches between the stacked and two-column markup.
@@ -7488,13 +7499,14 @@ function sizeWideGrid(){
   if(!right || !isWideSession()) return;
   const wrap = right.querySelector('.zone-wrap');
   if(!wrap) return;
-  const A = 167 / 504, H0 = 0.9, MIN = 238, CAP = 560;    // MIN = 5 x 44px cells + gaps; H0 = batter height / grid
+  const A = 167 / 504, H0 = 0.8, MIN = 238, CAP = 560;    // MIN = 5 x 44px cells + gaps; H0 = batter height / grid
   const colW = wrap.clientWidth;
   const cap = wrap.querySelector('.zone-caption');
   const capH = cap ? cap.offsetHeight + 10 : 0;            // + .zone-wrap's gap
   const top = right.getBoundingClientRect().top + (window.pageYOffset || 0);
   const cols = right.closest('.wide-cols');
-  const below = cols && cols.nextElementSibling && cols.nextElementSibling.classList.contains('wide-bottom') ? cols.nextElementSibling.offsetHeight + 18 : 0;   // Live Game's Time / Undo row + panel gap
+  const br = cols && cols.querySelector('.wide-br');
+  const below = br ? br.offsetHeight + 16 : 0;   // Live Game's Undo / New batter / New inning row + row gap
   const room = window.innerHeight - top - capH - below - 24;
   let h = H0;
   let side = Math.min(CAP, (colW - 12) / (1 + 2 * A * H0), room / Math.max(1, H0));
@@ -7723,7 +7735,7 @@ function renderSessionView(){
             </div>
             <div>
               <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
-              <div class="chip-row">${typeChips}</div>
+              <div class="chip-row pt-two">${typeChips}</div>
               ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
                 ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
                 : 'Add your pitches in Profile to start charting.'}</p>
@@ -7731,12 +7743,11 @@ function renderSessionView(){
             </div>
             ${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}
             ${renderBatterModeToggle()}
-            <div class="hint-msg">${state.hint}</div>
           </div>
           <div class="wide-right">
             <div class="zone-wrap">
               <div class="batter-frame${isNoBatter(state.activeSession) ? ' no-batter' : ''}" style="display:contents;">${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}</div>
-              <div class="zone-caption">${zoneCaption}</div>${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
+              <div class="zone-caption">${renderWideCaption(zoneCaption)}</div>${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
             </div>
             ${sessionUsesRadarGun(state.activeSession) ? `<div>
               <div class="field-label" style="margin-bottom:8px;">Velocity</div>

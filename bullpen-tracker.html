@@ -1318,6 +1318,7 @@ let state = {
   rosterDotSeen: {},          // pitcherId -> ms this viewer last had his History on screen
   rosterDotsReady: false,     // no dots until both maps have come from the server (or this device's cache)
   historySeenBefore: {},      // pitcherId -> the seen time before this visit cleared it (marks new History rows)
+  historyRowsOpened: {},      // sessionId -> true once expanded: its row dot is gone
   // G1: game-mode equivalents of pendingTarget/veloTargetIdx above -- same
   // "not part of the saved draft" precedent (an uncommitted tap is an
   // acceptable small loss if the app dies mid-tap, same as a bullpen's
@@ -1931,10 +1932,10 @@ function noteHistoryOnScreen(){
   queueRosterSeen(pid, at);
 }
 // The pitcher's own History rows: a dot on each session newer than his
-// last look, for the rest of this visit.
+// last look, until he expands that session (Joel, Sept 30) or reloads.
 function isNewHistoryRow(s){
   const pid = state.currentPitcherId;
-  if(isCoach() || !(pid in state.historySeenBefore)) return false;
+  if(isCoach() || !(pid in state.historySeenBefore) || state.historyRowsOpened[s.id]) return false;
   const t = s.endedAt || (s.pending ? s.date : 0);
   return !!t && t > state.historySeenBefore[pid];
 }
@@ -4080,6 +4081,7 @@ window.setView = function(v){
 };
 window.toggleSessionExpand = function(id){
   state.expandedSessionId = state.expandedSessionId === id ? null : id;
+  if(state.expandedSessionId) state.historyRowsOpened[state.expandedSessionId] = true;   // U10 (3): opening a session clears its row dot
   clearDeleteState();
   render();
 };

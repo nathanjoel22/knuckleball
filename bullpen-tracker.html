@@ -240,9 +240,11 @@
   .roster-item-num{ font-family:'Teko',sans-serif; font-size:20px; color:var(--ink-faint); flex-shrink:0; }
   /* U10 (3) revised: the roster red dot -- sits in the item's left padding,
      so names never shift when a dot comes or goes. */
-  .roster-item{ position:relative; }
+  /* Joel, Sept 30: more room between the dot and the name -- every item
+     gets the wider left padding, dot or not, so names stay lined up. */
+  .roster-item{ position:relative; padding-left:22px; }
   .roster-dot{
-    position:absolute; left:2px; top:50%; margin-top:-4px;
+    position:absolute; left:6px; top:50%; margin-top:-4px;
     width:8px; height:8px; border-radius:50%; background:var(--red);
   }
   .roster-dot-count{

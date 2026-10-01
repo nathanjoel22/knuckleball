@@ -239,15 +239,25 @@
     // connection), let the sign-in through: the app themes from the profile.
     let chosen = null;
     try{ chosen = localStorage.getItem('kb:sport'); }catch(e){}
-    if((chosen === 'baseball' || chosen === 'softball') && data && data.user){
-      const { data: prof } = await supabaseClient.from('profiles').select('sport').eq('id', data.user.id).maybeSingle();
-      if(prof && prof.sport && prof.sport !== chosen){
-        await supabaseClient.auth.signOut();
+    // ...and the Pitcher / Coach side must be the account's role (Joel,
+    // Oct 1): a pitcher account can't sign in on the Coach page, or the reverse.
+    const wantRole = (role === 'coach' || role === 'pitcher') ? role : null;
+    if(((chosen === 'baseball' || chosen === 'softball') || wantRole) && data && data.user){
+      const { data: prof } = await supabaseClient.from('profiles').select('sport, role').eq('id', data.user.id).maybeSingle();
+      let problem = null;
+      if(prof && prof.sport && (chosen === 'baseball' || chosen === 'softball') && prof.sport !== chosen){
         const name = prof.sport === 'softball' ? 'Softball' : 'Baseball';
-        errorEl.textContent = 'This is a ' + prof.sport + ' account. Go back and choose ' + name + '. ';
+        problem = { text: 'This is a ' + prof.sport + ' account. Go back and choose ' + name + '. ', href: 'index.html?choose=1', link: '‹ Back to the sport choice' };
+      } else if(prof && prof.role && wantRole && prof.role !== wantRole){
+        const name = prof.role === 'coach' ? 'Coach' : 'Pitcher';
+        problem = { text: 'This is a ' + prof.role + ' account. Use the ' + name + ' sign-in instead. ', href: 'login.html?role=' + prof.role + '&sport=' + (prof.sport || chosen || 'baseball'), link: name + ' sign-in ›' };
+      }
+      if(problem){
+        await supabaseClient.auth.signOut();
+        errorEl.textContent = problem.text;
         const back = document.createElement('a');
-        back.href = 'index.html?choose=1';
-        back.textContent = '‹ Back to the sport choice';
+        back.href = problem.href;
+        back.textContent = problem.link;
         back.style.color = 'inherit';
         errorEl.appendChild(back);
         submitBtn.disabled = false;

@@ -35,9 +35,25 @@ labels. Reports and history always render the catcher's view, labeled as such.
 Stored coordinates stay catcher-frame, always — this protocol changes nothing about
 storage.
 
+## Sports: baseball and softball (Track S — S1 + S2, Joel, Oct 1 2026)
+
+- Every profile, team and session has a `sport` ('baseball' | 'softball'), derived by SECURITY DEFINER triggers (`20261001000000_s1_sport.sql`). Cross-sport team joins are refused; a team's or session's sport never changes; a profile's sport can't change once it has a team or sessions. Sign-in checks the account's sport and role; every login/sign-up link carries `?sport=`. The landing page always opens on "Which sport?".
+- Client: `SPORTS` config in the tracker (catalog, palette, velo range, `hasDelivery`, `hasTimeToPlate`, `hasLeaderboard`, `hasLiveGame`) + `applySport()`; theme via `html[data-sport]` CSS variables set before paint. Softball: blue/pink theme, no leaderboard, no Set/Windup, no time to home.
+- **Softball Live Game (S2):** same as baseball except no delivery (`pitches.delivery` null) and no ⏱. Own fastpitch field (`GG_FIELD_SVG_SOFTBALL`: all-dirt infield, pitcher's circle low in column 3 / row 4, bases spaced so none sits on a grid line). Softball's + More has **Illegal pitch** instead of Balk: runners up one base AND a ball added (ball 4 = walk), saved as the existing `balk` + `auto_ball` game_events rows (flagged `illegalPitch`/`illegalPitchBall` in the draft so the log shows one line and one Undo removes both) — no new event type.
+- Reports: `SPORT_PALETTE_HEX` + `useSportPalette()` in `send-session-report/helpers.ts`; the softball theme swap (`themedCss`) is applied to the WHOLE report (CSS and drawn charts) for both pen and game reports. Baseball reports must stay byte-identical. Softball game at-bats show side only, no delivery.
+
+## Session layouts (Joel, Oct 1 2026 — G1b-r5 / G1b-r6)
+
+- **Phones (≤500px, `isPhoneWidth`, `phoneSessionMode`)**: one session header (‹ team · photo · name · #num · offline dot · 9-dot sheet with perspective / opponent / End session & save / Discard), Set-Windup as one flip button, swipeable grid-square pitch chips in their own colors, grid capped at 340px.
+- **iPad portrait (501–860px)**: the stacked layout, deliberately unchanged (Joel chose "option B").
+- **iPad landscape / laptop (>860px, `isWideSession`)**: two columns for pen and Live Game — left: perspective, pitch types (never more than two per row), delivery (pen: + batter, pitch counter beside the perspective chips); right: the grid, sized by `sizeWideGrid()` to fit the viewport (cap 560, min 44px cells, batter silhouette 80% of grid height with room on both sides so the grid never moves). Live Game: ⏱ bottom-left, Undo / New batter / New inning centered under the grid. Hints show on the grid's caption line. Rotating across 860px re-renders.
+- Discard session sits beside End session & save on every non-phone width (same confirm and `discardActiveSession` as the phone sheet).
+- Pitch labels display in capitals everywhere; stored names are unchanged.
+- Live Game state: Set/Windup defaults from the bases, velocity "Reset", in-grid ADV Runners (SB / On Last Play) are live. The G1b-r4 tap redesign was deleted; Joel will bring a new Live Game packet.
+
 ## What this is
 
-Knuckleball (knuckleballonline.com) is a bullpen session tracking app for pitching coaches and pitchers: two-tap pitch charting on a 5×5 zone grid (target vs. actual), pitch types, velocity, heat maps, accuracy percentages (including a "relative accuracy" mode), trend charts, and an emailed link to a frozen HTML session report. Charting typically happens on an **iPhone/iPad, often with no wifi** — never assume network availability in the tracker flow.
+Knuckleball (knuckleballonline.com) is a bullpen and live-game tracking app for baseball and softball pitching coaches and pitchers: two-tap pitch charting on a 5×5 zone grid (target vs. actual), pitch types, velocity, heat maps, accuracy percentages (including a "relative accuracy" mode), trend charts, and an emailed link to a frozen HTML session report. Charting typically happens on an **iPhone/iPad, often with no wifi** — never assume network availability in the tracker flow.
 
 **Operator context that changes how you work:** the owner (Joel) is a solo, part-time developer, newer to the terminal, on a Mac. Prefer copy-paste one-liners, explain what commands do, and never assume a CI system, a second environment, or another human reviewer exists unless DEPLOY.md says so. Current scale: 1–3 teams. Bias every decision toward simple and operable over scalable.
 
@@ -105,7 +121,7 @@ Function secrets live in Supabase (`supabase secrets list`): `SUPABASE_URL`, `SU
 1. **RLS recursion** (see above) — the pair `teams` ↔ `pitcher_teams`.
 2. **Missing foreign keys** once broke coach roster display (PostgREST embedding needs real FKs). When adding tables/columns, add the FKs.
 3. **Profile-creation timing:** the profile row is created after email confirmation, with delay. Never assume a profile exists immediately after signup; handle its absence.
-4. **`TYPE_PALETTE` sync:** the pitch-type color palette is duplicated in the tracker page and in `send-session-report/index.ts` (`TYPE_PALETTE_HEX`) and must match exactly, in order. Change both or neither.
+4. **Palette sync:** the pitch-type color palettes (one per sport) are duplicated in the tracker page (`SPORTS[sport].palette`) and in `send-session-report/helpers.ts` (`SPORT_PALETTE_HEX`; `TYPE_PALETTE_HEX` is the baseball list) and must match exactly, in order. Change both or neither.
 5. **Client-computed reports:** the underlying pitches/history in the report payload are still client-supplied, not recomputed authoritatively from the database — accepted limitation, don't "fix" it in passing. This changed as of U4b in one way: the RENDERED report itself is now stored (`sessions.report_path`, the frozen file in the `reports` bucket) and deliberately never regenerated once set — every resend reuses the exact same file, so a later payload drift (e.g. new history) can't silently change a report someone already has the link to.
 6. **Supabase default auth SMTP has tiny rate limits.** Bulk invites can silently fail mid-batch unless custom SMTP is configured (task P1-04 / SETUP.md).
 7. **Free-tier Supabase projects pause when inactive** — relevant off-season. Check project status before diagnosing "the database is down".

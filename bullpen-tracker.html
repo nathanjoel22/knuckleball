@@ -7138,6 +7138,19 @@ const GG_FIELD_SVG = `<svg class="gg-fieldart" viewBox="0 0 336 200" preserveAsp
 <polygon points="163.0,180 173.0,180 173.0,184 168.0,189 163.0,184" fill="#fff" style="stroke:var(--gg-line)" stroke-width="1"/>
 <line x1="168.0" y1="184" x2="0" y2="16.0" stroke="#fff" stroke-width="2"/><line x1="168.0" y1="184" x2="336" y2="16.0" stroke="#fff" stroke-width="2"/>
 </svg>`;
+// S2 (Joel, Oct 1): softball's own field -- a fastpitch infield is all dirt
+// (no grass inside the bases, no mound): the same outline, bases and foul
+// lines as GG_FIELD_SVG, with the pitcher's circle (8 ft, drawn in chalk)
+// and rubber at 43 ft instead of a mound. Display only.
+const GG_FIELD_SVG_SOFTBALL = `<svg class="gg-fieldart" viewBox="0 0 336 200" preserveAspectRatio="none" aria-hidden="true" style="grid-row:3/6;grid-column:1/6;">
+<rect width="336" height="200" style="fill:var(--gg-grass)"/>
+<path d="M168.0,190 L56.0,78.0 A118.4,118.4 0 0 1 280.0,78.0 Z" style="fill:var(--gg-dirt)"/>
+<circle cx="168.0" cy="135.8" r="9" fill="none" stroke="#fff" stroke-width="1.5"/>
+<rect x="164.5" y="134.6" width="7" height="2.4" fill="#fff"/>
+<g fill="#fff" style="stroke:var(--gg-line)" stroke-width="1"><rect x="210.5104" y="131.4896" width="10" height="10" transform="rotate(45 215.5104 136.4896)"/><rect x="163.0" y="83.9792" width="10" height="10" transform="rotate(45 168.0 88.9792)"/><rect x="115.4896" y="131.4896" width="10" height="10" transform="rotate(45 120.4896 136.4896)"/></g>
+<polygon points="163.0,180 173.0,180 173.0,184 168.0,189 163.0,184" fill="#fff" style="stroke:var(--gg-line)" stroke-width="1"/>
+<line x1="168.0" y1="184" x2="0" y2="16.0" stroke="#fff" stroke-width="2"/><line x1="168.0" y1="184" x2="336" y2="16.0" stroke="#fff" stroke-width="2"/>
+</svg>`;
 function renderGameFieldGrid(){
   const step = gridStep();
   // Rows 1-2 (behind the boxes): light grass. Rows 3-5: transparent cells
@@ -7145,7 +7158,7 @@ function renderGameFieldGrid(){
   // own color, so the field reads as one drawing seen through a grid. Cells
   // are placed explicitly so the field can share their tracks. No onclick:
   // the field never takes a tap.
-  let cells = GG_FIELD_SVG;
+  let cells = currentSport() === 'softball' ? GG_FIELD_SVG_SOFTBALL : GG_FIELD_SVG;
   for(let r = 0; r < 5; r++){
     for(let c = 0; c < 5; c++){
       cells += `<div class="zone-cell gg-cell ${r <= 1 ? 'gg-grass' : 'gg-clear'}" style="grid-row:${r + 1};grid-column:${c + 1};"></div>`;

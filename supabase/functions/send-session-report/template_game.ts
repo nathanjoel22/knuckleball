@@ -6,7 +6,7 @@
 // game-only stylesheet addition below, so the two reports read as one
 // product (content spec: "Same theme and typography as the pen report").
 // ============================================================================
-import { escapeHtml, safeNum, colorForType, timesToHomeLine } from './helpers.ts'
+import { escapeHtml, safeNum, colorForType, timesToHomeLine, asSport, type Sport } from './helpers.ts'
 import { ZONE_NAMES } from './helpers.ts'
 import { drawGrid, drawLegend, drawLineChart, drawGridByResult, drawResultLegend, resultCategoryOf, drawTypeGrids } from './svg.ts'
 import { CSS as PEN_CSS } from './template.ts'
@@ -35,6 +35,8 @@ export interface GameSummary {
 }
 
 export interface GameReportPayload {
+  // S1: from the SESSION ROW (index.ts), never from the client's payload.
+  sport?: Sport
   sessionId: string
   pitcherId: string
   pitcherName: string
@@ -437,13 +439,13 @@ function renderAtBatLog(p: GameReportPayload): string {
 }
 
 // ---------- 13. Footer ----------
-function renderFooter(): string {
+function renderFooter(p: GameReportPayload): string {
   return `
   <footer class="report-footer">
     <p>Numbers and patterns only -- this report doesn't grade or compare to a benchmark. That's a conversation between a pitcher and his coach.</p>
     <p>A strike is: called strike, swinging strike, foul, any ball in play, sac bunt/fly, dropped third. A ball is: ball, HBP. Interference and "other" count toward pitches but neither bucket.</p>
     <p>Grids are always drawn catcher's view, looking out toward the mound.</p>
-    <p><span class="brand-mark small">KNUCKLEBALL<span class="brand-dot">.</span></span> &middot; <a href="https://knuckleballonline.com/">knuckleballonline.com</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+    <p><span class="brand-mark small">KNUCKLEBALL<span class="brand-dot">.</span></span> &middot; <a href="https://knuckleballonline.com/login.html?sport=${asSport(p.sport)}">knuckleballonline.com</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </footer>`
 }
 
@@ -478,7 +480,7 @@ ${renderVelocity(p)}
 ${renderRecentPens(p)}
 ${renderGameTrends(p)}
 ${renderAtBatLog(p)}
-${renderFooter()}
+${renderFooter(p)}
 </div>
 </body>
 </html>`

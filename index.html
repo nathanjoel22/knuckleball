@@ -28,6 +28,23 @@
     } catch(e){ /* storage blocked / bad JSON -> just show this page */ }
   })();
 </script>
+<script>
+  // S1: the remembered sport themes this page before first paint.
+  (function(){
+    var sp = 'baseball';
+    try{
+      var q = new URLSearchParams(location.search).get('sport');
+      if(q === 'baseball' || q === 'softball') localStorage.setItem('kb:sport', q);
+      if(localStorage.getItem('kb:sport') === 'softball') sp = 'softball';
+      var known = localStorage.getItem('kb:sport') === 'baseball' || localStorage.getItem('kb:sport') === 'softball';
+      // Joel, Oct 1: Which sport? is a white page with one card per sport in
+      // that sport's colors; only once a sport is picked does the page take on
+      // its scheme.
+      if(!known || new URLSearchParams(location.search).get('choose') === '1') document.documentElement.setAttribute('data-stage', 'sport');
+    }catch(e){ document.documentElement.setAttribute('data-stage', 'sport'); }
+    document.documentElement.setAttribute('data-sport', sp);
+  })();
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -43,14 +60,30 @@
     --amber-bright:#F5C365;
     --border:rgba(241,236,221,0.12);
     --border-strong:rgba(241,236,221,0.22);
+    --glow-a:rgba(232,168,61,0.08);
+    --glow-b:rgba(193,122,69,0.08);
+  }
+  /* S1: softball (docs/softball-theme-reference.html) -- slate blue, baby
+     blue panels, pink accent. Only variables change. */
+  html[data-sport="softball"]{
+    --field-dark:#234B6E;
+    --field-panel:#2B5A82;
+    --field-panel-2:#336896;
+    --chalk-dim:#C4D3E0;
+    --chalk-faint:#9FB5C9;
+    --amber:#F2A7C3;
+    --amber-bright:#F7C3D7;
+    --glow-a:rgba(242,167,195,0.10);
+    --glow-b:rgba(127,184,224,0.10);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;}
   body{
     background:var(--field-dark);
     background-image:
-      radial-gradient(circle at 15% 0%, rgba(232,168,61,0.08), transparent 40%),
-      radial-gradient(circle at 85% 100%, rgba(193,122,69,0.08), transparent 45%);
+      radial-gradient(circle at 15% 0%, var(--glow-a), transparent 40%),
+      radial-gradient(circle at 85% 100%, var(--glow-b), transparent 45%);
+    transition:background-color 250ms ease-out;
     color:var(--chalk);
     font-family:'IBM Plex Sans', sans-serif;
     min-height:100vh;
@@ -97,10 +130,41 @@
     display:flex; align-items:center; justify-content:center;
   }
   .option-card:hover .option-icon{ border-color:var(--amber); }
-  .option-icon svg{ width:26px; height:26px; }
+  .option-icon svg{ width:26px; height:26px; color:var(--amber); }
   .option-title{ font-family:'Teko',sans-serif; font-size:30px; font-weight:600; }
   .option-desc{ font-size:13px; color:var(--chalk-faint); line-height:1.5; }
 
+  /* Joel, Oct 1: the Which sport? stage -- white page; each card wears its
+     sport's own scheme (baseball green + yellow, softball slate blue + pink).
+     These are the two sports' identity colors, shown side by side, so they're
+     fixed here rather than theme variables. */
+  html[data-stage="sport"] body{ background-color:#FFFFFF; background-image:none; color:#17261D; }
+  html[data-stage="sport"] .brand h1{ color:#0F241B; }
+  html[data-stage="sport"] .tagline,
+  html[data-stage="sport"] .foot{ color:#5C6F63; }
+  html[data-stage="sport"] #frame-sport h2.display{ color:#0F241B; }
+  .option-card.sport-bb{ background:#183527; border-color:rgba(241,236,221,0.22); color:#F1ECDD; }
+  .option-card.sport-bb:hover{ background:#1F4230; border-color:#E8A83D; }
+  .option-card.sport-bb .option-icon{ background:#0F241B; border-color:rgba(241,236,221,0.22); }
+  .option-card.sport-bb:hover .option-icon{ border-color:#E8A83D; }
+  .option-card.sport-bb .option-desc{ color:#B7C2B4; }
+  .option-card.sport-sb{ background:#2B5A82; border-color:rgba(241,236,221,0.22); color:#F1ECDD; }
+  .option-card.sport-sb:hover{ background:#336896; border-color:#F2A7C3; }
+  .option-card.sport-sb .option-icon{ background:#234B6E; border-color:rgba(241,236,221,0.22); }
+  .option-card.sport-sb:hover .option-icon{ border-color:#F2A7C3; }
+  .option-card.sport-sb .option-desc{ color:#C4D3E0; }
+  /* S1: two frames -- sport, then role. The sport frame slides out left as
+     the role frame slides in from the right (250 ms); reduced motion (the
+     rule above) makes it an instant swap. */
+  .stage{ position:relative; width:100%; display:grid; overflow:hidden; padding:6px 0 10px; }
+  .frame{ grid-area:1 / 1; display:flex; flex-direction:column; align-items:center; gap:28px;
+    transition:transform 250ms ease-out, opacity 250ms ease-out; }
+  .frame.off-left{ transform:translateX(-100%); opacity:0; pointer-events:none; }
+  .frame.off-right{ transform:translateX(100%); opacity:0; pointer-events:none; }
+  .back-link{ align-self:flex-start; background:none; border:0; color:var(--chalk); font:inherit;
+    font-size:15px; font-weight:700; cursor:pointer; padding:8px 2px; letter-spacing:0.01em; }
+  .back-link:hover{ color:var(--amber-bright); }
+  .option-icon svg.ball{ width:34px; height:34px; }
   .foot{ font-size:11px; color:var(--chalk-faint); letter-spacing:0.06em; text-transform:uppercase; }
 </style>
 </head>
@@ -111,35 +175,95 @@
       <span class="tagline">Always a Step Ahead</span>
     </div>
 
-    <div>
-      <h2 class="display">Who are you?</h2>
-    </div>
-
+    <div class="stage">
+    <div class="frame" id="frame-sport">
+    <h2 class="display">Which sport?</h2>
     <div class="options">
-      <a class="option-card" href="login.html?role=pitcher">
+      <a class="option-card sport-bb" href="#" onclick="chooseSport('baseball');return false;">
+        <div class="option-icon"><svg class="ball" viewBox="0 0 32 32" aria-hidden="true">
+          <circle cx="16" cy="16" r="13" fill="#F4F1E8" stroke="#3a3a3a" stroke-width="1.2"/>
+          <path d="M9 6.5c3 3 3 16 0 19M23 6.5c-3 3-3 16 0 19" fill="none" stroke="#C0453B" stroke-width="1.4" stroke-dasharray="2 1.6"/>
+        </svg></div>
+        <div class="option-title">Baseball</div>
+        <div class="option-desc">Charting for pitchers and coaches.</div>
+      </a>
+      <a class="option-card sport-sb" href="#" onclick="chooseSport('softball');return false;">
+        <div class="option-icon"><svg class="ball" viewBox="0 0 32 32" aria-hidden="true">
+          <circle cx="16" cy="16" r="13" fill="#F6E85B" stroke="#C9A227" stroke-width="1.2"/>
+          <path d="M9 6.5c3 3 3 16 0 19M23 6.5c-3 3-3 16 0 19" fill="none" stroke="#C0453B" stroke-width="1.4" stroke-dasharray="2 1.6"/>
+        </svg></div>
+        <div class="option-title">Softball</div>
+        <div class="option-desc">Charting for pitchers and coaches.</div>
+      </a>
+    </div>
+    </div>
+    <div class="frame off-right" id="frame-role">
+    <button type="button" class="back-link" onclick="backToSport()">‹ Baseball / Softball</button>
+    <h2 class="display" id="role-title">Who are you?</h2>
+    <div class="options">
+      <a class="option-card" data-role="pitcher" href="login.html?role=pitcher&sport=baseball">
         <div class="option-icon">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="12" cy="12" r="9" stroke="#E8A83D" stroke-width="1.6"/>
-            <path d="M7 9.5c1.5 1.5 2.5 2 5 2s3.5-.5 5-2M7 14.5c1.5-1.5 2.5-2 5-2s3.5.5 5 2" stroke="#E8A83D" stroke-width="1.3" stroke-linecap="round"/>
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M7 9.5c1.5 1.5 2.5 2 5 2s3.5-.5 5-2M7 14.5c1.5-1.5 2.5-2 5-2s3.5.5 5 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
           </svg>
         </div>
         <div class="option-title">Pitcher</div>
         <div class="option-desc">Track your own bullpen sessions — pitch types, velocity, and location.</div>
       </a>
 
-      <a class="option-card" href="login.html?role=coach">
+      <a class="option-card" data-role="coach" href="login.html?role=coach&sport=baseball">
         <div class="option-icon">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 3l7 3v5c0 4.5-2.9 7.9-7 10-4.1-2.1-7-5.5-7-10V6l7-3z" stroke="#E8A83D" stroke-width="1.5" stroke-linejoin="round"/>
-            <path d="M9 12l2 2 4-4" stroke="#E8A83D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 3l7 3v5c0 4.5-2.9 7.9-7 10-4.1-2.1-7-5.5-7-10V6l7-3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
         <div class="option-title">Coach</div>
         <div class="option-desc">Manage your roster and review every pitcher's session history.</div>
       </a>
     </div>
+    </div>
+    </div>
 
     <div class="foot">Knuckleball · Session Log</div>
   </div>
+<script>
+  // S1: Baseball / Softball first, then Pitcher / Coach. The choice is kept
+  // on this device (kb:sport) -- coach signup reads it, and a returning
+  // visitor lands straight on Pitcher / Coach in their sport's theme.
+  function setSport(sp){
+    document.documentElement.setAttribute('data-sport', sp);
+    try{ localStorage.setItem('kb:sport', sp); }catch(e){}
+    document.getElementById('role-title').textContent = sp === 'softball' ? 'Softball' : 'Baseball';
+    // Pitcher / Coach go to THIS sport's sign-in.
+    document.querySelectorAll('#frame-role a.option-card').forEach(function(a){
+      a.setAttribute('href', 'login.html?role=' + a.getAttribute('data-role') + '&sport=' + sp);
+    });
+  }
+  function chooseSport(sp){
+    setSport(sp);
+    document.documentElement.removeAttribute('data-stage');
+    document.getElementById('frame-sport').className = 'frame off-left';
+    document.getElementById('frame-role').className = 'frame';
+  }
+  function backToSport(){
+    document.documentElement.setAttribute('data-stage', 'sport');
+    document.getElementById('frame-sport').className = 'frame';
+    document.getElementById('frame-role').className = 'frame off-right';
+  }
+  (function(){
+    var sp = null;
+    var choose = false;
+    try{ sp = localStorage.getItem('kb:sport'); choose = new URLSearchParams(location.search).get('choose') === '1'; }catch(e){}
+    // ?choose=1 (every sign-in page's Back) always shows Which sport? first.
+    if(!choose && (sp === 'baseball' || sp === 'softball')){
+      setSport(sp);
+      document.documentElement.removeAttribute('data-stage');
+      document.getElementById('frame-sport').className = 'frame off-left';
+      document.getElementById('frame-role').className = 'frame';
+    }
+  })();
+</script>
 </body>
 </html>

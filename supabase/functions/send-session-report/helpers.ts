@@ -5,6 +5,38 @@
 // ============================================================================
 
 export const TYPE_PALETTE_HEX = ['#E8A83D', '#6FA287', '#C17A45', '#C0453B', '#7C9CBF', '#B98CCB', '#D4C15B', '#4FA8A8']
+// S1 (Track S): each sport's 8 pitch colors, by position in the pitcher's
+// own list -- must match SPORTS[sport].palette in bullpen-tracker.html, in
+// order. TYPE_PALETTE_HEX above stays the baseball list.
+export const SPORT_PALETTE_HEX: Record<string, string[]> = {
+  baseball: TYPE_PALETTE_HEX,
+  softball: ['#E27BA2', '#7FB8E0', '#6C5B7B', '#F6B26B', '#4FA3A5', '#9B8ADB', '#B36B5E', '#8C8C8C']
+}
+export type Sport = 'baseball' | 'softball'
+export function asSport(v: unknown): Sport { return v === 'softball' ? 'softball' : 'baseball' }
+// One report is built in one synchronous pass, so the session's palette is
+// set once (index.ts, right before rendering) and every colorForType call in
+// that pass reads it -- no other request can interleave.
+let activePalette: string[] = TYPE_PALETTE_HEX
+export function useSportPalette(sport: Sport): void { activePalette = SPORT_PALETTE_HEX[sport] ?? TYPE_PALETTE_HEX }
+// S1: the softball report theme = the baseball CSS with its THEME colors
+// swapped (docs/softball-theme-reference.html). A baseball report's CSS is
+// the untouched original text, byte for byte.
+const SOFTBALL_THEME_SWAP: [string, string][] = [
+  ['#0F241B', '#234B6E'],   // dark anchor
+  ['#E8F3EC', '#EAF4FB'],   // panel
+  ['#CFE6D7', '#BFDCEF'],   // border
+  ['#2E4A40', '#3A5A78'],   // secondary text
+  ['#527065', '#5F7A91'],   // tertiary text
+  ['#5B6B61', '#5F7A91'],
+  ['#F7FAF8', '#F7FAFD'],   // page
+  ['#B7C2B4', '#BCCBD8'],   // light text on the dark header
+  ['#E8A83D', '#F2A7C3']    // accent (only ever on the dark header)
+]
+export function themedCss(css: string, sport: Sport): string {
+  if (sport !== 'softball') return css
+  return SOFTBALL_THEME_SWAP.reduce((out, [from, to]) => out.split(from).join(to), css)
+}
 
 // Lockstep with is_default_velo_reading() in
 // supabase/migrations/20260921090000_u8_team_leaderboard.sql and
@@ -81,5 +113,5 @@ export const ZONE_NAMES: Record<number, string> = {
 
 export function colorForType(type: string, allTypes: string[]): string {
   const idx = allTypes.indexOf(type)
-  return TYPE_PALETTE_HEX[idx >= 0 ? idx % TYPE_PALETTE_HEX.length : 0]
+  return activePalette[idx >= 0 ? idx % activePalette.length : 0]
 }

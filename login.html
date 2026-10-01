@@ -37,6 +37,24 @@
     });
   }
 </script>
+<script>
+  // S1: theme before first paint. A ?sport= on the URL wins (every link to
+  // sign-in / signup carries one) and is remembered; otherwise this device's
+  // remembered choice. Join pages re-theme from the team's sport.
+  (function(){
+    var sp = null;
+    try{
+      var q = new URLSearchParams(location.search).get('sport');
+      if(q === 'baseball' || q === 'softball'){ sp = q; localStorage.setItem('kb:sport', q); }
+      else sp = localStorage.getItem('kb:sport');
+    }catch(e){}
+    window.KB_SPORT_KNOWN = (sp === 'baseball' || sp === 'softball');
+    // Sign-in is always one sport's (Joel, Oct 1). Sport unknown -> choose it first.
+    if(!window.KB_SPORT_KNOWN){ location.replace('index.html?choose=1'); return; }
+    window.KB_SPORT = sp === 'softball' ? 'softball' : 'baseball';
+    document.documentElement.setAttribute('data-sport', window.KB_SPORT);
+  })();
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -53,14 +71,30 @@
     --red:#C0453B;
     --border:rgba(241,236,221,0.12);
     --border-strong:rgba(241,236,221,0.22);
+    --glow-a:rgba(232,168,61,0.08);
+    --glow-b:rgba(193,122,69,0.08);
+    --amber-rgb:232,168,61;
+  }
+  /* S1: softball (docs/softball-theme-reference.html). Only variables change. */
+  html[data-sport="softball"]{
+    --field-dark:#234B6E;
+    --field-panel:#2B5A82;
+    --field-panel-2:#336896;
+    --chalk-dim:#C4D3E0;
+    --chalk-faint:#9FB5C9;
+    --amber:#F2A7C3;
+    --amber-bright:#F7C3D7;
+    --amber-rgb:242,167,195;
+    --glow-a:rgba(242,167,195,0.10);
+    --glow-b:rgba(127,184,224,0.10);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;}
   body{
     background:var(--field-dark);
     background-image:
-      radial-gradient(circle at 15% 0%, rgba(232,168,61,0.08), transparent 40%),
-      radial-gradient(circle at 85% 100%, rgba(193,122,69,0.08), transparent 45%);
+      radial-gradient(circle at 15% 0%, var(--glow-a), transparent 40%),
+      radial-gradient(circle at 85% 100%, var(--glow-b), transparent 45%);
     color:var(--chalk);
     font-family:'IBM Plex Sans', sans-serif;
     min-height:100vh;
@@ -95,8 +129,8 @@
     align-self:flex-start;
     font-size:11px; text-transform:uppercase; letter-spacing:0.1em;
     color:var(--amber-bright);
-    background:rgba(232,168,61,0.12);
-    border:1px solid rgba(232,168,61,0.3);
+    background:rgba(var(--amber-rgb),0.12);
+    border:1px solid rgba(var(--amber-rgb),0.3);
     padding:4px 10px; border-radius:20px;
   }
 
@@ -152,7 +186,7 @@
     <button type="submit" class="btn-primary" id="submit-btn">Log in</button>
 
     <div class="foot-row">
-      <a href="index.html">&larr; Back</a>
+      <a href="index.html?choose=1">&larr; Back</a>
       <a href="coach-signup.html">New coach? Create an account</a>
     </div>
   </form>
@@ -162,8 +196,10 @@
   const params = new URLSearchParams(window.location.search);
   const role = params.get('role');
   const roleTag = document.getElementById('role-tag');
-  if(role === 'coach'){ roleTag.textContent = 'Coach sign in'; }
-  else if(role === 'pitcher'){ roleTag.textContent = 'Pitcher sign in'; }
+  const sportName = (window.KB_SPORT === 'softball') ? 'Softball' : 'Baseball';
+  if(role === 'coach'){ roleTag.textContent = sportName + ' · Coach sign in'; }
+  else if(role === 'pitcher'){ roleTag.textContent = sportName + ' · Pitcher sign in'; }
+  else { roleTag.textContent = sportName + ' sign in'; }
 
   const form = document.getElementById('login-form');
   const errorEl = document.getElementById('error-msg');
@@ -196,8 +232,51 @@
       return;
     }
 
+    // S1 (Joel, Oct 1): the sport picked on the landing page must be the
+    // account's sport. A baseball account can't be signed into from the
+    // softball side (or the reverse) -- sign straight back out and say which
+    // side it belongs to. If the profile can't be read (none yet, or no
+    // connection), let the sign-in through: the app themes from the profile.
+    let chosen = null;
+    try{ chosen = localStorage.getItem('kb:sport'); }catch(e){}
+    // ...and the Pitcher / Coach side must be the account's role (Joel,
+    // Oct 1): a pitcher account can't sign in on the Coach page, or the reverse.
+    const wantRole = (role === 'coach' || role === 'pitcher') ? role : null;
+    if(((chosen === 'baseball' || chosen === 'softball') || wantRole) && data && data.user){
+      const { data: prof } = await supabaseClient.from('profiles').select('sport, role').eq('id', data.user.id).maybeSingle();
+      let problem = null;
+      if(prof && prof.sport && (chosen === 'baseball' || chosen === 'softball') && prof.sport !== chosen){
+        const name = prof.sport === 'softball' ? 'Softball' : 'Baseball';
+        problem = { text: 'This is a ' + prof.sport + ' account. Go back and choose ' + name + '. ', href: 'index.html?choose=1', link: '‹ Back to the sport choice' };
+      } else if(prof && prof.role && wantRole && prof.role !== wantRole){
+        const name = prof.role === 'coach' ? 'Coach' : 'Pitcher';
+        problem = { text: 'This is a ' + prof.role + ' account. Use the ' + name + ' sign-in instead. ', href: 'login.html?role=' + prof.role + '&sport=' + (prof.sport || chosen || 'baseball'), link: name + ' sign-in ›' };
+      }
+      if(problem){
+        await supabaseClient.auth.signOut();
+        errorEl.textContent = problem.text;
+        const back = document.createElement('a');
+        back.href = problem.href;
+        back.textContent = problem.link;
+        back.style.color = 'inherit';
+        errorEl.appendChild(back);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Log in';
+        return;
+      }
+    }
+
     window.location.href = 'bullpen-tracker.html';
   });
+</script>
+<script>
+  // S1: every link to sign-in or signup goes to THIS sport's page.
+  (function(){
+    var sp = window.KB_SPORT || 'baseball';
+    document.querySelectorAll('a[href="login.html"], a[href="coach-signup.html"]').forEach(function(a){
+      a.setAttribute('href', a.getAttribute('href') + '?sport=' + sp);
+    });
+  })();
 </script>
 </body>
 </html>

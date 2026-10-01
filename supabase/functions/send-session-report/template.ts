@@ -5,7 +5,7 @@
 // trusted. Nothing here reads a database -- it operates purely on the payload
 // object it's given.
 // ============================================================================
-import { escapeHtml, safeNum, colorForType, TYPE_PALETTE_HEX, isStrikeCell, timesToHomeLine } from './helpers.ts'
+import { escapeHtml, safeNum, colorForType, TYPE_PALETTE_HEX, isStrikeCell, timesToHomeLine, themedCss, asSport, type Sport } from './helpers.ts'
 import { drawGrid, drawLegend, drawLineChart, drawTypeGrids } from './svg.ts'
 import {
   computeSummary, computeCommandDetail, computePerSideBlock, computeExcludedNullSide,
@@ -13,6 +13,8 @@ import {
 } from './compute.ts'
 
 export interface ReportPayload {
+  // S1: from the SESSION ROW (index.ts), never from the client's payload.
+  sport?: Sport
   sessionId: string
   pitcherId: string
   pitcherName: string
@@ -27,7 +29,8 @@ export interface ReportPayload {
   history: HistoryEntry[]
 }
 
-const SIGNUP_URL = 'https://knuckleballonline.com/'
+// S1 (Joel, Oct 1): the footer link goes to THIS sport's sign-in page.
+const signInUrl = (sport: Sport) => `https://knuckleballonline.com/login.html?sport=${sport}`
 
 function fmtVelo(v: number | null): string {
   return v === null ? '—' : String(Math.round(v)) + ' mph'
@@ -250,8 +253,8 @@ function renderWorkload(p: ReportPayload): string {
     <h2>Workload and pitch mix</h2>
     <div class="table-scroll"><table class="data-table"><thead><tr><th>Type</th><th>Count</th><th>Usage</th></tr></thead><tbody>${rows}</tbody></table></div>
     ${compare}
-    ${deliverySplitLine(p)}
-    ${timesToHomeLine(p.pitches)}
+    ${asSport(p.sport) === 'softball' ? '' : deliverySplitLine(p)}
+    ${asSport(p.sport) === 'softball' ? '' : timesToHomeLine(p.pitches)}
   </section>`
 }
 // U11 (6): Windup / Set split, only when a pen used both.
@@ -306,12 +309,12 @@ function renderTrends(p: ReportPayload): string {
 }
 
 // ---------- 9. Footer ----------
-function renderFooter(): string {
+function renderFooter(p: ReportPayload): string {
   return `
   <footer class="report-footer">
     <p>Numbers and patterns only -- this report doesn't grade or compare to a benchmark. That's a conversation between a pitcher and his coach.</p>
     <p>Grids are always drawn catcher's view, looking out toward the mound.</p>
-    <p><span class="brand-mark small">KNUCKLEBALL<span class="brand-dot">.</span></span> &middot; <a href="${SIGNUP_URL}">knuckleballonline.com</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+    <p><span class="brand-mark small">KNUCKLEBALL<span class="brand-dot">.</span></span> &middot; <a href="${signInUrl(asSport(p.sport))}">knuckleballonline.com</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </footer>`
 }
 
@@ -393,7 +396,7 @@ export function buildReportHtml(p: ReportPayload): string {
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
-<style>${CSS}</style>
+<style>${themedCss(CSS, asSport(p.sport))}</style>
 </head>
 <body>
 <div class="page">
@@ -406,7 +409,7 @@ ${renderPerSideBlocks(p)}
 ${renderVelocityDepth(p)}
 ${renderWorkload(p)}
 ${renderTrends(p)}
-${renderFooter()}
+${renderFooter(p)}
 </div>
 </body>
 </html>`

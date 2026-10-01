@@ -603,6 +603,15 @@ begin
     raise exception 'invalid window';
   end if;
 
+  -- S1 (Joel, Oct 1): softball has no leaderboard, ever. An empty board
+  -- even if a stale client asks; the tab itself is hidden for softball.
+  if (select t.sport from public.teams t where t.id = p_team_id) = 'softball' then
+    return jsonb_build_object(
+      'window', p_window, 'minimum', v_min, 'is_coach', v_is_coach, 'generated_at', now(),
+      'velocity', '[]'::jsonb, 'accuracy', '[]'::jsonb, 'strike', '[]'::jsonb,
+      'disabled', 'softball');
+  end if;
+
   with members as (
     select pt.pitcher_id, pr.full_name, pt.uniform_number
       from public.pitcher_teams pt
@@ -1064,22 +1073,22 @@ $$;
 ALTER FUNCTION "public"."rename_team"("p_team_id" "uuid", "p_name" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."resolve_coach_invite"("p_token" "text") RETURNS TABLE("team_id" "uuid", "team_name" "text")
+CREATE OR REPLACE FUNCTION "public"."resolve_coach_invite"("p_token" "text") RETURNS TABLE("team_id" "uuid", "team_name" "text", "team_sport" "text")
     LANGUAGE "sql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select id, name from public.teams where coach_invite_token = p_token;
+  select id, name, sport from public.teams where coach_invite_token = p_token;
 $$;
 
 
 ALTER FUNCTION "public"."resolve_coach_invite"("p_token" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."resolve_team_invite"("p_token" "text") RETURNS TABLE("team_id" "uuid", "team_name" "text")
+CREATE OR REPLACE FUNCTION "public"."resolve_team_invite"("p_token" "text") RETURNS TABLE("team_id" "uuid", "team_name" "text", "team_sport" "text")
     LANGUAGE "sql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select id, name from public.teams where invite_token = p_token;
+  select id, name, sport from public.teams where invite_token = p_token;
 $$;
 
 
@@ -1132,6 +1141,123 @@ $$;
 
 
 ALTER FUNCTION "public"."rotate_team_invite"("p_team_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."s1_membership_sport"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_member      uuid;
+  v_member_sport text;
+  v_team_sport  text;
+begin
+  if tg_table_name = 'pitcher_teams' then
+    v_member := new.pitcher_id;
+  else
+    v_member := new.coach_id;
+  end if;
+  select t.sport into v_team_sport from public.teams t where t.id = new.team_id;
+  select p.sport into v_member_sport from public.profiles p where p.id = v_member;
+  if v_team_sport is distinct from v_member_sport then
+    raise exception 'sport_mismatch'
+      using detail = format('This is a %s team; this account is %s.', coalesce(v_team_sport, 'unknown'), coalesce(v_member_sport, 'unknown'));
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."s1_membership_sport"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."s1_profiles_sport"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_intended text;
+begin
+  if tg_op = 'INSERT' then
+    new.account_id := coalesce(new.account_id, new.id);
+    if new.sport is null then
+      select nullif(u.raw_user_meta_data ->> 'intended_sport', '') into v_intended
+        from auth.users u where u.id = new.id;
+      new.sport := case when v_intended in ('baseball', 'softball') then v_intended else 'baseball' end;
+    end if;
+    return new;
+  end if;
+  if new.sport is distinct from old.sport and (
+       exists (select 1 from public.sessions s where s.pitcher_id = old.id)
+    or exists (select 1 from public.pitcher_teams pt where pt.pitcher_id = old.id)
+    or exists (select 1 from public.team_coaches tc where tc.coach_id = old.id)) then
+    raise exception 'sport_locked'
+      using detail = 'This profile already has sessions or a team, so its sport can''t change.';
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."s1_profiles_sport"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."s1_sessions_sport"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_pitcher_sport text;
+begin
+  if tg_op = 'UPDATE' then
+    if new.sport is distinct from old.sport then
+      raise exception 'sport_locked' using detail = 'A session''s sport can''t change.';
+    end if;
+    return new;
+  end if;
+  select p.sport into v_pitcher_sport from public.profiles p where p.id = new.pitcher_id;
+  v_pitcher_sport := coalesce(v_pitcher_sport, 'baseball');
+  if new.sport is null then
+    new.sport := v_pitcher_sport;
+  elsif new.sport <> v_pitcher_sport then
+    raise exception 'sport_mismatch'
+      using detail = format('This pitcher is %s; a %s session can''t be saved for them.', v_pitcher_sport, new.sport);
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."s1_sessions_sport"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."s1_teams_sport"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_coach_sport text;
+begin
+  if tg_op = 'INSERT' then
+    select p.sport into v_coach_sport from public.profiles p where p.id = new.coach_id;
+    v_coach_sport := coalesce(v_coach_sport, 'baseball');
+    if new.sport is null then
+      new.sport := v_coach_sport;
+    elsif new.sport <> v_coach_sport then
+      raise exception 'sport_mismatch'
+        using detail = format('A %s coach can''t create a %s team.', v_coach_sport, new.sport);
+    end if;
+    return new;
+  end if;
+  if new.sport is distinct from old.sport then
+    raise exception 'sport_locked' using detail = 'A team''s sport can''t change.';
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."s1_teams_sport"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."session_dots_since"() RETURNS timestamp with time zone
@@ -1474,8 +1600,11 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "uses_radar_gun" boolean DEFAULT true NOT NULL,
     "setup_dismissed_at" timestamp with time zone,
     "headshot_updated_at" timestamp with time zone,
+    "sport" "text" NOT NULL,
+    "account_id" "uuid" NOT NULL,
     CONSTRAINT "profiles_full_name_not_blank" CHECK (("btrim"("full_name") <> ''::"text")),
     CONSTRAINT "profiles_role_check" CHECK (("role" = ANY (ARRAY['coach'::"text", 'pitcher'::"text"]))),
+    CONSTRAINT "profiles_sport_check" CHECK (("sport" = ANY (ARRAY['baseball'::"text", 'softball'::"text"]))),
     CONSTRAINT "profiles_throws_check" CHECK (("throws" = ANY (ARRAY['L'::"text", 'R'::"text"])))
 );
 
@@ -1523,6 +1652,14 @@ COMMENT ON COLUMN "public"."profiles"."setup_dismissed_at" IS 'When this pitcher
 
 
 COMMENT ON COLUMN "public"."profiles"."headshot_updated_at" IS 'U10 (8): when the player last uploaded his headshot (storage bucket headshots, object {id}.jpg); NULL = no photo. Written only by the player himself.';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."sport" IS 'S1: baseball | softball. One sport per profile, ever (S3 adds a second profile, never a second sport). Set at signup from intended_sport; locked once the profile has a session or a team.';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."account_id" IS 'S1 (for S3): the login that owns this profile. = id for every profile until S3 adds child / second-sport profiles.';
 
 
 
@@ -1574,11 +1711,13 @@ CREATE TABLE IF NOT EXISTS "public"."sessions" (
     "opponent" "text",
     "game_final_inning" smallint,
     "game_outs_recorded" smallint,
+    "sport" "text" NOT NULL,
     CONSTRAINT "sessions_charting_perspective_check" CHECK (("charting_perspective" = ANY (ARRAY['behind_catcher'::"text", 'behind_pitcher'::"text"]))),
     CONSTRAINT "sessions_deletion_check" CHECK ((("deleted_at" IS NULL) OR (("deleted_by" IS NOT NULL) AND ("deleted_by_role" = ANY (ARRAY['pitcher'::"text", 'coach'::"text"])) AND ("pitch_count" IS NOT NULL) AND ("pitch_count" >= 0)))),
     CONSTRAINT "sessions_game_fields_check" CHECK (((("kind" = 'bullpen'::"text") AND ("opponent" IS NULL) AND ("game_final_inning" IS NULL) AND ("game_outs_recorded" IS NULL)) OR ("kind" = 'game'::"text"))),
     CONSTRAINT "sessions_kind_check" CHECK (("kind" = ANY (ARRAY['bullpen'::"text", 'game'::"text"]))),
-    CONSTRAINT "sessions_opponent_length" CHECK ((("opponent" IS NULL) OR ("char_length"("opponent") <= 60)))
+    CONSTRAINT "sessions_opponent_length" CHECK ((("opponent" IS NULL) OR ("char_length"("opponent") <= 60))),
+    CONSTRAINT "sessions_sport_check" CHECK (("sport" = ANY (ARRAY['baseball'::"text", 'softball'::"text"])))
 );
 
 
@@ -1622,6 +1761,10 @@ COMMENT ON COLUMN "public"."sessions"."game_outs_recorded" IS 'The tracker''s ow
 
 
 
+COMMENT ON COLUMN "public"."sessions"."sport" IS 'S1: the pitcher''s sport, set by trigger; never from the client.';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."team_coaches" (
     "team_id" "uuid" NOT NULL,
     "coach_id" "uuid" NOT NULL,
@@ -1653,7 +1796,9 @@ CREATE TABLE IF NOT EXISTS "public"."teams" (
     "invite_token" "text" NOT NULL,
     "invite_token_rotated_at" timestamp with time zone,
     "coach_invite_token" "text" NOT NULL,
-    "coach_invite_token_rotated_at" timestamp with time zone
+    "coach_invite_token_rotated_at" timestamp with time zone,
+    "sport" "text" NOT NULL,
+    CONSTRAINT "teams_sport_check" CHECK (("sport" = ANY (ARRAY['baseball'::"text", 'softball'::"text"])))
 );
 
 
@@ -1677,6 +1822,10 @@ COMMENT ON COLUMN "public"."teams"."coach_invite_token" IS 'R6: same shape/trust
    the credential, rotating invalidates the old link instantly. A separate
    token (not the pitcher one) because resolving it must reject a pitcher
    and land the visitor on the coach signup/accept path instead.';
+
+
+
+COMMENT ON COLUMN "public"."teams"."sport" IS 'S1: the creating coach''s sport; never changes. Members must match (sport_mismatch).';
 
 
 
@@ -1755,6 +1904,10 @@ ALTER TABLE ONLY "public"."teams"
 
 
 
+CREATE INDEX "profiles_account_id_idx" ON "public"."profiles" USING "btree" ("account_id");
+
+
+
 CREATE UNIQUE INDEX "team_coaches_one_head_per_team" ON "public"."team_coaches" USING "btree" ("team_id") WHERE ("role" = 'head'::"text");
 
 
@@ -1764,6 +1917,26 @@ CREATE OR REPLACE TRIGGER "accuracy_zones_stamp" BEFORE INSERT OR UPDATE ON "pub
 
 
 CREATE OR REPLACE TRIGGER "leaderboard_exclusions_stamp" BEFORE INSERT ON "public"."leaderboard_exclusions" FOR EACH ROW EXECUTE FUNCTION "public"."leaderboard_exclusions_stamp"();
+
+
+
+CREATE OR REPLACE TRIGGER "pitcher_teams_s1_sport" BEFORE INSERT OR UPDATE ON "public"."pitcher_teams" FOR EACH ROW EXECUTE FUNCTION "public"."s1_membership_sport"();
+
+
+
+CREATE OR REPLACE TRIGGER "profiles_s1_sport" BEFORE INSERT OR UPDATE ON "public"."profiles" FOR EACH ROW EXECUTE FUNCTION "public"."s1_profiles_sport"();
+
+
+
+CREATE OR REPLACE TRIGGER "sessions_s1_sport" BEFORE INSERT OR UPDATE ON "public"."sessions" FOR EACH ROW EXECUTE FUNCTION "public"."s1_sessions_sport"();
+
+
+
+CREATE OR REPLACE TRIGGER "team_coaches_s1_sport" BEFORE INSERT OR UPDATE ON "public"."team_coaches" FOR EACH ROW EXECUTE FUNCTION "public"."s1_membership_sport"();
+
+
+
+CREATE OR REPLACE TRIGGER "teams_s1_sport" BEFORE INSERT OR UPDATE ON "public"."teams" FOR EACH ROW EXECUTE FUNCTION "public"."s1_teams_sport"();
 
 
 
@@ -1828,6 +2001,11 @@ ALTER TABLE ONLY "public"."pitcher_teams"
 
 ALTER TABLE ONLY "public"."pitches"
     ADD CONSTRAINT "pitches_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."sessions"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_account_id_fkey" FOREIGN KEY ("account_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 
@@ -2334,6 +2512,26 @@ GRANT ALL ON FUNCTION "public"."rotate_coach_invite"("p_team_id" "uuid") TO "ser
 REVOKE ALL ON FUNCTION "public"."rotate_team_invite"("p_team_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rotate_team_invite"("p_team_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rotate_team_invite"("p_team_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."s1_membership_sport"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."s1_membership_sport"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."s1_profiles_sport"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."s1_profiles_sport"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."s1_sessions_sport"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."s1_sessions_sport"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."s1_teams_sport"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."s1_teams_sport"() TO "service_role";
 
 
 

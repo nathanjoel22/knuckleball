@@ -481,30 +481,6 @@ $$;
 ALTER FUNCTION "public"."generate_email_verify_token"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_coach_notices"() RETURNS TABLE("session_id" "uuid", "player_name" "text", "kind" "text", "ended_at" timestamp with time zone)
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-  select s.id, pr.full_name, s.kind, s.ended_at
-    from public.sessions s
-    join public.pitcher_teams pt on pt.team_id = s.team_id and pt.pitcher_id = s.pitcher_id
-    join public.profiles pr on pr.id = s.pitcher_id
-   where public.is_team_coach(s.team_id)
-     and s.ended_at > now() - interval '7 days'
-     and s.deleted_at is null
-     and s.logged_by is distinct from auth.uid()
-     and s.started_at >= pt.joined_at
-     and not exists (
-       select 1 from public.coach_notice_seen n
-        where n.coach_id = auth.uid() and n.session_id = s.id
-     )
-   order by s.ended_at desc;
-$$;
-
-
-ALTER FUNCTION "public"."get_coach_notices"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."get_removal_notice_info"("p_pitcher_id" "uuid", "p_team_id" "uuid") RETURNS TABLE("email" "text", "team_name" "text")
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -530,6 +506,24 @@ $$;
 
 
 ALTER FUNCTION "public"."get_removal_notice_info"("p_pitcher_id" "uuid", "p_team_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_roster_latest"("p_team_id" "uuid") RETURNS TABLE("pitcher_id" "uuid", "latest_ended_at" timestamp with time zone)
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select s.pitcher_id, max(s.ended_at)
+    from public.sessions s
+    join public.pitcher_teams pt on pt.team_id = s.team_id and pt.pitcher_id = s.pitcher_id
+   where s.team_id = p_team_id
+     and s.deleted_at is null
+     and s.ended_at is not null
+     and s.started_at >= pt.joined_at
+   group by s.pitcher_id;
+$$;
+
+
+ALTER FUNCTION "public"."get_roster_latest"("p_team_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_roster_verification"("p_team_id" "uuid") RETURNS TABLE("pitcher_id" "uuid", "email" "text", "email_confirmed" boolean)
@@ -711,6 +705,32 @@ $$;
 
 
 ALTER FUNCTION "public"."get_team_leaderboard"("p_team_id" "uuid", "p_window" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_unopened_sessions"("p_team_id" "uuid") RETURNS TABLE("session_id" "uuid", "pitcher_id" "uuid")
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select s.id, s.pitcher_id
+    from public.sessions s
+    join public.pitcher_teams pt on pt.team_id = s.team_id and pt.pitcher_id = s.pitcher_id
+   where s.team_id = p_team_id
+     and s.deleted_at is null
+     and s.ended_at is not null
+     and s.started_at >= pt.joined_at
+     and s.ended_at > public.session_dots_since()
+     and s.ended_at > coalesce(
+           (select tc.joined_at from public.team_coaches tc
+             where tc.team_id = p_team_id and tc.coach_id = auth.uid()),
+           '-infinity'::timestamptz)
+     and not exists (
+       select 1 from public.session_opened o
+        where o.viewer_id = auth.uid() and o.session_id = s.id
+     );
+$$;
+
+
+ALTER FUNCTION "public"."get_unopened_sessions"("p_team_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."hand_off_team_head"("p_team_id" "uuid", "p_new_head_id" "uuid") RETURNS "void"
@@ -1114,6 +1134,15 @@ $$;
 ALTER FUNCTION "public"."rotate_team_invite"("p_team_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."session_dots_since"() RETURNS timestamp with time zone
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$ select '2026-10-01 01:58:51.610017+00'::timestamptz $$;
+
+
+ALTER FUNCTION "public"."session_dots_since"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -1244,20 +1273,6 @@ CREATE TABLE IF NOT EXISTS "public"."accuracy_zones" (
 
 
 ALTER TABLE "public"."accuracy_zones" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."coach_notice_seen" (
-    "coach_id" "uuid" NOT NULL,
-    "session_id" "uuid" NOT NULL,
-    "seen_at" timestamp with time zone DEFAULT "now"() NOT NULL
-);
-
-
-ALTER TABLE "public"."coach_notice_seen" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."coach_notice_seen" IS 'U10 (3): which session notices each coach has already been shown. One row per (coach, session); written by the client the moment the notices render. Own rows only (RLS).';
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."game_events" (
@@ -1511,6 +1526,34 @@ COMMENT ON COLUMN "public"."profiles"."headshot_updated_at" IS 'U10 (8): when th
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."roster_seen" (
+    "viewer_id" "uuid" NOT NULL,
+    "pitcher_id" "uuid" NOT NULL,
+    "seen_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."roster_seen" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."roster_seen" IS 'U10 (3) revised: when each viewer (coach or the pitcher himself) last had this pitcher''s History on screen. The red dot shows when the pitcher''s latest session ended after seen_at, or there is no row. Own rows only (RLS).';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."session_opened" (
+    "viewer_id" "uuid" NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "opened_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."session_opened" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."session_opened" IS 'U10 (3): which sessions each viewer (coach or the pitcher himself) has tapped open in History. A session saved after launch with no row here for the viewer shows a red dot. Own rows only (RLS).';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."sessions" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "pitcher_id" "uuid" NOT NULL,
@@ -1642,11 +1685,6 @@ ALTER TABLE ONLY "public"."accuracy_zones"
 
 
 
-ALTER TABLE ONLY "public"."coach_notice_seen"
-    ADD CONSTRAINT "coach_notice_seen_pkey" PRIMARY KEY ("coach_id", "session_id");
-
-
-
 ALTER TABLE ONLY "public"."game_events"
     ADD CONSTRAINT "game_events_pkey" PRIMARY KEY ("id");
 
@@ -1679,6 +1717,16 @@ ALTER TABLE ONLY "public"."profiles"
 
 ALTER TABLE ONLY "public"."profiles"
     ADD CONSTRAINT "profiles_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."roster_seen"
+    ADD CONSTRAINT "roster_seen_pkey" PRIMARY KEY ("viewer_id", "pitcher_id");
+
+
+
+ALTER TABLE ONLY "public"."session_opened"
+    ADD CONSTRAINT "session_opened_pkey" PRIMARY KEY ("viewer_id", "session_id");
 
 
 
@@ -1730,16 +1778,6 @@ ALTER TABLE ONLY "public"."accuracy_zones"
 
 ALTER TABLE ONLY "public"."accuracy_zones"
     ADD CONSTRAINT "accuracy_zones_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."coach_notice_seen"
-    ADD CONSTRAINT "coach_notice_seen_coach_id_fkey" FOREIGN KEY ("coach_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."coach_notice_seen"
-    ADD CONSTRAINT "coach_notice_seen_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."sessions"("id") ON DELETE CASCADE;
 
 
 
@@ -1798,6 +1836,26 @@ ALTER TABLE ONLY "public"."profiles"
 
 
 
+ALTER TABLE ONLY "public"."roster_seen"
+    ADD CONSTRAINT "roster_seen_pitcher_id_fkey" FOREIGN KEY ("pitcher_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."roster_seen"
+    ADD CONSTRAINT "roster_seen_viewer_id_fkey" FOREIGN KEY ("viewer_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."session_opened"
+    ADD CONSTRAINT "session_opened_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."sessions"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."session_opened"
+    ADD CONSTRAINT "session_opened_viewer_id_fkey" FOREIGN KEY ("viewer_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."sessions"
     ADD CONSTRAINT "sessions_deleted_by_fkey" FOREIGN KEY ("deleted_by") REFERENCES "auth"."users"("id");
 
@@ -1842,10 +1900,6 @@ CREATE POLICY "Coach manages leaderboard exclusions for own team" ON "public"."l
 
 
 
-CREATE POLICY "Coaches insert own notice-seen rows" ON "public"."coach_notice_seen" FOR INSERT WITH CHECK (("coach_id" = "auth"."uid"()));
-
-
-
 CREATE POLICY "Coaches manage events for their team's sessions" ON "public"."game_events" USING ((EXISTS ( SELECT 1
    FROM "public"."sessions" "s"
   WHERE (("s"."id" = "game_events"."session_id") AND "public"."is_team_coach"("s"."team_id"))))) WITH CHECK ((EXISTS ( SELECT 1
@@ -1875,10 +1929,6 @@ CREATE POLICY "Coaches manage pitches for their team's sessions" ON "public"."pi
 
 
 CREATE POLICY "Coaches manage sessions for their team" ON "public"."sessions" USING ("public"."is_team_coach"("team_id")) WITH CHECK ("public"."is_team_coach"("team_id"));
-
-
-
-CREATE POLICY "Coaches read own notice-seen rows" ON "public"."coach_notice_seen" FOR SELECT USING (("coach_id" = "auth"."uid"()));
 
 
 
@@ -1982,10 +2032,27 @@ CREATE POLICY "Users view own profile" ON "public"."profiles" FOR SELECT USING (
 
 
 
+CREATE POLICY "Viewers insert own roster-seen rows" ON "public"."roster_seen" FOR INSERT WITH CHECK (("viewer_id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "Viewers insert own session-opened rows" ON "public"."session_opened" FOR INSERT WITH CHECK (("viewer_id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "Viewers read own roster-seen rows" ON "public"."roster_seen" FOR SELECT USING (("viewer_id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "Viewers read own session-opened rows" ON "public"."session_opened" FOR SELECT USING (("viewer_id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "Viewers update own roster-seen rows" ON "public"."roster_seen" FOR UPDATE USING (("viewer_id" = "auth"."uid"())) WITH CHECK (("viewer_id" = "auth"."uid"()));
+
+
+
 ALTER TABLE "public"."accuracy_zones" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."coach_notice_seen" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."game_events" ENABLE ROW LEVEL SECURITY;
@@ -2004,6 +2071,12 @@ ALTER TABLE "public"."pitches" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."roster_seen" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."session_opened" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."sessions" ENABLE ROW LEVEL SECURITY;
@@ -2099,15 +2172,15 @@ GRANT ALL ON FUNCTION "public"."generate_email_verify_token"() TO "service_role"
 
 
 
-REVOKE ALL ON FUNCTION "public"."get_coach_notices"() FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_coach_notices"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_coach_notices"() TO "service_role";
-
-
-
 REVOKE ALL ON FUNCTION "public"."get_removal_notice_info"("p_pitcher_id" "uuid", "p_team_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_removal_notice_info"("p_pitcher_id" "uuid", "p_team_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_removal_notice_info"("p_pitcher_id" "uuid", "p_team_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_roster_latest"("p_team_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_roster_latest"("p_team_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_roster_latest"("p_team_id" "uuid") TO "service_role";
 
 
 
@@ -2126,6 +2199,12 @@ GRANT ALL ON FUNCTION "public"."get_team_invite_links"("p_team_id" "uuid") TO "s
 REVOKE ALL ON FUNCTION "public"."get_team_leaderboard"("p_team_id" "uuid", "p_window" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_team_leaderboard"("p_team_id" "uuid", "p_window" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_team_leaderboard"("p_team_id" "uuid", "p_window" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_unopened_sessions"("p_team_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_unopened_sessions"("p_team_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_unopened_sessions"("p_team_id" "uuid") TO "service_role";
 
 
 
@@ -2258,6 +2337,12 @@ GRANT ALL ON FUNCTION "public"."rotate_team_invite"("p_team_id" "uuid") TO "serv
 
 
 
+GRANT ALL ON FUNCTION "public"."session_dots_since"() TO "anon";
+GRANT ALL ON FUNCTION "public"."session_dots_since"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."session_dots_since"() TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint) TO "service_role";
@@ -2285,11 +2370,6 @@ GRANT ALL ON FUNCTION "public"."verify_email"("p_token" "text") TO "service_role
 
 GRANT ALL ON TABLE "public"."accuracy_zones" TO "authenticated";
 GRANT ALL ON TABLE "public"."accuracy_zones" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."coach_notice_seen" TO "authenticated";
-GRANT ALL ON TABLE "public"."coach_notice_seen" TO "service_role";
 
 
 
@@ -2357,6 +2437,16 @@ GRANT UPDATE("setup_dismissed_at") ON TABLE "public"."profiles" TO "authenticate
 
 
 GRANT UPDATE("headshot_updated_at") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT ALL ON TABLE "public"."roster_seen" TO "authenticated";
+GRANT ALL ON TABLE "public"."roster_seen" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."session_opened" TO "authenticated";
+GRANT ALL ON TABLE "public"."session_opened" TO "service_role";
 
 
 

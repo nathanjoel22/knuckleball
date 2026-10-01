@@ -36,11 +36,11 @@
       var q = new URLSearchParams(location.search).get('sport');
       if(q === 'baseball' || q === 'softball') localStorage.setItem('kb:sport', q);
       if(localStorage.getItem('kb:sport') === 'softball') sp = 'softball';
-      var known = localStorage.getItem('kb:sport') === 'baseball' || localStorage.getItem('kb:sport') === 'softball';
-      // Joel, Oct 1: Which sport? is a white page with one card per sport in
-      // that sport's colors; only once a sport is picked does the page take on
-      // its scheme.
-      if(!known || new URLSearchParams(location.search).get('choose') === '1') document.documentElement.setAttribute('data-stage', 'sport');
+      // Joel, Oct 1: the landing page always opens on Which sport? (a white
+      // page, one card per sport in its colors) -- a refresh included. Only a
+      // link that names the sport (?sport=, e.g. a join page's Back) opens
+      // straight on that sport's Pitcher / Coach.
+      if(q !== 'baseball' && q !== 'softball') document.documentElement.setAttribute('data-stage', 'sport');
     }catch(e){ document.documentElement.setAttribute('data-stage', 'sport'); }
     document.documentElement.setAttribute('data-sport', sp);
   })();
@@ -289,11 +289,10 @@
     document.getElementById('frame-role').className = 'frame off-right';
   }
   (function(){
+    // Which sport? first, always -- unless the link itself names the sport.
     var sp = null;
-    var choose = false;
-    try{ sp = localStorage.getItem('kb:sport'); choose = new URLSearchParams(location.search).get('choose') === '1'; }catch(e){}
-    // ?choose=1 (every sign-in page's Back) always shows Which sport? first.
-    if(!choose && (sp === 'baseball' || sp === 'softball')){
+    try{ sp = new URLSearchParams(location.search).get('sport'); }catch(e){}
+    if(sp === 'baseball' || sp === 'softball'){
       setSport(sp);
       document.documentElement.removeAttribute('data-stage');
       document.getElementById('frame-sport').className = 'frame off-left';

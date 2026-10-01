@@ -7401,17 +7401,28 @@ function renderSessionHeader(p){
   const num = jerseyNumberOf(p);
   const last = String(p.name || '').trim().split(/\s+/).pop();
   return `<div class="sess-head">
-    <button type="button" class="sess-back" onclick="sessionLeave()" aria-label="Leave this session">‹ <span class="sess-team">${escHtml(team ? team.name : '')}</span></button>
+    <button type="button" class="sess-back" onclick="sessionLeave()" aria-label="Back to the roster (this session is kept)">‹ <span class="sess-team">${escHtml(team ? team.name : '')}</span></button>
     <span class="sess-who">${renderHeadshot(p)}<span class="sess-name">${escHtml(last)}</span>${(num === null || num === undefined) ? '' : `<span class="sess-num">#${escHtml(String(num))}</span>`}</span>
     ${isOnline() ? '' : '<span class="sess-offline" title="Offline -- saved on this device" aria-label="Offline, saved on this device"></span>'}
     <button type="button" class="sess-more" onclick="openSessionSheet()" aria-label="Session options"><span class="dots9" aria-hidden="true">${'<i></i>'.repeat(9)}</span></button>
   </div>`;
 }
-// ‹ : nothing recorded yet -> straight back to Bullpen / Live Game; otherwise
-// the same choice as always (End session & save, or Discard) in the sheet.
-window.sessionLeave = function(){
-  if(canGoBackToChooser()) return backToChooser();
-  openSessionSheet();
+// ‹ team (Joel, Oct 1): never the session sheet -- that box is only behind
+// the 9 dots. The session is kept exactly as it stands (it's already the
+// on-device draft; written once more here to be sure), the roster list opens,
+// and this pitcher's page shows "Unfinished session found -- Resume" (the
+// same prompt picking him again from the roster gives). Nothing recorded yet:
+// there's no draft to offer, so it lands on Bullpen / Live Game as before.
+window.sessionLeave = async function(){
+  const s = state.activeSession;
+  if(s && s.kind) await storSet(draftKey(), s);
+  ttpReset();
+  state.pendingTarget = null; state.veloTargetIdx = null; state.hint = '';
+  state.sessionSheetOpen = false; state.sessionDiscardArmed = false;
+  await refreshDraftState();
+  state.rosterCollapsed = false;
+  render();
+  try{ window.scrollTo(0, 0); }catch(e){}
 };
 window.openSessionSheet = function(){ state.sessionSheetOpen = true; state.sessionDiscardArmed = false; render(); };
 window.closeSessionSheet = function(){ state.sessionSheetOpen = false; state.sessionDiscardArmed = false; render(); };

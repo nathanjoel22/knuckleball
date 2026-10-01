@@ -1876,7 +1876,7 @@ async function init(){
     // Genuinely logged out (or a real rejection wiped storage). Signing in
     // needs the network anyway and there's no local charting state for an
     // unknown user. .replace() so Back doesn't land on a torn-down tracker.
-    window.location.replace('login.html');
+    window.location.replace(loginUrl());
     return;
   }
   state.session = session;
@@ -1936,11 +1936,11 @@ async function resolveOnline(alreadyPainted){
       // Genuine revocation. Any in-progress charting is already in the
       // localStorage draft, so nothing is lost by redirecting now.
       try{ await supabaseClient.auth.signOut(); }catch(e){}
-      window.location.replace('login.html');
+      window.location.replace(loginUrl());
       return;
     }
     if(alreadyPainted) return;
-    window.location.replace('login.html');
+    window.location.replace(loginUrl());
     return;
   }
   state.session = fresh;
@@ -1991,7 +1991,7 @@ async function loadFullContextOnline(alreadyPainted){
     if(alreadyPainted) return;   // keep the cached view rather than sign out mid-bullpen
     alert('Could not load your account profile. Please try logging in again, or contact support if this keeps happening.');
     await supabaseClient.auth.signOut();
-    window.location.href = 'login.html';
+    window.location.href = loginUrl();
     return;
   }
   state.profile = profile;
@@ -2485,7 +2485,10 @@ function readPersistedSessionRaw(){
 // offline, or a refresh that merely couldn't reach the server, which leaves
 // the stored session in place -- never bounces a charter.
 function isGenuineSignOut(){ return isOnline() && !readPersistedSessionRaw(); }
-function goToLoginAfterSignOut(){ window.location.replace('login.html'); }
+// S1: sign-in is per sport -- go back to the one this account (or, before
+// the profile loads, this page's theme) belongs to.
+function loginUrl(){ return 'login.html?sport=' + (document.documentElement.getAttribute('data-sport') === 'softball' ? 'softball' : 'baseball'); }
+function goToLoginAfterSignOut(){ window.location.replace(loginUrl()); }
 
 async function loadTeams(){
   if(isCoach()){
@@ -2536,7 +2539,7 @@ async function saveLastKnownContext(){
 
 window.signOut = async function(){
   try{ await supabaseClient.auth.signOut(); } catch(e){ console.error('Sign out error', e); }
-  window.location.href = 'login.html';
+  window.location.href = loginUrl();
 };
 
 /* ---------- TEAM / ROSTER ---------- */

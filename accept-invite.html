@@ -6,12 +6,19 @@
 <title>Accept invite · Knuckleball</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // S1: theme before first paint from this device's remembered sport
-  // (the landing page's choice); join pages re-theme from the team's sport.
+  // S1: theme before first paint. A ?sport= on the URL wins (every link to
+  // sign-in / signup carries one) and is remembered; otherwise this device's
+  // remembered choice. Join pages re-theme from the team's sport.
   (function(){
-    var sp = 'baseball';
-    try{ if(localStorage.getItem('kb:sport') === 'softball') sp = 'softball'; }catch(e){}
-    document.documentElement.setAttribute('data-sport', sp);
+    var sp = null;
+    try{
+      var q = new URLSearchParams(location.search).get('sport');
+      if(q === 'baseball' || q === 'softball'){ sp = q; localStorage.setItem('kb:sport', q); }
+      else sp = localStorage.getItem('kb:sport');
+    }catch(e){}
+    window.KB_SPORT_KNOWN = (sp === 'baseball' || sp === 'softball');
+    window.KB_SPORT = sp === 'softball' ? 'softball' : 'baseball';
+    document.documentElement.setAttribute('data-sport', window.KB_SPORT);
   })();
 </script>
 <style>
@@ -245,6 +252,15 @@
   });
 
   init();
+</script>
+<script>
+  // S1: every link to sign-in or signup goes to THIS sport's page.
+  (function(){
+    var sp = window.KB_SPORT || 'baseball';
+    document.querySelectorAll('a[href="login.html"], a[href="coach-signup.html"]').forEach(function(a){
+      a.setAttribute('href', a.getAttribute('href') + '?sport=' + sp);
+    });
+  })();
 </script>
 </body>
 </html>

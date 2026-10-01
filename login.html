@@ -38,12 +38,21 @@
   }
 </script>
 <script>
-  // S1: theme before first paint from this device's remembered sport
-  // (the landing page's choice); join pages re-theme from the team's sport.
+  // S1: theme before first paint. A ?sport= on the URL wins (every link to
+  // sign-in / signup carries one) and is remembered; otherwise this device's
+  // remembered choice. Join pages re-theme from the team's sport.
   (function(){
-    var sp = 'baseball';
-    try{ if(localStorage.getItem('kb:sport') === 'softball') sp = 'softball'; }catch(e){}
-    document.documentElement.setAttribute('data-sport', sp);
+    var sp = null;
+    try{
+      var q = new URLSearchParams(location.search).get('sport');
+      if(q === 'baseball' || q === 'softball'){ sp = q; localStorage.setItem('kb:sport', q); }
+      else sp = localStorage.getItem('kb:sport');
+    }catch(e){}
+    window.KB_SPORT_KNOWN = (sp === 'baseball' || sp === 'softball');
+    // Sign-in is always one sport's (Joel, Oct 1). Sport unknown -> choose it first.
+    if(!window.KB_SPORT_KNOWN){ location.replace('index.html?choose=1'); return; }
+    window.KB_SPORT = sp === 'softball' ? 'softball' : 'baseball';
+    document.documentElement.setAttribute('data-sport', window.KB_SPORT);
   })();
 </script>
 <style>
@@ -177,7 +186,7 @@
     <button type="submit" class="btn-primary" id="submit-btn">Log in</button>
 
     <div class="foot-row">
-      <a href="index.html">&larr; Back</a>
+      <a href="index.html?choose=1">&larr; Back</a>
       <a href="coach-signup.html">New coach? Create an account</a>
     </div>
   </form>
@@ -187,8 +196,10 @@
   const params = new URLSearchParams(window.location.search);
   const role = params.get('role');
   const roleTag = document.getElementById('role-tag');
-  if(role === 'coach'){ roleTag.textContent = 'Coach sign in'; }
-  else if(role === 'pitcher'){ roleTag.textContent = 'Pitcher sign in'; }
+  const sportName = (window.KB_SPORT === 'softball') ? 'Softball' : 'Baseball';
+  if(role === 'coach'){ roleTag.textContent = sportName + ' · Coach sign in'; }
+  else if(role === 'pitcher'){ roleTag.textContent = sportName + ' · Pitcher sign in'; }
+  else { roleTag.textContent = sportName + ' sign in'; }
 
   const form = document.getElementById('login-form');
   const errorEl = document.getElementById('error-msg');
@@ -235,7 +246,7 @@
         const name = prof.sport === 'softball' ? 'Softball' : 'Baseball';
         errorEl.textContent = 'This is a ' + prof.sport + ' account. Go back and choose ' + name + '. ';
         const back = document.createElement('a');
-        back.href = 'index.html';
+        back.href = 'index.html?choose=1';
         back.textContent = '‹ Back to the sport choice';
         back.style.color = 'inherit';
         errorEl.appendChild(back);
@@ -247,6 +258,15 @@
 
     window.location.href = 'bullpen-tracker.html';
   });
+</script>
+<script>
+  // S1: every link to sign-in or signup goes to THIS sport's page.
+  (function(){
+    var sp = window.KB_SPORT || 'baseball';
+    document.querySelectorAll('a[href="login.html"], a[href="coach-signup.html"]').forEach(function(a){
+      a.setAttribute('href', a.getAttribute('href') + '?sport=' + sp);
+    });
+  })();
 </script>
 </body>
 </html>

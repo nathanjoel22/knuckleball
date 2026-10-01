@@ -32,7 +32,11 @@
   // S1: the remembered sport themes this page before first paint.
   (function(){
     var sp = 'baseball';
-    try{ if(localStorage.getItem('kb:sport') === 'softball') sp = 'softball'; }catch(e){}
+    try{
+      var q = new URLSearchParams(location.search).get('sport');
+      if(q === 'baseball' || q === 'softball') localStorage.setItem('kb:sport', q);
+      if(localStorage.getItem('kb:sport') === 'softball') sp = 'softball';
+    }catch(e){}
     document.documentElement.setAttribute('data-sport', sp);
   })();
 </script>
@@ -173,7 +177,7 @@
     <button type="button" class="back-link" onclick="backToSport()">‹ Baseball / Softball</button>
     <h2 class="display" id="role-title">Who are you?</h2>
     <div class="options">
-      <a class="option-card" href="login.html?role=pitcher">
+      <a class="option-card" data-role="pitcher" href="login.html?role=pitcher&sport=baseball">
         <div class="option-icon">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/>
@@ -184,7 +188,7 @@
         <div class="option-desc">Track your own bullpen sessions — pitch types, velocity, and location.</div>
       </a>
 
-      <a class="option-card" href="login.html?role=coach">
+      <a class="option-card" data-role="coach" href="login.html?role=coach&sport=baseball">
         <div class="option-icon">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 3l7 3v5c0 4.5-2.9 7.9-7 10-4.1-2.1-7-5.5-7-10V6l7-3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
@@ -208,6 +212,10 @@
     document.documentElement.setAttribute('data-sport', sp);
     try{ localStorage.setItem('kb:sport', sp); }catch(e){}
     document.getElementById('role-title').textContent = sp === 'softball' ? 'Softball' : 'Baseball';
+    // Pitcher / Coach go to THIS sport's sign-in.
+    document.querySelectorAll('#frame-role a.option-card').forEach(function(a){
+      a.setAttribute('href', 'login.html?role=' + a.getAttribute('data-role') + '&sport=' + sp);
+    });
   }
   function chooseSport(sp){
     setSport(sp);
@@ -220,8 +228,10 @@
   }
   (function(){
     var sp = null;
-    try{ sp = localStorage.getItem('kb:sport'); }catch(e){}
-    if(sp === 'baseball' || sp === 'softball'){
+    var choose = false;
+    try{ sp = localStorage.getItem('kb:sport'); choose = new URLSearchParams(location.search).get('choose') === '1'; }catch(e){}
+    // ?choose=1 (every sign-in page's Back) always shows Which sport? first.
+    if(!choose && (sp === 'baseball' || sp === 'softball')){
       setSport(sp);
       document.getElementById('frame-sport').className = 'frame off-left';
       document.getElementById('frame-role').className = 'frame';

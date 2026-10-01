@@ -29,7 +29,8 @@ export interface ReportPayload {
   history: HistoryEntry[]
 }
 
-const SIGNUP_URL = 'https://knuckleballonline.com/'
+// S1 (Joel, Oct 1): the footer link goes to THIS sport's sign-in page.
+const signInUrl = (sport: Sport) => `https://knuckleballonline.com/login.html?sport=${sport}`
 
 function fmtVelo(v: number | null): string {
   return v === null ? '—' : String(Math.round(v)) + ' mph'
@@ -308,12 +309,12 @@ function renderTrends(p: ReportPayload): string {
 }
 
 // ---------- 9. Footer ----------
-function renderFooter(): string {
+function renderFooter(p: ReportPayload): string {
   return `
   <footer class="report-footer">
     <p>Numbers and patterns only -- this report doesn't grade or compare to a benchmark. That's a conversation between a pitcher and his coach.</p>
     <p>Grids are always drawn catcher's view, looking out toward the mound.</p>
-    <p><span class="brand-mark small">KNUCKLEBALL<span class="brand-dot">.</span></span> &middot; <a href="${SIGNUP_URL}">knuckleballonline.com</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+    <p><span class="brand-mark small">KNUCKLEBALL<span class="brand-dot">.</span></span> &middot; <a href="${signInUrl(asSport(p.sport))}">knuckleballonline.com</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </footer>`
 }
 
@@ -408,7 +409,7 @@ ${renderPerSideBlocks(p)}
 ${renderVelocityDepth(p)}
 ${renderWorkload(p)}
 ${renderTrends(p)}
-${renderFooter()}
+${renderFooter(p)}
 </div>
 </body>
 </html>`

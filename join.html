@@ -6,12 +6,19 @@
 <title>Join a team · Knuckleball</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // S1: theme before first paint from this device's remembered sport
-  // (the landing page's choice); join pages re-theme from the team's sport.
+  // S1: theme before first paint. A ?sport= on the URL wins (every link to
+  // sign-in / signup carries one) and is remembered; otherwise this device's
+  // remembered choice. Join pages re-theme from the team's sport.
   (function(){
-    var sp = 'baseball';
-    try{ if(localStorage.getItem('kb:sport') === 'softball') sp = 'softball'; }catch(e){}
-    document.documentElement.setAttribute('data-sport', sp);
+    var sp = null;
+    try{
+      var q = new URLSearchParams(location.search).get('sport');
+      if(q === 'baseball' || q === 'softball'){ sp = q; localStorage.setItem('kb:sport', q); }
+      else sp = localStorage.getItem('kb:sport');
+    }catch(e){}
+    window.KB_SPORT_KNOWN = (sp === 'baseball' || sp === 'softball');
+    window.KB_SPORT = sp === 'softball' ? 'softball' : 'baseball';
+    document.documentElement.setAttribute('data-sport', window.KB_SPORT);
   })();
 </script>
 <style>
@@ -197,6 +204,9 @@
   function applyTeamSport(sp){
     teamSport = sp === 'softball' ? 'softball' : 'baseball';
     document.documentElement.setAttribute('data-sport', teamSport);
+    // S1: this page's links lead to the team's sport.
+    document.querySelectorAll('a[href^="index.html"]').forEach(a => a.setAttribute('href', 'index.html?sport=' + teamSport));
+    document.querySelectorAll('a[href^="login.html"]').forEach(a => a.setAttribute('href', 'login.html?sport=' + teamSport));
   }
   // The database refuses a cross-sport join ('sport_mismatch'): say so plainly.
   function showSportMismatch(){

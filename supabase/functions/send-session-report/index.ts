@@ -290,6 +290,7 @@ Deno.serve(async (req) => {
       }
 
       const gamePayload: GameReportPayload = {
+        sport: asSport(session.sport),   // S1: the session row's sport
         sessionId: body.sessionId,
         pitcherId: body.pitcherId,
         pitcherName: body.pitcherName,

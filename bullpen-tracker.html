@@ -1306,6 +1306,8 @@
   .gg-velo .velo-arrow:disabled{ opacity:0.35; }
   .gg-velo .velo-help{ display:none; }
   .gg-velo .velo-cell{ min-height:44px; scroll-snap-align:center; }
+  .gg-adv .gg-big{ font-size:17px; }
+  @media (max-width:360px){ .gg-adv .gg-big{ font-size:14px; } }
   .gg-back{ font-size:13px; font-weight:800; white-space:nowrap; border-color:var(--gg-ink); }   /* dark outline, as in docs/field-option3-reference.html */
   @media (max-width:360px){ .gg-back{ font-size:12px; } }
   .gg-velo .velo-help{ display:none; }
@@ -4682,6 +4684,8 @@ window.handleGameZoneTap = async function(row, col){
   // by Back cancelling this location.
   state.activeSession.gameDot = { row, col };
   state.activeSession.gameVeloIdx = null;
+  state.activeSession.gridAdv = null;    // ADV runners: a fresh entry
+  state.activeSession.ggAdvIds = [];
   state.activeSession.gameResultMenu = null;
   state.activeSession.gamePendingOutcome = null;
   state.activeSession.gamePendingHitType = null;
@@ -6049,7 +6053,7 @@ window.nextPitch = async function(){
     s.panelOpen = false;
   }
   // G1b-r3: the entry is over -- back to the plain zone view.
-  if(!s.panelOpen){ s.gameDot = null; s.gameVeloIdx = null; }
+  if(!s.panelOpen){ s.gameDot = null; s.gameVeloIdx = null; s.gridAdv = null; s.ggAdvIds = []; }
   await storSet(draftKey(), s);
   render();
 };
@@ -6422,6 +6426,7 @@ function ggDpAvailable(){
 function gridStep(){
   const s = state.activeSession;
   if(!s || s.kind !== 'game' || !s.panelOpen) return null;
+  if(s.gridAdv) return 'adv';   // Joel, Oct 1: ADV runners (see ggAdvEnabled)
   if(!s.gamePendingPitch) return ggRadarOn() ? 'velo' : 'ready';   // a direct-record pitch is in
   const fp = s.fieldPlay;
   if(fp){
@@ -6451,7 +6456,7 @@ async function ggAfter(fn){
   const before = s.pitches.length;
   await fn();
   if(s.pitches.length > before){ s.gameVeloIdx = s.pitches.length - 1; s.panelOpen = true; }
-  if(!s.panelOpen){ s.gameDot = null; s.gameVeloIdx = null; }
+  if(!s.panelOpen){ s.gameDot = null; s.gameVeloIdx = null; s.gridAdv = null; s.ggAdvIds = []; }
   await ggSave();
 }
 window.gridGlyph = function(code){ return ggAfter(() => chooseScorebookGlyph(code)); };
@@ -6500,6 +6505,65 @@ window.gridFixRunners = async function(){
   await ggSave();
 };
 
+/* ---------- ADV RUNNERS (Joel, Oct 1) ----------
+   Bottom-right box (see ggAdvEnabled for when it's live). Runner -> base he
+   reached -> why: SB, or On Last Play. Recorded at once as a runner event
+   (stolen_base, or 'other' for On Last Play -- the game record has no
+   separate type for it, and reports don't list runner events), after the
+   pitch it happened on. During a ball in play the play itself is the why:
+   it sets where that runner ended up on the play (what "Fix runners" did)
+   and skips the reason. Back undoes one ADV step, or the last ADV move of
+   this entry. */
+window.gridAdvOpen = async function(){
+  const s = state.activeSession;
+  if(s.gridAdv){ s.gridAdv = null; return ggSave(); }   // tap again to close
+  if(!ggAdvEnabled()) return;
+  s.gridAdv = { step: 'runner', runner: null, dest: null };
+  return ggSave();
+};
+window.gridAdvRunner = async function(base){
+  const a = state.activeSession.gridAdv;
+  if(!a) return;
+  a.runner = base; a.step = 'dest';
+  return ggSave();
+};
+window.gridAdvDest = async function(dest){
+  const s = state.activeSession, a = s.gridAdv;
+  if(!a || !a.runner) return;
+  if(s.fieldPlay){ s.gridAdv = null; return setFieldEnding(a.runner, dest); }
+  a.dest = dest; a.step = 'reason';
+  return ggSave();
+};
+window.gridAdvReason = async function(reason){
+  const s = state.activeSession, a = s.gridAdv;
+  if(!a || !a.runner || !a.dest) return;
+  s.gridAdv = null;
+  const deliveryBefore = s.delivery;
+  s.adjustRunners = { step: 'reason', runner: a.runner, destination: a.dest };
+  const count = s.events.length;
+  await commitAdjustEvent(reason === 'sb' ? 'stolen_base' : 'other');
+  if(s.events.length === count) return ggSave();   // refused (e.g. base taken) -- nothing recorded
+  const ev = s.events[s.events.length - 1];
+  ev.deliveryBefore = deliveryBefore;               // client-only, for Back
+  (s.ggAdvIds = s.ggAdvIds || []).push(ev.id);
+  return ggSave();
+};
+// Undo the last ADV move made during this entry, keeping the grid open.
+function ggUndoAdvEvent(){
+  const s = state.activeSession;
+  const ids = s.ggAdvIds || [];
+  const last = s.events[s.events.length - 1];
+  const lastPitch = s.pitches[s.pitches.length - 1];
+  if(!ids.length || !last || last.id !== ids[ids.length - 1]) return false;
+  if(lastPitch && lastPitch.seq > last.seq) return false;
+  s.events.pop(); ids.pop();
+  s.inning = last.inningBefore; s.outs = last.outsBeforeCount;
+  s.balls = last.ballsBefore; s.strikes = last.strikesBefore; s.atBatIndex = last.atBatIndexBefore;
+  s.runners = runnersFromBitmask(last.runnersBefore);
+  if(last.deliveryBefore !== undefined) s.delivery = last.deliveryBefore;
+  return true;
+}
+
 // Back: one level per tap. At the first level it cancels the location tap
 // (nothing was created). On the velocity step after a direct-record result,
 // that pitch already exists, so Back undoes exactly it (decision A) and
@@ -6508,6 +6572,14 @@ window.gridBack = async function(){
   const s = state.activeSession;
   const step = gridStep();
   const fp = s.fieldPlay;
+  if(step === 'adv'){
+    const a = s.gridAdv;
+    if(a.step === 'reason'){ a.step = 'dest'; a.dest = null; }
+    else if(a.step === 'dest'){ a.step = 'runner'; a.runner = null; }
+    else s.gridAdv = null;
+    return ggSave();
+  }
+  if(ggUndoAdvEvent()) return ggSave();   // last tap was an ADV move: undo just that
   switch(step){
     case 'first': s.gameDot = null; return resetGamePendingPitch();
     case 'more': case 'foulBunt': return cancelResultMenu();
@@ -6619,6 +6691,24 @@ function ggChoices(step){
       return { inner: ggBig(pos, String(POSITION_SCOREBOOK_NUMBER[pos])), onclick: `gridPosition('${pos}')`,
         on: idx !== -1, badge: (idx !== -1 && ggMultiFielder(fp)) ? String(idx + 1) : '' };
     }));
+    case 'adv': {
+      const a = s.gridAdv;
+      const baseName = { 1: '1st', 2: '2nd', 3: '3rd' };
+      if(a.step === 'runner') return ggFill([1, 2, 3].filter(b => s.runners[b]).map(b => ({
+        inner: ggBig(baseName[b], 'Runner'), onclick: `gridAdvRunner(${b})`
+      })));
+      if(a.step === 'dest') return ggFill([['2', '2nd'], ['3', '3rd'], ['home', 'Home']]
+        .filter(([k]) => k === 'home' || Number(k) > a.runner)
+        .map(([k, l]) => ({
+          inner: ggBig(l), onclick: `gridAdvDest('${k}')`,
+          // Outside a ball in play a base holds one runner -- move the lead runner first.
+          disabled: !s.fieldPlay && k !== 'home' && s.runners[Number(k)]
+        })));
+      return ggFill([
+        { inner: ggBig('SB'), onclick: "gridAdvReason('sb')" },
+        { inner: ggTextOnly('On Last Play'), onclick: "gridAdvReason('play')" }
+      ]);
+    }
     case 'velo': return ggVeloArea();
     case 'fix': return `<div class="gg-fix" style="grid-row:1/4;grid-column:3/6;">${renderRunnerFixPanel(fp)}
         <button type="button" class="btn btn-ghost" onclick="gridFixRunners()">Done fixing</button></div>`;
@@ -6686,7 +6776,23 @@ function ggRow3(step){
 }
 // Joel, Sept 30: Back lives in the bottom-right corner of the grid.
 function ggBackBox(){
-  return `<button type="button" class="gg-btn gg-back" style="grid-row:5;grid-column:5;" onclick="gridBack()">‹ Back</button>`;
+  // Joel, Oct 1: one box in from the corner -- ADV runners has the corner.
+  return `<button type="button" class="gg-btn gg-back" style="grid-row:5;grid-column:4;" onclick="gridBack()">‹ Back</button>`;
+}
+// Joel, Oct 1: ADV is greyed out until the pitch's result is tapped (a steal
+// is recorded AFTER the ball/strike/foul it happened on), then live until
+// Next Pitch -- including through a ball in play once Hit/Out/E/FC/DP is
+// picked. Never with the bases empty.
+function ggAdvEnabled(){
+  const s = state.activeSession;
+  if(s.gridAdv) return true;
+  if(!gameHasRunners(s)) return false;
+  if(s.fieldPlay) return !!s.fieldPlay.entry;
+  return !s.gamePendingPitch;   // the velocity / ready step: the pitch is in
+}
+function ggAdvBox(){
+  const on = !!state.activeSession.gridAdv;
+  return `<button type="button" class="gg-btn gg-adv${on ? ' on' : ''}" style="grid-row:5;grid-column:5;" ${ggAdvEnabled() ? '' : 'disabled'} onclick="gridAdvOpen()"><span class="gg-big">ADV</span><span class="gg-cap">Runners</span></button>`;
 }
 function ggNextPitchBtn(){
   const reason = nextPitchDisabledReason();
@@ -6743,8 +6849,7 @@ function ggScorebookBox(step){
       <path d="M44 84 L56 84 L56 90 L50 95 L44 90 Z" fill="#fff" stroke="#17261D" stroke-width="2"/>
     </svg>`;
   const anyRunner = [1, 2, 3].some(b => s.runners[b]);
-  const fixBtn = (fp && fp.entry && anyRunner && step !== 'fix')
-    ? `<button type="button" class="gg-book-fix" onclick="gridFixRunners()">Fix runners</button>` : '';
+  const fixBtn = '';   // Joel, Oct 1: "Fix runners" is gone -- ADV runners (bottom-right box) does its job
   return `<div class="gg-book" style="grid-row:1/3;grid-column:1/3;">
     <span class="gg-book-tl">${s.balls}-${s.strikes}</span>
     <span class="gg-book-tr">${outs} OUT</span>
@@ -6787,10 +6892,14 @@ function renderGameFieldGrid(){
   // grid has turned into the field.
   return `<div class="zone-grid gg-field" data-step="${step}">
     ${cells}
-    <div class="gg-overlay">${ggScorebookBox(step)}${ggChoices(step)}${ggRow3(step)}${ggVeloRow(step)}${ggBackBox()}</div>
+    <div class="gg-overlay">${ggScorebookBox(step)}${ggChoices(step)}${ggRow3(step)}${ggVeloRow(step)}${ggBackBox()}${ggAdvBox()}</div>
   </div>`;
 }
 function ggCaption(step){
+  if(step === 'adv'){
+    const a = state.activeSession.gridAdv;
+    return a.step === 'runner' ? 'Which runner moved?' : a.step === 'dest' ? 'Where did he go?' : 'Why did he move?';
+  }
   if(step === 'velo') return 'Swipe or tap the speed (Reset clears it) — then Next Pitch';
   if(step === 'ready') return 'Next Pitch when you’re ready';
   const reason = (step === 'position' || step === 'velo') ? null : null;

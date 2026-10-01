@@ -1215,6 +1215,12 @@
   .gg-cell.gg-fence{ background:var(--gg-fence) !important; }
   .gg-cell.gg-grass{ background:var(--gg-grass) !important; }
   .gg-cell.gg-dirt{ background:var(--gg-dirt) !important; }
+  /* Joel, Oct 1: the drawn field behind rows 3-5 (GG_FIELD_SVG). */
+  .gg-fieldart{ position:relative; z-index:0; display:block; width:100%; height:100%; pointer-events:none; }
+  .gg-cell.gg-clear{
+    background:transparent !important; z-index:1;
+    box-shadow:0 0 0 3px var(--surface-border); border-color:rgba(15,36,27,0.08) !important;
+  }
   /* Overlay: the same tracks, gap and inset as .zone-grid itself,
      so every box sits exactly on its cells at every width. */
   .gg-overlay{
@@ -1294,7 +1300,7 @@
   .gg-velo .velo-arrow:disabled{ opacity:0.35; }
   .gg-velo .velo-help{ display:none; }
   .gg-velo .velo-cell{ min-height:44px; scroll-snap-align:center; }
-  .gg-back{ font-size:13px; font-weight:800; white-space:nowrap; }
+  .gg-back{ font-size:13px; font-weight:800; white-space:nowrap; border-color:var(--gg-ink); }   /* dark outline, as in docs/field-option3-reference.html */
   @media (max-width:360px){ .gg-back{ font-size:12px; } }
   .gg-velo .velo-help{ display:none; }
   .gg-velo .velo-cell{ min-height:44px; }
@@ -6708,12 +6714,32 @@ function ggScorebookBox(step){
     ${fixBtn}
   </div>`;
 }
+// G1b-r3 field decision (Joel, Oct 1): rows 3-5 show ONE field drawn across
+// all fifteen cells. Copied verbatim from docs/game-grid-field.svg (the
+// source -- 336x200 = 5x3 cells of 64 with 4px gaps; reference:
+// docs/field-option3-reference.html). Inline rather than loaded so it's
+// there offline with the rest of the page. Change both or neither.
+const GG_FIELD_SVG = `<svg class="gg-fieldart" viewBox="0 0 336 200" preserveAspectRatio="none" aria-hidden="true" style="grid-row:3/6;grid-column:1/6;">
+<rect width="336" height="200" fill="#D4E6CB"/>
+<path d="M168.0,190 L56.0,78.0 A118.4,118.4 0 0 1 280.0,78.0 Z" fill="#C9A97C"/>
+<polygon points="168.0,184 215.5104,136.4896 168.0,88.9792 120.4896,136.4896" fill="#C1D3BA" stroke="#fff" stroke-width="2"/>
+<circle cx="168.0" cy="139.648" r="11" fill="#B8956A"/>
+<circle cx="168.0" cy="184" r="13" fill="#C9A97C"/>
+<g fill="#fff" stroke="#0F241B" stroke-width="1"><rect x="210.5104" y="131.4896" width="10" height="10" transform="rotate(45 215.5104 136.4896)"/><rect x="163.0" y="83.9792" width="10" height="10" transform="rotate(45 168.0 88.9792)"/><rect x="115.4896" y="131.4896" width="10" height="10" transform="rotate(45 120.4896 136.4896)"/></g>
+<polygon points="163.0,180 173.0,180 173.0,184 168.0,189 163.0,184" fill="#fff" stroke="#0F241B" stroke-width="1"/>
+<line x1="168.0" y1="184" x2="0" y2="16.0" stroke="#fff" stroke-width="2"/><line x1="168.0" y1="184" x2="336" y2="16.0" stroke="#fff" stroke-width="2"/>
+</svg>`;
 function renderGameFieldGrid(){
   const step = gridStep();
-  let cells = '';
+  // Rows 1-2 (behind the boxes): light grass. Rows 3-5: transparent cells
+  // over the drawn field; each cell's 3px ring repaints the gap in the grid's
+  // own color, so the field reads as one drawing seen through a grid. Cells
+  // are placed explicitly so the field can share their tracks. No onclick:
+  // the field never takes a tap.
+  let cells = GG_FIELD_SVG;
   for(let r = 0; r < 5; r++){
     for(let c = 0; c < 5; c++){
-      cells += `<div class="zone-cell gg-cell ${r === 0 ? 'gg-fence' : r <= 2 ? 'gg-grass' : 'gg-dirt'}"></div>`;   // no onclick: display-only
+      cells += `<div class="zone-cell gg-cell ${r <= 1 ? 'gg-grass' : 'gg-clear'}" style="grid-row:${r + 1};grid-column:${c + 1};"></div>`;
     }
   }
   // Joel, Sept 30: the dot is REMEMBERED (gameDot, on the draft -- Back,

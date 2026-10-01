@@ -157,6 +157,8 @@
   .sess-offline{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--amber-bright); flex:none; }
   .sess-more{ all:unset; cursor:pointer; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center;
     font-size:22px; color:var(--chalk-dim); }
+  .dots9{ display:grid; grid-template-columns:repeat(3, 4px); gap:3px; }
+  .dots9 i{ width:4px; height:4px; border-radius:50%; background:var(--chalk); }
   .ph-layout .controls-panel.ph-controls{ padding:6px; gap:8px; border:0; box-shadow:none; background:transparent; }
   .ph-layout{ gap:12px !important; }
   .ph-status{
@@ -171,21 +173,26 @@
   .ph-lbl{ font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:var(--chalk-dim); margin-left:-6px; }
   .ph-persp{ margin-left:auto; font-size:14px; color:var(--chalk); }
   .ph-persp.locked{ color:var(--chalk-dim); }
-  .deliv-row{ display:flex; align-items:center; gap:4px; min-height:48px; }
-  .deliv-one{ flex:none; min-width:54px; height:44px; padding:0 10px; border-radius:10px; font:inherit; font-weight:700; font-size:15px;
+  /* one grid square on a phone: the grid is min(screen - 28px, 320px) wide,
+     3px padding each side and 3px gaps, five across */
+  .ph-layout{ --chip:calc((min(100vw - 28px, 320px) - 18px) / 5); }
+  .deliv-row{ display:flex; align-items:center; gap:4px; min-height:var(--chip); }
+  /* Joel, Oct 1: Set and Windup are the same width */
+  .deliv-one{ flex:none; width:78px; height:var(--chip); text-align:center; padding:0 10px; border-radius:10px; font:inherit; font-weight:700; font-size:15px;
     background:var(--card-bg); color:var(--field-dark); border:1.5px solid var(--field-dark); cursor:pointer; }
   .deliv-one.on{ background:var(--field-dark); color:var(--chalk); }
-  .ttp-btn.ttp-compact{ flex:none; min-width:36px; height:44px; padding:0 4px; border-radius:10px; font-size:14px; }
+  .ttp-btn.ttp-compact{ flex:none; min-width:36px; height:var(--chip); padding:0 4px; border-radius:10px; font-size:14px; }
   .pstrip-wrap{ flex:1; min-width:0; display:flex; align-items:center; gap:2px; }
-  .pstrip-arrow{ flex:none; width:16px; height:44px; padding:0; border:0; background:none; font:inherit; font-size:22px; font-weight:800;
+  .pstrip-arrow{ flex:none; width:16px; height:var(--chip); padding:0; border:0; background:none; font:inherit; font-size:22px; font-weight:800;
     color:var(--field-dark); cursor:pointer; }
   .pstrip-arrow:disabled{ opacity:0.25; cursor:default; }
   .pstrip{ flex:1; min-width:0; display:flex; gap:4px; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; }
   .pstrip::-webkit-scrollbar{ display:none; }
-  .pstrip-chip{ flex:0 0 calc((100% - 16px) / 5); min-width:0; overflow:hidden; text-overflow:clip; height:44px; scroll-snap-align:start; border-radius:10px; border:1.5px solid var(--border-strong);
+  /* Joel, Oct 1: pitch squares are the size of a 5x5 grid square, rounded,
+     abbreviations in capitals */
+  .pstrip-chip{ flex:0 0 var(--chip); width:var(--chip); height:var(--chip); min-width:0; overflow:hidden; text-overflow:clip; scroll-snap-align:start; border-radius:10px; text-transform:uppercase; border:1.5px solid var(--border-strong);
     background:var(--card-bg); font:inherit; font-weight:800; font-size:13px; letter-spacing:0; cursor:pointer; padding:0 1px; white-space:nowrap; }
-  .pstrip-chip.selected{ background:var(--field-dark); border-color:var(--field-dark); color:var(--chalk); }
-  @media (max-width:389px){ .pstrip-chip{ flex-basis:calc((100% - 12px) / 4); } }
+  .pstrip-chip.selected{ box-shadow:inset 0 0 0 2.5px rgba(0,0,0,0.28); }   /* inside the square, so the strip's edge never clips it */
   .ph-grid-wrap{ position:relative; }
   .ph-hint{ position:absolute; top:-2px; left:0; right:0; z-index:5; text-align:center; font-size:12px; font-weight:600;
     color:var(--clay); pointer-events:none; }
@@ -200,11 +207,12 @@
   .ph-act{ flex:1; min-height:44px; border-radius:10px; border:1.5px solid var(--border-strong); background:var(--card-bg);
     font:inherit; font-size:14px; font-weight:700; color:var(--field-dark); cursor:pointer; padding:0 4px; }
   .velo-slim{ display:flex; align-items:center; gap:6px; min-height:52px; padding:4px 8px; background:var(--surface); border-radius:10px; }
-  .velo-slim-lbl{ flex:none; max-width:64px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-faint); line-height:1.2; }
+  .velo-slim-lbl{ flex:none; max-width:56px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-faint); line-height:1.2; }
   .velo-slim-strip{ flex:1; min-width:0; }
   .velo-slim .velo-help{ display:none; }
-  .velo-slim .velo-arrow{ flex-basis:26px; min-height:40px; }
-  .velo-slim .velo-cell{ min-height:40px; }
+  .velo-slim .velo-strip{ --velo-visible:3; }
+  .velo-slim .velo-arrow{ flex-basis:22px; min-height:var(--chip); }
+  .velo-slim .velo-cell{ min-height:var(--chip); border-radius:10px; }
   .velo-slim-reset{ flex:none; border:0; background:none; font:inherit; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
     color:var(--ink-dim); min-height:40px; cursor:pointer; padding:0 2px; }
   .velo-slim-reset:disabled{ opacity:0.4; cursor:default; }
@@ -3692,7 +3700,8 @@ function veloVisible(){
   // G1b-r3: the Live Game velocity step draws the strip inside the grid's
   // three right-hand columns -- 3 speeds across keeps each a real tap target
   // there (matches .gg-velo's --velo-visible). Bullpen never has .gg-velo.
-  if(document.querySelector('.gg-velo')) return 5;   // row 4 spans the whole grid: 5 across keeps each >= 44px even at 320px
+  if(document.querySelector('.gg-velo')) return 5;
+  if(document.querySelector('.velo-slim')) return 3;   // G1b-r5: pen velocity squares match the pitch squares   // row 4 spans the whole grid: 5 across keeps each >= 44px even at 320px
   return window.matchMedia('(max-width:500px)').matches ? 5 : 7;
 }
 // Exponential moving average of the pitcher's most recent 100 recorded velocities
@@ -7254,7 +7263,7 @@ function renderSessionHeader(p){
     <button type="button" class="sess-back" onclick="sessionLeave()" aria-label="Leave this session">‹ <span class="sess-team">${escHtml(team ? team.name : '')}</span></button>
     <span class="sess-who">${renderHeadshot(p)}<span class="sess-name">${escHtml(last)}</span>${(num === null || num === undefined) ? '' : `<span class="sess-num">#${escHtml(String(num))}</span>`}</span>
     ${isOnline() ? '' : '<span class="sess-offline">Offline</span>'}
-    <button type="button" class="sess-more" onclick="openSessionSheet()" aria-label="Session options">⋯</button>
+    <button type="button" class="sess-more" onclick="openSessionSheet()" aria-label="Session options"><span class="dots9" aria-hidden="true">${'<i></i>'.repeat(9)}</span></button>
   </div>`;
 }
 // ‹ : nothing recorded yet -> straight back to Bullpen / Live Game; otherwise
@@ -7307,7 +7316,8 @@ function renderPitchStrip(p){
   const chips = pitchTypesFor(p).map(t => {
     const color = colorForType(p, t);
     const sel = state.selectedType === t;
-    return `<button type="button" class="pstrip-chip${sel ? ' selected' : ''}" style="${sel ? '' : `color:${color};border-color:${color}77;`}" onclick="selectType(${escHtml(JSON.stringify(t))})">${pitchLabel(t)}</button>`;
+    // Joel, Oct 1: each pitch keeps its own color; selected = filled with it.
+    return `<button type="button" class="pstrip-chip${sel ? ' selected' : ''}" style="${sel ? `background:${color};border-color:${color};color:${readableTextOn(color)};` : `color:${color};border-color:${color}77;`}" onclick="selectType(${escHtml(JSON.stringify(t))})">${pitchLabel(t)}</button>`;
   }).join('');
   return `<div class="pstrip-wrap">
     <button type="button" class="pstrip-arrow" id="pstrip-prev" onclick="pitchStripStep(-1)" aria-label="Earlier pitch types">‹</button>

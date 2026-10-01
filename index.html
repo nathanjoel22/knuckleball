@@ -169,17 +169,37 @@
      it pushed the logo off the top. Start from the top and tighten the
      heading and cards so logo, question and both cards fit without scrolling. */
   @media (max-width:500px){
-    body{ align-items:flex-start; padding:28px 16px 20px; }
-    .wrap{ gap:20px; }
-    h2.display{ font-size:44px; }
-    .frame{ gap:16px; }
-    .options{ gap:12px; }
-    .option-card{ min-width:0; width:100%; max-width:none; padding:18px 16px; gap:8px; }
-    .option-icon{ width:46px; height:46px; }
-    .option-icon svg.ball{ width:30px; height:30px; }
-    .option-title{ font-size:26px; }
-    .option-desc{ font-size:12.5px; }
+    body{ align-items:flex-start; padding:22px 16px 14px; }
+    .wrap{ gap:14px; }
+    h2.display{ font-size:42px; }
+    .frame{ gap:14px; }
+    /* Joel, Oct 1: on a phone the cards stack -- Baseball on top, Softball
+       under it -- full width and big; side by side stays for iPad/laptop. */
+    .options{ flex-direction:column; flex-wrap:nowrap; gap:12px; }
+    .option-card{ flex:none; min-width:0; width:100%; max-width:none; padding:20px 18px; gap:8px; }
+    .option-icon{ width:54px; height:54px; }
+    .option-icon svg.ball{ width:34px; height:34px; }
+    .option-title{ font-size:32px; }
+    .option-desc{ font-size:13.5px; }
     .back-link{ padding:4px 2px; }
+  }
+  /* shorter phones (SE and smaller): same stacked cards, tighter, so the whole
+     page still fits one screen */
+  @media (max-width:500px) and (max-height:640px){
+    body{ padding-top:16px; }
+    .wrap{ gap:10px; }
+    h2.display{ font-size:36px; }
+    .frame{ gap:10px; }
+    .options{ gap:10px; }
+    .option-card{ padding:13px 16px; gap:5px; }
+    .option-icon{ width:44px; height:44px; }
+    .option-icon svg.ball{ width:28px; height:28px; }
+    .option-title{ font-size:28px; }
+  }
+  @media (max-width:500px) and (max-height:570px){
+    .tagline{ display:none; }
+    .option-desc{ font-size:12px; }
+    .option-card{ padding:10px 14px; }
   }
   .foot{ font-size:11px; color:var(--chalk-faint); letter-spacing:0.06em; text-transform:uppercase; }
 </style>
@@ -242,7 +262,7 @@
     </div>
     </div>
 
-    <div class="foot">Knuckleball · Session Log</div>
+    <div class="foot">Knuckleball LLC 2026</div>
   </div>
 <script>
   // S1: Baseball / Softball first, then Pitcher / Coach. The choice is kept

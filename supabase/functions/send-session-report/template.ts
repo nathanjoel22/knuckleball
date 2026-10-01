@@ -314,7 +314,7 @@ function renderFooter(p: ReportPayload): string {
   <footer class="report-footer">
     <p>Numbers and patterns only -- this report doesn't grade or compare to a benchmark. That's a conversation between a pitcher and his coach.</p>
     <p>Grids are always drawn catcher's view, looking out toward the mound.</p>
-    <p><span class="brand-mark small">KNUCKLEBALL<span class="brand-dot">.</span></span> &middot; <a href="${signInUrl(asSport(p.sport))}">knuckleballonline.com</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+    <p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="${signInUrl(asSport(p.sport))}">knuckleballonline.com</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </footer>`
 }
 

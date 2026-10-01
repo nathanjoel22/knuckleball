@@ -1344,6 +1344,16 @@
     .wide-right .kb-batter{ --kb-batter-h:var(--kbh, 112%); }
     .wide-right .home-plate-wrap{ width:calc(0.6 * var(--zg, 278px) - 4.8px); }
     .wide-actions{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
+    /* Joel, Oct 1: pen pitch counter to the right of the perspective chips
+       (label above both, "Pitch count" on two lines under the badge). */
+    .persp-count{ display:grid; grid-template-columns:minmax(0, 1fr) auto; column-gap:8px; }
+    .persp-count .type-chip{ white-space:nowrap; }
+    .persp-count > div:first-child{ display:contents; }
+    .persp-count > div:first-child > .field-label{ grid-column:1 / -1; }
+    .persp-count .chip-row{ grid-column:1; grid-row:2; }
+    .persp-count > div:first-child > p{ grid-column:1 / -1; }
+    .persp-count .wide-count{ grid-column:2; grid-row:2; align-self:start; flex-direction:column; gap:5px; }
+    .persp-count .wide-count .field-label{ width:48px; text-align:center; line-height:1.3; }
   }
 
   @media (max-width:500px){
@@ -7699,7 +7709,13 @@ function renderSessionView(){
       <div class="panel controls-panel">
         <div class="wide-cols">
           <div class="wide-left">
-            ${renderPerspectiveToggle()}
+            <div class="persp-count">
+              ${renderPerspectiveToggle()}
+              <div class="pitch-counter wide-count">
+                <span class="pitch-counter-num pitch-count-badge mono">${stats.total}</span>
+                <span class="field-label">Pitch count</span>
+              </div>
+            </div>
             <div>
               <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
               <div class="chip-row">${typeChips}</div>
@@ -7710,12 +7726,6 @@ function renderSessionView(){
             </div>
             ${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}
             ${renderBatterModeToggle()}
-            <div class="accuracy-count-row">
-              <div class="pitch-counter">
-                <span class="pitch-counter-num pitch-count-badge mono">${stats.total}</span>
-                <span class="field-label">Pitch count</span>
-              </div>
-            </div>
             <div class="hint-msg">${state.hint}</div>
           </div>
           <div class="wide-right">

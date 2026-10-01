@@ -139,6 +139,80 @@
     --accent-text: var(--amber);       /* accent-colored text (baseball keeps its yellow link) */
   }
 
+
+  /* ---------- G1b-r5: phone session layout (docs/game- and pen-phone-layout-reference.html) ----------
+     All of these classes are only rendered at phone width (phoneSessionMode). */
+  .ph-main{ padding:0 8px 16px !important; gap:8px !important; }
+  .sess-head{
+    display:flex; align-items:center; gap:8px; min-height:44px; padding:0 6px 0 4px;
+    background:var(--field-dark); color:var(--chalk); border-radius:10px; margin:8px 0 0;
+  }
+  .sess-back{ all:unset; cursor:pointer; display:flex; align-items:center; gap:4px; min-height:44px; padding:0 6px;
+    font-size:16px; color:var(--chalk); max-width:34%; }
+  .sess-team{ font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sess-who{ display:flex; align-items:center; gap:8px; min-width:0; flex:1; }
+  .sess-who .headshot{ width:28px; height:28px; font-size:11px; flex:none; }
+  .sess-name{ font-weight:700; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sess-num{ font-size:14px; color:var(--chalk-dim); flex:none; }
+  .sess-offline{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--amber-bright); flex:none; }
+  .sess-more{ all:unset; cursor:pointer; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center;
+    font-size:22px; color:var(--chalk-dim); }
+  .ph-layout .controls-panel.ph-controls{ padding:6px; gap:8px; border:0; box-shadow:none; background:transparent; }
+  .ph-layout{ gap:12px !important; }
+  .ph-status{
+    display:flex; align-items:center; gap:14px; min-height:44px; padding:0 14px;
+    background:var(--field-dark); color:var(--chalk); border-radius:10px; font-weight:700; font-size:17px;
+  }
+  .ph-status .ph-inn{ font-size:18px; }
+  .ph-status .ph-diamond{ margin-left:2px; display:flex; align-items:center; }
+  .ph-status .ph-diamond .runner-diamond-btn{ min-height:40px; }
+  .ph-count{ display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%;
+    background:var(--chalk); color:var(--field-dark); font-size:15px; }
+  .ph-lbl{ font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:var(--chalk-dim); margin-left:-6px; }
+  .ph-persp{ margin-left:auto; font-size:14px; color:var(--chalk); }
+  .ph-persp.locked{ color:var(--chalk-dim); }
+  .deliv-row{ display:flex; align-items:center; gap:4px; min-height:48px; }
+  .deliv-one{ flex:none; min-width:54px; height:44px; padding:0 10px; border-radius:10px; font:inherit; font-weight:700; font-size:15px;
+    background:var(--card-bg); color:var(--field-dark); border:1.5px solid var(--field-dark); cursor:pointer; }
+  .deliv-one.on{ background:var(--field-dark); color:var(--chalk); }
+  .ttp-btn.ttp-compact{ flex:none; min-width:36px; height:44px; padding:0 4px; border-radius:10px; font-size:14px; }
+  .pstrip-wrap{ flex:1; min-width:0; display:flex; align-items:center; gap:2px; }
+  .pstrip-arrow{ flex:none; width:16px; height:44px; padding:0; border:0; background:none; font:inherit; font-size:22px; font-weight:800;
+    color:var(--field-dark); cursor:pointer; }
+  .pstrip-arrow:disabled{ opacity:0.25; cursor:default; }
+  .pstrip{ flex:1; min-width:0; display:flex; gap:4px; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; }
+  .pstrip::-webkit-scrollbar{ display:none; }
+  .pstrip-chip{ flex:0 0 calc((100% - 16px) / 5); min-width:0; overflow:hidden; text-overflow:clip; height:44px; scroll-snap-align:start; border-radius:10px; border:1.5px solid var(--border-strong);
+    background:var(--card-bg); font:inherit; font-weight:800; font-size:13px; letter-spacing:0; cursor:pointer; padding:0 1px; white-space:nowrap; }
+  .pstrip-chip.selected{ background:var(--field-dark); border-color:var(--field-dark); color:var(--chalk); }
+  @media (max-width:389px){ .pstrip-chip{ flex-basis:calc((100% - 12px) / 4); } }
+  .ph-grid-wrap{ position:relative; }
+  .ph-hint{ position:absolute; top:-2px; left:0; right:0; z-index:5; text-align:center; font-size:12px; font-weight:600;
+    color:var(--clay); pointer-events:none; }
+  .ph-layout .zone-caption{ margin-top:-2px; }
+  .pb-zone .zone-grid{ margin-bottom:0 !important; }
+  .pb-zone .kb-batter{ display:none !important; }
+  .pb-pill-row{ display:flex; justify-content:center; }
+  .pb-pill{ min-width:160px; height:48px; padding:0 24px; border-radius:999px; font:inherit; font-size:16px; font-weight:800; cursor:pointer;
+    background:var(--field-dark); color:var(--chalk); border:1.5px solid var(--field-dark); }
+  .pb-pill.none{ background:var(--card-bg); color:var(--ink-dim); border-color:var(--border-strong); font-weight:700; }
+  .ph-actions{ display:flex; gap:8px; }
+  .ph-act{ flex:1; min-height:44px; border-radius:10px; border:1.5px solid var(--border-strong); background:var(--card-bg);
+    font:inherit; font-size:14px; font-weight:700; color:var(--field-dark); cursor:pointer; padding:0 4px; }
+  .velo-slim{ display:flex; align-items:center; gap:6px; min-height:52px; padding:4px 8px; background:var(--surface); border-radius:10px; }
+  .velo-slim-lbl{ flex:none; max-width:64px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-faint); line-height:1.2; }
+  .velo-slim-strip{ flex:1; min-width:0; }
+  .velo-slim .velo-help{ display:none; }
+  .velo-slim .velo-arrow{ flex-basis:26px; min-height:40px; }
+  .velo-slim .velo-cell{ min-height:40px; }
+  .velo-slim-reset{ flex:none; border:0; background:none; font:inherit; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--ink-dim); min-height:40px; cursor:pointer; padding:0 2px; }
+  .velo-slim-reset:disabled{ opacity:0.4; cursor:default; }
+  .ph-statline{ font-size:12.5px; font-weight:700; margin-bottom:6px; }
+  .sheet-overlay{ align-items:flex-end; padding:0; }
+  .sess-sheet{ width:100%; max-width:520px; background:var(--card-bg); border-radius:16px 16px 0 0; padding:18px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    display:flex; flex-direction:column; gap:12px; max-height:85vh; overflow:auto; }
+  .sess-sheet-title{ font-weight:800; font-size:16px; }
   /* ---------- S1: the softball theme (docs/softball-theme-reference.html) ----------
      Only theme variables change; pitch colors, strike/ball colors and the
      plate overlay are identical in both sports. Pink is an accent like
@@ -1572,7 +1646,10 @@ let state = {
   lbExcludeOpen: null,      // U8 (coach): pitch id whose 'Exclude this reading' panel is open
   lbBusy: false,
   rosterCollapsed: false,
-  perspectiveRolledUp: false, // phones: the perspective drop-down is rolled up (UI only, not saved)   // coach only: roster list rolled up once a pitcher is selected
+  perspectiveRolledUp: false, // phones: the perspective drop-down is rolled up (UI only, not saved)
+  sessionSheetOpen: false,    // G1b-r5 phones: the session header's ⋯ sheet
+  sessionDiscardArmed: false, // ...and its Discard confirm
+  pitchStripScroll: null,     // phones: the pitch strip's scroll position across renders   // coach only: roster list rolled up once a pitcher is selected
   editVeloError: '',        // (g) inline message when the edit-pitch velocity is rejected
   editVeloDraft: '',
   uniformEditKey: null,     // 'pitcherId:teamId' while the uniform-number editor is open
@@ -3566,11 +3643,11 @@ function takeTimeToPlate(){
   if(t.phase !== 'idle') ttpReset();
   return v;
 }
-function renderTimeToPlateBtn(){
+function renderTimeToPlateBtn(compact){
   const s = state.activeSession;
   const enabled = !!s && s.delivery === 'set';
   const t = ttpState();
-  let label = '⏱ Time', cls = 'ttp-btn';
+  let label = compact ? '⏱' : '⏱ Time', cls = 'ttp-btn' + (compact ? ' ttp-compact' : '');
   if(t.phase === 'running'){ label = '⏱ ' + ((Date.now() - t.startedAt) / 1000).toFixed(2); cls += ' ttp-running'; }
   else if(t.phase === 'stopped'){ label = '⏱ ' + t.value.toFixed(2); cls += ttpValid(t.value) ? ' ttp-ok' : ' ttp-bad'; }
   return `<button type="button" id="ttp-btn" class="${cls}" ${enabled ? '' : 'disabled'} title="${enabled ? 'Time to home: tap at first move, tap again at the glove' : 'Time to home is timed from the stretch: choose Set'}" onclick="tapTimeToPlate()">${label}</button>`;
@@ -4603,7 +4680,7 @@ function renderHomePlate(chartingPerspective){
 // dismissible dialog -- pre-filled from the device's remembered last
 // choice, locked once the first pitch is logged so the tap->storage mirror
 // never has more than its one capture-time call site to worry about.
-function renderPerspectiveToggle(){
+function renderPerspectiveToggle(forceFull){
   const current = sessionPerspective(state.activeSession);
   const locked = state.activeSession.pitches.length > 0;
   const opts = [
@@ -4622,7 +4699,7 @@ function renderPerspectiveToggle(){
   // Joel, Oct 1: on phones it's a drop-down -- open at the start of a
   // session, rolled up to one line once a perspective is picked (and always
   // once the first pitch locks it). Tap the line to open it again.
-  if(isPhoneWidth()){
+  if(isPhoneWidth() && !forceFull){
     const label = (opts.find(o => o.key === current) || opts[0]).label;
     const rolled = locked || state.perspectiveRolledUp;
     const head = `<button type="button" class="persp-rollup" onclick="togglePerspectiveRoll()" ${locked ? 'disabled' : ''} aria-expanded="${rolled ? 'false' : 'true'}">
@@ -4721,6 +4798,7 @@ window.backToChooser = async function(){
 window.chooseSessionKind = async function(kind){
   state.activeSession.kind = kind;
   state.perspectiveRolledUp = false;   // every new session starts with the perspective open
+  state.pitchStripScroll = null;
   if(kind === 'bullpen'){
     // U11 (5)/(6): a new pen starts with no hitter standing in, from the windup.
     state.activeSession.batterMode = 'none';
@@ -7069,6 +7147,37 @@ function renderGameSessionView(p){
   const gridStepNow = gridStep();
   const zoneCaption = gridStepNow ? ggCaption(gridStepNow) : `Tap where the pitch landed`;
 
+  if(phoneSessionMode(p)){
+    return `
+    <div class="session-grid-layout ph-layout">
+      <div class="panel controls-panel ph-controls">
+        ${renderAdjustRunnersFlow()}
+        <div class="ph-status">
+          <span class="ph-inn">▲${s.inning}</span><span class="ph-item">${s.outs} OUT</span><span class="ph-item mono">${s.balls}-${s.strikes}</span>
+          <span class="ph-diamond">${renderRunnerDiamond()}</span>
+        </div>
+        ${renderPhoneDeliveryRow(p)}
+        <div class="ph-grid-wrap">${renderPhoneHint()}
+          <div class="zone-wrap">
+            ${gridStepNow ? renderGameFieldGrid() : renderZoneGrid(pitches, true, state.flashCell, null, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
+            ${gridStepNow ? `<div class="zone-caption">${zoneCaption}</div>` : ''}
+          </div>
+        </div>
+        <div class="ph-actions">
+          <button type="button" class="ph-act" onclick="undoLastGameAction()">↶ Undo</button>
+          <button type="button" class="ph-act" onclick="gameNewBatter()">New batter</button>
+          <button type="button" class="ph-act" onclick="gameNewInning()">New inning</button>
+        </div>
+      </div>
+      <div class="panel log-panel">
+        <div class="ph-statline mono">Pitches ${stats.total} · Strike% ${stats.strikePct} · K ${stats.k} · BB ${stats.bb} · H ${stats.h}</div>
+        <div class="field-label">Recent pitches</div>
+        <div class="pitch-log">${logRows}</div>
+        <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
+      </div>
+    </div>`;
+  }
+
   return `
     <div class="session-grid-layout">
       <div class="panel controls-panel">
@@ -7119,6 +7228,153 @@ function renderGameSessionView(p){
         <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
       </div>
     </div>`;
+}
+
+/* ---------- G1b-r5: PHONE SESSION LAYOUT (Joel, Oct 1) ----------
+   Phones only (<= 500px, isPhoneWidth); iPad and laptop take the exact same
+   code paths as before. While a session is in progress the team line, the
+   player header and the tabs give way to one session header
+   (‹ team · photo name #num · ⋯); the ⋯ sheet holds perspective, opponent,
+   End session & save, and Discard. Then a one-line status bar, one row with
+   a Set/Windup button, ⏱ and a swipeable pitch strip, the grid, the batter
+   pill under it, (Live Game) Undo / New batter / New inning, (pen) a slim
+   velocity strip. Live Game velocity stays in the grid (Joel, 3a); ADV stays
+   in the grid and IBB / auto ball / auto strike / balk stay under + More
+   (Joel, 2a). Reference: docs/game-phone-layout-reference.html,
+   docs/pen-phone-layout-reference.html. */
+function phoneSessionMode(p){
+  return isPhoneWidth() && !!p && state.view === 'session' && !state.draftAvailable
+    && !!(state.activeSession && state.activeSession.kind);
+}
+function renderSessionHeader(p){
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  const num = jerseyNumberOf(p);
+  const last = String(p.name || '').trim().split(/\s+/).pop();
+  return `<div class="sess-head">
+    <button type="button" class="sess-back" onclick="sessionLeave()" aria-label="Leave this session">‹ <span class="sess-team">${escHtml(team ? team.name : '')}</span></button>
+    <span class="sess-who">${renderHeadshot(p)}<span class="sess-name">${escHtml(last)}</span>${(num === null || num === undefined) ? '' : `<span class="sess-num">#${escHtml(String(num))}</span>`}</span>
+    ${isOnline() ? '' : '<span class="sess-offline">Offline</span>'}
+    <button type="button" class="sess-more" onclick="openSessionSheet()" aria-label="Session options">⋯</button>
+  </div>`;
+}
+// ‹ : nothing recorded yet -> straight back to Bullpen / Live Game; otherwise
+// the same choice as always (End session & save, or Discard) in the sheet.
+window.sessionLeave = function(){
+  if(canGoBackToChooser()) return backToChooser();
+  openSessionSheet();
+};
+window.openSessionSheet = function(){ state.sessionSheetOpen = true; state.sessionDiscardArmed = false; render(); };
+window.closeSessionSheet = function(){ state.sessionSheetOpen = false; state.sessionDiscardArmed = false; render(); };
+window.armDiscardSession = function(){ state.sessionDiscardArmed = true; render(); };
+window.discardActiveSession = async function(){
+  ttpReset();
+  await storDelete(draftKey());
+  state.activeSession = await freshActiveSession();
+  state.pendingTarget = null; state.veloTargetIdx = null; state.hint = '';
+  state.sessionSheetOpen = false; state.sessionDiscardArmed = false;
+  await refreshDraftState();
+  render();
+};
+function renderSessionSheet(){
+  if(!state.sessionSheetOpen || !state.activeSession || !state.activeSession.kind) return '';
+  const s = state.activeSession, game = s.kind === 'game', n = s.pitches.length;
+  const what = `${n} pitch${n === 1 ? '' : 'es'}`;
+  return `<div class="modal-overlay sheet-overlay" onclick="if(event.target===this) closeSessionSheet();">
+    <div class="sess-sheet" role="dialog" aria-label="Session options">
+      <div class="sess-sheet-title">${game ? 'Live Game' : 'Bullpen'} · ${what}</div>
+      ${renderPerspectiveToggle(true)}
+      ${game ? `<div><div class="field-label" style="margin-bottom:4px;">Opponent (optional)</div>
+        <input class="text-input" placeholder="e.g. Eastern" maxlength="60" value="${escHtml(s.opponent || '')}" oninput="onGameOpponentInput(this.value)"></div>` : ''}
+      <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="closeSessionSheet();endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
+      ${state.sessionDiscardArmed ? `
+        <p class="delete-warn">Discard this ${game ? 'game' : 'pen'}? ${n ? `The ${what} charted so far are deleted from this device.` : ''} This can't be undone.</p>
+        <div class="delete-row">
+          <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" onclick="discardActiveSession()">Discard</button>
+          <button class="btn btn-ghost" onclick="closeSessionSheet()">Keep charting</button>
+        </div>` : `<button class="btn btn-ghost" onclick="armDiscardSession()">Discard</button>`}
+      <button class="btn btn-ghost" onclick="closeSessionSheet()">Close</button>
+    </div>
+  </div>`;
+}
+// Set / Windup as ONE button that flips (same auto-set rules as before).
+function renderDeliveryOne(){
+  const set = state.activeSession.delivery === 'set';
+  return `<button type="button" class="deliv-one${set ? ' on' : ''}" onclick="setGameDelivery('${set ? 'windup' : 'set'}')">${set ? 'Set' : 'Windup'}</button>`;
+}
+// The pitch types as a strip like the velocity bar: five across at 390px,
+// four below that; swipe, or ‹ › one chip; arrows grey at the ends.
+function renderPitchStrip(p){
+  const chips = pitchTypesFor(p).map(t => {
+    const color = colorForType(p, t);
+    const sel = state.selectedType === t;
+    return `<button type="button" class="pstrip-chip${sel ? ' selected' : ''}" style="${sel ? '' : `color:${color};border-color:${color}77;`}" onclick="selectType(${escHtml(JSON.stringify(t))})">${pitchLabel(t)}</button>`;
+  }).join('');
+  return `<div class="pstrip-wrap">
+    <button type="button" class="pstrip-arrow" id="pstrip-prev" onclick="pitchStripStep(-1)" aria-label="Earlier pitch types">‹</button>
+    <div class="pstrip" id="pitch-strip">${chips}</div>
+    <button type="button" class="pstrip-arrow" id="pstrip-next" onclick="pitchStripStep(1)" aria-label="More pitch types">›</button>
+  </div>`;
+}
+window.pitchStripStep = function(dir){
+  const st = document.getElementById('pitch-strip');
+  if(!st) return;
+  const chip = st.querySelector('.pstrip-chip');
+  st.scrollBy({ left: dir * (chip ? chip.getBoundingClientRect().width + 4 : st.clientWidth / 5), behavior: 'smooth' });
+  setTimeout(updatePitchStripArrows, 400);   // after the smooth scroll, even if no scroll event arrives
+};
+// Grey ‹ at the start and › at the end; remember where the strip is.
+function updatePitchStripArrows(){
+  const st = document.getElementById('pitch-strip');
+  if(!st) return;
+  const prev = document.getElementById('pstrip-prev'), next = document.getElementById('pstrip-next');
+  state.pitchStripScroll = st.scrollLeft;
+  if(prev) prev.disabled = st.scrollLeft <= 1;
+  if(next) next.disabled = st.scrollLeft + st.clientWidth >= st.scrollWidth - 1;
+}
+// After each render: keep the strip where it was (or bring the selected
+// chip into view the first time), and grey the arrows at the ends.
+function attachPitchStrip(){
+  const st = document.getElementById('pitch-strip');
+  if(!st) return;
+  if(state.pitchStripScroll !== null){
+    st.scrollLeft = state.pitchStripScroll;
+  } else {
+    const sel = st.querySelector('.pstrip-chip.selected');
+    if(sel && sel.offsetLeft + sel.offsetWidth > st.offsetLeft + st.clientWidth) st.scrollLeft = sel.offsetLeft - st.offsetLeft;
+  }
+  updatePitchStripArrows();
+  st.addEventListener('scroll', updatePitchStripArrows, { passive: true });
+}
+function renderPhoneDeliveryRow(p){
+  const withDelivery = sportCfg().hasDelivery;
+  return `<div class="deliv-row">${withDelivery ? renderDeliveryOne() + renderTimeToPlateBtn(true) : ''}${renderPitchStrip(p)}</div>`;
+}
+// The hint overlays the top edge of the grid instead of taking a row.
+function renderPhoneHint(){
+  return state.hint ? `<div class="ph-hint">${state.hint}</div>` : '';
+}
+// Pen: one pill under the grid cycles No batter -> vs RHB -> vs LHB.
+window.cycleBatterMode = function(){
+  const s = state.activeSession;
+  const cur = isNoBatter(s) ? 'none' : sessionBatterSide(s);
+  return setBatterMode(cur === 'none' ? 'R' : cur === 'R' ? 'L' : 'none');
+};
+function renderPenBatterPill(){
+  const s = state.activeSession;
+  const none = isNoBatter(s);
+  const label = none ? 'No batter' : (sessionBatterSide(s) === 'R' ? 'vs RHB' : 'vs LHB');
+  return `<div class="pb-pill-row"><button type="button" class="pb-pill${none ? ' none' : ''}" onclick="cycleBatterMode()" aria-label="Batter: ${label}. Tap to change.">${label}</button></div>`;
+}
+// Pen: velocity on one line -- the last pitch's type, the strip, Reset.
+function renderVeloSlim(){
+  const active = veloStripActive();
+  const target = active ? state.activeSession.pitches[state.veloTargetIdx] : null;
+  const label = target ? 'Last · ' + pitchLabel(target.type) : 'Velocity';
+  return `<div class="velo-slim">
+    <span class="velo-slim-lbl">${label}</span>
+    <div class="velo-slim-strip">${renderVeloStrip()}</div>
+    <button type="button" class="velo-slim-reset" ${active ? '' : 'disabled'} onclick="recordVelo(null)">Reset</button>
+  </div>`;
 }
 
 function renderSessionView(){
@@ -7198,6 +7454,37 @@ function renderSessionView(){
   const zoneCaption = state.pendingTarget
     ? `Now tap where it actually landed <a href="#" onclick="resetTarget();return false;" style="color:var(--accent-text);">(reset target)</a>`
     : `Tap where you're aiming`;
+
+  if(phoneSessionMode(p)){
+    const locked = pitches.length > 0;
+    return `
+    <div class="session-grid-layout ph-layout">
+      <div class="panel controls-panel ph-controls">
+        <div class="ph-status">
+          <span class="ph-count mono">${stats.total}</span><span class="ph-lbl">${stats.total === 1 ? 'Pitch' : 'Pitches'}</span>
+          <span class="ph-persp${locked ? ' locked' : ''}">${chartingPerspective === 'behind_pitcher' ? 'Pitcher' : 'Catcher'}${locked ? ' · locked' : ''}</span>
+        </div>
+        ${renderPhoneDeliveryRow(p)}
+        ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
+          ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
+          : 'Add your pitches in Profile to start charting.'}</p>`}
+        <div class="ph-grid-wrap">${renderPhoneHint()}
+          <div class="zone-wrap pb-zone">
+            <div class="batter-frame${isNoBatter(state.activeSession) ? ' no-batter' : ''}" style="display:contents;">${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}</div>
+            <div class="zone-caption">${zoneCaption}</div>${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
+          </div>
+        </div>
+        ${renderPenBatterPill()}
+        ${sessionUsesRadarGun(state.activeSession) ? renderVeloSlim() : ''}
+      </div>
+      <div class="panel log-panel">
+        <div class="ph-statline mono">${stats.total} pitches · Strike% ${stats.strikePct} · Acc ${stats.accuracyPct}%${stats.hasVelo ? ` · ${stats.avgVelo} avg` : ''}</div>
+        <div class="field-label">Recent pitches</div>
+        <div class="pitch-log">${logRows}</div>
+        <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
+      </div>
+    </div>`;
+  }
 
   return `
     <div class="session-grid-layout">
@@ -8805,8 +9092,11 @@ function render(){
     </div>`;
 
   const p = currentPitcher();
+  const phoneSession = phoneSessionMode(p);   // G1b-r5
   let main;
-  if(!p){
+  if(phoneSession){
+    main = renderSessionHeader(p) + renderSessionView();
+  } else if(!p){
     // U9: 'pitcherProfile' with no pitcher selected has its own message
     // ("Select a pitcher to see his profile," not this generic one) --
     // renderPitcherProfileView() already handles p === null itself.
@@ -8897,7 +9187,8 @@ function render(){
   // tab while this one still has the modal flagged on).
   const setupModalHtml = (state.showSetupModal && (isCoach() ? isHeadOfCurrentTeam() : !state.draftAvailable)) ? renderSetupModal() : '';
 
-  app.innerHTML = sidebar + `<div class="main">${main}</div>` + phoneFooter + setupModalHtml;
+  app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet();
+  attachPitchStrip();   // G1b-r5: no-op unless the phone pitch strip is on screen
   attachVeloStrip();
   attachGameVeloSlide();   // G1b-r3: no-op unless the Live Game velocity row is on screen
   attachGamePanelScroll();

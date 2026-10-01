@@ -9,7 +9,7 @@
      run. Inline handlers (onclick=...), javascript: URLs, <object> and
      <base href> are all refused, so nothing inside a report can execute
      even if the sanitizer below ever missed something. -->
-<meta http-equiv="Content-Security-Policy" content="script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/ 'sha256-+bA6omDP65yqhoqNJt54YZb0lWnCsHRhbLjHEntLMlU='; object-src 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/ 'sha256-1d1xsDiJxO+8b1YP6MFOixOwKyyboaG+nLItY+cVybQ='; object-src 'none'; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bullpen Session Report — Knuckleball</title>
 <style>
@@ -59,6 +59,11 @@
   #kb-state h1{ color:var(--field-dark); font-family:inherit; font-size:18px; margin:0 0 8px; border:0; padding:0; }
   #kb-state p{ font-size:14px; color:var(--ink-faint); max-width:40ch; margin:0; }
   #kb-state.is-error h1{ color:var(--red); }
+  /* S3: the live "Coaches notes" section (styled by the report's own h2 /
+     .section / .caption rules, which carry the sport theme). */
+  .kb-note{ margin:12px 0; break-inside:avoid; page-break-inside:avoid; }
+  .kb-note .caption{ margin:0; }
+  .kb-note-body{ margin:4px 0 0; font-size:14px; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
 </style>
 <!-- U10 (7) print rules, now for this page itself (the report is part of
      it). Breaks fall between sections; a section taller than a page may
@@ -177,6 +182,49 @@ function renderReport(html){
   if(doc.title) document.title = doc.title;
 }
 
+// S3 (Joel, Oct 1, option A): the stored report is frozen, so coaches' notes
+// are shown LIVE on this page instead -- fetched by this report's own token
+// (get_report_notes, which returns only this session's notes) and drawn with
+// textContent only, never as HTML. Any failure (offline, old link) just
+// means no notes section; the report itself is never affected.
+async function addCoachNotes(token){
+  var rows;
+  try{
+    var res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_report_notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({ p_token: token })
+    });
+    if(!res.ok) return;
+    rows = await res.json();
+  } catch(e){ return; }
+  if(!Array.isArray(rows) || !rows.length) return;
+  var sec = document.createElement('section');
+  sec.className = 'section kb-notes';
+  var h = document.createElement('h2');
+  h.textContent = 'Coaches notes';
+  sec.appendChild(h);
+  for(var i = 0; i < rows.length; i++){
+    var r = rows[i] || {};
+    var item = document.createElement('div');
+    item.className = 'kb-note';
+    var meta = document.createElement('p');
+    meta.className = 'caption';
+    var when = r.created_at ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    meta.textContent = String(r.author_name || 'Coach') + (when ? ' \u00b7 ' + when : '');
+    var body = document.createElement('p');
+    body.className = 'kb-note-body';
+    body.textContent = String(r.body || '');
+    item.appendChild(meta);
+    item.appendChild(body);
+    sec.appendChild(item);
+  }
+  var root = document.getElementById('kb-report');
+  var footer = root.querySelector('.report-footer');
+  if(footer && footer.parentNode) footer.parentNode.insertBefore(sec, footer);
+  else root.appendChild(sec);
+}
+
 function downloadReport(){
   if(!reportText) return;
   var blob = new Blob([reportText], { type: 'text/html' });
@@ -231,6 +279,7 @@ async function init(){
   document.getElementById('kb-state').classList.add('hidden');
   document.getElementById('btn-download').disabled = false;
   document.getElementById('btn-print').disabled = false;
+  addCoachNotes(token);
 }
 
 document.getElementById('btn-download').addEventListener('click', downloadReport);

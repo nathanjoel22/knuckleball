@@ -1214,6 +1214,18 @@
   .contacts-save-row{ flex-basis:100%; display:flex; align-items:center; gap:12px; margin-top:2px; }
   .contacts-saved-msg{ font-size:12.5px; color:#6FA287; font-weight:600; }
 
+  /* S3: coaches notes in History */
+  .notes-block{ display:flex; flex-direction:column; gap:10px; margin:14px 0 4px; padding:12px 14px; border:1px solid var(--surface-border); border-radius:10px; background:var(--surface); }
+  .note-item{ background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:9px 11px; }
+  .note-meta{ font-size:12px; color:var(--ink-faint); display:flex; align-items:center; gap:6px; }
+  .note-meta strong{ color:var(--field-dark); }
+  .note-body{ font-size:14px; color:var(--field-dark); line-height:1.45; margin-top:4px; overflow-wrap:anywhere; }
+  .note-del{ margin-left:auto; border:0; background:none; cursor:pointer; font-size:14px; padding:2px 4px; min-width:32px; min-height:32px; }
+  .note-del:disabled{ opacity:0.4; cursor:not-allowed; }
+  .note-input{ width:100%; resize:vertical; font-family:inherit; min-height:72px; font-size:15px; line-height:1.4; }
+  .note-add-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:6px; }
+  .note-count{ font-size:11.5px; color:var(--ink-faint); }
+  .note-hint{ font-size:12.5px; color:var(--ink-faint); margin:0; }
   .report-panel{
     margin-top:16px; padding-top:14px; border-top:1px solid var(--border);
     display:flex; flex-direction:column; gap:8px; align-items:flex-start;
@@ -4460,13 +4472,107 @@ async function syncOutbox(){
 }
 
 /* ---------- LOAD SESSIONS (works for coach viewing a pitcher, or a pitcher viewing self) ---------- */
+/* ---------- S3: COACHES NOTES (Joel, Oct 1) ----------
+   A coach of the pitcher's team writes a plain-text note on a saved session,
+   any time after it's saved. The pitcher and his coaches read it here; the
+   report page shows the current notes live (get_report_notes). Never edited;
+   the author can delete their own. Online only -- nothing queues. A new note
+   re-dots the session for the pitcher (database trigger). */
+const NOTE_MAX = 2000;
+function mapSessionNotes(rows){
+  return (rows || []).map(n => ({ id: n.id, authorId: n.author_id, authorName: n.author_name || 'Coach', body: n.body, createdAt: new Date(n.created_at).getTime() }))
+    .sort((a, b) => a.createdAt - b.createdAt);
+}
+function myUid(){ return state.session && state.session.user && state.session.user.id; }
+function renderSessionNotes(s){
+  const notes = s.notes || [];
+  const coach = isCoach();
+  if(!coach && !notes.length) return '';
+  const uid = myUid();
+  const list = notes.map(n => {
+    const when = new Date(n.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    const mine = n.authorId === uid;
+    const armed = state.noteDeleteArmed === n.id;
+    return `<div class="note-item">
+      <div class="note-meta"><strong>${escHtml(n.authorName)}</strong> · ${escHtml(when)}${mine && !armed ? ` <button type="button" class="note-del" ${isOnline() ? '' : 'disabled'} onclick="armDeleteNote('${n.id}')" aria-label="Delete this note">🗑</button>` : ''}</div>
+      <div class="note-body">${escHtml(n.body).replace(/\n/g, '<br>')}</div>
+      ${armed ? `<div class="delete-row" style="margin-top:6px;"><span class="delete-warn" style="margin:0;">Delete this note? The pitcher won't see it anymore.</span>
+        <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" onclick="deleteSessionNote('${s.id}','${n.id}')">Delete</button>
+        <button class="btn btn-ghost" onclick="armDeleteNote(null)">Keep</button></div>` : ''}
+    </div>`;
+  }).join('');
+  let box = '';
+  if(coach){
+    const draft = (state.noteDrafts && state.noteDrafts[s.id]) || '';
+    const err = state.noteErrors && state.noteErrors[s.id];
+    const blocked = s.pending ? 'Notes open once this session syncs.' : (!isOnline() ? 'Notes need a connection.' : '');
+    box = `<div class="note-add">
+      <textarea id="note-input-${s.id}" class="text-input note-input" maxlength="${NOTE_MAX}" rows="3" placeholder="Add a note for ${escHtml((currentPitcher() || {}).name || 'the pitcher')}…" ${blocked ? 'disabled' : ''} oninput="onNoteInput('${s.id}', this)">${escHtml(draft)}</textarea>
+      <div class="note-add-row">
+        <span class="note-count" id="note-count-${s.id}">${draft.length} / ${NOTE_MAX}</span>
+        <button type="button" class="btn btn-primary" ${blocked || state.noteBusy === s.id ? 'disabled' : ''} onclick="saveSessionNote('${s.id}')">${state.noteBusy === s.id ? 'Saving…' : 'Save note'}</button>
+      </div>
+      ${blocked ? `<p class="note-hint">${blocked}</p>` : ''}${err ? `<p class="report-status report-status-error">${escHtml(err)}</p>` : ''}
+    </div>`;
+  }
+  return `<div class="notes-block">
+    <div class="field-label">Coaches notes</div>
+    ${list || (coach ? '<p class="note-hint">No notes yet.</p>' : '')}
+    ${box}
+  </div>`;
+}
+window.onNoteInput = function(sessionId, el){
+  state.noteDrafts = state.noteDrafts || {};
+  state.noteDrafts[sessionId] = el.value;
+  const c = document.getElementById('note-count-' + sessionId);
+  if(c) c.textContent = el.value.length + ' / ' + NOTE_MAX;
+};
+async function reloadSessionNotes(sessionId){
+  const { data, error } = await supabaseClient.from('session_notes')
+    .select('id, author_id, author_name, body, created_at').eq('session_id', sessionId);
+  if(error) throw error;
+  const sess = state.sessions.find(x => x.id === sessionId);
+  if(sess) sess.notes = mapSessionNotes(data);
+}
+window.saveSessionNote = async function(sessionId){
+  const body = ((state.noteDrafts || {})[sessionId] || '').trim();
+  state.noteErrors = state.noteErrors || {};
+  if(!body){ state.noteErrors[sessionId] = 'Write something first.'; render(); return; }
+  if(!isOnline()){ state.noteErrors[sessionId] = 'Notes need a connection.'; render(); return; }
+  state.noteBusy = sessionId; state.noteErrors[sessionId] = null; render();
+  try{
+    const { error } = await netTimeout(supabaseClient.from('session_notes').insert({ session_id: sessionId, author_id: myUid(), body: body.slice(0, NOTE_MAX) }), 10000);
+    if(error) throw error;
+    state.noteDrafts[sessionId] = '';
+    await reloadSessionNotes(sessionId);
+  } catch(e){
+    console.error('save note failed', e);
+    state.noteErrors[sessionId] = "Couldn't save the note. Check your connection and try again.";
+  }
+  state.noteBusy = null;
+  render();
+};
+window.armDeleteNote = function(noteId){ state.noteDeleteArmed = noteId; render(); };
+window.deleteSessionNote = async function(sessionId, noteId){
+  state.noteErrors = state.noteErrors || {};
+  try{
+    const { error } = await netTimeout(supabaseClient.from('session_notes').delete().eq('id', noteId), 10000);
+    if(error) throw error;
+    await reloadSessionNotes(sessionId);
+  } catch(e){
+    console.error('delete note failed', e);
+    state.noteErrors[sessionId] = "Couldn't delete the note. Check your connection and try again.";
+  }
+  state.noteDeleteArmed = null;
+  render();
+};
 async function loadSessionsForCurrentSelection(){
   const pitcherId = state.currentPitcherId;
   const teamId = state.currentTeamId;
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate)')
+    .select('id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate), session_notes(id, author_id, author_name, body, created_at)')
     .eq('pitcher_id', pitcherId)
     .eq('team_id', teamId)
     .order('started_at', { ascending: false });
@@ -4496,6 +4602,7 @@ async function loadSessionsForCurrentSelection(){
     // G2 approach (b): null for every bullpen and for a game saved without
     // one -- History/the report both render "Game · <date>" in that case.
     opponent: s.opponent || null,
+    notes: mapSessionNotes(s.session_notes),   // S3: coaches' notes (RLS decides who sees them)
     pitches: (s.pitches || []).map(p => ({
       type: p.type, velo: p.velo,
       targetRow: p.target_row, targetCol: p.target_col,
@@ -8011,7 +8118,7 @@ function renderHistoryView(){
           ${expanded ? `
           <div class="session-card-body">
             <div style="flex:1;min-width:220px;">
-              ${reportPanel}
+              ${renderSessionNotes(s)}${reportPanel}
               ${deleteZone}
             </div>
           </div>` : ''}
@@ -8148,7 +8255,7 @@ function renderHistoryView(){
               <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th><th>Relative Acc%</th></tr></thead>
               <tbody>${typeRows}</tbody>
             </table>
-            ${reportPanel}
+            ${renderSessionNotes(s)}${reportPanel}
             ${deleteZone}
           </div>
         </div>` : ''}

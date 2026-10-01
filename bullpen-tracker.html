@@ -8167,8 +8167,8 @@ function renderSetupView(){
     <div class="profile-section"><h3>Radar gun</h3>
       <p class="profile-note" style="margin:0 0 8px;">Will you be using a radar gun while charting?</p>
       <div class="profile-row">
-        <button class="btn btn-primary" onclick="finishSetup(true)">Yes</button>
-        <button class="btn btn-ghost" onclick="finishSetup(false)">No</button>
+        <button class="btn ${p.usesRadarGun ? 'btn-primary' : 'btn-ghost'}" onclick="setSetupRadar(true)">Yes</button>
+        <button class="btn ${p.usesRadarGun ? 'btn-ghost' : 'btn-primary'}" onclick="setSetupRadar(false)">No</button>
       </div>
     </div>
     <div class="profile-row" style="margin-top:8px;">
@@ -8233,6 +8233,15 @@ window.openCoachWelcome = function(){
 // server-side and this page shows again next cold load, which is an
 // acceptable, self-correcting degradation for something explicitly not a
 // gate.
+// Joel, Oct 1 (both sports): the radar answer is just an answer now -- it
+// saves and highlights the choice, and the page stays open until Save
+// Profile, Set Up Later or the X. (It used to double as the finish button.)
+window.setSetupRadar = function(gunYes){
+  state.profile.uses_radar_gun = gunYes;
+  render();
+  supabaseClient.from('profiles').update({ uses_radar_gun: gunYes }).eq('id', state.profile.id)
+    .then(({ error }) => { if(!error) saveLastKnownContext(); });
+};
 window.finishSetup = function(gunYes){
   const now = new Date().toISOString();
   state.profile.uses_radar_gun = gunYes;

@@ -1343,7 +1343,8 @@
     }
     .wide-right .kb-batter{ --kb-batter-h:var(--kbh, 112%); }
     .wide-right .home-plate-wrap{ width:calc(0.6 * var(--zg, 278px) - 4.8px); }
-    .wide-actions{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
+    .wide-bottom{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+    .wide-bottom .ttp-btn{ min-height:38px; }
     /* Joel, Oct 1: pen pitch counter to the right of the perspective chips
        (label above both, "Pitch count" on two lines under the badge). */
     .persp-count{ display:grid; grid-template-columns:minmax(0, 1fr) auto; column-gap:8px; }
@@ -5777,7 +5778,7 @@ function renderGameStatusBar(){
     <div class="stat-box">${renderRunnerDiamond()}<span class="stat-lbl">Runners</span></div>
   </div>`;
 }
-function renderDeliveryToggle(){
+function renderDeliveryToggle(noTime){
   const s = state.activeSession;
   const opts = [{ key: 'windup', label: 'Windup' }, { key: 'set', label: 'Set' }];
   const chips = opts.map(o => {
@@ -5786,7 +5787,7 @@ function renderDeliveryToggle(){
     return `<button class="type-chip${selected?' selected':''}" style="${style}" onclick="setGameDelivery('${o.key}')">${o.label}</button>`;
   }).join('');
   const label = 'Delivery' + (!s.delivery ? ' — pick one before the next pitch' : '');
-  return `<div><div class="field-label" style="margin-bottom:8px;">${label}</div><div class="chip-row">${chips}${renderTimeToPlateBtn()}</div></div>`;
+  return `<div><div class="field-label" style="margin-bottom:8px;">${label}</div><div class="chip-row">${chips}${noTime ? '' : renderTimeToPlateBtn()}</div></div>`;
 }
 // G1b-r decisions 2/3/10, updated by G1b-r2: six buttons now, not seven --
 // H and O fold into one In Play icon button (opens the walkthrough, which
@@ -7295,7 +7296,7 @@ function renderGameSessionView(p){
                 : 'Add your pitches in Profile to start charting.'}</p>
               <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
             </div>
-            ${renderDeliveryToggle()}
+            ${renderDeliveryToggle(true)}
             <div class="hint-msg">${state.hint}</div>
           </div>
           <div class="wide-right">
@@ -7305,12 +7306,13 @@ function renderGameSessionView(p){
                 <div class="zone-caption">${zoneCaption}</div>
               </div>
             </div>
-            <div class="wide-actions">
-              <button class="btn btn-ghost" onclick="undoLastGameAction()">Undo last action</button>
-              <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
-              <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
-            </div>
           </div>
+        </div>
+        <div class="wide-bottom">
+          ${renderTimeToPlateBtn()}
+          <button class="btn btn-ghost" onclick="undoLastGameAction()">Undo last action</button>
+          <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
+          <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
         </div>
       </div>
       <div class="panel log-panel">
@@ -7464,9 +7466,10 @@ function updatePitchStripArrows(){
    as big as the right column allows -- leaving room for the batter
    silhouette on both sides, so the grid never moves when the batter flips --
    but never so tall its bottom (plus caption and 24px) leaves the viewport,
-   and never over 560px. The silhouette stands 12% taller than the grid, so
-   the grid starts that much below the column top, putting the silhouette's
-   head level with the perspective label instead of over the status bar.
+   and never over 560px. Joel, Oct 1 (r6b): the batter is 90% of the grid's
+   height (was 112%) so the grid gets the width; it no longer rises above the
+   grid. Live Game's Time / Undo / New batter / New inning share one row
+   under both columns (.wide-bottom), counted in the height budget.
    If the column is too narrow for 44px cells with the full-size silhouette,
    the grid keeps 44px cells and the silhouette shrinks to fit. Phones never
    get .wide-right (their own layout, G1b-r5). Display only. */
@@ -7485,17 +7488,19 @@ function sizeWideGrid(){
   if(!right || !isWideSession()) return;
   const wrap = right.querySelector('.zone-wrap');
   if(!wrap) return;
-  const A = 167 / 504, H0 = 1.12, MIN = 238, CAP = 560;   // MIN = 5 x 44px cells + gaps
+  const A = 167 / 504, H0 = 0.9, MIN = 238, CAP = 560;    // MIN = 5 x 44px cells + gaps; H0 = batter height / grid
   const colW = wrap.clientWidth;
   const cap = wrap.querySelector('.zone-caption');
   const capH = cap ? cap.offsetHeight + 10 : 0;            // + .zone-wrap's gap
   const top = right.getBoundingClientRect().top + (window.pageYOffset || 0);
-  const room = window.innerHeight - top - capH - 24;
+  const cols = right.closest('.wide-cols');
+  const below = cols && cols.nextElementSibling && cols.nextElementSibling.classList.contains('wide-bottom') ? cols.nextElementSibling.offsetHeight + 18 : 0;   // Live Game's Time / Undo row + panel gap
+  const room = window.innerHeight - top - capH - below - 24;
   let h = H0;
-  let side = Math.min(CAP, (colW - 12) / (1 + 2 * A * H0), room / H0);
+  let side = Math.min(CAP, (colW - 12) / (1 + 2 * A * H0), room / Math.max(1, H0));
   if(side < MIN){
     side = MIN;
-    h = Math.max(0.8, Math.min(H0, ((colW - side) / 2 - 6) / (A * side)));
+    h = Math.max(0.6, Math.min(H0, ((colW - side) / 2 - 6) / (A * side)));
   }
   side = Math.floor(side);
   right.style.setProperty('--zg', side + 'px');

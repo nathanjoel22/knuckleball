@@ -216,6 +216,12 @@
     transition:transform 200ms ease; transform:rotate(0deg);
   }
   .roster-chevron.open{ transform:rotate(180deg); }
+  .persp-rollup{
+    all:unset; box-sizing:border-box; display:flex; align-items:center; gap:8px; width:100%;
+    min-height:36px; cursor:pointer;
+  }
+  .persp-rollup:disabled{ cursor:default; }
+  .persp-current{ margin-left:auto; font-size:13px; font-weight:700; color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
   /* Collapse animation: overflow-hidden max-height + opacity, ~200ms, so the list
      visibly rolls up/down rather than just vanishing. max-height's open value only
      needs to exceed the tallest real roster; it doesn't have to match exactly. */
@@ -1208,7 +1214,7 @@
   }
   /* ---------- G1b-r3: in-grid play entry (docs/game-grid-reference.html) ---------- */
   .gg-field{
-    --gg-fence:#B9D1C4; --gg-grass:#D4E6CB; --gg-dirt:#C9A97C;
+    --gg-fence:#B9D1C4; --gg-grass:#C7DCBD;   /* Joel, Oct 1: a shade darker (field art matches) */ --gg-dirt:#C9A97C;
     --gg-ink:#17261D; --gg-border:#9DBBA9; --gg-gold:#C9A227;
   }
   .gg-cell{ cursor:default; border-color:rgba(15,36,27,0.10) !important; }
@@ -1456,7 +1462,8 @@ let state = {
   lb: null,                 // U8: { teamId, win, data, fetchedAt, status: loading|ok|offline|error, error }
   lbExcludeOpen: null,      // U8 (coach): pitch id whose 'Exclude this reading' panel is open
   lbBusy: false,
-  rosterCollapsed: false,   // coach only: roster list rolled up once a pitcher is selected
+  rosterCollapsed: false,
+  perspectiveRolledUp: false, // phones: the perspective drop-down is rolled up (UI only, not saved)   // coach only: roster list rolled up once a pitcher is selected
   editVeloError: '',        // (g) inline message when the edit-pitch velocity is rejected
   editVeloDraft: '',
   uniformEditKey: null,     // 'pitcherId:teamId' while the uniform-number editor is open
@@ -3341,9 +3348,15 @@ window.selectType = function(type){
   state.hint = '';
   render();
 };
+function isPhoneWidth(){ return window.matchMedia('(max-width:500px)').matches; }
+window.togglePerspectiveRoll = function(){
+  state.perspectiveRolledUp = !state.perspectiveRolledUp;
+  render();
+};
 window.selectPerspective = async function(newPerspective){
   if(state.activeSession.pitches.length > 0) return; // locked after the first pitch
   state.activeSession.chartingPerspective = newPerspective;
+  state.perspectiveRolledUp = true;   // Joel, Oct 1: phones roll it up once picked (ignored elsewhere)
   await storSet(PERSPECTIVE_PREF_KEY, newPerspective);
   await storSet(draftKey(), state.activeSession);
   render();
@@ -4483,6 +4496,19 @@ function renderPerspectiveToggle(){
     return `<button class="type-chip${selected?' selected':''}" style="${style}" ${locked?'disabled':''} onclick="selectPerspective('${o.key}')">${o.label}</button>`;
   }).join('');
   const lockedNote = locked ? `<p style="color:var(--ink-faint);font-size:11.5px;margin:6px 0 0;">Locked after the first pitch.</p>` : '';
+  // Joel, Oct 1: on phones it's a drop-down -- open at the start of a
+  // session, rolled up to one line once a perspective is picked (and always
+  // once the first pitch locks it). Tap the line to open it again.
+  if(isPhoneWidth()){
+    const label = (opts.find(o => o.key === current) || opts[0]).label;
+    const rolled = locked || state.perspectiveRolledUp;
+    const head = `<button type="button" class="persp-rollup" onclick="togglePerspectiveRoll()" ${locked ? 'disabled' : ''} aria-expanded="${rolled ? 'false' : 'true'}">
+        <span class="field-label" style="margin:0;">Charting perspective</span>
+        ${rolled ? `<span class="persp-current">${label}${locked ? ' · locked' : ''}</span>` : ''}
+        ${locked ? '' : `<span class="roster-chevron${rolled ? '' : ' open'}">▾</span>`}
+      </button>`;
+    return rolled ? `<div>${head}</div>` : `<div>${head}<div class="chip-row" style="margin-top:8px;">${chips}</div></div>`;
+  }
   return `<div><div class="field-label" style="margin-bottom:8px;">Charting perspective</div><div class="chip-row">${chips}</div>${lockedNote}</div>`;
 }
 
@@ -4571,6 +4597,7 @@ window.backToChooser = async function(){
 };
 window.chooseSessionKind = async function(kind){
   state.activeSession.kind = kind;
+  state.perspectiveRolledUp = false;   // every new session starts with the perspective open
   if(kind === 'bullpen'){
     // U11 (5)/(6): a new pen starts with no hitter standing in, from the windup.
     state.activeSession.batterMode = 'none';
@@ -6720,9 +6747,9 @@ function ggScorebookBox(step){
 // docs/field-option3-reference.html). Inline rather than loaded so it's
 // there offline with the rest of the page. Change both or neither.
 const GG_FIELD_SVG = `<svg class="gg-fieldart" viewBox="0 0 336 200" preserveAspectRatio="none" aria-hidden="true" style="grid-row:3/6;grid-column:1/6;">
-<rect width="336" height="200" fill="#D4E6CB"/>
+<rect width="336" height="200" fill="#C7DCBD"/>
 <path d="M168.0,190 L56.0,78.0 A118.4,118.4 0 0 1 280.0,78.0 Z" fill="#C9A97C"/>
-<polygon points="168.0,184 215.5104,136.4896 168.0,88.9792 120.4896,136.4896" fill="#C1D3BA" stroke="#fff" stroke-width="2"/>
+<polygon points="168.0,184 215.5104,136.4896 168.0,88.9792 120.4896,136.4896" fill="#B4C8AC" stroke="#fff" stroke-width="2"/>
 <circle cx="168.0" cy="139.648" r="11" fill="#B8956A"/>
 <circle cx="168.0" cy="184" r="13" fill="#C9A97C"/>
 <g fill="#fff" stroke="#0F241B" stroke-width="1"><rect x="210.5104" y="131.4896" width="10" height="10" transform="rotate(45 215.5104 136.4896)"/><rect x="163.0" y="83.9792" width="10" height="10" transform="rotate(45 168.0 88.9792)"/><rect x="115.4896" y="131.4896" width="10" height="10" transform="rotate(45 120.4896 136.4896)"/></g>

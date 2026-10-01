@@ -5088,6 +5088,7 @@ window.choosePlusCode = async function(code){
     case 'AB': return commitNoPitchEvent('auto_ball');
     case 'AS': return commitNoPitchEvent('auto_strike');
     case 'BLK': return commitNoPitchEvent('balk');
+    case 'IP': return commitIllegalPitch();
   }
 };
 window.chooseDroppedThirdOutcome = function(outcome){ return recordGameResult('dropped_third', { inPlayOutcome: outcome }); };
@@ -5420,13 +5421,15 @@ window.undoLastGameAction = async function(){
   if(!lastPitch && !lastEvent) return;
   const undoingEvent = lastEvent && (!lastPitch || lastEvent.seq > lastPitch.seq);
   if(undoingEvent){
-    s.events.pop();
-    s.inning = lastEvent.inningBefore;
-    s.outs = lastEvent.outsBeforeCount;
-    s.balls = lastEvent.ballsBefore;
-    s.strikes = lastEvent.strikesBefore;
-    s.atBatIndex = lastEvent.atBatIndexBefore;
-    s.runners = runnersFromBitmask(lastEvent.runnersBefore);
+    let undone = s.events.pop();
+    // S2: an illegal pitch is two rows (balk, then its ball) -- one Undo takes both.
+    if(undone.illegalPitchBall && s.events.length && s.events[s.events.length - 1].illegalPitch) undone = s.events.pop();
+    s.inning = undone.inningBefore;
+    s.outs = undone.outsBeforeCount;
+    s.balls = undone.ballsBefore;
+    s.strikes = undone.strikesBefore;
+    s.atBatIndex = undone.atBatIndexBefore;
+    s.runners = runnersFromBitmask(undone.runnersBefore);
   } else {
     const last = lastPitch;
     s.pitches.pop();
@@ -5585,7 +5588,7 @@ window.commitAdjustEvent = async function(reason){
    always; auto ball/strike when they complete a walk/strikeout) and so
    share applyGameResultProgression's own count-then-check shape, just
    against s directly rather than through a pushed pitch row. */
-window.commitNoPitchEvent = async function(eventType){
+window.commitNoPitchEvent = async function(eventType, extra, noRender){
   const s = state.activeSession;
   // G1b-r2c: the old "only between pitches" guard (gamePendingPitch must be
   // null) made these four permanently unreachable once the drop-down panel
@@ -5646,7 +5649,8 @@ window.commitNoPitchEvent = async function(eventType){
     runnersBefore: before.runnersBefore, runnerAdvances: advances.length ? advances : null,
     outsOnPlay, runsScored,
     inningBefore: before.inning, outsBeforeCount: before.outs,
-    ballsBefore: before.balls, strikesBefore: before.strikes, atBatIndexBefore: before.atBatIndex
+    ballsBefore: before.balls, strikesBefore: before.strikes, atBatIndexBefore: before.atBatIndex,
+    ...(extra || {})
   });
   // G1b-r2c: none of these four is a pitch -- the location tap that opened
   // the panel is discarded, and the panel closes (there's no walkthrough or
@@ -5655,7 +5659,16 @@ window.commitNoPitchEvent = async function(eventType){
   s.gameResultMenu = null;
   s.panelOpen = false;
   await storSet(draftKey(), s);
-  render();
+  if(!noRender) render();
+};
+// S2 (Joel, Oct 1, option B): softball has no balk -- its "Illegal pitch"
+// moves every runner up one base AND adds a ball to the count (ball 4 =
+// walk). Saved as the two event rows the app already has, a balk then an
+// auto ball, flagged so the log shows one "Illegal pitch" line and one Undo
+// removes both. No new event type, no database change.
+window.commitIllegalPitch = async function(){
+  await commitNoPitchEvent('balk', { illegalPitch: true }, true);
+  await commitNoPitchEvent('auto_ball', { illegalPitchBall: true });
 };
 
 // G1b-r2a: lives inside the status bar, which is now always on a dark
@@ -5755,7 +5768,7 @@ const GAME_EVENT_LABELS = {
   intentional_walk: 'Intentional walk', auto_ball: 'Auto ball', auto_strike: 'Auto strike'
 };
 function gameEventText(ev){
-  const label = GAME_EVENT_LABELS[ev.eventType] || ev.eventType;
+  const label = ev.illegalPitch ? 'Illegal pitch (ball + runners up)' : (GAME_EVENT_LABELS[ev.eventType] || ev.eventType);
   const parts = [label];
   (ev.runnerAdvances || []).forEach(a => {
     const to = a.to === 0 ? 'out' : a.to === 4 ? 'home' : (a.to === 1 ? '1st' : a.to === 2 ? '2nd' : '3rd');
@@ -6475,7 +6488,7 @@ function deriveRunnerReachCode(base){
       return scorebookBatterCode(entry.pt);
     }
     if(entry.ev && (entry.ev.runnerAdvances || []).some(a => a.to === base)){
-      return GAME_EVENT_SHORT_CODE[entry.ev.eventType] || '';
+      return entry.ev.illegalPitch ? 'IP' : (GAME_EVENT_SHORT_CODE[entry.ev.eventType] || '');
     }
   }
   return '';
@@ -6921,7 +6934,7 @@ function ggChoices(step){
       { inner: ggIcon('icon-foul.png', 'Foul'), onclick: "gridGlyph('F')" },
       { inner: ggIcon('batter-icon.png', 'In Play'), onclick: "gridGlyph('INPLAY')" }
     ]);
-    case 'more': return ggFill(GG_MORE.flat().map(([code, big, cap]) => ({
+    case 'more': return ggFill(GG_MORE.flat().map(([code, big, cap]) => (code === 'BLK' && !sportCfg().hasDelivery) ? ['IP', 'IP', 'Illegal pitch'] : [code, big, cap]).map(([code, big, cap]) => ({
       inner: ggBig(big, cap), onclick: `gridMore('${code}')`, disabled: code === 'D3' && s.strikes !== 2
     })));
     case 'foulBunt': return ggFill([
@@ -7204,7 +7217,7 @@ function renderGameSessionView(p){
   // it actually happened, not off in a separate list.
   const combinedLog = [
     ...pitches.map(pt => ({ seq: pt.seq, pt })),
-    ...(s.events || []).map(ev => ({ seq: ev.seq, ev }))
+    ...(s.events || []).filter(ev => !ev.illegalPitchBall).map(ev => ({ seq: ev.seq, ev }))   // S2: an illegal pitch's ball rides on its one log line
   ].sort((a, b) => b.seq - a.seq).slice(0, 12);
   const logRows = combinedLog.map(entry => {
     if(entry.pt){

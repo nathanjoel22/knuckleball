@@ -624,7 +624,7 @@
      phone, side by side on iPad (matches the existing >=861px breakpoint
      used elsewhere in this file for phone-vs-tablet layout calls). Both
      buttons share one fixed width (never sized off their own text) so
-     "Bullpen" and "Live Game" -- and the Beta tag on the second one --
+     "Bullpen" and "Live Game" (Beta tag removed, Joel, Oct 1) --
      never make the two read as different sizes; align-items/justify-
      content center the pair under the question in both layouts. */
   .kind-chooser{ display:flex; flex-direction:column; align-items:center; padding:48px 16px; }
@@ -637,14 +637,6 @@
   }
   .kind-choice-btn:hover{ background:var(--kind-btn-hover); }
   .kind-choice-btn:active{ background:var(--kind-btn-active); }
-  /* Small, high-contrast (7.8:1 dark-ink-on-amber) pill -- not part of
-     the button's own Teko display type, so it stays legible at this
-     size instead of going condensed/all-caps like the button label. */
-  .beta-tag{
-    font-family:'IBM Plex Sans',sans-serif; font-size:11px; font-weight:700;
-    letter-spacing:0.04em; text-transform:uppercase; color:var(--field-dark);
-    background:var(--amber); padding:2px 7px; border-radius:999px; line-height:1.4;
-  }
   @media (min-width:861px){ .kind-chooser-buttons{ flex-direction:row; justify-content:center; } .kind-choice-btn{ width:220px; } }
   /* U10 (1): back to the chooser. Above phone width it's a plain
      .btn.btn-ghost in the pitcher header's action row -- no extra rules, so
@@ -4813,7 +4805,7 @@ function renderSessionKindChooser(){
     <h2 class="display" style="margin:0 0 20px;text-align:center;">What will we be charting today?</h2>
     <div class="kind-chooser-buttons">
       <button class="kind-choice-btn" onclick="chooseSessionKind('bullpen')">Bullpen</button>
-      ${sportCfg().hasLiveGame ? `<button class="kind-choice-btn" onclick="chooseSessionKind('game')">Live Game<span class="beta-tag">Beta</span></button>` : ''}
+      ${sportCfg().hasLiveGame ? `<button class="kind-choice-btn" onclick="chooseSessionKind('game')">Live Game</button>` : ''}
     </div>
   </div>`;
 }

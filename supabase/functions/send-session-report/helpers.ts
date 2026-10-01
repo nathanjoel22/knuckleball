@@ -20,8 +20,10 @@ export function asSport(v: unknown): Sport { return v === 'softball' ? 'softball
 let activePalette: string[] = TYPE_PALETTE_HEX
 export function useSportPalette(sport: Sport): void { activePalette = SPORT_PALETTE_HEX[sport] ?? TYPE_PALETTE_HEX }
 // S1: the softball report theme = the baseball CSS with its THEME colors
-// swapped (docs/softball-theme-reference.html). A baseball report's CSS is
-// the untouched original text, byte for byte.
+// swapped (docs/softball-theme-reference.html). S2: applied to the whole
+// page, so the drawn charts (grids, axes) turn too. A baseball report is the
+// untouched original text, byte for byte. No target here is also a source,
+// so applying it twice changes nothing.
 const SOFTBALL_THEME_SWAP: [string, string][] = [
   ['#0F241B', '#234B6E'],   // dark anchor
   ['#E8F3EC', '#EAF4FB'],   // panel
@@ -31,7 +33,8 @@ const SOFTBALL_THEME_SWAP: [string, string][] = [
   ['#5B6B61', '#5F7A91'],
   ['#F7FAF8', '#F7FAFD'],   // page
   ['#B7C2B4', '#BCCBD8'],   // light text on the dark header
-  ['#E8A83D', '#F2A7C3']    // accent (only ever on the dark header)
+  ['#E8A83D', '#F2A7C3'],   // accent (header; S2: also the swinging-strike dot in charts)
+  ['#7C8C82', '#7A8EA0']    // S2: chart axis / zone-number text
 ]
 export function themedCss(css: string, sport: Sport): string {
   if (sport !== 'softball') return css

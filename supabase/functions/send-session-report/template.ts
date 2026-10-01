@@ -391,12 +391,13 @@ export const CSS = `
 
 export function buildReportHtml(p: ReportPayload): string {
   const title = `Bullpen Report — ${p.pitcherName}`
-  return `<!doctype html>
+  // S2: the softball swap covers the whole page -- CSS and the drawn charts.
+  return themedCss(`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
-<style>${themedCss(CSS, asSport(p.sport))}</style>
+<style>${CSS}</style>
 </head>
 <body>
 <div class="page">
@@ -412,5 +413,5 @@ ${renderTrends(p)}
 ${renderFooter(p)}
 </div>
 </body>
-</html>`
+</html>`, asSport(p.sport))
 }

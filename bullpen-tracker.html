@@ -257,6 +257,16 @@
     --kind-btn-active:#C2567D;
     --accent-text:    var(--field-dark);   /* never pink text on light */
     --game-chip-border: #9FC3DD;
+    /* S2 (Joel, Oct 1): Live Game in softball colors. */
+    --game-gold:        #E98DB0;
+    --game-panel-bg:    #F4F8FC;
+  }
+  html[data-sport="softball"] .game-panel-header .stat-lbl{ color:rgba(234,244,251,0.7); }
+  html[data-sport="softball"] .game-panel-handle{ color:rgba(234,244,251,0.75); }
+  html[data-sport="softball"] .gg-field{
+    --gg-fence:#BFDCEF; --gg-grass:#CFE4F5; --gg-infield:#BCD7EC; --gg-dirt:#C9A97C; --gg-mound:#B8956A;
+    --gg-ink:#1B3550; --gg-border:#9FC3DD; --gg-gold:#E98DB0; --gg-muted:#5F7A91;
+    --gg-on-fg:#EAF4FB; --gg-on-cap:#BFDCEF; --gg-line:#234B6E;
   }
   .zone-note{ font-size:11.5px; color:var(--ink-faint); text-align:center; margin-top:-4px; }
   *{box-sizing:border-box;}
@@ -1402,6 +1412,7 @@
   .gg-field{
     --gg-fence:#B9D1C4; --gg-grass:#C7DCBD;   /* Joel, Oct 1: a shade darker (field art matches) */ --gg-dirt:#C9A97C;
     --gg-ink:#17261D; --gg-border:#9DBBA9; --gg-gold:#C9A227;
+    --gg-infield:#B4C8AC; --gg-mound:#B8956A; --gg-muted:#5B6B61; --gg-on-fg:#E8F3EC; --gg-on-cap:#CFE6D7; --gg-line:#0F241B;
   }
   .gg-cell{ cursor:default; border-color:rgba(15,36,27,0.10) !important; }
   .gg-cell.gg-fence{ background:var(--gg-fence) !important; }
@@ -1427,11 +1438,11 @@
     background:#fff; color:var(--gg-ink); border:1.5px solid var(--gg-border); border-radius:9px;
     box-shadow:0 2px 6px rgba(var(--ink-rgb),0.15); font:inherit; cursor:pointer;
   }
-  .gg-btn.on{ background:var(--field-dark); color:#E8F3EC; border-color:var(--field-dark); }
-  .gg-btn.on .gg-cap{ color:#CFE6D7; }
+  .gg-btn.on{ background:var(--field-dark); color:var(--gg-on-fg); border-color:var(--field-dark); }
+  .gg-btn.on .gg-cap{ color:var(--gg-on-cap); }
   .gg-btn:disabled{ opacity:0.35; cursor:not-allowed; box-shadow:none; }
   .gg-ic{ width:40px; height:30px; max-width:80%; display:block; background:currentColor; mask-size:contain; -webkit-mask-size:contain; mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat; mask-position:center; -webkit-mask-position:center; }
-  .gg-cap{ max-width:100%; padding:0 3px; box-sizing:border-box; font-size:9px; letter-spacing:0.02em; text-transform:uppercase; color:#5B6B61; text-align:center; line-height:1.15; }
+  .gg-cap{ max-width:100%; padding:0 3px; box-sizing:border-box; font-size:9px; letter-spacing:0.02em; text-transform:uppercase; color:var(--gg-muted); text-align:center; line-height:1.15; }
   /* Narrow phones: captions break only BETWEEN words (never mid-word), and
      the text steps down so two short lines fit inside a ~45px box. */
   .cap-short{ display:none; }
@@ -1456,9 +1467,9 @@
   }
   .gg-book > span{ position:absolute; font-size:11px; font-weight:700; }
   .gg-book-tl{ left:7px; top:5px; }
-  .gg-book-tr{ right:7px; top:5px; color:#5B6B61; }
+  .gg-book-tr{ right:7px; top:5px; color:var(--gg-muted); }
   .gg-book-play{ left:50%; top:20px; transform:translateX(-50%); background:var(--gg-gold); color:var(--field-dark); border-radius:8px; padding:1px 6px; font-size:10px !important; white-space:nowrap; max-width:92%; overflow:hidden; text-overflow:ellipsis; }
-  .gg-book-bl{ left:7px; right:7px; bottom:5px; color:#5B6B61; font-weight:600 !important; font-size:10px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .gg-book-bl{ left:7px; right:7px; bottom:5px; color:var(--gg-muted); font-weight:600 !important; font-size:10px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .gg-diamond{ position:absolute; left:25%; top:33%; width:50%; height:42%; }
   .gg-book-back, .gg-book-fix{
     position:absolute; bottom:3px; font:inherit; font-size:10px; font-weight:700; color:var(--field-dark);
@@ -1471,8 +1482,8 @@
     background:#fff; border:1.5px solid var(--gg-border); border-radius:9px; padding:4px;
   }
   .gg-velo-read{ font-size:30px; font-weight:800; color:var(--gg-ink); line-height:1; }
-  .gg-velo-unit{ font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:#5B6B61; text-align:center; }
-  .gg-noread{ font:inherit; font-size:10px; font-weight:700; color:#5B6B61; background:#fff; border:1px solid var(--gg-border); border-radius:8px; padding:4px 10px; cursor:pointer; min-height:28px; white-space:nowrap; }
+  .gg-velo-unit{ font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--gg-muted); text-align:center; }
+  .gg-noread{ font:inherit; font-size:10px; font-weight:700; color:var(--gg-muted); background:#fff; border:1px solid var(--gg-border); border-radius:8px; padding:4px 10px; cursor:pointer; min-height:28px; white-space:nowrap; }
   /* Row 4: the slider. Full grid width, 5 speeds across, center-snapped; the
      fixed frame marks the center window -- whatever settles in it is picked. */
   .gg-velo{ margin:1px; min-width:0; display:flex; align-items:stretch; background:#fff; border:1.5px solid var(--gg-border); border-radius:9px; padding:2px; }
@@ -1564,7 +1575,7 @@ const SPORTS = {
     catalog: SOFTBALL_PITCH_CATALOG,
     palette: ['#E27BA2','#7FB8E0','#6C5B7B','#F6B26B','#4FA3A5','#9B8ADB','#B36B5E','#8C8C8C'],
     veloMin: 25, veloMax: 85, veloCenter: 50,
-    hasDelivery: false, hasTimeToPlate: false, hasLeaderboard: false, hasLiveGame: false,
+    hasDelivery: false, hasTimeToPlate: false, hasLeaderboard: false, hasLiveGame: true,   // S2 (Joel, Oct 1): Live Game, no delivery
     zoneNote: 'Zone: armpits to top of knees'
   }
 };
@@ -4866,7 +4877,7 @@ window.chooseSessionKind = async function(kind){
     state.activeSession.balls = 0;
     state.activeSession.strikes = 0;
     state.activeSession.atBatIndex = 1;
-    state.activeSession.delivery = 'windup';
+    state.activeSession.delivery = sportCfg().hasDelivery ? 'windup' : null;   // S2: softball has no Set/Windup
     // G2 approach (b): optional, editable up to save -- null renders as
     // "Game · <date>" in History/the report; set renders as
     // "vs <opponent> · <date>" (matches sessions.opponent's own column
@@ -4920,7 +4931,7 @@ window.chooseSessionKind = async function(kind){
 // other async handler in this file.
 window.handleGameZoneTap = async function(row, col){
   if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
-  if(!state.activeSession.delivery){ state.hint = 'Set or windup first'; render(); return; }
+  if(sportCfg().hasDelivery && !state.activeSession.delivery){ state.hint = 'Set or windup first'; render(); return; }
   state.hint = '';
   // A re-tap (whether idle or mid-result-menu) starts this pitch's capture
   // over -- simplest correction path for a mis-tapped location, same
@@ -4970,6 +4981,7 @@ window.resetGamePendingPitch = async function(){
 // The charter can still flip it for any pitch.
 function gameHasRunners(s){ return !!(s.runners && (s.runners[1] || s.runners[2] || s.runners[3])); }
 function defaultGameDelivery(s){
+  if(!sportCfg().hasDelivery){ s.delivery = null; ttpReset(); return; }   // S2: softball -- no delivery, ever
   s.delivery = gameHasRunners(s) ? 'set' : 'windup';
   if(s.delivery !== 'set') ttpReset();   // U11 (7): a time to home only exists under Set
 }
@@ -7094,11 +7106,11 @@ function ggScorebookBox(step){
   const outs = ggProjectedOuts();
   const play = ggPlayText(step);
   // Bases: home at the bottom, 1st right, 2nd top, 3rd left; occupied = filled.
-  const base = (x, y, on) => `<rect x="${x - 7}" y="${y - 7}" width="14" height="14" transform="rotate(45 ${x} ${y})" fill="${on ? '#17261D' : '#fff'}" stroke="#17261D" stroke-width="2"/>`;
+  const base = (x, y, on) => `<rect x="${x - 7}" y="${y - 7}" width="14" height="14" transform="rotate(45 ${x} ${y})" style="fill:${on ? 'var(--gg-ink)' : '#fff'};stroke:var(--gg-ink)" stroke-width="2"/>`;
   const diamond = `<svg class="gg-diamond" viewBox="0 0 100 100" aria-hidden="true">
-      <path d="M50 88 L88 50 L50 12 L12 50 Z" fill="none" stroke="#9DBBA9" stroke-width="2"/>
+      <path d="M50 88 L88 50 L50 12 L12 50 Z" fill="none" style="stroke:var(--gg-border)" stroke-width="2"/>
       ${base(88, 50, s.runners[1])}${base(50, 12, s.runners[2])}${base(12, 50, s.runners[3])}
-      <path d="M44 84 L56 84 L56 90 L50 95 L44 90 Z" fill="#fff" stroke="#17261D" stroke-width="2"/>
+      <path d="M44 84 L56 84 L56 90 L50 95 L44 90 Z" fill="#fff" style="stroke:var(--gg-ink)" stroke-width="2"/>
     </svg>`;
   const anyRunner = [1, 2, 3].some(b => s.runners[b]);
   const fixBtn = '';   // Joel, Oct 1: "Fix runners" is gone -- ADV runners (bottom-right box) does its job
@@ -7117,13 +7129,13 @@ function ggScorebookBox(step){
 // docs/field-option3-reference.html). Inline rather than loaded so it's
 // there offline with the rest of the page. Change both or neither.
 const GG_FIELD_SVG = `<svg class="gg-fieldart" viewBox="0 0 336 200" preserveAspectRatio="none" aria-hidden="true" style="grid-row:3/6;grid-column:1/6;">
-<rect width="336" height="200" fill="#C7DCBD"/>
-<path d="M168.0,190 L56.0,78.0 A118.4,118.4 0 0 1 280.0,78.0 Z" fill="#C9A97C"/>
-<polygon points="168.0,184 215.5104,136.4896 168.0,88.9792 120.4896,136.4896" fill="#B4C8AC" stroke="#fff" stroke-width="2"/>
-<circle cx="168.0" cy="139.648" r="11" fill="#B8956A"/>
-<circle cx="168.0" cy="184" r="13" fill="#C9A97C"/>
-<g fill="#fff" stroke="#0F241B" stroke-width="1"><rect x="210.5104" y="131.4896" width="10" height="10" transform="rotate(45 215.5104 136.4896)"/><rect x="163.0" y="83.9792" width="10" height="10" transform="rotate(45 168.0 88.9792)"/><rect x="115.4896" y="131.4896" width="10" height="10" transform="rotate(45 120.4896 136.4896)"/></g>
-<polygon points="163.0,180 173.0,180 173.0,184 168.0,189 163.0,184" fill="#fff" stroke="#0F241B" stroke-width="1"/>
+<rect width="336" height="200" style="fill:var(--gg-grass)"/>
+<path d="M168.0,190 L56.0,78.0 A118.4,118.4 0 0 1 280.0,78.0 Z" style="fill:var(--gg-dirt)"/>
+<polygon points="168.0,184 215.5104,136.4896 168.0,88.9792 120.4896,136.4896" style="fill:var(--gg-infield)" stroke="#fff" stroke-width="2"/>
+<circle cx="168.0" cy="139.648" r="11" style="fill:var(--gg-mound)"/>
+<circle cx="168.0" cy="184" r="13" style="fill:var(--gg-dirt)"/>
+<g fill="#fff" style="stroke:var(--gg-line)" stroke-width="1"><rect x="210.5104" y="131.4896" width="10" height="10" transform="rotate(45 215.5104 136.4896)"/><rect x="163.0" y="83.9792" width="10" height="10" transform="rotate(45 168.0 88.9792)"/><rect x="115.4896" y="131.4896" width="10" height="10" transform="rotate(45 120.4896 136.4896)"/></g>
+<polygon points="163.0,180 173.0,180 173.0,184 168.0,189 163.0,184" fill="#fff" style="stroke:var(--gg-line)" stroke-width="1"/>
 <line x1="168.0" y1="184" x2="0" y2="16.0" stroke="#fff" stroke-width="2"/><line x1="168.0" y1="184" x2="336" y2="16.0" stroke="#fff" stroke-width="2"/>
 </svg>`;
 function renderGameFieldGrid(){
@@ -7242,7 +7254,7 @@ function renderGameSessionView(p){
         ${renderAdjustRunnersFlow()}
         <div class="perspective-delivery-row">
           ${renderPerspectiveToggle()}
-          ${renderDeliveryToggle()}
+          ${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}
         </div>
         <div>
           <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
@@ -7301,7 +7313,7 @@ function renderGameSessionView(p){
                 : 'Add your pitches in Profile to start charting.'}</p>
               <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
             </div>
-            ${renderDeliveryToggle(true)}
+            ${sportCfg().hasDelivery ? renderDeliveryToggle(true) : ''}
           </div>
           <div class="wide-right">
             <div class="gridwrap">
@@ -7311,7 +7323,7 @@ function renderGameSessionView(p){
               </div>
             </div>
           </div>
-          <div class="wide-bl">${renderTimeToPlateBtn()}</div>
+          <div class="wide-bl">${sportCfg().hasTimeToPlate ? renderTimeToPlateBtn() : ''}</div>
           <div class="wide-br">
             <button class="btn btn-ghost" onclick="undoLastGameAction()">Undo last action</button>
             <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>

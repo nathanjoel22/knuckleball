@@ -6,7 +6,7 @@
 // game-only stylesheet addition below, so the two reports read as one
 // product (content spec: "Same theme and typography as the pen report").
 // ============================================================================
-import { escapeHtml, safeNum, colorForType, timesToHomeLine, asSport, type Sport } from './helpers.ts'
+import { escapeHtml, safeNum, colorForType, timesToHomeLine, asSport, themedCss, type Sport } from './helpers.ts'
 import { ZONE_NAMES } from './helpers.ts'
 import { drawGrid, drawLegend, drawLineChart, drawGridByResult, drawResultLegend, resultCategoryOf, drawTypeGrids } from './svg.ts'
 import { CSS as PEN_CSS } from './template.ts'
@@ -418,7 +418,8 @@ function renderAtBatLog(p: GameReportPayload): string {
   const body = innings.map(inning => {
     const abs = byInning.get(inning)!.map(ab => {
       const sideLabel = ab.side === 'R' ? 'R' : ab.side === 'L' ? 'L' : '—'
-      const deliveryLabel = ab.delivery === 'set' ? 'Set' : ab.delivery === 'windup' ? 'Windup' : '—'
+      // S2 (Joel, Oct 1): softball has no Set/Windup, so its at-bats show the side only.
+      const deliveryLabel = asSport(p.sport) === 'softball' ? '' : ab.delivery === 'set' ? 'Set' : ab.delivery === 'windup' ? 'Windup' : '—'
       const seq = ab.pitches.map(pt => {
         const g = resultGlyph(pt)
         const veloBit = pt.velo !== null && pt.velo !== undefined ? `${escapeHtml(pt.type)} ${Math.round(pt.velo)}` : escapeHtml(pt.type)
@@ -426,7 +427,7 @@ function renderAtBatLog(p: GameReportPayload): string {
         return `${veloBit} ${g.glyph}${g.label ? ' ' + g.label : ''}${ttpBit}`
       }).join(' · ')
       const ending = ab.incomplete ? 'incomplete' : escapeHtml(ab.ending)
-      return `<div class="ab-row"><span class="ab-num">#${ab.atBatIndex} (${sideLabel}, ${deliveryLabel})</span> ${seq} <span class="ab-ending">${ending}</span></div>`
+      return `<div class="ab-row"><span class="ab-num">#${ab.atBatIndex} (${sideLabel}${deliveryLabel ? ', ' + deliveryLabel : ''})</span> ${seq} <span class="ab-ending">${ending}</span></div>`
     }).join('')
     return `<div class="ab-inning"><h3>Inning ${inning}</h3>${abs}</div>`
   }).join('')
@@ -458,7 +459,8 @@ const GAME_CSS = `
 
 export function buildGameReportHtml(p: GameReportPayload): string {
   const title = `Game Report — ${p.pitcherName}${p.opponent ? ' vs ' + p.opponent : ''}`
-  return `<!doctype html>
+  // S2: the softball swap covers the whole page -- CSS and the drawn charts.
+  return themedCss(`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -483,5 +485,5 @@ ${renderAtBatLog(p)}
 ${renderFooter(p)}
 </div>
 </body>
-</html>`
+</html>`, asSport(p.sport))
 }

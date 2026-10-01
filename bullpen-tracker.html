@@ -4605,14 +4605,14 @@ window.chooseSessionKind = async function(kind){
     state.activeSession.delivery = 'windup';
   }
   if(kind === 'game'){
-    // Fresh game state. delivery starts null -- acceptance check 3 wants
-    // the FIRST pitch to actually require an answer, not silently default.
+    // Fresh game state. Bases start empty, so the delivery starts at Windup
+    // (Joel, Oct 1 -- replaces G1's "first pitch must ask").
     state.activeSession.inning = 1;
     state.activeSession.outs = 0;
     state.activeSession.balls = 0;
     state.activeSession.strikes = 0;
     state.activeSession.atBatIndex = 1;
-    state.activeSession.delivery = null;
+    state.activeSession.delivery = 'windup';
     // G2 approach (b): optional, editable up to save -- null renders as
     // "Game · <date>" in History/the report; set renders as
     // "vs <opponent> · <date>" (matches sessions.opponent's own column
@@ -4707,6 +4707,16 @@ window.resetGamePendingPitch = async function(){
   await storSet(draftKey(), state.activeSession);
   render();
 };
+// Joel, Oct 1: a Live Game's delivery defaults from the bases -- Set with
+// anyone on, Windup when they're empty -- wherever it used to reset to
+// "ask" (new game, every new batter, new inning, end of a play), and again
+// whenever runner moves take the bases from empty to occupied or back.
+// The charter can still flip it for any pitch.
+function gameHasRunners(s){ return !!(s.runners && (s.runners[1] || s.runners[2] || s.runners[3])); }
+function defaultGameDelivery(s){
+  s.delivery = gameHasRunners(s) ? 'set' : 'windup';
+  if(s.delivery !== 'set') ttpReset();   // U11 (7): a time to home only exists under Set
+}
 window.setGameDelivery = async function(d){
   if(d !== 'set') ttpReset();   // U11 (7): a time to home only exists under Set
   state.activeSession.delivery = d;
@@ -5040,9 +5050,8 @@ function applyGameResultProgression(result, extra){
     s.atBatIndex++;
     s.balls = 0;
     s.strikes = 0;
-    // Delivery is asked fresh for every new batter, not carried over --
-    // matches chooseSessionKind's own reasoning for starting it null.
-    s.delivery = null;
+    // Every new batter starts from the bases' default (Joel, Oct 1).
+    defaultGameDelivery(s);
   }
   return { batterTo, runnerAdvances, outsOnPlay, runsScored };
 }
@@ -5185,7 +5194,7 @@ window.gameNewBatter = async function(){
   s.atBatIndex++;
   s.balls = 0;
   s.strikes = 0;
-  s.delivery = null;
+  defaultGameDelivery(s);
   await storSet(draftKey(), s);
   render();
 };
@@ -5196,10 +5205,10 @@ window.gameNewInning = async function(){
   s.balls = 0;
   s.strikes = 0;
   s.atBatIndex++;
-  s.delivery = null;
   // G1b: bases clear at a manual New inning the same as they do at 3 outs
   // (packet: "Cleared at three outs and at New inning").
   s.runners = { 1: false, 2: false, 3: false };
+  defaultGameDelivery(s);   // empty bases -> Windup
   await storSet(draftKey(), s);
   render();
 };
@@ -5274,9 +5283,11 @@ window.commitAdjustEvent = async function(reason){
   };
   const toNum = ar.destination === 'out' ? 0 : ar.destination === 'home' ? 4 : Number(ar.destination);
   const advances = [{ from: ar.runner, to: toNum }];
+  const hadRunnersBefore = gameHasRunners(s);
   const { outsOnPlay, runsScored } = applyRunnerAdvances(s, advances, null);
   s.outs += outsOnPlay;
   if(s.outs >= 3){ s.inning++; s.outs = 0; s.runners = { 1: false, 2: false, 3: false }; }
+  if(hadRunnersBefore !== gameHasRunners(s)) defaultGameDelivery(s);   // Joel, Oct 1
   s.events.push({
     id: genUUID(), seq: s.nextSeq++,
     eventType: reason,
@@ -5322,6 +5333,7 @@ window.commitNoPitchEvent = async function(eventType){
     inning: s.inning, outs: s.outs, balls: s.balls, strikes: s.strikes,
     atBatIndex: s.atBatIndex, runnersBefore: runnersBitmask(s.runners)
   };
+  const hadRunnersBefore = gameHasRunners(s);   // Joel, Oct 1: delivery default follows the bases
   let advances = [], batterTo = null, outsOnPlay = 0, runsScored = 0, outsBumped = 0, endsAtBat = false;
   if(eventType === 'intentional_walk'){
     // Packet: "IBB -> batter to 1st, forced runners advance, new batter."
@@ -5356,7 +5368,8 @@ window.commitNoPitchEvent = async function(eventType){
   outsBumped = outsBumped || outsOnPlay;
   if(outsBumped) s.outs += outsBumped;
   if(s.outs >= 3){ s.inning++; s.outs = 0; s.runners = { 1: false, 2: false, 3: false }; }
-  if(endsAtBat){ s.atBatIndex++; s.balls = 0; s.strikes = 0; s.delivery = null; }
+  if(endsAtBat){ s.atBatIndex++; s.balls = 0; s.strikes = 0; defaultGameDelivery(s); }
+  else if(hadRunnersBefore !== gameHasRunners(s)) defaultGameDelivery(s);   // e.g. a pickoff empties the bases
   s.events.push({
     id: genUUID(), seq: s.nextSeq++,
     eventType,
@@ -5995,7 +6008,7 @@ window.commitFieldPlay = async function(){
   s.atBatIndex++;
   s.balls = 0;
   s.strikes = 0;
-  s.delivery = null;
+  defaultGameDelivery(s);
 
   s.gamePendingPitch = null;
   s.gameResultMenu = null;
@@ -6619,7 +6632,7 @@ function ggVeloArea(){
   return `<div class="gg-velo-readout" style="grid-row:1/3;grid-column:3/6;">
       <span class="gg-velo-read">${has ? escHtml(String(v)) : '—'}</span>
       <span class="gg-velo-unit">${has ? 'mph' : 'slide the bar below'}</span>
-      <button type="button" class="gg-noread" onclick="recordGameVelo(null)">No read</button>
+      <button type="button" class="gg-noread" onclick="recordGameVelo(null)">Reset</button>
     </div>`;
 }
 // Joel, Sept 30: the velocity bar is row 3 (directly above Next Pitch), the full width of the grid, and
@@ -6778,7 +6791,7 @@ function renderGameFieldGrid(){
   </div>`;
 }
 function ggCaption(step){
-  if(step === 'velo') return 'Swipe and tap the speed, or No read — then Next Pitch';
+  if(step === 'velo') return 'Swipe or tap the speed (Reset clears it) — then Next Pitch';
   if(step === 'ready') return 'Next Pitch when you’re ready';
   const reason = (step === 'position' || step === 'velo') ? null : null;
   return reason || 'Choose what happened';

@@ -148,13 +148,13 @@
     background:var(--field-dark); color:var(--chalk); border-radius:10px; margin:8px 0 0;
   }
   .sess-back{ all:unset; cursor:pointer; display:flex; align-items:center; gap:4px; min-height:44px; padding:0 6px;
-    font-size:16px; color:var(--chalk); max-width:34%; }
+    font-size:16px; color:var(--chalk); max-width:32%; min-width:0; }
   .sess-team{ font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sess-who{ display:flex; align-items:center; gap:8px; min-width:0; flex:1; }
   .sess-who .headshot{ width:28px; height:28px; font-size:11px; flex:none; }
-  .sess-name{ font-weight:700; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sess-name{ font-weight:700; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:2.5em; }
   .sess-num{ font-size:14px; color:var(--chalk-dim); flex:none; }
-  .sess-offline{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--amber-bright); flex:none; }
+  .sess-offline{ flex:none; width:9px; height:9px; border-radius:50%; background:var(--amber-bright); }   /* offline: a dot, so the name keeps its room */
   .sess-more{ all:unset; cursor:pointer; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center;
     font-size:22px; color:var(--chalk-dim); }
   .dots9{ display:grid; grid-template-columns:repeat(3, 4px); gap:3px; }
@@ -221,6 +221,9 @@
   .sess-sheet{ width:100%; max-width:520px; background:var(--card-bg); border-radius:16px 16px 0 0; padding:18px 16px calc(16px + env(safe-area-inset-bottom, 0px));
     display:flex; flex-direction:column; gap:12px; max-height:85vh; overflow:auto; }
   .sess-sheet-title{ font-weight:800; font-size:16px; }
+  /* Joel, Oct 1: End session & save, Discard and Close are the same size */
+  .sess-sheet .btn{ width:100%; min-height:48px; margin:0; font-size:15px; text-align:center; }
+  .sess-sheet .delete-row{ display:flex; flex-direction:column; gap:12px; }
   /* ---------- S1: the softball theme (docs/softball-theme-reference.html) ----------
      Only theme variables change; pitch colors, strike/ball colors and the
      plate overlay are identical in both sports. Pink is an accent like
@@ -7262,7 +7265,7 @@ function renderSessionHeader(p){
   return `<div class="sess-head">
     <button type="button" class="sess-back" onclick="sessionLeave()" aria-label="Leave this session">‹ <span class="sess-team">${escHtml(team ? team.name : '')}</span></button>
     <span class="sess-who">${renderHeadshot(p)}<span class="sess-name">${escHtml(last)}</span>${(num === null || num === undefined) ? '' : `<span class="sess-num">#${escHtml(String(num))}</span>`}</span>
-    ${isOnline() ? '' : '<span class="sess-offline">Offline</span>'}
+    ${isOnline() ? '' : '<span class="sess-offline" title="Offline -- saved on this device" aria-label="Offline, saved on this device"></span>'}
     <button type="button" class="sess-more" onclick="openSessionSheet()" aria-label="Session options"><span class="dots9" aria-hidden="true">${'<i></i>'.repeat(9)}</span></button>
   </div>`;
 }

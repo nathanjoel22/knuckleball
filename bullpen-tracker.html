@@ -193,7 +193,12 @@
   .pstrip-chip{ flex:0 0 var(--chip); width:var(--chip); height:var(--chip); min-width:0; overflow:hidden; text-overflow:clip; scroll-snap-align:start; border-radius:10px; text-transform:uppercase; border:1.5px solid var(--border-strong);
     background:var(--card-bg); font:inherit; font-weight:800; font-size:13px; letter-spacing:0; cursor:pointer; padding:0 1px; white-space:nowrap; }
   .pstrip-chip.selected{ box-shadow:inset 0 0 0 2.5px rgba(0,0,0,0.28); }   /* inside the square, so the strip's edge never clips it */
-  .ph-grid-wrap{ position:relative; }
+  .ph-grid-wrap{ position:relative; margin-top:6px; }
+  /* Joel, Oct 1: a bigger grid on phones (340px, was 320) -- as big as it
+     can get with everything through the velocity strip still under 700px;
+     the pitch and velocity squares keep their size (--chip). */
+  .ph-layout .zone-grid{ max-width:340px !important; width:100%; }
+  .ph-layout .home-plate-wrap{ width:calc(0.6 * min(100%, 340px) - 4.8px); }
   .ph-hint{ position:absolute; top:-2px; left:0; right:0; z-index:5; text-align:center; font-size:12px; font-weight:600;
     color:var(--clay); pointer-events:none; }
   .ph-layout .zone-caption{ margin-top:-2px; }
@@ -1541,7 +1546,7 @@ function applySport(){
 }
 function pitchLabel(name){
   const c = PITCH_CATALOG.find(x => x.name === name);
-  if(!c) return escHtml(name);   // unknown (legacy free-text) names are user input
+  if(!c) return escHtml(String(name).toUpperCase());   // unknown (legacy free-text) names are user input; shown in capitals (Joel, Oct 1)
   if(c.phoneAbbr && window.matchMedia('(max-width:500px)').matches) return c.phoneAbbr;
   return c.abbr;
 }

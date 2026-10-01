@@ -2047,6 +2047,12 @@ async function loadFullContextOnline(alreadyPainted){
   if(!isCoach() && state.profile && !state.profile.setup_dismissed_at && !state.draftAvailable){
     state.showSetupModal = true;
   }
+  // Joel, Oct 1 (both sports): a brand-new coach -- head of a team with no
+  // pitchers yet, welcome never dismissed -- lands on the coach welcome with
+  // the pitcher invite link at the top, so the first thing to do is obvious.
+  if(isCoach() && state.profile && !state.profile.setup_dismissed_at && isHeadOfCurrentTeam() && !state.roster.length){
+    openCoachWelcome();
+  }
 
   state.setupNeeded = null;
   state.loaded = true;
@@ -8180,10 +8186,46 @@ function renderSetupModal(){
   return `<div class="modal-overlay" onclick="if(event.target===this) closeSetupModal();">
     <div class="modal-panel">
       <button class="modal-close-x" onclick="closeSetupModal()" aria-label="Close">✕</button>
-      ${renderSetupView()}
+      ${isCoach() ? renderCoachWelcome() : renderSetupView()}
     </div>
   </div>`;
 }
+// Joel, Oct 1: the coach's version of the new-account page -- inviting
+// pitchers is step one, so the pitcher link and Copy sit at the very top.
+// Same two links (and the same copy buttons) as Profile > Invite links.
+function renderCoachWelcome(){
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  const links = state.teamInviteLinks;
+  const copyLabel = st => st === 'copied' ? 'Copied!' : st === 'error' ? 'Copy failed' : 'Copy';
+  const linkRow = (url, copyFn, status) => links
+    ? `<div class="invite-link-panel"><div class="invite-link-row">
+         <span class="invite-link-text">${escHtml(url)}</span>
+         <button class="invite-link-copy-btn" onclick="${copyFn}()">${copyLabel(status)}</button>
+       </div></div>`
+    : `<p class="profile-note">${isOnline() ? 'Loading your link…' : 'Connect to the internet to get your link.'}</p>`;
+  return `<div class="profile-page setup-page">
+    <h2 class="display" style="margin:0 0 2px;">Welcome, ${escHtml(state.profile.full_name || 'Coach')}</h2>
+    <p class="profile-note" style="margin:0 0 12px;">${team ? escHtml(team.name) + ' is set up. ' : ''}Here's how to get your pitchers in.</p>
+    <div class="profile-section"><h3>Step 1 · Invite your pitchers</h3>
+      <p class="profile-note" style="margin:0 0 8px;">Send this link to your pitchers — text, email or the team group chat. Each pitcher who opens it creates an account and joins your team.</p>
+      ${linkRow(inviteLinkFor(), 'copyInviteLink', state.inviteCopyStatus)}
+    </div>
+    <div class="profile-section"><h3>Assistant coaches</h3>
+      <p class="profile-note" style="margin:0 0 8px;">Send this one to your assistants instead. It adds them to your coaching staff.</p>
+      ${linkRow(coachInviteLinkFor(), 'copyCoachInviteLink', state.coachInviteCopyStatus)}
+    </div>
+    <p class="profile-note">Both links are always on your Profile, under Invite links.</p>
+    <div class="profile-row" style="margin-top:8px;">
+      <button class="btn btn-primary" onclick="dismissSetup()">Done</button>
+      <button class="btn btn-ghost" onclick="dismissSetup()">Set Up Later</button>
+    </div>
+  </div>`;
+}
+window.openCoachWelcome = function(){
+  state.showSetupModal = true;
+  if(!state.teamInviteLinks && isOnline()) loadCoachAdminData(state.currentTeamId).then(render);
+  render();
+};
 // Answering the radar-gun question either way finishes setup. Optimistic
 // + fire-and-forget on purpose (U9: "setup ... never waits on the network
 // beyond the profile save itself") -- the app is usable immediately either
@@ -8638,7 +8680,9 @@ function render(){
       ? renderProfileView()
       : state.view === 'leaderboard' ? renderLeaderboardView()
       : state.view === 'pitcherProfile' ? renderPitcherProfileView()
-      : `<div class="empty-state"><div class="display">No pitcher selected</div><p>Invite a pitcher to this team to get started.</p></div>`);
+      : `<div class="empty-state"><div class="display">No pitcher selected</div><p>Invite a pitcher to this team to get started.</p>${
+          isHeadOfCurrentTeam() ? `<button class="btn btn-primary" style="margin-top:12px;" onclick="openCoachWelcome()">Get the invite link</button>`
+                                : '<p class="profile-note">Ask your head coach for the pitcher invite link.</p>'}</div>`);
   } else {
     const arsenalChips = p.pitchTypes.map(t => {
       const c = colorForType(p, t);
@@ -8717,7 +8761,7 @@ function render(){
   // can change after showSetupModal was first set true (a coach can't
   // reach this state at all, but a pitcher could start a draft in another
   // tab while this one still has the modal flagged on).
-  const setupModalHtml = (state.showSetupModal && !isCoach() && !state.draftAvailable) ? renderSetupModal() : '';
+  const setupModalHtml = (state.showSetupModal && (isCoach() ? isHeadOfCurrentTeam() : !state.draftAvailable)) ? renderSetupModal() : '';
 
   app.innerHTML = sidebar + `<div class="main">${main}</div>` + phoneFooter + setupModalHtml;
   attachVeloStrip();

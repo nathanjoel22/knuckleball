@@ -1327,12 +1327,12 @@
   }
 
   /* G1b-r6 (Joel, Oct 1): iPad and laptop session layout -- pen and Live
-     Game, everything wider than a phone. Left column: its natural width
+     Game, above 860px (iPad landscape and laptops). Left column: its natural width
      (chips wrap inside 220px); right column: the rest. sizeWideGrid sets
      --zg (grid side), --kbh (silhouette height) and --kbo (room above the
      grid for the silhouette's head); the fallbacks are the old desktop
      values. Phones never render .wide-cols. */
-  @media (min-width:501px){
+  @media (min-width:861px){
     .wide-cols{ display:flex; align-items:flex-start; gap:20px; }
     .wide-left{ flex:0 0 auto; width:max-content; max-width:220px; display:flex; flex-direction:column; gap:14px; }
     .wide-right{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:14px; }
@@ -7215,6 +7215,58 @@ function renderGameSessionView(p){
     </div>`;
   }
 
+  // G1b-r6 option B (Joel, Oct 1): iPad portrait (<=860px) keeps the
+  // stacked layout exactly as before; two columns only above 860px.
+  if(!isWideSession()) return `
+    <div class="session-grid-layout">
+      <div class="panel controls-panel">
+        <div class="game-panel-header">
+          ${renderGameStatusBar()}
+        </div>
+        ${renderAdjustRunnersFlow()}
+        <div class="perspective-delivery-row">
+          ${renderPerspectiveToggle()}
+          ${renderDeliveryToggle()}
+        </div>
+        <div>
+          <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
+          <div class="chip-row">${typeChips}</div>
+          ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
+            ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
+            : 'Add your pitches in Profile to start charting.'}</p>
+          <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
+        </div>
+        <div class="hint-msg">${state.hint}</div>
+        <div class="gridwrap">
+          <div class="zone-wrap">
+            ${gridStepNow ? renderGameFieldGrid() : renderZoneGrid(pitches, true, state.flashCell, null, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
+            <div class="zone-caption">${zoneCaption}</div>
+          </div>
+        </div>
+      </div>
+      <div class="panel log-panel">
+        <div class="stat-readout">
+          <div class="stat-box"><span class="stat-num mono">${stats.total}</span><span class="stat-lbl">Pitches</span></div>
+          <div class="stat-box"><span class="stat-num mono">${stats.strikePct}%</span><span class="stat-lbl">Strikes</span></div>
+          <div class="stat-box"><span class="stat-num mono">${stats.k}</span><span class="stat-lbl">K</span></div>
+          <div class="stat-box"><span class="stat-num mono">${stats.bb}</span><span class="stat-lbl">BB</span></div>
+          <div class="stat-box"><span class="stat-num mono">${stats.h}</span><span class="stat-lbl">H</span></div>
+        </div>
+        <div class="field-label">Recent pitches</div>
+        <div class="pitch-log">${logRows}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button class="btn btn-ghost" onclick="undoLastGameAction()">Undo last action</button>
+          <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
+          <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
+        </div>
+        <div style="margin:12px 0 8px;">
+          <div class="field-label" style="margin-bottom:4px;">Opponent (optional)</div>
+          <input class="text-input" placeholder="e.g. Eastern" maxlength="60"
+            value="${escHtml(s.opponent || '')}" oninput="onGameOpponentInput(this.value)">
+        </div>
+        ${renderEndSessionRow()}
+      </div>
+    </div>`;
   return `
     <div class="session-grid-layout">
       <div class="panel controls-panel">
@@ -7266,7 +7318,7 @@ function renderGameSessionView(p){
           <input class="text-input" placeholder="e.g. Eastern" maxlength="60"
             value="${escHtml(s.opponent || '')}" oninput="onGameOpponentInput(this.value)">
         </div>
-        <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
+        ${renderEndSessionRow()}
       </div>
     </div>`;
 }
@@ -7316,6 +7368,24 @@ window.discardActiveSession = async function(){
   await refreshDraftState();
   render();
 };
+// Joel, Oct 1: iPad and laptop get Discard beside End session & save (the
+// phone has it in the 9-dot sheet). Same two-step confirm and the same
+// discardActiveSession as the phone.
+function renderEndSessionRow(){
+  const s = state.activeSession, game = s.kind === 'game', n = s.pitches.length;
+  const what = `${n} pitch${n === 1 ? '' : 'es'}`;
+  if(state.sessionDiscardArmed) return `<div>
+      <p class="delete-warn">Discard this ${game ? 'game' : 'pen'}? ${n ? `The ${what} charted so far are deleted from this device.` : ''} This can't be undone.</p>
+      <div class="delete-row">
+        <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" onclick="discardActiveSession()">Discard</button>
+        <button class="btn btn-ghost" onclick="closeSessionSheet()">Keep charting</button>
+      </div>
+    </div>`;
+  return `<div class="delete-row">
+      <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
+      <button class="btn btn-ghost" ${state.saving ? 'disabled' : ''} onclick="armDiscardSession()">Discard session</button>
+    </div>`;
+}
 function renderSessionSheet(){
   if(!state.sessionSheetOpen || !state.activeSession || !state.activeSession.kind) return '';
   const s = state.activeSession, game = s.kind === 'game', n = s.pitches.length;
@@ -7377,7 +7447,8 @@ function updatePitchStripArrows(){
 // chip into view the first time), and grey the arrows at the ends.
 // WIDE-SIZE-START
 /* G1b-r6 (Joel, Oct 1): iPad and laptop session layout, pen and Live Game.
-   Two columns under the status bar: perspective / pitch type / delivery
+   Above 860px only (iPad landscape, laptops; Joel chose option B -- iPad
+   portrait stays stacked). Two columns under the status bar: perspective / pitch type / delivery
    (pen: + batter, pitch count) on the left, the grid on the right with what
    was under it still under it. The grid is a square sized to the screen:
    as big as the right column allows -- leaving room for the batter
@@ -7389,9 +7460,19 @@ function updatePitchStripArrows(){
    If the column is too narrow for 44px cells with the full-size silhouette,
    the grid keeps 44px cells and the silhouette shrinks to fit. Phones never
    get .wide-right (their own layout, G1b-r5). Display only. */
+function isWideSession(){ return window.matchMedia('(min-width:861px)').matches; }
+// Rotating an iPad crosses 860px without any tap: re-render so the session
+// switches between the stacked and two-column markup.
+let lastWideSession = window.matchMedia('(min-width:861px)').matches;
+function onWideResize(){
+  const wide = isWideSession();
+  if(lastWideSession !== null && wide !== lastWideSession && state.view === 'session' && state.activeSession && state.activeSession.kind) render();
+  else sizeWideGrid();
+  lastWideSession = wide;
+}
 function sizeWideGrid(){
   const right = document.querySelector('.wide-right');
-  if(!right || !window.matchMedia('(min-width:501px)').matches) return;
+  if(!right || !isWideSession()) return;
   const wrap = right.querySelector('.zone-wrap');
   if(!wrap) return;
   const A = 167 / 504, H0 = 1.12, MIN = 238, CAP = 560;   // MIN = 5 x 44px cells + gaps
@@ -7411,7 +7492,7 @@ function sizeWideGrid(){
   right.style.setProperty('--kbh', (h * 100).toFixed(1) + '%');
   right.style.setProperty('--kbo', Math.max(0, Math.ceil((h - 1) * side)) + 'px');
 }
-window.addEventListener('resize', sizeWideGrid);
+window.addEventListener('resize', onWideResize);
 // WIDE-SIZE-END
 function attachPitchStrip(){
   const st = document.getElementById('pitch-strip');
@@ -7566,6 +7647,53 @@ function renderSessionView(){
     </div>`;
   }
 
+  // G1b-r6 option B (Joel, Oct 1): iPad portrait (<=860px) keeps the
+  // stacked layout exactly as before; two columns only above 860px.
+  if(!isWideSession()) return `
+    <div class="session-grid-layout">
+      <div class="panel controls-panel">
+        <div class="perspective-delivery-row bullpen-setup-row">${renderPerspectiveToggle()}${renderBatterModeToggle()}${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}</div>
+        <div>
+          <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
+          <div class="chip-row">${typeChips}</div>
+          ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
+            ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
+            : 'Add your pitches in Profile to start charting.'}</p>
+          <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
+        </div>
+        <div class="accuracy-count-row">
+          <div class="pitch-counter">
+            <span class="pitch-counter-num pitch-count-badge mono">${stats.total}</span>
+            <span class="field-label">Pitch count</span>
+          </div>
+        </div>
+        <div class="hint-msg">${state.hint}</div>
+        <div>
+          <div class="zone-wrap">
+            <div class="batter-frame${isNoBatter(state.activeSession) ? ' no-batter' : ''}" style="display:contents;">${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}</div>
+            <div class="zone-caption">${zoneCaption}</div>${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
+          </div>
+        </div>
+        ${sessionUsesRadarGun(state.activeSession) ? `<div>
+          <div class="field-label" style="margin-bottom:8px;">Velocity</div>
+          ${renderVeloStrip()}
+        </div>` : ''}
+      </div>
+      <div class="panel log-panel">
+        <div class="stat-readout">
+          <div class="stat-box"><span class="stat-num mono">${stats.total}</span><span class="stat-lbl">Pitches</span></div>
+          <div class="stat-box"><span class="stat-num mono">${stats.strikePct}%</span><span class="stat-lbl">Strikes</span></div>
+          <div class="stat-box"><span class="stat-num mono">${stats.accuracyPct}%</span><span class="stat-lbl">Accuracy</span></div>
+          ${(stats.usesRelativeMode && !stats.hasZone) ? `<div class="stat-box"><span class="stat-num mono">${stats.relativeAccuracyPct}%</span><span class="stat-lbl">Relative Acc.</span></div>` : ''}
+          ${stats.hasZone ? `<div class="stat-box"><span class="stat-num mono">${stats.zoneAccuracyPct}%</span><span class="stat-lbl">Relative Acc. (${stats.zoneTotal})</span></div>` : ''}
+          <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="stat-lbl">Avg mph</span></div>
+          <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.minVelo+'–'+stats.maxVelo : '—'}</span><span class="stat-lbl">Range</span></div>
+        </div>
+        <div class="field-label">Recent pitches</div>
+        <div class="pitch-log">${logRows}</div>
+        ${renderEndSessionRow()}
+      </div>
+    </div>`;
   return `
     <div class="session-grid-layout">
       <div class="panel controls-panel">
@@ -7614,7 +7742,7 @@ function renderSessionView(){
         </div>
         <div class="field-label">Recent pitches</div>
         <div class="pitch-log">${logRows}</div>
-        <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
+        ${renderEndSessionRow()}
       </div>
     </div>`;
 }

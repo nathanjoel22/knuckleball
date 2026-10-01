@@ -1241,10 +1241,13 @@
     .cap-long{ display:none; }
     .cap-short{ display:inline; }
     .gg-big{ font-size:16px; }
+    .gg-big-long{ font-size:12px; }
     .gg-cap{ font-size:8px; letter-spacing:0; padding:0 2px; }
     .gg-btn{ gap:1px; }
   }
   .gg-big{ font-size:20px; font-weight:800; line-height:1; }
+  .gg-big-long{ font-size:15px; letter-spacing:-0.01em; }   /* BUNT: fits inside its box */
+  .gg-cap-only{ font-size:10px; font-weight:700; color:var(--gg-ink); line-height:1.2; }
   .gg-seq{ position:absolute; top:-7px; right:-5px; background:var(--gg-gold); color:var(--field-dark); border-radius:10px; font-size:10px; padding:1px 6px; font-weight:800; }
   .gg-done{ font-size:15px; font-weight:800; }
   .gg-next{ background:var(--gg-gold); border-color:var(--gg-gold); font-size:15px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; }
@@ -1278,20 +1281,23 @@
   .gg-velo .game-velo{ flex:1; min-width:0; background:none; padding:0; }
   .gg-velo .velo-strip-wrap{ position:relative; gap:0; height:100%; }
   .gg-velo .velo-strip-wrap::after{
-    content:''; position:absolute; top:0; bottom:0; left:40%; width:20%; pointer-events:none;
+    /* the center window sits over the middle fifth of the STRIP, between the 22px arrows */
+    content:''; position:absolute; top:0; bottom:0; left:calc(22px + (100% - 44px) * 0.4); width:calc((100% - 44px) * 0.2); pointer-events:none;
     border:2px solid var(--gg-gold); border-radius:8px;
   }
   .gg-velo .velo-strip{ --velo-visible:5; }
-  .gg-velo .velo-arrow{ display:none; }
+  /* Joel, Oct 1: small < > arrows on the sides of the full-width bar. */
+  .gg-velo .velo-arrow{
+    flex:0 0 22px; min-height:0; background:none; border:0; border-radius:0; padding:0;
+    color:var(--gg-ink); font-size:18px; font-weight:800; line-height:1; cursor:pointer;
+  }
+  .gg-velo .velo-arrow:disabled{ opacity:0.35; }
   .gg-velo .velo-help{ display:none; }
   .gg-velo .velo-cell{ min-height:44px; scroll-snap-align:center; }
   .gg-back{ font-size:13px; font-weight:800; white-space:nowrap; }
   @media (max-width:360px){ .gg-back{ font-size:12px; } }
   .gg-velo .velo-help{ display:none; }
   .gg-velo .velo-cell{ min-height:44px; }
-  /* Swipe meter inside the grid: no ‹ › arrows -- they took most of the three
-     boxes' width (measured: 32px of strip left at 320px). Swipe is the input. */
-  .gg-velo .velo-arrow{ display:none; }
   .gg-velo .velo-strip-wrap{ gap:0; }
   .gg-fix{ margin:1px; background:#fff; border:1.5px solid var(--gg-border); border-radius:9px; padding:6px; overflow:auto; display:flex; flex-direction:column; gap:6px; }
 </style>
@@ -3549,6 +3555,22 @@ window.recordVelo = async function(v){
   await storSet(draftKey(), state.activeSession);
   render();
 };
+// Joel, Oct 1: the in-grid bar's < > arrows step the selected speed by 1
+// mph (starting from whatever sits in the center window) and keep it
+// centered -- same result as sliding the bar one notch.
+window.gameVeloArrow = function(dir){
+  const strip = document.querySelector('.gg-velo .velo-strip');
+  if(!strip) return veloStripShift(dir);
+  const t = gameVeloTarget();
+  if(!t) return;
+  const visible = veloVisible(), half = Math.floor(visible / 2);
+  const cellW = strip.clientWidth / visible;
+  const centered = VELO_MIN + Math.round(strip.scrollLeft / cellW) + half;
+  const cur = (t.obj.velo === null || t.obj.velo === undefined) ? centered : t.obj.velo;
+  const v = Math.max(VELO_MIN, Math.min(VELO_MAX, cur + dir));
+  state.veloScrollLeft = (v - VELO_MIN - half) * cellW;   // attachVeloStrip restores this after the render
+  recordGameVelo(v);
+};
 window.veloStripShift = function(dir){
   const strip = document.getElementById('velo-strip');
   if(!strip) return;
@@ -3663,9 +3685,9 @@ function renderGameVeloStrip(){
   // .velo-cell.selected rule bullpen's own renderVeloStrip also uses.
   return `<div class="game-velo">
     <div class="velo-strip-wrap${t ? '' : ' disabled'}">
-      <button class="velo-arrow" ${t ? '' : 'disabled'} onclick="veloStripShift(-1)" aria-label="Lower speeds">‹</button>
+      <button class="velo-arrow" ${t ? '' : 'disabled'} onclick="gameVeloArrow(-1)" aria-label="Slower">&lt;</button>
       <div class="velo-strip" id="velo-strip" data-key="${stripKey}" data-center="${center}">${cells}</div>
-      <button class="velo-arrow" ${t ? '' : 'disabled'} onclick="veloStripShift(1)" aria-label="Higher speeds">›</button>
+      <button class="velo-arrow" ${t ? '' : 'disabled'} onclick="gameVeloArrow(1)" aria-label="Faster">&gt;</button>
     </div>
     <div class="velo-help">${help}</div>
   </div>`;
@@ -6493,7 +6515,12 @@ function ggIcon(file, cap, short){
   return `<span class="gg-ic" style="mask-image:url('docs/${file}');-webkit-mask-image:url('docs/${file}');"></span>${ggCap(cap, short)}`;
 }
 function ggBig(big, cap, short){
-  return `<span class="gg-big">${escHtml(big)}</span>${ggCap(cap, short)}`;
+  const cls = String(big).length >= 4 ? 'gg-big gg-big-long' : 'gg-big';   // BUNT etc. fit their box
+  return `<span class="${cls}">${escHtml(big)}</span>${ggCap(cap, short)}`;
+}
+// Caption-only box (Joel, Oct 1): the small text alone, centered.
+function ggTextOnly(text){
+  return `<span class="gg-cap gg-cap-only">${escHtml(text)}</span>`;
 }
 // Six boxes = rows 1-2 x cols 3-5, filled row by row; a nine-box step adds row 3.
 const GG_SLOTS = [[1, 3], [1, 4], [1, 5], [2, 3], [2, 4], [2, 5], [3, 3], [3, 4], [3, 5]];
@@ -6506,7 +6533,7 @@ function ggChoices(step){
   switch(step){
     case 'first': return ggFill([
       { inner: ggIcon('icon-ball.png', 'Ball'), onclick: "gridGlyph('B')" },
-      { inner: ggIcon('icon-swinging.png', 'Swinging', 'Swing'), onclick: "gridGlyph('K')" },
+      { inner: ggIcon('icon-swinging.png', 'Swing'), onclick: "gridGlyph('K')" },   // Joel, Oct 1: "Swing" fits the box
       { inner: ggIcon('icon-looking.png', 'Looking'), onclick: "gridGlyph('KL')" },
       { inner: ggBig('+', 'More'), onclick: "gridGlyph('PLUS')" },
       { inner: ggIcon('icon-foul.png', 'Foul'), onclick: "gridGlyph('F')" },
@@ -6524,21 +6551,23 @@ function ggChoices(step){
       { inner: ggBig('Out', 'Batter out'), onclick: "gridDroppedThird('out')" }
     ]);
     case 'bi': return ggFill([
-      { inner: ggBig('Batter', 'Batter out'), onclick: "gridBI('batter')" },
-      { inner: ggBig('Runner', 'Runner out'), onclick: "gridBI('runner')" }
+      { inner: ggTextOnly('Batter out'), onclick: "gridBI('batter')" },
+      { inner: ggTextOnly('Runner out'), onclick: "gridBI('runner')" }
     ]);
     case 'biRunnerBase': return ggFill([1, 2, 3].filter(b => s.runners[b]).map(b => ({
       inner: ggBig(b === 1 ? '1st' : b === 2 ? '2nd' : '3rd', 'Runner out'), onclick: `gridBIRunner(${b})`
     })));
     case 'inplay': return ggFill([
-      { inner: ggBig('Hit', 'Safe hit'), onclick: "gridEntry('H')" },
-      { inner: ggBig('Out', 'Batter out'), onclick: "gridEntry('O')" },
-      ggDpAvailable() ? { inner: ggBig('DP', 'Double play'), onclick: "gridEntry('DP')" } : null,
-      { inner: ggBig('E', 'Error'), onclick: "gridEntry('E')" },
-      { inner: ggBig('FC', "Fielder's choice", 'Fielder choice'), onclick: "gridEntry('FC')" }
+      // Joel, Oct 1: bold letters only.
+      { inner: ggBig('H'), onclick: "gridEntry('H')" },
+      { inner: ggBig('O'), onclick: "gridEntry('O')" },
+      ggDpAvailable() ? { inner: ggBig('DP'), onclick: "gridEntry('DP')" } : null,
+      { inner: ggBig('E'), onclick: "gridEntry('E')" },
+      { inner: ggBig('FC'), onclick: "gridEntry('FC')" }
     ]);
-    case 'hitType': return ggFill(GG_HIT_TYPES.map(([h, cap]) => ({ inner: ggBig(h, cap), onclick: `gridHitType('${h}')` })));
-    case 'bbType': return ggFill(GG_BB_TYPES.map(([k, big, cap]) => ({ inner: ggBig(big, cap), onclick: `gridBBType('${k}')`, on: fp.bbType === k })));
+    // Joel, Oct 1: the bold abbreviation only, no caption under it.
+    case 'hitType': return ggFill(GG_HIT_TYPES.map(([h]) => ({ inner: ggBig(h), onclick: `gridHitType('${h}')` })));
+    case 'bbType': return ggFill(GG_BB_TYPES.map(([k, big]) => ({ inner: ggBig(big), onclick: `gridBBType('${k}')`, on: fp.bbType === k })));
     case 'position': return ggFill(GG_POSITION_ROWS.flat().map(pos => {
       const idx = fp.positionSeq.indexOf(pos);
       return { inner: ggBig(pos, String(POSITION_SCOREBOOK_NUMBER[pos])), onclick: `gridPosition('${pos}')`,

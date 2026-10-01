@@ -1317,8 +1317,9 @@ let state = {
   rosterDotLatest: {},        // 'teamId:pitcherId' -> ms of his latest saved session on that team
   rosterDotSeen: {},          // pitcherId -> ms this viewer last had his History on screen
   rosterDotsReady: false,     // no dots until both maps have come from the server (or this device's cache)
-  historySeenBefore: {},      // pitcherId -> the seen time before this visit cleared it (marks new History rows)
-  historyRowsOpened: {},      // sessionId -> true once expanded: its row dot is gone
+  unopenedSessions: {},       // sessionId -> pitcherId: this viewer's unopened sessions on the current team (server)
+  openedLocal: {},            // sessionId -> true: tapped open on this device (may not have reached the server yet)
+  historyLandingNoClear: null,// pitcherId: the automatic History landing after a save doesn't clear his dot
   // G1: game-mode equivalents of pendingTarget/veloTargetIdx above -- same
   // "not part of the saved draft" precedent (an uncommitted tap is an
   // acceptable small loss if the app dies mid-tap, same as a bullpen's
@@ -1628,7 +1629,9 @@ function applyCachedContext(cached){
   state.zones = cached.zones || {};
   state.rosterDotLatest = cached.rosterDotLatest || {};
   state.rosterDotSeen = cached.rosterDotSeen || {};
-  state.rosterDotsReady = !!(cached.rosterDotLatest && cached.rosterDotSeen);
+  state.unopenedSessions = cached.unopenedSessions || {};
+  state.openedLocal = cached.openedLocal || {};
+  state.rosterDotsReady = !!(cached.rosterDotLatest && cached.rosterDotSeen && cached.unopenedSessions);
   state.currentTeamId = cached.currentTeamId;
   state.currentPitcherId = cached.currentPitcherId;
   state.myVerification = cached.myVerification || { email: null, emailConfirmed: false };
@@ -1870,9 +1873,14 @@ let syncTriggersWired = false;
    lights the dot at once. Offline: both maps are cached with the roster
    (saveLastKnownContext); clearing is queued on the device and sent later.
    Nothing here is ever awaited by charting.
-   Decided (Joel, Sept 30): endSession lands on History, so whoever taps
-   "End session & save" never sees a dot for his own pen -- everyone else
-   does. Intended; don't exempt that landing from noteHistoryOnScreen. */
+   Session dots (Joel, Sept 30, revised): every session in History also
+   carries a dot for each viewer until THAT viewer taps it open -- a
+   permanent per-viewer record (session_opened, via get_unopened_sessions).
+   Whoever saved the session gets the dots too: the automatic landing on
+   History after "End session & save" (and its auto-expanded session)
+   clears nothing -- only the viewer's own taps do. Tapping a dotted name
+   opens his History (clearing the name dot); any other name opens New
+   Session. */
 function rosterLatestFor(pid){
   let t = state.rosterDotLatest[state.currentTeamId + ':' + pid] || 0;
   (state.outbox || []).forEach(i => {
@@ -1895,11 +1903,19 @@ async function loadRosterDots(){
   if(rosterDotsInFlight || !uid || !teamId || !isOnline()) return;
   rosterDotsInFlight = true;
   try{
-    const [latestRes, seenRes] = await Promise.all([
+    const [latestRes, seenRes, unopenedRes] = await Promise.all([
       netTimeout(supabaseClient.rpc('get_roster_latest', { p_team_id: teamId }), 8000),
-      netTimeout(supabaseClient.from('roster_seen').select('pitcher_id, seen_at').eq('viewer_id', uid), 8000)
+      netTimeout(supabaseClient.from('roster_seen').select('pitcher_id, seen_at').eq('viewer_id', uid), 8000),
+      netTimeout(supabaseClient.rpc('get_unopened_sessions', { p_team_id: teamId }), 8000)
     ]);
-    if(latestRes.error || seenRes.error || teamId !== state.currentTeamId) return;
+    if(latestRes.error || seenRes.error || unopenedRes.error || teamId !== state.currentTeamId) return;
+    const unopened = {};
+    (unopenedRes.data || []).forEach(r => { unopened[r.session_id] = r.pitcher_id; });
+    // Forget local "opened" marks the server now agrees with; keep the rest
+    // (still queued, or this answer was fetched before the mark landed).
+    const openedLocal = {};
+    Object.keys(state.openedLocal).forEach(id => { if(unopened[id]) openedLocal[id] = true; });
+    ((await storGet(sessionOpenedPendingKey(uid))) || []).forEach(id => { openedLocal[id] = true; });
     const latest = Object.assign({}, state.rosterDotLatest);
     Object.keys(latest).forEach(k => { if(k.indexOf(teamId + ':') === 0) delete latest[k]; });
     (latestRes.data || []).forEach(r => { latest[teamId + ':' + r.pitcher_id] = new Date(r.latest_ended_at).getTime(); });
@@ -1913,6 +1929,8 @@ async function loadRosterDots(){
     }));
     state.rosterDotLatest = latest;
     state.rosterDotSeen = seen;
+    state.unopenedSessions = unopened;
+    state.openedLocal = openedLocal;
     state.rosterDotsReady = true;
     saveLastKnownContext();
     render();
@@ -1924,20 +1942,61 @@ async function loadRosterDots(){
 function noteHistoryOnScreen(){
   const pid = state.currentPitcherId;
   if(state.view !== 'history' || !pid || !hasRosterDot(pid)) return;
-  if(!(pid in state.historySeenBefore)) state.historySeenBefore[pid] = state.rosterDotSeen[pid] || 0;
+  if(state.historyLandingNoClear === pid) return;   // the post-save landing isn't a look
   // Never earlier than the session that lit it, so a phone clock running
   // behind can't leave the dot stuck on.
   const at = Math.max(Date.now(), rosterLatestFor(pid));
   state.rosterDotSeen[pid] = at;
   queueRosterSeen(pid, at);
 }
-// The pitcher's own History rows: a dot on each session newer than his
-// last look, until he expands that session (Joel, Sept 30) or reloads.
+// A History row's dot: unopened by this viewer (server list), or saved on
+// this device and not yet synced -- until this viewer taps it.
 function isNewHistoryRow(s){
-  const pid = state.currentPitcherId;
-  if(isCoach() || !(pid in state.historySeenBefore) || state.historyRowsOpened[s.id]) return false;
-  const t = s.endedAt || (s.pending ? s.date : 0);
-  return !!t && t > state.historySeenBefore[pid];
+  if(!state.rosterDotsReady || state.openedLocal[s.id]) return false;
+  return !!(s.pending || state.unopenedSessions[s.id]);
+}
+function sessionOpenedPendingKey(userId){ return 'sessionOpenedPending:' + userId; }
+async function markSessionOpened(id){
+  if(!isNewHistoryRow({ id, pending: state.outbox.some(i => i.id === id) })) return;
+  state.openedLocal[id] = true;
+  const uid = state.session && state.session.user && state.session.user.id;
+  if(!uid) return;
+  try{
+    const q = (await storGet(sessionOpenedPendingKey(uid))) || [];
+    if(q.indexOf(id) < 0) q.push(id);
+    await storSet(sessionOpenedPendingKey(uid), q);
+  }catch(e){ return; }
+  saveLastKnownContext();
+  flushSessionOpened();
+}
+let sessionOpenedFlushing = false;
+async function flushSessionOpened(){
+  const uid = state.session && state.session.user && state.session.user.id;
+  if(sessionOpenedFlushing || !uid || !isOnline()) return;
+  sessionOpenedFlushing = true;
+  try{
+    const q = (await storGet(sessionOpenedPendingKey(uid))) || [];
+    // A session still in the outbox isn't on the server yet -- its mark waits.
+    const ready = q.filter(id => !state.outbox.some(i => i.id === id));
+    if(!ready.length) return;
+    const done = [];
+    const row = id => ({ viewer_id: uid, session_id: id });
+    const { error } = await netTimeout(supabaseClient.from('session_opened')
+      .upsert(ready.map(row), { onConflict: 'viewer_id,session_id', ignoreDuplicates: true }), 8000);
+    if(!error) done.push(...ready);
+    else if(error.code === '23503'){
+      // One of them no longer exists (deleted): send one by one, drop the dead ones.
+      for(const id of ready){
+        const r = await netTimeout(supabaseClient.from('session_opened')
+          .upsert([row(id)], { onConflict: 'viewer_id,session_id', ignoreDuplicates: true }), 8000);
+        if(!r.error || r.error.code === '23503') done.push(id);
+      }
+    }
+    if(!done.length) return;
+    const now = (await storGet(sessionOpenedPendingKey(uid))) || [];
+    await storSet(sessionOpenedPendingKey(uid), now.filter(id => done.indexOf(id) < 0));
+  }catch(e){ /* offline / timed out: stays queued */ }
+  finally{ sessionOpenedFlushing = false; }
 }
 async function queueRosterSeen(pid, at){
   const uid = state.session && state.session.user && state.session.user.id;
@@ -2243,6 +2302,8 @@ async function saveLastKnownContext(){
     zones: state.zones,
     rosterDotLatest: state.rosterDotLatest,
     rosterDotSeen: state.rosterDotSeen,
+    unopenedSessions: state.unopenedSessions,
+    openedLocal: state.openedLocal,
     currentTeamId: state.currentTeamId,
     currentPitcherId: state.currentPitcherId,
     myVerification: state.myVerification
@@ -2257,6 +2318,8 @@ window.signOut = async function(){
 /* ---------- TEAM / ROSTER ---------- */
 window.onTeamChange = async function(teamId, skipRender){
   state.currentTeamId = teamId;
+  state.historyLandingNoClear = null;
+  state.unopenedSessions = {};   // U10 (3): per team -- reloaded below
   state.uniformEditKey = null; state.uniformMsg = '';
   state.expandedSessionId = null;
   state.oldTombstonesExpanded = false;
@@ -2410,6 +2473,10 @@ window.toggleRosterCollapsed = function(){
 window.selectPitcher = async function(pitcherId){
   state.currentPitcherId = pitcherId;
   state.rosterCollapsed = rosterCanCollapse();   // U11 (8): rolls up only where the roster sits above the grid
+  // U10 (3), Joel Sept 30: a name with a red dot opens his History (which
+  // clears the name dot); any other name opens New Session.
+  state.historyLandingNoClear = null;
+  state.view = hasRosterDot(pitcherId) ? 'history' : 'session';
   state.uniformEditKey = null; state.uniformMsg = '';
   state.expandedSessionId = null;
   state.oldTombstonesExpanded = false;
@@ -3699,6 +3766,7 @@ window.endSession = async function(){
   await refreshOutboxState();
   state.view = 'history';
   state.expandedSessionId = sessionId;
+  state.historyLandingNoClear = state.currentPitcherId;   // U10 (3): the saver keeps his dots
   render();
 
   triggerSync();
@@ -3826,7 +3894,7 @@ window.triggerSync = function(){
   if(!syncInFlight){
     syncInFlight = syncOutbox()
       .catch(err => console.error('syncOutbox failed', err))
-      .finally(() => { syncInFlight = null; loadRosterDots(); });
+      .finally(() => { syncInFlight = null; flushSessionOpened(); loadRosterDots(); });
     flushRosterSeen();   // U10 (3): queued dot clears ride along with every sync trigger
   }
   return syncInFlight;
@@ -4072,6 +4140,7 @@ function clearDeleteState(){
 }
 window.setView = function(v){
   if(v === 'leaderboard' && !hasLeaderboard()) v = 'session';
+  state.historyLandingNoClear = null;   // U10 (3)
   state.view = v; state.profileMsg = ''; state.uniformEditKey = null; state.lbExcludeOpen = null; clearDeleteState(); render();
   if(v === 'leaderboard') loadLeaderboard();
   // R6: the team-admin section needs the active team's coaching staff (and,
@@ -4081,7 +4150,8 @@ window.setView = function(v){
 };
 window.toggleSessionExpand = function(id){
   state.expandedSessionId = state.expandedSessionId === id ? null : id;
-  if(state.expandedSessionId) state.historyRowsOpened[state.expandedSessionId] = true;   // U10 (3): opening a session clears its row dot
+  state.historyLandingNoClear = null;   // U10 (3): a tap in History is a real look
+  markSessionOpened(id);                // ...and tapping a session clears its own dot
   clearDeleteState();
   render();
 };
@@ -7180,7 +7250,8 @@ function renderLeaderboardView(){
 // corner control below); the 4th tab becomes the SELECTED pitcher's
 // profile instead, following the pitcher selector automatically (it
 // renders currentPitcher() fresh, same as every other pitcher-scoped
-// view -- selectPitcher() never touches state.view, so switching pitchers
+// view -- [U10 (3), Sept 30: selectPitcher() now DOES set state.view: History
+// for a red-dot name, else New Session] -- so switching pitchers
 // while already on this tab just re-renders it for the new one). A
 // pitcher's own tab bar is completely unchanged. The coach's own profile
 // is NOT on this row at all (tried a corner control here first -- Joel

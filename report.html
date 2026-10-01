@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- Fix (Sept 30 2026): the report is now shown IN this page, not in a
+     sandboxed iframe (see renderReport), so this policy is what keeps any
+     script out of it: only this page's own inline script (by hash -- see
+     the note above that script) and the two script files it loads may
+     run. Inline handlers (onclick=...), javascript: URLs, <object> and
+     <base href> are all refused, so nothing inside a report can execute
+     even if the sanitizer below ever missed something. -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/ 'sha256-+bA6omDP65yqhoqNJt54YZb0lWnCsHRhbLjHEntLMlU='; object-src 'none'; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bullpen Session Report — Knuckleball</title>
 <style>
@@ -21,12 +29,18 @@
     --border-on-dark: rgba(241,236,221,0.16);
   }
   *{ box-sizing:border-box; }
-  html,body{ margin:0; height:100%; background:var(--page-bg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
-  body{ display:flex; flex-direction:column; }
+  /* The report's own stylesheet is added after this one and styles body,
+     h1-h3, svg, etc. -- so everything the shell draws uses kb- classes
+     with its fonts set explicitly, and never relies on inherited body
+     styles. The page scrolls normally (no inner scroller), which is what
+     lets every browser's print, including iPhone Safari's, paginate it. */
+  body{ margin:0; background:var(--page-bg); }
   .kb-bar{
-    flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:10;
+    display:flex; align-items:center; justify-content:space-between;
     padding:calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
     background:var(--field-dark); border-bottom:1px solid var(--border-on-dark);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.2;
   }
   .kb-mark{ color:var(--amber); font-weight:700; font-size:14px; letter-spacing:0.04em; }
   .kb-actions{ display:flex; gap:8px; }
@@ -36,50 +50,80 @@
   }
   .kb-btn:hover{ border-color:var(--chalk-dim); color:var(--chalk); }
   .kb-btn:disabled{ opacity:0.4; cursor:not-allowed; }
-  #frame-wrap{ flex:1 1 auto; min-height:0; }
-  #report-frame{ width:100%; height:100%; border:none; display:block; background:var(--page-bg); }
-  #state{
-    flex:1 1 auto; display:none; flex-direction:column; align-items:center; justify-content:center;
-    text-align:center; padding:40px 24px; color:var(--ink-dim);
+  #kb-state{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:80px 24px; color:var(--ink-dim);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.4;
   }
-  #state.visible{ display:flex; }
-  #state h1{ color:var(--field-dark); font-size:18px; margin:0 0 8px; }
-  #state p{ font-size:14px; color:var(--ink-faint); max-width:40ch; margin:0; }
-  #state.is-error h1{ color:var(--red); }
+  #kb-state.hidden{ display:none; }
+  #kb-state h1{ color:var(--field-dark); font-family:inherit; font-size:18px; margin:0 0 8px; border:0; padding:0; }
+  #kb-state p{ font-size:14px; color:var(--ink-faint); max-width:40ch; margin:0; }
+  #kb-state.is-error h1{ color:var(--red); }
+</style>
+<!-- U10 (7) print rules, now for this page itself (the report is part of
+     it). Breaks fall between sections; a section taller than a page may
+     continue, but never through a chart, a table row, a tile row, or an
+     at-bat log line. .table-scroll's horizontal scroller would otherwise
+     clip wide tables at the right edge of the paper. The bar never prints. -->
+<style media="print">
+  @page{ margin:12mm; }
+  .kb-bar, #kb-state{ display:none !important; }
+  html,body{ height:auto !important; overflow:visible !important; }
+  .table-scroll{ overflow:visible !important; }
+  h2,h3{ break-after:avoid; page-break-after:avoid; }
+  svg,.grid-row>div,.tiles,.side-block,.trend-grid>*,tr,.ab-row,.legend{ break-inside:avoid; page-break-inside:avoid; }
 </style>
 </head>
 <body>
   <div class="kb-bar">
     <div class="kb-mark">KNUCKLEBALL</div>
     <div class="kb-actions">
-      <button class="kb-btn" id="btn-download" disabled onclick="downloadReport()">Download</button>
-      <button class="kb-btn" id="btn-print" disabled onclick="printReport()">Print</button>
+      <button class="kb-btn" id="btn-download" disabled>Download</button>
+      <button class="kb-btn" id="btn-print" disabled>Print</button>
     </div>
   </div>
-  <div id="frame-wrap"></div>
-  <div id="state">
-    <h1 id="state-title">Loading report…</h1>
-    <p id="state-message"></p>
+  <!-- Visible from the start, so if the script ever can't run (e.g. the
+       CSP hash above wasn't updated after an edit) the page says so. -->
+  <div id="kb-state">
+    <h1 id="kb-state-title">Loading report…</h1>
+    <p id="kb-state-message"></p>
   </div>
+  <div id="kb-report"></div>
 
 <!-- Loaded only for the SUPABASE_URL constant (same config-swap file used
      for local/staging testing, per DEPLOY.md) -- this page makes no other
      use of the Supabase client the CDN script sets up. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
+<!-- CSP: the inline script below runs only because its exact SHA-256 is
+     listed in the Content-Security-Policy at the top of this file. After
+     ANY edit to it (even whitespace), recompute and paste the new hash:
+       python3 -c "import re,hashlib,base64;s=open('report.html').read();print(base64.b64encode(hashlib.sha256(re.findall(r'<script>(\n// U4.*?)</script>',s,re.S)[0].encode()).digest()).decode())"
+     Forgetting shows up at once: the page stays on "Loading report…". -->
 <script>
 // U4 Amendment 1 (Sept 10 2026) -- report.html is the shell page that makes
 // self-contained reports viewable despite Supabase forcing text/html to
 // serve as text/plain on *.supabase.co. It fetches the frozen report as
 // TEXT (a fetch is unaffected by that override -- only browser navigation
-// cares about Content-Type) and renders it into a fully sandboxed iframe.
-// This page itself is a normal part of the site (may use JS, may change
-// over time); the FETCHED report content remains the frozen, self-contained,
-// script-free artifact the renderer produced -- this page never changes its
-// content. U10 (7): the one thing added at display time is a print-only
-// stylesheet (PRINT_CSS below), so every report -- including ones frozen
-// before this existed -- prints all its pages cleanly. Screen rendering is
-// untouched, and Download still returns the stored file byte-for-byte.
+// cares about Content-Type) and shows it.
+//
+// Fix (Sept 30 2026): the report is shown IN this page, not in an iframe.
+// iPhone/iPad Safari prints the top-level page (Share > Print as well as
+// the Print button), and an iframe never paginates -- so every iOS print
+// came out as one page. Now the page IS the report, and prints like any
+// long page, on every browser, by any route. The stored file is never
+// changed: Download still hands over the exact stored bytes, and the copy
+// shown here is rebuilt from it on every load.
+//
+// What used to be the iframe sandbox's job -- no script ever runs from a
+// report -- is now done by two locks:
+//  1. inertReport() parses the report with DOMParser (which never runs
+//     scripts) and strips anything that could execute or navigate on its
+//     own: script/iframe/object/embed/form/meta/base/link elements, every
+//     on* attribute, and javascript: URLs.
+//  2. This page's Content-Security-Policy (top of <head>) refuses every
+//     script except this page's own, so even a missed handler can't run.
+// Only the report's <style> elements and its <body> content are taken.
 
 // Must match randomReportToken() in send-session-report/index.ts EXACTLY.
 // This is the only thing standing between a crafted ?r= value and this
@@ -89,45 +133,48 @@ var TOKEN_RE = /^[0-9a-f]{64}\.html$/;
 
 var reportText = null;
 
-// U10 (7): print rules for the report document itself (it prints from inside
-// the iframe -- see printReport). Breaks fall between sections; a section
-// taller than a page may continue, but never through a chart, a table row,
-// a tile row, or an at-bat log line. .table-scroll's horizontal scroller
-// would otherwise clip wide tables at the right edge of the paper.
-var PRINT_CSS = '<style media="print">' +
-  '@page{ margin:12mm; }' +
-  'html,body{ height:auto !important; overflow:visible !important; }' +
-  '.table-scroll{ overflow:visible !important; }' +
-  'h2,h3{ break-after:avoid; page-break-after:avoid; }' +
-  'svg,.grid-row>div,.tiles,.side-block,.trend-grid>*,tr,.ab-row,.legend{ break-inside:avoid; page-break-inside:avoid; }' +
-  '</style>';
-
-// Second lock on script execution (the sandbox below is the first): a CSP
-// that forbids every script, placed FIRST in <head> so it governs the whole
-// document. Needed because the frame now shares this page's origin for
-// printing -- the sandbox still withholds allow-scripts, and this makes
-// "no script ever runs in a report" hold even if that ever changed.
-var NO_SCRIPT_CSP = '<meta http-equiv="Content-Security-Policy" content="script-src \'none\'; object-src \'none\'; base-uri \'none\'">';
-
-function withPrintStyles(html){
-  var h = html.match(/<head[^>]*>/i);
-  if(h){
-    var at = h.index + h[0].length;
-    html = html.slice(0, at) + NO_SCRIPT_CSP + html.slice(at);
-  } else {
-    html = NO_SCRIPT_CSP + html;
-  }
-  var i = html.search(/<\/head>/i);
-  return i >= 0 ? html.slice(0, i) + PRINT_CSS + html.slice(i) : PRINT_CSS + html;
+function showState(title, message, isError){
+  var el = document.getElementById('kb-state');
+  el.classList.remove('hidden');
+  el.classList.toggle('is-error', !!isError);
+  document.getElementById('kb-state-title').textContent = title;
+  document.getElementById('kb-state-message').textContent = message || '';
 }
 
-function showState(title, message, isError){
-  document.getElementById('frame-wrap').style.display = 'none';
-  var el = document.getElementById('state');
-  el.classList.add('visible');
-  el.classList.toggle('is-error', !!isError);
-  document.getElementById('state-title').textContent = title;
-  document.getElementById('state-message').textContent = message || '';
+var DROP_ELEMENTS = 'script,iframe,frame,frameset,object,embed,applet,form,meta,base,link,noscript,template';
+var URL_ATTRS = ['href', 'xlink:href', 'src', 'action', 'formaction', 'data'];
+
+function inertReport(html){
+  var doc = new DOMParser().parseFromString(html, 'text/html');
+  var drop = doc.querySelectorAll(DROP_ELEMENTS);
+  for(var i = 0; i < drop.length; i++) drop[i].parentNode.removeChild(drop[i]);
+  var all = doc.getElementsByTagName('*');
+  for(var j = 0; j < all.length; j++){
+    var el = all[j];
+    for(var k = el.attributes.length - 1; k >= 0; k--){
+      var name = el.attributes[k].name.toLowerCase();
+      var value = el.attributes[k].value.replace(/[\s\u0000-\u001f]/g, '').toLowerCase();
+      if(name.indexOf('on') === 0 ||
+         (URL_ATTRS.indexOf(name) >= 0 && /^(javascript|vbscript|data):/.test(value))){
+        el.removeAttribute(el.attributes[k].name);
+      }
+    }
+  }
+  return doc;
+}
+
+function renderReport(html){
+  var doc = inertReport(html);
+  var styles = doc.head ? doc.head.querySelectorAll('style') : [];
+  for(var i = 0; i < styles.length; i++){
+    document.head.appendChild(document.importNode(styles[i], true));
+  }
+  var root = document.getElementById('kb-report');
+  var kids = doc.body ? doc.body.childNodes : [];
+  for(var j = 0; j < kids.length; j++){
+    root.appendChild(document.importNode(kids[j], true));
+  }
+  if(doc.title) document.title = doc.title;
 }
 
 function downloadReport(){
@@ -144,18 +191,8 @@ function downloadReport(){
 }
 
 function printReport(){
-  var frame = document.getElementById('report-frame');
-  // U10 (7): this only works because the frame shares this page's origin
-  // (allow-same-origin, see init). The old note here -- that print() is a
-  // cross-origin-safe method -- was wrong: from an opaque-origin frame it
-  // throws SecurityError, so the catch printed this one-screen shell instead.
-  // Original note: contentWindow.print() is one of the handful of cross-origin-safe window
-  // methods (like postMessage/close/focus) -- it works from this
-  // (unsandboxed) parent page even though the iframe itself has an opaque
-  // origin and cannot run any script of its own.
-  if(frame && frame.contentWindow){
-    try { frame.contentWindow.print(); } catch(e){ window.print(); }
-  }
+  if(!reportText) return;
+  window.print();
 }
 
 async function init(){
@@ -190,35 +227,14 @@ async function init(){
     return;
   }
 
-  var frame = document.createElement('iframe');
-  frame.id = 'report-frame';
-  // Zero script execution inside a report is the entire point -- it's what
-  // makes the renderer's escaping rules a second line of defense rather than
-  // the only one. So: NO allow-scripts, ever (plus NO_SCRIPT_CSP inside the
-  // document as a second lock). U10 (7): two tokens, both for printing:
-  //  - allow-same-origin: lets this page call the frame's print(). From an
-  //    opaque origin that call throws SecurityError (verified), and the only
-  //    thing left to print was this shell's one-screen iframe -- page 1.
-  //    Safe WITHOUT allow-scripts: the frame can't run anything, so sharing
-  //    the origin gives the report content no way to act on it. (The unsafe
-  //    combination is allow-same-origin + allow-scripts -- never add that.)
-  //  - allow-modals: print() opens the print dialog, which is a modal.
-  frame.setAttribute('sandbox', 'allow-same-origin allow-modals');
-  frame.srcdoc = withPrintStyles(reportText);
-  document.getElementById('frame-wrap').appendChild(frame);
+  renderReport(reportText);
+  document.getElementById('kb-state').classList.add('hidden');
   document.getElementById('btn-download').disabled = false;
   document.getElementById('btn-print').disabled = false;
 }
 
-// U10 (7): Cmd/Ctrl+P prints the report (all pages) instead of this shell,
-// which would only print the one screen of iframe that's visible.
-document.addEventListener('keydown', function(e){
-  if((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && (e.key === 'p' || e.key === 'P')
-     && document.getElementById('report-frame')){
-    e.preventDefault();
-    printReport();
-  }
-});
+document.getElementById('btn-download').addEventListener('click', downloadReport);
+document.getElementById('btn-print').addEventListener('click', printReport);
 
 init();
 </script>

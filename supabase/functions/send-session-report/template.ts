@@ -5,8 +5,8 @@
 // trusted. Nothing here reads a database -- it operates purely on the payload
 // object it's given.
 // ============================================================================
-import { escapeHtml, safeNum, colorForType, TYPE_PALETTE_HEX } from './helpers.ts'
-import { drawGrid, drawLegend, drawLineChart } from './svg.ts'
+import { escapeHtml, safeNum, colorForType, TYPE_PALETTE_HEX, isStrikeCell, timesToHomeLine } from './helpers.ts'
+import { drawGrid, drawLegend, drawLineChart, drawTypeGrids } from './svg.ts'
 import {
   computeSummary, computeCommandDetail, computePerSideBlock, computeExcludedNullSide,
   computeVelocityDepth, computeWorkload, computeTrends, type Pitch, type HistoryEntry
@@ -42,6 +42,10 @@ function renderHeader(p: ReportPayload): string {
   const dateStr = new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   const numBit = p.uniformNumber !== null && p.uniformNumber !== undefined ? ` <span class="header-num">#${escapeHtml(p.uniformNumber)}</span>` : ''
   const chartedBy = p.loggedByCoach ? 'the coaching staff' : escapeHtml(p.pitcherName)
+  // U11 (5): "No batter" when no pitch in the pen had a hitter standing in
+  // (batter_side NULL on every pitch), "Mixed" when some did and some didn't.
+  const sided = p.pitches.filter(x => x.batterSide === 'R' || x.batterSide === 'L').length
+  const batterBit = !p.pitches.length ? '' : sided === 0 ? ' · No batter' : sided < p.pitches.length ? ' · Mixed' : ''
   const perspectiveNote = p.chartingPerspective === 'behind_pitcher'
     ? `<p class="header-note">Charted from behind the pitcher. Every plot in this report is still catcher's view.</p>`
     : ''
@@ -49,7 +53,7 @@ function renderHeader(p: ReportPayload): string {
   <header class="report-header">
     <div class="brand-mark">KNUCKLEBALL<span class="brand-dot">.</span></div>
     <h1>${escapeHtml(p.pitcherName)}${numBit}</h1>
-    <p class="header-meta">${dateStr}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''} · ${p.pitches.length} pitch${p.pitches.length === 1 ? '' : 'es'} · charted by ${chartedBy}</p>
+    <p class="header-meta">${dateStr}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''} · ${p.pitches.length} pitch${p.pitches.length === 1 ? '' : 'es'}${batterBit} · charted by ${chartedBy}</p>
     ${perspectiveNote}
   </header>`
 }
@@ -82,6 +86,26 @@ function renderLocationChart(p: ReportPayload): string {
     <h2>Location — catcher's view</h2>
     <div class="grid-row">${grid}${drawLegend(allTypes)}</div>
     <p class="caption">Every pitch this pen, both batter sides mixed. Numbers and directional words like "inside" depend on who's hitting, so this plot uses neither.</p>
+  </section>`
+}
+
+// ---------- 3b. Location by pitch type (U11) ----------
+// Strike % here is the same location-based strike % the Command detail
+// table uses (in the strike zone), so the two never disagree.
+function renderTypeGrids(p: ReportPayload): string {
+  const allTypes = p.pitchTypes.length ? p.pitchTypes : Array.from(new Set(p.pitches.map(x => x.type)))
+  const stats: Record<string, { count: number; strikePct: number | null }> = {}
+  for (const t of allTypes) {
+    const tp = p.pitches.filter(x => x.type === t)
+    const strikes = tp.filter(x => isStrikeCell(x.actualRow, x.actualCol, p.gridSize ?? 5)).length
+    stats[t] = { count: tp.length, strikePct: tp.length ? Math.round((strikes / tp.length) * 100) : null }
+  }
+  if (!allTypes.some(t => stats[t].count > 0)) return ''
+  return `
+  <section class="section">
+    <h2>Location by pitch type — catcher's view</h2>
+    ${drawTypeGrids({ gridSize: p.gridSize, allTypes, stats, pitches: p.pitches.map(x => ({ row: x.actualRow, col: x.actualCol, type: x.type })) })}
+    <p class="caption">Where each pitch type went, both batter sides mixed. Strike % is in the strike zone. A small count means read it lightly.</p>
   </section>`
 }
 
@@ -226,7 +250,16 @@ function renderWorkload(p: ReportPayload): string {
     <h2>Workload and pitch mix</h2>
     <div class="table-scroll"><table class="data-table"><thead><tr><th>Type</th><th>Count</th><th>Usage</th></tr></thead><tbody>${rows}</tbody></table></div>
     ${compare}
+    ${deliverySplitLine(p)}
+    ${timesToHomeLine(p.pitches)}
   </section>`
+}
+// U11 (6): Windup / Set split, only when a pen used both.
+function deliverySplitLine(p: ReportPayload): string {
+  const windup = p.pitches.filter(x => x.delivery === 'windup').length
+  const set = p.pitches.filter(x => x.delivery === 'set').length
+  if (!windup || !set) return ''
+  return `<p class="caption"><strong>Delivery:</strong> ${windup} from the windup · ${set} from the stretch</p>`
 }
 
 // ---------- 8. Trends ----------
@@ -309,6 +342,13 @@ export const CSS = `
   .tile-lbl{ font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:#527065; margin-top:2px; }
   .section{ margin:28px 0; }
   .grid-row{ display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; }
+  /* U11 (4): per-type grids -- wrap to fit: 2-3 across on a phone, more on
+     wider screens, never a horizontal scroll. */
+  .type-grids{ display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:14px 18px; }
+  .type-grid{ min-width:0; }
+  .type-grid h3{ display:flex; align-items:center; gap:6px; margin:0 0 6px; font-size:13px; }
+  .type-grid svg{ width:100%; max-width:170px; height:auto; }
+  .type-grid-stats{ margin:4px 0 0; font-size:11.5px; color:#5B6B61; }
   .legend{ display:flex; flex-direction:column; gap:6px; padding-top:8px; }
   .legend-item{ display:flex; align-items:center; gap:6px; font-size:13px; }
   .legend-dot{ width:9px; height:9px; border-radius:2px; display:inline-block; }
@@ -360,6 +400,7 @@ export function buildReportHtml(p: ReportPayload): string {
 ${renderHeader(p)}
 ${renderSummary(p)}
 ${renderLocationChart(p)}
+${renderTypeGrids(p)}
 ${renderCommandDetail(p)}
 ${renderPerSideBlocks(p)}
 ${renderVelocityDepth(p)}

@@ -238,6 +238,26 @@
   .throws-tag{ margin-left:7px; font-size:10.5px; font-weight:700; letter-spacing:.05em; color:var(--amber); vertical-align:1px; }
   .roster-item-types{ font-size:11px; color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .roster-item-num{ font-family:'Teko',sans-serif; font-size:20px; color:var(--ink-faint); flex-shrink:0; }
+  /* U10 (3) revised: the roster red dot -- sits in the item's left padding,
+     so names never shift when a dot comes or goes. */
+  /* Joel, Sept 30: more room between the dot and the name -- every item
+     gets the wider left padding, dot or not, so names stay lined up. */
+  .roster-item{ position:relative; padding-left:22px; }
+  .roster-dot{
+    position:absolute; left:6px; top:50%; margin-top:-4px;
+    width:8px; height:8px; border-radius:50%; background:var(--red);
+  }
+  .roster-dot-count{
+    display:inline-flex; align-items:center; justify-content:center; flex:none;
+    min-width:18px; height:18px; padding:0 5px; margin-left:6px; border-radius:9px;
+    background:var(--red); color:#fff; font-size:11px; font-weight:700; letter-spacing:0; line-height:1;
+  }
+  .tab-dot, .session-dot{
+    display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--red);
+    vertical-align:1px;
+  }
+  .tab-dot{ margin-left:6px; }
+  .session-dot{ margin-right:7px; }
 
   .invite-btn{
     display:flex; align-items:center; justify-content:center; gap:6px;
@@ -295,23 +315,6 @@
   /* R0: deferred-verification banner, shown to a pitcher whose account
      email isn't confirmed. Persistent, never a blocking modal (Joel's own
      requirement -- they can look around). */
-  /* U10 (3): coach notices -- small red pills at the top of the coach's page. */
-  .coach-notices{ display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; }
-  .coach-notice{
-    display:inline-flex; align-items:center; gap:4px; max-width:100%;
-    background:var(--red-bg); color:var(--chalk); border-radius:999px;
-    padding:3px 4px 3px 12px; font-size:12.5px; font-weight:600; line-height:1.3;
-  }
-  .coach-notice-text{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .coach-notice-x{
-    all:unset; cursor:pointer; flex:none; width:26px; height:26px; border-radius:50%;
-    display:inline-flex; align-items:center; justify-content:center; font-size:16px; line-height:1;
-  }
-  .coach-notice-x:hover{ background:rgba(255,255,255,0.15); }
-  .coach-notice-more{
-    all:unset; cursor:pointer; font-size:12.5px; font-weight:700; color:var(--red);
-    padding:6px 4px;
-  }
   .verify-banner{
     display:flex; flex-wrap:wrap; align-items:center; gap:10px;
     background:rgba(193,122,69,0.12); border:1px solid var(--clay-dim); border-radius:8px;
@@ -759,6 +762,17 @@
      narrow phone. Game mode only. */
   .perspective-delivery-row{ display:flex; flex-wrap:wrap; gap:20px; }
   .perspective-delivery-row > div{ flex:1; min-width:180px; }
+  /* U11 (7): the stopwatch sits with Windup / Set. Disabled (greyed) unless Set. */
+  .ttp-btn{
+    font:inherit; font-size:13px; font-weight:700; padding:7px 12px; border-radius:20px; cursor:pointer;
+    background:var(--card-bg); color:var(--field-dark); border:1.5px solid var(--border-strong); min-width:84px;
+  }
+  .ttp-btn:disabled{ opacity:0.4; cursor:not-allowed; }
+  .ttp-btn.ttp-running{ border-color:var(--amber); color:var(--field-dark); }
+  .ttp-btn.ttp-ok{ background:var(--field-dark); color:var(--surface); border-color:var(--field-dark); }
+  .ttp-btn.ttp-bad{ color:var(--red); border-color:var(--red); }
+  /* U11 (5): no batter -- the RHB frame stays, the silhouette flip doesn't. */
+  .no-batter .kb-batter{ display:none; }
   /* Reserved band for the result row, directly above the grid (G1b-r2:
      "above the grid" now literally -- the grid itself never leaves the
      screen, since In Play no longer replaces it with a field). min-height,
@@ -1002,6 +1016,13 @@
     padding:2px 7px; border-radius:20px; margin-left:6px; vertical-align:middle;
   }
   .pending-tag{ color:var(--clay); background:rgba(193,122,69,0.14); border-color:rgba(193,122,69,0.4); }
+  /* U11 (3): a tag is one unit -- never split across lines. On phones
+     "Logged by coach" drops to its own short line under the date instead
+     of wrapping mid-phrase beside it. */
+  .coach-logged-tag{ white-space:nowrap; }
+  @media (max-width:500px){
+    .session-date .logged-by-tag{ display:table; margin:4px 0 0; }
+  }
   .session-meta{ display:flex; gap:16px; flex-wrap:wrap; }
   .meta-item{ display:flex; flex-direction:column; align-items:flex-end; }
   .meta-num{ font-family:'Teko',sans-serif; font-size:24px; color:var(--field-dark); line-height:1; }
@@ -1382,8 +1403,13 @@ let state = {
   headshots: {},             // U10 (8): pitcherId -> data: URL of his current photo (this device's cache)
   headshotBusy: false,
   headshotMsg: '',
-  coachNotices: null,         // U10 (3): this visit's unseen session notices (coach only)
-  coachNoticesExpanded: false,
+  // U10 (3) revised: the roster red dot (see ROSTER RED DOT).
+  rosterDotLatest: {},        // 'teamId:pitcherId' -> ms of his latest saved session on that team
+  rosterDotSeen: {},          // pitcherId -> ms this viewer last had his History on screen
+  rosterDotsReady: false,     // no dots until both maps have come from the server (or this device's cache)
+  unopenedSessions: {},       // sessionId -> pitcherId: this viewer's unopened sessions on the current team (server)
+  openedLocal: {},            // sessionId -> true: tapped open on this device (may not have reached the server yet)
+  historyLandingNoClear: null,// pitcherId: the automatic History landing after a save doesn't clear his dot
   // G1: game-mode equivalents of pendingTarget/veloTargetIdx above -- same
   // "not part of the saved draft" precedent (an uncommitted tap is an
   // acceptable small loss if the app dies mid-tap, same as a bullpen's
@@ -1691,6 +1717,11 @@ function applyCachedContext(cached){
   state.teams = cached.teams || [];
   state.roster = cached.roster || [];
   state.zones = cached.zones || {};
+  state.rosterDotLatest = cached.rosterDotLatest || {};
+  state.rosterDotSeen = cached.rosterDotSeen || {};
+  state.unopenedSessions = cached.unopenedSessions || {};
+  state.openedLocal = cached.openedLocal || {};
+  state.rosterDotsReady = !!(cached.rosterDotLatest && cached.rosterDotSeen && cached.unopenedSessions);
   state.currentTeamId = cached.currentTeamId;
   state.currentPitcherId = cached.currentPitcherId;
   state.myVerification = cached.myVerification || { email: null, emailConfirmed: false };
@@ -1921,58 +1952,172 @@ function renderBoot(){
 // now" is wired separately, on the button itself. Guarded so re-running init()
 // (e.g. after the account-setup form completes) doesn't stack listeners.
 let syncTriggersWired = false;
-/* ---------- COACH NOTICES (U10 item 3) ----------
-   "Jack Croft logged a Bullpen · Tue Sept 29, 4:12 PM" -- one red pill per
-   session a coach's player (or another coach) saved in the last 7 days,
-   except sessions this coach saved himself. get_coach_notices() (SECURITY
-   DEFINER, see the migration) returns only unseen ones for this coach;
-   they're marked seen the moment they render, stay on screen for the rest
-   of this visit (state lives until the page reloads), and are gone at the
-   next sign-in / app open. Online only: offline there are simply no
-   notices -- no error, and nothing here is ever awaited by charting. */
-let coachNoticesLoaded = false;   // once per page load (= sign-in / app open)
-async function loadCoachNotices(){
-  if(coachNoticesLoaded || !isCoach() || !isOnline()) return;
-  let rows;
-  try{
-    const { data, error } = await netTimeout(supabaseClient.rpc('get_coach_notices'), 8000);
-    if(error) return;   // no session yet / transient -- the next finishInit() tries again
-    rows = Array.isArray(data) ? data : [];
-  }catch(e){ return; }   // timed out: same, silently
-  coachNoticesLoaded = true;
-  if(!rows.length) return;
-  state.coachNotices = rows;
-  state.coachNoticesExpanded = false;
-  render();
+/* ---------- ROSTER RED DOT (U10 item 3, revised Sept 30) ----------
+   Replaces the coach notices. A red dot by a pitcher's name when he has a
+   saved session newer than the last time THIS viewer had his History on
+   screen -- every viewer (each coach, and the pitcher himself on his History
+   tab) has his own seen time in roster_seen, so one person looking never
+   clears anyone else's dot. No time limit. Latest-session times come from
+   get_roster_latest (caller's own RLS -- nothing History couldn't show),
+   plus this device's own not-yet-synced sessions so a pen charted offline
+   lights the dot at once. Offline: both maps are cached with the roster
+   (saveLastKnownContext); clearing is queued on the device and sent later.
+   Nothing here is ever awaited by charting.
+   Session dots (Joel, Sept 30, revised): every session in History also
+   carries a dot for each viewer until THAT viewer taps it open -- a
+   permanent per-viewer record (session_opened, via get_unopened_sessions).
+   Whoever saved the session gets the dots too: the automatic landing on
+   History after "End session & save" (and its auto-expanded session)
+   clears nothing -- only the viewer's own taps do. Tapping a dotted name
+   opens his History (clearing the name dot); any other name opens New
+   Session. */
+function rosterLatestFor(pid){
+  let t = state.rosterDotLatest[state.currentTeamId + ':' + pid] || 0;
+  (state.outbox || []).forEach(i => {
+    if(i.pitcherId === pid && i.teamId === state.currentTeamId && i.endedAt > t) t = i.endedAt;
+  });
+  return t;
+}
+function hasRosterDot(pid){
+  if(!state.rosterDotsReady || !pid) return false;
+  const latest = rosterLatestFor(pid);
+  if(!latest) return false;
+  const seen = state.rosterDotSeen[pid];
+  return !seen || latest > seen;
+}
+function rosterSeenPendingKey(userId){ return 'rosterSeenPending:' + userId; }
+let rosterDotsInFlight = false;
+async function loadRosterDots(){
   const uid = state.session && state.session.user && state.session.user.id;
-  if(uid){
-    supabaseClient.from('coach_notice_seen')
-      .upsert(rows.map(n => ({ coach_id: uid, session_id: n.session_id })), { onConflict: 'coach_id,session_id', ignoreDuplicates: true })
-      .then(({ error }) => { if(error) console.error('coach notices: mark seen failed', error); }, () => {});
-  }
+  const teamId = state.currentTeamId;
+  if(rosterDotsInFlight || !uid || !teamId || !isOnline()) return;
+  rosterDotsInFlight = true;
+  try{
+    const [latestRes, seenRes, unopenedRes] = await Promise.all([
+      netTimeout(supabaseClient.rpc('get_roster_latest', { p_team_id: teamId }), 8000),
+      netTimeout(supabaseClient.from('roster_seen').select('pitcher_id, seen_at').eq('viewer_id', uid), 8000),
+      netTimeout(supabaseClient.rpc('get_unopened_sessions', { p_team_id: teamId }), 8000)
+    ]);
+    if(latestRes.error || seenRes.error || unopenedRes.error || teamId !== state.currentTeamId) return;
+    const unopened = {};
+    (unopenedRes.data || []).forEach(r => { unopened[r.session_id] = r.pitcher_id; });
+    // Forget local "opened" marks the server now agrees with; keep the rest
+    // (still queued, or this answer was fetched before the mark landed).
+    const openedLocal = {};
+    Object.keys(state.openedLocal).forEach(id => { if(unopened[id]) openedLocal[id] = true; });
+    ((await storGet(sessionOpenedPendingKey(uid))) || []).forEach(id => { openedLocal[id] = true; });
+    const latest = Object.assign({}, state.rosterDotLatest);
+    Object.keys(latest).forEach(k => { if(k.indexOf(teamId + ':') === 0) delete latest[k]; });
+    (latestRes.data || []).forEach(r => { latest[teamId + ':' + r.pitcher_id] = new Date(r.latest_ended_at).getTime(); });
+    const seen = {};
+    (seenRes.data || []).forEach(r => { seen[r.pitcher_id] = new Date(r.seen_at).getTime(); });
+    // A clear that hasn't reached the server yet (queued, or made while this
+    // was in flight) wins over the server's older time.
+    const pending = (await storGet(rosterSeenPendingKey(uid))) || {};
+    [pending, state.rosterDotSeen].forEach(m => Object.keys(m).forEach(pid => {
+      if(m[pid] > (seen[pid] || 0)) seen[pid] = m[pid];
+    }));
+    state.rosterDotLatest = latest;
+    state.rosterDotSeen = seen;
+    state.unopenedSessions = unopened;
+    state.openedLocal = openedLocal;
+    state.rosterDotsReady = true;
+    saveLastKnownContext();
+    render();
+  }catch(e){ /* offline / timed out: keep the cached dots */ }
+  finally{ rosterDotsInFlight = false; }
 }
-const NOTICE_MONTHS = ['Jan','Feb','Mar','Apr','May','June','July','Aug','Sept','Oct','Nov','Dec'];
-function coachNoticeText(n){
-  const d = new Date(n.ended_at);
-  const when = `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${NOTICE_MONTHS[d.getMonth()]} ${d.getDate()}, ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
-  return `${n.player_name || 'A player'} logged a ${n.kind === 'game' ? 'Live Session' : 'Bullpen'} · ${when}`;
+// Called at the top of every render: whenever a pitcher's History is
+// actually on screen, this viewer's dot for him clears.
+function noteHistoryOnScreen(){
+  const pid = state.currentPitcherId;
+  if(state.view !== 'history' || !pid || !hasRosterDot(pid)) return;
+  if(state.historyLandingNoClear === pid) return;   // the post-save landing isn't a look
+  // Never earlier than the session that lit it, so a phone clock running
+  // behind can't leave the dot stuck on.
+  const at = Math.max(Date.now(), rosterLatestFor(pid));
+  state.rosterDotSeen[pid] = at;
+  queueRosterSeen(pid, at);
 }
-function renderCoachNotices(){
-  const list = (isCoach() && state.coachNotices) || [];
-  if(!list.length) return '';
-  const shown = state.coachNoticesExpanded ? list : list.slice(0, 3);
-  const more = list.length - shown.length;
-  return `<div class="coach-notices" role="status">
-    ${shown.map(n => `<span class="coach-notice"><span class="coach-notice-text">${escHtml(coachNoticeText(n))}</span><button class="coach-notice-x" aria-label="Dismiss" onclick="dismissCoachNotice('${escHtml(n.session_id)}')">×</button></span>`).join('')}
-    ${more > 0 ? `<button class="coach-notice-more" onclick="expandCoachNotices()">+${more} more</button>` : ''}
-  </div>`;
+// A History row's dot: unopened by this viewer (server list), or saved on
+// this device and not yet synced -- until this viewer taps it.
+function isNewHistoryRow(s){
+  if(!state.rosterDotsReady || state.openedLocal[s.id]) return false;
+  return !!(s.pending || state.unopenedSessions[s.id]);
 }
-// × dismisses early for this visit (it's already marked seen server-side).
-window.dismissCoachNotice = function(sessionId){
-  state.coachNotices = (state.coachNotices || []).filter(n => n.session_id !== sessionId);
-  render();
-};
-window.expandCoachNotices = function(){ state.coachNoticesExpanded = true; render(); };
+function sessionOpenedPendingKey(userId){ return 'sessionOpenedPending:' + userId; }
+async function markSessionOpened(id){
+  if(!isNewHistoryRow({ id, pending: state.outbox.some(i => i.id === id) })) return;
+  state.openedLocal[id] = true;
+  const uid = state.session && state.session.user && state.session.user.id;
+  if(!uid) return;
+  try{
+    const q = (await storGet(sessionOpenedPendingKey(uid))) || [];
+    if(q.indexOf(id) < 0) q.push(id);
+    await storSet(sessionOpenedPendingKey(uid), q);
+  }catch(e){ return; }
+  saveLastKnownContext();
+  flushSessionOpened();
+}
+let sessionOpenedFlushing = false;
+async function flushSessionOpened(){
+  const uid = state.session && state.session.user && state.session.user.id;
+  if(sessionOpenedFlushing || !uid || !isOnline()) return;
+  sessionOpenedFlushing = true;
+  try{
+    const q = (await storGet(sessionOpenedPendingKey(uid))) || [];
+    // A session still in the outbox isn't on the server yet -- its mark waits.
+    const ready = q.filter(id => !state.outbox.some(i => i.id === id));
+    if(!ready.length) return;
+    const done = [];
+    const row = id => ({ viewer_id: uid, session_id: id });
+    const { error } = await netTimeout(supabaseClient.from('session_opened')
+      .upsert(ready.map(row), { onConflict: 'viewer_id,session_id', ignoreDuplicates: true }), 8000);
+    if(!error) done.push(...ready);
+    else if(error.code === '23503'){
+      // One of them no longer exists (deleted): send one by one, drop the dead ones.
+      for(const id of ready){
+        const r = await netTimeout(supabaseClient.from('session_opened')
+          .upsert([row(id)], { onConflict: 'viewer_id,session_id', ignoreDuplicates: true }), 8000);
+        if(!r.error || r.error.code === '23503') done.push(id);
+      }
+    }
+    if(!done.length) return;
+    const now = (await storGet(sessionOpenedPendingKey(uid))) || [];
+    await storSet(sessionOpenedPendingKey(uid), now.filter(id => done.indexOf(id) < 0));
+  }catch(e){ /* offline / timed out: stays queued */ }
+  finally{ sessionOpenedFlushing = false; }
+}
+async function queueRosterSeen(pid, at){
+  const uid = state.session && state.session.user && state.session.user.id;
+  if(!uid) return;
+  try{
+    const pending = (await storGet(rosterSeenPendingKey(uid))) || {};
+    pending[pid] = Math.max(at, pending[pid] || 0);
+    await storSet(rosterSeenPendingKey(uid), pending);
+  }catch(e){ return; }
+  saveLastKnownContext();
+  flushRosterSeen();
+}
+let rosterSeenFlushing = false;
+async function flushRosterSeen(){
+  const uid = state.session && state.session.user && state.session.user.id;
+  if(rosterSeenFlushing || !uid || !isOnline()) return;
+  rosterSeenFlushing = true;
+  try{
+    const pending = (await storGet(rosterSeenPendingKey(uid))) || {};
+    const ids = Object.keys(pending);
+    if(!ids.length) return;
+    const { error } = await netTimeout(supabaseClient.from('roster_seen').upsert(
+      ids.map(pid => ({ viewer_id: uid, pitcher_id: pid, seen_at: new Date(pending[pid]).toISOString() })),
+      { onConflict: 'viewer_id,pitcher_id' }), 8000);
+    if(error) return;   // stays queued for the next trigger
+    const now = (await storGet(rosterSeenPendingKey(uid))) || {};
+    ids.forEach(pid => { if(now[pid] === pending[pid]) delete now[pid]; });   // keep anything re-marked meanwhile
+    await storSet(rosterSeenPendingKey(uid), now);
+  }catch(e){ /* offline / timed out: stays queued */ }
+  finally{ rosterSeenFlushing = false; }
+}
 
 /* ---------- HEADSHOTS (U10 item 8) ----------
    The player's own photo, private bucket `headshots`, object {id}.jpg.
@@ -2156,6 +2301,11 @@ function finishInit(){
     window.addEventListener('online', () => { render(); triggerSync(); });
     // Going offline: re-render so the offline indicator appears right away.
     window.addEventListener('offline', () => render());
+    // U11 (8): an iPad rotating across 860px switches the roster between
+    // "rolls up" and "always open" -- re-render so it follows.
+    const rosterMq = window.matchMedia('(max-width:860px)');
+    if(rosterMq.addEventListener) rosterMq.addEventListener('change', () => render());
+    else if(rosterMq.addListener) rosterMq.addListener(() => render());   // older iOS WebKit
     // Stuck-sync fix: follow supabase-js's own session changes instead of
     // trusting the one read at startup. SIGNED_OUT also arrives from other
     // tabs (supabase-js relays it over a BroadcastChannel). No awaits in
@@ -2166,7 +2316,7 @@ function finishInit(){
     });
   }
   triggerSync();
-  loadCoachNotices();   // U10 (3): background, never awaited -- charting never waits on it
+  loadRosterDots();     // U10 (3): background, never awaited -- charting never waits on it
   refreshHeadshots();   // U10 (8): same -- cached photos show offline, missing ones never block
 }
 
@@ -2240,6 +2390,10 @@ async function saveLastKnownContext(){
     teams: state.teams,
     roster: state.roster,
     zones: state.zones,
+    rosterDotLatest: state.rosterDotLatest,
+    rosterDotSeen: state.rosterDotSeen,
+    unopenedSessions: state.unopenedSessions,
+    openedLocal: state.openedLocal,
     currentTeamId: state.currentTeamId,
     currentPitcherId: state.currentPitcherId,
     myVerification: state.myVerification
@@ -2254,6 +2408,8 @@ window.signOut = async function(){
 /* ---------- TEAM / ROSTER ---------- */
 window.onTeamChange = async function(teamId, skipRender){
   state.currentTeamId = teamId;
+  state.historyLandingNoClear = null;
+  state.unopenedSessions = {};   // U10 (3): per team -- reloaded below
   state.uniformEditKey = null; state.uniformMsg = '';
   state.expandedSessionId = null;
   state.oldTombstonesExpanded = false;
@@ -2277,6 +2433,7 @@ window.onTeamChange = async function(teamId, skipRender){
   await loadZones();
   await refreshDraftState();
   await saveLastKnownContext();
+  loadRosterDots();   // U10 (3): background
   if(!skipRender) render();
 };
 // On-device only (localStorage, no network): if the coach has an unfinished draft
@@ -2392,13 +2549,24 @@ async function loadCoachAdminData(teamId){
   }
 }
 
+// U11 (8), Joel Sept 30: the roster rolls up only where the sidebar stacks
+// ABOVE the grid (phones and iPad portrait, <= 860px -- the same breakpoint
+// the layout already uses). Beside the grid (iPad landscape, laptop) there's
+// room, so the full list always stays open and never collapses.
+function rosterCanCollapse(){
+  return window.matchMedia('(max-width:860px)').matches;
+}
 window.toggleRosterCollapsed = function(){
   state.rosterCollapsed = !state.rosterCollapsed;
   render();
 };
 window.selectPitcher = async function(pitcherId){
   state.currentPitcherId = pitcherId;
-  state.rosterCollapsed = true;   // picking a pitcher rolls the list up; unchanged otherwise
+  state.rosterCollapsed = rosterCanCollapse();   // U11 (8): rolls up only where the roster sits above the grid
+  // U10 (3), Joel Sept 30: a name with a red dot opens his History (which
+  // clears the name dot); any other name opens New Session.
+  state.historyLandingNoClear = null;
+  state.view = hasRosterDot(pitcherId) ? 'history' : 'session';
   state.uniformEditKey = null; state.uniformMsg = '';
   state.expandedSessionId = null;
   state.oldTombstonesExpanded = false;
@@ -3172,6 +3340,97 @@ window.selectPerspective = async function(newPerspective){
 // within one pen (approach g). Flipping only affects pitches charted AFTER
 // this call; already-logged pitches keep whatever batterSide they were
 // captured with (see handleZoneTap and isRelativelyAccurate's comments).
+/* ---------- U11 (5): BULLPEN "BATTER: NONE / RHB / LHB" ----------
+   Joel, Sept 30: most pens have no hitter standing in. batterMode 'none'
+   (the default for a NEW bullpen) keeps the familiar right-handed frame --
+   grid numbering, zone painting and relative-accuracy scoring all use the
+   RHB definitions (sessionBatterSide stays 'R'; isRelativelyAccurate
+   already falls back to 'R' for a pitch with no side) -- but stores
+   batter_side = NULL on each pitch, so nothing lands in vs-RHB stats, and
+   the silhouette flip is hidden. RHB / LHB behave exactly as before and can
+   be picked mid-pen when a hitter steps in; each pitch keeps the side it
+   was thrown with. A draft/session from before this (no batterMode) is
+   treated as sided -- unchanged behavior. */
+function sessionBatterMode(s){ return (s && s.batterMode) || 'sided'; }
+function isNoBatter(s){ return !!s && s.kind === 'bullpen' && sessionBatterMode(s) === 'none'; }
+window.setBatterMode = async function(mode){
+  const s = state.activeSession;
+  if(mode === 'none'){ s.batterMode = 'none'; s.currentBatterSide = 'R'; }
+  else { s.batterMode = 'sided'; s.currentBatterSide = mode; }
+  await storSet(draftKey(), s);
+  render();
+};
+function renderBatterModeToggle(){
+  const s = state.activeSession;
+  const current = isNoBatter(s) ? 'none' : sessionBatterSide(s);
+  const opts = [['none', 'None'], ['R', 'RHB'], ['L', 'LHB']];
+  const chips = opts.map(([k, l]) => {
+    const on = current === k;
+    const style = on ? `background:var(--amber);border-color:var(--amber);` : `color:var(--ink-faint);border-color:var(--border-strong);`;
+    return `<button class="type-chip${on ? ' selected' : ''}" style="${style}" onclick="setBatterMode('${k}')">${l}</button>`;
+  }).join('');
+  return `<div><div class="field-label" style="margin-bottom:8px;">Batter</div><div class="chip-row">${chips}</div></div>`;
+}
+
+/* ---------- U11 (7): TIME TO HOME (stopwatch) ----------
+   Only under Set (a stretch measurement). Tap 1 = the pitcher's first
+   move, tap 2 = the catcher's glove; the reading shows on the button and
+   attaches to the NEXT pitch recorded (the location tap that follows), then
+   clears. Tapping again before that pitch restarts. A reading nobody uses
+   within 60 s is discarded. 0.80-3.00 s only -- anything else shows red and
+   is never stored (a late start or stop). In-memory on purpose: nothing on
+   the charting path waits on it, and it works offline like everything else. */
+const TTP_MIN = 0.80, TTP_MAX = 3.00, TTP_KEEP_MS = 60000;
+let ttpTicker = null, ttpExpiry = null;
+function ttpState(){ return state.ttp || (state.ttp = { phase: 'idle', startedAt: 0, value: null, stoppedAt: 0 }); }
+function ttpValid(v){ return v !== null && v >= TTP_MIN && v <= TTP_MAX; }
+function ttpReset(){
+  state.ttp = { phase: 'idle', startedAt: 0, value: null, stoppedAt: 0 };
+  clearInterval(ttpTicker); ttpTicker = null;
+  clearTimeout(ttpExpiry); ttpExpiry = null;
+}
+window.tapTimeToPlate = function(){
+  const s = state.activeSession;
+  if(!s || s.delivery !== 'set') return;
+  const t = ttpState();
+  if(t.phase === 'running'){
+    t.phase = 'stopped';
+    t.stoppedAt = Date.now();
+    t.value = Math.round((t.stoppedAt - t.startedAt) / 10) / 100;
+    clearInterval(ttpTicker); ttpTicker = null;
+    clearTimeout(ttpExpiry);
+    ttpExpiry = setTimeout(() => { if(ttpState().phase === 'stopped'){ ttpReset(); render(); } }, TTP_KEEP_MS);
+  } else {                                   // idle or stopped: (re)start
+    ttpReset();
+    const n = ttpState();
+    n.phase = 'running';
+    n.startedAt = Date.now();
+    // Live readout without a full re-render: only the button's text changes.
+    ttpTicker = setInterval(() => {
+      const b = document.getElementById('ttp-btn');
+      if(b) b.textContent = '⏱ ' + ((Date.now() - n.startedAt) / 1000).toFixed(2);
+    }, 50);
+  }
+  render();
+};
+// The reading for the pitch being recorded right now -- then the stopwatch
+// clears, used or not. Only a stopped, in-range, fresh (<= 60 s) reading counts.
+function takeTimeToPlate(){
+  const t = ttpState();
+  const v = (t.phase === 'stopped' && ttpValid(t.value) && Date.now() - t.stoppedAt <= TTP_KEEP_MS) ? t.value : null;
+  if(t.phase !== 'idle') ttpReset();
+  return v;
+}
+function renderTimeToPlateBtn(){
+  const s = state.activeSession;
+  const enabled = !!s && s.delivery === 'set';
+  const t = ttpState();
+  let label = '⏱ Time', cls = 'ttp-btn';
+  if(t.phase === 'running'){ label = '⏱ ' + ((Date.now() - t.startedAt) / 1000).toFixed(2); cls += ' ttp-running'; }
+  else if(t.phase === 'stopped'){ label = '⏱ ' + t.value.toFixed(2); cls += ttpValid(t.value) ? ' ttp-ok' : ' ttp-bad'; }
+  return `<button type="button" id="ttp-btn" class="${cls}" ${enabled ? '' : 'disabled'} title="${enabled ? 'Time to home: tap at first move, tap again at the glove' : 'Time to home is timed from the stretch: choose Set'}" onclick="tapTimeToPlate()">${label}</button>`;
+}
+
 window.toggleBatterSide = async function(){
   state.activeSession.currentBatterSide = sessionBatterSide(state.activeSession) === 'R' ? 'L' : 'R';
   await storSet(draftKey(), state.activeSession);
@@ -3464,7 +3723,11 @@ window.handleZoneTap = async function(row, col){
     accuracyMode: null,   // U7B: the old per-session modes are retired for new pitches; zone result below
     inAccuracyZone,
     accuracyZoneCells: zoneCells ? zoneCells.slice() : null,
-    batterSide,
+    // U11 (5): no hitter standing in -> no side on the pitch (zone scoring
+    // above still used the RHB zones via batterSide).
+    batterSide: isNoBatter(state.activeSession) ? null : batterSide,
+    delivery: state.activeSession.delivery || null,   // U11 (6)
+    timeToPlate: takeTimeToPlate(),                   // U11 (7)
     ts: Date.now()
   });
   state.pendingTarget = null;
@@ -3608,6 +3871,7 @@ window.endSession = async function(){
   await refreshOutboxState();
   state.view = 'history';
   state.expandedSessionId = sessionId;
+  state.historyLandingNoClear = state.currentPitcherId;   // U10 (3): the saver keeps his dots
   render();
 
   triggerSync();
@@ -3735,7 +3999,8 @@ window.triggerSync = function(){
   if(!syncInFlight){
     syncInFlight = syncOutbox()
       .catch(err => console.error('syncOutbox failed', err))
-      .finally(() => { syncInFlight = null; });
+      .finally(() => { syncInFlight = null; flushSessionOpened(); loadRosterDots(); });
+    flushRosterSeen();   // U10 (3): queued dot clears ride along with every sync trigger
   }
   return syncInFlight;
 };
@@ -3827,6 +4092,7 @@ async function syncOutbox(){
       hit_type: p.hitType || null,
       fielder: p.fielder || null,
       delivery: p.delivery || null,
+      time_to_plate: (p.timeToPlate === undefined || p.timeToPlate === null) ? null : p.timeToPlate,   // U11 (7)
       inning: (p.inning === undefined) ? null : p.inning,
       outs_before: (p.outsBefore === undefined) ? null : p.outsBefore,
       balls_before: (p.ballsBefore === undefined) ? null : p.ballsBefore,
@@ -3903,7 +4169,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, started_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index)')
+    .select('id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate)')
     .eq('pitcher_id', pitcherId)
     .eq('team_id', teamId)
     .order('started_at', { ascending: false });
@@ -3911,6 +4177,7 @@ async function loadSessionsForCurrentSelection(){
   const all = (data || []).map(s => ({
     id: s.id,
     date: new Date(s.started_at).getTime(),
+    endedAt: s.ended_at ? new Date(s.ended_at).getTime() : null,   // U10 (3): History's "new since you last looked" rows
     loggedByCoach: s.logged_by !== s.pitcher_id,
     deletedAt: s.deleted_at ? new Date(s.deleted_at).getTime() : null,
     deletedBy: s.deleted_by || null,
@@ -3952,6 +4219,7 @@ async function loadSessionsForCurrentSelection(){
       hitType: p.hit_type || null,
       fielder: p.fielder || null,
       delivery: p.delivery || null,
+      timeToPlate: (p.time_to_plate === null || p.time_to_plate === undefined) ? null : Number(p.time_to_plate),   // U11 (7)
       inning: p.inning === null || p.inning === undefined ? null : p.inning,
       outsBefore: p.outs_before === null || p.outs_before === undefined ? null : p.outs_before,
       ballsBefore: p.balls_before === null || p.balls_before === undefined ? null : p.balls_before,
@@ -3977,6 +4245,7 @@ function clearDeleteState(){
 }
 window.setView = function(v){
   if(v === 'leaderboard' && !hasLeaderboard()) v = 'session';
+  state.historyLandingNoClear = null;   // U10 (3)
   state.view = v; state.profileMsg = ''; state.uniformEditKey = null; state.lbExcludeOpen = null; clearDeleteState(); render();
   if(v === 'leaderboard') loadLeaderboard();
   // R6: the team-admin section needs the active team's coaching staff (and,
@@ -3986,11 +4255,20 @@ window.setView = function(v){
 };
 window.toggleSessionExpand = function(id){
   state.expandedSessionId = state.expandedSessionId === id ? null : id;
+  state.historyLandingNoClear = null;   // U10 (3): a tap in History is a real look
+  markSessionOpened(id);                // ...and tapping a session clears its own dot
   clearDeleteState();
   render();
 };
 
 /* ---------- STATS HELPERS ---------- */
+// U11 (7): History shows the average time to home when any pitch was timed.
+function avgTimeToPlateMeta(pitches){
+  const ts = (pitches || []).map(p => p.timeToPlate).filter(v => typeof v === 'number');
+  if(!ts.length) return '';
+  const avg = ts.reduce((a, b) => a + b, 0) / ts.length;
+  return `<div class="meta-item"><span class="meta-num mono">${avg.toFixed(2)}</span><span class="meta-lbl">Time to home (${ts.length})</span></div>`;
+}
 function sessionStats(pitches){
   const total = pitches.length;
   const strikes = pitches.filter(p => isStrikeCell(p.actualRow, p.actualCol)).length;
@@ -4265,6 +4543,12 @@ window.backToChooser = async function(){
 };
 window.chooseSessionKind = async function(kind){
   state.activeSession.kind = kind;
+  if(kind === 'bullpen'){
+    // U11 (5)/(6): a new pen starts with no hitter standing in, from the windup.
+    state.activeSession.batterMode = 'none';
+    state.activeSession.currentBatterSide = 'R';
+    state.activeSession.delivery = 'windup';
+  }
   if(kind === 'game'){
     // Fresh game state. delivery starts null -- acceptance check 3 wants
     // the FIRST pitch to actually require an answer, not silently default.
@@ -4337,7 +4621,7 @@ window.handleGameZoneTap = async function(row, col){
   // not only on an already-pushed one -- see gameVeloTarget/recordGameVelo.
   // A fresh tap always starts this field at null, same "re-tapping starts
   // capture over" precedent as row/col.
-  state.activeSession.gamePendingPitch = { row, col, velo: null };
+  state.activeSession.gamePendingPitch = { row, col, velo: null, timeToPlate: takeTimeToPlate() };   // U11 (7)
   // G1b-r3: the dot is remembered for the whole play (drawn above the
   // in-grid boxes), and survives a resume -- cleared only by Next Pitch or
   // by Back cancelling this location.
@@ -4369,6 +4653,7 @@ window.resetGamePendingPitch = async function(){
   render();
 };
 window.setGameDelivery = async function(d){
+  if(d !== 'set') ttpReset();   // U11 (7): a time to home only exists under Set
   state.activeSession.delivery = d;
   await storSet(draftKey(), state.activeSession);
   render();
@@ -4734,6 +5019,7 @@ window.recordGameResult = async function(result, extra){
     // pending pitch (gameVeloTarget's 'pending' case) while it was still
     // gamePendingPitch, if anything -- null otherwise, same as before.
     type: state.selectedType, velo: pending.velo,
+    timeToPlate: (pending.timeToPlate === undefined) ? null : pending.timeToPlate,   // U11 (7)
     targetRow: null, targetCol: null,
     actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
     accuracyMode: null, inAccuracyZone: null, accuracyZoneCells: null,
@@ -5182,7 +5468,7 @@ function renderDeliveryToggle(){
     return `<button class="type-chip${selected?' selected':''}" style="${style}" onclick="setGameDelivery('${o.key}')">${o.label}</button>`;
   }).join('');
   const label = 'Delivery' + (!s.delivery ? ' — pick one before the next pitch' : '');
-  return `<div><div class="field-label" style="margin-bottom:8px;">${label}</div><div class="chip-row">${chips}</div></div>`;
+  return `<div><div class="field-label" style="margin-bottom:8px;">${label}</div><div class="chip-row">${chips}${renderTimeToPlateBtn()}</div></div>`;
 }
 // G1b-r decisions 2/3/10, updated by G1b-r2: six buttons now, not seven --
 // H and O fold into one In Play icon button (opens the walkthrough, which
@@ -5625,6 +5911,7 @@ window.commitFieldPlay = async function(){
     // G1b-r addendum (velocity): carries over whatever was entered while
     // this play was being walked through (gamePendingPitch.velo).
     type: state.selectedType, velo: pending.velo,
+    timeToPlate: (pending.timeToPlate === undefined) ? null : pending.timeToPlate,   // U11 (7)
     targetRow: null, targetCol: null,
     actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
     accuracyMode: null, inAccuracyZone: null, accuracyZoneCells: null,
@@ -6590,7 +6877,7 @@ function renderSessionView(){
   return `
     <div class="session-grid-layout">
       <div class="panel controls-panel">
-        ${renderPerspectiveToggle()}
+        <div class="perspective-delivery-row bullpen-setup-row">${renderPerspectiveToggle()}${renderBatterModeToggle()}${renderDeliveryToggle()}</div>
         <div>
           <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
           <div class="chip-row">${typeChips}</div>
@@ -6608,7 +6895,7 @@ function renderSessionView(){
         <div class="hint-msg">${state.hint}</div>
         <div>
           <div class="zone-wrap">
-            ${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}
+            <div class="batter-frame${isNoBatter(state.activeSession) ? ' no-batter' : ''}" style="display:contents;">${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}</div>
             <div class="zone-caption">${zoneCaption}</div>
           </div>
         </div>
@@ -6814,7 +7101,7 @@ function renderHistoryView(){
       return `
         <div class="session-card">
           <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
-            <div class="session-date">${oppLabel} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ' <span class="coach-logged-tag">Logged by coach</span>' : ''}${pendingTag}</div>
+            <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ' <span class="coach-logged-tag logged-by-tag">Logged by coach</span>' : ''}${pendingTag}</div>
             <div class="session-meta">
               <div class="meta-item"><span class="meta-num mono">${stats.innings}</span><span class="meta-lbl">Innings</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
@@ -6822,6 +7109,7 @@ function renderHistoryView(){
               <div class="meta-item"><span class="meta-num mono">${stats.bb}</span><span class="meta-lbl">BB</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.h}</span><span class="meta-lbl">H</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
+              ${avgTimeToPlateMeta(s.pitches)}
             </div>
           </div>
           ${expanded ? `
@@ -6944,7 +7232,7 @@ function renderHistoryView(){
     return `
       <div class="session-card">
         <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
-          <div class="session-date">${dateStr}${s.loggedByCoach ? ' <span class="coach-logged-tag">Logged by coach</span>' : ''}${pendingTag}</div>
+          <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${s.loggedByCoach ? ' <span class="coach-logged-tag logged-by-tag">Logged by coach</span>' : ''}${pendingTag}</div>
           <div class="session-meta">
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
             <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
@@ -6953,6 +7241,7 @@ function renderHistoryView(){
                  <div class="meta-item"><span class="meta-num mono">${stats.accuracyPct}%</span><span class="meta-lbl">Exact hit</span></div>`
               : `<div class="meta-item"><span class="meta-num mono">${stats.accuracyPct}%</span><span class="meta-lbl">Accuracy</span></div>`}
             <div class="meta-item"><span class="meta-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="meta-lbl">Avg mph</span></div>
+            ${avgTimeToPlateMeta(s.pitches)}
           </div>
         </div>
         ${expanded ? `
@@ -7302,7 +7591,8 @@ function renderLeaderboardView(){
 // corner control below); the 4th tab becomes the SELECTED pitcher's
 // profile instead, following the pitcher selector automatically (it
 // renders currentPitcher() fresh, same as every other pitcher-scoped
-// view -- selectPitcher() never touches state.view, so switching pitchers
+// view -- [U10 (3), Sept 30: selectPitcher() now DOES set state.view: History
+// for a red-dot name, else New Session] -- so switching pitchers
 // while already on this tab just re-renders it for the new one). A
 // pitcher's own tab bar is completely unchanged. The coach's own profile
 // is NOT on this row at all (tried a corner control here first -- Joel
@@ -7315,7 +7605,7 @@ function renderTabs(){
     : `<button class="tab-btn${state.view==='profile'?' active':''}" onclick="setView('profile')">Profile</button>`;
   return `<div class="tabs">
     <button class="tab-btn${state.view==='session'?' active':''}" onclick="setView('session')">${state.draftAvailable ? 'Resume' : 'New Session'}</button>
-    <button class="tab-btn${state.view==='history'?' active':''}" onclick="setView('history')">History</button>
+    <button class="tab-btn${state.view==='history'?' active':''}" onclick="setView('history')">History${!isCoach() && state.profile && hasRosterDot(state.profile.id) ? '<span class="tab-dot" aria-label="New session"></span>' : ''}</button>
     ${hasLeaderboard() ? `<button class="tab-btn${state.view==='leaderboard'?' active':''}" onclick="setView('leaderboard')"><span class="tab-label-full">Leaderboard</span><span class="tab-label-short">Leaders</span></button>` : ''}
     ${fourthTab}
   </div>`;
@@ -8033,6 +8323,7 @@ window.viewSessionReport = async function(sessionId){
 
 /* ---------- MAIN RENDER ---------- */
 function render(){
+  noteHistoryOnScreen();   // U10 (3): History on screen clears this viewer's dot
   const app = document.getElementById('app');
   // G1b-r2b: capture .game-panel-body's CURRENT scroll position synchronously,
   // before it's torn down and replaced by the innerHTML rewrite below --
@@ -8080,6 +8371,7 @@ function render(){
     const rosterItems = state.roster.map((p, i) => `
       <div class="roster-item-wrap">
         <div class="roster-item${p.id===state.currentPitcherId?' active':''}" style="display:flex;">
+          ${hasRosterDot(p.id) ? '<span class="roster-dot" aria-label="New session"></span>' : ''}
           <button style="all:unset;flex:1;min-width:0;display:flex;align-items:center;cursor:pointer;" onclick="selectPitcher('${p.id}')">
             <div class="roster-item-main">
               <span class="roster-item-name">${escHtml(p.name)}${p.throws ? `<span class="throws-tag">${p.throws}HP</span>` : ''}</span>
@@ -8106,15 +8398,17 @@ function render(){
     // button itself shows who's selected, so a coach always sees who he's charting
     // without the list taking up space. Pure UI state (state.rosterCollapsed) --
     // no network call, and selectPitcher's own behavior is unchanged.
-    const collapsed = state.rosterCollapsed;
+    const canCollapse = rosterCanCollapse();
+    const collapsed = canCollapse && state.rosterCollapsed;
     const selectedForLabel = state.roster.find(x => x.id === state.currentPitcherId);
+    const dottedCount = state.roster.filter(x => hasRosterDot(x.id)).length;   // U10 (3)
     const rosterLabel = collapsed && selectedForLabel ? `Roster · ${escHtml(selectedForLabel.name)}` : 'Roster';
     sidebarBody = `
       <div class="team-line">${teamSelector}<button class="btn btn-ghost show-phone coach-profile-link" onclick="setView('profile')">Profile</button></div>
-      <button class="roster-toggle-btn" onclick="toggleRosterCollapsed()" aria-expanded="${collapsed ? 'false' : 'true'}">
-        <span class="roster-label" style="margin:0;">${rosterLabel}</span>
+      ${canCollapse ? `<button class="roster-toggle-btn" onclick="toggleRosterCollapsed()" aria-expanded="${collapsed ? 'false' : 'true'}">
+        <span style="display:flex;align-items:center;min-width:0;"><span class="roster-label" style="margin:0;">${rosterLabel}</span>${collapsed && dottedCount ? `<span class="roster-dot-count" aria-label="${dottedCount} with new sessions">${dottedCount}</span>` : ''}</span>
         <span class="roster-chevron${collapsed ? '' : ' open'}">▾</span>
-      </button>
+      </button>` : `<div class="roster-label" style="margin:0;">Roster</div>`}
       <div class="roster-collapse${collapsed ? ' collapsed' : ''}">
         <div class="roster-list">${rosterItems || '<p style="color:var(--ink-faint);font-size:12.5px;">No pitchers on this team yet.</p>'}</div>
       </div>`;
@@ -8212,7 +8506,6 @@ function render(){
       ${contactsPanel}`;
 
     main = `
-      ${renderCoachNotices()}
       ${verifyBanner}
       ${setupReminderBanner}
       ${(state.view === 'profile' || state.view === 'leaderboard') ? '' : headerHtml}

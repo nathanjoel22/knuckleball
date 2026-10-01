@@ -508,6 +508,23 @@ $$;
 ALTER FUNCTION "public"."get_removal_notice_info"("p_pitcher_id" "uuid", "p_team_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_report_notes"("p_token" "text") RETURNS TABLE("author_name" "text", "body" "text", "created_at" timestamp with time zone)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+  select n.author_name, n.body, n.created_at
+    from public.sessions s
+    join public.session_notes n on n.session_id = s.id
+   where p_token ~ '^[0-9a-f]{64}\.html$'
+     and s.report_path = p_token
+     and s.deleted_at is null
+   order by n.created_at;
+$_$;
+
+
+ALTER FUNCTION "public"."get_report_notes"("p_token" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_roster_latest"("p_team_id" "uuid") RETURNS TABLE("pitcher_id" "uuid", "latest_ended_at" timestamp with time zone)
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -838,6 +855,24 @@ $$;
 
 
 ALTER FUNCTION "public"."is_coach_of_pitcher"("p_pitcher_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_coach_of_session"("p_session_id" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select exists (
+    select 1
+      from public.sessions s
+      join public.team_coaches tc on tc.team_id = s.team_id and tc.coach_id = auth.uid()
+      join public.pitcher_teams pt on pt.team_id = s.team_id and pt.pitcher_id = s.pitcher_id
+     where s.id = p_session_id
+       and s.started_at >= pt.joined_at
+  );
+$$;
+
+
+ALTER FUNCTION "public"."is_coach_of_session"("p_session_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."is_default_velo_reading"("p_velo" integer, "p_ts" timestamp with time zone) RETURNS boolean
@@ -1269,6 +1304,50 @@ CREATE OR REPLACE FUNCTION "public"."session_dots_since"() RETURNS timestamp wit
 ALTER FUNCTION "public"."session_dots_since"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."session_notes_before_insert"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_ended   timestamptz;
+  v_deleted timestamptz;
+begin
+  select s.ended_at, s.deleted_at into v_ended, v_deleted
+    from public.sessions s where s.id = new.session_id;
+  if not found or v_ended is null then
+    raise exception 'Notes can only be added to a saved session' using errcode = 'check_violation';
+  end if;
+  if v_deleted is not null then
+    raise exception 'Notes can''t be added to a deleted session' using errcode = 'check_violation';
+  end if;
+  new.author_name := coalesce((select p.full_name from public.profiles p where p.id = new.author_id), '');
+  new.created_at := now();
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."session_notes_before_insert"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."session_notes_redot"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  delete from public.session_opened o
+   using public.sessions s
+   where s.id = new.session_id
+     and o.session_id = new.session_id
+     and o.viewer_id = s.pitcher_id;
+  return null;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."session_notes_redot"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -1677,6 +1756,24 @@ COMMENT ON TABLE "public"."roster_seen" IS 'U10 (3) revised: when each viewer (c
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."session_notes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "session_id" "uuid" NOT NULL,
+    "author_id" "uuid" NOT NULL,
+    "author_name" "text" DEFAULT ''::"text" NOT NULL,
+    "body" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "session_notes_body_check" CHECK ((("char_length"("body") >= 1) AND ("char_length"("body") <= 2000)))
+);
+
+
+ALTER TABLE "public"."session_notes" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."session_notes" IS 'S3: a coach''s plain-text note on a saved session. Never edited; the author may delete it. Read by the pitcher and his current coaches (RLS), and shown live on the session''s report page via get_report_notes.';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."session_opened" (
     "viewer_id" "uuid" NOT NULL,
     "session_id" "uuid" NOT NULL,
@@ -1874,6 +1971,11 @@ ALTER TABLE ONLY "public"."roster_seen"
 
 
 
+ALTER TABLE ONLY "public"."session_notes"
+    ADD CONSTRAINT "session_notes_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."session_opened"
     ADD CONSTRAINT "session_opened_pkey" PRIMARY KEY ("viewer_id", "session_id");
 
@@ -1908,6 +2010,10 @@ CREATE INDEX "profiles_account_id_idx" ON "public"."profiles" USING "btree" ("ac
 
 
 
+CREATE INDEX "session_notes_session_id_idx" ON "public"."session_notes" USING "btree" ("session_id");
+
+
+
 CREATE UNIQUE INDEX "team_coaches_one_head_per_team" ON "public"."team_coaches" USING "btree" ("team_id") WHERE ("role" = 'head'::"text");
 
 
@@ -1925,6 +2031,14 @@ CREATE OR REPLACE TRIGGER "pitcher_teams_s1_sport" BEFORE INSERT OR UPDATE ON "p
 
 
 CREATE OR REPLACE TRIGGER "profiles_s1_sport" BEFORE INSERT OR UPDATE ON "public"."profiles" FOR EACH ROW EXECUTE FUNCTION "public"."s1_profiles_sport"();
+
+
+
+CREATE OR REPLACE TRIGGER "session_notes_before_insert" BEFORE INSERT ON "public"."session_notes" FOR EACH ROW EXECUTE FUNCTION "public"."session_notes_before_insert"();
+
+
+
+CREATE OR REPLACE TRIGGER "session_notes_redot" AFTER INSERT ON "public"."session_notes" FOR EACH ROW EXECUTE FUNCTION "public"."session_notes_redot"();
 
 
 
@@ -2024,6 +2138,16 @@ ALTER TABLE ONLY "public"."roster_seen"
 
 
 
+ALTER TABLE ONLY "public"."session_notes"
+    ADD CONSTRAINT "session_notes_author_id_fkey" FOREIGN KEY ("author_id") REFERENCES "public"."profiles"("id");
+
+
+
+ALTER TABLE ONLY "public"."session_notes"
+    ADD CONSTRAINT "session_notes_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."sessions"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."session_opened"
     ADD CONSTRAINT "session_opened_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."sessions"("id") ON DELETE CASCADE;
 
@@ -2074,7 +2198,15 @@ ALTER TABLE ONLY "public"."teams"
 
 
 
+CREATE POLICY "Authors delete their own notes" ON "public"."session_notes" FOR DELETE USING (("author_id" = "auth"."uid"()));
+
+
+
 CREATE POLICY "Coach manages leaderboard exclusions for own team" ON "public"."leaderboard_exclusions" USING ("public"."is_team_head"("team_id")) WITH CHECK ("public"."is_team_head"("team_id"));
+
+
+
+CREATE POLICY "Coaches add notes to their pitchers' sessions" ON "public"."session_notes" FOR INSERT WITH CHECK ((("author_id" = "auth"."uid"()) AND "public"."is_coach_of_session"("session_id")));
 
 
 
@@ -2159,6 +2291,12 @@ CREATE POLICY "Invited person marks their invite accepted" ON "public"."invites"
 
 
 CREATE POLICY "Invited person views invite addressed to their email" ON "public"."invites" FOR SELECT USING (("email" = ("auth"."jwt"() ->> 'email'::"text")));
+
+
+
+CREATE POLICY "Notes readable by author, pitcher and his coaches" ON "public"."session_notes" FOR SELECT USING ((("author_id" = "auth"."uid"()) OR (EXISTS ( SELECT 1
+   FROM "public"."sessions" "s"
+  WHERE (("s"."id" = "session_notes"."session_id") AND ("s"."pitcher_id" = "auth"."uid"())))) OR "public"."is_coach_of_session"("session_id")));
 
 
 
@@ -2252,6 +2390,9 @@ ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."roster_seen" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."session_notes" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."session_opened" ENABLE ROW LEVEL SECURITY;
@@ -2356,6 +2497,13 @@ GRANT ALL ON FUNCTION "public"."get_removal_notice_info"("p_pitcher_id" "uuid", 
 
 
 
+REVOKE ALL ON FUNCTION "public"."get_report_notes"("p_token" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_report_notes"("p_token" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_report_notes"("p_token" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_report_notes"("p_token" "text") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."get_roster_latest"("p_team_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_roster_latest"("p_team_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_roster_latest"("p_team_id" "uuid") TO "service_role";
@@ -2407,6 +2555,12 @@ GRANT ALL ON FUNCTION "public"."invalidate_my_email_verification"() TO "service_
 REVOKE ALL ON FUNCTION "public"."is_coach_of_pitcher"("p_pitcher_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."is_coach_of_pitcher"("p_pitcher_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_coach_of_pitcher"("p_pitcher_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."is_coach_of_session"("p_session_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."is_coach_of_session"("p_session_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_coach_of_session"("p_session_id" "uuid") TO "service_role";
 
 
 
@@ -2541,6 +2695,16 @@ GRANT ALL ON FUNCTION "public"."session_dots_since"() TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."session_notes_before_insert"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."session_notes_before_insert"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."session_notes_redot"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."session_notes_redot"() TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint) TO "service_role";
@@ -2640,6 +2804,11 @@ GRANT UPDATE("headshot_updated_at") ON TABLE "public"."profiles" TO "authenticat
 
 GRANT ALL ON TABLE "public"."roster_seen" TO "authenticated";
 GRANT ALL ON TABLE "public"."roster_seen" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."session_notes" TO "service_role";
+GRANT SELECT,INSERT,DELETE ON TABLE "public"."session_notes" TO "authenticated";
 
 
 

@@ -1868,7 +1868,10 @@ let syncTriggersWired = false;
    plus this device's own not-yet-synced sessions so a pen charted offline
    lights the dot at once. Offline: both maps are cached with the roster
    (saveLastKnownContext); clearing is queued on the device and sent later.
-   Nothing here is ever awaited by charting. */
+   Nothing here is ever awaited by charting.
+   Decided (Joel, Sept 30): endSession lands on History, so whoever taps
+   "End session & save" never sees a dot for his own pen -- everyone else
+   does. Intended; don't exempt that landing from noteHistoryOnScreen. */
 function rosterLatestFor(pid){
   let t = state.rosterDotLatest[state.currentTeamId + ':' + pid] || 0;
   (state.outbox || []).forEach(i => {

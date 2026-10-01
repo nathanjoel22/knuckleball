@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Knuckleball — softball theme reference</title>
+<style>
+  :root{
+    --font: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  [data-sport="baseball"]{
+    --dark:#0F241B; --panel:#E8F3EC; --border:#CFE6D7; --selected:#CFE6D7;
+    --accent:#C9A227; --primary:#0F241B; --primary-text:#FFFFFF; --bg:#FFFFFF;
+    --text:#0F241B; --muted:#5C6F63;
+  }
+  [data-sport="softball"]{
+    --dark:#234B6E; --panel:#EAF4FB; --border:#BFDCEF; --selected:#CFE4F5;
+    --accent:#F2A7C3; --primary:#E27BA2; --primary-text:#FFFFFF; --bg:#FFFFFF;
+    --text:#234B6E; --muted:#5F7A91;
+  }
+  body{margin:0;font-family:var(--font);background:#F3F4F6;color:#222;padding:24px}
+  h1{font-size:20px;margin:0 0 4px}
+  p.note{margin:0 0 20px;color:#555;font-size:14px;max-width:900px}
+  .row{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;margin-bottom:28px}
+  .phone{width:390px;background:var(--bg);color:var(--text);border-radius:28px;box-shadow:0 2px 14px rgba(0,0,0,.15);overflow:hidden;border:1px solid #ddd}
+  .cap{font-size:13px;color:#555;margin:6px 0 0;text-align:center;width:390px}
+  .hdr{background:var(--dark);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
+  .hdr .logo{width:28px;height:28px;border-radius:50%;background:#fff;display:inline-block;position:relative}
+  .hdr .logo:after{content:"";position:absolute;inset:7px;border-radius:50%;border:3px solid var(--accent)}
+  .hdr .spacer{flex:1}
+  .hdr .me{width:30px;height:30px;border-radius:50%;background:var(--panel);border:2px solid var(--accent)}
+  .tabs{display:flex;border-bottom:2px solid var(--border);background:var(--bg)}
+  .tabs div{flex:1;text-align:center;padding:12px 0;font-size:14px;font-weight:600;color:var(--muted)}
+  .tabs div.on{color:var(--text);box-shadow:inset 0 -3px 0 var(--accent)}
+  .body{padding:14px 16px}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px}
+  .label{font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:700;margin-bottom:8px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{min-width:56px;height:44px;border-radius:10px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:var(--text)}
+  .chip.on{background:var(--selected);border-color:var(--dark)}
+  .chip .sw{width:10px;height:10px;border-radius:50%;margin-right:6px}
+  .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;width:300px;height:300px;margin:0 auto;background:var(--panel);padding:4px;border-radius:10px;border:1px solid var(--border);position:relative}
+  .grid div{background:var(--bg);border-radius:4px;border:1px solid var(--border)}
+  .grid div.z{border:1.5px solid var(--dark);background:#fff}
+  .grid .plate{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);width:120px;height:66px;background:rgba(0,0,0,.10);clip-path:polygon(0 0,100% 0,100% 45%,50% 100%,0 45%);pointer-events:none}
+  .btns{display:flex;gap:10px;margin-top:12px}
+  .btn{flex:1;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px}
+  .btn.p{background:var(--primary);color:var(--primary-text)}
+  .btn.s{background:var(--bg);color:var(--text);border:2px solid var(--dark)}
+  .btn.a{background:var(--accent);color:var(--dark)}
+  .zone-cap{font-size:12px;color:var(--muted);text-align:center;margin-top:8px}
+  /* chooser */
+  .choose{padding:28px 20px 32px;text-align:center}
+  .choose h2{margin:0 0 6px;font-size:22px;color:var(--text)}
+  .choose p{margin:0 0 20px;color:var(--muted);font-size:14px}
+  .big{display:flex;flex-direction:column;gap:14px}
+  .big a{display:block;border:2px solid var(--border);border-radius:16px;padding:22px 16px;text-decoration:none;color:var(--text);font-weight:800;font-size:22px;background:var(--panel);position:relative;overflow:hidden}
+  .big a span{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-top:4px}
+  .ball{position:absolute;right:18px;top:50%;transform:translateY(-50%);width:54px;height:54px;border-radius:50%;background:#fff;border:2px solid #333}
+  .ball.sb{background:#F6E85B;border-color:#C9A227}
+  .ball:before,.ball:after{content:"";position:absolute;top:6px;bottom:6px;width:14px;border:2px solid #B33;border-top:0;border-bottom:0;border-radius:50%}
+  .ball:before{left:4px;border-right:0}.ball:after{right:4px;border-left:0}
+  .back{font-size:13px;color:var(--muted);text-align:left;margin:0 0 10px;display:block}
+  .swatches{display:flex;gap:10px;flex-wrap:wrap}
+  .sw-card{width:118px;border-radius:10px;overflow:hidden;border:1px solid #ddd;background:#fff;font-size:12px}
+  .sw-card i{display:block;height:44px}
+  .sw-card b{display:block;padding:6px 8px 0}
+  .sw-card span{display:block;padding:0 8px 6px;color:#666;font-family:ui-monospace,Menlo,monospace}
+</style>
+</head>
+<body>
+<h1>Knuckleball — softball theme reference</h1>
+<p class="note">Top row: the sport chooser (new first frame of the landing page) and what the Pitcher · Coach frame becomes once Softball is chosen. Bottom row: the same tracker components in the baseball theme (today) and the softball theme (new). Only CSS variables change between the two; the strike/ball colors and the home-plate overlay are identical in both.</p>
+
+<div class="row">
+  <div>
+    <div class="phone" data-sport="baseball">
+      <div class="hdr"><span class="logo"></span>Knuckleball</div>
+      <div class="choose">
+        <h2>Which sport?</h2>
+        <p>Pick one — you can add the other later.</p>
+        <div class="big">
+          <a href="#">Baseball<span>Charting for pitchers and coaches</span><i class="ball"></i></a>
+          <a href="#">Softball<span>Charting for pitchers and coaches</span><i class="ball sb"></i></a>
+        </div>
+      </div>
+    </div>
+    <p class="cap">Frame 1 — Baseball · Softball (neutral theme until a tap)</p>
+  </div>
+  <div>
+    <div class="phone" data-sport="softball">
+      <div class="hdr"><span class="logo"></span>Knuckleball</div>
+      <div class="choose">
+        <span class="back">‹ Baseball / Softball</span>
+        <h2>Softball</h2>
+        <p>Are you a pitcher or a coach?</p>
+        <div class="big">
+          <a href="#">Pitcher<span>Chart your own bullpens</span></a>
+          <a href="#">Coach<span>Build a roster and chart your pitchers</span></a>
+        </div>
+      </div>
+    </div>
+    <p class="cap">Frame 2 — after tapping Softball: sport buttons slid out left, Pitcher · Coach slid in, theme already softball</p>
+  </div>
+</div>
+
+<div class="row">
+  <div>
+    <div class="phone" data-sport="baseball">
+      <div class="hdr"><span class="logo"></span>Cairn Baseball<span class="spacer"></span><span class="me"></span></div>
+      <div class="tabs"><div class="on">New Session</div><div>History</div><div>Leaderboard</div><div>Profile</div></div>
+      <div class="body">
+        <div class="panel">
+          <div class="label">PITCH TYPE</div>
+          <div class="chips">
+            <div class="chip on"><i class="sw" style="background:#C9A227"></i>FB</div>
+            <div class="chip"><i class="sw" style="background:#2E86AB"></i>CH</div>
+            <div class="chip"><i class="sw" style="background:#A23B72"></i>SL</div>
+            <div class="chip"><i class="sw" style="background:#3B8E5A"></i>CU</div>
+          </div>
+        </div>
+        <div class="grid">
+          <div></div><div></div><div></div><div></div><div></div>
+          <div></div><div class="z"></div><div class="z"></div><div class="z"></div><div></div>
+          <div></div><div class="z"></div><div class="z"></div><div class="z"></div><div></div>
+          <div></div><div class="z"></div><div class="z"></div><div class="z"></div><div></div>
+          <div></div><div></div><div></div><div></div><div></div>
+          <div class="plate"></div>
+        </div>
+        <div class="zone-cap">vs RHB · Catcher's view</div>
+        <div class="btns"><div class="btn s">Undo</div><div class="btn p">End session &amp; save</div></div>
+      </div>
+    </div>
+    <p class="cap">Baseball theme — unchanged by S1</p>
+  </div>
+  <div>
+    <div class="phone" data-sport="softball">
+      <div class="hdr"><span class="logo"></span>Diamond Elite Softball<span class="spacer"></span><span class="me"></span></div>
+      <div class="tabs"><div class="on">New Session</div><div>History</div><div>Profile</div></div>
+      <div class="body">
+        <div class="panel">
+          <div class="label">PITCH TYPE</div>
+          <div class="chips">
+            <div class="chip on"><i class="sw" style="background:#E27BA2"></i>FB</div>
+            <div class="chip"><i class="sw" style="background:#7FB8E0"></i>CH</div>
+            <div class="chip"><i class="sw" style="background:#6C5B7B"></i>DR</div>
+            <div class="chip"><i class="sw" style="background:#F6B26B"></i>RI</div>
+            <div class="chip"><i class="sw" style="background:#4FA3A5"></i>CU</div>
+            <div class="chip"><i class="sw" style="background:#9B8ADB"></i>SC</div>
+          </div>
+        </div>
+        <div class="grid">
+          <div></div><div></div><div></div><div></div><div></div>
+          <div></div><div class="z"></div><div class="z"></div><div class="z"></div><div></div>
+          <div></div><div class="z"></div><div class="z"></div><div class="z"></div><div></div>
+          <div></div><div class="z"></div><div class="z"></div><div class="z"></div><div></div>
+          <div></div><div></div><div></div><div></div><div></div>
+          <div class="plate"></div>
+        </div>
+        <div class="zone-cap">vs RHB · Catcher's view · Zone: armpits to top of knees</div>
+        <div class="btns"><div class="btn s">Undo</div><div class="btn p">End session &amp; save</div></div>
+      </div>
+    </div>
+    <p class="cap">Softball theme — three tabs (no Leaderboard), softball pitch chips, pink primary button</p>
+  </div>
+</div>
+
+<h1 style="font-size:16px">Softball variables</h1>
+<div class="swatches">
+  <div class="sw-card"><i style="background:#234B6E"></i><b>--dark</b><span>#234B6E</span></div>
+  <div class="sw-card"><i style="background:#EAF4FB"></i><b>--panel</b><span>#EAF4FB</span></div>
+  <div class="sw-card"><i style="background:#BFDCEF"></i><b>--border</b><span>#BFDCEF</span></div>
+  <div class="sw-card"><i style="background:#CFE4F5"></i><b>--selected</b><span>#CFE4F5</span></div>
+  <div class="sw-card"><i style="background:#F2A7C3"></i><b>--accent</b><span>#F2A7C3</span></div>
+  <div class="sw-card"><i style="background:#E27BA2"></i><b>--primary</b><span>#E27BA2</span></div>
+  <div class="sw-card"><i style="background:#FFFFFF;border-bottom:1px solid #ddd"></i><b>--bg</b><span>#FFFFFF</span></div>
+</div>
+<p class="note" style="margin-top:14px">Pink is an accent, like yellow in baseball: fills, chips and the primary button only — never pink text on a light background. Pitch-type colors are data, not theme, and live in the sport's palette table in both copies.</p>
+</body>
+</html>

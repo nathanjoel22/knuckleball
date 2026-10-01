@@ -1326,6 +1326,26 @@
     .session-grid-layout{ gap:18px; }
   }
 
+  /* G1b-r6 (Joel, Oct 1): iPad and laptop session layout -- pen and Live
+     Game, everything wider than a phone. Left column: its natural width
+     (chips wrap inside 220px); right column: the rest. sizeWideGrid sets
+     --zg (grid side), --kbh (silhouette height) and --kbo (room above the
+     grid for the silhouette's head); the fallbacks are the old desktop
+     values. Phones never render .wide-cols. */
+  @media (min-width:501px){
+    .wide-cols{ display:flex; align-items:flex-start; gap:20px; }
+    .wide-left{ flex:0 0 auto; width:max-content; max-width:220px; display:flex; flex-direction:column; gap:14px; }
+    .wide-right{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:14px; }
+    .wide-right .zone-wrap{ max-width:none; padding:var(--kbo, 0px) 0 22px; align-self:stretch; }
+    .wide-right .zone-grid{
+      grid-template-columns:repeat(5, minmax(0, 1fr)); grid-template-rows:repeat(5, minmax(0, 1fr));
+      width:var(--zg, 278px); height:var(--zg, 278px); max-width:none; aspect-ratio:auto;
+    }
+    .wide-right .kb-batter{ --kb-batter-h:var(--kbh, 112%); }
+    .wide-right .home-plate-wrap{ width:calc(0.6 * var(--zg, 278px) - 4.8px); }
+    .wide-actions{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
+  }
+
   @media (max-width:500px){
     /* Coach on a phone: invite link + Sign out live at the bottom of the page, not the top. */
     .hide-phone{ display:none !important; }
@@ -7202,23 +7222,32 @@ function renderGameSessionView(p){
           ${renderGameStatusBar()}
         </div>
         ${renderAdjustRunnersFlow()}
-        <div class="perspective-delivery-row">
-          ${renderPerspectiveToggle()}
-          ${renderDeliveryToggle()}
-        </div>
-        <div>
-          <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
-          <div class="chip-row">${typeChips}</div>
-          ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
-            ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
-            : 'Add your pitches in Profile to start charting.'}</p>
-          <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
-        </div>
-        <div class="hint-msg">${state.hint}</div>
-        <div class="gridwrap">
-          <div class="zone-wrap">
-            ${gridStepNow ? renderGameFieldGrid() : renderZoneGrid(pitches, true, state.flashCell, null, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
-            <div class="zone-caption">${zoneCaption}</div>
+        <div class="wide-cols">
+          <div class="wide-left">
+            ${renderPerspectiveToggle()}
+            <div>
+              <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
+              <div class="chip-row">${typeChips}</div>
+              ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
+                ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
+                : 'Add your pitches in Profile to start charting.'}</p>
+              <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
+            </div>
+            ${renderDeliveryToggle()}
+            <div class="hint-msg">${state.hint}</div>
+          </div>
+          <div class="wide-right">
+            <div class="gridwrap">
+              <div class="zone-wrap">
+                ${gridStepNow ? renderGameFieldGrid() : renderZoneGrid(pitches, true, state.flashCell, null, chartingPerspective, currentBatterSide, 'handleGameZoneTap')}
+                <div class="zone-caption">${zoneCaption}</div>
+              </div>
+            </div>
+            <div class="wide-actions">
+              <button class="btn btn-ghost" onclick="undoLastGameAction()">Undo last action</button>
+              <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
+              <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
+            </div>
           </div>
         </div>
       </div>
@@ -7232,11 +7261,6 @@ function renderGameSessionView(p){
         </div>
         <div class="field-label">Recent pitches</div>
         <div class="pitch-log">${logRows}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          <button class="btn btn-ghost" onclick="undoLastGameAction()">Undo last action</button>
-          <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
-          <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
-        </div>
         <div style="margin:12px 0 8px;">
           <div class="field-label" style="margin-bottom:4px;">Opponent (optional)</div>
           <input class="text-input" placeholder="e.g. Eastern" maxlength="60"
@@ -7351,6 +7375,44 @@ function updatePitchStripArrows(){
 }
 // After each render: keep the strip where it was (or bring the selected
 // chip into view the first time), and grey the arrows at the ends.
+// WIDE-SIZE-START
+/* G1b-r6 (Joel, Oct 1): iPad and laptop session layout, pen and Live Game.
+   Two columns under the status bar: perspective / pitch type / delivery
+   (pen: + batter, pitch count) on the left, the grid on the right with what
+   was under it still under it. The grid is a square sized to the screen:
+   as big as the right column allows -- leaving room for the batter
+   silhouette on both sides, so the grid never moves when the batter flips --
+   but never so tall its bottom (plus caption and 24px) leaves the viewport,
+   and never over 560px. The silhouette stands 12% taller than the grid, so
+   the grid starts that much below the column top, putting the silhouette's
+   head level with the perspective label instead of over the status bar.
+   If the column is too narrow for 44px cells with the full-size silhouette,
+   the grid keeps 44px cells and the silhouette shrinks to fit. Phones never
+   get .wide-right (their own layout, G1b-r5). Display only. */
+function sizeWideGrid(){
+  const right = document.querySelector('.wide-right');
+  if(!right || !window.matchMedia('(min-width:501px)').matches) return;
+  const wrap = right.querySelector('.zone-wrap');
+  if(!wrap) return;
+  const A = 167 / 504, H0 = 1.12, MIN = 238, CAP = 560;   // MIN = 5 x 44px cells + gaps
+  const colW = wrap.clientWidth;
+  const cap = wrap.querySelector('.zone-caption');
+  const capH = cap ? cap.offsetHeight + 10 : 0;            // + .zone-wrap's gap
+  const top = right.getBoundingClientRect().top + (window.pageYOffset || 0);
+  const room = window.innerHeight - top - capH - 24;
+  let h = H0;
+  let side = Math.min(CAP, (colW - 12) / (1 + 2 * A * H0), room / H0);
+  if(side < MIN){
+    side = MIN;
+    h = Math.max(0.8, Math.min(H0, ((colW - side) / 2 - 6) / (A * side)));
+  }
+  side = Math.floor(side);
+  right.style.setProperty('--zg', side + 'px');
+  right.style.setProperty('--kbh', (h * 100).toFixed(1) + '%');
+  right.style.setProperty('--kbo', Math.max(0, Math.ceil((h - 1) * side)) + 'px');
+}
+window.addEventListener('resize', sizeWideGrid);
+// WIDE-SIZE-END
 function attachPitchStrip(){
   const st = document.getElementById('pitch-strip');
   if(!st) return;
@@ -7507,32 +7569,38 @@ function renderSessionView(){
   return `
     <div class="session-grid-layout">
       <div class="panel controls-panel">
-        <div class="perspective-delivery-row bullpen-setup-row">${renderPerspectiveToggle()}${renderBatterModeToggle()}${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}</div>
-        <div>
-          <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
-          <div class="chip-row">${typeChips}</div>
-          ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
-            ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
-            : 'Add your pitches in Profile to start charting.'}</p>
-          <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
-        </div>
-        <div class="accuracy-count-row">
-          <div class="pitch-counter">
-            <span class="pitch-counter-num pitch-count-badge mono">${stats.total}</span>
-            <span class="field-label">Pitch count</span>
+        <div class="wide-cols">
+          <div class="wide-left">
+            ${renderPerspectiveToggle()}
+            <div>
+              <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
+              <div class="chip-row">${typeChips}</div>
+              ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
+                ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
+                : 'Add your pitches in Profile to start charting.'}</p>
+              <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
+            </div>
+            ${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}
+            ${renderBatterModeToggle()}
+            <div class="accuracy-count-row">
+              <div class="pitch-counter">
+                <span class="pitch-counter-num pitch-count-badge mono">${stats.total}</span>
+                <span class="field-label">Pitch count</span>
+              </div>
+            </div>
+            <div class="hint-msg">${state.hint}</div>
+          </div>
+          <div class="wide-right">
+            <div class="zone-wrap">
+              <div class="batter-frame${isNoBatter(state.activeSession) ? ' no-batter' : ''}" style="display:contents;">${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}</div>
+              <div class="zone-caption">${zoneCaption}</div>${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
+            </div>
+            ${sessionUsesRadarGun(state.activeSession) ? `<div>
+              <div class="field-label" style="margin-bottom:8px;">Velocity</div>
+              ${renderVeloStrip()}
+            </div>` : ''}
           </div>
         </div>
-        <div class="hint-msg">${state.hint}</div>
-        <div>
-          <div class="zone-wrap">
-            <div class="batter-frame${isNoBatter(state.activeSession) ? ' no-batter' : ''}" style="display:contents;">${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}</div>
-            <div class="zone-caption">${zoneCaption}</div>${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
-          </div>
-        </div>
-        ${sessionUsesRadarGun(state.activeSession) ? `<div>
-          <div class="field-label" style="margin-bottom:8px;">Velocity</div>
-          ${renderVeloStrip()}
-        </div>` : ''}
       </div>
       <div class="panel log-panel">
         <div class="stat-readout">
@@ -9207,6 +9275,7 @@ function render(){
 
   app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet();
   attachPitchStrip();   // G1b-r5: no-op unless the phone pitch strip is on screen
+  sizeWideGrid();       // G1b-r6: no-op unless the iPad/laptop session grid is on screen
   attachVeloStrip();
   attachGameVeloSlide();   // G1b-r3: no-op unless the Live Game velocity row is on screen
   attachGamePanelScroll();

@@ -1216,6 +1216,10 @@
 
   /* P1-10: the one-time age box */
   .attest-card{ gap:12px; }
+  /* Joel, Oct 2: slightly translucent navy over the app, box dead center. */
+  .attest-backdrop{ position:fixed; inset:0; z-index:2000; display:flex; align-items:center; justify-content:center;
+    padding:16px; background:rgba(20, 38, 66, 0.62); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); overflow-y:auto; }
+  .attest-backdrop .attest-card{ margin:auto; box-shadow:0 18px 50px rgba(10, 20, 40, 0.45); }
   .attest-options{ display:flex; flex-direction:column; gap:4px; }
   .attest-opt{ display:flex; align-items:center; gap:10px; font-size:15px; min-height:40px; cursor:pointer; }
   .attest-opt input, .attest-check input{ width:20px; height:20px; accent-color:var(--field-dark); margin:0; flex:0 0 auto; }
@@ -1901,7 +1905,7 @@ function renderAttestScreen(){
   const err = state.attestError ? `<p class="report-status report-status-error" style="margin:0;">${escHtml(state.attestError)}</p>` : '';
   const terms = `<a href="${policyHref('terms.html')}" target="_blank" rel="noopener">Terms</a> and <a href="${policyHref('privacy.html')}" target="_blank" rel="noopener">Privacy Policy</a>`;
   const body = coach ? `
-      <label class="attest-check"><input type="checkbox" id="attest-terms"> <span>I am 18 or older and I agree to the ${terms}.</span></label>` : `
+      <label class="attest-check"><input type="checkbox" id="attest-terms" ${state.attestTerms ? 'checked' : ''} onchange="state.attestTerms = this.checked"> <span>I am 18 or older and I agree to the ${terms}.</span></label>` : `
       <div><div class="field-label" style="margin-bottom:6px;">How old are you?</div>
         <div class="attest-options">
           ${[['adult', '18 or older'], ['minor_13_17', '13–17'], ['under_13', 'Under 13']].map(([v, l]) => `<label class="attest-opt"><input type="radio" name="attest-age" value="${v}" ${state.attestChoice === v ? 'checked' : ''} onchange="onAttestChoice(this.value)"> ${l}</label>`).join('')}
@@ -1910,8 +1914,8 @@ function renderAttestScreen(){
         <input class="text-input" id="attest-guardian" type="email" placeholder="Not your own email" value="${escHtml(state.attestGuardian || '')}" oninput="state.attestGuardian = this.value">
         <p class="note-hint" style="margin-top:6px;">We'll email them a link to approve your account. Until they do, you can chart, but you can't view or send reports.</p></div>` : ''}
       ${state.attestChoice === 'under_13' ? `<p class="attest-stop">Knuckleball isn't available for players under 13 yet. Parent accounts are coming soon. Contact <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a> about this account.</p>` : ''}
-      <label class="attest-check"><input type="checkbox" id="attest-terms"> <span>I agree to the ${terms}.</span></label>`;
-  return `<div class="who-picker"><div class="who-card attest-card">
+      <label class="attest-check"><input type="checkbox" id="attest-terms" ${state.attestTerms ? 'checked' : ''} onchange="state.attestTerms = this.checked"> <span>I agree to the ${terms}.</span></label>`;
+  return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="One quick question"><div class="who-card attest-card">
     <div class="display" style="font-size:30px;line-height:1;">One quick question</div>
     <p class="note-hint" style="font-size:13.5px;">${coach ? 'Please confirm the statement below.' : 'Tell us your age.'} You'll only be asked once.</p>
     ${body}
@@ -9954,8 +9958,11 @@ function render(){
     return;
   }
 
-  if(state.attestNeeded && state.session){
-    app.innerHTML = renderAttestScreen();
+  if(state.attestNeeded && state.session && !state.attestUnderlay){
+    // Joel, Oct 2: the box floats dead-center over the (shaded) app.
+    state.attestUnderlay = true;
+    try{ render(); } finally { state.attestUnderlay = false; }
+    app.insertAdjacentHTML('beforeend', renderAttestScreen());
     return;
   }
   if(state.whoPicker && state.whoPicker.length > 1){

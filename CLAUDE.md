@@ -80,6 +80,8 @@ There are 35 RLS policies (production, 2026-10-01, after S3 session_notes: coach
 
 **Migration history.** Every schema change up to P1-08 was applied to production by hand; `supabase/migrations/20260826082320_baseline.sql` is the snapshot of that state and the first real migration this repo has. Production has no `supabase_migrations` history table yet, so a one-time `supabase migration repair --status applied` is required before the first `db push` (see DEPLOY.md). Keep regenerating the dump in `supabase/schema/schema.sql` after any approved schema change — it stays the human-readable source of truth.
 
+**Column grants (security fix, Oct 2 2026).** `profiles` and `teams` have NO table-level SELECT for clients -- only an explicit column grant. Secret columns (`teams.invite_token`, `teams.coach_invite_token`, `profiles.email_verify_token`, and P1-10's guardian token/email) are never granted; they're reached only through their SECURITY DEFINER functions. A new column on either table is unreadable by clients until a migration grants it (and, for profiles, it's added to the tracker's `PROFILE_COLS`). Never `select('*')` on these tables.
+
 RLS rules of engagement:
 
 1. Never write or alter a policy without first dumping the current policies (`select * from pg_policies where schemaname='public'`).

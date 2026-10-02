@@ -3142,41 +3142,77 @@ GRANT ALL ON TABLE "public"."pitches" TO "service_role";
 
 
 
-GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."profiles" TO "anon";
-GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."profiles" TO "authenticated";
+GRANT INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."profiles" TO "anon";
+GRANT INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."profiles" TO "authenticated";
 GRANT ALL ON TABLE "public"."profiles" TO "service_role";
 
 
 
-GRANT UPDATE("full_name") ON TABLE "public"."profiles" TO "authenticated";
+GRANT SELECT("id") ON TABLE "public"."profiles" TO "authenticated";
 
 
 
-GRANT UPDATE("pitch_types") ON TABLE "public"."profiles" TO "authenticated";
+GRANT SELECT("role") ON TABLE "public"."profiles" TO "authenticated";
 
 
 
-GRANT UPDATE("contact_emails") ON TABLE "public"."profiles" TO "authenticated";
+GRANT SELECT("full_name"),UPDATE("full_name") ON TABLE "public"."profiles" TO "authenticated";
 
 
 
-GRANT UPDATE("throws") ON TABLE "public"."profiles" TO "authenticated";
+GRANT SELECT("pitch_types"),UPDATE("pitch_types") ON TABLE "public"."profiles" TO "authenticated";
 
 
 
-GRANT UPDATE("relative_accuracy_enabled") ON TABLE "public"."profiles" TO "authenticated";
+GRANT SELECT("created_at") ON TABLE "public"."profiles" TO "authenticated";
 
 
 
-GRANT UPDATE("uses_radar_gun") ON TABLE "public"."profiles" TO "authenticated";
+GRANT SELECT("contact_emails"),UPDATE("contact_emails") ON TABLE "public"."profiles" TO "authenticated";
 
 
 
-GRANT UPDATE("setup_dismissed_at") ON TABLE "public"."profiles" TO "authenticated";
+GRANT SELECT("email_verify_token_sent_at") ON TABLE "public"."profiles" TO "authenticated";
 
 
 
-GRANT UPDATE("headshot_updated_at") ON TABLE "public"."profiles" TO "authenticated";
+GRANT SELECT("email_verified_at") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("throws"),UPDATE("throws") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("relative_accuracy_enabled"),UPDATE("relative_accuracy_enabled") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("uses_radar_gun"),UPDATE("uses_radar_gun") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("setup_dismissed_at"),UPDATE("setup_dismissed_at") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("headshot_updated_at"),UPDATE("headshot_updated_at") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("sport") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("account_id") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("managed_by") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("is_primary") ON TABLE "public"."profiles" TO "authenticated";
 
 
 
@@ -3206,9 +3242,49 @@ GRANT ALL ON TABLE "public"."team_coaches" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."teams" TO "anon";
-GRANT ALL ON TABLE "public"."teams" TO "authenticated";
+GRANT INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN,UPDATE ON TABLE "public"."teams" TO "anon";
+GRANT INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN,UPDATE ON TABLE "public"."teams" TO "authenticated";
 GRANT ALL ON TABLE "public"."teams" TO "service_role";
+
+
+
+GRANT SELECT("id") ON TABLE "public"."teams" TO "anon";
+GRANT SELECT("id") ON TABLE "public"."teams" TO "authenticated";
+
+
+
+GRANT SELECT("coach_id") ON TABLE "public"."teams" TO "anon";
+GRANT SELECT("coach_id") ON TABLE "public"."teams" TO "authenticated";
+
+
+
+GRANT SELECT("name") ON TABLE "public"."teams" TO "anon";
+GRANT SELECT("name") ON TABLE "public"."teams" TO "authenticated";
+
+
+
+GRANT SELECT("created_at") ON TABLE "public"."teams" TO "anon";
+GRANT SELECT("created_at") ON TABLE "public"."teams" TO "authenticated";
+
+
+
+GRANT SELECT("invite_token_rotated_at") ON TABLE "public"."teams" TO "anon";
+GRANT SELECT("invite_token_rotated_at") ON TABLE "public"."teams" TO "authenticated";
+
+
+
+GRANT SELECT("coach_invite_token_rotated_at") ON TABLE "public"."teams" TO "anon";
+GRANT SELECT("coach_invite_token_rotated_at") ON TABLE "public"."teams" TO "authenticated";
+
+
+
+GRANT SELECT("sport") ON TABLE "public"."teams" TO "anon";
+GRANT SELECT("sport") ON TABLE "public"."teams" TO "authenticated";
+
+
+
+GRANT SELECT("level") ON TABLE "public"."teams" TO "anon";
+GRANT SELECT("level") ON TABLE "public"."teams" TO "authenticated";
 
 
 

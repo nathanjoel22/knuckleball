@@ -1253,7 +1253,6 @@
   .acct-add{ margin-top:4px; padding:10px 8px; border:1px dashed var(--border-strong); border-radius:8px; background:none; font:inherit; font-size:13.5px; font-weight:600; color:var(--field-dark); cursor:pointer; text-align:left; min-height:44px; }
   .acct-add:disabled{ opacity:0.5; }
   .acct-msg{ font-size:12px; color:var(--clay); margin:4px 8px; }
-  .who-picker{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px 16px; background:var(--page-bg); }
   .who-card{ width:min(380px, 100%); background:var(--card-bg); border:1px solid var(--border); border-radius:14px; padding:22px; display:flex; flex-direction:column; gap:6px; box-shadow:0 1px 3px rgba(var(--ink-rgb),0.06); }
   /* S3: coaches notes in History */
   .notes-block{ display:flex; flex-direction:column; gap:10px; margin:14px 0 4px; padding:12px 14px; border:1px solid var(--surface-border); border-radius:10px; background:var(--surface); }
@@ -3187,8 +3186,8 @@ window.submitAddPlayer = async function(){
 // A8 when a login has several profiles of the sport it signed in on.
 function renderWhoPicker(){
   const pool = (state.whoPicker || []).map(id => (state.myProfiles || []).find(p => p.id === id)).filter(Boolean);
-  return `<div class="who-picker"><div class="who-card">
-    <div class="display" style="font-size:28px;margin-bottom:8px;">Who's charting?</div>
+  return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="Who's charting?"><div class="who-card attest-card">
+    <div class="display" style="font-size:28px;margin-bottom:2px;">Who's charting?</div>
     ${pool.map(p => `<button type="button" class="acct-item" onclick="switchProfile('${p.id}')">
       <span class="acct-avatar">${escHtml(initialsOf(p.full_name))}</span>
       <span class="acct-who"><span class="acct-name">${escHtml(p.full_name)}</span><span class="acct-meta">${profileChip(p)} ${ROLE_NAME[p.role] || ''}</span></span>
@@ -10069,15 +10068,17 @@ function render(){
     return;
   }
 
-  if(state.attestNeeded && state.session && !state.attestUnderlay){
-    // Joel, Oct 2: the box floats dead-center over the (shaded) app.
-    state.attestUnderlay = true;
-    try{ render(); } finally { state.attestUnderlay = false; }
-    app.insertAdjacentHTML('beforeend', renderAttestScreen());
-    return;
-  }
-  if(state.whoPicker && state.whoPicker.length > 1){
-    app.innerHTML = renderWhoPicker();
+  // Joel, Oct 2: one-time notices -- the age box, "Who's charting?" -- float
+  // dead-center over the app, shaded navy and blurred. One at a time (the age
+  // box first); the app underneath is drawn without any of them.
+  const overlay = state.overlayUnderlay ? null
+    : (state.attestNeeded && state.session) ? renderAttestScreen
+    : (state.whoPicker && state.whoPicker.length > 1) ? renderWhoPicker
+    : null;
+  if(overlay){
+    state.overlayUnderlay = true;
+    try{ render(); } finally { state.overlayUnderlay = false; }
+    app.insertAdjacentHTML('beforeend', overlay());
     return;
   }
   if(state.setupNeeded){

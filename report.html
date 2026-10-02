@@ -9,7 +9,7 @@
      run. Inline handlers (onclick=...), javascript: URLs, <object> and
      <base href> are all refused, so nothing inside a report can execute
      even if the sanitizer below ever missed something. -->
-<meta http-equiv="Content-Security-Policy" content="script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/ 'sha256-1d1xsDiJxO+8b1YP6MFOixOwKyyboaG+nLItY+cVybQ='; object-src 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'sha256-1d1xsDiJxO+8b1YP6MFOixOwKyyboaG+nLItY+cVybQ='; object-src 'none'; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bullpen Session Report — Knuckleball</title>
 <style>
@@ -97,8 +97,8 @@
 
 <!-- Loaded only for the SUPABASE_URL constant (same config-swap file used
      for local/staging testing, per DEPLOY.md) -- this page makes no other
-     use of the Supabase client the CDN script sets up. -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+     use of the Supabase client. Self-hosted since P1-10 (vendor/). -->
+<script src="vendor/supabase.js"></script>
 <script src="supabase-config.js"></script>
 <!-- CSP: the inline script below runs only because its exact SHA-256 is
      listed in the Content-Security-Policy at the top of this file. After
@@ -287,5 +287,6 @@ document.getElementById('btn-print').addEventListener('click', printReport);
 
 init();
 </script>
+<p style="font:12px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#527065;text-align:center;margin:0 0 24px;">Knuckleball LLC 2026 &middot; <a href="privacy.html" style="color:inherit;">Privacy</a> &middot; <a href="terms.html" style="color:inherit;">Terms</a></p>
 </body>
 </html>

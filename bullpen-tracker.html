@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Knuckleball</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="vendor/supabase.js"></script>
 <script src="supabase-config.js"></script>
 <script src="report-config.js"></script>
 <script>
@@ -39,9 +39,9 @@
      swaps in when it arrives; offline it simply never does and the fallback
      stacks (sans-serif / monospace) are used. -->
 <link rel="preload" as="style"
-      href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      href="vendor/fonts/fonts.css"
       onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"></noscript>
+<noscript><link rel="stylesheet" href="vendor/fonts/fonts.css"></noscript>
 <style>
   /* Visual refresh (light theme). Every color the app uses lives here now --
      the several dozen hard-coded hexes that used to be scattered through
@@ -1214,6 +1214,16 @@
   .contacts-save-row{ flex-basis:100%; display:flex; align-items:center; gap:12px; margin-top:2px; }
   .contacts-saved-msg{ font-size:12.5px; color:#6FA287; font-weight:600; }
 
+  /* P1-10: the one-time age box */
+  .attest-card{ gap:12px; }
+  .attest-options{ display:flex; flex-direction:column; gap:4px; }
+  .attest-opt{ display:flex; align-items:center; gap:10px; font-size:15px; min-height:40px; cursor:pointer; }
+  .attest-opt input, .attest-check input{ width:20px; height:20px; accent-color:var(--field-dark); margin:0; flex:0 0 auto; }
+  .attest-check{ display:flex; gap:10px; align-items:flex-start; font-size:14px; color:var(--ink-dim); line-height:1.45; cursor:pointer; }
+  .attest-check a{ color:var(--field-dark); }
+  .attest-stop{ font-size:13.5px; background:var(--surface); border:1px solid var(--surface-border); border-radius:8px; padding:10px 12px; margin:0; }
+  .policy-foot{ font-size:11.5px; color:var(--ink-faint); text-align:center; padding:14px 0 6px; }
+  .policy-foot a{ color:var(--ink-faint); }
   /* S4: account menu (profiles + Add a sport), Who's charting? */
   .acct-row{ display:flex; justify-content:flex-end; margin:-6px 0 6px; position:relative; z-index:20; }
   .acct-wrap{ position:relative; }
@@ -1859,6 +1869,161 @@ function currentPitcherVerified(p){
 // team's roster/session query, so the pitcher is on a team by construction
 // in that context -- only a pitcher viewing their own sessions needs an
 // actual check, against their own loaded team list.
+/* ---------- P1-10: AGE ATTESTATION + GUARDIAN APPROVAL (Joel, Oct 2) ----------
+   The login's age bracket lives on its PRIMARY profile. New accounts answer
+   on the signup form; existing ones answer once, in a box shown the next
+   time they're online (never offline). 13-17s need a parent or guardian's
+   emailed approval before reports unlock; charting is never gated. */
+const TERMS_VERSION = '2026-10-02';
+function myAccountProfile(){
+  const list = state.myProfiles || [];
+  return list.find(p => p.is_primary) || list.find(p => state.session && p.id === state.session.user.id) || state.profile;
+}
+function loginIsCoach(){ return (state.myProfiles || [state.profile]).some(p => p && p.role === 'coach'); }
+function myGuardianPending(){ const a = myAccountProfile(); return !!(a && a.age_attestation === 'minor_13_17' && !a.guardian_consented_at); }
+// Report consent for the pitcher being viewed: a coach reads the roster's
+// state; a player reads their own login's.
+function currentPitcherConsent(p){
+  if(isCoach()) return !!(p && p.ageAnswered && !p.guardianPending);
+  const a = myAccountProfile();
+  return !!(a && (a.age_attestation === 'adult' || a.guardian_consented_at));
+}
+function consentBlockMessage(p){
+  if(isCoach()){
+    if(p && p.guardianPending) return `No report can be sent until ${escHtml(p.name)}'s parent or guardian approves their account.`;
+    return `No report can be sent until ${escHtml(p ? p.name : 'this pitcher')} answers the one-time age question in the app.`;
+  }
+  return myGuardianPending() ? 'Reports unlock when your parent or guardian approves your account.' : 'Answer the age question to unlock reports.';
+}
+function policyHref(page){ return page + '#' + currentSport(); }
+function renderAttestScreen(){
+  const coach = loginIsCoach();
+  const err = state.attestError ? `<p class="report-status report-status-error" style="margin:0;">${escHtml(state.attestError)}</p>` : '';
+  const terms = `<a href="${policyHref('terms.html')}" target="_blank" rel="noopener">Terms</a> and <a href="${policyHref('privacy.html')}" target="_blank" rel="noopener">Privacy Policy</a>`;
+  const body = coach ? `
+      <label class="attest-check"><input type="checkbox" id="attest-terms"> <span>I am 18 or older and I agree to the ${terms}.</span></label>` : `
+      <div><div class="field-label" style="margin-bottom:6px;">How old are you?</div>
+        <div class="attest-options">
+          ${[['adult', '18 or older'], ['minor_13_17', '13–17'], ['under_13', 'Under 13']].map(([v, l]) => `<label class="attest-opt"><input type="radio" name="attest-age" value="${v}" ${state.attestChoice === v ? 'checked' : ''} onchange="onAttestChoice(this.value)"> ${l}</label>`).join('')}
+        </div></div>
+      ${state.attestChoice === 'minor_13_17' ? `<div><div class="field-label" style="margin-bottom:6px;">Parent or guardian email</div>
+        <input class="text-input" id="attest-guardian" type="email" placeholder="Not your own email" value="${escHtml(state.attestGuardian || '')}" oninput="state.attestGuardian = this.value">
+        <p class="note-hint" style="margin-top:6px;">We'll email them a link to approve your account. Until they do, you can chart, but you can't view or send reports.</p></div>` : ''}
+      ${state.attestChoice === 'under_13' ? `<p class="attest-stop">Knuckleball isn't available for players under 13 yet. Parent accounts are coming soon. Contact <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a> about this account.</p>` : ''}
+      <label class="attest-check"><input type="checkbox" id="attest-terms"> <span>I agree to the ${terms}.</span></label>`;
+  return `<div class="who-picker"><div class="who-card attest-card">
+    <div class="display" style="font-size:30px;line-height:1;">One quick question</div>
+    <p class="note-hint" style="font-size:13.5px;">${coach ? 'Please confirm the statement below.' : 'Tell us your age.'} You'll only be asked once.</p>
+    ${body}
+    ${err}
+    <button type="button" class="btn btn-primary" ${state.attestBusy || state.attestChoice === 'under_13' ? 'disabled' : ''} onclick="submitAttestation()">${state.attestBusy ? 'Saving…' : 'Continue'}</button>
+  </div></div>`;
+}
+window.onAttestChoice = function(v){ state.attestChoice = v; state.attestError = null; render(); };
+async function sendGuardianEmail(){
+  if(typeof VERIFY_EMAIL_URL === 'undefined' || VERIFY_EMAIL_URL.indexOf('YOUR_') === 0) return { error: 'not_configured' };
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if(!session) return { error: 'no_session' };
+  const res = await netTimeout(fetch(VERIFY_EMAIL_URL.replace('send-verification-email', 'send-guardian-consent'), {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token }
+  }), 15000);
+  try{ return await res.json(); }catch(e){ return { error: 'bad_response' }; }
+}
+async function reloadMyProfiles(){
+  const { data } = await netTimeout(supabaseClient.from('profiles').select(PROFILE_COLS).eq('account_id', state.session.user.id), 10000);
+  if(data && data.length){
+    state.myProfiles = data;
+    const act = data.find(x => x.id === state.profile.id);
+    if(act) state.profile = act;
+  }
+}
+const ATTEST_ERRORS = {
+  guardian_email_is_yours: "The parent or guardian email has to be someone else's, not yours.",
+  invalid_guardian_email: "That parent or guardian email doesn't look right.",
+  coaches_must_be_adults: 'Coaches must be 18 or older.',
+  bracket_already_recorded: 'Your age was already recorded. Contact nate@knuckleballonline.com to correct it.'
+};
+window.submitAttestation = async function(){
+  state.attestError = null;
+  const coach = loginIsCoach();
+  const termsOk = (document.getElementById('attest-terms') || {}).checked;
+  const status = coach ? 'adult' : state.attestChoice;
+  let guardian = null;
+  if(!status){ state.attestError = 'Tell us how old you are.'; render(); return; }
+  if(status === 'under_13'){ return; }
+  if(status === 'minor_13_17'){
+    guardian = String(state.attestGuardian || '').trim().toLowerCase();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(guardian)){ state.attestError = "Enter a parent or guardian's email."; render(); return; }
+  }
+  if(!termsOk){ state.attestError = coach ? "Confirm you're 18 or older and agree to the Terms and Privacy Policy." : 'Agree to the Terms and Privacy Policy to continue.'; render(); return; }
+  if(!isOnline()){ state.attestError = 'Connect to continue.'; render(); return; }
+  state.attestBusy = true; render();
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('record_attestation', { p_status: status, p_terms_version: TERMS_VERSION, p_guardian_email: guardian, p_via: 'catchup' }), 10000);
+    if(error) throw error;
+    if(!data || !data.ok){ state.attestError = ATTEST_ERRORS[data && data.error] || 'Something went wrong. Try again.'; state.attestBusy = false; render(); return; }
+    if(status === 'minor_13_17') await sendGuardianEmail().catch(() => null);
+    await reloadMyProfiles();
+    state.attestNeeded = false; state.attestBusy = false; state.attestChoice = null; state.attestGuardian = '';
+    await saveLastKnownContext();
+    render();
+  }catch(e){
+    console.error('attestation failed', e);
+    state.attestBusy = false; state.attestError = "Couldn't save your answer. Check your connection and try again."; render();
+  }
+};
+// The 13-17 player's banner while approval is pending.
+function renderGuardianBanner(){
+  if(!myGuardianPending()) return '';
+  const st = state.guardianStatus;
+  return `<div class="verify-banner">
+    <p><strong>Waiting for a parent or guardian to approve your account.</strong> You can chart as usual; reports unlock once they approve.${st && st.guardian_email ? ` We sent the link to ${escHtml(st.guardian_email)}.` : ''}</p>
+    ${state.guardianEditOpen ? `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input class="text-input" style="max-width:260px;" type="email" placeholder="Parent or guardian email" value="${escHtml(state.guardianDraft || '')}" oninput="state.guardianDraft = this.value">
+        <button class="btn btn-primary" ${state.guardianBusy ? 'disabled' : ''} onclick="changeGuardianEmail()">Save &amp; send</button>
+        <button class="btn btn-ghost" onclick="closeGuardianEdit()">Cancel</button></div>`
+      : `<div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-ghost" ${state.guardianBusy || !isOnline() ? 'disabled' : ''} onclick="resendGuardian()">${state.guardianBusy ? 'Sending…' : 'Resend'}</button>
+        <button class="btn btn-ghost" ${!isOnline() ? 'disabled' : ''} onclick="openGuardianEdit()">Change guardian email</button></div>`}
+    ${state.guardianMsg ? `<p class="report-status" style="margin:6px 0 0;">${escHtml(state.guardianMsg)}</p>` : ''}
+  </div>`;
+}
+window.openGuardianEdit = function(){ state.guardianEditOpen = true; state.guardianDraft = ''; state.guardianMsg = ''; render(); };
+window.closeGuardianEdit = function(){ state.guardianEditOpen = false; render(); };
+async function loadGuardianStatus(){
+  if(!myGuardianPending() || !isOnline()) return;
+  try{
+    const { data } = await netTimeout(supabaseClient.rpc('my_guardian_status'), 8000);
+    state.guardianStatus = data && data[0] ? data[0] : null;
+  }catch(e){}
+}
+window.resendGuardian = async function(){
+  state.guardianBusy = true; state.guardianMsg = ''; render();
+  const r = await sendGuardianEmail().catch(() => ({ error: 'network' }));
+  state.guardianBusy = false;
+  state.guardianMsg = r && r.ok ? 'Sent. Ask them to check their inbox (and spam).'
+    : r && r.error === 'too_soon' ? `Already sent recently. Try again in ${Math.ceil((r.retry_after_seconds || 600) / 60)} min.`
+    : "Couldn't send. Check your connection and try again.";
+  await loadGuardianStatus();
+  render();
+};
+window.changeGuardianEmail = async function(){
+  const g = String(state.guardianDraft || '').trim().toLowerCase();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(g)){ state.guardianMsg = "That email doesn't look right."; render(); return; }
+  state.guardianBusy = true; state.guardianMsg = ''; render();
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('record_attestation', { p_status: 'minor_13_17', p_terms_version: TERMS_VERSION, p_guardian_email: g, p_via: 'catchup' }), 10000);
+    if(error || !data || !data.ok) throw new Error((data && data.error) || (error && error.message) || 'failed');
+    const r = await sendGuardianEmail().catch(() => null);
+    state.guardianEditOpen = false;
+    state.guardianMsg = r && r.ok ? 'Saved and sent.' : 'Saved. Use Resend if the email doesn’t arrive.';
+    await reloadMyProfiles(); await loadGuardianStatus();
+  }catch(e){
+    state.guardianMsg = ATTEST_ERRORS[e.message] || "Couldn't save that email. Try again.";
+  }
+  state.guardianBusy = false;
+  render();
+};
 function currentPitcherOnTeam(p){
   return isCoach() ? true : !!(state.teams && state.teams.length);
 }
@@ -2178,6 +2343,10 @@ async function loadFullContextOnline(alreadyPainted){
   state.myProfiles = mine;
   state.profile = pickActiveProfile(mine, session.user.id);
   applySport();
+  // P1-10: an existing login that never answered the age question gets the
+  // one-time box -- decided HERE, on the online load only, so it can never
+  // appear offline or stand between anyone and charting.
+  state.attestNeeded = !(myAccountProfile() || {}).age_attestation;
 
   // R0: best-effort, matches profile/teams/roster's own "cached fast path
   // shows stale, this reconcile pass refreshes it" treatment -- a failure
@@ -2240,6 +2409,7 @@ async function loadFullContextOnline(alreadyPainted){
   state.loaded = true;
   await saveLastKnownContext();   // so the next cold start has a fresh cache to paint from
   warmOtherProfiles();            // S4: every other profile gets an offline snapshot too (background)
+  loadGuardianStatus().then(() => { if(state.guardianStatus) render(); });   // P1-10
   finishInit();
 }
 
@@ -2707,7 +2877,7 @@ async function loadTeams(){
 // profiles are always read with this explicit list, never select('*').
 // A NEW profiles column is unreadable until it's granted in a migration AND
 // added here (safe by default).
-const PROFILE_COLS = 'id, account_id, is_primary, managed_by, role, sport, full_name, pitch_types, created_at, contact_emails, email_verified_at, email_verify_token_sent_at, throws, relative_accuracy_enabled, uses_radar_gun, setup_dismissed_at, headshot_updated_at';
+const PROFILE_COLS = 'id, account_id, is_primary, managed_by, role, sport, full_name, pitch_types, created_at, contact_emails, email_verified_at, email_verify_token_sent_at, throws, relative_accuracy_enabled, uses_radar_gun, setup_dismissed_at, headshot_updated_at, age_attestation, attested_at, attested_via, terms_version, guardian_consent_sent_at, guardian_consented_at, consent_via';
 function lastKnownKey(userId){ return 'lastKnownContext:' + userId; }
 
 /* ---------- S4 STAGE A: ONE LOGIN, MANY PROFILES (Joel, Oct 2) ----------
@@ -2807,7 +2977,7 @@ async function fetchRosterFor(teamId){
   });
   const { data: verRows } = await supabaseClient.rpc('get_roster_verification', { p_team_id: teamId });
   const ver = {}; (verRows || []).forEach(v => { ver[v.pitcher_id] = v; });
-  roster.forEach(p => { const v = ver[p.id]; p.accountEmail = v ? v.email : null; p.emailConfirmed = v ? v.email_confirmed : false; });
+  roster.forEach(p => { const v = ver[p.id]; p.accountEmail = v ? v.email : null; p.emailConfirmed = v ? v.email_confirmed : false; p.guardianPending = !!(v && v.guardian_pending); p.ageAnswered = !!(v && v.age_answered); });
   roster.sort((a, b) => {
     const an = a.uniformNumber, bn = b.uniformNumber;
     if(an !== null && bn !== null && an !== bn) return an - bn;
@@ -3055,6 +3225,8 @@ async function loadRosterForTeam(teamId){
     const v = verByPitcher[p.id];
     p.accountEmail = v ? v.email : null;
     p.emailConfirmed = v ? v.email_confirmed : false;
+    p.guardianPending = !!(v && v.guardian_pending);   // P1-10
+    p.ageAnswered = !!(v && v.age_answered);
   });
 }
 
@@ -8419,7 +8591,7 @@ function renderHistoryView(){
       const pVerified = currentPitcherVerified(p);
       const pOnTeam = currentPitcherOnTeam(p);
       const callerVerified = currentCallerVerified();
-      const pEligible = pVerified && pOnTeam && callerVerified;
+      const pConsent = currentPitcherConsent(p);   /* P1-10 */ const pEligible = pVerified && pOnTeam && callerVerified && pConsent;
       const emailList = pEligible
         ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean)
         : [];
@@ -8438,6 +8610,7 @@ function renderHistoryView(){
           ${!pEligible
             ? `<p class="report-recipients" style="color:var(--clay);">${!pVerified
                 ? `No report can be sent until ${escHtml(p.name)} verifies their email.`
+                : !pConsent ? consentBlockMessage(p)
                 : !pOnTeam
                   ? `No report can be sent until ${escHtml(p.name)} is on a team.`
                   : `No report can be sent until you verify your own account email.`}</p>`
@@ -8539,7 +8712,7 @@ function renderHistoryView(){
     const pVerified = currentPitcherVerified(p);
     const pOnTeam = currentPitcherOnTeam(p);
     const callerVerified = currentCallerVerified();
-    const pEligible = pVerified && pOnTeam && callerVerified;
+    const pConsent = currentPitcherConsent(p);   /* P1-10 */ const pEligible = pVerified && pOnTeam && callerVerified && pConsent;
     const emailList = pEligible
       ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean)
       : [];
@@ -8562,6 +8735,7 @@ function renderHistoryView(){
         ${!pEligible
           ? `<p class="report-recipients" style="color:var(--clay);">${!pVerified
               ? `No report can be sent until ${escHtml(p.name)} verifies their email.`
+              : !pConsent ? consentBlockMessage(p)
               : !pOnTeam
                 ? `No report can be sent until ${escHtml(p.name)} is on a team.`
                 : `No report can be sent until you verify your own account email.`}</p>`
@@ -9780,6 +9954,10 @@ function render(){
     return;
   }
 
+  if(state.attestNeeded && state.session){
+    app.innerHTML = renderAttestScreen();
+    return;
+  }
   if(state.whoPicker && state.whoPicker.length > 1){
     app.innerHTML = renderWhoPicker();
     return;
@@ -9823,7 +10001,7 @@ function render(){
             <div class="roster-item-main">
               <span class="roster-item-name">${escHtml(p.name)}${p.throws ? `<span class="throws-tag">${p.throws}HP</span>` : ''}</span>
               <span class="roster-item-types">${p.pitchTypes.map(pitchLabel).join(' · ') || 'No pitches set yet'}</span>
-              ${p.emailConfirmed ? '' : '<span class="verify-badge roster-verify-badge">Unverified</span>'}
+              ${p.emailConfirmed ? '' : '<span class="verify-badge roster-verify-badge">Unverified</span>'}${p.guardianPending ? '<span class="verify-badge roster-verify-badge">Guardian pending</span>' : ''}
             </div>
             <span class="roster-item-num">${p.uniformNumber === null ? '—' : p.uniformNumber}</span>
           </button>
@@ -9944,6 +10122,7 @@ function render(){
     // wall of banners is worse than picking one, and an unverified email
     // is the more urgent of the two.
     const setupReminderBanner = verifyBanner ? '' : renderSetupReminderBanner();
+    const guardianBanner = renderGuardianBanner();   // P1-10
 
     const headerHtml = `
       <div class="pitcher-header">
@@ -9961,6 +10140,7 @@ function render(){
       <div class="acct-row">${renderAccountButton()}</div>
       ${renderAddSportBanner()}
       ${verifyBanner}
+      ${guardianBanner}
       ${setupReminderBanner}
       ${(state.view === 'profile' || state.view === 'leaderboard') ? '' : headerHtml}
       ${tabs}
@@ -9979,7 +10159,8 @@ function render(){
   // tab while this one still has the modal flagged on).
   const setupModalHtml = (state.showSetupModal && (isCoach() ? isHeadOfCurrentTeam() : !state.draftAvailable)) ? renderSetupModal() : '';
 
-  app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet();
+  const policyFoot = phoneSession ? '' : `<div class="policy-foot">Knuckleball LLC 2026 &middot; <a href="${policyHref('privacy.html')}">Privacy</a> &middot; <a href="${policyHref('terms.html')}">Terms</a></div>`;   // P1-10
+  app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}${policyFoot}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet();
   attachPitchStrip();   // G1b-r5: no-op unless the phone pitch strip is on screen
   sizeWideGrid();       // G1b-r6: no-op unless the iPad/laptop session grid is on screen
   attachVeloStrip();

@@ -28,7 +28,7 @@
     } catch(e){ /* storage blocked / bad JSON -> just show the form */ }
   })();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="vendor/supabase.js"></script>
 <script>
   // Offline app shell (P0-06) -- lets this page load with no network.
   if('serviceWorker' in navigator){
@@ -56,7 +56,7 @@
   })();
 </script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+  @import url('vendor/fonts/fonts.css');
 
   :root{
     --field-dark:#0F241B;
@@ -157,6 +157,10 @@
   .forgot-link{ align-self:flex-end; font-size:12px; }
 
   .foot-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+
+  .site-footer{ font-size:11.5px; color:var(--chalk-faint); text-align:center; margin-top:4px; }
+  body{ flex-direction:column; gap:14px; }   /* P1-10: the footer sits under the card */
+  .site-footer a{ font-size:11.5px; }
 </style>
 </head>
 <body>
@@ -187,7 +191,8 @@
 
     <div class="foot-row">
       <a href="index.html?choose=1">&larr; Back</a>
-      <a href="coach-signup.html">New coach? Create an account</a>
+      <a href="coach-signup.html" id="coach-signup-link">New coach? Create an account</a>
+      <a href="pitcher-signup.html" id="pitcher-signup-link">New pitcher? Create an account</a>
     </div>
   </form>
 
@@ -250,10 +255,22 @@
   // S1: every link to sign-in or signup goes to THIS sport's page.
   (function(){
     var sp = window.KB_SPORT || 'baseball';
-    document.querySelectorAll('a[href="login.html"], a[href="coach-signup.html"]').forEach(function(a){
+    document.querySelectorAll('a[href="login.html"], a[href="coach-signup.html"], a[href="pitcher-signup.html"]').forEach(function(a){
       a.setAttribute('href', a.getAttribute('href') + '?sport=' + sp);
     });
   })();
+</script>
+<script>
+  // P1-10: show the signup link for the side this sign-in page is for.
+  (function(){ var r = new URLSearchParams(location.search).get('role');
+    if(r === 'coach'){ var x = document.getElementById('pitcher-signup-link'); if(x) x.style.display = 'none'; }
+    if(r === 'pitcher'){ var y = document.getElementById('coach-signup-link'); if(y) y.style.display = 'none'; } })();
+</script>
+<p class="site-footer">Knuckleball LLC 2026 &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></p>
+<script>
+  // P1-10: the policy pages theme themselves from the link's #sport.
+  (function(){ var sp = window.KB_SPORT === 'softball' ? 'softball' : 'baseball';
+    document.querySelectorAll('.site-footer a[href^="privacy.html"], .site-footer a[href^="terms.html"]').forEach(function(a){ a.setAttribute('href', a.getAttribute('href').split('#')[0] + '#' + sp); }); })();
 </script>
 </body>
 </html>

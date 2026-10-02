@@ -494,7 +494,7 @@ function renderFooter(p: GameReportPayload): string {
     <p>Numbers and patterns only -- this report doesn't grade or compare to a benchmark. That's a conversation between a pitcher and his coach.</p>
     <p>A strike is: called strike, swinging strike, foul, any ball in play, sac bunt/fly, dropped third. A ball is: ball, HBP. Interference and "other" count toward pitches but neither bucket.</p>
     <p>Grids are always drawn catcher's view, looking out toward the mound.</p>
-    <p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="https://knuckleballonline.com/login.html?sport=${asSport(p.sport)}">knuckleballonline.com</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+    <p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="https://knuckleballonline.com/login.html?sport=${asSport(p.sport)}">knuckleballonline.com</a> &middot; <a href="https://knuckleballonline.com/privacy.html#${asSport(p.sport)}">Privacy</a> &middot; <a href="https://knuckleballonline.com/terms.html#${asSport(p.sport)}">Terms</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </footer>`
 }
 

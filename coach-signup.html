@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Coach sign up · Knuckleball</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="vendor/supabase.js"></script>
 <script>
   // S1: theme before first paint. A ?sport= on the URL wins (every link to
   // sign-in / signup carries one) and is remembered; otherwise this device's
@@ -22,7 +22,7 @@
   })();
 </script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+  @import url('vendor/fonts/fonts.css');
 
   :root{
     --field-dark:#0F241B; --field-panel:#183527; --field-panel-2:#1F4230;
@@ -99,6 +99,18 @@
 
   .foot-row{ display:flex; justify-content:space-between; align-items:center; }
   .step-hidden{ display:none; }
+
+  /* P1-10: age question, guardian email, terms agreement */
+  .age-options{ display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+  .age-opt{ display:flex; align-items:center; gap:10px; font-size:14px; color:var(--chalk); cursor:pointer; min-height:34px; }
+  .age-opt input, .terms-check input{ width:18px; height:18px; accent-color:var(--amber); flex:0 0 auto; margin:0; }
+  .age-note{ font-size:12px; color:var(--chalk-dim); margin:6px 0 0; line-height:1.45; }
+  .age-stop{ font-size:13px; color:var(--chalk); background:var(--field-panel-2); border:1px solid var(--border-strong); border-radius:8px; padding:10px 12px; margin:0; line-height:1.45; }
+  .terms-check{ display:flex; align-items:flex-start; gap:10px; font-size:13px; color:var(--chalk-dim); line-height:1.45; cursor:pointer; }
+  .terms-check a{ color:var(--chalk); text-decoration:underline; font-size:13px; }
+  .site-footer{ font-size:11.5px; color:var(--chalk-faint); text-align:center; margin-top:4px; }
+  body{ flex-direction:column; gap:14px; }   /* P1-10: the footer sits under the card */
+  .site-footer a{ font-size:11.5px; }
 </style>
 </head>
 <body>
@@ -129,6 +141,8 @@
       <input class="text-input" id="team-name" placeholder="e.g. Cairn University Baseball">
     </div>
 
+
+    <label class="terms-check"><input type="checkbox" id="terms-ok"> <span>I am 18 or older and I agree to the <a href="terms.html" target="_blank" class="policy-link">Terms</a> and <a href="privacy.html" target="_blank" class="policy-link">Privacy Policy</a>.</span></label>
     <div class="error-msg" id="error-msg"></div>
     <button type="submit" class="btn-primary" id="submit-btn">Create account</button>
     <div class="foot-row">
@@ -148,6 +162,86 @@
   </div>
 
 <script src="supabase-config.js"></script>
+<script src="report-config.js"></script>
+<script>
+  // P1-10 (Oct 2 2026): age attestation + terms on every signup path. The
+  // answer is recorded server-side (record_attestation) right after the
+  // account exists, before any team join -- which refuses without it.
+  var TERMS_VERSION = '2026-10-02';
+  function kbPolicyLinks(sport){
+    var sp = sport === 'softball' ? 'softball' : 'baseball';
+    document.querySelectorAll('a.policy-link, .site-footer a[href^="privacy.html"], .site-footer a[href^="terms.html"]').forEach(function(a){
+      a.setAttribute('href', a.getAttribute('href').split('#')[0] + '#' + sp);
+    });
+  }
+  function kbAgeValue(px){ var r = document.querySelector('input[name="' + (px || '') + 'age"]:checked'); return r ? r.value : null; }
+  function kbAgeWire(px, submitBtn){
+    px = px || '';
+    document.querySelectorAll('input[name="' + px + 'age"]').forEach(function(r){
+      r.addEventListener('change', function(){
+        var v = kbAgeValue(px);
+        document.getElementById(px + 'age-guardian').classList.toggle('step-hidden', v !== 'minor_13_17');
+        document.getElementById(px + 'age-stop').classList.toggle('step-hidden', v !== 'under_13');
+        if(submitBtn) submitBtn.disabled = (v === 'under_13');
+      });
+    });
+  }
+  // -> { status, guardianEmail } or { error }. Nothing is created on an error.
+  function kbAgeRead(px, isCoach, ownEmail){
+    px = px || '';
+    var terms = document.getElementById(px + 'terms-ok');
+    if(isCoach){
+      if(!terms || !terms.checked) return { error: "Confirm you're 18 or older and agree to the Terms and Privacy Policy." };
+      return { status: 'adult' };
+    }
+    var v = kbAgeValue(px);
+    if(!v) return { error: 'Tell us how old you are.' };
+    if(v === 'under_13') return { error: "Knuckleball isn't available for players under 13 yet. Parent accounts are coming soon." };
+    var g = null;
+    if(v === 'minor_13_17'){
+      g = (document.getElementById(px + 'guardian-email').value || '').trim().toLowerCase();
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(g)) return { error: "Enter a parent or guardian's email." };
+      if(ownEmail && g === String(ownEmail).trim().toLowerCase()) return { error: "The parent or guardian email has to be someone else's, not yours." };
+    }
+    if(!terms || !terms.checked) return { error: 'Agree to the Terms and Privacy Policy to continue.' };
+    return { status: v, guardianEmail: g };
+  }
+  var KB_ATTEST_ERRORS = {
+    guardian_email_is_yours: "The parent or guardian email has to be someone else's, not yours.",
+    invalid_guardian_email: "That parent or guardian email doesn't look right.",
+    coaches_must_be_adults: 'Coaches must be 18 or older.',
+    bracket_already_recorded: 'Your age was already recorded. Contact nate@knuckleballonline.com to correct it.'
+  };
+  async function kbRecordAttestation(a, via){
+    var res = await supabaseClient.rpc('record_attestation', { p_status: a.status, p_terms_version: TERMS_VERSION, p_guardian_email: a.guardianEmail || null, p_via: via || 'signup' });
+    if(res.error) return { ok: false, message: "Couldn't save your answer. Check your connection and try again." };
+    var d = res.data || {};
+    if(!d.ok) return { ok: false, message: KB_ATTEST_ERRORS[d.error] || ('Something went wrong: ' + (d.error || 'unknown')) };
+    return d;
+  }
+  async function kbSendGuardianEmail(){
+    try{
+      var s = (await supabaseClient.auth.getSession()).data.session;
+      if(!s || typeof VERIFY_EMAIL_URL === 'undefined' || VERIFY_EMAIL_URL.indexOf('YOUR_') === 0) return;
+      await fetch(VERIFY_EMAIL_URL.replace('send-verification-email', 'send-guardian-consent'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }
+      });
+    }catch(e){ /* the app's banner has a Resend button */ }
+  }
+  // A signup's answer survives the (defensive) confirm-email round trip.
+  function kbStashAttest(a){ try{ sessionStorage.setItem('kb:pendingAttest', JSON.stringify(a)); }catch(e){} }
+  async function kbFlushStashedAttest(){
+    var a = null; try{ a = JSON.parse(sessionStorage.getItem('kb:pendingAttest') || 'null'); }catch(e){}
+    if(!a) return null;
+    var r = await kbRecordAttestation(a, 'signup');
+    if(r.ok){
+      try{ sessionStorage.removeItem('kb:pendingAttest'); }catch(e){}
+      if(a.status === 'minor_13_17') await kbSendGuardianEmail();
+    }
+    return r;
+  }
+</script>
+
 <script>
   const form = document.getElementById('signup-form');
   const errorEl = document.getElementById('error-msg');
@@ -170,6 +264,9 @@
       errorEl.textContent = 'Password should be at least 8 characters.';
       return;
     }
+    const attest = kbAgeRead('', true, email);   // P1-10: coaches attest as adults
+    if(attest.error){ errorEl.textContent = attest.error; return; }
+    kbStashAttest(attest);
 
     submitBtn.disabled = true;
     submitBtn.textContent = 'Creating account…';
@@ -199,6 +296,7 @@
     // run; call the idempotent setup RPC to be certain the profile + team
     // exist (it's a no-op if they do) before entering the app.
     await supabaseClient.rpc('ensure_account_setup');
+    await kbFlushStashedAttest();   // P1-10 (if this fails, the app asks once on first load)
     window.location.href = 'bullpen-tracker.html';
   });
 </script>
@@ -211,5 +309,7 @@
     });
   })();
 </script>
+<p class="site-footer">Knuckleball LLC 2026 &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></p>
+<script>kbPolicyLinks(window.KB_SPORT);</script>
 </body>
 </html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy · Knuckleball</title>
+<!-- P1-10: static, zero JavaScript. Themed by the link's #softball / #baseball
+     (CSS :target), since a page with no script can't read ?sport=. -->
+<style>
+  @import url('vendor/fonts/fonts.css');
+  .page{
+    --ink:#0F241B; --ink-dim:#2E4A40; --ink-faint:#527065; --bg:#F7FAF8; --card:#FFFFFF;
+    --line:#CFE6D7; --accent:#E8A83D; --band:#0F241B; --band-ink:#F1ECDD;
+    min-height:100vh; background:var(--bg); color:var(--ink);
+  }
+  #softball:target{
+    --ink:#234B6E; --ink-dim:#3A5A78; --ink-faint:#5F7A91; --bg:#F7FAFD;
+    --line:#BFDCEF; --accent:#F2A7C3; --band:#234B6E; --band-ink:#EAF4FB;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ font-family:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height:1.6; }
+  .band{ background:var(--band); color:var(--band-ink); padding:18px 20px; }
+  .band .brand{ font-family:'Teko', sans-serif; font-size:26px; font-weight:600; letter-spacing:0.02em; }
+  .band .brand span{ color:var(--accent); }
+  main{ max-width:760px; margin:0 auto; padding:24px 20px 48px; }
+  h1{ font-family:'Teko', sans-serif; font-weight:600; font-size:40px; line-height:1.05; margin:8px 0 4px; }
+  h2{ font-size:19px; margin:30px 0 8px; border-bottom:2px solid var(--line); padding-bottom:4px; }
+  h3{ font-size:15.5px; margin:18px 0 4px; }
+  p, li{ font-size:15px; color:var(--ink-dim); }
+  ul{ padding-left:20px; }
+  .meta{ font-size:13px; color:var(--ink-faint); margin:0; }
+  .note{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  a{ color:var(--ink); }
+  footer{ max-width:760px; margin:0 auto; padding:0 20px 32px; font-size:12.5px; color:var(--ink-faint); }
+</style>
+</head>
+<body>
+<div class="page" id="softball"><div id="baseball">
+  <div class="band"><span class="brand">Knuckleball<span>.</span></span></div>
+  <main>
+    <h1>Privacy Policy</h1>
+    <p class="meta">Knuckleball LLC &middot; Effective October 2, 2026 &middot; Version 2026-10-02</p>
+
+    <p>Knuckleball is a pitch-charting app for baseball and softball pitchers and their coaches. It is run by
+      Knuckleball LLC (&ldquo;we&rdquo;). This page explains what we store, who can see it, where it lives, and how
+      to have it exported or deleted. Questions: <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a>.</p>
+
+    <h2>What we collect</h2>
+    <ul>
+      <li><strong>Account details:</strong> name, email address, password (handled by our sign-in provider; we never see it), and your sport and role (pitcher or coach).</li>
+      <li><strong>Age bracket:</strong> whether you told us you're 18 or older, or 13 to 17, and when. We never ask for or store a date of birth. For 13&ndash;17 players: a parent or guardian's email address and whether they approved.</li>
+      <li><strong>Player details:</strong> jersey number, throwing hand, pitch types, whether you use a radar gun, an optional profile photo, and up to three email addresses that reports can be sent to.</li>
+      <li><strong>Charting data:</strong> every pitch charted &mdash; pitch type, target and location, velocity, result, delivery, time to plate &mdash; plus, for live games, counts, outs, runners and plays; session dates; and who charted each session.</li>
+      <li><strong>Coach notes</strong> written on a session.</li>
+      <li><strong>Team details:</strong> team names, rosters, coaching staff, level of play, and invite links.</li>
+    </ul>
+
+    <h2>Who can see it</h2>
+    <ul>
+      <li><strong>You</strong> see everything in your own account.</li>
+      <li><strong>Your coaches</strong> &mdash; the head and assistant coaches of any team you're on &mdash; see your sessions charted for that team, your player details, and their notes. If you leave a team, its coaches keep the sessions charted while you were on it, but don't see anything you chart afterward.</li>
+      <li><strong>Teammates</strong> on a baseball team see the team leaderboard, which shows totals only (peak velocity, accuracy, strike percentage) &mdash; never individual pitches or notes. Softball has no leaderboard.</li>
+      <li><strong>Anyone with a report link.</strong> A session report lives at a long, random web address. Anyone who has that link can view the report, and the report page also shows that session's current coach notes. Reports go only to the addresses on your account, but a link can be forwarded &mdash; treat it like a shared document.</li>
+    </ul>
+    <p>These limits are enforced by the database itself (see &ldquo;Data handling commitments&rdquo; below), not just by the app's screens.</p>
+
+    <h2>Where it lives</h2>
+    <ul>
+      <li><strong>Supabase</strong> stores the database, sign-in, and report pages, in its US East (N. Virginia) region. Supabase states: &ldquo;All customer data is encrypted at rest with AES-256 and in transit via TLS.&rdquo; (supabase.com/security)</li>
+      <li><strong>GitHub Pages</strong> serves the website itself.</li>
+      <li><strong>Cloudflare</strong> provides our domain's DNS and email routing.</li>
+      <li><strong>Resend</strong> sends our emails (account verification, reports, guardian approval requests, and roster notices).</li>
+    </ul>
+    <p>We use no other service providers.</p>
+
+    <h2>No tracking, advertising, or analytics</h2>
+    <p>Knuckleball has no advertising, no analytics, and no third-party tracking of any kind. Our web pages load only
+      files from knuckleballonline.com itself (including our fonts) and talk only to our Supabase database. To work
+      without a connection, the app keeps your sign-in and any not-yet-synced sessions in your browser's own storage;
+      we don't use tracking cookies, so there's nothing for a cookie banner to ask about.</p>
+
+    <h2>Age</h2>
+    <ul>
+      <li>You must be 13 or older to use Knuckleball.</li>
+      <li>If you're 13 to 17, a parent or guardian must approve your account by an emailed link. Until they do, you can chart, but you can't view or send reports.</li>
+      <li>Players under 13 can't use Knuckleball yet.</li>
+      <li>Coaches must be 18 or older.</li>
+    </ul>
+    <p>If we learn that someone under 13 has an account, or that a player's age was given incorrectly, we'll contact the
+      account's email and delete the account and its data.</p>
+
+    <h2>Keeping and deleting data</h2>
+    <ul>
+      <li>Saved sessions are final: pitch data can't be edited after a session is saved.</li>
+      <li>A pitcher can delete their own sessions, and a head coach can delete their team's. A deleted session's pitches are removed, and a marker stays in history showing the date, the number of pitches, and who deleted it.</li>
+      <li>To get a copy of your data, or to delete your account and its data, email <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a> from your account's email address. We answer within 30 days.</li>
+    </ul>
+
+    <h2>Data handling commitments</h2>
+    <p>For coaches and programs evaluating Knuckleball:</p>
+    <h3>(a) Team-scoped access is enforced in the database</h3>
+    <p>Who can read which rows is enforced by row-level security policies in the database, not only by the app's code.
+      For example, a session is readable by its pitcher and by the coaches of the team it was charted under, and by no
+      one else. Secret values such as invite links and approval codes can't be read directly at all; they're reachable
+      only through purpose-built server functions.</p>
+    <h3>(b) We don't sell or share your data</h3>
+    <p>Knuckleball does not sell, share, license, or disclose team or player data to third parties &mdash; not scouts,
+      not other programs, not data brokers. This is a commitment, not just a description of what we do today.</p>
+    <h3>(c) No tracking, advertising, or analytics code</h3>
+    <p>None is included anywhere in the app or its pages; the only outside service our pages talk to is our Supabase database.</p>
+    <h3>(d) Encryption</h3>
+    <p>Data is stored with Supabase, which states that &ldquo;all customer data is encrypted at rest with AES-256 and in transit via TLS.&rdquo;</p>
+    <h3>(e) Who at Knuckleball can access data</h3>
+    <p>Knuckleball is run by a small team. As the operators of the service, we can technically access the data it stores,
+      as with any hosted service. We access it only for support, debugging, or safety &mdash; never to share it or for
+      any competitive purpose.</p>
+    <h3>(f) Export and deletion</h3>
+    <p>On request to <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a>, answered within 30 days.</p>
+
+    <h2>Changes</h2>
+    <p>If we change this policy, we'll update this page and its version and effective date, and tell account holders
+      by email or in the app when the change matters to them.</p>
+  </main>
+  <footer>Knuckleball LLC 2026 &middot; <a href="terms.html">Terms</a> &middot; <a href="index.html">knuckleballonline.com</a></footer>
+</div></div>
+</body>
+</html>

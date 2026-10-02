@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Verify your email · Knuckleball</title>
+<title>Approve an account · Knuckleball</title>
 <script>
   // S1: theme before first paint. A ?sport= on the URL wins (every link to
   // sign-in / signup carries one) and is remembered; otherwise this device's
@@ -77,21 +77,47 @@
   .info-msg{ font-size:13px; color:var(--chalk-dim); line-height:1.5; background:var(--field-panel-2); border:1px solid var(--border-strong); border-radius:8px; padding:14px; }
   .spinner-msg{ font-size:13px; color:var(--chalk-dim); text-align:center; }
   .step-hidden{ display:none; }
-
+  .card{ max-width:460px; }
+  .summary{ font-size:13.5px; color:var(--chalk-dim); line-height:1.55; margin:0; }
+  .summary strong{ color:var(--chalk); }
+  .approve-btn{ font:inherit; font-size:15px; font-weight:700; padding:13px 16px; border-radius:10px; border:0; cursor:pointer;
+    background:var(--amber); color:var(--field-dark); }
+  .approve-btn:disabled{ opacity:0.6; cursor:not-allowed; }
+  .policy-links{ display:flex; gap:16px; flex-wrap:wrap; }
   .site-footer{ font-size:11.5px; color:var(--chalk-faint); text-align:center; margin-top:4px; }
   body{ flex-direction:column; gap:14px; }   /* P1-10: the footer sits under the card */
   .site-footer a{ font-size:11.5px; }
 </style>
 </head>
 <body>
-  <!-- Shown first, always, while verify_email() is running -- never a raw
-       error before we actually know the result. -->
   <div class="card" id="loading-card">
     <div class="brand-block">
       <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
-    <p class="spinner-msg">Verifying…</p>
+    <p class="spinner-msg">Loading…</p>
+  </div>
+
+  <div class="card step-hidden" id="ask-card">
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <h2 class="display">Approve <span id="player-name">this player</span>'s account</h2>
+    <p class="summary"><strong><span id="player-name-2">The player</span></strong> listed you as a parent or guardian.
+      Knuckleball LLC runs Knuckleball, a pitch-charting app. Approving lets them view and send their pitching reports;
+      they can already chart without it.</p>
+    <p class="summary"><strong>What's stored:</strong> their name, email, jersey number, throwing hand, pitch types,
+      and pitch-by-pitch charting data (location, velocity, results), plus notes their coaches write.</p>
+    <p class="summary"><strong>Who can see it:</strong> the player; the coaches of any team they join (a team's coaches keep
+      the sessions charted while the player was on that team); on baseball teams, teammates see leaderboard totals only;
+      and anyone who has a report link &mdash; report pages are viewable by anyone with the link and show that session's
+      current coach notes.</p>
+    <p class="summary">We don't sell or share it, and there's no advertising or tracking. You can ask for it to be exported or
+      deleted at <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a>.</p>
+    <div class="policy-links"><a id="privacy-link" href="privacy.html">Privacy Policy</a><a id="terms-link" href="terms.html">Terms</a></div>
+    <button class="approve-btn" id="approve-btn" type="button">I'm their parent or guardian &mdash; approve</button>
+    <p class="spinner-msg step-hidden" id="approve-err"></p>
   </div>
 
   <div class="card step-hidden" id="ok-card">
@@ -99,9 +125,8 @@
       <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
-    <h2 class="display">Email verified</h2>
-    <div class="info-msg">Your account email is verified. You're all set.</div>
-    <a href="bullpen-tracker.html">&rarr; Back to Knuckleball</a>
+    <h2 class="display">Approved</h2>
+    <div class="info-msg">Thank you. The account is approved, and its reports are now available. You can close this page.</div>
   </div>
 
   <div class="card step-hidden" id="invalid-card">
@@ -110,51 +135,54 @@
       <span class="tagline">Always a Step Ahead</span>
     </div>
     <h2 class="display">Link no longer valid</h2>
-    <div class="info-msg">This verification link has expired or was already used. Open Knuckleball and use the Resend button on the verify-email banner to get a new one.</div>
-    <a href="bullpen-tracker.html">&rarr; Back to Knuckleball</a>
+    <div class="info-msg">This approval link was already used or has been replaced. If the player still needs approval, they can send a new link from the app.</div>
   </div>
+  <p class="site-footer" id="site-footer">Knuckleball LLC 2026 &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></p>
 
 <script src="vendor/supabase.js"></script>
 <script src="supabase-config.js"></script>
 <script>
+  // P1-10: a parent or guardian approves a 13-17 player's account. The token
+  // is the only input; the page shows the player's FIRST name and sport (from
+  // get_guardian_request) and nothing else about the account.
   function showCard(id){
-    ['loading-card','ok-card','invalid-card'].forEach(cid => {
+    ['loading-card','ask-card','ok-card','invalid-card'].forEach(cid => {
       document.getElementById(cid).classList.toggle('step-hidden', cid !== id);
     });
   }
-
-  const params = new URLSearchParams(window.location.search);
-  const token = (params.get('t') || '').trim();
+  function theme(sport){
+    var sp = sport === 'softball' ? 'softball' : 'baseball';
+    document.documentElement.setAttribute('data-sport', sp);
+    document.querySelectorAll('a[href^="privacy.html"], a[href^="terms.html"]').forEach(function(a){
+      a.setAttribute('href', a.getAttribute('href').split('#')[0] + '#' + sp);
+    });
+  }
+  const token = (new URLSearchParams(window.location.search).get('t') || '').trim();
 
   async function init(){
-    if(!token){
-      showCard('invalid-card');
-      return;
-    }
-    const { data, error } = await supabaseClient.rpc('verify_email', { p_token: token });
-    if(error || !data || !data.ok){
-      showCard('invalid-card');
-      return;
-    }
-    showCard('ok-card');
+    if(!/^[0-9a-f]{64}$/.test(token)){ showCard('invalid-card'); return; }
+    const { data, error } = await supabaseClient.rpc('get_guardian_request', { p_token: token });
+    if(error || !data || !data.ok){ showCard('invalid-card'); return; }
+    theme(data.sport);
+    document.getElementById('player-name').textContent = data.first_name || 'this player';
+    document.getElementById('player-name-2').textContent = data.first_name || 'The player';
+    showCard('ask-card');
   }
-
+  document.getElementById('approve-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('approve-btn');
+    btn.disabled = true; btn.textContent = 'Approving…';
+    const { data, error } = await supabaseClient.rpc('record_guardian_consent', { p_token: token });
+    if(error){
+      btn.disabled = false; btn.textContent = "I'm their parent or guardian \u2014 approve";
+      const e = document.getElementById('approve-err');
+      e.textContent = "Couldn't reach the server. Check your connection and try again.";
+      e.classList.remove('step-hidden');
+      return;
+    }
+    if(!data || !data.ok){ showCard('invalid-card'); return; }
+    showCard('ok-card');
+  });
   init();
-</script>
-<script>
-  // S1: every link to sign-in or signup goes to THIS sport's page.
-  (function(){
-    var sp = window.KB_SPORT || 'baseball';
-    document.querySelectorAll('a[href="login.html"], a[href="coach-signup.html"]').forEach(function(a){
-      a.setAttribute('href', a.getAttribute('href') + '?sport=' + sp);
-    });
-  })();
-</script>
-<p class="site-footer">Knuckleball LLC 2026 &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></p>
-<script>
-  // P1-10: the policy pages theme themselves from the link's #sport.
-  (function(){ var sp = window.KB_SPORT === 'softball' ? 'softball' : 'baseball';
-    document.querySelectorAll('.site-footer a[href^="privacy.html"], .site-footer a[href^="terms.html"]').forEach(function(a){ a.setAttribute('href', a.getAttribute('href').split('#')[0] + '#' + sp); }); })();
 </script>
 </body>
 </html>

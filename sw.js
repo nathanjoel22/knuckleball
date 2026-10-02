@@ -15,7 +15,7 @@
 // stale-while-revalidate fetch handler below is the offline/secondary
 // path -- it is not what ships a code change. This bump is a required
 // step in DEPLOY.md ("Frontend: deploy to production").
-const CACHE_VERSION = 'kb-shell-v138';
+const CACHE_VERSION = 'kb-shell-v139';
 
 const PRECACHE_URLS = [
   '/',
@@ -30,7 +30,14 @@ const PRECACHE_URLS = [
   '/reset-password.html',
   '/supabase-config.js',
   '/report-config.js',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
+  // P1-10: supabase-js and the fonts are self-hosted (nothing from jsDelivr
+  // or Google any more), so they're part of the shell and work offline.
+  '/pitcher-signup.html',
+  '/guardian-consent.html',
+  '/privacy.html',
+  '/terms.html',
+  '/vendor/supabase.js',
+  '/vendor/fonts/fonts.css'
 ];
 
 self.addEventListener('install', (event) => {
@@ -62,8 +69,7 @@ self.addEventListener('activate', (event) => {
 });
 
 function isShellRequest(url) {
-  if (url.origin === self.location.origin) return true;
-  return url.href.indexOf('https://cdn.jsdelivr.net/npm/@supabase/supabase-js') === 0;
+  return url.origin === self.location.origin;   // P1-10: everything the app loads is same-origin now
 }
 
 self.addEventListener('fetch', (event) => {
@@ -80,7 +86,7 @@ self.addEventListener('fetch', (event) => {
   // never served stale or from cache.
   if (url.hostname.endsWith('.supabase.co')) return;
 
-  // Leave everything else (Google Fonts, anything unexpected) alone --
+  // Leave everything else (anything unexpected from another origin) alone --
   // this worker only knows about its own enumerated shell assets.
   if (!isShellRequest(url)) return;
 

@@ -15,7 +15,7 @@
 // stale-while-revalidate fetch handler below is the offline/secondary
 // path -- it is not what ships a code change. This bump is a required
 // step in DEPLOY.md ("Frontend: deploy to production").
-const CACHE_VERSION = 'kb-shell-v140';
+const CACHE_VERSION = 'kb-shell-v141';
 
 const PRECACHE_URLS = [
   '/',
@@ -33,6 +33,7 @@ const PRECACHE_URLS = [
   // P1-10: supabase-js and the fonts are self-hosted (nothing from jsDelivr
   // or Google any more), so they're part of the shell and work offline.
   '/pitcher-signup.html',
+  '/parent-signup.html',
   '/guardian-consent.html',
   '/privacy.html',
   '/terms.html',

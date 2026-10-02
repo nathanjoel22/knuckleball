@@ -1214,6 +1214,9 @@
   .contacts-save-row{ flex-basis:100%; display:flex; align-items:center; gap:12px; margin-top:2px; }
   .contacts-saved-msg{ font-size:12.5px; color:#6FA287; font-weight:600; }
 
+  /* S4 B2/B9: Add a player, Parent account badge */
+  .parent-badge{ background:rgba(127,140,130,0.18); color:var(--ink-dim); }
+  .ap-choices{ display:flex; gap:16px; flex-wrap:wrap; margin-top:6px; }
   /* P1-10: the one-time age box */
   .attest-card{ gap:12px; }
   /* Joel, Oct 2: slightly translucent navy over the app, box dead center. */
@@ -1878,18 +1881,20 @@ function currentPitcherVerified(p){
    on the signup form; existing ones answer once, in a box shown the next
    time they're online (never offline). 13-17s need a parent or guardian's
    emailed approval before reports unlock; charting is never gated. */
-const TERMS_VERSION = '2026-10-02';
+const TERMS_VERSION = '2026-10-03';
 function myAccountProfile(){
   const list = state.myProfiles || [];
   return list.find(p => p.is_primary) || list.find(p => state.session && p.id === state.session.user.id) || state.profile;
 }
-function loginIsCoach(){ return (state.myProfiles || [state.profile]).some(p => p && p.role === 'coach'); }
+// Coaches and parents only ever see the adult statement (S4 B2).
+function loginAdultOnly(){ return (state.myProfiles || [state.profile]).some(p => p && (p.role === 'coach' || p.role === 'parent')); }
 function myGuardianPending(){ const a = myAccountProfile(); return !!(a && a.age_attestation === 'minor_13_17' && !a.guardian_consented_at); }
 // Report consent for the pitcher being viewed: a coach reads the roster's
 // state; a player reads their own login's.
 function currentPitcherConsent(p){
   if(isCoach()) return !!(p && p.ageAnswered && !p.guardianPending);
   const a = myAccountProfile();
+  if(state.profile && state.profile.managed_by && !state.profile.guardian_consented_at) return false;   // S4 B6
   return !!(a && (a.age_attestation === 'adult' || a.guardian_consented_at));
 }
 function consentBlockMessage(p){
@@ -1901,7 +1906,7 @@ function consentBlockMessage(p){
 }
 function policyHref(page){ return page + '#' + currentSport(); }
 function renderAttestScreen(){
-  const coach = loginIsCoach();
+  const coach = loginAdultOnly();
   const err = state.attestError ? `<p class="report-status report-status-error" style="margin:0;">${escHtml(state.attestError)}</p>` : '';
   const terms = `<a href="${policyHref('terms.html')}" target="_blank" rel="noopener">Terms</a> and <a href="${policyHref('privacy.html')}" target="_blank" rel="noopener">Privacy Policy</a>`;
   const body = coach ? `
@@ -1913,7 +1918,7 @@ function renderAttestScreen(){
       ${state.attestChoice === 'minor_13_17' ? `<div><div class="field-label" style="margin-bottom:6px;">Parent or guardian email</div>
         <input class="text-input" id="attest-guardian" type="email" placeholder="Not your own email" value="${escHtml(state.attestGuardian || '')}" oninput="state.attestGuardian = this.value">
         <p class="note-hint" style="margin-top:6px;">We'll email them a link to approve your account. Until they do, you can chart, but you can't view or send reports.</p></div>` : ''}
-      ${state.attestChoice === 'under_13' ? `<p class="attest-stop">Knuckleball isn't available for players under 13 yet. Parent accounts are coming soon. Contact <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a> about this account.</p>` : ''}
+      ${state.attestChoice === 'under_13' ? `<p class="attest-stop">Players under 13 need a parent or guardian to create their profile. Ask them to sign up and choose "Add a player". Contact <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a> about this account.</p>` : ''}
       <label class="attest-check"><input type="checkbox" id="attest-terms" ${state.attestTerms ? 'checked' : ''} onchange="state.attestTerms = this.checked"> <span>I agree to the ${terms}.</span></label>`;
   return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="One quick question"><div class="who-card attest-card">
     <div class="display" style="font-size:30px;line-height:1;">One quick question</div>
@@ -1944,12 +1949,12 @@ async function reloadMyProfiles(){
 const ATTEST_ERRORS = {
   guardian_email_is_yours: "The parent or guardian email has to be someone else's, not yours.",
   invalid_guardian_email: "That parent or guardian email doesn't look right.",
-  coaches_must_be_adults: 'Coaches must be 18 or older.',
+  coaches_must_be_adults: 'Coaches and parents must be 18 or older.',
   bracket_already_recorded: 'Your age was already recorded. Contact nate@knuckleballonline.com to correct it.'
 };
 window.submitAttestation = async function(){
   state.attestError = null;
-  const coach = loginIsCoach();
+  const coach = loginAdultOnly();
   const termsOk = (document.getElementById('attest-terms') || {}).checked;
   const status = coach ? 'adult' : state.attestChoice;
   let guardian = null;
@@ -2362,6 +2367,16 @@ async function loadFullContextOnline(alreadyPainted){
       state.myVerification = { email: verRows[0].email, emailConfirmed: verRows[0].email_confirmed };
     }
   }catch(e){ /* keep whatever was cached */ }
+
+  // S4 B2: a parent login with no players yet has nothing to chart -- it adds one.
+  if(state.profile.role === 'parent'){
+    state.teams = []; state.roster = [];
+    state.setupNeeded = null;
+    state.loaded = true;
+    await saveLastKnownContext();
+    finishInit();
+    return;
+  }
 
   try{ await netTimeout(loadTeams()); }
   catch(e){ if(giveUp()) return; }
@@ -2904,7 +2919,10 @@ function pickActiveProfile(list, uid){
   const signinSport = lsGet('kb:signinSport'), signinRole = lsGet('kb:signinRole');
   lsDel('kb:signinSport'); lsDel('kb:signinRole');
   const stored = lsGet(activeProfileKey(uid));
-  const fallback = list.find(p => p.id === stored) || list.find(p => p.is_primary) || list.find(p => p.id === uid) || list[0];
+  // S4 B2: a parent profile never charts -- only picked when the login has nothing else.
+  const chartable = list.filter(p => p.role !== 'parent');
+  const fallback = chartable.find(p => p.id === stored) || chartable.find(p => p.is_primary) || chartable[0]
+    || list.find(p => p.id === stored) || list[0];
   let pick = fallback;
   if(signinSport){
     const ofSport = list.filter(p => p.role !== 'parent' && p.sport === signinSport);
@@ -2981,7 +2999,7 @@ async function fetchRosterFor(teamId){
   });
   const { data: verRows } = await supabaseClient.rpc('get_roster_verification', { p_team_id: teamId });
   const ver = {}; (verRows || []).forEach(v => { ver[v.pitcher_id] = v; });
-  roster.forEach(p => { const v = ver[p.id]; p.accountEmail = v ? v.email : null; p.emailConfirmed = v ? v.email_confirmed : false; p.guardianPending = !!(v && v.guardian_pending); p.ageAnswered = !!(v && v.age_answered); });
+  roster.forEach(p => { const v = ver[p.id]; p.accountEmail = v ? v.email : null; p.emailConfirmed = v ? v.email_confirmed : false; p.guardianPending = !!(v && v.guardian_pending); p.ageAnswered = !!(v && v.age_answered); p.managed = !!(v && v.managed); });
   roster.sort((a, b) => {
     const an = a.uniformNumber, bn = b.uniformNumber;
     if(an !== null && bn !== null && an !== bn) return an - bn;
@@ -3056,7 +3074,8 @@ function sportsToAdd(){
 }
 function renderAccountButton(){
   if(!state.profile) return '';
-  const list = state.myProfiles && state.myProfiles.length ? state.myProfiles : [state.profile];
+  const all = state.myProfiles && state.myProfiles.length ? state.myProfiles : [state.profile];
+  const list = all.filter(p => p.role !== 'parent');   // a parent profile never charts (S4 B2)
   const menu = state.acctOpen ? `<div class="acct-menu" role="menu">
       ${state.myVerification && state.myVerification.email ? `<div class="acct-email">${escHtml(state.myVerification.email)}</div>` : ''}
       ${list.map(p => `<button type="button" class="acct-item${p.id === state.profile.id ? ' on' : ''}" role="menuitem" onclick="switchProfile('${p.id}')">
@@ -3066,6 +3085,7 @@ function renderAccountButton(){
           ${p.id === state.profile.id ? '<span class="acct-check" aria-label="Active">✓</span>' : ''}
         </button>`).join('')}
       ${sportsToAdd().map(sp => `<button type="button" class="acct-add" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')">+ Add ${sp}</button>`).join('')}
+      ${canAddPlayer() ? `<button type="button" class="acct-add" onclick="openAddPlayer()">+ Add a player</button>` : ''}
       ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
     </div>` : '';
   return `<div class="acct-wrap">
@@ -3074,6 +3094,96 @@ function renderAccountButton(){
     </button>${menu}
   </div>`;
 }
+/* ---------- S4 STAGE B: ADD A PLAYER (Joel, Oct 2) ----------
+   An adult login creates a player profile it manages (a child with no email
+   and no login). Reports go to this login's email; the parent charts by
+   switching to the player in the account menu. Needs a connection. */
+function canAddPlayer(){
+  const a = myAccountProfile();
+  return !!(a && a.age_attestation === 'adult');
+}
+window.openAddPlayer = function(){
+  state.acctOpen = false;
+  if(!isOnline()){ state.acctOpen = true; state.acctMsg = 'Adding a player needs a connection.'; render(); return; }
+  state.addPlayerOpen = true; state.addPlayerError = null;
+  render();
+  try{ window.scrollTo(0, 0); }catch(e){}
+};
+window.closeAddPlayer = function(){ state.addPlayerOpen = false; state.addPlayerError = null; render(); };
+function addPlayerForm(){
+  const f = state.addPlayer || (state.addPlayer = { name: '', sport: null, throws: null, consent: false });
+  if(!f.sport) f.sport = (state.profile && state.profile.sport) || lsGet('kb:sport') || 'baseball';
+  return f;
+}
+function renderAddPlayerScreen(){
+  const first = !!(state.profile && state.profile.role === 'parent');
+  const f = addPlayerForm();
+  const email = state.myVerification && state.myVerification.email;
+  const radio = (name, val, label, on) => `<label class="attest-opt"><input type="radio" name="${name}" value="${val}" ${on ? 'checked' : ''} onchange="setAddPlayer('${name === 'ap-sport' ? 'sport' : 'throws'}', this.value)"> ${label}</label>`;
+  const err = state.addPlayerError ? `<p class="invite-status invite-status-error">${escHtml(state.addPlayerError)}</p>` : '';
+  return `
+    <div class="main">
+      <div class="empty-state" style="max-width:440px;margin:0 auto;">
+        <div class="display" style="font-size:32px;">${first ? 'Add your player' : 'Add a player'}</div>
+        <p style="color:var(--ink-dim);font-size:14px;margin:0;">Set up your child's profile. They don't need an email or a login: you chart for them from this account${email ? `, and their reports come to <strong>${escHtml(email)}</strong>` : ''}.</p>
+        <div class="invite-form" style="width:100%;text-align:left;">
+          <div><span class="field-label">Player's name</span>
+            <input id="ap-name" class="text-input" style="margin-top:5px;" value="${escHtml(f.name)}" placeholder="First and last name" oninput="state.addPlayer.name = this.value"></div>
+          <div><span class="field-label">Sport</span>
+            <div class="ap-choices">${radio('ap-sport', 'baseball', 'Baseball', f.sport === 'baseball')}${radio('ap-sport', 'softball', 'Softball', f.sport === 'softball')}</div></div>
+          <div><span class="field-label">Throws</span>
+            <div class="ap-choices">${radio('ap-throws', 'R', 'Right', f.throws === 'R')}${radio('ap-throws', 'L', 'Left', f.throws === 'L')}</div></div>
+          <label class="attest-check"><input type="checkbox" id="ap-consent" ${f.consent ? 'checked' : ''} onchange="state.addPlayer.consent = this.checked"> <span>I am this player's parent or legal guardian, and I consent to Knuckleball storing their pitching data. (<a href="${policyHref('privacy.html')}" target="_blank" rel="noopener">Privacy Policy</a>)</span></label>
+          <div class="form-row-buttons">
+            <button class="btn btn-primary" ${state.addPlayerBusy ? 'disabled' : ''} onclick="submitAddPlayer()">${state.addPlayerBusy ? 'Adding…' : 'Add player'}</button>
+            ${first ? '' : `<button class="btn btn-ghost" ${state.addPlayerBusy ? 'disabled' : ''} onclick="closeAddPlayer()">Cancel</button>`}
+          </div>
+          ${err}
+        </div>
+        ${first ? '<button class="sign-out-btn" style="margin-top:6px;" onclick="signOut()">Sign out</button>' : ''}
+      </div>
+    </div>`;
+}
+window.setAddPlayer = function(k, v){ addPlayerForm()[k] = v; };
+const ADD_PLAYER_ERRORS = {
+  adult_required: 'Only an account whose holder is 18 or older can add a player.',
+  consent_required: "Tick the box to confirm you're the player's parent or guardian.",
+  invalid_name: "Enter the player's name (up to 80 characters).",
+  invalid_sport: 'Pick baseball or softball.',
+  profile_missing: 'Your account isn\'t fully set up yet. Reload and try again.'
+};
+window.submitAddPlayer = async function(){
+  const f = addPlayerForm();
+  const nameEl = document.getElementById('ap-name'), consentEl = document.getElementById('ap-consent');
+  if(nameEl) f.name = nameEl.value;
+  if(consentEl) f.consent = consentEl.checked;
+  state.addPlayerError = null;
+  if(!f.name.trim()){ state.addPlayerError = "Enter the player's name."; render(); return; }
+  if(!f.consent){ state.addPlayerError = ADD_PLAYER_ERRORS.consent_required; render(); return; }
+  if(!isOnline()){ state.addPlayerError = 'Adding a player needs a connection.'; render(); return; }
+  state.addPlayerBusy = true; render();
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('add_player', {
+      p_full_name: f.name.trim(), p_sport: f.sport, p_throws: f.throws || null, p_consent: true
+    }), 10000);
+    if(error) throw error;
+    if(!data || !data.ok){
+      state.addPlayerBusy = false;
+      state.addPlayerError = ADD_PLAYER_ERRORS[data && data.error] || ('Something went wrong: ' + ((data && data.error) || 'unknown'));
+      render();
+      return;
+    }
+    const { data: owned } = await netTimeout(supabaseClient.from('profiles').select(PROFILE_COLS).eq('account_id', state.session.user.id), 10000);
+    if(owned && owned.length) state.myProfiles = owned;
+    state.addPlayerBusy = false; state.addPlayerOpen = false; state.addPlayer = null;
+    await switchProfile(data.id);
+  }catch(e){
+    console.error('add player failed', e);
+    state.addPlayerBusy = false;
+    state.addPlayerError = /profile_limit/.test(e.message || '') ? 'This account already has the most profiles it can hold (10).' : "Couldn't add the player. Check your connection and try again.";
+    render();
+  }
+};
 // A8 when a login has several profiles of the sport it signed in on.
 function renderWhoPicker(){
   const pool = (state.whoPicker || []).map(id => (state.myProfiles || []).find(p => p.id === id)).filter(Boolean);
@@ -3230,6 +3340,7 @@ async function loadRosterForTeam(teamId){
     p.accountEmail = v ? v.email : null;
     p.emailConfirmed = v ? v.email_confirmed : false;
     p.guardianPending = !!(v && v.guardian_pending);   // P1-10
+    p.managed = !!(v && v.managed);                     // S4 B9
     p.ageAnswered = !!(v && v.age_answered);
   });
 }
@@ -9973,18 +10084,24 @@ function render(){
     app.innerHTML = renderAccountSetupScreen();
     return;
   }
+  if(state.addPlayerOpen || (state.profile && state.profile.role === 'parent')){
+    app.innerHTML = renderAddPlayerScreen();   // S4 B2
+    return;
+  }
 
   if(!state.teams.length){
     const msg = isCoach()
       ? `<p>You don't have a team yet — something may have gone wrong during signup.</p>`
-      : `<p>You haven't joined a team yet. Ask your coach for their team's invite link.</p>`;
+      : (state.profile && state.profile.managed_by)
+        ? `<p>${escHtml(state.profile.full_name)} isn't on a team yet. Open the coach's team invite link while signed in, then choose ${escHtml(state.profile.full_name)}.</p>`
+        : `<p>You haven't joined a team yet. Ask your coach for their team's invite link.</p>`;
     app.innerHTML = `
       <div class="sidebar">
         <div class="brand-block"><div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div><span class="tagline">Always a Step Ahead</span>${renderOfflinePill()}</div>
         ${renderOutboxBadge()}
         <button class="sign-out-btn" onclick="signOut()">Sign out</button>
       </div>
-      <div class="main"><div class="empty-state"><div class="display">No team yet</div>${msg}</div></div>`;
+      <div class="main"><div class="acct-row">${renderAccountButton()}</div><div class="empty-state"><div class="display">No team yet</div>${msg}</div></div>`;
     return;
   }
 
@@ -10008,7 +10125,7 @@ function render(){
             <div class="roster-item-main">
               <span class="roster-item-name">${escHtml(p.name)}${p.throws ? `<span class="throws-tag">${p.throws}HP</span>` : ''}</span>
               <span class="roster-item-types">${p.pitchTypes.map(pitchLabel).join(' · ') || 'No pitches set yet'}</span>
-              ${p.emailConfirmed ? '' : '<span class="verify-badge roster-verify-badge">Unverified</span>'}${p.guardianPending ? '<span class="verify-badge roster-verify-badge">Guardian pending</span>' : ''}
+              ${p.emailConfirmed ? '' : '<span class="verify-badge roster-verify-badge">Unverified</span>'}${p.guardianPending ? '<span class="verify-badge roster-verify-badge">Guardian pending</span>' : ''}${p.managed ? '<span class="verify-badge roster-verify-badge parent-badge">Parent account</span>' : ''}
             </div>
             <span class="roster-item-num">${p.uniformNumber === null ? '—' : p.uniformNumber}</span>
           </button>
@@ -10101,7 +10218,7 @@ function render(){
         <div class="field"><span class="field-label">Coach email</span><input class="text-input" id="contact-coach" value="${escHtml(coachFieldValue)}" placeholder="coach@example.com"></div>
         <div class="field"><span class="field-label">Additional contact (optional)</span><input class="text-input" id="contact-pitching-coach" value="${escHtml(contacts.pitchingCoach||'')}" placeholder="e.g. pitching coach"></div>
         <div class="field">
-          <span class="field-label">Your email</span>
+          <span class="field-label">${state.profile && state.profile.managed_by ? 'Parent email (reports go here)' : 'Your email'}</span>
           <input class="text-input" value="${escHtml(myEmail)}${state.myVerification.emailConfirmed ? '' : ' (unverified)'}" disabled style="opacity:0.7;">
         </div>
         <p style="flex-basis:100%;margin:-4px 0 0;font-size:11.5px;color:var(--ink-faint);">Coach email is who the report is also cc'd to — edit or clear it as needed. Your own email always follows your account (change it above if it's wrong).</p>

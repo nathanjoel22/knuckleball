@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Join a coaching staff · Knuckleball</title>
+<title>Parent sign up · Knuckleball</title>
 <script src="vendor/supabase.js"></script>
 <script>
   // S1: theme before first paint. A ?sport= on the URL wins (every link to
@@ -99,7 +99,6 @@
 
   .foot-row{ display:flex; justify-content:space-between; align-items:center; }
   .step-hidden{ display:none; }
-  .spinner-msg{ font-size:13px; color:var(--chalk-dim); text-align:center; }
 
   /* P1-10: age question, guardian email, terms agreement */
   .age-options{ display:flex; flex-direction:column; gap:6px; margin-top:6px; }
@@ -117,115 +116,76 @@
   body{ justify-content:flex-start; }
   body::before, body::after{ content:''; flex:1 1 0; }
   .site-footer a{ font-size:11.5px; }
+  /* S4 B2 */
+  .section-label{ font-family:'Teko', sans-serif; font-size:22px; font-weight:600; line-height:1; margin-top:4px; color:var(--chalk); }
+  .age-row{ flex-direction:row; gap:18px; }
 </style>
 </head>
 <body>
-  <!-- Shown first, always, while the token is being resolved -- never the
-       form and never a raw error. Mirrors join.html (R0's pitcher link)
-       exactly; the only differences are the role in play and which RPCs
-       get called -- see the script below. -->
-  <div class="card" id="loading-card">
-    <div class="brand-block">
-      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
-      <span class="tagline">Always a Step Ahead</span>
-    </div>
-    <p class="spinner-msg">Loading invite…</p>
-  </div>
-
-  <div class="card step-hidden" id="invalid-card">
-    <div class="brand-block">
-      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
-      <span class="tagline">Always a Step Ahead</span>
-    </div>
-    <h2 class="display">Link no longer valid</h2>
-    <div class="info-msg">This invite link has expired or was replaced with a new one. Ask the head coach for a current link.</div>
-    <a href="index.html">&larr; Back to Knuckleball</a>
-  </div>
-
-  <!-- R6 acceptance check 6: a pitcher opening a coach link gets an
-       explicit refusal here, not a silent redirect (unlike join.html's
-       own coach_cannot_join branch, which assumes a coach testing their
-       own pitcher link -- the equivalent mix-up here is a real dead end,
-       not a benign one, so it says so). -->
-  <div class="card step-hidden" id="refused-card">
-    <div class="brand-block">
-      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
-      <span class="tagline">Always a Step Ahead</span>
-    </div>
-    <h2 class="display">This link is for coaches</h2>
-    <div class="info-msg">You're signed in as a pitcher. This invite adds a coach to a team's staff -- ask whoever sent it for the pitcher invite link instead.</div>
-    <a href="bullpen-tracker.html">&larr; Back to Knuckleball</a>
-  </div>
-
-  <form class="card step-hidden" id="attest-card" autocomplete="off">
+  <form class="card" id="signup-form" autocomplete="off">
     <div class="brand-block">
       <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
     <div>
-      <h2 class="display">One quick question</h2>
-      <p class="sub">Before you join, confirm the statement below. You'll only be asked once.</p>
-    </div>
-
-    <label class="terms-check"><input type="checkbox" id="att-terms-ok"> <span>I am 18 or older and I agree to the <a href="terms.html" target="_blank" class="policy-link">Terms</a> and <a href="privacy.html" target="_blank" class="policy-link">Privacy Policy</a>.</span></label>
-    <div class="error-msg" id="att-error-msg"></div>
-    <button type="submit" class="btn-primary" id="att-submit-btn">Continue &amp; join</button>
-  </form>
-
-  <form class="card step-hidden" id="join-form" autocomplete="off">
-    <div class="brand-block">
-      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
-      <span class="tagline">Always a Step Ahead</span>
-    </div>
-    <div>
-      <h2 class="display" id="join-heading">Join a coaching staff</h2>
-      <p class="sub">View the roster, chart bullpens and games, and help run the program alongside the head coach.</p>
+      <h2 class="display">Create a parent account</h2>
+      <p class="sub">For a parent or guardian setting up a player. Your child doesn't need an email or a login: you chart for them, and their reports come to you.</p>
     </div>
 
     <div class="field">
-      <label class="field-label" for="full-name">Full name</label>
-      <input class="text-input" id="full-name" placeholder="Your name" autofocus>
+      <label class="field-label" for="full-name">Your name</label>
+      <input class="text-input" id="full-name" placeholder="Parent or guardian's name" autofocus>
     </div>
     <div class="field">
-      <label class="field-label" for="email">Email</label>
-      <input class="text-input" id="email" type="email" placeholder="Use one you check on your phone" autocomplete="email">
+      <label class="field-label" for="email">Your email</label>
+      <input class="text-input" id="email" type="email" placeholder="you@example.com" autocomplete="email">
     </div>
     <div class="field">
       <label class="field-label" for="password">Password</label>
       <input class="text-input" id="password" type="password" placeholder="At least 8 characters" autocomplete="new-password">
     </div>
 
-
+    <div class="section-label">Your player</div>
+    <div class="field">
+      <label class="field-label" for="player-name">Player's name</label>
+      <input class="text-input" id="player-name" placeholder="First and last name">
+    </div>
+    <div class="field">
+      <span class="field-label">Sport</span>
+      <div class="age-options age-row">
+        <label class="age-opt"><input type="radio" name="sport" value="baseball"> Baseball</label>
+        <label class="age-opt"><input type="radio" name="sport" value="softball"> Softball</label>
+      </div>
+    </div>
+    <div class="field">
+      <span class="field-label">Throws</span>
+      <div class="age-options age-row">
+        <label class="age-opt"><input type="radio" name="throws" value="R"> Right</label>
+        <label class="age-opt"><input type="radio" name="throws" value="L"> Left</label>
+      </div>
+    </div>
+    <label class="terms-check"><input type="checkbox" id="consent-ok"> <span>I am this player's parent or legal guardian, and I consent to Knuckleball storing their pitching data.</span></label>
     <label class="terms-check"><input type="checkbox" id="terms-ok"> <span>I am 18 or older and I agree to the <a href="terms.html" target="_blank" class="policy-link">Terms</a> and <a href="privacy.html" target="_blank" class="policy-link">Privacy Policy</a>.</span></label>
     <div class="error-msg" id="error-msg"></div>
-    <button type="submit" class="btn-primary" id="submit-btn">Create account &amp; join</button>
+    <button type="submit" class="btn-primary" id="submit-btn">Create account</button>
     <div class="foot-row">
-      <a href="index.html">&larr; Back</a>
+      <a href="login.html">&larr; Back</a>
       <a href="login.html">Already have an account? Log in</a>
     </div>
   </form>
 
-  <!-- Only reached if this Supabase project's "Confirm email" setting is
-       (or ever becomes) ON -- see join.html's own comment on the same
-       card; identical reasoning here. -->
   <div class="card step-hidden" id="confirm-card">
     <div class="brand-block">
       <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
     <h2 class="display">Check your email</h2>
-    <div class="info-msg">We sent a confirmation link to your email. Click it on this device to finish joining.</div>
-  </div>
-
-  <div class="card step-hidden" id="joining-card">
-    <div class="brand-block">
-      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
-      <span class="tagline">Always a Step Ahead</span>
-    </div>
-    <p class="spinner-msg">Joining…</p>
+    <div class="info-msg">We sent a confirmation link to your email. Click it, then log in and add your player.</div>
+    <a href="login.html">Go to login &rarr;</a>
   </div>
 
 <script src="supabase-config.js"></script>
+<script src="report-config.js"></script>
 <script>
   // P1-10 (Oct 2 2026): age attestation + terms on every signup path. The
   // answer is recorded server-side (record_attestation) right after the
@@ -304,122 +264,26 @@
     return r;
   }
 </script>
-
-<script src="report-config.js"></script>
 <script>
-  function showCard(id){
-    ['loading-card','invalid-card','refused-card','join-form','confirm-card','joining-card','attest-card'].forEach(cid => {
-      document.getElementById(cid).classList.toggle('step-hidden', cid !== id);
-    });
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  const token = (params.get('t') || '').trim();
-
-  const form = document.getElementById('join-form');
+  // S4 Stage B (Joel, Oct 2 2026): the GameChanger path. An adult signs up
+  // (P1-10's adult statement), then add_player() creates the child's profile
+  // under this login, consent recorded on it. No email, login or age for the child.
+  const form = document.getElementById('signup-form');
   const errorEl = document.getElementById('error-msg');
   const submitBtn = document.getElementById('submit-btn');
-  let teamName = '';
-  // S1: the team's sport (from the link) themes this page and becomes the
-  // new account's sport. A join link is the only place a profile's sport is
-  // set without the landing page's chooser.
-  let teamSport = null;
-  function applyTeamSport(sp){
-    teamSport = sp === 'softball' ? 'softball' : 'baseball';
-    document.documentElement.setAttribute('data-sport', teamSport);
-    // S1: this page's links lead to the team's sport.
-    document.querySelectorAll('a[href^="index.html"]').forEach(a => a.setAttribute('href', 'index.html?sport=' + teamSport));
-    document.querySelectorAll('a[href^="login.html"]').forEach(a => a.setAttribute('href', 'login.html?sport=' + teamSport));
-    kbPolicyLinks(teamSport);
-  }
-  // The database refuses a cross-sport join ('sport_mismatch'): say so plainly.
-  function showSportMismatch(){
-    const other = teamSport === 'softball' ? 'baseball' : 'softball';
-    const card = document.getElementById('invalid-card');
-    card.querySelector('h2').textContent = 'Different sport';
-    card.querySelector('.info-msg').textContent = 'This is a ' + (teamSport || 'different') + ' team, and your login doesn\'t have a ' + (teamSport || 'matching') + ' profile yet.';
-    // S4 A9 (Joel, Oct 2): one login can hold both sports -- add this one
-    // and join with it, right here. No sign-out, no second account.
-    if(teamSport && !card.querySelector('.add-sport-btn')){
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn btn-primary add-sport-btn';
-      btn.style.marginTop = '14px';
-      btn.textContent = 'Add ' + teamSport + ' and join';
-      btn.addEventListener('click', async () => {
-        btn.disabled = true; btn.textContent = 'Adding…';
-        const { data: newId, error: addErr } = await supabaseClient.rpc('add_sport_profile', { p_sport: teamSport });
-        if(addErr || !newId){ btn.disabled = false; btn.textContent = 'Couldn\'t add it — try again'; return; }
-        const { data: j, error: jErr } = await supabaseClient.rpc('join_team_as_coach', { p_token: token, p_profile: newId });
-        if(jErr || !j || j.error){ btn.disabled = false; btn.textContent = 'Couldn\'t join — try again'; return; }
-        try{
-          const { data: { session: s } } = await supabaseClient.auth.getSession();
-          if(s) localStorage.setItem('kb:activeProfile:' + s.user.id, newId);
-          localStorage.setItem('kb:sport', teamSport);
-        }catch(e){}
-        window.location.href = 'bullpen-tracker.html';
-      });
-      card.querySelector('.info-msg').after(btn);
-    }
-    showCard('invalid-card');
-  }
-
-  async function completeJoin(){
-    showCard('joining-card');
-    // Idempotent (P1-12 pattern): no-ops if the profile already exists.
-    // handle_new_user's trigger already created it from signup metadata
-    // (intended_role:'coach', no team_name -- see the signUp call below),
-    // this just covers whatever it might have missed.
-    await supabaseClient.rpc('ensure_account_setup');
-    await kbFlushStashedAttest();   // P1-10: the 18+ statement, before joining
-    try {
-      const { data: { session: s } } = await supabaseClient.auth.getSession();
-      if(s && typeof VERIFY_EMAIL_URL !== 'undefined' && VERIFY_EMAIL_URL.indexOf('YOUR_') !== 0){
-        await fetch(VERIFY_EMAIL_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }
-        });
-      }
-    } catch (e) { /* recoverable via Resend, same as join.html */ }
-    const { data, error } = await supabaseClient.rpc('join_team_as_coach', { p_token: token });
-    if(error && /sport_mismatch/.test(error.message || '')){ showSportMismatch(); return; }
-    if(data && data.error === 'attestation_required'){ showCard('attest-card'); return; }   // P1-10
-    if(data && data.error === 'coaches_must_be_adults'){ showCard('refused-card'); return; }
-    if(data && data.error === 'pitcher_cannot_join'){
-      showCard('refused-card');
-      return;
-    }
-    if(error || !data || data.error){
-      showCard('invalid-card');
-      return;
-    }
-    window.location.href = 'bullpen-tracker.html';
-  }
-
-  async function init(){
-    if(!token){
-      showCard('invalid-card');
-      return;
-    }
-
-    // S1: look the team up first, signed in or not, so the page wears the team's sport.
-    const { data: rows, error } = await supabaseClient.rpc('resolve_coach_invite', { p_token: token });
-    if(!error && rows && rows.length) applyTeamSport(rows[0].team_sport);
-
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if(session){
-      await completeJoin();
-      return;
-    }
-
-    if(error || !rows || !rows.length){
-      showCard('invalid-card');
-      return;
-    }
-    teamName = rows[0].team_name;
-    document.getElementById('join-heading').textContent = 'Join ' + teamName + "'s staff";
-    showCard('join-form');
-  }
+  // Back to a team invite link after signup -- only ever a join link on this site.
+  const nextParam = new URLSearchParams(location.search).get('next') || '';
+  const NEXT = /^join\.html\?t=[A-Za-z0-9_-]+$/.test(nextParam) ? nextParam : null;
+  (function(){
+    var r = document.querySelector('input[name="sport"][value="' + (window.KB_SPORT || 'baseball') + '"]');
+    if(r) r.checked = true;
+  })();
+  function radioVal(name){ var r = document.querySelector('input[name="' + name + '"]:checked'); return r ? r.value : null; }
+  var ADD_PLAYER_ERRORS = {
+    adult_required: 'Only an account holder who is 18 or older can add a player.',
+    consent_required: "Confirm you're the player's parent or guardian.",
+    invalid_name: "Enter the player's name (up to 80 characters)."
+  };
 
   form.addEventListener('submit', async function(e){
     e.preventDefault();
@@ -428,8 +292,11 @@
     const fullName = document.getElementById('full-name').value.trim();
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
+    const playerName = document.getElementById('player-name').value.trim();
+    const sport = radioVal('sport') || 'baseball';
+    const throws = radioVal('throws');
 
-    if(!fullName || !email || !password){
+    if(!fullName || !email || !password || !playerName){
       errorEl.textContent = 'Fill in every field to continue.';
       return;
     }
@@ -437,55 +304,64 @@
       errorEl.textContent = 'Password should be at least 8 characters.';
       return;
     }
-    const attest = kbAgeRead('', true, email);   // P1-10: coaches attest as adults
+    if(!document.getElementById('consent-ok').checked){
+      errorEl.textContent = "Confirm you're the player's parent or guardian.";
+      return;
+    }
+    const attest = kbAgeRead('', true, email);   // parents only ever make the adult statement
     if(attest.error){ errorEl.textContent = attest.error; return; }
     kbStashAttest(attest);
 
     submitBtn.disabled = true;
     submitBtn.textContent = 'Creating account…';
 
-    // R6: intended_role 'coach', deliberately NO team_name -- this coach is
-    // joining an EXISTING team as an assistant (join_team_as_coach below),
-    // not creating one. handle_new_user's trigger only creates a team when
-    // team_name is present, so omitting it here is what keeps this signup
-    // from silently creating a spurious team of its own.
     const { data: signUpData, error: signUpErr } = await supabaseClient.auth.signUp({
       email, password,
-      options: {
-        data: { full_name: fullName, intended_role: 'coach', intended_sport: teamSport || 'baseball' },   // S1: the team's sport
-        emailRedirectTo: window.location.href
-      }
+      options: { data: { full_name: fullName, intended_role: 'parent' } }
     });
-    if(!signUpErr){ try{ localStorage.setItem('kb:sport', teamSport || 'baseball'); }catch(e){} }
     if(signUpErr){
       errorEl.textContent = signUpErr.message;
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Create account & join';
+      submitBtn.textContent = 'Create account';
       return;
     }
-
+    // Confirm email ON (defensive): the app asks for the player after login.
     if(!signUpData.session){
-      showCard('confirm-card');
+      form.classList.add('step-hidden');
+      document.getElementById('confirm-card').classList.remove('step-hidden');
       return;
     }
 
-    await completeJoin();
+    await supabaseClient.rpc('ensure_account_setup', { p_role: 'parent', p_full_name: fullName });
+    const att = await kbFlushStashedAttest();
+    let playerId = null;
+    if(att && att.ok){
+      const { data: added } = await supabaseClient.rpc('add_player', { p_full_name: playerName, p_sport: sport, p_throws: throws, p_consent: true });
+      if(added && added.ok) playerId = added.id;
+      else if(added && added.error){ console.warn('add_player', added.error); }
+    }
+    // R0: our own verification email (best effort; the app's banner can resend).
+    try{
+      const s = (await supabaseClient.auth.getSession()).data.session;
+      if(s && typeof VERIFY_EMAIL_URL !== 'undefined' && VERIFY_EMAIL_URL.indexOf('YOUR_') !== 0){
+        await fetch(VERIFY_EMAIL_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token } });
+      }
+      if(s && playerId){ localStorage.setItem('kb:activeProfile:' + s.user.id, playerId); localStorage.setItem('kb:sport', sport); }
+    }catch(e){}
+    // If the player couldn't be added here, the app opens on "Add your player".
+    window.location.href = NEXT || 'bullpen-tracker.html';
   });
-
-  document.getElementById('attest-card').addEventListener('submit', async function(e){
-    e.preventDefault();
-    const err = document.getElementById('att-error-msg'), btn = document.getElementById('att-submit-btn');
-    err.textContent = '';
-    const a = kbAgeRead('att-', true, null);
-    if(a.error){ err.textContent = a.error; return; }
-    btn.disabled = true; btn.textContent = 'Saving…';
-    const r = await kbRecordAttestation(a, 'catchup');
-    if(!r.ok){ err.textContent = r.message; btn.disabled = false; btn.textContent = 'Continue & join'; return; }
-    await completeJoin();
-  });
-
-  init();
+</script>
+<script>
+  // S1: every link to sign-in or signup goes to THIS sport's page.
+  (function(){
+    var sp = window.KB_SPORT || 'baseball';
+    document.querySelectorAll('a[href="login.html"]').forEach(function(a){
+      a.setAttribute('href', a.getAttribute('href') + '?sport=' + sp);
+    });
+  })();
 </script>
 <p class="site-footer">Knuckleball LLC 2026 &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></p>
+<script>kbPolicyLinks(window.KB_SPORT);</script>
 </body>
 </html>

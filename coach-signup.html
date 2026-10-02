@@ -110,6 +110,11 @@
   .terms-check a{ color:var(--chalk); text-decoration:underline; font-size:13px; }
   .site-footer{ font-size:11.5px; color:var(--chalk-faint); text-align:center; margin-top:4px; }
   body{ flex-direction:column; gap:14px; }   /* P1-10: the footer sits under the card */
+  /* A form taller than the screen starts at the top and scrolls -- centering
+     pushed its top (logo, first fields) off-screen where it couldn't be reached. */
+  html,body{ height:auto; }
+  body{ justify-content:flex-start; }
+  body::before, body::after{ content:''; flex:1 1 0; }
   .site-footer a{ font-size:11.5px; }
 </style>
 </head>
@@ -167,7 +172,7 @@
   // P1-10 (Oct 2 2026): age attestation + terms on every signup path. The
   // answer is recorded server-side (record_attestation) right after the
   // account exists, before any team join -- which refuses without it.
-  var TERMS_VERSION = '2026-10-02';
+  var TERMS_VERSION = '2026-10-03';
   function kbPolicyLinks(sport){
     var sp = sport === 'softball' ? 'softball' : 'baseball';
     document.querySelectorAll('a.policy-link, .site-footer a[href^="privacy.html"], .site-footer a[href^="terms.html"]').forEach(function(a){
@@ -196,7 +201,7 @@
     }
     var v = kbAgeValue(px);
     if(!v) return { error: 'Tell us how old you are.' };
-    if(v === 'under_13') return { error: "Knuckleball isn't available for players under 13 yet. Parent accounts are coming soon." };
+    if(v === 'under_13') return { error: "Players under 13 need a parent or guardian to create their profile. Ask them to set up a parent account and choose 'Add a player'." };
     var g = null;
     if(v === 'minor_13_17'){
       g = (document.getElementById(px + 'guardian-email').value || '').trim().toLowerCase();

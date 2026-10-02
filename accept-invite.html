@@ -107,10 +107,16 @@
   .age-opt input, .terms-check input{ width:18px; height:18px; accent-color:var(--amber); flex:0 0 auto; margin:0; }
   .age-note{ font-size:12px; color:var(--chalk-dim); margin:6px 0 0; line-height:1.45; }
   .age-stop{ font-size:13px; color:var(--chalk); background:var(--field-panel-2); border:1px solid var(--border-strong); border-radius:8px; padding:10px 12px; margin:0; line-height:1.45; }
+  .age-stop a{ color:var(--chalk); text-decoration:underline; font-size:13px; }   /* S4 B: under 13 -> parent account */
   .terms-check{ display:flex; align-items:flex-start; gap:10px; font-size:13px; color:var(--chalk-dim); line-height:1.45; cursor:pointer; }
   .terms-check a{ color:var(--chalk); text-decoration:underline; font-size:13px; }
   .site-footer{ font-size:11.5px; color:var(--chalk-faint); text-align:center; margin-top:4px; }
   body{ flex-direction:column; gap:14px; }   /* P1-10: the footer sits under the card */
+  /* A form taller than the screen starts at the top and scrolls -- centering
+     pushed its top (logo, first fields) off-screen where it couldn't be reached. */
+  html,body{ height:auto; }
+  body{ justify-content:flex-start; }
+  body::before, body::after{ content:''; flex:1 1 0; }
   .site-footer a{ font-size:11.5px; }
 </style>
 </head>
@@ -160,7 +166,7 @@
       <input class="text-input" id="guardian-email" type="email" placeholder="Not your own email" autocomplete="off">
       <p class="age-note">We'll email them a link to approve your account. Until they do, you can chart your pitches, but you can't view or send reports.</p>
     </div>
-    <p class="age-stop step-hidden" id="age-stop">Knuckleball isn't available for players under 13 yet. Parent accounts are coming soon.</p>
+    <p class="age-stop step-hidden" id="age-stop">Players under 13 need a parent or guardian to create their profile. Ask them to <a href="parent-signup.html" class="parent-link">set up a parent account</a> and choose &ldquo;Add a player&rdquo;.</p>
     <label class="terms-check"><input type="checkbox" id="terms-ok"> <span>I agree to the <a href="terms.html" target="_blank" class="policy-link">Terms</a> and <a href="privacy.html" target="_blank" class="policy-link">Privacy Policy</a>.</span></label>
     <div class="error-msg" id="error-msg"></div>
     <button type="submit" class="btn-primary" id="submit-btn">Finish setup</button>
@@ -181,7 +187,7 @@
   // P1-10 (Oct 2 2026): age attestation + terms on every signup path. The
   // answer is recorded server-side (record_attestation) right after the
   // account exists, before any team join -- which refuses without it.
-  var TERMS_VERSION = '2026-10-02';
+  var TERMS_VERSION = '2026-10-03';
   function kbPolicyLinks(sport){
     var sp = sport === 'softball' ? 'softball' : 'baseball';
     document.querySelectorAll('a.policy-link, .site-footer a[href^="privacy.html"], .site-footer a[href^="terms.html"]').forEach(function(a){
@@ -210,7 +216,7 @@
     }
     var v = kbAgeValue(px);
     if(!v) return { error: 'Tell us how old you are.' };
-    if(v === 'under_13') return { error: "Knuckleball isn't available for players under 13 yet. Parent accounts are coming soon." };
+    if(v === 'under_13') return { error: "Players under 13 need a parent or guardian to create their profile. Ask them to set up a parent account and choose 'Add a player'." };
     var g = null;
     if(v === 'minor_13_17'){
       g = (document.getElementById(px + 'guardian-email').value || '').trim().toLowerCase();
@@ -386,5 +392,12 @@
 </script>
 <p class="site-footer">Knuckleball LLC 2026 &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></p>
 <script>kbPolicyLinks(window.KB_SPORT);</script>
+<script>
+  // S4 B: links to the parent signup carry the sport.
+  document.querySelectorAll('a.parent-link').forEach(function(a){
+    var sp = (document.documentElement.getAttribute('data-sport') === 'softball') ? 'softball' : 'baseball';
+    a.setAttribute('href', 'parent-signup.html?sport=' + sp);
+  });
+</script>
 </body>
 </html>

@@ -80,6 +80,11 @@
 
   .site-footer{ font-size:11.5px; color:var(--chalk-faint); text-align:center; margin-top:4px; }
   body{ flex-direction:column; gap:14px; }   /* P1-10: the footer sits under the card */
+  /* A form taller than the screen starts at the top and scrolls -- centering
+     pushed its top (logo, first fields) off-screen where it couldn't be reached. */
+  html,body{ height:auto; }
+  body{ justify-content:flex-start; }
+  body::before, body::after{ content:''; flex:1 1 0; }
   .site-footer a{ font-size:11.5px; }
 </style>
 </head>

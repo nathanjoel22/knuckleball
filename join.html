@@ -107,10 +107,23 @@
   .age-opt input, .terms-check input{ width:18px; height:18px; accent-color:var(--amber); flex:0 0 auto; margin:0; }
   .age-note{ font-size:12px; color:var(--chalk-dim); margin:6px 0 0; line-height:1.45; }
   .age-stop{ font-size:13px; color:var(--chalk); background:var(--field-panel-2); border:1px solid var(--border-strong); border-radius:8px; padding:10px 12px; margin:0; line-height:1.45; }
+  .age-stop a{ color:var(--chalk); text-decoration:underline; font-size:13px; }   /* S4 B: under 13 -> parent account */
+  /* S4 B3: Join as */
+  .joinas-list{ display:flex; flex-direction:column; gap:8px; }
+  .joinas-btn{ background:var(--field-dark); color:var(--chalk); border:1px solid var(--border-strong); border-radius:8px; padding:12px 14px; font-size:15px; font-weight:600; text-align:left; min-height:48px; }
+  .joinas-btn:hover{ border-color:var(--amber); }
+  .joinas-btn small{ display:block; font-size:11.5px; font-weight:400; color:var(--chalk-faint); margin-top:2px; }
+  .joinas-new{ border-style:dashed; }
+  .age-row{ flex-direction:row; gap:18px; }
   .terms-check{ display:flex; align-items:flex-start; gap:10px; font-size:13px; color:var(--chalk-dim); line-height:1.45; cursor:pointer; }
   .terms-check a{ color:var(--chalk); text-decoration:underline; font-size:13px; }
   .site-footer{ font-size:11.5px; color:var(--chalk-faint); text-align:center; margin-top:4px; }
   body{ flex-direction:column; gap:14px; }   /* P1-10: the footer sits under the card */
+  /* A form taller than the screen starts at the top and scrolls -- centering
+     pushed its top (logo, first fields) off-screen where it couldn't be reached. */
+  html,body{ height:auto; }
+  body{ justify-content:flex-start; }
+  body::before, body::after{ content:''; flex:1 1 0; }
   .site-footer a{ font-size:11.5px; }
 </style>
 </head>
@@ -158,7 +171,7 @@
       <input class="text-input" id="att-guardian-email" type="email" placeholder="Not your own email" autocomplete="off">
       <p class="age-note">We'll email them a link to approve your account. Until they do, you can chart your pitches, but you can't view or send reports.</p>
     </div>
-    <p class="age-stop step-hidden" id="att-age-stop">Knuckleball isn't available for players under 13 yet. Parent accounts are coming soon.</p>
+    <p class="age-stop step-hidden" id="att-age-stop">Players under 13 need a parent or guardian to create their profile. Ask them to <a href="parent-signup.html" class="parent-link">set up a parent account</a> and choose &ldquo;Add a player&rdquo;.</p>
     <label class="terms-check"><input type="checkbox" id="att-terms-ok"> <span>I agree to the <a href="terms.html" target="_blank" class="policy-link">Terms</a> and <a href="privacy.html" target="_blank" class="policy-link">Privacy Policy</a>.</span></label>
     <div class="error-msg" id="att-error-msg"></div>
     <button type="submit" class="btn-primary" id="att-submit-btn">Continue &amp; join</button>
@@ -201,7 +214,7 @@
       <input class="text-input" id="guardian-email" type="email" placeholder="Not your own email" autocomplete="off">
       <p class="age-note">We'll email them a link to approve your account. Until they do, you can chart your pitches, but you can't view or send reports.</p>
     </div>
-    <p class="age-stop step-hidden" id="age-stop">Knuckleball isn't available for players under 13 yet. Parent accounts are coming soon.</p>
+    <p class="age-stop step-hidden" id="age-stop">Players under 13 need a parent or guardian to create their profile. Ask them to <a href="parent-signup.html" class="parent-link">set up a parent account</a> and choose &ldquo;Add a player&rdquo;.</p>
     <label class="terms-check"><input type="checkbox" id="terms-ok"> <span>I agree to the <a href="terms.html" target="_blank" class="policy-link">Terms</a> and <a href="privacy.html" target="_blank" class="policy-link">Privacy Policy</a>.</span></label>
     <div class="error-msg" id="error-msg"></div>
     <button type="submit" class="btn-primary" id="submit-btn">Create account &amp; join</button>
@@ -209,7 +222,37 @@
       <a href="index.html">&larr; Back</a>
       <a href="login.html">Already have an account? Log in</a>
     </div>
+    <a href="parent-signup.html" class="parent-link" style="text-align:center;">Signing up your child? Create a parent account</a>
   </form>
+
+  <!-- S4 B3: a login with players picks who joins (or adds a new player). -->
+  <div class="card step-hidden" id="joinas-card">
+    <div class="brand-block">
+      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <div>
+      <h2 class="display" id="joinas-heading">Join as</h2>
+      <p class="sub">Who's joining this team?</p>
+    </div>
+    <div class="joinas-list" id="joinas-list"></div>
+    <form class="step-hidden" id="newplayer-form" autocomplete="off" style="display:flex;flex-direction:column;gap:16px;">
+      <div class="field">
+        <label class="field-label" for="np-name">Player's name</label>
+        <input class="text-input" id="np-name" placeholder="First and last name">
+      </div>
+      <div class="field">
+        <span class="field-label">Throws</span>
+        <div class="age-options age-row">
+          <label class="age-opt"><input type="radio" name="np-throws" value="R"> Right</label>
+          <label class="age-opt"><input type="radio" name="np-throws" value="L"> Left</label>
+        </div>
+      </div>
+      <label class="terms-check"><input type="checkbox" id="np-consent"> <span>I am this player's parent or legal guardian, and I consent to Knuckleball storing their pitching data.</span></label>
+      <button type="submit" class="btn-primary" id="np-submit">Add player &amp; join</button>
+    </form>
+    <div class="error-msg" id="joinas-error"></div>
+  </div>
 
   <!-- Only reached if this Supabase project's "Confirm email" setting is
        (or ever becomes) ON -- the intended R0 configuration has it OFF, so
@@ -243,7 +286,7 @@
   // P1-10 (Oct 2 2026): age attestation + terms on every signup path. The
   // answer is recorded server-side (record_attestation) right after the
   // account exists, before any team join -- which refuses without it.
-  var TERMS_VERSION = '2026-10-02';
+  var TERMS_VERSION = '2026-10-03';
   function kbPolicyLinks(sport){
     var sp = sport === 'softball' ? 'softball' : 'baseball';
     document.querySelectorAll('a.policy-link, .site-footer a[href^="privacy.html"], .site-footer a[href^="terms.html"]').forEach(function(a){
@@ -272,7 +315,7 @@
     }
     var v = kbAgeValue(px);
     if(!v) return { error: 'Tell us how old you are.' };
-    if(v === 'under_13') return { error: "Knuckleball isn't available for players under 13 yet. Parent accounts are coming soon." };
+    if(v === 'under_13') return { error: "Players under 13 need a parent or guardian to create their profile. Ask them to set up a parent account and choose 'Add a player'." };
     var g = null;
     if(v === 'minor_13_17'){
       g = (document.getElementById(px + 'guardian-email').value || '').trim().toLowerCase();
@@ -321,7 +364,7 @@
 <script src="report-config.js"></script>
 <script>
   function showCard(id){
-    ['loading-card','invalid-card','join-form','confirm-card','joining-card','attest-card'].forEach(cid => {
+    ['loading-card','invalid-card','join-form','confirm-card','joining-card','attest-card','joinas-card'].forEach(cid => {
       document.getElementById(cid).classList.toggle('step-hidden', cid !== id);
     });
   }
@@ -344,6 +387,7 @@
     document.querySelectorAll('a[href^="index.html"]').forEach(a => a.setAttribute('href', 'index.html?sport=' + teamSport));
     document.querySelectorAll('a[href^="login.html"]').forEach(a => a.setAttribute('href', 'login.html?sport=' + teamSport));
     kbPolicyLinks(teamSport);
+    setParentLinks();   // S4 B
   }
   // The database refuses a cross-sport join ('sport_mismatch'): say so plainly.
   function showSportMismatch(){
@@ -408,6 +452,8 @@
         });
       }
     } catch (e) { /* recoverable via Resend */ }
+    // S4 B3: a login that manages players (or a parent login) picks who joins.
+    if(await maybeShowJoinAs()) return;
     const { data, error } = await supabaseClient.rpc('join_team_via_invite', { p_token: token });
     if(error && /sport_mismatch/.test(error.message || '')){ showSportMismatch(); return; }
     // P1-10: an existing account that hasn't answered the age question yet.
@@ -425,6 +471,96 @@
     window.location.href = 'bullpen-tracker.html';
   }
 
+  // S4 B: the parent signup link keeps this team's sport and comes back here.
+  function setParentLinks(){
+    document.querySelectorAll('a.parent-link').forEach(a => {
+      a.setAttribute('href', 'parent-signup.html?sport=' + (teamSport || 'baseball') + '&next=' + encodeURIComponent('join.html?t=' + token));
+    });
+  }
+
+  // S4 B3 (Joel, Oct 2): "Join as: [Emma] / [New player]". Only for a login
+  // that manages players or is a parent account -- everyone else joins
+  // exactly as before (no picker). Returns true when the picker is shown.
+  let joinAsUid = null;
+  async function maybeShowJoinAs(){
+    const { data: { session: s } } = await supabaseClient.auth.getSession();
+    if(!s) return false;
+    joinAsUid = s.user.id;
+    const { data: mine, error } = await supabaseClient.from('profiles')
+      .select('id, full_name, role, sport, managed_by, is_primary, age_attestation')
+      .eq('account_id', s.user.id);
+    if(error || !mine) return false;
+    const isParentish = mine.some(p => p.role === 'parent' || p.managed_by);
+    if(!isParentish) return false;
+    const prim = mine.find(p => p.is_primary);
+    const canAdd = !!(prim && prim.age_attestation === 'adult');
+    const eligible = mine.filter(p => p.role === 'pitcher' && p.sport === teamSport);
+    const list = document.getElementById('joinas-list');
+    list.innerHTML = '';
+    eligible.forEach(p => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'joinas-btn';
+      b.textContent = p.full_name;
+      const sm = document.createElement('small');
+      sm.textContent = p.managed_by ? 'Your player' : 'You';
+      b.appendChild(sm);
+      b.addEventListener('click', () => joinAs(p.id));
+      list.appendChild(b);
+    });
+    if(canAdd){
+      const nb = document.createElement('button');
+      nb.type = 'button'; nb.className = 'joinas-btn joinas-new';
+      nb.textContent = '+ New player';
+      nb.addEventListener('click', () => {
+        document.getElementById('newplayer-form').classList.remove('step-hidden');
+        nb.classList.add('step-hidden');
+        document.getElementById('np-name').focus();
+      });
+      list.appendChild(nb);
+      if(!eligible.length) nb.click();
+    }
+    if(teamName) document.getElementById('joinas-heading').textContent = 'Join ' + teamName + ' as';
+    showCard('joinas-card');
+    return true;
+  }
+  async function joinAs(profileId){
+    const err = document.getElementById('joinas-error');
+    err.textContent = '';
+    document.querySelectorAll('#joinas-card button').forEach(b => { b.disabled = true; });
+    const { data, error } = await supabaseClient.rpc('join_team_via_invite', { p_token: token, p_profile: profileId });
+    if(data && data.error === 'attestation_required'){ showCard('attest-card'); return; }
+    if(error || !data || data.error){
+      document.querySelectorAll('#joinas-card button').forEach(b => { b.disabled = false; });
+      err.textContent = (data && data.error === 'invalid_token') ? 'This invite link is no longer valid. Ask the coach for a current one.' : "Couldn't join. Check your connection and try again.";
+      return;
+    }
+    try{
+      localStorage.setItem('kb:activeProfile:' + joinAsUid, profileId);
+      localStorage.setItem('kb:sport', teamSport || 'baseball');
+    }catch(e){}
+    window.location.href = 'bullpen-tracker.html';
+  }
+  document.getElementById('newplayer-form').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const err = document.getElementById('joinas-error');
+    err.textContent = '';
+    const name = document.getElementById('np-name').value.trim();
+    const t = document.querySelector('input[name="np-throws"]:checked');
+    if(!name){ err.textContent = "Enter the player's name."; return; }
+    if(!document.getElementById('np-consent').checked){ err.textContent = "Confirm you're the player's parent or guardian."; return; }
+    const btn = document.getElementById('np-submit');
+    btn.disabled = true; btn.textContent = 'Adding…';
+    const { data, error } = await supabaseClient.rpc('add_player', { p_full_name: name, p_sport: teamSport || 'baseball', p_throws: t ? t.value : null, p_consent: true });
+    if(error || !data || !data.ok){
+      btn.disabled = false; btn.textContent = 'Add player & join';
+      err.textContent = (data && data.error === 'adult_required') ? 'Only an account holder who is 18 or older can add a player.'
+        : (data && data.error === 'invalid_name') ? "Enter the player's name (up to 80 characters)."
+        : "Couldn't add the player. Check your connection and try again.";
+      return;
+    }
+    await joinAs(data.id);
+  });
+
   async function init(){
     if(!token){
       showCard('invalid-card');
@@ -437,7 +573,7 @@
     // doesn't need it.
     // S1: look the team up first, signed in or not, so the page wears the team's sport.
     const { data: rows, error } = await supabaseClient.rpc('resolve_team_invite', { p_token: token });
-    if(!error && rows && rows.length) applyTeamSport(rows[0].team_sport);
+    if(!error && rows && rows.length){ applyTeamSport(rows[0].team_sport); teamName = rows[0].team_name; }
 
     const { data: { session } } = await supabaseClient.auth.getSession();
     if(session){

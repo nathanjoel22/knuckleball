@@ -1362,8 +1362,6 @@
     .wide-bl{ grid-column:1; display:flex; align-items:center; }
     .wide-bl .ttp-btn{ min-height:38px; }
     .wide-br{ grid-column:2; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
-    .wide-stacked .wide-left .wide-br{ flex-direction:column; align-items:stretch; }
-    .wide-stacked .wide-left .wide-br .btn{ width:100%; }
     .pt-two{ display:grid; grid-template-columns:repeat(2, max-content); }   /* never more than two pitch types across */
     .wide-hint{ color:var(--clay); text-transform:none; letter-spacing:0; font-size:12.5px; font-weight:600; }
     /* Joel, Oct 1: pen pitch counter to the right of the perspective chips
@@ -7753,24 +7751,12 @@ function sizeWideGrid(){
   const capH = cap ? cap.offsetHeight + 10 : 0;            // + .zone-wrap's gap
   const top = right.getBoundingClientRect().top + (window.pageYOffset || 0);
   const cols = right.closest('.wide-cols');
-  const br = cols && cols.querySelector('.wide-br');
   const roomAll = window.innerHeight - top - capH - 24;
-  let below = br ? br.offsetHeight + 16 : 0;   // Live Game's Undo / New batter / New inning row + row gap
-  // G3 item 6 (Joel, Oct 2): when that row is what limits the grid (a short
-  // window -- Safari's toolbars), it moves up into the left column under the
-  // delivery control, so Live Game's grid is never smaller than Bullpen's.
-  if(br){
-    const widthSide = (colW - 12) / (1 + 2 * A * H0);
-    const withRow = Math.min(CAP, widthSide, (roomAll - below) / Math.max(1, H0));
-    const withoutRow = Math.min(CAP, widthSide, roomAll / Math.max(1, H0));
-    const left = cols.querySelector('.wide-left'), bl = cols.querySelector('.wide-bl');
-    if(withRow < withoutRow - 0.5 && left){
-      if(bl) left.appendChild(bl);
-      left.appendChild(br);
-      cols.classList.add('wide-stacked');
-      below = 0;
-    }
-  }
+  // Joel, Oct 2: Undo / New batter / New inning always sit side by side,
+  // centered under the grid. Their row isn't counted in the height budget:
+  // in a short window (Safari's toolbars) the grid keeps its full size and
+  // the row sits just below the fold, a short scroll away.
+  const below = 0;
   const room = roomAll - below;
   let h = H0;
   let side = Math.min(CAP, (colW - 12) / (1 + 2 * A * H0), room / Math.max(1, H0));

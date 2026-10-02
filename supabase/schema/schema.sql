@@ -110,6 +110,40 @@ $$;
 ALTER FUNCTION "public"."can_view_headshot"("p_object_name" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."claim_guardian_send"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_uid uuid := auth.uid();
+  v_p   public.profiles%rowtype;
+begin
+  if v_uid is null then
+    return jsonb_build_object('ok', false, 'error', 'not_authenticated');
+  end if;
+  select * into v_p from public.profiles where id = v_uid for update;
+  if not found or v_p.age_attestation is distinct from 'minor_13_17' or v_p.guardian_consented_at is not null or v_p.guardian_email is null then
+    return jsonb_build_object('ok', false, 'error', 'nothing_to_send');
+  end if;
+  if v_p.guardian_consent_sent_at is not null and v_p.guardian_consent_sent_at > now() - interval '10 minutes' then
+    return jsonb_build_object('ok', false, 'error', 'too_soon',
+                              'retry_after_seconds', ceil(extract(epoch from (v_p.guardian_consent_sent_at + interval '10 minutes' - now())))::int);
+  end if;
+  update public.profiles
+     set guardian_consent_sent_at = now(),
+         guardian_consent_token = coalesce(guardian_consent_token,
+           replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', ''))
+   where id = v_uid
+  returning * into v_p;
+  return jsonb_build_object('ok', true, 'email', v_p.guardian_email, 'token', v_p.guardian_consent_token,
+                            'name', v_p.full_name, 'sport', v_p.sport);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."claim_guardian_send"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."coach_set_full_name"("p_pitcher_id" "uuid", "p_name" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -542,6 +576,21 @@ $$;
 ALTER FUNCTION "public"."generate_email_verify_token"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_guardian_request"("p_token" "text") RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+  select coalesce(
+    (select jsonb_build_object('ok', true, 'first_name', split_part(btrim(p.full_name), ' ', 1), 'sport', p.sport)
+       from public.profiles p
+      where p_token ~ '^[0-9a-f]{64}$' and p.guardian_consent_token = p_token and p.guardian_consented_at is null),
+    jsonb_build_object('ok', false, 'error', 'invalid_or_used_token'));
+$_$;
+
+
+ALTER FUNCTION "public"."get_guardian_request"("p_token" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_removal_notice_info"("p_pitcher_id" "uuid", "p_team_id" "uuid") RETURNS TABLE("email" "text", "team_name" "text")
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -606,11 +655,13 @@ $$;
 ALTER FUNCTION "public"."get_roster_latest"("p_team_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_roster_verification"("p_team_id" "uuid") RETURNS TABLE("pitcher_id" "uuid", "email" "text", "email_confirmed" boolean)
+CREATE OR REPLACE FUNCTION "public"."get_roster_verification"("p_team_id" "uuid") RETURNS TABLE("pitcher_id" "uuid", "email" "text", "email_confirmed" boolean, "guardian_pending" boolean, "age_answered" boolean)
     LANGUAGE "sql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select pt.pitcher_id, u.email, acct.email_verified_at is not null
+  select pt.pitcher_id, u.email, acct.email_verified_at is not null,
+         (acct.age_attestation = 'minor_13_17' and acct.guardian_consented_at is null),
+         acct.age_attestation is not null
   from public.pitcher_teams pt
   join public.profiles pr on pr.id = pt.pitcher_id
   join auth.users u on u.id = pr.account_id
@@ -1012,6 +1063,7 @@ CREATE OR REPLACE FUNCTION "public"."is_pitcher_report_eligible"("p_pitcher_id" 
     AS $$
   select
     coalesce((select acct.email_verified_at is not null
+                     and (acct.age_attestation = 'adult' or acct.guardian_consented_at is not null)
                 from public.profiles pr join public.profiles acct on acct.id = pr.account_id
                where pr.id = p_pitcher_id), false)
     and exists (select 1 from public.pitcher_teams where pitcher_id = p_pitcher_id);
@@ -1085,9 +1137,14 @@ declare
   v_team_name text;
   v_team_sport text;
   v_head_id uuid;
+  v_block text;
 begin
   if auth.uid() is null then
     return jsonb_build_object('error', 'not_authenticated');
+  end if;
+  v_block := public.p1_10_join_block(true);
+  if v_block is not null then
+    return jsonb_build_object('error', v_block);
   end if;
 
   select id, name, coach_id, sport into v_team_id, v_team_name, v_head_id, v_team_sport
@@ -1139,9 +1196,14 @@ declare
   v_team_name text;
   v_team_sport text;
   v_role text;
+  v_block text;
 begin
   if auth.uid() is null then
     return jsonb_build_object('error', 'not_authenticated');
+  end if;
+  v_block := public.p1_10_join_block(false);
+  if v_block is not null then
+    return jsonb_build_object('error', v_block);
   end if;
 
   select id, name, sport into v_team_id, v_team_name, v_team_sport from public.teams where invite_token = p_token;
@@ -1197,6 +1259,18 @@ $$;
 ALTER FUNCTION "public"."leaderboard_exclusions_stamp"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."my_guardian_status"() RETURNS TABLE("guardian_email" "text", "sent_at" timestamp with time zone, "consented_at" timestamp with time zone)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select p.guardian_email, p.guardian_consent_sent_at, p.guardian_consented_at
+    from public.profiles p where p.id = auth.uid();
+$$;
+
+
+ALTER FUNCTION "public"."my_guardian_status"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."my_single_profile"() RETURNS "uuid"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -1221,6 +1295,51 @@ $$;
 
 
 ALTER FUNCTION "public"."my_verification_status"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."p1_10_join_block"("p_coach" boolean) RETURNS "text"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select case
+    when (select p.age_attestation from public.profiles p where p.id = auth.uid()) is null then 'attestation_required'
+    when p_coach and (select p.age_attestation from public.profiles p where p.id = auth.uid()) <> 'adult' then 'coaches_must_be_adults'
+  end;
+$$;
+
+
+ALTER FUNCTION "public"."p1_10_join_block"("p_coach" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."p1_10_login_is_coach"("p_uid" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select exists (select 1 from public.profiles p where p.account_id = p_uid and p.role = 'coach')
+      or exists (select 1 from public.team_coaches tc join public.profiles p on p.id = tc.coach_id where p.account_id = p_uid)
+      or coalesce((select u.raw_user_meta_data ->> 'intended_role' from auth.users u where u.id = p_uid), '') = 'coach';
+$$;
+
+
+ALTER FUNCTION "public"."p1_10_login_is_coach"("p_uid" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."pitcher_report_block"("p_pitcher_id" "uuid") RETURNS "text"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select case
+    when acct.email_verified_at is null then 'unverified'
+    when acct.age_attestation is null then 'age_not_answered'
+    when acct.age_attestation = 'minor_13_17' and acct.guardian_consented_at is null then 'guardian_pending'
+  end
+    from public.profiles pr join public.profiles acct on acct.id = pr.account_id
+   where pr.id = p_pitcher_id
+     and (public.is_my_profile(p_pitcher_id) or public.is_coach_of_pitcher(p_pitcher_id));
+$$;
+
+
+ALTER FUNCTION "public"."pitcher_report_block"("p_pitcher_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."pitcher_teams_g3_departure"() RETURNS "trigger"
@@ -1252,6 +1371,107 @@ $$;
 
 
 ALTER FUNCTION "public"."profiles_s4_cap"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."record_attestation"("p_status" "text", "p_terms_version" "text", "p_guardian_email" "text" DEFAULT NULL::"text", "p_via" "text" DEFAULT 'signup'::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  v_uid   uuid := auth.uid();
+  v_prim  public.profiles%rowtype;
+  v_email text;
+  v_mine  text;
+begin
+  if v_uid is null then
+    return jsonb_build_object('ok', false, 'error', 'not_authenticated');
+  end if;
+  if p_status not in ('adult', 'minor_13_17') then
+    return jsonb_build_object('ok', false, 'error', 'invalid_status');
+  end if;
+  if p_terms_version is null or btrim(p_terms_version) = '' then
+    return jsonb_build_object('ok', false, 'error', 'terms_required');
+  end if;
+  if p_via not in ('signup', 'catchup') then
+    return jsonb_build_object('ok', false, 'error', 'invalid_via');
+  end if;
+  select * into v_prim from public.profiles where id = v_uid;
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'profile_missing');
+  end if;
+  if p_status = 'minor_13_17' and public.p1_10_login_is_coach(v_uid) then
+    return jsonb_build_object('ok', false, 'error', 'coaches_must_be_adults');
+  end if;
+  -- The bracket, once recorded, doesn't change here (no quiet "turning 18"
+  -- to skip an approval); support can correct it.
+  if v_prim.age_attestation is not null and v_prim.age_attestation <> p_status then
+    return jsonb_build_object('ok', false, 'error', 'bracket_already_recorded');
+  end if;
+
+  if p_status = 'adult' then
+    update public.profiles
+       set age_attestation = 'adult',
+           attested_at = coalesce(attested_at, now()),
+           attested_via = coalesce(attested_via, p_via),
+           terms_version = p_terms_version,
+           guardian_email = null, guardian_consent_token = null, guardian_consent_sent_at = null
+     where id = v_uid;
+    return jsonb_build_object('ok', true, 'status', 'adult', 'needs_guardian', false);
+  end if;
+
+  v_email := lower(btrim(coalesce(p_guardian_email, '')));
+  if v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' or length(v_email) > 254 then
+    return jsonb_build_object('ok', false, 'error', 'invalid_guardian_email');
+  end if;
+  select lower(u.email) into v_mine from auth.users u where u.id = v_uid;
+  if v_email = v_mine then
+    return jsonb_build_object('ok', false, 'error', 'guardian_email_is_yours');
+  end if;
+
+  if v_prim.age_attestation = 'minor_13_17' and v_prim.guardian_email = v_email then
+    update public.profiles set terms_version = p_terms_version where id = v_uid;   -- same answer again: no-op
+  else
+    update public.profiles
+       set age_attestation = 'minor_13_17',
+           attested_at = coalesce(attested_at, now()),
+           attested_via = coalesce(attested_via, p_via),
+           terms_version = p_terms_version,
+           guardian_email = v_email,
+           guardian_consent_token = replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', ''),
+           guardian_consent_sent_at = null,
+           guardian_consented_at = null,
+           consent_via = null
+     where id = v_uid;
+  end if;
+  return jsonb_build_object('ok', true, 'status', 'minor_13_17',
+                            'needs_guardian', (select guardian_consented_at is null from public.profiles where id = v_uid));
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."record_attestation"("p_status" "text", "p_terms_version" "text", "p_guardian_email" "text", "p_via" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."record_guardian_consent"("p_token" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  v_sport text;
+begin
+  update public.profiles
+     set guardian_consented_at = now(), consent_via = 'guardian_email', guardian_consent_token = null
+   where p_token ~ '^[0-9a-f]{64}$' and guardian_consent_token = p_token and guardian_consented_at is null
+  returning sport into v_sport;
+  if v_sport is null then
+    return jsonb_build_object('ok', false, 'error', 'invalid_or_used_token');
+  end if;
+  return jsonb_build_object('ok', true, 'sport', v_sport);
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."record_guardian_consent"("p_token" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."remove_coach"("p_team_id" "uuid", "p_coach_id" "uuid") RETURNS "void"
@@ -1948,6 +2168,18 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "account_id" "uuid" NOT NULL,
     "managed_by" "uuid",
     "is_primary" boolean GENERATED ALWAYS AS (("id" = "account_id")) STORED,
+    "age_attestation" "text",
+    "attested_at" timestamp with time zone,
+    "attested_via" "text",
+    "terms_version" "text",
+    "guardian_email" "text",
+    "guardian_consent_token" "text",
+    "guardian_consent_sent_at" timestamp with time zone,
+    "guardian_consented_at" timestamp with time zone,
+    "consent_via" "text",
+    CONSTRAINT "profiles_age_attestation_check" CHECK (("age_attestation" = ANY (ARRAY['adult'::"text", 'minor_13_17'::"text"]))),
+    CONSTRAINT "profiles_attested_via_check" CHECK (("attested_via" = ANY (ARRAY['signup'::"text", 'catchup'::"text"]))),
+    CONSTRAINT "profiles_consent_via_check" CHECK (("consent_via" = ANY (ARRAY['guardian_email'::"text", 'parent_created'::"text"]))),
     CONSTRAINT "profiles_full_name_not_blank" CHECK (("btrim"("full_name") <> ''::"text")),
     CONSTRAINT "profiles_role_check" CHECK (("role" = ANY (ARRAY['coach'::"text", 'pitcher'::"text", 'parent'::"text"]))),
     CONSTRAINT "profiles_sport_check" CHECK (((("role" = 'parent'::"text") AND ("sport" IS NULL)) OR (("role" <> 'parent'::"text") AND ("sport" = ANY (ARRAY['baseball'::"text", 'softball'::"text"]))))),
@@ -2014,6 +2246,18 @@ COMMENT ON COLUMN "public"."profiles"."managed_by" IS 'S4: set on a player profi
 
 
 COMMENT ON COLUMN "public"."profiles"."is_primary" IS 'S4: true for the login''s own first profile (id = account_id), which holds email verification and, in Stage B, attestation.';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."age_attestation" IS 'P1-10: the login''s self-attested age bracket, on its primary profile only. No date of birth is ever stored.';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."guardian_consent_token" IS 'P1-10: one-time token in the guardian approval link. Never readable by clients.';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."consent_via" IS 'P1-10: how guardian consent was given; parent_created is reserved for S4.';
 
 
 
@@ -2239,6 +2483,11 @@ ALTER TABLE ONLY "public"."pitches"
 
 ALTER TABLE ONLY "public"."profiles"
     ADD CONSTRAINT "profiles_email_verify_token_key" UNIQUE ("email_verify_token");
+
+
+
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_guardian_consent_token_key" UNIQUE ("guardian_consent_token");
 
 
 
@@ -2759,6 +3008,12 @@ GRANT ALL ON FUNCTION "public"."can_view_headshot"("p_object_name" "text") TO "s
 
 
 
+REVOKE ALL ON FUNCTION "public"."claim_guardian_send"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."claim_guardian_send"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."claim_guardian_send"() TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."coach_set_full_name"("p_pitcher_id" "uuid", "p_name" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."coach_set_full_name"("p_pitcher_id" "uuid", "p_name" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."coach_set_full_name"("p_pitcher_id" "uuid", "p_name" "text") TO "service_role";
@@ -2816,6 +3071,13 @@ GRANT ALL ON FUNCTION "public"."ensure_account_setup"("p_role" "text", "p_full_n
 REVOKE ALL ON FUNCTION "public"."generate_email_verify_token"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."generate_email_verify_token"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."generate_email_verify_token"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_guardian_request"("p_token" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_guardian_request"("p_token" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_guardian_request"("p_token" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_guardian_request"("p_token" "text") TO "service_role";
 
 
 
@@ -2973,6 +3235,12 @@ GRANT ALL ON FUNCTION "public"."leaderboard_exclusions_stamp"() TO "service_role
 
 
 
+REVOKE ALL ON FUNCTION "public"."my_guardian_status"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."my_guardian_status"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."my_guardian_status"() TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."my_single_profile"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."my_single_profile"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."my_single_profile"() TO "service_role";
@@ -2985,6 +3253,23 @@ GRANT ALL ON FUNCTION "public"."my_verification_status"() TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."p1_10_join_block"("p_coach" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."p1_10_join_block"("p_coach" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."p1_10_join_block"("p_coach" boolean) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."p1_10_login_is_coach"("p_uid" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."p1_10_login_is_coach"("p_uid" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."pitcher_report_block"("p_pitcher_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."pitcher_report_block"("p_pitcher_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."pitcher_report_block"("p_pitcher_id" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."pitcher_teams_g3_departure"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."pitcher_teams_g3_departure"() TO "service_role";
 
@@ -2992,6 +3277,19 @@ GRANT ALL ON FUNCTION "public"."pitcher_teams_g3_departure"() TO "service_role";
 
 REVOKE ALL ON FUNCTION "public"."profiles_s4_cap"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."profiles_s4_cap"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."record_attestation"("p_status" "text", "p_terms_version" "text", "p_guardian_email" "text", "p_via" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."record_attestation"("p_status" "text", "p_terms_version" "text", "p_guardian_email" "text", "p_via" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."record_attestation"("p_status" "text", "p_terms_version" "text", "p_guardian_email" "text", "p_via" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."record_guardian_consent"("p_token" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."record_guardian_consent"("p_token" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."record_guardian_consent"("p_token" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."record_guardian_consent"("p_token" "text") TO "service_role";
 
 
 
@@ -3142,8 +3440,8 @@ GRANT ALL ON TABLE "public"."pitches" TO "service_role";
 
 
 
-GRANT INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."profiles" TO "anon";
-GRANT INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."profiles" TO "authenticated";
+GRANT REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."profiles" TO "anon";
+GRANT REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."profiles" TO "authenticated";
 GRANT ALL ON TABLE "public"."profiles" TO "service_role";
 
 
@@ -3213,6 +3511,34 @@ GRANT SELECT("managed_by") ON TABLE "public"."profiles" TO "authenticated";
 
 
 GRANT SELECT("is_primary") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("age_attestation") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("attested_at") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("attested_via") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("terms_version") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("guardian_consent_sent_at") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("guardian_consented_at") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("consent_via") ON TABLE "public"."profiles" TO "authenticated";
 
 
 

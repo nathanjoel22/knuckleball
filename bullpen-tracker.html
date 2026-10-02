@@ -2708,8 +2708,9 @@ function lastKnownKey(userId){ return 'lastKnownContext:' + userId; }
    A login owns one or more profiles (one person, one sport, one role each).
    One is active at a time and runs everything: sport, theme, tabs, every
    query. Switching saves this profile's offline snapshot, puts the target's
-   snapshot where the pre-paint theme script reads it, and reloads -- so the
-   new profile paints in its own theme with no flash, offline included. */
+   snapshot where the pre-paint theme script reads it (so the NEXT cold start
+   opens in it), and swaps it in place -- no reload, so it works offline
+   with or without the service worker. */
 const SPORT_NAME = { baseball: 'Baseball', softball: 'Softball' };
 const ROLE_NAME = { coach: 'Coach', pitcher: 'Pitcher', parent: 'Parent' };
 function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
@@ -2753,12 +2754,28 @@ window.switchProfile = async function(id){
     return;
   }
   await saveLastKnownContext();
-  await storSet(lastKnownKey(uid), snap ? Object.assign({}, snap, { myProfiles: state.myProfiles }) : {
+  const next = snap ? Object.assign({}, snap, { myProfiles: state.myProfiles }) : {
     profile: target, myProfiles: state.myProfiles, teams: [], roster: [], myVerification: state.myVerification
-  });
+  };
+  await storSet(lastKnownKey(uid), next);
   lsSet(activeProfileKey(uid), id);
   if(target.sport) lsSet('kb:sport', target.sport);
-  window.location.reload();
+  // Switch IN PLACE, no page reload (Joel, Oct 2): a reload with no network
+  // only works where the offline shell (service worker) is installed, and
+  // it can't be on a plain-http address -- so a reload made offline
+  // switching depend on something it shouldn't. Same steps as a cold start
+  // from the cache, then the usual background refresh when online.
+  state.whoPicker = null; state.addSportBanner = null; state.acctMsg = '';
+  state.expandedSessionId = null; state.sessionSheetOpen = false; state.sessionDiscardArmed = false;
+  state.showSetupModal = false; state.setupNeeded = null; state.pendingTarget = null; state.hint = '';
+  applyCachedContext(next);          // also re-themes (applySport)
+  state.sessions = [];
+  state.deletedSessions = [];
+  await refreshDraftState();
+  state.loaded = true;
+  render();
+  try{ window.scrollTo(0, 0); }catch(e){}
+  if(isOnline()) resolveOnline(true).catch(err => console.error('background reconcile failed', err));
 };
 // Offline switching needs every profile's snapshot on the device, not just
 // the ones opened here before. While online, build the missing ones in the

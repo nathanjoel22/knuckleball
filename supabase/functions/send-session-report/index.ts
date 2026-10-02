@@ -2,6 +2,7 @@
 // Requires these secrets set on your Supabase project (see SETUP.md):
 //   RESEND_API_KEY, REPORT_FROM_EMAIL, SUPABASE_URL, SUPABASE_ANON_KEY,
 //   SUPABASE_SERVICE_ROLE_KEY (platform-injected, not set by hand)
+// Optional: REPORT_SITE_ORIGIN (staging only: http://localhost:8080; unset = live site)
 //
 // U4/U4b: PDF generation is retired. This function now builds a frozen,
 // self-contained HTML report (buildReportHtml, in template.ts) and uploads
@@ -49,7 +50,15 @@ const corsHeaders = {
 
 const MAX_RECIPIENTS = 3
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const REPORT_SITE_ORIGIN = 'https://knuckleballonline.com'
+// Where the emailed report link opens. Production leaves this unset (the live
+// site). Staging sets REPORT_SITE_ORIGIN=http://localhost:8080 so its report
+// links open on the local staging site, which reads staging's storage --
+// the live site only reads production's, so staging links there were always
+// "Report not available".
+const REPORT_SITE_ORIGIN = (() => {
+  const v = (Deno.env.get('REPORT_SITE_ORIGIN') || '').trim().replace(/\/+$/, '')
+  return /^https?:\/\/[A-Za-z0-9.-]+(:\d+)?$/.test(v) ? v : 'https://knuckleballonline.com'
+})()
 
 // Must match TOKEN_RE in report.html EXACTLY -- that check is the only
 // thing standing between a crafted ?r= value and report.html becoming a

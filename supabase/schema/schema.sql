@@ -63,6 +63,57 @@ $$;
 ALTER FUNCTION "public"."accuracy_zones_stamp"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."add_player"("p_full_name" "text", "p_sport" "text", "p_throws" "text" DEFAULT NULL::"text", "p_consent" boolean DEFAULT false) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_uid   uuid := auth.uid();
+  v_prim  public.profiles%rowtype;
+  v_name  text := btrim(coalesce(p_full_name, ''));
+  v_email text;
+  v_new   uuid := gen_random_uuid();
+begin
+  if v_uid is null then
+    return jsonb_build_object('ok', false, 'error', 'not_authenticated');
+  end if;
+  if p_consent is not true then
+    return jsonb_build_object('ok', false, 'error', 'consent_required');
+  end if;
+  if v_name = '' or length(v_name) > 80 then
+    return jsonb_build_object('ok', false, 'error', 'invalid_name');
+  end if;
+  if p_sport is null or p_sport not in ('baseball', 'softball') then
+    return jsonb_build_object('ok', false, 'error', 'invalid_sport');
+  end if;
+  if p_throws is not null and p_throws not in ('L', 'R') then
+    return jsonb_build_object('ok', false, 'error', 'invalid_throws');
+  end if;
+  select * into v_prim from public.profiles where id = v_uid;
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'profile_missing');
+  end if;
+  -- Only an adult can consent for a child (amended acceptance 10).
+  if v_prim.age_attestation is distinct from 'adult' then
+    return jsonb_build_object('ok', false, 'error', 'adult_required');
+  end if;
+  select u.email into v_email from auth.users u where u.id = v_uid;
+
+  -- managed_by = the adult's primary profile; account_id = the adult's login.
+  -- Reports default to the login's email (B4) -- the same "pitcher" contact
+  -- slot every pitcher's own account email fills.
+  insert into public.profiles (id, account_id, managed_by, role, full_name, sport, throws,
+                               guardian_consented_at, consent_via, contact_emails)
+  values (v_new, v_uid, v_uid, 'pitcher', v_name, p_sport, p_throws,
+          now(), 'parent_created', jsonb_build_object('pitcher', coalesce(v_email, '')));
+  return jsonb_build_object('ok', true, 'id', v_new);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."add_player"("p_full_name" "text", "p_sport" "text", "p_throws" "text", "p_consent" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."add_sport_profile"("p_sport" "text") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -482,7 +533,8 @@ begin
     v_resolved_role := coalesce(nullif(p_role, ''), nullif(v_meta ->> 'intended_role', ''));
     v_resolved_name := coalesce(nullif(p_full_name, ''), nullif(v_meta ->> 'full_name', ''));
 
-    if v_resolved_role in ('coach', 'pitcher') and v_resolved_name is not null then
+    -- S4 B2: 'parent' (a login that manages players; never charts, no sport).
+    if v_resolved_role in ('coach', 'pitcher', 'parent') and v_resolved_name is not null then
       insert into public.profiles (id, role, full_name)
       values (v_uid, v_resolved_role, v_resolved_name)
       on conflict (id) do nothing;
@@ -536,7 +588,7 @@ begin
 
   return jsonb_build_object(
     'profile', case when v_profile_created then 'created' else 'exists' end,
-    'role',    'pitcher',
+    'role',    case when v_profile_role = 'parent' then 'parent' else 'pitcher' end,
     'team',    'not_applicable'
   );
 end;
@@ -655,13 +707,14 @@ $$;
 ALTER FUNCTION "public"."get_roster_latest"("p_team_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_roster_verification"("p_team_id" "uuid") RETURNS TABLE("pitcher_id" "uuid", "email" "text", "email_confirmed" boolean, "guardian_pending" boolean, "age_answered" boolean)
+CREATE OR REPLACE FUNCTION "public"."get_roster_verification"("p_team_id" "uuid") RETURNS TABLE("pitcher_id" "uuid", "email" "text", "email_confirmed" boolean, "guardian_pending" boolean, "age_answered" boolean, "managed" boolean)
     LANGUAGE "sql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
   select pt.pitcher_id, u.email, acct.email_verified_at is not null,
          (acct.age_attestation = 'minor_13_17' and acct.guardian_consented_at is null),
-         acct.age_attestation is not null
+         acct.age_attestation is not null,
+         pr.managed_by is not null
   from public.pitcher_teams pt
   join public.profiles pr on pr.id = pt.pitcher_id
   join auth.users u on u.id = pr.account_id
@@ -1064,6 +1117,7 @@ CREATE OR REPLACE FUNCTION "public"."is_pitcher_report_eligible"("p_pitcher_id" 
   select
     coalesce((select acct.email_verified_at is not null
                      and (acct.age_attestation = 'adult' or acct.guardian_consented_at is not null)
+                     and (pr.managed_by is null or pr.guardian_consented_at is not null)
                 from public.profiles pr join public.profiles acct on acct.id = pr.account_id
                where pr.id = p_pitcher_id), false)
     and exists (select 1 from public.pitcher_teams where pitcher_id = p_pitcher_id);
@@ -1315,9 +1369,9 @@ CREATE OR REPLACE FUNCTION "public"."p1_10_login_is_coach"("p_uid" "uuid") RETUR
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select exists (select 1 from public.profiles p where p.account_id = p_uid and p.role = 'coach')
+  select exists (select 1 from public.profiles p where p.account_id = p_uid and p.role in ('coach', 'parent'))
       or exists (select 1 from public.team_coaches tc join public.profiles p on p.id = tc.coach_id where p.account_id = p_uid)
-      or coalesce((select u.raw_user_meta_data ->> 'intended_role' from auth.users u where u.id = p_uid), '') = 'coach';
+      or coalesce((select u.raw_user_meta_data ->> 'intended_role' from auth.users u where u.id = p_uid), '') in ('coach', 'parent');
 $$;
 
 
@@ -1332,6 +1386,7 @@ CREATE OR REPLACE FUNCTION "public"."pitcher_report_block"("p_pitcher_id" "uuid"
     when acct.email_verified_at is null then 'unverified'
     when acct.age_attestation is null then 'age_not_answered'
     when acct.age_attestation = 'minor_13_17' and acct.guardian_consented_at is null then 'guardian_pending'
+    when pr.managed_by is not null and pr.guardian_consented_at is null then 'consent_missing'
   end
     from public.profiles pr join public.profiles acct on acct.id = pr.account_id
    where pr.id = p_pitcher_id
@@ -2993,6 +3048,12 @@ GRANT ALL ON FUNCTION "public"."_create_team_with_head"("p_coach_id" "uuid", "p_
 GRANT ALL ON FUNCTION "public"."accuracy_zones_stamp"() TO "anon";
 GRANT ALL ON FUNCTION "public"."accuracy_zones_stamp"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."accuracy_zones_stamp"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."add_player"("p_full_name" "text", "p_sport" "text", "p_throws" "text", "p_consent" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."add_player"("p_full_name" "text", "p_sport" "text", "p_throws" "text", "p_consent" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."add_player"("p_full_name" "text", "p_sport" "text", "p_throws" "text", "p_consent" boolean) TO "service_role";
 
 
 

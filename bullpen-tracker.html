@@ -2239,6 +2239,7 @@ async function loadFullContextOnline(alreadyPainted){
   state.setupNeeded = null;
   state.loaded = true;
   await saveLastKnownContext();   // so the next cold start has a fresh cache to paint from
+  warmOtherProfiles();            // S4: every other profile gets an offline snapshot too (background)
   finishInit();
 }
 
@@ -2744,7 +2745,10 @@ window.switchProfile = async function(id){
   const uid = state.session.user.id;
   const snap = await storGet(lastKnownKey(uid) + ':' + id);
   if(!snap && !isOnline()){
-    state.acctMsg = 'Opening a profile for the first time needs a connection.';
+    // Kept visible (the menu stays open) -- a silent no-op read as "switching
+    // is broken" on the first offline test (Joel, Oct 2).
+    state.acctOpen = true;
+    state.acctMsg = (SPORT_NAME[target.sport] || 'That profile') + " hasn't been opened on this device yet. Connect once and it will switch offline after that.";
     render();
     return;
   }
@@ -2756,6 +2760,68 @@ window.switchProfile = async function(id){
   if(target.sport) lsSet('kb:sport', target.sport);
   window.location.reload();
 };
+// Offline switching needs every profile's snapshot on the device, not just
+// the ones opened here before. While online, build the missing ones in the
+// background from the same queries the app runs -- WITHOUT touching the
+// live state the screen is drawing from.
+async function fetchTeamsFor(prof){
+  if(prof.role === 'coach'){
+    const { data } = await supabaseClient.from('team_coaches').select('role, teams(id, name, level)').eq('coach_id', prof.id).order('team_id');
+    return (data || []).filter(r => r.teams).map(r => ({ ...r.teams, myRole: r.role }));
+  }
+  const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name, level)').eq('pitcher_id', prof.id);
+  return (data || []).filter(r => r.teams).map(r => ({ ...r.teams, uniform_number: r.uniform_number }));
+}
+async function fetchRosterFor(teamId){
+  const { data, error } = await supabaseClient.from('pitcher_teams')
+    .select('uniform_number, profiles(id, full_name, pitch_types, contact_emails, throws, relative_accuracy_enabled, uses_radar_gun, headshot_updated_at)')
+    .eq('team_id', teamId);
+  if(error) return [];
+  const roster = (data || []).filter(r => r.profiles).map(r => {
+    const p = mapProfile(r.profiles);
+    p.uniformNumber = (r.uniform_number === null || r.uniform_number === undefined) ? null : r.uniform_number;
+    return p;
+  });
+  const { data: verRows } = await supabaseClient.rpc('get_roster_verification', { p_team_id: teamId });
+  const ver = {}; (verRows || []).forEach(v => { ver[v.pitcher_id] = v; });
+  roster.forEach(p => { const v = ver[p.id]; p.accountEmail = v ? v.email : null; p.emailConfirmed = v ? v.email_confirmed : false; });
+  roster.sort((a, b) => {
+    const an = a.uniformNumber, bn = b.uniformNumber;
+    if(an !== null && bn !== null && an !== bn) return an - bn;
+    if(an !== null && bn === null) return -1;
+    if(an === null && bn !== null) return 1;
+    return String(a.name).localeCompare(String(b.name));
+  });
+  return roster;
+}
+async function warmOtherProfiles(){
+  if(!state.session || !isOnline()) return;
+  const uid = state.session.user.id;
+  for(const prof of (state.myProfiles || [])){
+    if(!state.profile || prof.id === state.profile.id || prof.role === 'parent') continue;
+    try{
+      const key = lastKnownKey(uid) + ':' + prof.id;
+      if(await storGet(key)) continue;
+      const teams = await fetchTeamsFor(prof);
+      const team = teams[0] || null;
+      const roster = (prof.role === 'coach' && team) ? await fetchRosterFor(team.id) : [];
+      const ids = prof.role === 'coach' ? roster.map(r => r.id) : [prof.id];
+      const zones = {};
+      if(ids.length){
+        const { data } = await supabaseClient.from('accuracy_zones').select('pitcher_id, pitch_type, batter_side, cells').in('pitcher_id', ids);
+        ids.forEach(id => { zones[id] = {}; });
+        (data || []).forEach(r => { ((zones[r.pitcher_id] = zones[r.pitcher_id] || {})[r.pitch_type] = (zones[r.pitcher_id][r.pitch_type] || {}))[r.batter_side] = r.cells || []; });
+      }
+      await storSet(key, {
+        profile: prof, myProfiles: state.myProfiles, teams, roster, zones,
+        rosterDotLatest: {}, rosterDotSeen: {}, unopenedSessions: {}, openedLocal: {},
+        currentTeamId: team ? team.id : null,
+        currentPitcherId: prof.role === 'coach' ? (roster[0] ? roster[0].id : null) : prof.id,
+        myVerification: state.myVerification
+      });
+    }catch(e){ console.error('warm profile snapshot failed', prof.id, e); }
+  }
+}
 // A7: the other sport's profile for this same person, then straight into it
 // (a pitcher lands on that sport's setup page; a coach on "Create a team").
 window.addSport = async function(sport){

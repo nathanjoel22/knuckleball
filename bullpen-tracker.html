@@ -2139,7 +2139,7 @@ async function loadFullContextOnline(alreadyPainted){
   let profile;
   try{
     ({ data: profile } = await netTimeout(
-      supabaseClient.from('profiles').select('*').eq('id', session.user.id).single()));
+      supabaseClient.from('profiles').select(PROFILE_COLS).eq('id', session.user.id).single()));
   }catch(e){ if(giveUp()) return; }
 
   // Account setup is guaranteed server-side (P1-12): the auth.users trigger
@@ -2152,7 +2152,7 @@ async function loadFullContextOnline(alreadyPainted){
       const { data } = await netTimeout(supabaseClient.rpc('ensure_account_setup'));
       setupRes = data || null;
       ({ data: profile } = await netTimeout(
-        supabaseClient.from('profiles').select('*').eq('id', session.user.id).single()));
+        supabaseClient.from('profiles').select(PROFILE_COLS).eq('id', session.user.id).single()));
     }catch(e){ if(giveUp()) return; }
   }
 
@@ -2172,7 +2172,7 @@ async function loadFullContextOnline(alreadyPainted){
   // S4: every profile this login owns; the ACTIVE one runs the app.
   let mine = [profile];
   try{
-    const { data: owned } = await netTimeout(supabaseClient.from('profiles').select('*').eq('account_id', session.user.id));
+    const { data: owned } = await netTimeout(supabaseClient.from('profiles').select(PROFILE_COLS).eq('account_id', session.user.id));
     if(owned && owned.length) mine = owned;
   }catch(e){ /* keep the primary alone */ }
   state.myProfiles = mine;
@@ -2702,6 +2702,12 @@ async function loadTeams(){
 // context to reach the P0-03 draft-restore check when a profile/teams
 // fetch fails offline, instead of alerting and signing the user out
 // before ever looking at localStorage.
+// Security fix (Oct 2): the database no longer lets anyone read a profile's
+// email_verify_token (or, from P1-10, any guardian secret) directly -- so
+// profiles are always read with this explicit list, never select('*').
+// A NEW profiles column is unreadable until it's granted in a migration AND
+// added here (safe by default).
+const PROFILE_COLS = 'id, account_id, is_primary, managed_by, role, sport, full_name, pitch_types, created_at, contact_emails, email_verified_at, email_verify_token_sent_at, throws, relative_accuracy_enabled, uses_radar_gun, setup_dismissed_at, headshot_updated_at';
 function lastKnownKey(userId){ return 'lastKnownContext:' + userId; }
 
 /* ---------- S4 STAGE A: ONE LOGIN, MANY PROFILES (Joel, Oct 2) ----------
@@ -2848,7 +2854,7 @@ window.addSport = async function(sport){
   try{
     const { data: newId, error } = await netTimeout(supabaseClient.rpc('add_sport_profile', { p_sport: sport }), 10000);
     if(error) throw error;
-    const { data: owned, error: e2 } = await netTimeout(supabaseClient.from('profiles').select('*').eq('account_id', state.session.user.id), 10000);
+    const { data: owned, error: e2 } = await netTimeout(supabaseClient.from('profiles').select(PROFILE_COLS).eq('account_id', state.session.user.id), 10000);
     if(e2) throw e2;
     state.myProfiles = owned || state.myProfiles;
     state.addSportBanner = null;

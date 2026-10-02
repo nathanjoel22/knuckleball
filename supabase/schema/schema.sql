@@ -210,11 +210,9 @@ begin
   f as (
     select
       *,
-      -- Fix: foul_tip added -- always a strike, same as a plain foul.
       (result in ('strike_looking','strike_swinging','foul','foul_tip','in_play','sac_bunt','sac_fly','dropped_third')) as is_strike_result,
       (result not in ('interference','other')) as counts_toward_pct,
       public.is_strike_cell(actual_row, actual_col) as in_zone,
-      -- Fix: foul_tip added -- unlike a plain foul, CAN be strike three.
       (result in ('strike_looking','strike_swinging','foul_tip') and strikes_before >= 2) as is_regular_k_out,
       (result = 'dropped_third' or (result in ('strike_looking','strike_swinging','foul_tip') and strikes_before >= 2)) as is_k,
       (result = 'ball' and balls_before >= 3) as is_bb,
@@ -227,6 +225,26 @@ begin
       (result = 'dropped_third' and in_play_outcome = 'out') as is_dropped_third_out,
       (balls_before = 0 and strikes_before = 0) as is_first_pitch
     from p
+  ),
+  -- G3: no-pitch events that end an at-bat. Not pitches -- they never touch
+  -- pitch count, strike %, zone or first-pitch numbers.
+  ev as (
+    select at_bat_index,
+      (event_type = 'intentional_walk' or (event_type = 'auto_ball' and balls_before >= 3)) as is_bb,
+      (event_type = 'auto_strike' and strikes_before >= 2) as is_k
+      from public.game_events
+     where session_id = p_session_id and event_type in ('intentional_walk','auto_ball','auto_strike')
+  ),
+  evagg as (
+    select count(*) filter (where is_bb) as ev_bb, count(*) filter (where is_k) as ev_k
+      from ev
+  ),
+  bf as (
+    select count(distinct ab) as batters_faced from (
+      select at_bat_index as ab from f where at_bat_index is not null
+      union
+      select at_bat_index from ev where (is_bb or is_k) and at_bat_index is not null
+    ) x
   ),
   agg as (
     select
@@ -244,7 +262,6 @@ begin
       count(*) filter (where is_inplay_out) as outs_in_play,
       count(*) filter (where is_error) as errors,
       count(*) filter (where is_hbp) as hbp,
-      count(distinct at_bat_index) filter (where at_bat_index is not null) as batters_faced,
       count(*) filter (where is_regular_k_out) as regular_k_outs,
       count(*) filter (where is_sac_out) as sac_outs,
       count(*) filter (where is_dropped_third_out) as dropped_third_outs,
@@ -260,15 +277,15 @@ begin
     'in_zone_pct', case when pitches > 0 then round(100.0 * in_zone / pitches) else 0 end,
     'first_pitch_pitches', fp_pitches,
     'first_pitch_strike_pct', case when fp_pitches > 0 then round(100.0 * fp_strikes / fp_pitches) else null end,
-    'k', k, 'bb', bb, 'h', h, 'xbh', xbh,
+    'k', k + ev_k, 'bb', bb + ev_bb, 'h', h, 'xbh', xbh,
     'outs_in_play', outs_in_play, 'errors', errors, 'hbp', hbp,
-    'batters_faced', batters_faced,
-    'outs_recorded', coalesce(v_outs_recorded, regular_k_outs + outs_in_play + sac_outs + dropped_third_outs),
+    'batters_faced', bf.batters_faced,
+    'outs_recorded', coalesce(v_outs_recorded, regular_k_outs + ev_k + outs_in_play + sac_outs + dropped_third_outs),
     'outs_source', case when v_outs_recorded is not null then 'counter' else 'derived' end,
     'final_inning', coalesce(v_final_inning, greatest(max_inning, 1)),
     'final_inning_source', case when v_final_inning is not null then 'counter' else 'derived' end
   ) into v_result
-  from agg;
+  from agg, evagg, bf;
 
   return v_result;
 end;
@@ -875,6 +892,21 @@ $$;
 ALTER FUNCTION "public"."is_coach_of_session"("p_session_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."is_coach_of_session_team"("p_session_id" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select exists (
+    select 1 from public.sessions s
+      join public.team_coaches tc on tc.team_id = s.team_id and tc.coach_id = auth.uid()
+     where s.id = p_session_id
+  );
+$$;
+
+
+ALTER FUNCTION "public"."is_coach_of_session_team"("p_session_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."is_default_velo_reading"("p_velo" integer, "p_ts" timestamp with time zone) RETURNS boolean
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -1067,6 +1099,21 @@ $$;
 
 
 ALTER FUNCTION "public"."my_verification_status"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."pitcher_teams_g3_departure"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  insert into public.pitcher_team_departures (pitcher_id, team_id, joined_at)
+  values (old.pitcher_id, old.team_id, old.joined_at);
+  return old;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."pitcher_teams_g3_departure"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."remove_coach"("p_team_id" "uuid", "p_coach_id" "uuid") RETURNS "void"
@@ -1348,6 +1395,30 @@ $$;
 ALTER FUNCTION "public"."session_notes_redot"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."sessions_g3_team_check"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if tg_op = 'UPDATE' then
+    if new.team_id is distinct from old.team_id then
+      raise exception 'A session''s team can''t be changed' using errcode = 'check_violation';
+    end if;
+    return new;
+  end if;
+  if exists (select 1 from public.pitcher_teams pt where pt.pitcher_id = new.pitcher_id and pt.team_id = new.team_id)
+     or exists (select 1 from public.pitcher_team_departures d
+                 where d.pitcher_id = new.pitcher_id and d.team_id = new.team_id and new.started_at < d.left_at) then
+    return new;
+  end if;
+  raise exception 'This pitcher isn''t on that team' using errcode = 'check_violation';
+end;
+$$;
+
+
+ALTER FUNCTION "public"."sessions_g3_team_check"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -1417,6 +1488,22 @@ $$;
 
 
 ALTER FUNCTION "public"."set_uniform_number"("p_team_id" "uuid", "p_pitcher_id" "uuid", "p_number" smallint, "p_expected" smallint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."teams_level_default"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  if new.level is null then
+    new.level := case when new.sport = 'softball' then 'high_school_up' else 'college' end;
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."teams_level_default"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."teams_set_invite_token"() RETURNS "trigger"
@@ -1491,7 +1578,12 @@ CREATE TABLE IF NOT EXISTS "public"."game_events" (
     "outs_on_play" smallint,
     "runs_scored" smallint,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "game_events_event_type_check" CHECK (("event_type" = ANY (ARRAY['stolen_base'::"text", 'caught_stealing'::"text", 'pickoff'::"text", 'wild_pitch'::"text", 'passed_ball'::"text", 'balk'::"text", 'other'::"text", 'intentional_walk'::"text", 'auto_ball'::"text", 'auto_strike'::"text"]))),
+    "seq" integer,
+    "inning_before" smallint,
+    "balls_before" smallint,
+    "strikes_before" smallint,
+    "outs_before" smallint,
+    CONSTRAINT "game_events_event_type_check" CHECK (("event_type" = ANY (ARRAY['stolen_base'::"text", 'caught_stealing'::"text", 'pickoff'::"text", 'wild_pitch'::"text", 'passed_ball'::"text", 'balk'::"text", 'other'::"text", 'intentional_walk'::"text", 'auto_ball'::"text", 'auto_strike'::"text", 'illegal_pitch'::"text", 'tiebreak_runner'::"text"]))),
     CONSTRAINT "game_events_outs_on_play_check" CHECK ((("outs_on_play" >= 0) AND ("outs_on_play" <= 3))),
     CONSTRAINT "game_events_runner_advances_check" CHECK ((("runner_advances" IS NULL) OR ("jsonb_typeof"("runner_advances") = 'array'::"text"))),
     CONSTRAINT "game_events_runners_before_check" CHECK ((("runners_before" >= 0) AND ("runners_before" <= 7))),
@@ -1507,6 +1599,14 @@ COMMENT ON TABLE "public"."game_events" IS 'Runner corrections with no pitch of 
 
 
 COMMENT ON COLUMN "public"."game_events"."after_pitch_id" IS 'The pitch this event happened after, if any (nullable -- some events, like a mid-count pickoff, have no anchor pitch to point at). Client-generated pitch UUIDs mean this FK is always satisfiable as long as pitches sync before events in the same outbox item (syncOutbox()''s own ordering, not enforced by this FK alone).';
+
+
+
+COMMENT ON COLUMN "public"."game_events"."seq" IS 'G3: the event''s place in the game''s one ordered log (shared with pitches.seq in the app). Null on rows saved before G3.';
+
+
+
+COMMENT ON COLUMN "public"."game_events"."balls_before" IS 'G3: the count when the event happened -- an auto ball with 3 balls before it is a walk.';
 
 
 
@@ -1533,6 +1633,21 @@ CREATE TABLE IF NOT EXISTS "public"."leaderboard_exclusions" (
 
 
 ALTER TABLE "public"."leaderboard_exclusions" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."pitcher_team_departures" (
+    "pitcher_id" "uuid" NOT NULL,
+    "team_id" "uuid" NOT NULL,
+    "joined_at" timestamp with time zone,
+    "left_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."pitcher_team_departures" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."pitcher_team_departures" IS 'G3: one row each time a pitcher leaves or is removed from a team (pitcher_teams rows are deleted). Read only by SECURITY DEFINER functions; no client access.';
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."pitcher_teams" (
@@ -1895,6 +2010,8 @@ CREATE TABLE IF NOT EXISTS "public"."teams" (
     "coach_invite_token" "text" NOT NULL,
     "coach_invite_token_rotated_at" timestamp with time zone,
     "sport" "text" NOT NULL,
+    "level" "text" NOT NULL,
+    CONSTRAINT "teams_level_check" CHECK (((("sport" = 'baseball'::"text") AND ("level" = ANY (ARRAY['little_league'::"text", 'high_school'::"text", 'college'::"text"]))) OR (("sport" = 'softball'::"text") AND ("level" = ANY (ARRAY['little_league'::"text", 'high_school_up'::"text"]))))),
     CONSTRAINT "teams_sport_check" CHECK (("sport" = ANY (ARRAY['baseball'::"text", 'softball'::"text"])))
 );
 
@@ -1923,6 +2040,10 @@ COMMENT ON COLUMN "public"."teams"."coach_invite_token" IS 'R6: same shape/trust
 
 
 COMMENT ON COLUMN "public"."teams"."sport" IS 'S1: the creating coach''s sport; never changes. Members must match (sport_mismatch).';
+
+
+
+COMMENT ON COLUMN "public"."teams"."level" IS 'G3: level of play, set by the head coach. Decides the first extra inning (baseball LL 7 / HS 8 / college 10; softball LL 7 / HS & up 8).';
 
 
 
@@ -2006,6 +2127,10 @@ ALTER TABLE ONLY "public"."teams"
 
 
 
+CREATE INDEX "pitcher_team_departures_idx" ON "public"."pitcher_team_departures" USING "btree" ("pitcher_id", "team_id");
+
+
+
 CREATE INDEX "profiles_account_id_idx" ON "public"."profiles" USING "btree" ("account_id");
 
 
@@ -2026,6 +2151,10 @@ CREATE OR REPLACE TRIGGER "leaderboard_exclusions_stamp" BEFORE INSERT ON "publi
 
 
 
+CREATE OR REPLACE TRIGGER "pitcher_teams_g3_departure" AFTER DELETE ON "public"."pitcher_teams" FOR EACH ROW EXECUTE FUNCTION "public"."pitcher_teams_g3_departure"();
+
+
+
 CREATE OR REPLACE TRIGGER "pitcher_teams_s1_sport" BEFORE INSERT OR UPDATE ON "public"."pitcher_teams" FOR EACH ROW EXECUTE FUNCTION "public"."s1_membership_sport"();
 
 
@@ -2042,6 +2171,10 @@ CREATE OR REPLACE TRIGGER "session_notes_redot" AFTER INSERT ON "public"."sessio
 
 
 
+CREATE OR REPLACE TRIGGER "sessions_g3_team_check" BEFORE INSERT OR UPDATE OF "team_id" ON "public"."sessions" FOR EACH ROW EXECUTE FUNCTION "public"."sessions_g3_team_check"();
+
+
+
 CREATE OR REPLACE TRIGGER "sessions_s1_sport" BEFORE INSERT OR UPDATE ON "public"."sessions" FOR EACH ROW EXECUTE FUNCTION "public"."s1_sessions_sport"();
 
 
@@ -2055,6 +2188,10 @@ CREATE OR REPLACE TRIGGER "teams_s1_sport" BEFORE INSERT OR UPDATE ON "public"."
 
 
 CREATE OR REPLACE TRIGGER "teams_set_invite_token" BEFORE INSERT ON "public"."teams" FOR EACH ROW EXECUTE FUNCTION "public"."teams_set_invite_token"();
+
+
+
+CREATE OR REPLACE TRIGGER "teams_z_level" BEFORE INSERT ON "public"."teams" FOR EACH ROW EXECUTE FUNCTION "public"."teams_level_default"();
 
 
 
@@ -2100,6 +2237,16 @@ ALTER TABLE ONLY "public"."leaderboard_exclusions"
 
 ALTER TABLE ONLY "public"."leaderboard_exclusions"
     ADD CONSTRAINT "leaderboard_exclusions_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."pitcher_team_departures"
+    ADD CONSTRAINT "pitcher_team_departures_pitcher_id_fkey" FOREIGN KEY ("pitcher_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."pitcher_team_departures"
+    ADD CONSTRAINT "pitcher_team_departures_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
 
 
 
@@ -2294,9 +2441,9 @@ CREATE POLICY "Invited person views invite addressed to their email" ON "public"
 
 
 
-CREATE POLICY "Notes readable by author, pitcher and his coaches" ON "public"."session_notes" FOR SELECT USING ((("author_id" = "auth"."uid"()) OR (EXISTS ( SELECT 1
+CREATE POLICY "Notes readable by author, pitcher and his team's coaches" ON "public"."session_notes" FOR SELECT USING ((("author_id" = "auth"."uid"()) OR (EXISTS ( SELECT 1
    FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "session_notes"."session_id") AND ("s"."pitcher_id" = "auth"."uid"())))) OR "public"."is_coach_of_session"("session_id")));
+  WHERE (("s"."id" = "session_notes"."session_id") AND ("s"."pitcher_id" = "auth"."uid"())))) OR "public"."is_coach_of_session_team"("session_id")));
 
 
 
@@ -2378,6 +2525,9 @@ ALTER TABLE "public"."invites" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."leaderboard_exclusions" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."pitcher_team_departures" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."pitcher_teams" ENABLE ROW LEVEL SECURITY;
@@ -2564,6 +2714,12 @@ GRANT ALL ON FUNCTION "public"."is_coach_of_session"("p_session_id" "uuid") TO "
 
 
 
+REVOKE ALL ON FUNCTION "public"."is_coach_of_session_team"("p_session_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."is_coach_of_session_team"("p_session_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_coach_of_session_team"("p_session_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."is_default_velo_reading"("p_velo" integer, "p_ts" timestamp with time zone) TO "anon";
 GRANT ALL ON FUNCTION "public"."is_default_velo_reading"("p_velo" integer, "p_ts" timestamp with time zone) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_default_velo_reading"("p_velo" integer, "p_ts" timestamp with time zone) TO "service_role";
@@ -2628,6 +2784,11 @@ GRANT ALL ON FUNCTION "public"."leaderboard_exclusions_stamp"() TO "service_role
 REVOKE ALL ON FUNCTION "public"."my_verification_status"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."my_verification_status"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."my_verification_status"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."pitcher_teams_g3_departure"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."pitcher_teams_g3_departure"() TO "service_role";
 
 
 
@@ -2705,6 +2866,11 @@ GRANT ALL ON FUNCTION "public"."session_notes_redot"() TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."sessions_g3_team_check"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."sessions_g3_team_check"() TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint) TO "service_role";
@@ -2714,6 +2880,11 @@ GRANT ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_nu
 REVOKE ALL ON FUNCTION "public"."set_uniform_number"("p_team_id" "uuid", "p_pitcher_id" "uuid", "p_number" smallint, "p_expected" smallint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_uniform_number"("p_team_id" "uuid", "p_pitcher_id" "uuid", "p_number" smallint, "p_expected" smallint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."set_uniform_number"("p_team_id" "uuid", "p_pitcher_id" "uuid", "p_number" smallint, "p_expected" smallint) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."teams_level_default"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."teams_level_default"() TO "service_role";
 
 
 
@@ -2749,6 +2920,10 @@ GRANT ALL ON TABLE "public"."invites" TO "service_role";
 
 GRANT ALL ON TABLE "public"."leaderboard_exclusions" TO "authenticated";
 GRANT ALL ON TABLE "public"."leaderboard_exclusions" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."pitcher_team_departures" TO "service_role";
 
 
 

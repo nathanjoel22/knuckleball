@@ -48,6 +48,19 @@ $$;
 ALTER FUNCTION "public"."_create_team_with_head"("p_coach_id" "uuid", "p_name" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."abandon_email_change"() RETURNS "void"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  update public.profiles
+     set email_change_requested = null, email_change_from = null, email_change_requested_at = null
+   where id = auth.uid();
+$$;
+
+
+ALTER FUNCTION "public"."abandon_email_change"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."accuracy_zones_stamp"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
@@ -144,6 +157,51 @@ $$;
 
 
 ALTER FUNCTION "public"."add_sport_profile"("p_sport" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."begin_email_change"("p_email" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  v_uid   uuid := auth.uid();
+  v_new   text := lower(btrim(coalesce(p_email, '')));
+  v_cur   text;
+  v_prim  public.profiles%rowtype;
+  v_wait  int;
+begin
+  if v_uid is null then
+    return jsonb_build_object('ok', false, 'error', 'not_authenticated');
+  end if;
+  if v_new !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' or length(v_new) > 254 then
+    return jsonb_build_object('ok', false, 'error', 'invalid_email');
+  end if;
+  select lower(u.email) into v_cur from auth.users u where u.id = v_uid;
+  if v_new = v_cur then
+    return jsonb_build_object('ok', false, 'error', 'same_email');
+  end if;
+  select * into v_prim from public.profiles where id = v_uid for update;
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'profile_missing');
+  end if;
+  if v_prim.email_change_requested_at is not null and v_prim.email_change_requested_at > now() - interval '10 minutes' then
+    v_wait := ceil(extract(epoch from (v_prim.email_change_requested_at + interval '10 minutes' - now())));
+    return jsonb_build_object('ok', false, 'error', 'too_soon', 'retry_after_seconds', v_wait);
+  end if;
+  update public.profiles
+     set email_change_requested = v_new,
+         email_change_from = v_cur,
+         email_change_requested_at = now(),
+         email_verify_token = null,            -- an outstanding link to the old address stops working
+         email_verify_token_sent_at = null,
+         email_verify_sent_to = null
+   where id = v_uid;
+  return jsonb_build_object('ok', true, 'current_email', v_cur, 'new_email', v_new);
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."begin_email_change"("p_email" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."can_view_headshot"("p_object_name" "text") RETURNS boolean
@@ -412,6 +470,52 @@ $$;
 ALTER FUNCTION "public"."compute_game_summary"("p_session_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."confirm_email_change"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_uid     uuid := auth.uid();
+  v_email   text;
+  v_pending text;
+  v_prim    public.profiles%rowtype;
+begin
+  if v_uid is null then
+    return jsonb_build_object('ok', false, 'error', 'not_authenticated');
+  end if;
+  select lower(u.email), nullif(u.email_change, '') into v_email, v_pending from auth.users u where u.id = v_uid;
+  select * into v_prim from public.profiles where id = v_uid for update;
+  if not found or v_prim.email_change_requested is null then
+    return jsonb_build_object('ok', false, 'error', 'no_pending_change');
+  end if;
+  if v_pending is not null then
+    -- Supabase is still waiting on a confirmation ("Secure email change" on
+    -- needs the OLD inbox's link too) -- nothing is verified until it isn't.
+    return jsonb_build_object('ok', false, 'error', 'still_pending');
+  end if;
+  if v_email is distinct from v_prim.email_change_requested then
+    return jsonb_build_object('ok', false, 'error', 'email_mismatch');
+  end if;
+
+  update public.profiles
+     set email_verified_at = now(),
+         email_verify_token = null, email_verify_token_sent_at = null, email_verify_sent_to = null,
+         email_change_requested = null, email_change_from = null, email_change_requested_at = null
+   where id = v_uid;
+  -- Reports follow the login's address: every profile this login owns
+  -- (second sport, a parent's players) whose report address was the old one.
+  update public.profiles
+     set contact_emails = jsonb_set(coalesce(contact_emails, '{}'::jsonb), '{pitcher}', to_jsonb(v_email))
+   where account_id = v_uid
+     and lower(coalesce(contact_emails ->> 'pitcher', '')) in (coalesce(v_prim.email_change_from, ''), '');
+  return jsonb_build_object('ok', true, 'email', v_email);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."confirm_email_change"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."create_team"("p_name" "text", "p_profile" "uuid" DEFAULT NULL::"uuid") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -613,7 +717,8 @@ begin
 
   update public.profiles
   set email_verify_token = v_token,
-      email_verify_token_sent_at = now()
+      email_verify_token_sent_at = now(),
+      email_verify_sent_to = (select lower(u.email) from auth.users u where u.id = auth.uid())
   where id = auth.uid();
 
   if not found then
@@ -1956,13 +2061,19 @@ CREATE OR REPLACE FUNCTION "public"."verify_email"("p_token" "text") RETURNS "js
 declare
   v_id uuid;
 begin
-  select id into v_id from public.profiles where email_verify_token = p_token;
+  -- Only while the link's address is still the login's address: a link sent
+  -- to an address that has since been replaced verifies nothing.
+  select pr.id into v_id
+    from public.profiles pr join auth.users u on u.id = pr.id
+   where pr.email_verify_token = p_token
+     and pr.email_verify_sent_to is not null
+     and pr.email_verify_sent_to = lower(u.email);
   if v_id is null then
     return jsonb_build_object('ok', false, 'error', 'invalid_or_used_token');
   end if;
 
   update public.profiles
-  set email_verified_at = now(), email_verify_token = null, email_verify_token_sent_at = null
+  set email_verified_at = now(), email_verify_token = null, email_verify_token_sent_at = null, email_verify_sent_to = null
   where id = v_id;
 
   return jsonb_build_object('ok', true);
@@ -2232,6 +2343,10 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "guardian_consent_sent_at" timestamp with time zone,
     "guardian_consented_at" timestamp with time zone,
     "consent_via" "text",
+    "email_change_requested" "text",
+    "email_change_from" "text",
+    "email_change_requested_at" timestamp with time zone,
+    "email_verify_sent_to" "text",
     CONSTRAINT "profiles_age_attestation_check" CHECK (("age_attestation" = ANY (ARRAY['adult'::"text", 'minor_13_17'::"text"]))),
     CONSTRAINT "profiles_attested_via_check" CHECK (("attested_via" = ANY (ARRAY['signup'::"text", 'catchup'::"text"]))),
     CONSTRAINT "profiles_consent_via_check" CHECK (("consent_via" = ANY (ARRAY['guardian_email'::"text", 'parent_created'::"text"]))),
@@ -2313,6 +2428,14 @@ COMMENT ON COLUMN "public"."profiles"."guardian_consent_token" IS 'P1-10: one-ti
 
 
 COMMENT ON COLUMN "public"."profiles"."consent_via" IS 'P1-10: how guardian consent was given; parent_created is reserved for S4.';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."email_change_requested" IS 'Change Email: the requested new address (lowercase); set by begin_email_change, cleared by confirm/abandon. Never client-readable.';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."email_verify_sent_to" IS 'The address the outstanding email_verify_token was sent to; verify_email only redeems it while that is still the login''s address.';
 
 
 
@@ -3045,6 +3168,12 @@ GRANT ALL ON FUNCTION "public"."_create_team_with_head"("p_coach_id" "uuid", "p_
 
 
 
+REVOKE ALL ON FUNCTION "public"."abandon_email_change"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."abandon_email_change"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."abandon_email_change"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."accuracy_zones_stamp"() TO "anon";
 GRANT ALL ON FUNCTION "public"."accuracy_zones_stamp"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."accuracy_zones_stamp"() TO "service_role";
@@ -3060,6 +3189,12 @@ GRANT ALL ON FUNCTION "public"."add_player"("p_full_name" "text", "p_sport" "tex
 REVOKE ALL ON FUNCTION "public"."add_sport_profile"("p_sport" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."add_sport_profile"("p_sport" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."add_sport_profile"("p_sport" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."begin_email_change"("p_email" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."begin_email_change"("p_email" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."begin_email_change"("p_email" "text") TO "service_role";
 
 
 
@@ -3108,6 +3243,12 @@ GRANT ALL ON FUNCTION "public"."coach_set_uses_radar_gun"("p_pitcher_id" "uuid",
 REVOKE ALL ON FUNCTION "public"."compute_game_summary"("p_session_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."compute_game_summary"("p_session_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."compute_game_summary"("p_session_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."confirm_email_change"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."confirm_email_change"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."confirm_email_change"() TO "service_role";
 
 
 

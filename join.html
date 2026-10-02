@@ -213,7 +213,30 @@
     const other = teamSport === 'softball' ? 'baseball' : 'softball';
     const card = document.getElementById('invalid-card');
     card.querySelector('h2').textContent = 'Different sport';
-    card.querySelector('.info-msg').textContent = 'This is a ' + (teamSport || 'different') + ' team; your account is ' + other + '. Sign in with an account for the right sport, or ask the coach.';
+    card.querySelector('.info-msg').textContent = 'This is a ' + (teamSport || 'different') + ' team, and your login doesn\'t have a ' + (teamSport || 'matching') + ' profile yet.';
+    // S4 A9 (Joel, Oct 2): one login can hold both sports -- add this one
+    // and join with it, right here. No sign-out, no second account.
+    if(teamSport && !card.querySelector('.add-sport-btn')){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-primary add-sport-btn';
+      btn.style.marginTop = '14px';
+      btn.textContent = 'Add ' + teamSport + ' and join';
+      btn.addEventListener('click', async () => {
+        btn.disabled = true; btn.textContent = 'Adding…';
+        const { data: newId, error: addErr } = await supabaseClient.rpc('add_sport_profile', { p_sport: teamSport });
+        if(addErr || !newId){ btn.disabled = false; btn.textContent = 'Couldn\'t add it — try again'; return; }
+        const { data: j, error: jErr } = await supabaseClient.rpc('join_team_via_invite', { p_token: token, p_profile: newId });
+        if(jErr || !j || j.error){ btn.disabled = false; btn.textContent = 'Couldn\'t join — try again'; return; }
+        try{
+          const { data: { session: s } } = await supabaseClient.auth.getSession();
+          if(s) localStorage.setItem('kb:activeProfile:' + s.user.id, newId);
+          localStorage.setItem('kb:sport', teamSport);
+        }catch(e){}
+        window.location.href = 'bullpen-tracker.html';
+      });
+      card.querySelector('.info-msg').after(btn);
+    }
     showCard('invalid-card');
   }
 

@@ -248,7 +248,14 @@ Deno.serve(async (req) => {
   // Deliberately NOT folded into is_pitcher_report_eligible itself -- that
   // function's name and job stay "is the pitcher eligible," unchanged;
   // this is a second, independent question about the caller.
-  if (user.id !== pitcherId) {
+  // S4 (Amendment 11 unchanged in substance): "is the caller this pitcher"
+  // now means "does the caller's LOGIN own this pitcher profile" (a login can
+  // own a second-sport profile; in Stage B, a parent owns players).
+  const { data: ownsPitcher, error: ownsErr } = await callerClient.rpc('is_my_profile', { p: pitcherId })
+  if (ownsErr) {
+    return new Response(JSON.stringify({ error: 'Could not check profile ownership: ' + ownsErr.message }), { status: 500, headers: corsHeaders })
+  }
+  if (ownsPitcher !== true) {
     const { data: callerStatus, error: callerStatusErr } = await callerClient.rpc('my_verification_status')
     if (callerStatusErr) {
       return new Response(JSON.stringify({ error: 'Could not verify your own account status: ' + callerStatusErr.message }), { status: 500, headers: corsHeaders })

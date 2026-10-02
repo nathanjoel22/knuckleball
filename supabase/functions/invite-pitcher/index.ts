@@ -73,7 +73,9 @@ Deno.serve(async (req) => {
     .eq('id', teamId)
     .single()
 
-  if (teamErr || !team || team.coach_id !== user.id) {
+  // S4: the team's head profile must be one the caller's login owns.
+  const { data: ownsTeam } = team ? await callerClient.rpc('is_my_profile', { p: team.coach_id }) : { data: false }
+  if (teamErr || !team || ownsTeam !== true) {
     return reply({ error: 'You do not own this team' }, 403)
   }
 
@@ -127,7 +129,7 @@ Deno.serve(async (req) => {
   const { error: insertErr } = await callerClient.from('invites').insert({
     team_id: teamId,
     email,
-    invited_by: user.id
+    invited_by: team.coach_id   // S4: a profile id (invites.invited_by -> profiles)
   })
   if (insertErr) {
     return reply({ error: 'Could not record invite: ' + insertErr.message }, 500)

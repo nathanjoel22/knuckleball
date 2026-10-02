@@ -1214,6 +1214,30 @@
   .contacts-save-row{ flex-basis:100%; display:flex; align-items:center; gap:12px; margin-top:2px; }
   .contacts-saved-msg{ font-size:12.5px; color:#6FA287; font-weight:600; }
 
+  /* S4: account menu (profiles + Add a sport), Who's charting? */
+  .acct-row{ display:flex; justify-content:flex-end; margin:-6px 0 6px; position:relative; z-index:20; }
+  .acct-wrap{ position:relative; }
+  .acct-btn{ display:flex; align-items:center; gap:6px; padding:4px 10px 4px 4px; border:1px solid var(--border-strong); border-radius:999px; background:var(--card-bg); color:var(--field-dark); font:inherit; font-size:12.5px; font-weight:600; cursor:pointer; min-height:36px; }
+  .acct-avatar{ width:28px; height:28px; border-radius:50%; background:var(--surface); border:1px solid var(--surface-border); display:inline-flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700; color:var(--field-dark); flex:0 0 auto; }
+  .acct-caret{ font-size:10px; color:var(--ink-faint); }
+  .acct-chip{ font-size:10.5px; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; padding:2px 7px; border-radius:999px; }
+  .acct-chip-baseball{ background:#E8F3EC; color:#0F241B; border:1px solid #CFE6D7; }
+  .acct-chip-softball{ background:#EAF4FB; color:#234B6E; border:1px solid #BFDCEF; }
+  .acct-chip-none{ background:var(--surface); color:var(--ink-dim); }
+  .acct-menu{ position:absolute; right:0; top:calc(100% + 6px); width:min(300px, calc(100vw - 32px)); background:var(--card-bg); border:1px solid var(--border-strong); border-radius:12px; box-shadow:0 10px 26px rgba(var(--ink-rgb),0.22); padding:8px; display:flex; flex-direction:column; gap:4px; }
+  .acct-email{ font-size:12px; color:var(--ink-faint); padding:4px 8px 8px; border-bottom:1px solid var(--border); margin-bottom:4px; overflow-wrap:anywhere; }
+  .acct-item{ display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:8px; border:0; border-radius:8px; background:none; font:inherit; color:var(--field-dark); cursor:pointer; min-height:48px; }
+  .acct-item:hover, .acct-item.on{ background:var(--surface); }
+  .acct-who{ display:flex; flex-direction:column; gap:3px; min-width:0; flex:1; }
+  .acct-name{ font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .acct-meta{ font-size:12px; color:var(--ink-faint); display:flex; align-items:center; gap:6px; }
+  .acct-badge{ font-size:10px; font-weight:700; text-transform:uppercase; background:var(--amber); color:var(--field-dark); border-radius:999px; padding:1px 6px; }
+  .acct-check{ color:var(--field-dark); font-weight:800; }
+  .acct-add{ margin-top:4px; padding:10px 8px; border:1px dashed var(--border-strong); border-radius:8px; background:none; font:inherit; font-size:13.5px; font-weight:600; color:var(--field-dark); cursor:pointer; text-align:left; min-height:44px; }
+  .acct-add:disabled{ opacity:0.5; }
+  .acct-msg{ font-size:12px; color:var(--clay); margin:4px 8px; }
+  .who-picker{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px 16px; background:var(--page-bg); }
+  .who-card{ width:min(380px, 100%); background:var(--card-bg); border:1px solid var(--border); border-radius:14px; padding:22px; display:flex; flex-direction:column; gap:6px; box-shadow:0 1px 3px rgba(var(--ink-rgb),0.06); }
   /* S3: coaches notes in History */
   .notes-block{ display:flex; flex-direction:column; gap:10px; margin:14px 0 4px; padding:12px 14px; border:1px solid var(--surface-border); border-radius:10px; background:var(--surface); }
   .note-item{ background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:9px 11px; }
@@ -1990,6 +2014,7 @@ function netTimeout(thenable, ms){
 
 function applyCachedContext(cached){
   state.profile = cached.profile;
+  state.myProfiles = cached.myProfiles || [cached.profile];
   applySport();
   state.teams = cached.teams || [];
   state.roster = cached.roster || [];
@@ -2144,7 +2169,14 @@ async function loadFullContextOnline(alreadyPainted){
     window.location.href = loginUrl();
     return;
   }
-  state.profile = profile;
+  // S4: every profile this login owns; the ACTIVE one runs the app.
+  let mine = [profile];
+  try{
+    const { data: owned } = await netTimeout(supabaseClient.from('profiles').select('*').eq('account_id', session.user.id));
+    if(owned && owned.length) mine = owned;
+  }catch(e){ /* keep the primary alone */ }
+  state.myProfiles = mine;
+  state.profile = pickActiveProfile(mine, session.user.id);
   applySport();
 
   // R0: best-effort, matches profile/teams/roster's own "cached fast path
@@ -2165,7 +2197,7 @@ async function loadFullContextOnline(alreadyPainted){
   // metadata, then fall back to the create-team form.
   if(isCoach() && !state.teams.length){
     try{
-      await netTimeout(supabaseClient.rpc('ensure_account_setup'));
+      if(state.profile.is_primary !== false) await netTimeout(supabaseClient.rpc('ensure_account_setup'));
       await netTimeout(loadTeams());
     }catch(e){ /* fall through to the setup form */ }
     if(!state.teams.length){
@@ -2272,7 +2304,7 @@ function hasRosterDot(pid){
 function rosterSeenPendingKey(userId){ return 'rosterSeenPending:' + userId; }
 let rosterDotsInFlight = false;
 async function loadRosterDots(){
-  const uid = state.session && state.session.user && state.session.user.id;
+  const uid = state.profile && state.profile.id;   // S4: the viewer is the active profile
   const teamId = state.currentTeamId;
   if(rosterDotsInFlight || !uid || !teamId || !isOnline()) return;
   rosterDotsInFlight = true;
@@ -2280,7 +2312,7 @@ async function loadRosterDots(){
     const [latestRes, seenRes, unopenedRes] = await Promise.all([
       netTimeout(supabaseClient.rpc('get_roster_latest', { p_team_id: teamId }), 8000),
       netTimeout(supabaseClient.from('roster_seen').select('pitcher_id, seen_at').eq('viewer_id', uid), 8000),
-      netTimeout(supabaseClient.rpc('get_unopened_sessions', { p_team_id: teamId }), 8000)
+      netTimeout(supabaseClient.rpc('get_unopened_sessions', { p_team_id: teamId, p_viewer: uid }), 8000)
     ]);
     if(latestRes.error || seenRes.error || unopenedRes.error || teamId !== state.currentTeamId) return;
     const unopened = {};
@@ -2333,7 +2365,7 @@ function sessionOpenedPendingKey(userId){ return 'sessionOpenedPending:' + userI
 async function markSessionOpened(id){
   if(!isNewHistoryRow({ id, pending: state.outbox.some(i => i.id === id) })) return;
   state.openedLocal[id] = true;
-  const uid = state.session && state.session.user && state.session.user.id;
+  const uid = state.profile && state.profile.id;   // S4: the viewer is the active profile
   if(!uid) return;
   try{
     const q = (await storGet(sessionOpenedPendingKey(uid))) || [];
@@ -2345,7 +2377,7 @@ async function markSessionOpened(id){
 }
 let sessionOpenedFlushing = false;
 async function flushSessionOpened(){
-  const uid = state.session && state.session.user && state.session.user.id;
+  const uid = state.profile && state.profile.id;   // S4: the viewer is the active profile
   if(sessionOpenedFlushing || !uid || !isOnline()) return;
   sessionOpenedFlushing = true;
   try{
@@ -2373,7 +2405,7 @@ async function flushSessionOpened(){
   finally{ sessionOpenedFlushing = false; }
 }
 async function queueRosterSeen(pid, at){
-  const uid = state.session && state.session.user && state.session.user.id;
+  const uid = state.profile && state.profile.id;   // S4: the viewer is the active profile
   if(!uid) return;
   try{
     const pending = (await storGet(rosterSeenPendingKey(uid))) || {};
@@ -2385,7 +2417,7 @@ async function queueRosterSeen(pid, at){
 }
 let rosterSeenFlushing = false;
 async function flushRosterSeen(){
-  const uid = state.session && state.session.user && state.session.user.id;
+  const uid = state.profile && state.profile.id;   // S4: the viewer is the active profile
   if(rosterSeenFlushing || !uid || !isOnline()) return;
   rosterSeenFlushing = true;
   try{
@@ -2670,10 +2702,141 @@ async function loadTeams(){
 // fetch fails offline, instead of alerting and signing the user out
 // before ever looking at localStorage.
 function lastKnownKey(userId){ return 'lastKnownContext:' + userId; }
+
+/* ---------- S4 STAGE A: ONE LOGIN, MANY PROFILES (Joel, Oct 2) ----------
+   A login owns one or more profiles (one person, one sport, one role each).
+   One is active at a time and runs everything: sport, theme, tabs, every
+   query. Switching saves this profile's offline snapshot, puts the target's
+   snapshot where the pre-paint theme script reads it, and reloads -- so the
+   new profile paints in its own theme with no flash, offline included. */
+const SPORT_NAME = { baseball: 'Baseball', softball: 'Softball' };
+const ROLE_NAME = { coach: 'Coach', pitcher: 'Pitcher', parent: 'Parent' };
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+function activeProfileKey(uid){ return 'kb:activeProfile:' + uid; }
+// After a fresh sign-in on a sport's page (A8): that sport's profile, the
+// "Who's charting?" picker when there are several, or the last profile plus
+// an "Add <sport>" banner when there are none. Otherwise: the last active.
+function pickActiveProfile(list, uid){
+  const signinSport = lsGet('kb:signinSport'), signinRole = lsGet('kb:signinRole');
+  lsDel('kb:signinSport'); lsDel('kb:signinRole');
+  const stored = lsGet(activeProfileKey(uid));
+  const fallback = list.find(p => p.id === stored) || list.find(p => p.is_primary) || list.find(p => p.id === uid) || list[0];
+  let pick = fallback;
+  if(signinSport){
+    const ofSport = list.filter(p => p.role !== 'parent' && p.sport === signinSport);
+    const byRole = signinRole ? ofSport.filter(p => p.role === signinRole) : [];
+    const pool = byRole.length ? byRole : ofSport;
+    if(pool.length === 1) pick = pool[0];
+    else if(pool.length > 1){ state.whoPicker = pool.map(p => p.id); pick = pool.find(p => p.id === stored) || pool[0]; }
+    else state.addSportBanner = signinSport;
+  }
+  lsSet(activeProfileKey(uid), pick.id);
+  if(pick.sport) lsSet('kb:sport', pick.sport);
+  return pick;
+}
+window.switchProfile = async function(id){
+  state.acctOpen = false;
+  if(!state.session || (state.profile && id === state.profile.id)){ state.whoPicker = null; render(); return; }
+  const target = (state.myProfiles || []).find(p => p.id === id);
+  if(!target) return;
+  const uid = state.session.user.id;
+  const snap = await storGet(lastKnownKey(uid) + ':' + id);
+  if(!snap && !isOnline()){
+    state.acctMsg = 'Opening a profile for the first time needs a connection.';
+    render();
+    return;
+  }
+  await saveLastKnownContext();
+  await storSet(lastKnownKey(uid), snap ? Object.assign({}, snap, { myProfiles: state.myProfiles }) : {
+    profile: target, myProfiles: state.myProfiles, teams: [], roster: [], myVerification: state.myVerification
+  });
+  lsSet(activeProfileKey(uid), id);
+  if(target.sport) lsSet('kb:sport', target.sport);
+  window.location.reload();
+};
+// A7: the other sport's profile for this same person, then straight into it
+// (a pitcher lands on that sport's setup page; a coach on "Create a team").
+window.addSport = async function(sport){
+  state.acctOpen = false;
+  if(!isOnline()){ state.acctMsg = 'Adding a sport needs a connection.'; render(); return; }
+  state.acctBusy = true; state.acctMsg = ''; render();
+  try{
+    const { data: newId, error } = await netTimeout(supabaseClient.rpc('add_sport_profile', { p_sport: sport }), 10000);
+    if(error) throw error;
+    const { data: owned, error: e2 } = await netTimeout(supabaseClient.from('profiles').select('*').eq('account_id', state.session.user.id), 10000);
+    if(e2) throw e2;
+    state.myProfiles = owned || state.myProfiles;
+    state.addSportBanner = null;
+    state.acctBusy = false;
+    await switchProfile(newId);
+  } catch(e){
+    console.error('add sport failed', e);
+    state.acctBusy = false;
+    state.acctMsg = /already_have_sport/.test(e.message || '') ? 'This login already has that sport.' : "Couldn't add the sport. Check your connection and try again.";
+    render();
+  }
+};
+window.toggleAcctMenu = function(){ state.acctOpen = !state.acctOpen; state.acctMsg = ''; render(); };
+window.dismissAddSport = function(){ state.addSportBanner = null; render(); };
+function initialsOf(name){ return String(name || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase(); }
+function profileChip(p){
+  return `<span class="acct-chip acct-chip-${p.sport || 'none'}">${p.sport ? SPORT_NAME[p.sport] : 'Account'}</span>`;
+}
+// The sports this login could still add for its own role (A7).
+function sportsToAdd(){
+  const primary = (state.myProfiles || []).find(p => p.is_primary) || state.profile;
+  if(!primary || (primary.role !== 'coach' && primary.role !== 'pitcher')) return [];
+  const have = (state.myProfiles || []).filter(p => !p.managed_by && p.role === primary.role).map(p => p.sport);
+  return ['baseball', 'softball'].filter(sp => !have.includes(sp));
+}
+function renderAccountButton(){
+  if(!state.profile) return '';
+  const list = state.myProfiles && state.myProfiles.length ? state.myProfiles : [state.profile];
+  const menu = state.acctOpen ? `<div class="acct-menu" role="menu">
+      ${state.myVerification && state.myVerification.email ? `<div class="acct-email">${escHtml(state.myVerification.email)}</div>` : ''}
+      ${list.map(p => `<button type="button" class="acct-item${p.id === state.profile.id ? ' on' : ''}" role="menuitem" onclick="switchProfile('${p.id}')">
+          <span class="acct-avatar">${escHtml(initialsOf(p.full_name))}</span>
+          <span class="acct-who"><span class="acct-name">${escHtml(p.full_name)}${p.managed_by ? ' <span class="acct-badge">Player</span>' : ''}</span>
+            <span class="acct-meta">${profileChip(p)} ${ROLE_NAME[p.role] || ''}</span></span>
+          ${p.id === state.profile.id ? '<span class="acct-check" aria-label="Active">✓</span>' : ''}
+        </button>`).join('')}
+      ${sportsToAdd().map(sp => `<button type="button" class="acct-add" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')">+ Add ${sp}</button>`).join('')}
+      ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
+    </div>` : '';
+  return `<div class="acct-wrap">
+    <button type="button" class="acct-btn" aria-haspopup="menu" aria-expanded="${state.acctOpen ? 'true' : 'false'}" onclick="toggleAcctMenu()" title="Your profiles">
+      <span class="acct-avatar">${escHtml(initialsOf(state.profile.full_name))}</span>${list.length > 1 ? profileChip(state.profile) : ''}<span class="acct-caret">▾</span>
+    </button>${menu}
+  </div>`;
+}
+// A8 when a login has several profiles of the sport it signed in on.
+function renderWhoPicker(){
+  const pool = (state.whoPicker || []).map(id => (state.myProfiles || []).find(p => p.id === id)).filter(Boolean);
+  return `<div class="who-picker"><div class="who-card">
+    <div class="display" style="font-size:28px;margin-bottom:8px;">Who's charting?</div>
+    ${pool.map(p => `<button type="button" class="acct-item" onclick="switchProfile('${p.id}')">
+      <span class="acct-avatar">${escHtml(initialsOf(p.full_name))}</span>
+      <span class="acct-who"><span class="acct-name">${escHtml(p.full_name)}</span><span class="acct-meta">${profileChip(p)} ${ROLE_NAME[p.role] || ''}</span></span>
+    </button>`).join('')}
+  </div></div>`;
+}
+function renderAddSportBanner(){
+  const sp = state.addSportBanner;
+  if(!sp || sportsToAdd().indexOf(sp) < 0) return '';
+  return `<div class="verify-banner acct-banner"><p>You came in on the <strong>${SPORT_NAME[sp]}</strong> side. This login doesn't have a ${sp} profile yet.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')">Add ${sp}</button>
+      <button class="btn btn-ghost" onclick="dismissAddSport()">Not now</button>
+    </div></div>`;
+}
+
 async function saveLastKnownContext(){
   if(!state.session || !state.profile) return;
-  await storSet(lastKnownKey(state.session.user.id), {
+  const snap = {
     profile: state.profile,
+    myProfiles: state.myProfiles || [state.profile],
     teams: state.teams,
     roster: state.roster,
     zones: state.zones,
@@ -2684,7 +2847,12 @@ async function saveLastKnownContext(){
     currentTeamId: state.currentTeamId,
     currentPitcherId: state.currentPitcherId,
     myVerification: state.myVerification
-  });
+  };
+  // S4 A5: the ACTIVE profile's snapshot lives at the old key (the pre-paint
+  // theme script reads it), and every profile keeps its own copy so a
+  // switch -- offline too -- opens straight into that profile.
+  await storSet(lastKnownKey(state.session.user.id), snap);
+  await storSet(lastKnownKey(state.session.user.id) + ':' + state.profile.id, snap);
 }
 
 window.signOut = async function(){
@@ -3014,7 +3182,7 @@ window.submitCreateTeam = async function(){
   if(!name){ state.createTeamError = 'Team name cannot be blank.'; render(); return; }
   state.createTeamBusy = true;
   render();
-  const { data: newTeamId, error } = await supabaseClient.rpc('create_team', { p_name: name });
+  const { data: newTeamId, error } = await supabaseClient.rpc('create_team', { p_name: name, p_profile: state.profile && state.profile.id });
   state.createTeamBusy = false;
   if(error || !newTeamId){ state.createTeamError = 'Could not create the team. Try again.'; render(); return; }
   state.createTeamOpen = false;
@@ -3250,14 +3418,19 @@ window.submitAccountSetup = async function(role){
   state.setupError = null;
   render();
 
-  const { data, error } = await supabaseClient.rpc('ensure_account_setup', payload);
+  // S4: a second-sport coach profile has no signup metadata -- its first
+  // team is created for THAT profile, not the login's primary one.
+  const nonPrimaryTeam = state.setupNeeded === 'team' && state.profile && state.profile.is_primary === false;
+  const { data, error } = nonPrimaryTeam
+    ? await supabaseClient.rpc('create_team', { p_name: payload.p_team_name, p_profile: state.profile.id })
+    : await supabaseClient.rpc('ensure_account_setup', payload);
   state.setupBusy = false;
   if(error){
     state.setupError = 'Setup failed: ' + error.message;
     render();
     return;
   }
-  if(data && (data.needs_role || data.needs_team)){
+  if(!nonPrimaryTeam && data && (data.needs_role || data.needs_team)){
     state.setupError = 'That didn’t complete setup — please check the fields and try again.';
     render();
     return;
@@ -4494,15 +4667,17 @@ function mapSessionNotes(rows){
   return (rows || []).map(n => ({ id: n.id, authorId: n.author_id, authorName: n.author_name || 'Coach', body: n.body, createdAt: new Date(n.created_at).getTime() }))
     .sort((a, b) => a.createdAt - b.createdAt);
 }
-function myUid(){ return state.session && state.session.user && state.session.user.id; }
+// S4: "me" is the ACTIVE profile; "mine" is any profile this login owns.
+function myUid(){ return state.profile && state.profile.id; }
+function myProfileIds(){ return (state.myProfiles || []).map(p => p.id).concat(state.profile ? [state.profile.id] : []); }
+function isMine(id){ return !!id && myProfileIds().includes(id); }
 function renderSessionNotes(s){
   const notes = s.notes || [];
   const coach = isCoach();
   if(!coach && !notes.length) return '';
-  const uid = myUid();
   const list = notes.map(n => {
     const when = new Date(n.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-    const mine = n.authorId === uid;
+    const mine = isMine(n.authorId);
     const armed = state.noteDeleteArmed === n.id;
     return `<div class="note-item">
       <div class="note-meta"><strong>${escHtml(n.authorName)}</strong> · ${escHtml(when)}${mine && !armed ? ` <button type="button" class="note-del" ${isOnline() ? '' : 'disabled'} onclick="armDeleteNote('${n.id}')" aria-label="Delete this note">🗑</button>` : ''}</div>
@@ -8228,7 +8403,7 @@ function renderHistoryView(){
     // P1-15: a deleted session is a tombstone -- not expandable, no stats,
     // no report. It only records that an outing happened and was removed.
     if(s.tombstone){
-      const viewerId = state.session ? state.session.user.id : null;
+      const viewerId = null;   // S4: compared via isMine() below
       // deleted_by_name is a snapshot taken at delete time (P1-15) --
       // needed because sessions has no FK to profiles to embed through
       // (deleted_by, like pitcher_id and logged_by, points at auth.users),
@@ -8236,7 +8411,7 @@ function renderHistoryView(){
       // directly. The pitcher-deleted branch doesn't need the snapshot --
       // p.name (the pitcher currently being viewed) is already right there.
       let by;
-      if(viewerId && s.deletedBy === viewerId){
+      if(s.deletedBy && isMine(s.deletedBy)){
         by = 'Deleted by you';
       } else if(s.deletedByRole === 'coach'){
         by = 'Deleted by ' + (s.deletedByName ? escHtml(s.deletedByName) : 'the coach') + ' (head coach)';
@@ -9516,6 +9691,10 @@ function render(){
     return;
   }
 
+  if(state.whoPicker && state.whoPicker.length > 1){
+    app.innerHTML = renderWhoPicker();
+    return;
+  }
   if(state.setupNeeded){
     app.innerHTML = renderAccountSetupScreen();
     return;
@@ -9622,7 +9801,7 @@ function render(){
     // U9: 'pitcherProfile' with no pitcher selected has its own message
     // ("Select a pitcher to see his profile," not this generic one) --
     // renderPitcherProfileView() already handles p === null itself.
-    main = renderTabs() + (state.view === 'profile'
+    main = `<div class="acct-row">${renderAccountButton()}</div>` + renderAddSportBanner() + renderTabs() + (state.view === 'profile'
       ? renderProfileView()
       : state.view === 'leaderboard' ? renderLeaderboardView()
       : state.view === 'pitcherProfile' ? renderPitcherProfileView()
@@ -9690,6 +9869,8 @@ function render(){
       ${contactsPanel}`;
 
     main = `
+      <div class="acct-row">${renderAccountButton()}</div>
+      ${renderAddSportBanner()}
       ${verifyBanner}
       ${setupReminderBanner}
       ${(state.view === 'profile' || state.view === 'leaderboard') ? '' : headerHtml}

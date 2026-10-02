@@ -232,39 +232,16 @@
       return;
     }
 
-    // S1 (Joel, Oct 1): the sport picked on the landing page must be the
-    // account's sport. A baseball account can't be signed into from the
-    // softball side (or the reverse) -- sign straight back out and say which
-    // side it belongs to. If the profile can't be read (none yet, or no
-    // connection), let the sign-in through: the app themes from the profile.
-    let chosen = null;
-    try{ chosen = localStorage.getItem('kb:sport'); }catch(e){}
-    // ...and the Pitcher / Coach side must be the account's role (Joel,
-    // Oct 1): a pitcher account can't sign in on the Coach page, or the reverse.
-    const wantRole = (role === 'coach' || role === 'pitcher') ? role : null;
-    if(((chosen === 'baseball' || chosen === 'softball') || wantRole) && data && data.user){
-      const { data: prof } = await supabaseClient.from('profiles').select('sport, role').eq('id', data.user.id).maybeSingle();
-      let problem = null;
-      if(prof && prof.sport && (chosen === 'baseball' || chosen === 'softball') && prof.sport !== chosen){
-        const name = prof.sport === 'softball' ? 'Softball' : 'Baseball';
-        problem = { text: 'This is a ' + prof.sport + ' account. Go back and choose ' + name + '. ', href: 'index.html?choose=1', link: '‹ Back to the sport choice' };
-      } else if(prof && prof.role && wantRole && prof.role !== wantRole){
-        const name = prof.role === 'coach' ? 'Coach' : 'Pitcher';
-        problem = { text: 'This is a ' + prof.role + ' account. Use the ' + name + ' sign-in instead. ', href: 'login.html?role=' + prof.role + '&sport=' + (prof.sport || chosen || 'baseball'), link: name + ' sign-in ›' };
-      }
-      if(problem){
-        await supabaseClient.auth.signOut();
-        errorEl.textContent = problem.text;
-        const back = document.createElement('a');
-        back.href = problem.href;
-        back.textContent = problem.link;
-        back.style.color = 'inherit';
-        errorEl.appendChild(back);
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Log in';
-        return;
-      }
-    }
+    // S4 A8 (Joel, Oct 2): one login can own a baseball AND a softball
+    // profile, so sign-in never refuses for sport or role any more. It just
+    // tells the app which side the person came in on; the app opens the
+    // matching profile, asks "Who's charting?" when there are several, or
+    // offers "Add <sport>" when there are none.
+    try{
+      const chosen = localStorage.getItem('kb:sport');
+      if(chosen === 'baseball' || chosen === 'softball') localStorage.setItem('kb:signinSport', chosen);
+      if(role === 'coach' || role === 'pitcher') localStorage.setItem('kb:signinRole', role); else localStorage.removeItem('kb:signinRole');
+    }catch(e){}
 
     window.location.href = 'bullpen-tracker.html';
   });

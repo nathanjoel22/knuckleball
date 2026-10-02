@@ -344,6 +344,9 @@ begin
     v_coach := public.my_single_profile();
     if v_coach is null then raise exception 'profile_required'; end if;
   end if;
+  if (select pr.role from public.profiles pr where pr.id = v_coach) is distinct from 'coach' then
+    raise exception 'only_coaches_create_teams';
+  end if;
   if p_name is null or btrim(p_name) = '' then
     raise exception 'team name cannot be blank';
   end if;
@@ -2616,7 +2619,11 @@ CREATE POLICY "Pitcher or their coach manages zones" ON "public"."accuracy_zones
 
 
 
-CREATE POLICY "Pitchers accept invite by inserting own membership" ON "public"."pitcher_teams" FOR INSERT WITH CHECK ("public"."is_my_profile"("pitcher_id"));
+CREATE POLICY "Pitchers accept invite by inserting own membership" ON "public"."pitcher_teams" FOR INSERT WITH CHECK (("public"."is_my_profile"("pitcher_id") AND (EXISTS ( SELECT 1
+   FROM "public"."profiles" "pr"
+  WHERE (("pr"."id" = "pitcher_teams"."pitcher_id") AND ("pr"."role" = 'pitcher'::"text")))) AND (EXISTS ( SELECT 1
+   FROM "public"."invites" "i"
+  WHERE (("i"."team_id" = "pitcher_teams"."team_id") AND ("i"."status" = 'pending'::"text") AND ("lower"("i"."email") = "lower"(("auth"."jwt"() ->> 'email'::"text"))))))));
 
 
 

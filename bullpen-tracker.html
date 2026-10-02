@@ -1362,6 +1362,8 @@
     .wide-bl{ grid-column:1; display:flex; align-items:center; }
     .wide-bl .ttp-btn{ min-height:38px; }
     .wide-br{ grid-column:2; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
+    .wide-stacked .wide-left .wide-br{ flex-direction:column; align-items:stretch; }
+    .wide-stacked .wide-left .wide-br .btn{ width:100%; }
     .pt-two{ display:grid; grid-template-columns:repeat(2, max-content); }   /* never more than two pitch types across */
     .wide-hint{ color:var(--clay); text-transform:none; letter-spacing:0; font-size:12.5px; font-weight:600; }
     /* Joel, Oct 1: pen pitch counter to the right of the perspective chips
@@ -1471,6 +1473,10 @@
   }
   .gg-book > span{ position:absolute; font-size:11px; font-weight:700; }
   .gg-book-tl{ left:7px; top:5px; }
+  .gg-book-ask{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; text-align:center; padding:6px; }
+  .gg-book-ask > span{ position:static; }
+  .gg-ask{ font-size:14px !important; font-weight:800 !important; line-height:1.2; color:var(--gg-ink); }
+  .gg-ask-sub{ font-size:10px !important; font-weight:600 !important; color:var(--gg-muted); text-transform:uppercase; letter-spacing:0.04em; }
   .gg-book-tr{ right:7px; top:5px; color:var(--gg-muted); }
   .gg-book-play{ left:50%; top:20px; transform:translateX(-50%); background:var(--gg-gold); color:var(--field-dark); border-radius:8px; padding:1px 6px; font-size:10px !important; white-space:nowrap; max-width:92%; overflow:hidden; text-overflow:ellipsis; }
   .gg-book-bl{ left:7px; right:7px; bottom:5px; color:var(--gg-muted); font-weight:600 !important; font-size:10px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -2649,12 +2655,12 @@ async function loadTeams(){
     // get_team_invite_links().
     const { data } = await supabaseClient
       .from('team_coaches')
-      .select('role, teams(id, name)')
+      .select('role, teams(id, name, level)')
       .eq('coach_id', state.profile.id)
       .order('team_id');
     state.teams = (data || []).filter(r => r.teams).map(r => ({ ...r.teams, myRole: r.role }));
   } else {
-    const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name)').eq('pitcher_id', state.profile.id);
+    const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name, level)').eq('pitcher_id', state.profile.id);
     state.teams = (data || []).filter(r => r.teams).map(r => ({ ...r.teams, uniform_number: r.uniform_number }));
   }
 }
@@ -4442,7 +4448,14 @@ async function syncOutbox(){
       runners_before: (e.runnersBefore === undefined) ? null : e.runnersBefore,
       runner_advances: (e.runnerAdvances === undefined) ? null : e.runnerAdvances,
       outs_on_play: (e.outsOnPlay === undefined) ? null : e.outsOnPlay,
-      runs_scored: (e.runsScored === undefined) ? null : e.runsScored
+      runs_scored: (e.runsScored === undefined) ? null : e.runsScored,
+      // G3: the event's place in the log and the count when it happened
+      // (an auto ball with 3 balls before it is a walk in the report).
+      seq: (e.seq === undefined) ? null : e.seq,
+      inning_before: (e.inningBefore === undefined) ? null : e.inningBefore,
+      balls_before: (e.ballsBefore === undefined) ? null : e.ballsBefore,
+      strikes_before: (e.strikesBefore === undefined) ? null : e.strikesBefore,
+      outs_before: (e.outsBeforeCount === undefined) ? null : e.outsBeforeCount
     }));
     try{
       const { error: sessErr } = await supabaseClient.from('sessions').upsert(sessionRow, { onConflict: 'id' });
@@ -4512,6 +4525,7 @@ function renderSessionNotes(s){
         <span class="note-count" id="note-count-${s.id}">${draft.length} / ${NOTE_MAX}</span>
         <button type="button" class="btn btn-primary" ${blocked || state.noteBusy === s.id ? 'disabled' : ''} onclick="saveSessionNote('${s.id}')">${state.noteBusy === s.id ? 'Saving…' : 'Save note'}</button>
       </div>
+      <p class="note-hint">Visible to anyone with this session's report link.</p>
       ${blocked ? `<p class="note-hint">${blocked}</p>` : ''}${err ? `<p class="report-status report-status-error">${escHtml(err)}</p>` : ''}
     </div>`;
   }
@@ -4977,6 +4991,10 @@ window.chooseSessionKind = async function(kind){
     state.activeSession.strikes = 0;
     state.activeSession.atBatIndex = 1;
     state.activeSession.delivery = sportCfg().hasDelivery ? 'windup' : null;   // S2: softball has no Set/Windup
+    // G3: fixed when the game starts (works offline; a mid-game level change
+    // doesn't move the goalposts).
+    state.activeSession.extraStart = extraInningStart((state.teams.find(t => t.id === state.currentTeamId) || {}).level);
+    state.activeSession.tiebreakNo = [];
     // G2 approach (b): optional, editable up to save -- null renders as
     // "Game · <date>" in History/the report; set renders as
     // "vs <opponent> · <date>" (matches sessions.opponent's own column
@@ -5031,6 +5049,7 @@ window.chooseSessionKind = async function(kind){
 window.handleGameZoneTap = async function(row, col){
   if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
   if(sportCfg().hasDelivery && !state.activeSession.delivery){ state.hint = 'Set or windup first'; render(); return; }
+  if(tiebreakPending(state.activeSession)){ state.hint = 'Answer the extra-inning question first'; render(); return; }
   state.hint = '';
   // A re-tap (whether idle or mid-result-menu) starts this pitch's capture
   // over -- simplest correction path for a mis-tapped location, same
@@ -5078,6 +5097,47 @@ window.resetGamePendingPitch = async function(){
 // "ask" (new game, every new batter, new inning, end of a play), and again
 // whenever runner moves take the bases from empty to occupied or back.
 // The charter can still flip it for any pitch.
+// G3 item 5 (Joel, Oct 2): level of play, per team, set by the head coach.
+// The first extra inning comes from it; no team -> the sport's default (the
+// last entry: baseball college, softball high school & up).
+const LEVELS = {
+  baseball: [['little_league', 'Little League', 7], ['high_school', 'High school', 8], ['college', 'College', 10]],
+  softball: [['little_league', 'Little League', 7], ['high_school_up', 'High school & up', 8]]
+};
+function extraInningStart(level){
+  const list = LEVELS[currentSport()];
+  return (list.find(l => l[0] === level) || list[list.length - 1])[2];
+}
+// Before the first pitch of each extra inning: "Start with runner on 2B?"
+// Derived, not stored, so Undo and resume can never leave it stale: an
+// extra inning with no pitch, no event and no "No" answer yet.
+function tiebreakPending(s){
+  if(!s || s.kind !== 'game' || !s.extraStart || s.inning < s.extraStart) return false;
+  if((s.tiebreakNo || []).includes(s.inning)) return false;
+  if(s.pitches.some(p => p.inning === s.inning)) return false;
+  if((s.events || []).some(e => e.inningBefore === s.inning)) return false;
+  return true;
+}
+window.gridTiebreak = async function(yes){
+  const s = state.activeSession;
+  if(!tiebreakPending(s)) return;
+  if(yes){
+    const hadRunners = gameHasRunners(s);
+    s.events.push({
+      id: genUUID(), seq: s.nextSeq++, eventType: 'tiebreak_runner',
+      atBatIndex: s.atBatIndex, afterPitchId: s.pitches.length ? s.pitches[s.pitches.length - 1].id : null,
+      runnersBefore: runnersBitmask(s.runners), runnerAdvances: null, outsOnPlay: 0, runsScored: 0,
+      inningBefore: s.inning, outsBeforeCount: s.outs, ballsBefore: s.balls, strikesBefore: s.strikes, atBatIndexBefore: s.atBatIndex
+    });
+    s.runners[2] = true;
+    if(!hadRunners) defaultGameDelivery(s);
+  } else {
+    s.tiebreakNo = (s.tiebreakNo || []).concat([s.inning]);
+  }
+  s.panelOpen = false;
+  await storSet(draftKey(), s);
+  render();
+};
 function gameHasRunners(s){ return !!(s.runners && (s.runners[1] || s.runners[2] || s.runners[3])); }
 function defaultGameDelivery(s){
   if(!sportCfg().hasDelivery){ s.delivery = null; ttpReset(); return; }   // S2: softball -- no delivery, ever
@@ -5187,7 +5247,13 @@ window.choosePlusCode = async function(code){
     case 'AB': return commitNoPitchEvent('auto_ball');
     case 'AS': return commitNoPitchEvent('auto_strike');
     case 'BLK': return commitNoPitchEvent('balk');
-    case 'IP': return commitIllegalPitch();
+    case 'IP':
+      // G3 item 4: with the bases empty both choices are the same -- just the ball.
+      if(!gameHasRunners(state.activeSession)) return commitIllegalPitch(false);
+      state.activeSession.gameResultMenu = 'illegalPitch';
+      await storSet(draftKey(), state.activeSession);
+      render();
+      return;
   }
 };
 window.chooseDroppedThirdOutcome = function(outcome){ return recordGameResult('dropped_third', { inPlayOutcome: outcome }); };
@@ -5515,6 +5581,14 @@ window.recordGameResult = async function(result, extra){
 // pitches already used before events existed.
 window.undoLastGameAction = async function(){
   const s = state.activeSession;
+  // G3 item 5: a "No" to the extra-inning question is the last thing done
+  // when nothing has happened in that inning since -- Undo asks again.
+  if((s.tiebreakNo || []).includes(s.inning) && !s.pitches.some(p => p.inning === s.inning) && !(s.events || []).some(e => e.inningBefore === s.inning)){
+    s.tiebreakNo = s.tiebreakNo.filter(i => i !== s.inning);
+    await storSet(draftKey(), s);
+    render();
+    return;
+  }
   const lastPitch = s.pitches[s.pitches.length - 1];
   const lastEvent = s.events[s.events.length - 1];
   if(!lastPitch && !lastEvent) return;
@@ -5728,6 +5802,11 @@ window.commitNoPitchEvent = async function(eventType, extra, noRender){
       outsBumped = 1; outsOnPlay = 1; batterTo = 0;
       endsAtBat = true;
     }
+  } else if(eventType === 'illegal_pitch'){
+    if(extra && extra.illegalAdv){
+      advances = [1, 2, 3].filter(b => s.runners[b]).map(b => ({ from: b, to: b === 3 ? 4 : b + 1 }));
+      ({ outsOnPlay, runsScored } = applyRunnerAdvances(s, advances, null));
+    }
   } else if(eventType === 'balk'){
     // Standard rule (distinct from Adjust Runners' own 'balk' reason, which
     // moves exactly one chosen runner): every occupied base advances one,
@@ -5765,10 +5844,14 @@ window.commitNoPitchEvent = async function(eventType, extra, noRender){
 // walk). Saved as the two event rows the app already has, a balk then an
 // auto ball, flagged so the log shows one "Illegal pitch" line and one Undo
 // removes both. No new event type, no database change.
-window.commitIllegalPitch = async function(){
-  await commitNoPitchEvent('balk', { illegalPitch: true }, true);
+// G3 item 4 (Joel, Oct 2): two kinds -- ADV (runners up one base) or Ball
+// (no ADV). Both add the ball, silently. Stored as 'illegal_pitch' (with
+// runner advances only for ADV) then its auto_ball; one Undo removes both.
+window.commitIllegalPitch = async function(adv){
+  await commitNoPitchEvent('illegal_pitch', { illegalPitch: true, illegalAdv: !!adv }, true);
   await commitNoPitchEvent('auto_ball', { illegalPitchBall: true });
 };
+window.gridIllegal = function(adv){ return ggAfter(() => commitIllegalPitch(adv)); };
 
 // G1b-r2a: lives inside the status bar, which is now always on a dark
 // (--field-dark) background as the panel header -- occupied/unoccupied
@@ -5864,10 +5947,11 @@ function gameResultText(pt){
 const GAME_EVENT_LABELS = {
   stolen_base: 'Stolen base', caught_stealing: 'Caught stealing', pickoff: 'Pickoff',
   wild_pitch: 'Wild pitch', passed_ball: 'Passed ball', balk: 'Balk', other: 'Other event',
-  intentional_walk: 'Intentional walk', auto_ball: 'Auto ball', auto_strike: 'Auto strike'
+  intentional_walk: 'Intentional walk', auto_ball: 'Auto ball', auto_strike: 'Auto strike',
+  illegal_pitch: 'Illegal pitch', tiebreak_runner: 'Tiebreak runner on 2B'
 };
 function gameEventText(ev){
-  const label = ev.illegalPitch ? 'Illegal pitch (ball + runners up)' : (GAME_EVENT_LABELS[ev.eventType] || ev.eventType);
+  const label = ev.illegalPitch ? ((ev.eventType === 'balk' || ev.illegalAdv) ? 'Illegal pitch — ADV' : 'Illegal pitch — no ADV') : (GAME_EVENT_LABELS[ev.eventType] || ev.eventType);
   const parts = [label];
   (ev.runnerAdvances || []).forEach(a => {
     const to = a.to === 0 ? 'out' : a.to === 4 ? 'home' : (a.to === 1 ? '1st' : a.to === 2 ? '2nd' : '3rd');
@@ -6551,7 +6635,8 @@ function walkthroughBBCode(fp){
 // full per-segment provenance chain through multiple earlier advances.
 const GAME_EVENT_SHORT_CODE = {
   stolen_base: 'SB', caught_stealing: 'CS', pickoff: 'PO', wild_pitch: 'WP',
-  passed_ball: 'PB', balk: 'BLK', intentional_walk: 'IBB', auto_ball: 'BB', auto_strike: 'K'
+  passed_ball: 'PB', balk: 'BLK', intentional_walk: 'IBB', auto_ball: 'BB', auto_strike: 'K',
+  illegal_pitch: 'IP', tiebreak_runner: 'TB'
 };
 function scorebookBatterCode(pt){
   if(!pt) return '';
@@ -6801,6 +6886,7 @@ function ggDpAvailable(){
 
 function gridStep(){
   const s = state.activeSession;
+  if(s && s.kind === 'game' && !s.gamePendingPitch && !s.fieldPlay && tiebreakPending(s)) return 'tiebreak';   // G3 item 5
   if(!s || s.kind !== 'game' || !s.panelOpen) return null;
   if(s.gridAdv) return 'adv';   // Joel, Oct 1: ADV runners (see ggAdvEnabled)
   if(!s.gamePendingPitch) return ggRadarOn() ? 'velo' : 'ready';   // a direct-record pitch is in
@@ -6818,7 +6904,7 @@ function gridStep(){
   }
   const menu = s.gameResultMenu;
   if(menu === 'plus') return 'more';
-  if(menu === 'foulBunt' || menu === 'droppedThird' || menu === 'bi' || menu === 'biRunnerBase') return menu;
+  if(menu === 'foulBunt' || menu === 'droppedThird' || menu === 'bi' || menu === 'biRunnerBase' || menu === 'illegalPitch') return menu;
   return 'first';
 }
 
@@ -7036,6 +7122,15 @@ function ggChoices(step){
     case 'more': return ggFill(GG_MORE.flat().map(([code, big, cap]) => (code === 'BLK' && !sportCfg().hasDelivery) ? ['IP', 'IP', 'Illegal pitch'] : [code, big, cap]).map(([code, big, cap]) => ({
       inner: ggBig(big, cap), onclick: `gridMore('${code}')`, disabled: code === 'D3' && s.strikes !== 2
     })));
+    case 'tiebreak': return ggFill([
+      { inner: ggBig('Yes', 'Runner on 2B'), onclick: 'gridTiebreak(true)' },
+      { inner: ggBig('No', 'Bases empty'), onclick: 'gridTiebreak(false)' }
+    ]);
+    // G3 item 4 (softball): the ball is always added; ADV also moves every runner up.
+    case 'illegalPitch': return ggFill([
+      { inner: ggBig('ADV', 'Runners'), onclick: 'gridIllegal(true)' },
+      { inner: ggBig('Ball', 'No ADV'), onclick: 'gridIllegal(false)' }
+    ]);
     case 'foulBunt': return ggFill([
       { inner: ggBig('Yes', 'Bunt'), onclick: 'gridFoulBunt(true)' },
       { inner: ggBig('No', 'Not a bunt'), onclick: 'gridFoulBunt(false)' }
@@ -7181,7 +7276,7 @@ function ggPlayText(step){
   if(step === 'velo' || step === 'ready'){
     if(!fp){ const last = s.pitches[s.pitches.length - 1]; return last ? gameResultText(last) : ''; }
   }
-  const menuText = { more: 'More', foulBunt: 'Foul · bunt?', droppedThird: 'Dropped 3rd', bi: "Batter's int.", biRunnerBase: 'BI · which runner?' };
+  const menuText = { illegalPitch: 'Illegal pitch', more: 'More', foulBunt: 'Foul · bunt?', droppedThird: 'Dropped 3rd', bi: "Batter's int.", biRunnerBase: 'BI · which runner?' };
   if(menuText[step]) return menuText[step];
   if(!fp) return '';
   if(!fp.entry) return 'In play';
@@ -7214,6 +7309,7 @@ function ggProjectedOuts(){
 }
 function ggScorebookBox(step){
   const s = state.activeSession;
+  if(step === 'tiebreak') return `<div class="gg-book gg-book-ask" style="grid-row:1/3;grid-column:1/3;"><span class="gg-ask">Start with runner on 2B?</span><span class="gg-ask-sub">Extra inning · ${escHtml(String(s.inning))}</span></div>`;
   const fp = s.fieldPlay;
   const outs = ggProjectedOuts();
   const play = ggPlayText(step);
@@ -7284,7 +7380,7 @@ function renderGameFieldGrid(){
   // grid has turned into the field.
   return `<div class="zone-grid gg-field" data-step="${step}">
     ${cells}
-    <div class="gg-overlay">${ggScorebookBox(step)}${ggChoices(step)}${ggRow3(step)}${ggVeloRow(step)}${ggBackBox()}${ggAdvBox()}</div>
+    <div class="gg-overlay">${ggScorebookBox(step)}${ggChoices(step)}${ggRow3(step)}${ggVeloRow(step)}${step === 'tiebreak' ? '' : ggBackBox()}${ggAdvBox()}</div>
   </div>`;
 }
 function ggCaption(step){
@@ -7294,6 +7390,7 @@ function ggCaption(step){
   }
   if(step === 'velo') return 'Swipe or tap the speed (Reset clears it) — then Next Pitch';
   if(step === 'ready') return 'Next Pitch when you’re ready';
+  if(step === 'tiebreak') return 'Extra inning — answer before the first pitch';
   const reason = (step === 'position' || step === 'velo') ? null : null;
   return reason || 'Choose what happened';
 }
@@ -7657,8 +7754,24 @@ function sizeWideGrid(){
   const top = right.getBoundingClientRect().top + (window.pageYOffset || 0);
   const cols = right.closest('.wide-cols');
   const br = cols && cols.querySelector('.wide-br');
-  const below = br ? br.offsetHeight + 16 : 0;   // Live Game's Undo / New batter / New inning row + row gap
-  const room = window.innerHeight - top - capH - below - 24;
+  const roomAll = window.innerHeight - top - capH - 24;
+  let below = br ? br.offsetHeight + 16 : 0;   // Live Game's Undo / New batter / New inning row + row gap
+  // G3 item 6 (Joel, Oct 2): when that row is what limits the grid (a short
+  // window -- Safari's toolbars), it moves up into the left column under the
+  // delivery control, so Live Game's grid is never smaller than Bullpen's.
+  if(br){
+    const widthSide = (colW - 12) / (1 + 2 * A * H0);
+    const withRow = Math.min(CAP, widthSide, (roomAll - below) / Math.max(1, H0));
+    const withoutRow = Math.min(CAP, widthSide, roomAll / Math.max(1, H0));
+    const left = cols.querySelector('.wide-left'), bl = cols.querySelector('.wide-bl');
+    if(withRow < withoutRow - 0.5 && left){
+      if(bl) left.appendChild(bl);
+      left.appendChild(br);
+      cols.classList.add('wide-stacked');
+      below = 0;
+    }
+  }
+  const room = roomAll - below;
   let h = H0;
   let side = Math.min(CAP, (colW - 12) / (1 + 2 * A * H0), room / Math.max(1, H0));
   if(side < MIN){
@@ -8863,8 +8976,25 @@ function renderCoachTeamAdmin(){
       ` : `<div class="profile-row" style="justify-content:space-between;"><strong>${escHtml(team.name)}</strong><button class="btn btn-ghost" onclick="openRenameTeam()">Rename</button></div>`}
     </div>` : `<div class="profile-section"><h3>Team</h3><div class="profile-row"><strong>${escHtml(team.name)}</strong></div></div>`;
 
+  // G3 item 5: level of play decides when extra innings start. Head coach
+  // changes it; assistants see it. Never touches sport or saved games.
+  const levels = LEVELS[currentSport()];
+  const curLevel = team.level || levels[levels.length - 1][0];
+  const curLabel = (levels.find(l => l[0] === curLevel) || levels[levels.length - 1]);
+  const levelSection = `
+    <div class="profile-section">
+      <h3>Level of play</h3>
+      ${head ? `<div class="profile-row">
+        <select class="text-input" style="max-width:240px;" ${state.levelBusy || !isOnline() ? 'disabled' : ''} onchange="setTeamLevel('${team.id}', this.value)">
+          ${levels.map(l => `<option value="${l[0]}" ${l[0] === curLevel ? 'selected' : ''}>${escHtml(l[1])}</option>`).join('')}
+        </select></div>` : `<div class="profile-row"><strong>${escHtml(curLabel[1])}</strong></div>`}
+      <p class="profile-note">Extra innings start in the ${curLabel[2]}th${head ? '' : ' (set by the head coach)'}. Live Games already in progress keep the level they started with.${head && !isOnline() ? ' Changing it needs a connection.' : ''}</p>
+      ${state.levelError ? `<p class="profile-msg">${escHtml(state.levelError)}</p>` : ''}
+    </div>`;
+
   return `
     ${renameSection}
+    ${levelSection}
     <div class="profile-section">
       <h3>Coaching staff</h3>
       ${staffRows}
@@ -8885,6 +9015,21 @@ function renderCoachTeamAdmin(){
     </div>
   `;
 }
+window.setTeamLevel = async function(teamId, level){
+  state.levelError = null; state.levelBusy = true; render();
+  try{
+    const { error } = await netTimeout(supabaseClient.from('teams').update({ level }).eq('id', teamId), 10000);
+    if(error) throw error;
+    const t = state.teams.find(x => x.id === teamId);
+    if(t) t.level = level;
+    await saveLastKnownContext();
+  } catch(e){
+    console.error('set level failed', e);
+    state.levelError = "Couldn't change the level. Check your connection and try again.";
+  }
+  state.levelBusy = false;
+  render();
+};
 function renderProfileView(){
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
   if(isCoach()){

@@ -289,6 +289,17 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'compute_game_summary: ' + (summary as Record<string, unknown>).error }), { status: 400, headers: corsHeaders })
       }
 
+      // G3 item 2: no-pitch events, read with the CALLER's own client (RLS),
+      // never the service-role client and never from the client payload.
+      const { data: evRows, error: evErr } = await callerClient
+        .from('game_events')
+        .select('event_type, at_bat_index, seq, inning_before, balls_before, strikes_before, runner_advances')
+        .eq('session_id', sessionId)
+        .order('seq', { ascending: true, nullsFirst: true })
+      if (evErr) {
+        return new Response(JSON.stringify({ error: 'game events read failed: ' + evErr.message }), { status: 500, headers: corsHeaders })
+      }
+
       const gamePayload: GameReportPayload = {
         sport: asSport(session.sport),   // S1: the session row's sport
         sessionId: body.sessionId,
@@ -305,7 +316,16 @@ Deno.serve(async (req) => {
         pitches: body.pitches as unknown as GamePitch[],
         recentPens: body.recentPens,
         gameTrend: Array.isArray(body.gameTrend) ? body.gameTrend : [],
-        summary: summary as unknown as GameSummary
+        summary: summary as unknown as GameSummary,
+        events: (evRows ?? []).map((e: Record<string, unknown>) => ({
+          eventType: String(e.event_type),
+          atBatIndex: (e.at_bat_index as number | null) ?? null,
+          seq: (e.seq as number | null) ?? null,
+          inningBefore: (e.inning_before as number | null) ?? null,
+          ballsBefore: (e.balls_before as number | null) ?? null,
+          strikesBefore: (e.strikes_before as number | null) ?? null,
+          runnerAdvances: (e.runner_advances as unknown[] | null) ?? null
+        }))
       }
       try {
         useSportPalette(asSport(session.sport))   // S1: every render sets its own palette (module state persists between requests)

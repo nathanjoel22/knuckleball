@@ -335,15 +335,55 @@ export interface AtBatLogEntry {
   ending: string   // '' when incomplete
   incomplete: boolean
 }
-export function computeAtBatLog(pitches: GamePitch[]): AtBatLogEntry[] {
+// G3 item 2 (Joel, Oct 2): no-pitch events as stored in game_events. Never
+// pitches -- they stay out of every pitch stat -- but an IBB, an auto ball
+// that is ball four (incl. an illegal pitch's ball) or an auto strike that is
+// strike three ends the at-bat.
+export interface GameEvent {
+  eventType: string
+  atBatIndex: number | null
+  seq: number | null
+  inningBefore: number | null
+  ballsBefore: number | null
+  strikesBefore: number | null
+  runnerAdvances: unknown[] | null
+}
+export function eventEndsAtBat(e: GameEvent): string {
+  if (e.eventType === 'intentional_walk') return 'IBB'
+  if (e.eventType === 'auto_ball' && (e.ballsBefore ?? 0) >= 3) return 'BB'
+  if (e.eventType === 'auto_strike' && (e.strikesBefore ?? 0) >= 2) return 'K'
+  return ''
+}
+export function computeAtBatLog(pitches: GamePitch[], events: GameEvent[] = []): AtBatLogEntry[] {
   const byAtBat = new Map<number, GamePitch[]>()
   for (const p of pitches) {
     if (p.atBatIndex === null || p.atBatIndex === undefined) continue
     if (!byAtBat.has(p.atBatIndex)) byAtBat.set(p.atBatIndex, [])
     byAtBat.get(p.atBatIndex)!.push(p)
   }
+  // G3: at-bats a no-pitch event finished (an IBB may have no pitches at all).
+  const evEnd = new Map<number, { label: string; inning: number | null }>()
+  for (const e of events) {
+    const label = eventEndsAtBat(e)
+    if (label && e.atBatIndex !== null && e.atBatIndex !== undefined) evEnd.set(e.atBatIndex, { label, inning: e.inningBefore })
+  }
+  for (const idx of evEnd.keys()) if (!byAtBat.has(idx)) byAtBat.set(idx, [])
   const indices = Array.from(byAtBat.keys()).sort((a, b) => a - b)
   return indices.map(idx => {
+    const ev = evEnd.get(idx)
+    const evPs = byAtBat.get(idx)!
+    if (ev && !(evPs.length && pitchEndsAtBat(evPs.slice().sort((a, b) => a.ts - b.ts)[evPs.length - 1]))) {
+      const ps = evPs.slice().sort((a, b) => a.ts - b.ts)
+      return {
+        atBatIndex: idx,
+        inning: ps.length ? ps[0].inning : (ev.inning ?? 0),
+        side: ps.length ? ps[0].batterSide : null,
+        delivery: ps.length ? ps[0].delivery : null,
+        pitches: ps,
+        ending: ev.label,
+        incomplete: false
+      }
+    }
     const ps = byAtBat.get(idx)!.slice().sort((a, b) => a.ts - b.ts)
     const last = ps[ps.length - 1]
     const complete = pitchEndsAtBat(last)

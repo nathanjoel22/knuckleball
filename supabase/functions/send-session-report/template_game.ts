@@ -17,6 +17,7 @@ import {
   type RecentPenTypeRow, type GameHistoryEntry
 } from './compute_game.ts'
 import { computeVelocityDepth } from './compute.ts'
+import { type GameEvent } from './compute_game.ts'
 
 // The one definition this report does NOT compute itself -- it's the exact
 // object public.compute_game_summary(session_id) returns, fetched by
@@ -52,6 +53,7 @@ export interface GameReportPayload {
   recentPens?: RecentPenTypeRow[]
   gameTrend: GameHistoryEntry[]
   summary: GameSummary
+  events?: GameEvent[]   // G3: no-pitch events, read server-side under the caller's RLS
 }
 
 function fmtVelo(v: number | null): string { return v === null ? '—' : String(Math.round(v)) + ' mph' }
@@ -405,9 +407,55 @@ function renderGameTrends(p: GameReportPayload): string {
   </section>`
 }
 
+// ---------- G3: Other events ----------
+// One row per no-pitch event (inning · count before · event), sport labels,
+// and a total line. An illegal pitch's own ball rides on its row. Omitted
+// entirely when there are none, so those reports are byte-identical.
+const OTHER_EVENT_TYPES = ['intentional_walk', 'balk', 'auto_ball', 'auto_strike', 'illegal_pitch', 'tiebreak_runner']
+function otherEventLabel(e: GameEvent, softball: boolean): string {
+  switch (e.eventType) {
+    case 'intentional_walk': return 'IBB'
+    case 'balk': return softball ? 'Illegal pitch (ADV)' : 'Balk'
+    case 'auto_ball': return 'Auto ball'
+    case 'auto_strike': return 'Auto strike'
+    case 'illegal_pitch': return (Array.isArray(e.runnerAdvances) && e.runnerAdvances.length) ? 'Illegal pitch (ADV)' : 'Illegal pitch (no ADV)'
+    case 'tiebreak_runner': return 'Tiebreak runner on 2B'
+    default: return e.eventType
+  }
+}
+function renderOtherEvents(p: GameReportPayload): string {
+  const softball = asSport(p.sport) === 'softball'
+  const evs = (p.events ?? []).filter(e => OTHER_EVENT_TYPES.includes(e.eventType))
+  const rows: { e: GameEvent; label: string }[] = []
+  for (let i = 0; i < evs.length; i++) {
+    const e = evs[i]
+    const prev = rows.length ? rows[rows.length - 1].e : null
+    const pairsWithPrev = e.eventType === 'auto_ball' && prev && prev.atBatIndex === e.atBatIndex &&
+      (prev.eventType === 'illegal_pitch' || (softball && prev.eventType === 'balk')) &&
+      (prev.seq === null || e.seq === null || e.seq === prev.seq + 1)
+    if (pairsWithPrev) continue
+    rows.push({ e, label: otherEventLabel(e, softball) })
+  }
+  if (!rows.length) return ''
+  const counts: [string, number][] = []
+  for (const r of rows) {
+    const c = counts.find(x => x[0] === r.label)
+    if (c) c[1]++; else counts.push([r.label, 1])
+  }
+  const count = (e: GameEvent) => (e.ballsBefore === null || e.strikesBefore === null) ? '—' : `${e.ballsBefore}-${e.strikesBefore}`
+  const body = rows.map(r => `<div class="ab-row"><span class="ab-num">Inning ${r.e.inningBefore ?? '—'} · ${count(r.e)}</span> ${escapeHtml(r.label)}</div>`).join('')
+  const total = `${rows.length} other event${rows.length === 1 ? '' : 's'}: ${counts.map(([l, n]) => `${n} ${escapeHtml(l)}`).join(', ')}`
+  return `
+  <section class="section">
+    <h2>Other events</h2>
+    <p class="caption">${total}</p>
+    ${body}
+  </section>`
+}
+
 // ---------- 12. At-bat log ----------
 function renderAtBatLog(p: GameReportPayload): string {
-  const log = computeAtBatLog(p.pitches)
+  const log = computeAtBatLog(p.pitches, p.events ?? [])
   if (!log.length) return ''
   const byInning = new Map<number, typeof log>()
   for (const ab of log) {
@@ -481,7 +529,7 @@ ${renderPerSide(p)}
 ${renderVelocity(p)}
 ${renderRecentPens(p)}
 ${renderGameTrends(p)}
-${renderAtBatLog(p)}
+${renderOtherEvents(p)}${renderAtBatLog(p)}
 ${renderFooter(p)}
 </div>
 </body>

@@ -72,8 +72,14 @@ into a recovered version of the same project, or into a fresh project if startin
    docker run --rm -v ~/knuckleball-backups:/backups postgres:17 \
      psql "$CONN" -v ON_ERROR_STOP=1 -f /backups/<date>-schema.sql
    docker run --rm -v ~/knuckleball-backups:/backups postgres:17 \
-     psql "$CONN" -v ON_ERROR_STOP=1 -f /backups/<date>-data.sql
+     psql "$CONN" -v ON_ERROR_STOP=1 -c "set session_replication_role = replica" -f /backups/<date>-data.sql
    ```
+   Since S4 Stage A (Oct 2 2026) `profiles` references itself (`managed_by`), so the data-only
+   dump warns about "circular foreign-key constraints". The backup is still complete; loading
+   it just needs triggers and FK checks off for that one load, which is what
+   `session_replication_role = replica` does (it also skips the app's own triggers, which is
+   right for a restore -- the dump already holds their results). psql runs `-c` then `-f` in
+   one session, so the setting covers the load.
 4. **Verify row counts match** on every key table before trusting the restore:
    ```sql
    select 'teams' t, count(*) from public.teams

@@ -2356,6 +2356,8 @@ async function loadFullContextOnline(alreadyPainted){
   // appear offline or stand between anyone and charting.
   state.attestNeeded = !(myAccountProfile() || {}).age_attestation;
 
+  await confirmEmailChangeFromLink();   // Change Email: landing from its link
+
   // R0: best-effort, matches profile/teams/roster's own "cached fast path
   // shows stale, this reconcile pass refreshes it" treatment -- a failure
   // here just leaves whatever was cached (fail closed: still unverified
@@ -2422,6 +2424,10 @@ async function loadFullContextOnline(alreadyPainted){
   if(isCoach() && state.profile && !state.profile.setup_dismissed_at && isHeadOfCurrentTeam() && !state.roster.length){
     openCoachWelcome();
   }
+
+  // Change Email: landing from its link opens Profile, where the result shows
+  // (never over a pen in progress).
+  if(state.emailChangeNotice && !state.draftAvailable){ state.view = 'profile'; state.showSetupModal = false; }
 
   state.setupNeeded = null;
   state.loaded = true;
@@ -3711,54 +3717,70 @@ window.toggleChangeEmail = function(){
   state.changeEmailStatus = null;
   render();
 };
+// Change Email, one email (Joel, Oct 2 2026). request-email-change records
+// the request and sends ONE Knuckleball email with Supabase's change link to
+// the new address. The account keeps its current address -- and its
+// verification -- until that link is clicked; landing from it runs
+// confirm_email_change() (loadFullContextOnline), which verifies the new one.
+// Never supabase.auth.updateUser({ email }) here: that sends Supabase's own
+// unbranded email and leaves verification behind.
+const CHANGE_EMAIL_ERRORS = {
+  invalid_email: "That email doesn't look right.",
+  same_email: "That's already your email.",
+  email_unavailable: "That email can't be used. It may already belong to another account.",
+  send_failed: "We couldn't send the email. Try again in a moment.",
+  profile_missing: "Your account isn't fully set up yet. Reload and try again."
+};
 window.submitChangeEmail = async function(){
   const input = document.getElementById('change-email-input');
   const email = (input && input.value || '').trim();
   if(!email) return;
+  if(!isOnline()){ state.changeEmailStatus = 'error:Changing your email needs a connection.'; render(); return; }
   state.changeEmailStatus = 'sending';
   render();
-  const { error } = await supabaseClient.auth.updateUser({ email });
-  if(error){
-    state.changeEmailStatus = 'error:' + error.message;
-    render();
-    return;
-  }
-  // Change Email's own explicit invalidation step (not a side effect
-  // generate_email_verify_token applies to every caller anymore -- that
-  // version silently un-verified two real pitchers who'd just legitimately
-  // verified and then hit a stale Resend button on an already-open tab;
-  // see 20260925040000). Not swallowed on failure: if this doesn't
-  // succeed, the account would keep showing verified for an address
-  // nobody has confirmed, which is the exact bug being fixed here -- so a
-  // failure here is reported the same way a failed updateUser() is,
-  // rather than pressing on to send a verification email regardless.
-  const { error: invalidateErr } = await supabaseClient.rpc('invalidate_my_email_verification');
-  if(invalidateErr){
-    state.changeEmailStatus = 'error:Your email changed, but we could not clear the old verification. Please try again or contact support.';
-    render();
-    return;
-  }
-  // Safe to fire our own verification email right away only because
-  // staging has "Secure email change" off, so updateUser() above already
-  // applied auth.users.email synchronously -- with that setting on, this
-  // would fire to the address being REPLACED, not the new one (confirmed
-  // empirically during the staging walkthrough). Never re-enable that
-  // setting without revisiting this.
+  let out = null;
   try{
-    if(typeof VERIFY_EMAIL_URL !== 'undefined' && VERIFY_EMAIL_URL.indexOf('YOUR_') !== 0){
-      await fetch(VERIFY_EMAIL_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token }
-      });
-    }
-  }catch(e){ /* recoverable via the Resend button */ }
+    if(typeof VERIFY_EMAIL_URL === 'undefined' || VERIFY_EMAIL_URL.indexOf('YOUR_') === 0) throw new Error('not configured');
+    const res = await netTimeout(fetch(VERIFY_EMAIL_URL.replace('send-verification-email', 'request-email-change'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token },
+      body: JSON.stringify({ email })
+    }), 15000);
+    out = await res.json();
+  }catch(e){ out = { error: 'network' }; }
+  if(!out || !out.ok){
+    const code = out && out.error;
+    state.changeEmailStatus = 'error:' + (code === 'too_soon'
+      ? `We just sent one. You can ask again in ${Math.max(1, Math.ceil((out.retry_after_seconds || 600) / 60))} min.`
+      : CHANGE_EMAIL_ERRORS[code] || "Couldn't start the change. Check your connection and try again.");
+    render();
+    return;
+  }
+  state.changeEmailSentTo = email.toLowerCase();
   state.changeEmailStatus = 'sent';
-  // Reflect the change immediately rather than waiting for the next
-  // background reconcile -- the banner should show the new (unverified)
-  // address right away, matching invalidate_my_email_verification just did.
-  state.myVerification = { email, emailConfirmed: false };
   render();
 };
+// Landing from the change link (?email_change=1): verify the new address.
+async function confirmEmailChangeFromLink(){
+  let flagged = false;
+  try{ flagged = new URLSearchParams(window.location.search).get('email_change') === '1'; }catch(e){}
+  if(!flagged) return;
+  try{ history.replaceState(null, '', window.location.pathname); }catch(e){}
+  try{
+    const { data } = await netTimeout(supabaseClient.rpc('confirm_email_change'), 10000);
+    if(data && data.ok){
+      state.emailChangeNotice = { ok: true, email: data.email };
+      const profs = await netTimeout(supabaseClient.from('profiles').select(PROFILE_COLS).eq('account_id', state.session.user.id), 10000);
+      if(profs && profs.data && profs.data.length){
+        state.myProfiles = profs.data;
+        const act = profs.data.find(x => x.id === state.profile.id);
+        if(act) state.profile = act;
+      }
+    } else {
+      state.emailChangeNotice = { ok: false, error: (data && data.error) || 'unknown' };
+    }
+  }catch(e){ state.emailChangeNotice = { ok: false, error: 'network' }; }
+}
 
 /* ---------- ACCOUNT SETUP RECOVERY (P1-12) ----------
    Shown when init() reached the server but the account is still incomplete:
@@ -9289,11 +9311,15 @@ function renderEmailSection(){
       <div class="field"><span class="field-label">New email</span><input class="text-input" id="change-email-input" type="email" placeholder="you@example.com"></div>
       <div class="contacts-save-row">
         <button class="btn btn-primary" ${state.changeEmailStatus === 'sending' ? 'disabled' : ''} onclick="submitChangeEmail()">${state.changeEmailStatus === 'sending' ? 'Sending…' : 'Send verification'}</button>
-        ${state.changeEmailStatus === 'sent' ? '<span class="contacts-saved-msg">Check the new address for a confirmation link.</span>' : ''}
+        ${state.changeEmailStatus === 'sent' ? `<span class="contacts-saved-msg">Check ${escHtml(state.changeEmailSentTo || 'the new address')} for a confirmation link. Your email stays the same until you tap it.</span>` : ''}
       </div>
       ${state.changeEmailStatus && state.changeEmailStatus.indexOf('error:') === 0 ? `<p class="error-msg" style="margin:0;">${escHtml(state.changeEmailStatus.slice(6))}</p>` : ''}
     </div>` : '';
-  return `<div class="profile-section"><h3>Email</h3>
+  const n = state.emailChangeNotice;
+  const notice = !n ? '' : n.ok
+    ? `<p class="contacts-saved-msg" style="margin:0 0 6px;">Your email is now ${escHtml(n.email)}, and it's verified.</p>`
+    : `<p class="error-msg" style="margin:0 0 6px;">${n.error === 'still_pending' ? 'Your email change is still waiting on a confirmation. Check both inboxes.' : n.error === 'no_pending_change' ? 'That confirmation link was already used or replaced by a newer one.' : "We couldn't confirm your new email. Use Resend verification email below."}</p>`;
+  return `<div class="profile-section"><h3>Email</h3>${notice}
     <div class="profile-row"><span style="font-size:14px;">${escHtml(email)}</span>${badge}
       <button class="btn btn-ghost" onclick="toggleChangeEmail()">${state.changeEmailOpen ? 'Cancel' : 'Change email'}</button></div>
     ${resendRow}

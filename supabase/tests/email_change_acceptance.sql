@@ -17,7 +17,7 @@ begin
     (X, 'pitcher', 'Xena Change', 'baseball', '2026-09-01', 'adult', now(), 'signup', '2026-10-03', '{"pitcher":"ec-old@example.invalid","coach":"coach@example.invalid"}'),
     (Y, 'pitcher', 'Yuri Unverified', 'baseball', null, null, null, null, null, '{}');
 
-  out := 'backfill: legacy link bound to ' || (select email_verify_sent_to from public.profiles where id = L);
+  out := 'backfill: legacy link bound to ' || coalesce((select email_verify_sent_to from public.profiles where id = L), 'nothing (setup ran after the migration)');
 
   perform set_config('request.jwt.claims', json_build_object('sub', X, 'role','authenticated')::text, true); execute 'set local role authenticated';
   r := public.add_player('Kid Change', 'baseball', 'R', true); kid := (r->>'id')::uuid;
@@ -77,7 +77,7 @@ begin
   r := public.verify_email(tok); out := out || ', fresh link to the new address: ' || (r->>'ok');
   r := public.verify_email(tok); out := out || ', reused: ' || (r->>'error');
   -- legacy link: valid while the address is unchanged
-  r := public.verify_email(repeat('ab', 32)); out := out || ' | legacy link, address unchanged: ' || coalesce(r->>'ok', r->>'error');
+  r := public.verify_email(repeat('ab', 32)); out := out || ' | legacy link, address unchanged: ' || coalesce(r->>'ok', r->>'error') || ' (true only when setup ran before the migration)';
   -- 9. anon can't start or confirm a change
   begin r := public.begin_email_change('x@example.invalid'); out := out || ' | 9 anon begin: ALLOWED (BAD)';
   exception when others then out := out || ' | 9 anon begin: refused'; end;

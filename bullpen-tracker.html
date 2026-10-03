@@ -1880,7 +1880,7 @@ function currentPitcherVerified(p){
    on the signup form; existing ones answer once, in a box shown the next
    time they're online (never offline). 13-17s need a parent or guardian's
    emailed approval before reports unlock; charting is never gated. */
-const TERMS_VERSION = '2026-10-03';
+const TERMS_VERSION = '2026-10-03b';
 function myAccountProfile(){
   const list = state.myProfiles || [];
   return list.find(p => p.is_primary) || list.find(p => state.session && p.id === state.session.user.id) || state.profile;

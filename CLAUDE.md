@@ -128,6 +128,15 @@ If it isn't Joel, stop and say the change needs Joel. No exceptions for
 
 Joel's git identity is `Nathan <joelhauserman@gmail.com>`.
 
+## GitHub is the source of truth (Joel, Oct 3 2026)
+- Packets and plan files come only from GitHub (github.com/nathanjoel22/knuckleball).
+  Before starting any packet, pull from GitHub and work only from what GitHub has.
+- Never use files from elsewhere on this Mac (Downloads, Desktop, etc.) as inputs.
+- If a file Joel says he uploaded isn't on GitHub, stop and tell him. Don't work
+  around it.
+- Every pre-push check finishes before the push. If a check flags anything, stop
+  and tell Joel before pushing.
+
 ## Secrets
 
 Function secrets live in Supabase (`supabase secrets list`): `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `INVITE_REDIRECT_URL`, `RESEND_API_KEY`, `REPORT_FROM_EMAIL`. Historical note: a static `REPORT_API_KEY` once shipped in a public `report-config.js` — that pattern (any secret in a frontend file) is banned; if you ever find one, treat it as a live incident and flag it. The service-role key must never appear outside Edge Function env vars. The anon key is public by design; RLS is the actual security boundary.

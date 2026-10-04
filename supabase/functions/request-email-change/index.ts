@@ -25,6 +25,7 @@
 // Requires "Secure email change" OFF (one link completes the change).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { takeRateLimit } from '../_shared/rate_limit.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -74,6 +75,14 @@ Deno.serve(async (req) => {
   if (!begun || begun.ok !== true) {
     const code = begun && begun.error ? begun.error : 'unknown'
     return json({ error: code, retry_after_seconds: begun?.retry_after_seconds ?? null }, code === 'too_soon' ? 429 : 400)
+  }
+
+  // H1 Part 2: 5 requests per day per user (on top of the 10-minute rule), the per-address
+  // limit and the circuit breaker. A refusal forgets the request so the 10 minutes aren't used.
+  const limit = await takeRateLimit(user.id, 'email_change', [begun.new_email])
+  if (!limit.ok) {
+    await callerClient.rpc('abandon_email_change')
+    return json(limit.body, limit.status)
   }
 
   const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {

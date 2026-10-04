@@ -18,6 +18,7 @@
 // send succeeds; this is a best-effort notice, not a gate.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { takeRateLimit } from '../_shared/rate_limit.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -73,6 +74,10 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Not authorized to notify this pitcher: ' + (infoErr?.message || 'not found') }), { status: 403, headers: corsHeaders })
   }
   const { email: toEmail, team_name: teamName } = rows[0]
+
+  // H1 Part 2: 20 removal notices per day per user, the per-address limit, the circuit breaker.
+  const limit = await takeRateLimit(user.id, 'removal_notice', toEmail ? [toEmail] : [])
+  if (!limit.ok) return new Response(JSON.stringify(limit.body), { status: limit.status, headers: corsHeaders })
 
   const resendApiKey = Deno.env.get('RESEND_API_KEY')
   const fromEmail = Deno.env.get('REPORT_FROM_EMAIL')

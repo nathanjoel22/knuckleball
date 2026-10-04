@@ -12,6 +12,7 @@
 // parameter to abuse.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { takeRateLimit } from '../_shared/rate_limit.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -48,6 +49,10 @@ Deno.serve(async (req) => {
   if (userErr || !user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
   }
+
+  // H1 Part 2: 5 per hour per user, 10 per day to one address, and the daily circuit breaker.
+  const limit = await takeRateLimit(user.id, 'verify_email', user.email ? [user.email] : [])
+  if (!limit.ok) return new Response(JSON.stringify(limit.body), { status: limit.status, headers: corsHeaders })
 
   // Token generation happens server-side, scoped to this exact caller --
   // this function never sees or chooses whose token it is.

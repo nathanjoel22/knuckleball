@@ -33,6 +33,7 @@
 // already have the link to.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { takeRateLimit } from '../_shared/rate_limit.ts'
 import { buildReportHtml, type ReportPayload } from './template.ts'
 import { escapeHtml, useSportPalette, asSport } from './helpers.ts'
 import type { Pitch, HistoryEntry } from './compute.ts'
@@ -202,7 +203,18 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Could not verify pitcher eligibility: ' + eligibleErr.message }), { status: 500, headers: corsHeaders })
   }
   if (!eligible) {
-    return new Response(JSON.stringify({ error: 'No report can be sent for this pitcher\'s sessions until their account email is verified and they\'re on a team.' }), { status: 403, headers: corsHeaders })
+    // H1: name the actual reason (P1-10 added age and guardian conditions the old text didn't
+    // mention). pitcher_report_block answers only for the pitcher or their coach.
+    const { data: block } = await callerClient.rpc('pitcher_report_block', { p_pitcher_id: pitcherId })
+    const reason = typeof block === 'string' ? block : 'not_on_team'
+    const REASONS: Record<string, string> = {
+      unverified: 'No report can be sent until this player\'s account email is verified.',
+      age_not_answered: 'No report can be sent until this player answers the one-time age question in the app.',
+      guardian_pending: 'No report can be sent until this player\'s parent or guardian approves their account.',
+      consent_missing: 'No report can be sent for this player until their parent\'s consent is recorded.',
+      not_on_team: 'No report can be sent until this player is on a team.'
+    }
+    return new Response(JSON.stringify({ error: REASONS[reason] || REASONS.not_on_team, code: reason }), { status: 403, headers: corsHeaders })
   }
 
   // Design principle (CLAUDE.md): "Reports are never generated from an
@@ -277,6 +289,31 @@ Deno.serve(async (req) => {
     if (!callerVerified) {
       return new Response(JSON.stringify({ error: 'Your own account email must be verified before you can generate or share a report for your team.' }), { status: 403, headers: corsHeaders })
     }
+  }
+
+  // H1 Part 3b (Joel, Oct 3): a report is emailed only to the report contacts saved in the
+  // player's Profile (edited only by the pitcher, or the parent for a parent-created player).
+  // Coaches send to those contacts and can't add others. Read through the caller's own client.
+  if (emails.length) {
+    const { data: prof, error: profErr } = await callerClient
+      .from('profiles').select('contact_emails').eq('id', pitcherId).maybeSingle()
+    if (profErr || !prof) {
+      return new Response(JSON.stringify({ error: 'Could not read the player\'s report contacts.' }), { status: 500, headers: corsHeaders })
+    }
+    const saved = new Set(Object.values((prof.contact_emails || {}) as Record<string, unknown>)
+      .filter((v): v is string => typeof v === 'string' && v.trim() !== '').map((v) => v.trim().toLowerCase()))
+    const notSaved = emails.filter((e) => !saved.has(e.trim().toLowerCase()))
+    if (notSaved.length) {
+      return new Response(JSON.stringify({ error: 'Reports can only be emailed to the report contacts saved in the player\'s Profile.', code: 'recipient_not_saved' }), { status: 400, headers: corsHeaders })
+    }
+  }
+
+  // H1 Part 2: sending limits. Emailing counts as a report email (whether or not a file is
+  // generated); generating without emailing counts only against the generation limit; a plain
+  // re-view of an existing report counts against nothing.
+  if (emails.length || !session.report_path) {
+    const limit = await takeRateLimit(user.id, emails.length ? 'report_email' : 'report_generate', emails)
+    if (!limit.ok) return new Response(JSON.stringify(limit.body), { status: limit.status, headers: corsHeaders })
   }
 
   let reportPath: string = session.report_path

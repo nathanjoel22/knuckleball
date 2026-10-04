@@ -18,6 +18,7 @@
 //  - at most one send per 10 minutes per account (enforced in the database).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { takeRateLimit } from '../_shared/rate_limit.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -49,6 +50,15 @@ Deno.serve(async (req) => {
   })
   const { data: { user }, error: userErr } = await callerClient.auth.getUser()
   if (userErr || !user) return json({ error: 'Unauthorized' }, 401)
+
+  // H1 Part 2: 3 per day per account on top of the 10-minute rule, the per-address limit and the
+  // circuit breaker -- checked before claiming, so a refusal doesn't use up the 10-minute window.
+  const { data: gs } = await callerClient.rpc('my_guardian_status')
+  const gEmail = Array.isArray(gs) && gs[0] && typeof gs[0].guardian_email === 'string' ? gs[0].guardian_email : null
+  if (gEmail) {
+    const limit = await takeRateLimit(user.id, 'guardian_email', [gEmail])
+    if (!limit.ok) return json(limit.body, limit.status)
+  }
 
   const { data: claim, error: claimErr } = await callerClient.rpc('claim_guardian_send')
   if (claimErr) return json({ error: 'Could not prepare the email: ' + claimErr.message }, 500)

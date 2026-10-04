@@ -6,16 +6,16 @@ request. "Staging" = `wpsscxwawgiwmifpjpec`, "production" = `fkgccjhuimkkbupbanx
 
 | # | Check | Status |
 |---|-------|--------|
-| 1 | New adult pitcher, landing + join link, both sports | Form blocking: PASS both sports (below). Account rows: PENDING Joel's softball signups |
-| 2 | 13–17: gate refuses a hand-crafted report request | DB: PASS (Oct 2). HTTP refusal: PENDING |
-| 3 | Guardian link approve / reuse / themed, both sports | Baseball: PASS (Oct 2). Softball: PENDING |
+| 1 | New adult pitcher, landing + join link, both sports | PASS. Baseball Oct 2; softball Oct 3 (below) |
+| 2 | 13–17: gate refuses a hand-crafted report request | PASS. DB Oct 2; crafted HTTP request Oct 3 (below) |
+| 3 | Guardian link approve / reuse / themed, both sports | PASS. Baseball Oct 2; softball Oct 3 (below) |
 | 4 | Under 13 stopped, no auth user or profile (SQL) | PASS (below) |
 | 5 | Coach adult-only; coach minor attestation refused | PASS (Oct 2: `coaches_must_be_adults`) |
 | 6 | Joins refused with NULL attestation | PASS (Oct 2: both `attestation_required`) |
 | 7 | Catch-up screen, recorded 'catchup' | PASS. Production rows show `adult / catchup` for coach logins. Offline "Connect to continue" superseded by Joel's decision: the box is never shown offline |
-| 8 | Offline cold launch < 1 s for an attested account | PENDING (Joel, on his phone) |
+| 8 | Offline cold launch < 1 s for an attested account | PASS (Oct 3, Joel's phone: "basically immediate") |
 | 9 | Roster "Guardian pending"; secrets not selectable | PASS (Oct 2) |
-| 10 | Guardian send: 10-min limit, `<b>` escaped, stored recipient only | Limit + stored recipient: PASS (Oct 2, DB). Real email with `<b>Test</b>`: PENDING |
+| 10 | Guardian send: 10-min limit, `<b>` escaped, stored recipient only | PASS. Limit + stored recipient: Oct 2 (DB). Real email Oct 3: name shown literally as `<b>Test</b>`, not bold (below) |
 | 11 | Policy pages live, zero JS, linked everywhere | PASS (below) |
 | 12 | Joel approved texts; (a)/(c)/(d) evidence shown | Approval: commit 951628c (and 577507e for Version 2026-10-03). Evidence: below. Wording corrections: see "Claims that need different wording" |
 | 13 | No "cannot access", "one person", "tamper-proof"; says "small team" | PASS (grep, below) |
@@ -45,6 +45,14 @@ addresses below). The database itself has no under-13 value:
 | join.html (softball team) | terms | "Agree to the Terms and Privacy Policy to continue." | none |
 
 All pages rendered in the softball theme (`data-sport="softball"`).
+
+**Softball accounts (Oct 3, Joel on the local staging site; verified by SQL on staging):**
+
+| Account | Path | Profile | Team | Reports |
+|---|---|---|---|---|
+| `+p110sb3` | landing page (`pitcher-signup.html?sport=softball`) | softball pitcher, `adult`, `signup`, terms `2026-10-03b` | none ("not on a team yet") | not eligible — unverified and no team, the pre-P1-10 rule, as expected |
+| `+p110sb1` | team invite link (Staging Softball Team) | softball pitcher, `adult`, `signup`, terms `2026-10-03b` | Staging Softball Team | email verified, 1 pen, 1 report generated; `is_pitcher_report_eligible` true |
+| `+p110sb2` | (Joel unsure of path; joined the team) | softball pitcher, `adult`, `signup`, terms `2026-10-03b` | Staging Softball Team | email verified, 1 pen, 1 report generated; eligible |
 
 ## Check 11 — policy pages
 
@@ -119,3 +127,39 @@ the player saved in Profile). Sentence 4: wording changed to the accurate versio
 
 `privacy.html`, `terms.html`: no "cannot access", "can't access", "one person", "tamper-proof";
 "small team" present.
+
+## Checks 2, 3, 10 — softball 13–17 account (Oct 3, staging)
+
+Account `+p110minor`, full name `<b>Test</b>`, signed up via the Staging Softball Team invite
+link: softball pitcher, `minor_13_17`, `signup`, terms `2026-10-03b`; `guardian_email` =
+`+p110guardian` (the address typed); approval token set; guardian email sent 02:22 UTC.
+
+- **Check 10:** the guardian email arrived only at the stored address `+p110guardian` and showed
+  the name literally as `<b>Test</b>`, not bold (Joel). PASS.
+- **Check 2 (first attempt):** crafted request from the console while unverified and unapproved →
+  `403 {"error":"No report can be sent for this pitcher's sessions until their account email is
+  verified and they're on a team."}`. Refused, but the account was ALSO unverified, so this does
+  not isolate the guardian reason. Redo pending with `+p110minor2` (verify email first, then the
+  crafted request, then approve). Note: the function's refusal text predates P1-10 and doesn't
+  name the guardian reason — to be fixed in H1, which reworks that function.
+- **Check 3 (softball):** a resend went out at 02:33:00 UTC and the guardian link was approved at
+  02:33:18 → `guardian_consented_at` set, `consent_via = 'guardian_email'`, token cleared, email
+  verified, `is_pitcher_report_eligible` true. A crafted request then got past the gate (`403
+  "Session not found..."` — the session id was deliberately fake). The approval page was in the
+  softball theme, and reopening the used link said it was already used (Joel). PASS.
+
+**Check 2 (redo, isolated):** account `+p110minor2` (softball, `minor_13_17`, `signup`, terms
+`2026-10-03b`, guardian `+p110guardian2`), via the Staging Softball Team invite link. Joel verified
+the player's email and did NOT approve. Crafted request from the tracker's console (fake session
+id, empty recipients) →
+`403 {"error":"No report can be sent for this pitcher's sessions until their account email is verified and they're on a team."}`.
+State at that moment (SQL): email verified = true, on Staging Softball Team, `guardian_consented_at`
+NULL, approval token set, `is_pitcher_report_eligible` = false. Guardian approval was the only
+missing condition, so the refusal is the guardian gate. PASS.
+
+**Check 8:** Oct 3, Joel's phone, live site (https://knuckleballonline.com, v144), production
+coach account that has attested: loaded once online, airplane mode on, app fully closed and
+reopened → opened "basically immediate"; no age box. Timed by eye, not instrumented. PASS.
+
+**All 14 acceptance checks: PASS (Oct 3 2026).** Check 7's offline "Connect to continue" was
+replaced by Joel's decision (the box is never shown offline).

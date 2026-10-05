@@ -159,6 +159,26 @@ $$;
 ALTER FUNCTION "public"."add_sport_profile"("p_sport" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."archive_team"("p_team_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if not public.is_team_head(p_team_id) then
+    return jsonb_build_object('ok', false, 'error', 'not_authorized');
+  end if;
+  if public.is_team_archived(p_team_id) then
+    return jsonb_build_object('ok', false, 'error', 'already_archived');
+  end if;
+  update public.teams set archived_at = now(), archived_by = coach_id where id = p_team_id;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."archive_team"("p_team_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."begin_email_change"("p_email" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -606,6 +626,36 @@ $$;
 ALTER FUNCTION "public"."delete_session"("p_session_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."delete_team"("p_team_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_n integer;
+begin
+  if not public.is_team_head(p_team_id) then
+    return jsonb_build_object('ok', false, 'error', 'not_authorized');
+  end if;
+  if public.is_team_archived(p_team_id) then
+    return jsonb_build_object('ok', false, 'error', 'team_archived');
+  end if;
+  -- Every session counts, deleted (tombstoned) ones included: their rows still name this team.
+  select count(*) into v_n from public.sessions where team_id = p_team_id;
+  if v_n > 0 then
+    return jsonb_build_object('ok', false, 'error', 'has_sessions', 'sessions', v_n,
+      'message', format('This team has %s session%s and can be archived, not deleted.', v_n, case when v_n = 1 then '' else 's' end));
+  end if;
+  delete from public.pitcher_teams where team_id = p_team_id;   -- departures logged while the team exists
+  delete from public.team_coaches where team_id = p_team_id;
+  delete from public.teams where id = p_team_id;                -- departures, invites, exclusions cascade
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."delete_team"("p_team_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."ensure_account_setup"("p_role" "text" DEFAULT NULL::"text", "p_full_name" "text" DEFAULT NULL::"text", "p_team_name" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -841,6 +891,10 @@ begin
     raise exception 'not authorized';
   end if;
 
+  if public.is_team_archived(p_team_id) then
+    raise exception 'team_archived' using detail = 'This team is archived. Restore it first.';
+  end if;
+
   return (
     select jsonb_build_object(
       'invite_token', invite_token,
@@ -890,6 +944,14 @@ begin
     v_min := 50;
   else
     raise exception 'invalid window';
+  end if;
+
+  -- P1-09: an archived team shows an empty board, like softball.
+  if public.is_team_archived(p_team_id) then
+    return jsonb_build_object(
+      'window', p_window, 'minimum', v_min, 'is_coach', v_is_coach, 'generated_at', now(),
+      'velocity', '[]'::jsonb, 'accuracy', '[]'::jsonb, 'strike', '[]'::jsonb,
+      'disabled', 'archived');
   end if;
 
   if (select t.sport from public.teams t where t.id = p_team_id) = 'softball' then
@@ -1291,6 +1353,17 @@ $$;
 ALTER FUNCTION "public"."is_strike_cell"("p_row" integer, "p_col" integer) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."is_team_archived"("p_team_id" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce((select t.archived_at is not null from public.teams t where t.id = p_team_id), false);
+$$;
+
+
+ALTER FUNCTION "public"."is_team_archived"("p_team_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."is_team_coach"("check_team_id" "uuid") RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -1380,6 +1453,9 @@ begin
   if v_team_id is null then
     return jsonb_build_object('error', 'invalid_token');
   end if;
+  if public.is_team_archived(v_team_id) then
+    return jsonb_build_object('error', 'team_archived');   -- P1-09
+  end if;
 
   insert into public.team_coaches (team_id, coach_id, role, invited_by)
   values (v_team_id, v_prof, 'assistant', v_head_id)
@@ -1437,6 +1513,9 @@ begin
 
   if v_team_id is null then
     return jsonb_build_object('error', 'invalid_token');
+  end if;
+  if public.is_team_archived(v_team_id) then
+    return jsonb_build_object('error', 'team_archived');   -- P1-09
   end if;
 
   insert into public.pitcher_teams (pitcher_id, team_id)
@@ -1829,8 +1908,11 @@ begin
   if not public.is_team_head(p_team_id) then
     raise exception 'not authorized';
   end if;
-  if p_name is null or btrim(p_name) = '' then
-    raise exception 'team name cannot be blank';
+  if public.is_team_archived(p_team_id) then
+    raise exception 'team_archived' using detail = 'This team is archived. Restore it first.';
+  end if;
+  if p_name is null or char_length(btrim(p_name)) < 2 or char_length(btrim(p_name)) > 60 then
+    raise exception 'team_name_length' using detail = 'A team name is 2 to 60 characters.';
   end if;
   update public.teams set name = btrim(p_name) where id = p_team_id;
 end;
@@ -1840,26 +1922,46 @@ $$;
 ALTER FUNCTION "public"."rename_team"("p_team_id" "uuid", "p_name" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."resolve_coach_invite"("p_token" "text") RETURNS TABLE("team_id" "uuid", "team_name" "text", "team_sport" "text")
-    LANGUAGE "sql" SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."resolve_coach_invite"("p_token" "text") RETURNS TABLE("team_id" "uuid", "team_name" "text", "team_sport" "text", "team_archived" boolean)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select id, name, sport from public.teams where coach_invite_token = p_token;
+  select id, name, sport, archived_at is not null from public.teams where coach_invite_token = p_token;
 $$;
 
 
 ALTER FUNCTION "public"."resolve_coach_invite"("p_token" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."resolve_team_invite"("p_token" "text") RETURNS TABLE("team_id" "uuid", "team_name" "text", "team_sport" "text")
-    LANGUAGE "sql" SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."resolve_team_invite"("p_token" "text") RETURNS TABLE("team_id" "uuid", "team_name" "text", "team_sport" "text", "team_archived" boolean)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select id, name, sport from public.teams where invite_token = p_token;
+  select id, name, sport, archived_at is not null from public.teams where invite_token = p_token;
 $$;
 
 
 ALTER FUNCTION "public"."resolve_team_invite"("p_token" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."restore_team"("p_team_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if not public.is_team_head(p_team_id) then
+    return jsonb_build_object('ok', false, 'error', 'not_authorized');
+  end if;
+  if not public.is_team_archived(p_team_id) then
+    return jsonb_build_object('ok', false, 'error', 'not_archived');
+  end if;
+  update public.teams set archived_at = null, archived_by = null where id = p_team_id;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."restore_team"("p_team_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."rotate_coach_invite"("p_team_id" "uuid") RETURNS "text"
@@ -1871,6 +1973,10 @@ declare
 begin
   if not public.is_team_head(p_team_id) then
     raise exception 'not authorized';
+  end if;
+
+  if public.is_team_archived(p_team_id) then
+    raise exception 'team_archived' using detail = 'This team is archived. Restore it first.';
   end if;
 
   v_new_token := replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');
@@ -1895,6 +2001,10 @@ declare
 begin
   if not public.is_team_head(p_team_id) then
     raise exception 'not authorized';
+  end if;
+
+  if public.is_team_archived(p_team_id) then
+    raise exception 'team_archived' using detail = 'This team is archived. Restore it first.';
   end if;
 
   v_new_token := replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');
@@ -2094,6 +2204,10 @@ begin
     end if;
     return new;
   end if;
+  -- P1-09: an archived team takes no new sessions (also inside sync_session).
+  if public.is_team_archived(new.team_id) then
+    raise exception 'team_archived' using errcode = 'check_violation', detail = 'This team is archived; it can''t take new sessions.';
+  end if;
   if exists (select 1 from public.pitcher_teams pt where pt.pitcher_id = new.pitcher_id and pt.team_id = new.team_id)
      or exists (select 1 from public.pitcher_team_departures d
                  where d.pitcher_id = new.pitcher_id and d.team_id = new.team_id and new.started_at < d.left_at) then
@@ -2185,7 +2299,9 @@ begin
   if not public.is_team_head(p_team_id) then
     raise exception 'not authorized';
   end if;
-  -- teams_level_check ties the level to the team's sport and refuses anything else.
+  if public.is_team_archived(p_team_id) then
+    raise exception 'team_archived' using detail = 'This team is archived. Restore it first.';
+  end if;
   update public.teams set level = p_level where id = p_team_id;
 end;
 $$;
@@ -2952,7 +3068,10 @@ CREATE TABLE IF NOT EXISTS "public"."teams" (
     "coach_invite_token_rotated_at" timestamp with time zone,
     "sport" "text" NOT NULL,
     "level" "text" NOT NULL,
+    "archived_at" timestamp with time zone,
+    "archived_by" "uuid",
     CONSTRAINT "teams_level_check" CHECK (((("sport" = 'baseball'::"text") AND ("level" = ANY (ARRAY['little_league'::"text", 'high_school'::"text", 'college'::"text"]))) OR (("sport" = 'softball'::"text") AND ("level" = ANY (ARRAY['little_league'::"text", 'high_school_up'::"text"]))))),
+    CONSTRAINT "teams_name_length" CHECK ((("char_length"("btrim"("name")) >= 2) AND ("char_length"("btrim"("name")) <= 60))),
     CONSTRAINT "teams_sport_check" CHECK (("sport" = ANY (ARRAY['baseball'::"text", 'softball'::"text"])))
 );
 
@@ -2985,6 +3104,10 @@ COMMENT ON COLUMN "public"."teams"."sport" IS 'S1: the creating coach''s sport; 
 
 
 COMMENT ON COLUMN "public"."teams"."level" IS 'G3: level of play, set by the head coach. Decides the first extra inning (baseball LL 7 / HS 8 / college 10; softball LL 7 / HS & up 8).';
+
+
+
+COMMENT ON COLUMN "public"."teams"."archived_at" IS 'P1-09: set by archive_team(), cleared by restore_team(). Archived = hidden from lists, invite links off, no new sessions, history readable.';
 
 
 
@@ -3329,6 +3452,11 @@ ALTER TABLE ONLY "public"."team_coaches"
 
 
 ALTER TABLE ONLY "public"."teams"
+    ADD CONSTRAINT "teams_archived_by_fkey" FOREIGN KEY ("archived_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."teams"
     ADD CONSTRAINT "teams_coach_id_fkey" FOREIGN KEY ("coach_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
@@ -3583,6 +3711,12 @@ GRANT ALL ON FUNCTION "public"."add_sport_profile"("p_sport" "text") TO "service
 
 
 
+REVOKE ALL ON FUNCTION "public"."archive_team"("p_team_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."archive_team"("p_team_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."archive_team"("p_team_id" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."begin_email_change"("p_email" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."begin_email_change"("p_email" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."begin_email_change"("p_email" "text") TO "service_role";
@@ -3652,6 +3786,12 @@ GRANT ALL ON FUNCTION "public"."create_team"("p_name" "text", "p_profile" "uuid"
 REVOKE ALL ON FUNCTION "public"."delete_session"("p_session_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."delete_session"("p_session_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."delete_session"("p_session_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."delete_team"("p_team_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."delete_team"("p_team_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."delete_team"("p_team_id" "uuid") TO "service_role";
 
 
 
@@ -3797,6 +3937,12 @@ GRANT ALL ON FUNCTION "public"."is_strike_cell"("p_row" integer, "p_col" integer
 
 
 
+REVOKE ALL ON FUNCTION "public"."is_team_archived"("p_team_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."is_team_archived"("p_team_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_team_archived"("p_team_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."is_team_coach"("check_team_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."is_team_coach"("check_team_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_team_coach"("check_team_id" "uuid") TO "service_role";
@@ -3925,6 +4071,12 @@ REVOKE ALL ON FUNCTION "public"."resolve_team_invite"("p_token" "text") FROM PUB
 GRANT ALL ON FUNCTION "public"."resolve_team_invite"("p_token" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."resolve_team_invite"("p_token" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."resolve_team_invite"("p_token" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."restore_team"("p_team_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."restore_team"("p_team_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."restore_team"("p_team_id" "uuid") TO "service_role";
 
 
 
@@ -4252,6 +4404,14 @@ GRANT SELECT("sport") ON TABLE "public"."teams" TO "authenticated";
 
 GRANT SELECT("level") ON TABLE "public"."teams" TO "anon";
 GRANT SELECT("level") ON TABLE "public"."teams" TO "authenticated";
+
+
+
+GRANT SELECT("archived_at") ON TABLE "public"."teams" TO "authenticated";
+
+
+
+GRANT SELECT("archived_by") ON TABLE "public"."teams" TO "authenticated";
 
 
 

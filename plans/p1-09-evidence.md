@@ -30,7 +30,19 @@ numbers are hidden in the app but not refused by the database (the packet didn't
 charted before an archive and synced after waits in the outbox with "This session's team was archived
 … It will sync if the head coach restores the team."
 
-**Open:** the in-app View report for a pitcher on an archived team — eligibility is proven in the
+## Production (Oct 5 2026, Joel, after backup 2026-10-05-1401)
+
+Operator Nathan / joelhauserman@gmail.com; backup confirmed post-hotfix and pre-P1-09 (the first
+backup output pasted was the 13:00 pre-hotfix one and was refused). Applied
+`20261005010000_p1_09_teams.sql`; production after: 34 policies, the four new functions, resolvers
+return `team_archived`, the name rule in place, 11 teams (0 archived), 82 sessions. v148 pushed to
+main after clean pre-push checks; live site v148, production config. schema.sql regenerated.
+
+**Decided:** View report for a pitcher on an archived team is accepted on the database proof (Joel,
+Oct 5). **Was open:** the in-app View report for a pitcher on an archived team — eligibility is proven in the
 database (`is_pitcher_report_eligible` true while archived); no report was generated during the
-walkthrough. Production ship: fresh backup; Joel checks one archived team's read-only view on his
-phone before renaming anything real; P1-01 offline checks.
+walkthrough.
+
+**Still to do (Joel):** before renaming anything real, check one archived team's read-only view on
+his phone (a throwaway team on production: create, archive, look, restore, delete); P1-01 offline
+checks 1–3.

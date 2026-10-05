@@ -109,8 +109,10 @@ baseball (12:27 pm ET). Joel: offline checks pass.
 ## Still open
 
 - Joel's report (Oct 5): taps felt very laggy on his phone during charting, especially with the
-  relative-accuracy highlight pulsing. Under investigation separately (H1 changed nothing in the
-  tap path; see the follow-up).
+  relative-accuracy highlight pulsing; it went away on its own minutes later. H1 changed nothing
+  in the tap path. Likely the first run after the update (the new version caching in the
+  background) -- an inference, not measured. If it returns: note when, mode, relative accuracy
+  on/off, and phone, and measure under CPU throttling.
 - Production sign-ups/sign-ins stay at 30 per 5 minutes for now (Joel, Oct 5).
 - The grace-closing migration: ≥ 14 days after the production deploy, once production shows a
   week with no old-path writes; show Joel unsealed/unsaved leftovers first.

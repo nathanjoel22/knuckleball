@@ -1214,6 +1214,11 @@
   .contacts-save-row{ flex-basis:100%; display:flex; align-items:center; gap:12px; margin-top:2px; }
   .contacts-saved-msg{ font-size:12.5px; color:#6FA287; font-weight:600; }
 
+  /* R4: other-team chip, workload line, pitcher team filter */
+  .team-chip{ font-size:10.5px; font-weight:600; padding:1px 7px; border-radius:20px; background:rgba(var(--ink-rgb),0.07); color:var(--ink-dim); margin-left:6px; white-space:nowrap; }
+  .workload-line{ display:block; font-size:11px; color:var(--ink-faint); margin-top:2px; line-height:1.35; }
+  .workload-banner{ font-size:12.5px; color:var(--ink-dim); margin:0 0 10px; line-height:1.45; }
+  .history-team-select{ max-width:200px; padding:6px 8px; font-size:13px; margin-left:auto; }
   /* P1-09: archived team banner + danger zone */
   .archived-banner{ margin-bottom:12px; }
   .team-danger-confirm{ display:flex; flex-direction:column; gap:8px; margin-top:8px; }
@@ -3265,6 +3270,7 @@ window.onTeamChange = async function(teamId, skipRender){
 
   if(isCoach()){
     await loadRosterForTeam(teamId);
+    loadWorkload(state.roster.map(r => r.id));   // R4: roster pitch counts (background, online)
     state.currentPitcherId = state.roster.length ? state.roster[0].id : null;
     if(skipRender) adoptDraftPitcher();   // launch: land on the pitcher whose session is in progress
     state.rosterCollapsed = false;   // a fresh team load always starts with the roster open
@@ -5112,7 +5118,7 @@ function myProfileIds(){ return (state.myProfiles || []).map(p => p.id).concat(s
 function isMine(id){ return !!id && myProfileIds().includes(id); }
 function renderSessionNotes(s){
   const notes = s.notes || [];
-  const coach = isCoach();
+  const coach = isCoach() && !s.otherTeam;   // R4: only the recording team's coaches add notes
   if(!coach && !notes.length) return '';
   const list = notes.map(n => {
     const when = new Date(n.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -5192,19 +5198,87 @@ window.deleteSessionNote = async function(sessionId, noteId){
   state.noteDeleteArmed = null;
   render();
 };
+/* ---------- R4: CROSS-TEAM VISIBILITY (Joel, Oct 5) ----------
+   Coaches of every non-archived team a pitcher is on read the sessions he
+   charted since he joined their team, whichever team they were charted for.
+   Only the recording team acts on them (notes, reports, delete) -- the
+   database enforces that; these helpers only label and hide controls. */
+async function loadSessionTeamNames(pitcherId, rows){
+  const ids = Array.from(new Set(rows.map(r => r.team_id).filter(Boolean)));
+  const names = {};
+  (state.teams || []).forEach(t => { if(ids.indexOf(t.id) >= 0) names[t.id] = t.name; });
+  if(ids.some(id => !names[id])){
+    // Other teams' rows aren't readable directly; this returns only the names of teams whose
+    // sessions the caller can already see.
+    try{
+      const { data } = await netTimeout(supabaseClient.rpc('pitcher_session_teams', { p_pitcher: pitcherId }), 8000);
+      (data || []).forEach(r => { names[r.team_id] = r.team_name; });
+    }catch(e){ /* chips fall back to "another team" */ }
+  }
+  state.sessionTeamNames = names;
+  if(state.historyTeam && state.historyTeam !== 'all' && !names[state.historyTeam]) state.historyTeam = 'all';
+}
+function teamChipHtml(s){
+  if(!s.teamId) return '';
+  const name = (state.sessionTeamNames || {})[s.teamId];
+  if(isCoach()) return s.otherTeam ? ` <span class="team-chip">for ${escHtml(name || 'another team')}</span>` : '';
+  // The pitcher: label every row once his sessions span more than one team.
+  return (Object.keys(state.sessionTeamNames || {}).length > 1 && name) ? ` <span class="team-chip">${escHtml(name)}</span>` : '';
+}
+function otherTeamReportPanel(s){
+  const name = (state.sessionTeamNames || {})[s.teamId] || 'its team';
+  return `<div class="report-panel"><div class="field-label">Report</div>
+    <p class="report-recipients">Charted for ${escHtml(name)}. Only that team's coaches and the pitcher can create or send its report${s.reportPath ? '.' : ' (none yet).'}</p>
+    ${s.reportPath ? `<div class="report-actions"><a class="btn btn-ghost" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a></div>` : ''}</div>`;
+}
+window.setHistoryTeam = function(v){ state.historyTeam = v; render(); };
+// Pitch counts across all the pitcher's teams that this viewer can see (pitcher_workload runs
+// as the caller, so a coach's numbers start when the pitcher joined his team). Online only.
+async function loadWorkload(ids){
+  ids = (ids || []).filter(Boolean);
+  if(!ids.length || !isOnline()) return;
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('pitcher_workload', { p_profiles: ids }), 8000);
+    if(error || !data) return;
+    state.workload = Object.assign({}, state.workload);
+    data.forEach(r => { state.workload[r.pitcher_id] = r; });
+    render();
+  }catch(e){ /* the line just doesn't show */ }
+}
+function workloadParts(id){
+  const w = (state.workload || {})[id];
+  if(!w || !w.last_at) return null;
+  const d = new Date(w.last_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const span = (b, g) => `${b + g}${g ? ` (${g} in games)` : ''}`;
+  return {
+    last: `Last ${w.last_kind === 'game' ? 'game' : 'pen'} · ${d} · ${w.last_pitches} pitches`,
+    windows: `7 days · ${span(w.d7_bullpen, w.d7_game)} · 30 days · ${span(w.d30_bullpen, w.d30_game)}`
+  };
+}
+function workloadRosterLine(id){ const w = workloadParts(id); return w ? `<span class="workload-line">${w.last}<br>${w.windows}</span>` : ''; }
+function workloadBanner(){
+  const p = currentPitcher();
+  if(!p) return '';
+  const w = workloadParts(p.id);
+  return w ? `<p class="workload-banner">${w.last} · ${w.windows}</p>` : '';
+}
 async function loadSessionsForCurrentSelection(){
   const pitcherId = state.currentPitcherId;
   const teamId = state.currentTeamId;
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate), session_notes(id, author_id, author_name, body, created_at)')
+    .select('id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate), session_notes(id, author_id, author_name, body, created_at)')
     .eq('pitcher_id', pitcherId)
-    .eq('team_id', teamId)
-    .order('started_at', { ascending: false });
+    .order('started_at', { ascending: false });   // R4: every team -- RLS decides what this viewer sees
   if(error){ console.error(error); state.sessions = []; state.deletedSessions = []; return; }
+  await loadSessionTeamNames(pitcherId, data || []);
+  loadWorkload([pitcherId]);   // R4: pitch counts across teams (background)
   const all = (data || []).map(s => ({
     id: s.id,
+    teamId: s.team_id,
+    // R4: charted for another team -- a coach reads it but only that team acts on it.
+    otherTeam: isCoach() && s.team_id !== teamId,
     date: new Date(s.started_at).getTime(),
     endedAt: s.ended_at ? new Date(s.ended_at).getTime() : null,   // U10 (3): History's "new since you last looked" rows
     loggedByCoach: s.logged_by !== s.pitcher_id,
@@ -8729,7 +8803,11 @@ function renderHistoryFilter(){
     const style = selected ? `background:var(--amber);border-color:var(--amber);` : `color:var(--ink-faint);border-color:var(--border-strong);`;
     return `<button class="type-chip${selected?' selected':''}" style="${style}" onclick="setHistoryFilter('${o.key}')">${o.label}</button>`;
   }).join('');
-  return `<div class="chip-row" style="margin-bottom:16px;">${chips}</div>`;
+  // R4: a pitcher whose sessions span teams can narrow History to one.
+  const teamIds = Object.keys(state.sessionTeamNames || {});
+  const teamSel = (!isCoach() && teamIds.length > 1) ? `<select class="text-input history-team-select" onchange="setHistoryTeam(this.value)">
+      <option value="all">All teams</option>${teamIds.map(id => `<option value="${escHtml(id)}" ${state.historyTeam === id ? 'selected' : ''}>${escHtml(state.sessionTeamNames[id])}</option>`).join('')}</select>` : '';
+  return `${workloadBanner()}<div class="chip-row" style="margin-bottom:16px;">${chips}${teamSel}</div>`;
 }
 // R6: a pitcher can always delete their own sessions, unchanged; a coach
 // needs to be the ACTIVE team's head (Joel: assistants cannot delete team
@@ -8747,6 +8825,9 @@ function renderHistoryView(){
   // stats are computed for it) -- only filter the ones that declare one.
   if(state.historyFilter !== 'all'){
     combined = combined.filter(s => (s.kind || 'bullpen') === state.historyFilter);
+  }
+  if(!isCoach() && state.historyTeam && state.historyTeam !== 'all'){   // R4: the pitcher's team filter
+    combined = combined.filter(s => !s.teamId || s.teamId === state.historyTeam);
   }
   if(!combined.length){
     return `${renderHistoryFilter()}<div class="empty-hist">No saved sessions yet for ${escHtml(p.name)}${isCoach() ? '' : ' — finish a bullpen session to see it here'}.</div>`;
@@ -8795,7 +8876,7 @@ function renderHistoryView(){
       const viewControl = s.reportPath
         ? `<a class="btn btn-ghost" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>`
         : (pEligible ? `<button class="btn btn-ghost" onclick="viewSessionReport('${s.id}')">View report</button>` : '');
-      const reportPanel = s.pending ? `
+      const reportPanel = s.otherTeam ? otherTeamReportPanel(s) : s.pending ? `
         <div class="report-panel">
           <div class="field-label">Email this report</div>
           <p class="report-recipients">Available once this session has synced.</p>
@@ -8820,7 +8901,7 @@ function renderHistoryView(){
           ${rs ? `<p class="report-status report-status-${rs.status}">${rs.message}</p>` : ''}
         </div>`;
 
-      const deleteZone = (s.pending || !canDeleteSessions()) ? '' : (!isOnline() ? `
+      const deleteZone = (s.pending || s.otherTeam || !canDeleteSessions()) ? '' : (!isOnline() ? `
         <div class="delete-zone"><button class="undo-btn" disabled title="Deleting requires a connection">Connect to delete</button></div>` : (state.deletingSessionId === s.id ? `
         <div class="delete-zone">
           <p class="delete-warn">This permanently removes the ${stats.total} pitch${stats.total === 1 ? '' : 'es'} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
@@ -8836,7 +8917,7 @@ function renderHistoryView(){
       return `
         <div class="session-card">
           <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
-            <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ' <span class="coach-logged-tag logged-by-tag">Logged by coach</span>' : ''}${pendingTag}</div>
+            <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ' <span class="coach-logged-tag logged-by-tag">Logged by coach</span>' : ''}${pendingTag}</div>
             <div class="session-meta">
               <div class="meta-item"><span class="meta-num mono">${stats.innings}</span><span class="meta-lbl">Innings</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
@@ -8920,7 +9001,7 @@ function renderHistoryView(){
     const viewControl = s.reportPath
       ? `<a class="btn btn-ghost" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>`
       : (pEligible ? `<button class="btn btn-ghost" onclick="viewSessionReport('${s.id}')">View report</button>` : '');
-    const reportPanel = s.pending ? `
+    const reportPanel = s.otherTeam ? otherTeamReportPanel(s) : s.pending ? `
       <div class="report-panel">
         <div class="field-label">Email this report</div>
         <p class="report-recipients">Available once this session has synced.</p>
@@ -8951,7 +9032,7 @@ function renderHistoryView(){
 
     // P1-15: delete a saved (synced) session. Pending sessions are left to
     // P1-01. No pitch editing anywhere -- delete is the only post-save action.
-    const deleteZone = (s.pending || !canDeleteSessions()) ? '' : (!isOnline() ? `
+    const deleteZone = (s.pending || s.otherTeam || !canDeleteSessions()) ? '' : (!isOnline() ? `
       <div class="delete-zone"><button class="undo-btn" disabled title="Deleting requires a connection">Connect to delete</button></div>` : (state.deletingSessionId === s.id ? `
       <div class="delete-zone">
         <p class="delete-warn">This permanently removes the ${stats.total} pitch${stats.total === 1 ? '' : 'es'} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
@@ -8968,7 +9049,7 @@ function renderHistoryView(){
     return `
       <div class="session-card">
         <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
-          <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${s.loggedByCoach ? ' <span class="coach-logged-tag logged-by-tag">Logged by coach</span>' : ''}${pendingTag}</div>
+          <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${teamChipHtml(s)}${s.loggedByCoach ? ' <span class="coach-logged-tag logged-by-tag">Logged by coach</span>' : ''}${pendingTag}</div>
           <div class="session-meta">
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
             <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
@@ -10313,7 +10394,7 @@ function render(){
           <button style="all:unset;flex:1;min-width:0;display:flex;align-items:center;cursor:pointer;" onclick="selectPitcher('${p.id}')">
             <div class="roster-item-main">
               <span class="roster-item-name">${escHtml(p.name)}${p.throws ? `<span class="throws-tag">${p.throws}HP</span>` : ''}</span>
-              <span class="roster-item-types">${p.pitchTypes.map(pitchLabel).join(' · ') || 'No pitches set yet'}</span>
+              <span class="roster-item-types">${p.pitchTypes.map(pitchLabel).join(' · ') || 'No pitches set yet'}</span>${workloadRosterLine(p.id)}
               ${p.emailConfirmed ? '' : '<span class="verify-badge roster-verify-badge">Unverified</span>'}${p.guardianPending ? '<span class="verify-badge roster-verify-badge">Guardian pending</span>' : ''}${p.managed ? '<span class="verify-badge roster-verify-badge parent-badge">Parent account</span>' : ''}
             </div>
             <span class="roster-item-num">${p.uniformNumber === null ? '—' : p.uniformNumber}</span>

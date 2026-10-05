@@ -246,6 +246,18 @@ Deno.serve(async (req) => {
   if (session.pitcher_id !== pitcherId) {
     return new Response(JSON.stringify({ error: 'pitcherId does not match the session\'s pitcher.' }), { status: 400, headers: corsHeaders })
   }
+  // R4: coaches of the pitcher's OTHER current teams can read this session (RLS) but only the
+  // pitcher or the coaches of the team it was charted for may generate or send its report.
+  // Checked before anything is generated, so a refused caller leaves no orphaned file.
+  {
+    const [{ data: ownsIt }, { data: recording }] = await Promise.all([
+      callerClient.rpc('is_my_profile', { p: pitcherId }),
+      callerClient.rpc('is_coach_of_session_team', { p_session_id: sessionId })
+    ])
+    if (ownsIt !== true && recording !== true) {
+      return new Response(JSON.stringify({ error: 'Only the pitcher or the coaches of the team this session was charted for can create or send its report.', code: 'not_recording_team' }), { status: 403, headers: corsHeaders })
+    }
+  }
   // G2 approach (g): the kind='game' refusal that used to sit here is gone
   // -- decision 10 is explicit that it comes off client and server in the
   // SAME deploy as everything else. A game session now branches to its own

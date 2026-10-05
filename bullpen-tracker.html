@@ -10385,9 +10385,12 @@ function render(){
       ? renderProfileView()
       : state.view === 'leaderboard' ? renderLeaderboardView()
       : state.view === 'pitcherProfile' ? renderPitcherProfileView()
-      : `<div class="empty-state"><div class="display">No pitcher selected</div><p>Invite a pitcher to this team to get started.</p>${
+      : `<div class="empty-state"><div class="display">No pitcher selected</div>${
+          currentTeamArchived() ? '<p>This team is archived and has no pitchers on its roster.</p>'
+          : `<p>Invite a pitcher to this team to get started.</p>${
           isHeadOfCurrentTeam() ? `<button class="btn btn-primary" style="margin-top:12px;" onclick="openCoachWelcome()">Get the invite link</button>`
-                                : '<p class="profile-note">Ask your head coach for the pitcher invite link.</p>'}</div>`);
+                                : '<p class="profile-note">Ask your head coach for the pitcher invite link.</p>'}`}
+          <button class="btn btn-ghost hide-phone" style="margin-top:10px;" onclick="setView('profile')">Profile</button></div>`);   // the coach's Profile button normally lives in the pitcher header, which an empty roster doesn't have
   } else {
     const arsenalChips = p.pitchTypes.map(t => {
       const c = colorForType(p, t);

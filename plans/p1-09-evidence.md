@@ -43,6 +43,8 @@ Oct 5). **Was open:** the in-app View report for a pitcher on an archived team �
 database (`is_pitcher_report_eligible` true while archived); no report was generated during the
 walkthrough.
 
-**Still to do (Joel):** before renaming anything real, check one archived team's read-only view on
+**Done (Joel, Oct 5):** phone check of an archived team's read-only view on production (throwaway team: create, archive, look, restore, delete) and P1-01 offline checks — all good. P1-09 complete.
+
+~~Still to do (Joel):~~ before renaming anything real, check one archived team's read-only view on
 his phone (a throwaway team on production: create, archive, look, restore, delete); P1-01 offline
 checks 1–3.

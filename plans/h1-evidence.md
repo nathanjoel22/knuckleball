@@ -102,10 +102,15 @@ present; 9 limits; 17 sessions sealed (created > 14 days ago), 62 saved-and-unse
 Oct 5; the closing migration is due no earlier than Oct 19**, once production shows a week with
 no old-path writes.
 
+**Phone check (Oct 5, Joel):** pen charted offline on the live site (v145) as the
+`+stagingcoach15` coach login, saved, reconnected → landed on production **sealed**, 8 pitches,
+baseball (12:27 pm ET). Joel: offline checks pass.
+
 ## Still open
 
-- Joel's phone: one pen offline on the live site, saved, reconnected; P1-01 offline checks 1–3 in
-  both sports.
-- Optional (Joel, dashboard): production sign-ups/sign-ins 30 → 100 per 5 minutes.
+- Joel's report (Oct 5): taps felt very laggy on his phone during charting, especially with the
+  relative-accuracy highlight pulsing. Under investigation separately (H1 changed nothing in the
+  tap path; see the follow-up).
+- Production sign-ups/sign-ins stay at 30 per 5 minutes for now (Joel, Oct 5).
 - The grace-closing migration: ≥ 14 days after the production deploy, once production shows a
   week with no old-path writes; show Joel unsealed/unsaved leftovers first.

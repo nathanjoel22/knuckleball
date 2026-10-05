@@ -5249,10 +5249,11 @@ function workloadParts(id){
   const w = (state.workload || {})[id];
   if(!w || !w.last_at) return null;
   const d = new Date(w.last_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  const span = (b, g) => `${b + g}${g ? ` (${g} in games)` : ''}`;
+  // Joel, Oct 5: last time out and the last 7 days only (no 30-day count); games included.
+  const week = w.d7_bullpen + w.d7_game;
   return {
-    last: `Last ${w.last_kind === 'game' ? 'game' : 'pen'} · ${d} · ${w.last_pitches} pitches`,
-    windows: `7 days · ${span(w.d7_bullpen, w.d7_game)} · 30 days · ${span(w.d30_bullpen, w.d30_game)}`
+    last: `Last ${w.last_kind === 'game' ? 'game' : 'pen'} · ${d} · ${w.last_pitches} pitch${w.last_pitches === 1 ? '' : 'es'}`,
+    windows: `Last 7 days · ${week} pitch${week === 1 ? '' : 'es'}`
   };
 }
 function workloadRosterLine(id){ const w = workloadParts(id); return w ? `<span class="workload-line">${w.last}<br>${w.windows}</span>` : ''; }

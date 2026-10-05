@@ -79,7 +79,15 @@ email volume is far below 100 (most reports are opened by link, which uses no em
 roster-invite day ever coincides with heavy report sending: set production `RESEND_DAILY_QUOTA`
 to 70 (breaker at 63, ~30 left for invites/resets), or move to a paid Resend plan and raise the
 quota to match. The other Auth rate-limit rows (sign-ups/sign-ins, token refresh, verifications)
-were not reported; nothing in H1 depends on them.
+were reported separately (below).
+
+Other Auth rate limits (per IP address, per 5 minutes; same on both projects, Joel Oct 5):
+sign-ups and sign-ins 30, token refreshes 150, token verifications 30. Recommendation: raise
+**production** sign-ups/sign-ins to 100 per 5 minutes — a team onboarding at practice shares one
+Wi-Fi IP, and 25–30 players signing up from one invite link could hit 30. Token refreshes and
+verifications are fine (Knuckleball uses no OTP or magic links; only password-reset links verify).
+Staging can stay as is. Joel changes it in the dashboard, never with `supabase config push`;
+CAPTCHA (Turnstile) remains the next step if signups are abused.
 
 ## Still open
 

@@ -5252,7 +5252,7 @@ function workloadParts(id){
   // Joel, Oct 5: last time out and the last 7 days only (no 30-day count); games included.
   const week = w.d7_bullpen + w.d7_game;
   return {
-    last: `Last ${w.last_kind === 'game' ? 'game' : 'pen'} · ${d} · ${w.last_pitches} pitch${w.last_pitches === 1 ? '' : 'es'}`,
+    last: `${d} · ${w.last_pitches} pitch${w.last_pitches === 1 ? '' : 'es'}`,   // Joel: the date already says "last time out"
     windows: `Last 7 days · ${week} pitch${week === 1 ? '' : 'es'}`
   };
 }

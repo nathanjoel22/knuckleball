@@ -2177,6 +2177,23 @@ $$;
 ALTER FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint, "p_profile" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."set_team_level"("p_team_id" "uuid", "p_level" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if not public.is_team_head(p_team_id) then
+    raise exception 'not authorized';
+  end if;
+  -- teams_level_check ties the level to the team's sport and refuses anything else.
+  update public.teams set level = p_level where id = p_team_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_team_level"("p_team_id" "uuid", "p_level" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."set_uniform_number"("p_team_id" "uuid", "p_pitcher_id" "uuid", "p_number" smallint, "p_expected" smallint) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -3292,7 +3309,7 @@ ALTER TABLE ONLY "public"."sessions"
 
 
 ALTER TABLE ONLY "public"."sessions"
-    ADD CONSTRAINT "sessions_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "sessions_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE RESTRICT;
 
 
 
@@ -3333,10 +3350,6 @@ CREATE POLICY "Coaches manage own team invites" ON "public"."invites" USING ((EX
   WHERE (("t"."id" = "invites"."team_id") AND "public"."is_my_profile"("t"."coach_id"))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."teams" "t"
   WHERE (("t"."id" = "invites"."team_id") AND "public"."is_my_profile"("t"."coach_id")))));
-
-
-
-CREATE POLICY "Coaches manage own teams" ON "public"."teams" USING ("public"."is_team_head"("id")) WITH CHECK ("public"."is_team_head"("id"));
 
 
 
@@ -3980,6 +3993,12 @@ GRANT ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_nu
 
 
 
+REVOKE ALL ON FUNCTION "public"."set_team_level"("p_team_id" "uuid", "p_level" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."set_team_level"("p_team_id" "uuid", "p_level" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_team_level"("p_team_id" "uuid", "p_level" "text") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."set_uniform_number"("p_team_id" "uuid", "p_pitcher_id" "uuid", "p_number" smallint, "p_expected" smallint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_uniform_number"("p_team_id" "uuid", "p_pitcher_id" "uuid", "p_number" smallint, "p_expected" smallint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."set_uniform_number"("p_team_id" "uuid", "p_pitcher_id" "uuid", "p_number" smallint, "p_expected" smallint) TO "service_role";
@@ -4190,8 +4209,8 @@ GRANT ALL ON TABLE "public"."team_coaches" TO "service_role";
 
 
 
-GRANT INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN,UPDATE ON TABLE "public"."teams" TO "anon";
-GRANT INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN,UPDATE ON TABLE "public"."teams" TO "authenticated";
+GRANT REFERENCES,TRIGGER,MAINTAIN ON TABLE "public"."teams" TO "anon";
+GRANT REFERENCES,TRIGGER,MAINTAIN ON TABLE "public"."teams" TO "authenticated";
 GRANT ALL ON TABLE "public"."teams" TO "service_role";
 
 

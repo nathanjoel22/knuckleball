@@ -9608,7 +9608,7 @@ function renderCoachTeamAdmin(){
 window.setTeamLevel = async function(teamId, level){
   state.levelError = null; state.levelBusy = true; render();
   try{
-    const { error } = await netTimeout(supabaseClient.from('teams').update({ level }).eq('id', teamId), 10000);
+    const { error } = await netTimeout(supabaseClient.rpc('set_team_level', { p_team_id: teamId, p_level: level }), 10000);
     if(error) throw error;
     const t = state.teams.find(x => x.id === teamId);
     if(t) t.level = level;

@@ -1214,6 +1214,9 @@
   .contacts-save-row{ flex-basis:100%; display:flex; align-items:center; gap:12px; margin-top:2px; }
   .contacts-saved-msg{ font-size:12.5px; color:#6FA287; font-weight:600; }
 
+  /* P1-09: archived team banner + danger zone */
+  .archived-banner{ margin-bottom:12px; }
+  .team-danger-confirm{ display:flex; flex-direction:column; gap:8px; margin-top:8px; }
   /* S4 B2/B9: Add a player, Parent account badge */
   .parent-badge{ background:rgba(127,140,130,0.18); color:var(--ink-dim); }
   .ap-choices{ display:flex; gap:16px; flex-wrap:wrap; margin-top:6px; }
@@ -2881,15 +2884,24 @@ async function loadTeams(){
     // get_team_invite_links().
     const { data } = await supabaseClient
       .from('team_coaches')
-      .select('role, teams(id, name, level)')
+      .select('role, teams(id, name, level, archived_at)')
       .eq('coach_id', state.profile.id)
       .order('team_id');
-    state.teams = (data || []).filter(r => r.teams).map(r => ({ ...r.teams, myRole: r.role }));
+    state.teams = sortTeamsActiveFirst((data || []).filter(r => r.teams).map(r => ({ ...r.teams, archived: !!r.teams.archived_at, myRole: r.role })));
   } else {
-    const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name, level)').eq('pitcher_id', state.profile.id);
-    state.teams = (data || []).filter(r => r.teams).map(r => ({ ...r.teams, uniform_number: r.uniform_number }));
+    const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name, level, archived_at)').eq('pitcher_id', state.profile.id);
+    state.teams = sortTeamsActiveFirst((data || []).filter(r => r.teams).map(r => ({ ...r.teams, archived: !!r.teams.archived_at, uniform_number: r.uniform_number })));
   }
 }
+/* ---------- P1-09: ARCHIVED TEAMS (Joel, Oct 5) ----------
+   An archived team stays in state.teams (its History and reports stay
+   readable) but is flagged: it's listed last, under "Archived", and never
+   used for charting, invite links, roster editing, rename, level or the
+   leaderboard. The database enforces all of that too. */
+function sortTeamsActiveFirst(list){ return list.filter(t => !t.archived).concat(list.filter(t => t.archived)); }
+function teamIsArchived(id){ const t = (state.teams || []).find(x => x.id === id); return !!(t && t.archived); }
+function currentTeamArchived(){ return teamIsArchived(state.currentTeamId); }
+function activeTeams(){ return (state.teams || []).filter(t => !t.archived); }
 
 // Best-effort, last-known snapshot of profile/teams/roster and current
 // selection -- NOT an authoritative data cache (out of scope: caching
@@ -2987,11 +2999,11 @@ window.switchProfile = async function(id){
 // live state the screen is drawing from.
 async function fetchTeamsFor(prof){
   if(prof.role === 'coach'){
-    const { data } = await supabaseClient.from('team_coaches').select('role, teams(id, name, level)').eq('coach_id', prof.id).order('team_id');
-    return (data || []).filter(r => r.teams).map(r => ({ ...r.teams, myRole: r.role }));
+    const { data } = await supabaseClient.from('team_coaches').select('role, teams(id, name, level, archived_at)').eq('coach_id', prof.id).order('team_id');
+    return sortTeamsActiveFirst((data || []).filter(r => r.teams).map(r => ({ ...r.teams, archived: !!r.teams.archived_at, myRole: r.role })));
   }
-  const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name, level)').eq('pitcher_id', prof.id);
-  return (data || []).filter(r => r.teams).map(r => ({ ...r.teams, uniform_number: r.uniform_number }));
+  const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name, level, archived_at)').eq('pitcher_id', prof.id);
+  return sortTeamsActiveFirst((data || []).filter(r => r.teams).map(r => ({ ...r.teams, archived: !!r.teams.archived_at, uniform_number: r.uniform_number })));
 }
 async function fetchRosterFor(teamId){
   const { data, error } = await supabaseClient.from('pitcher_teams')
@@ -3259,6 +3271,7 @@ window.onTeamChange = async function(teamId, skipRender){
     // Launch (skipRender) always opens on New Session; a coach who switches teams
     // from the dropdown still lands on History, as before.
     state.view = skipRender ? 'session' : 'history';
+    if(teamIsArchived(teamId)) state.view = 'history';   // P1-09: read-only, no New Session
   } else {
     state.currentPitcherId = state.profile.id;
     state.view = 'session';
@@ -3378,11 +3391,16 @@ async function loadCoachAdminData(teamId){
     .map(r => ({ coachId: r.coach_id, role: r.role, name: r.profiles.full_name }))
     .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : (a.role === 'head' ? -1 : 1)));
 
-  if(isHeadOfTeam(teamId)){
+  if(isHeadOfTeam(teamId) && !teamIsArchived(teamId)){
     const { data, error } = await supabaseClient.rpc('get_team_invite_links', { p_team_id: teamId });
     state.teamInviteLinks = error ? null : data;
   } else {
     state.teamInviteLinks = null;
+  }
+  // P1-09: archive or delete depends on whether the team has ANY session (tombstones count).
+  if(isHeadOfTeam(teamId)){
+    const { count, error: cErr } = await supabaseClient.from('sessions').select('id', { count: 'exact', head: true }).eq('team_id', teamId);
+    state.teamSessionCounts = Object.assign({}, state.teamSessionCounts, { [teamId]: cErr ? null : count });
   }
 }
 
@@ -3533,12 +3551,12 @@ window.submitRenameTeam = async function(){
   const el = document.getElementById('rename-team-input');
   if(el) state.renameTeamDraft = el.value;
   const name = (state.renameTeamDraft || '').trim();
-  if(!name){ state.renameTeamError = 'Team name cannot be blank.'; render(); return; }
+  if(name.length < 2 || name.length > 60){ state.renameTeamError = 'A team name is 2 to 60 characters.'; render(); return; }
   state.renameTeamBusy = true;
   render();
   const { error } = await supabaseClient.rpc('rename_team', { p_team_id: team.id, p_name: name });
   state.renameTeamBusy = false;
-  if(error){ state.renameTeamError = 'Could not rename the team. Try again.'; render(); return; }
+  if(error){ state.renameTeamError = /team_name_length/.test(error.message || '') ? 'A team name is 2 to 60 characters.' : /team_archived/.test(error.message || '') ? 'This team is archived. Restore it first.' : 'Could not rename the team. Try again.'; render(); return; }
   team.name = name;
   state.renameTeamOpen = false;
   state.renameTeamError = null;
@@ -3974,6 +3992,9 @@ function uniformTargetFor(teamId, pitcherId){
 function uniformRowHtml(teamId, pitcherId, label){
   const t = uniformTargetFor(teamId, pitcherId);
   if(!t) return '';
+  if(teamIsArchived(teamId)){   // P1-09: read-only
+    return `<div class="uniform-field"><span class="field-label">${escHtml(label)}</span><div class="uniform-locked"><span class="uniform-locked-num">${t.number === null ? '—' : t.number}</span></div></div>`;
+  }
   const key = pitcherId + ':' + teamId;
   const editing = state.uniformEditKey === key;
   const msg = (state.uniformMsgKey === key && state.uniformMsg) ? `<span class="uniform-msg">${state.uniformMsg}</span>` : '';
@@ -4896,7 +4917,8 @@ window.triggerSync = function(){
 const SYNC_ERRORS = {
   not_entitled: "This account can't save that session (it isn't the pitcher's or a coach of the team).",
   not_saved: "This session wasn't saved properly on this device.",
-  invalid_session: "This session's data couldn't be read."
+  invalid_session: "This session's data couldn't be read.",
+  team_archived: "This session's team was archived, so it can't be saved yet. It will sync if the head coach restores the team."
 };
 async function syncOutbox(){
   if(!state.session) return;
@@ -5060,7 +5082,7 @@ async function syncOutbox(){
       // when the write went out anonymous -- the session lapsed mid-sync.
       if(err && err.code === '42501' && isGenuineSignOut()){ goToLoginAfterSignOut(); return; }
       await updateOutboxItem(userId, Object.assign({}, item, {
-        lastError: (err && err.message) || String(err),
+        lastError: (err && SYNC_ERRORS[err.message]) || (err && err.message) || String(err),
         lastAttemptAt: Date.now()
       }));
     }
@@ -8407,8 +8429,20 @@ function renderVeloSlim(){
   </div>`;
 }
 
+function renderArchivedBanner(){
+  if(!isCoach() || !currentTeamArchived()) return '';
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  return `<div class="verify-banner archived-banner"><p><strong>Archived · read only.</strong> ${escHtml(team ? team.name : 'This team')} is archived: no new sessions, no invite links. History and reports stay readable.</p>
+    ${isHeadOfTeam(state.currentTeamId) ? `<button class="btn btn-primary" ${state.teamDangerBusy || !isOnline() ? 'disabled' : ''} onclick="restoreTeam()">${state.teamDangerBusy ? 'Restoring…' : 'Restore'}</button>` : ''}
+    ${state.teamDangerError && state.teamDangerFor === state.currentTeamId ? `<p class="profile-msg">${escHtml(state.teamDangerError)}</p>` : ''}</div>`;
+}
 function renderSessionView(){
   const p = currentPitcher();
+  if(!isCoach() && currentTeamArchived() && !state.draftAvailable){
+    const team = state.teams.find(t => t.id === state.currentTeamId);
+    const other = activeTeams()[0];
+    return `<div class="verify-banner archived-banner"><p>Your team <strong>${escHtml(team ? team.name : '')}</strong> was archived by its coach. Your History and reports are still here. To chart new sessions, ${other ? `switch to <strong>${escHtml(other.name)}</strong> in the Team menu, or ` : ''}join a team with an invite link.</p></div>`;
+  }
   if(state.draftAvailable){
     return `
       <div class="draft-banner">
@@ -9104,7 +9138,7 @@ function renderRelAccuracySection(p){
    "as of". None of this ever runs on the charting path. */
 const LB_WINDOWS = [['week', 'Week'], ['month', 'Month'], ['all', 'All-time']];
 const LB_CATS = [['velocity', 'Velocity'], ['accuracy', 'Accuracy'], ['strike', 'Strike %']];
-function hasLeaderboard(){ return state.teams.length > 0 && sportCfg().hasLeaderboard; }   // cached membership: works offline; never for softball (S1)
+function hasLeaderboard(){ return activeTeams().length > 0 && !currentTeamArchived() && sportCfg().hasLeaderboard; }   // cached membership: works offline; never for softball (S1)
 function escHtml(v){
   return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 }
@@ -9238,7 +9272,7 @@ function lbSection(title, rows, unit, minimum, isHead, cat, emptyMsg){
 function renderLeaderboardView(){
   if(!hasLeaderboard()) return `<div class="empty-hist">Join a team to see its leaderboard.</div>`;
   const lb = state.lb;
-  const teams = state.teams;
+  const teams = activeTeams();   // P1-09: archived teams have no leaderboard
   const teamId = (lb && lb.teamId) || state.lbTeamId || state.currentTeamId || (teams[0] && teams[0].id);
   const picker = teams.length > 1
     ? `<select class="team-select lb-team-select" onchange="setLbTeam(this.value)">${teams.map(t => `<option value="${escHtml(t.id)}" ${t.id === teamId ? 'selected' : ''}>${escHtml(t.name)}</option>`).join('')}</select>`
@@ -9305,8 +9339,11 @@ function renderTabs(){
   const fourthTab = isCoach()
     ? `<button class="tab-btn${state.view==='pitcherProfile'?' active':''}" onclick="setView('pitcherProfile')"><span class="tab-label-full">Player Profile</span><span class="tab-label-short">Player</span></button>`
     : `<button class="tab-btn${state.view==='profile'?' active':''}" onclick="setView('profile')">Profile</button>`;
-  return `<div class="tabs">
-    <button class="tab-btn${state.view==='session'?' active':''}" onclick="setView('session')">${state.draftAvailable ? 'Resume' : 'New Session'}</button>
+  // P1-09: a coach has no New Session on an archived team (a pitcher keeps the tab, which explains).
+  const sessionTab = (isCoach() && currentTeamArchived()) ? '' :
+    `<button class="tab-btn${state.view==='session'?' active':''}" onclick="setView('session')">${state.draftAvailable ? 'Resume' : 'New Session'}</button>`;
+  return `${renderArchivedBanner()}<div class="tabs">
+    ${sessionTab}
     <button class="tab-btn${state.view==='history'?' active':''}" onclick="setView('history')">History${!isCoach() && state.profile && hasRosterDot(state.profile.id) ? '<span class="tab-dot" aria-label="New session"></span>' : ''}</button>
     ${hasLeaderboard() ? `<button class="tab-btn${state.view==='leaderboard'?' active':''}" onclick="setView('leaderboard')"><span class="tab-label-full">Leaderboard</span><span class="tab-label-short">Leaders</span></button>` : ''}
     ${fourthTab}
@@ -9471,10 +9508,105 @@ window.setUsesRadarGun = async function(val, self){
 // is_team_head refusal -- see the handler comments above. Assumes
 // loadCoachAdminData(state.currentTeamId) has already populated
 // teamCoachesList/teamInviteLinks (setView('profile') does this).
+/* ---------- P1-09: ARCHIVE / DELETE / RESTORE (head coach only) ----------
+   A team with sessions can be archived (hidden, read-only, restorable) but
+   never deleted; a team with no sessions can be deleted. Both confirm by
+   typing the team name. The server decides too (archive_team / delete_team
+   / restore_team, head-only) -- this UI only shows the action that applies. */
+function renderTeamDangerSection(team){
+  if(team.archived) return '';   // the Archived banner carries Restore
+  const n = (state.teamSessionCounts || {})[team.id];
+  const kind = n === 0 ? 'delete' : 'archive';
+  const open = state.teamDanger && state.teamDangerFor === team.id;
+  const consequences = kind === 'archive'
+    ? `Archiving <strong>${escHtml(team.name)}</strong>: it disappears from all lists, its invite links stop working, and players can't chart new sessions for it. All ${n} of its session${n === 1 ? '' : 's'}, notes and reports stay readable, and you can restore it any time.`
+    : `Deleting <strong>${escHtml(team.name)}</strong> is permanent. No sessions have been charted for it, so nothing is lost but the team, its roster and its staff list.`;
+  return `<div class="profile-section">
+    <h3>${kind === 'archive' ? 'Archive this team' : 'Delete this team'}</h3>
+    ${n === undefined || n === null ? `<p class="profile-note">${n === null ? "Couldn't check this team's sessions. Reopen Profile to try again." : 'Checking…'}</p>` : `
+    <p class="profile-note">${kind === 'archive'
+      ? `This team has ${n} session${n === 1 ? '' : 's'}, so it can be archived (hidden and read-only, restorable) but not deleted.`
+      : 'No sessions have been charted for this team, so it can be deleted.'}</p>
+    ${open ? `<div class="team-danger-confirm">
+        <p class="invite-regen-warn" style="margin:0;">${consequences}</p>
+        <span class="field-label">Type the team name to confirm</span>
+        <input id="team-danger-input" class="text-input" style="max-width:280px;" autocomplete="off" value="${escHtml(state.teamDangerText || '')}" oninput="state.teamDangerText = this.value">
+        <div class="invite-regen-confirm-row">
+          <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.teamDangerBusy || !isOnline() ? 'disabled' : ''} onclick="confirmTeamDanger('${kind}')">${state.teamDangerBusy ? (kind === 'archive' ? 'Archiving…' : 'Deleting…') : (kind === 'archive' ? 'Archive team' : 'Delete team')}</button>
+          <button class="btn btn-ghost" ${state.teamDangerBusy ? 'disabled' : ''} onclick="cancelTeamDanger()">Cancel</button>
+        </div>
+      </div>` : `<button class="btn btn-ghost" ${!isOnline() ? 'disabled' : ''} onclick="openTeamDanger('${team.id}')">${kind === 'archive' ? 'Archive team…' : 'Delete team…'}</button>`}
+    ${state.teamDangerError && state.teamDangerFor === team.id ? `<p class="profile-msg">${escHtml(state.teamDangerError)}</p>` : ''}`}
+  </div>`;
+}
+window.openTeamDanger = function(teamId){ state.teamDanger = true; state.teamDangerFor = teamId; state.teamDangerText = ''; state.teamDangerError = null; render(); };
+window.cancelTeamDanger = function(){ state.teamDanger = false; state.teamDangerText = ''; state.teamDangerError = null; render(); };
+const TEAM_DANGER_ERRORS = {
+  not_authorized: 'Only the head coach can do that.',
+  team_archived: 'This team is archived. Restore it first.',
+  already_archived: 'This team is already archived.',
+  not_archived: 'This team isn\'t archived.'
+};
+// After a team action: reload the team list and stay where it makes sense.
+async function afterTeamChange(keepTeamId){
+  await loadTeams();
+  const keep = keepTeamId && state.teams.find(t => t.id === keepTeamId);
+  const next = keep ? keep.id : (activeTeams()[0] || state.teams[0] || {}).id;
+  if(next){ await onTeamChange(next, true); state.view = 'profile'; }
+  else { state.setupNeeded = 'team'; }
+  await saveLastKnownContext();
+}
+window.confirmTeamDanger = async function(kind){
+  const team = state.teams.find(t => t.id === state.teamDangerFor);
+  if(!team) return;
+  const typed = (document.getElementById('team-danger-input') || {}).value;
+  if(typed !== undefined) state.teamDangerText = typed;
+  if((state.teamDangerText || '').trim() !== team.name.trim()){
+    state.teamDangerError = 'Type the team name exactly as shown to confirm.';
+    render();
+    return;
+  }
+  if(!isOnline()){ state.teamDangerError = 'This needs a connection.'; render(); return; }
+  state.teamDangerBusy = true; state.teamDangerError = null; render();
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc(kind === 'archive' ? 'archive_team' : 'delete_team', { p_team_id: team.id }), 10000);
+    if(error) throw error;
+    if(!data || !data.ok){
+      state.teamDangerBusy = false;
+      state.teamDangerError = (data && data.message) || TEAM_DANGER_ERRORS[data && data.error] || "Couldn't do that. Try again.";
+      render();
+      return;
+    }
+    state.teamDanger = false; state.teamDangerText = ''; state.teamDangerBusy = false;
+    await afterTeamChange(kind === 'archive' ? team.id : null);
+  }catch(e){
+    console.error('team ' + kind + ' failed', e);
+    state.teamDangerBusy = false;
+    state.teamDangerError = "Couldn't do that. Check your connection and try again.";
+  }
+  render();
+};
+window.restoreTeam = async function(){
+  const teamId = state.currentTeamId;
+  if(!isOnline()){ state.teamDangerFor = teamId; state.teamDangerError = 'Restoring needs a connection.'; render(); return; }
+  state.teamDangerBusy = true; state.teamDangerFor = teamId; state.teamDangerError = null; render();
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('restore_team', { p_team_id: teamId }), 10000);
+    if(error) throw error;
+    if(!data || !data.ok){ state.teamDangerError = TEAM_DANGER_ERRORS[data && data.error] || "Couldn't restore the team."; }
+    else { await afterTeamChange(teamId); }
+  }catch(e){
+    console.error('restore failed', e);
+    state.teamDangerError = "Couldn't restore the team. Check your connection and try again.";
+  }
+  state.teamDangerBusy = false;
+  render();
+};
 function renderCoachTeamAdmin(){
   const team = state.teams.find(t => t.id === state.currentTeamId);
   if(!team) return '';
-  const head = isHeadOfTeam(team.id);
+  const realHead = isHeadOfTeam(team.id);
+  const head = realHead && !team.archived;   // P1-09: an archived team is read-only, even for its head
   const staff = state.teamCoachesList;
 
   const staffRows = staff === null ? '<p class="profile-note">Loading…</p>' : (staff.map(c => {
@@ -9591,6 +9723,7 @@ function renderCoachTeamAdmin(){
     </div>
     ${handoffSection}
     ${linksSection}
+    ${realHead ? renderTeamDangerSection(team) : ''}
     <div class="profile-section">
       <h3>Create a team</h3>
       <p class="profile-note">Start a new team you'll be head of — your account can hold a role on more than one.</p>
@@ -10158,10 +10291,13 @@ function render(){
     return;
   }
 
-  const teamOptions = state.teams.map(t => `<option value="${escHtml(t.id)}" ${t.id===state.currentTeamId?'selected':''}>${escHtml(t.name)}</option>`).join('');
+  const teamOpt = t => `<option value="${escHtml(t.id)}" ${t.id===state.currentTeamId?'selected':''}>${escHtml(t.name)}</option>`;
+  const archivedList = state.teams.filter(t => t.archived);
+  const teamOptions = activeTeams().map(teamOpt).join('')
+    + (archivedList.length ? `<optgroup label="Archived">${archivedList.map(teamOpt).join('')}</optgroup>` : '');
   const teamSelector = state.teams.length > 1
     ? `<div class="team-select-wrap"><span class="roster-label">Team</span><select class="team-select" onchange="onTeamChange(this.value)">${teamOptions}</select></div>`
-    : `<div class="team-select-wrap"><span class="roster-label">Team</span><div style="font-size:14px;font-weight:600;">${escHtml(state.teams[0].name)}</div></div>`;
+    : `<div class="team-select-wrap"><span class="roster-label">Team</span><div style="font-size:14px;font-weight:600;">${escHtml(state.teams[0].name)}${state.teams[0].archived ? ' <span class="throws-tag">ARCHIVED</span>' : ''}</div></div>`;
 
   let sidebarBody;
   let phoneFooter = '';   // phones only: the coach's invite link + sign out, rendered below the page content
@@ -10169,7 +10305,7 @@ function render(){
     // R6: removing a pitcher is head-only now -- the ✕ itself is gone for
     // an assistant (the server would refuse it anyway; see is_team_head),
     // never just disabled, so there's nothing there to explain.
-    const canRemovePitcher = isHeadOfCurrentTeam();
+    const canRemovePitcher = isHeadOfCurrentTeam() && !currentTeamArchived();   // P1-09: read-only
     const rosterItems = state.roster.map((p, i) => `
       <div class="roster-item-wrap">
         <div class="roster-item${p.id===state.currentPitcherId?' active':''}" style="display:flex;">

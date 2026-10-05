@@ -464,6 +464,7 @@
       window.location.href = 'bullpen-tracker.html';
       return;
     }
+    if(data && data.error === 'team_archived'){ showTeamArchived(); return; }
     if(error || !data || data.error){
       showCard('invalid-card');
       return;
@@ -531,7 +532,8 @@
     if(data && data.error === 'attestation_required'){ showCard('attest-card'); return; }
     if(error || !data || data.error){
       document.querySelectorAll('#joinas-card button').forEach(b => { b.disabled = false; });
-      err.textContent = (data && data.error === 'invalid_token') ? 'This invite link is no longer valid. Ask the coach for a current one.' : "Couldn't join. Check your connection and try again.";
+      err.textContent = (data && data.error === 'invalid_token') ? 'This invite link is no longer valid. Ask the coach for a current one.'
+        : (data && data.error === 'team_archived') ? 'This team is no longer active.' : "Couldn't join. Check your connection and try again.";
       return;
     }
     try{
@@ -561,6 +563,13 @@
     await joinAs(data.id);
   });
 
+  // P1-09: an archived team's invite links stop working.
+  function showTeamArchived(){
+    const card = document.getElementById('invalid-card');
+    card.querySelector('h2').textContent = 'Team no longer active';
+    card.querySelector('.info-msg').textContent = 'This team is no longer active. Ask the coach for a current invite link.';
+    showCard('invalid-card');
+  }
   async function init(){
     if(!token){
       showCard('invalid-card');
@@ -574,6 +583,7 @@
     // S1: look the team up first, signed in or not, so the page wears the team's sport.
     const { data: rows, error } = await supabaseClient.rpc('resolve_team_invite', { p_token: token });
     if(!error && rows && rows.length){ applyTeamSport(rows[0].team_sport); teamName = rows[0].team_name; }
+    if(!error && rows && rows.length && rows[0].team_archived){ showTeamArchived(); return; }
 
     const { data: { session } } = await supabaseClient.auth.getSession();
     if(session){

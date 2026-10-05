@@ -389,6 +389,7 @@
       showCard('refused-card');
       return;
     }
+    if(data && data.error === 'team_archived'){ showTeamArchived(); return; }
     if(error || !data || data.error){
       showCard('invalid-card');
       return;
@@ -396,6 +397,13 @@
     window.location.href = 'bullpen-tracker.html';
   }
 
+  // P1-09: an archived team's invite links stop working.
+  function showTeamArchived(){
+    const card = document.getElementById('invalid-card');
+    card.querySelector('h2').textContent = 'Team no longer active';
+    card.querySelector('.info-msg').textContent = 'This team is no longer active. Ask the coach for a current invite link.';
+    showCard('invalid-card');
+  }
   async function init(){
     if(!token){
       showCard('invalid-card');
@@ -405,6 +413,7 @@
     // S1: look the team up first, signed in or not, so the page wears the team's sport.
     const { data: rows, error } = await supabaseClient.rpc('resolve_coach_invite', { p_token: token });
     if(!error && rows && rows.length) applyTeamSport(rows[0].team_sport);
+    if(!error && rows && rows.length && rows[0].team_archived){ showTeamArchived(); return; }
 
     const { data: { session } } = await supabaseClient.auth.getSession();
     if(session){

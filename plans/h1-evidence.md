@@ -89,10 +89,23 @@ verifications are fine (Knuckleball uses no OTP or magic links; only password-re
 Staging can stay as is. Joel changes it in the dashboard, never with `supabase config push`;
 CAPTCHA (Turnstile) remains the next step if signups are abused.
 
+## Production (Oct 5 2026, Joel, after backup 2026-10-05-1218)
+
+Operator Nathan / joelhauserman@gmail.com; backup confirmed pre-H1. Applied
+`20261003000000_h1_saved_lock.sql` and `20261003010000_h1_rate_limits.sql`; secrets
+`RESEND_DAILY_QUOTA=100` and `ALERT_EMAIL` set; deployed send-session-report,
+send-verification-email, send-removal-notice, send-guardian-consent, request-email-change; pushed
+v145 to main (pre-push checks all clean). Production after: 35 policies; triggers
+`game_events_h1_lock, pitches_h1_lock, sessions_h1_lock`; `sync_session` and `rate_limit_take`
+present; 9 limits; 17 sessions sealed (created > 14 days ago), 62 saved-and-unsealed (grace),
+0 unsaved. Live site v145, production config. schema.sql regenerated. **Grace period opened
+Oct 5; the closing migration is due no earlier than Oct 19**, once production shows a week with
+no old-path writes.
+
 ## Still open
 
-- Production: fresh backup; apply both migrations; deploy the five functions; set
-  `RESEND_DAILY_QUOTA` and `ALERT_EMAIL`; push v145 to main; regenerate schema.sql; Joel's phone
-  offline pen + P1-01 offline checks 1–3 in both sports.
+- Joel's phone: one pen offline on the live site, saved, reconnected; P1-01 offline checks 1–3 in
+  both sports.
+- Optional (Joel, dashboard): production sign-ups/sign-ins 30 → 100 per 5 minutes.
 - The grace-closing migration: ≥ 14 days after the production deploy, once production shows a
   week with no old-path writes; show Joel unsealed/unsaved leftovers first.

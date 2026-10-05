@@ -1034,6 +1034,54 @@ $$;
 ALTER FUNCTION "public"."get_unopened_sessions"("p_team_id" "uuid", "p_viewer" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."h1_child_lock"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_ended  timestamptz;
+  v_sealed timestamptz;
+  v_exists boolean;
+begin
+  select s.ended_at, s.sealed_at into v_ended, v_sealed
+    from public.sessions s where s.id = new.session_id;
+  if tg_op = 'INSERT' then
+    if v_sealed is null then
+      return new;
+    end if;
+    -- Sealed: an old app re-sending a row that's already there is skipped; anything new is refused.
+    if tg_table_name = 'pitches' then
+      select exists (select 1 from public.pitches where id = new.id) into v_exists;
+    else
+      select exists (select 1 from public.game_events where id = new.id) into v_exists;
+    end if;
+    if v_exists then
+      return null;
+    end if;
+    raise exception 'session_sealed_locked' using detail = 'This session is saved; nothing can be added to it.';
+  end if;
+
+  -- UPDATE (every caller, server functions included)
+  if v_ended is null then
+    return new;
+  end if;
+  if to_jsonb(new) = to_jsonb(old) then
+    return null;   -- an unchanged re-send (an old app's upsert retry): skipped, not an error
+  end if;
+  if tg_table_name = 'game_events' then
+    if to_jsonb(new) ->> 'after_pitch_id' is null
+       and (to_jsonb(new) - 'after_pitch_id') = (to_jsonb(old) - 'after_pitch_id') then
+      return new;  -- the after_pitch_id foreign key clearing itself when its pitch is deleted
+    end if;
+  end if;
+  raise exception 'session_saved_locked' using detail = 'A saved session''s pitches and events can''t be changed.';
+end;
+$$;
+
+
+ALTER FUNCTION "public"."h1_child_lock"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."hand_off_team_head"("p_team_id" "uuid", "p_new_head_id" "uuid") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -1533,6 +1581,125 @@ $$;
 ALTER FUNCTION "public"."profiles_s4_cap"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."rate_limit_refusal"("p_key" "text", "p_retry_at" timestamp with time zone) RETURNS "jsonb"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select jsonb_build_object('ok', false, 'error', 'rate_limited', 'limit', p_key, 'retry_at', p_retry_at,
+    'message', case p_key
+      when 'report_email_hour'    then 'You''ve sent a lot of reports in the last hour.'
+      when 'report_email_day'     then 'You''ve reached today''s limit for emailing reports.'
+      when 'report_generate_hour' then 'You''ve generated a lot of reports in the last hour.'
+      when 'verify_email_hour'    then 'Too many verification emails in the last hour.'
+      when 'verify_recipient_day' then 'That address has been sent a lot of verification emails today.'
+      when 'guardian_email_day'   then 'The parent or guardian email has been sent the most times allowed today.'
+      when 'removal_notice_day'   then 'You''ve sent the most removal notices allowed today.'
+      when 'email_change_day'     then 'You''ve asked to change your email the most times allowed today.'
+      when 'recipient_day'        then 'One of these addresses has received a lot of Knuckleball email today.'
+      when 'global_day'           then 'Knuckleball has reached its email limit for today. Reports can still be generated and viewed; emails will work again tomorrow.'
+      else 'Too many requests.' end
+    || case when p_key = 'global_day' then '' else
+         ' Try again in ' || case
+           when p_retry_at - now() < interval '1 minute' then 'a minute'
+           when p_retry_at - now() < interval '90 minutes' then ceil(extract(epoch from (p_retry_at - now())) / 60)::int || ' minutes'
+           else ceil(extract(epoch from (p_retry_at - now())) / 3600)::int || ' hours' end || '.' end);
+$$;
+
+
+ALTER FUNCTION "public"."rate_limit_refusal"("p_key" "text", "p_retry_at" timestamp with time zone) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."rate_limit_take"("p_actor" "uuid", "p_kind" "text", "p_recipients" "text"[] DEFAULT '{}'::"text"[], "p_global_cap" integer DEFAULT NULL::integer) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_rcpts  text[] := coalesce((select array_agg(distinct lower(btrim(r))) from unnest(coalesce(p_recipients, '{}')) r
+                               where btrim(coalesce(r, '')) <> ''), '{}');
+  v_email  boolean := p_kind <> 'report_generate';
+  v_cfg    public.rate_limit_config%rowtype;
+  v_n      integer;
+  v_oldest timestamptz;
+  v_r      text;
+  v_alert  boolean := false;
+  v_keys   text[];
+  v_k      text;
+begin
+  if p_kind not in ('report_email', 'report_generate', 'verify_email', 'guardian_email', 'removal_notice', 'email_change') then
+    raise exception 'unknown rate-limit kind: %', p_kind;
+  end if;
+  perform pg_advisory_xact_lock(hashtext('rate_limit:' || coalesce(p_actor::text, '-')));
+  delete from public.rate_limit_events where at < now() - interval '7 days';
+
+  -- per-user limits for this kind
+  v_keys := case p_kind
+    when 'report_email'    then array['report_email_hour', 'report_email_day']
+    when 'report_generate' then array['report_generate_hour']
+    when 'verify_email'    then array['verify_email_hour']
+    when 'guardian_email'  then array['guardian_email_day']
+    when 'removal_notice'  then array['removal_notice_day']
+    when 'email_change'    then array['email_change_day'] end;
+  foreach v_k in array v_keys loop
+    select * into v_cfg from public.rate_limit_config where key = v_k;
+    continue when not found;
+    select count(*), min(at) into v_n, v_oldest from public.rate_limit_events
+     where kind = p_kind and actor = p_actor and at > now() - make_interval(secs => v_cfg.window_seconds);
+    if v_n >= v_cfg.max_count then
+      return public.rate_limit_refusal(v_k, coalesce(v_oldest, now()) + make_interval(secs => v_cfg.window_seconds));
+    end if;
+  end loop;
+
+  if v_email then
+    -- per-recipient limits
+    foreach v_r in array v_rcpts loop
+      select * into v_cfg from public.rate_limit_config where key = 'recipient_day';
+      if found then
+        select count(*), min(at) into v_n, v_oldest from public.rate_limit_events
+         where kind = 'to' and recipient = v_r and at > now() - make_interval(secs => v_cfg.window_seconds);
+        if v_n >= v_cfg.max_count then
+          return public.rate_limit_refusal('recipient_day', coalesce(v_oldest, now()) + make_interval(secs => v_cfg.window_seconds));
+        end if;
+      end if;
+      if p_kind = 'verify_email' then
+        select * into v_cfg from public.rate_limit_config where key = 'verify_recipient_day';
+        if found then
+          select count(*), min(at) into v_n, v_oldest from public.rate_limit_events
+           where kind = 'to' and via = 'verify_email' and recipient = v_r and at > now() - make_interval(secs => v_cfg.window_seconds);
+          if v_n >= v_cfg.max_count then
+            return public.rate_limit_refusal('verify_recipient_day', coalesce(v_oldest, now()) + make_interval(secs => v_cfg.window_seconds));
+          end if;
+        end if;
+      end if;
+    end loop;
+
+    -- the daily circuit breaker (every Knuckleball email, everyone)
+    if p_global_cap is not null then
+      perform pg_advisory_xact_lock(hashtext('rate_limit:global'));
+      select count(*), min(at) into v_n, v_oldest from public.rate_limit_events
+       where kind = 'to' and at > now() - interval '1 day';
+      if v_n + greatest(array_length(v_rcpts, 1), 1) > p_global_cap then
+        if not exists (select 1 from public.rate_limit_events where kind = 'breaker_alert' and at > now() - interval '1 day') then
+          insert into public.rate_limit_events (kind) values ('breaker_alert');
+          v_alert := true;
+        end if;
+        return public.rate_limit_refusal('global_day', coalesce(v_oldest, now()) + interval '1 day') || jsonb_build_object('alert', v_alert);
+      end if;
+    end if;
+  end if;
+
+  insert into public.rate_limit_events (kind, actor) values (p_kind, p_actor);
+  if v_email then
+    insert into public.rate_limit_events (kind, actor, recipient, via)
+      select 'to', p_actor, r, p_kind from unnest(v_rcpts) r;
+  end if;
+  return jsonb_build_object('ok', true, 'alert', false);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."rate_limit_take"("p_actor" "uuid", "p_kind" "text", "p_recipients" "text"[], "p_global_cap" integer) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."record_attestation"("p_status" "text", "p_terms_version" "text", "p_guardian_email" "text" DEFAULT NULL::"text", "p_via" "text" DEFAULT 'signup'::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -1940,6 +2107,42 @@ $$;
 ALTER FUNCTION "public"."sessions_g3_team_check"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."sessions_h1_lock"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  if old.ended_at is null then
+    return new;   -- a legacy unsaved row (none on production): finishes through the old path
+  end if;
+  if new.ended_at is distinct from old.ended_at then
+    raise exception 'session_saved_locked' using detail = 'A saved session can''t be un-saved or re-timed.';
+  end if;
+  if (new.id, new.pitcher_id, new.team_id, new.logged_by, new.started_at, new.created_at, new.kind, new.sport,
+      new.charting_perspective, new.opponent, new.game_final_inning, new.game_outs_recorded)
+     is distinct from
+     (old.id, old.pitcher_id, old.team_id, old.logged_by, old.started_at, old.created_at, old.kind, old.sport,
+      old.charting_perspective, old.opponent, old.game_final_inning, old.game_outs_recorded) then
+    raise exception 'session_saved_locked' using detail = 'Who and what a saved session belongs to can''t change.';
+  end if;
+  if old.sealed_at is not null and new.sealed_at is distinct from old.sealed_at then
+    raise exception 'session_saved_locked' using detail = 'A sealed session stays sealed.';
+  end if;
+  -- The tombstone is written only by the server's own functions (delete_session runs as its
+  -- owner). Any API caller -- the app, a crafted request, the service role -- is refused.
+  if current_user in ('authenticated', 'anon', 'service_role')
+     and (new.deleted_at, new.deleted_by, new.deleted_by_role, new.deleted_by_name, new.pitch_count)
+         is distinct from (old.deleted_at, old.deleted_by, old.deleted_by_role, old.deleted_by_name, old.pitch_count) then
+    raise exception 'session_saved_locked' using detail = 'Only delete_session() can delete a session.';
+  end if;
+  return new;   -- report_path / report_generated_at, and sealing an unsealed session, stay writable
+end;
+$$;
+
+
+ALTER FUNCTION "public"."sessions_h1_lock"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint, "p_profile" "uuid" DEFAULT NULL::"uuid") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -2018,6 +2221,103 @@ $$;
 
 
 ALTER FUNCTION "public"."set_uniform_number"("p_team_id" "uuid", "p_pitcher_id" "uuid", "p_number" smallint, "p_expected" smallint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."sync_session"("p_session" "jsonb", "p_pitches" "jsonb" DEFAULT '[]'::"jsonb", "p_events" "jsonb" DEFAULT '[]'::"jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_id       uuid;
+  v_pitcher  uuid;
+  v_team     uuid;
+  v_logged   uuid;
+  v_existing public.sessions%rowtype;
+  v_status   text := 'saved';
+  v_np       int := 0;
+  v_ne       int := 0;
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('ok', false, 'error', 'not_authenticated');
+  end if;
+  begin
+    v_id      := (p_session ->> 'id')::uuid;
+    v_pitcher := (p_session ->> 'pitcher_id')::uuid;
+    v_team    := (p_session ->> 'team_id')::uuid;
+    v_logged  := (p_session ->> 'logged_by')::uuid;
+  exception when others then
+    return jsonb_build_object('ok', false, 'error', 'invalid_session');
+  end;
+  if v_id is null or v_pitcher is null or v_team is null or v_logged is null
+     or jsonb_typeof(coalesce(p_pitches, '[]'::jsonb)) <> 'array'
+     or jsonb_typeof(coalesce(p_events, '[]'::jsonb)) <> 'array' then
+    return jsonb_build_object('ok', false, 'error', 'invalid_session');
+  end if;
+  if nullif(p_session ->> 'ended_at', '') is null or nullif(p_session ->> 'started_at', '') is null then
+    return jsonb_build_object('ok', false, 'error', 'not_saved');   -- nothing unsaved ever reaches the server
+  end if;
+
+  select * into v_existing from public.sessions where id = v_id;
+  if found then
+    if not (public.is_my_profile(v_existing.pitcher_id) or public.is_team_coach(v_existing.team_id)) then
+      return jsonb_build_object('ok', false, 'error', 'not_entitled');
+    end if;
+    if v_existing.sealed_at is not null then
+      return jsonb_build_object('ok', true, 'status', 'already_saved', 'pitches', 0, 'events', 0);
+    end if;
+    v_status := 'completed';   -- an old-app sync that didn't finish
+  else
+    -- The caller is this pitcher, or a coach of the session's team, charting as one of
+    -- their own profiles.
+    if not (public.is_my_profile(v_pitcher) or public.is_team_coach(v_team)) or not public.is_my_profile(v_logged) then
+      return jsonb_build_object('ok', false, 'error', 'not_entitled');
+    end if;
+    insert into public.sessions (id, pitcher_id, team_id, logged_by, started_at, ended_at, charting_perspective,
+                                 kind, opponent, game_final_inning, game_outs_recorded)
+    values (v_id, v_pitcher, v_team, v_logged,
+            (p_session ->> 'started_at')::timestamptz, (p_session ->> 'ended_at')::timestamptz,
+            coalesce(nullif(p_session ->> 'charting_perspective', ''), 'behind_catcher'),
+            coalesce(nullif(p_session ->> 'kind', ''), 'bullpen'),
+            nullif(p_session ->> 'opponent', ''),
+            (p_session ->> 'game_final_inning')::smallint,
+            (p_session ->> 'game_outs_recorded')::smallint);
+  end if;
+
+  insert into public.pitches (id, session_id, type, velo, ts, target_row, target_col, actual_row, actual_col,
+         accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, kind, result, in_play_outcome,
+         hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, bb_type,
+         bb_x, bb_y, fielders, runners_before, batter_to, runner_advances, outs_on_play, runs_scored, sacrifice,
+         bb_from_position, time_to_plate)
+  select r.id, v_id, r.type, r.velo, coalesce(r.ts, now()), r.target_row, r.target_col,
+         coalesce(r.actual_row, 0), coalesce(r.actual_col, 0),
+         r.accuracy_mode, r.batter_side, r.in_accuracy_zone, r.accuracy_zone_cells,
+         coalesce(r.kind, coalesce(nullif(p_session ->> 'kind', ''), 'bullpen')), r.result, r.in_play_outcome,
+         r.hit_type, r.fielder, r.delivery, r.inning, r.outs_before, r.balls_before, r.strikes_before, r.at_bat_index,
+         r.bb_type, r.bb_x, r.bb_y, r.fielders, r.runners_before, r.batter_to, r.runner_advances, r.outs_on_play,
+         r.runs_scored, r.sacrifice, r.bb_from_position, r.time_to_plate
+    from jsonb_populate_recordset(null::public.pitches, coalesce(p_pitches, '[]'::jsonb)) r
+   where r.id is not null
+  on conflict (id) do nothing;
+  get diagnostics v_np = row_count;
+
+  insert into public.game_events (id, session_id, at_bat_index, after_pitch_id, event_type, runners_before,
+         runner_advances, outs_on_play, runs_scored, seq, inning_before, balls_before, strikes_before, outs_before)
+  select e.id, v_id, e.at_bat_index,
+         case when e.after_pitch_id in (select p.id from public.pitches p where p.session_id = v_id) then e.after_pitch_id end,
+         e.event_type, e.runners_before, e.runner_advances, e.outs_on_play,
+         e.runs_scored, e.seq, e.inning_before, e.balls_before, e.strikes_before, e.outs_before
+    from jsonb_populate_recordset(null::public.game_events, coalesce(p_events, '[]'::jsonb)) e
+   where e.id is not null
+  on conflict (id) do nothing;
+  get diagnostics v_ne = row_count;
+
+  update public.sessions set sealed_at = now() where id = v_id;
+  return jsonb_build_object('ok', true, 'status', v_status, 'pitches', v_np, 'events', v_ne);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."sync_session"("p_session" "jsonb", "p_pitches" "jsonb", "p_events" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."teams_level_default"() RETURNS "trigger"
@@ -2439,6 +2739,43 @@ COMMENT ON COLUMN "public"."profiles"."email_verify_sent_to" IS 'The address the
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."rate_limit_config" (
+    "key" "text" NOT NULL,
+    "window_seconds" integer NOT NULL,
+    "max_count" integer NOT NULL,
+    "note" "text",
+    CONSTRAINT "rate_limit_config_max_count_check" CHECK (("max_count" >= 0)),
+    CONSTRAINT "rate_limit_config_window_seconds_check" CHECK (("window_seconds" > 0))
+);
+
+
+ALTER TABLE "public"."rate_limit_config" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."rate_limit_events" (
+    "id" bigint NOT NULL,
+    "kind" "text" NOT NULL,
+    "actor" "uuid",
+    "recipient" "text",
+    "via" "text",
+    "at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."rate_limit_events" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."rate_limit_events" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."rate_limit_events_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."roster_seen" (
     "viewer_id" "uuid" NOT NULL,
     "pitcher_id" "uuid" NOT NULL,
@@ -2506,6 +2843,7 @@ CREATE TABLE IF NOT EXISTS "public"."sessions" (
     "game_final_inning" smallint,
     "game_outs_recorded" smallint,
     "sport" "text" NOT NULL,
+    "sealed_at" timestamp with time zone,
     CONSTRAINT "sessions_charting_perspective_check" CHECK (("charting_perspective" = ANY (ARRAY['behind_catcher'::"text", 'behind_pitcher'::"text"]))),
     CONSTRAINT "sessions_deletion_check" CHECK ((("deleted_at" IS NULL) OR (("deleted_by" IS NOT NULL) AND ("deleted_by_role" = ANY (ARRAY['pitcher'::"text", 'coach'::"text"])) AND ("pitch_count" IS NOT NULL) AND ("pitch_count" >= 0)))),
     CONSTRAINT "sessions_game_fields_check" CHECK (((("kind" = 'bullpen'::"text") AND ("opponent" IS NULL) AND ("game_final_inning" IS NULL) AND ("game_outs_recorded" IS NULL)) OR ("kind" = 'game'::"text"))),
@@ -2556,6 +2894,10 @@ COMMENT ON COLUMN "public"."sessions"."game_outs_recorded" IS 'The tracker''s ow
 
 
 COMMENT ON COLUMN "public"."sessions"."sport" IS 'S1: the pitcher''s sport, set by trigger; never from the client.';
+
+
+
+COMMENT ON COLUMN "public"."sessions"."sealed_at" IS 'H1: set by sync_session() once the session, its pitches and its events are all in. After it nothing can be added; updates are already locked once ended_at is set.';
 
 
 
@@ -2674,6 +3016,16 @@ ALTER TABLE ONLY "public"."profiles"
 
 
 
+ALTER TABLE ONLY "public"."rate_limit_config"
+    ADD CONSTRAINT "rate_limit_config_pkey" PRIMARY KEY ("key");
+
+
+
+ALTER TABLE ONLY "public"."rate_limit_events"
+    ADD CONSTRAINT "rate_limit_events_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."roster_seen"
     ADD CONSTRAINT "roster_seen_pkey" PRIMARY KEY ("viewer_id", "pitcher_id");
 
@@ -2726,6 +3078,18 @@ CREATE UNIQUE INDEX "profiles_one_per_sport_role" ON "public"."profiles" USING "
 
 
 
+CREATE INDEX "rate_limit_events_actor" ON "public"."rate_limit_events" USING "btree" ("kind", "actor", "at");
+
+
+
+CREATE INDEX "rate_limit_events_at" ON "public"."rate_limit_events" USING "btree" ("at");
+
+
+
+CREATE INDEX "rate_limit_events_recipient" ON "public"."rate_limit_events" USING "btree" ("recipient", "at") WHERE ("recipient" IS NOT NULL);
+
+
+
 CREATE INDEX "session_notes_session_id_idx" ON "public"."session_notes" USING "btree" ("session_id");
 
 
@@ -2738,6 +3102,10 @@ CREATE OR REPLACE TRIGGER "accuracy_zones_stamp" BEFORE INSERT OR UPDATE ON "pub
 
 
 
+CREATE OR REPLACE TRIGGER "game_events_h1_lock" BEFORE INSERT OR UPDATE ON "public"."game_events" FOR EACH ROW EXECUTE FUNCTION "public"."h1_child_lock"();
+
+
+
 CREATE OR REPLACE TRIGGER "leaderboard_exclusions_stamp" BEFORE INSERT ON "public"."leaderboard_exclusions" FOR EACH ROW EXECUTE FUNCTION "public"."leaderboard_exclusions_stamp"();
 
 
@@ -2747,6 +3115,10 @@ CREATE OR REPLACE TRIGGER "pitcher_teams_g3_departure" AFTER DELETE ON "public".
 
 
 CREATE OR REPLACE TRIGGER "pitcher_teams_s1_sport" BEFORE INSERT OR UPDATE ON "public"."pitcher_teams" FOR EACH ROW EXECUTE FUNCTION "public"."s1_membership_sport"();
+
+
+
+CREATE OR REPLACE TRIGGER "pitches_h1_lock" BEFORE INSERT OR UPDATE ON "public"."pitches" FOR EACH ROW EXECUTE FUNCTION "public"."h1_child_lock"();
 
 
 
@@ -2767,6 +3139,10 @@ CREATE OR REPLACE TRIGGER "session_notes_redot" AFTER INSERT ON "public"."sessio
 
 
 CREATE OR REPLACE TRIGGER "sessions_g3_team_check" BEFORE INSERT OR UPDATE OF "team_id" ON "public"."sessions" FOR EACH ROW EXECUTE FUNCTION "public"."sessions_g3_team_check"();
+
+
+
+CREATE OR REPLACE TRIGGER "sessions_h1_lock" BEFORE UPDATE ON "public"."sessions" FOR EACH ROW EXECUTE FUNCTION "public"."sessions_h1_lock"();
 
 
 
@@ -2952,14 +3328,6 @@ CREATE POLICY "Coaches add notes to their pitchers' sessions" ON "public"."sessi
 
 
 
-CREATE POLICY "Coaches manage events for their team's sessions" ON "public"."game_events" USING ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "game_events"."session_id") AND "public"."is_team_coach"("s"."team_id"))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "game_events"."session_id") AND "public"."is_team_coach"("s"."team_id")))));
-
-
-
 CREATE POLICY "Coaches manage own team invites" ON "public"."invites" USING ((EXISTS ( SELECT 1
    FROM "public"."teams" "t"
   WHERE (("t"."id" = "invites"."team_id") AND "public"."is_my_profile"("t"."coach_id"))))) WITH CHECK ((EXISTS ( SELECT 1
@@ -2972,39 +3340,11 @@ CREATE POLICY "Coaches manage own teams" ON "public"."teams" USING ("public"."is
 
 
 
-CREATE POLICY "Coaches manage pitches for their team's sessions" ON "public"."pitches" USING ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "pitches"."session_id") AND "public"."is_team_coach"("s"."team_id"))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "pitches"."session_id") AND "public"."is_team_coach"("s"."team_id")))));
-
-
-
-CREATE POLICY "Coaches manage sessions for their team" ON "public"."sessions" USING ("public"."is_team_coach"("team_id")) WITH CHECK ("public"."is_team_coach"("team_id"));
-
-
-
 CREATE POLICY "Coaches remove pitchers from their team" ON "public"."pitcher_teams" FOR DELETE USING ("public"."is_team_head"("team_id"));
 
 
 
-CREATE POLICY "Coaches view events for their team's sessions" ON "public"."game_events" FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "game_events"."session_id") AND "public"."is_team_coach"("s"."team_id")))));
-
-
-
 CREATE POLICY "Coaches view memberships for their teams" ON "public"."pitcher_teams" FOR SELECT USING ("public"."is_team_coach"("team_id"));
-
-
-
-CREATE POLICY "Coaches view pitches for their team's sessions" ON "public"."pitches" FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "pitches"."session_id") AND "public"."is_team_coach"("s"."team_id")))));
-
-
-
-CREATE POLICY "Coaches view sessions logged under their team" ON "public"."sessions" FOR SELECT USING ("public"."is_team_coach"("team_id"));
 
 
 
@@ -3025,6 +3365,44 @@ CREATE POLICY "Coaches view their pitchers' profiles" ON "public"."profiles" FOR
 
 
 CREATE POLICY "Coaches view their teams' coaching staff" ON "public"."team_coaches" FOR SELECT USING ("public"."is_team_coach"("team_id"));
+
+
+
+CREATE POLICY "Game events: read by the pitcher and the team's coaches" ON "public"."game_events" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."sessions" "s"
+  WHERE (("s"."id" = "game_events"."session_id") AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id"))))));
+
+
+
+CREATE POLICY "H1 grace: old-app event insert" ON "public"."game_events" FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."sessions" "s"
+  WHERE (("s"."id" = "game_events"."session_id") AND ("s"."ended_at" IS NOT NULL) AND ("s"."sealed_at" IS NULL) AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id"))))));
+
+
+
+CREATE POLICY "H1 grace: old-app event re-send" ON "public"."game_events" FOR UPDATE USING ((EXISTS ( SELECT 1
+   FROM "public"."sessions" "s"
+  WHERE (("s"."id" = "game_events"."session_id") AND ("s"."sealed_at" IS NULL) AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id")))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."sessions" "s"
+  WHERE (("s"."id" = "game_events"."session_id") AND ("s"."sealed_at" IS NULL) AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id"))))));
+
+
+
+CREATE POLICY "H1 grace: old-app pitch insert" ON "public"."pitches" FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."sessions" "s"
+  WHERE (("s"."id" = "pitches"."session_id") AND ("s"."ended_at" IS NOT NULL) AND ("s"."sealed_at" IS NULL) AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id"))))));
+
+
+
+CREATE POLICY "H1 grace: old-app pitch re-send" ON "public"."pitches" FOR UPDATE USING ((EXISTS ( SELECT 1
+   FROM "public"."sessions" "s"
+  WHERE (("s"."id" = "pitches"."session_id") AND ("s"."sealed_at" IS NULL) AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id")))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."sessions" "s"
+  WHERE (("s"."id" = "pitches"."session_id") AND ("s"."sealed_at" IS NULL) AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id"))))));
+
+
+
+CREATE POLICY "H1 grace: old-app session insert" ON "public"."sessions" FOR INSERT WITH CHECK ((("public"."is_my_profile"("pitcher_id") OR "public"."is_team_coach"("team_id")) AND ("ended_at" IS NOT NULL) AND ("sealed_at" IS NULL)));
 
 
 
@@ -3054,31 +3432,25 @@ CREATE POLICY "Pitchers accept invite by inserting own membership" ON "public"."
 
 
 
-CREATE POLICY "Pitchers manage events in own sessions" ON "public"."game_events" USING ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "game_events"."session_id") AND "public"."is_my_profile"("s"."pitcher_id"))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "game_events"."session_id") AND "public"."is_my_profile"("s"."pitcher_id")))));
-
-
-
-CREATE POLICY "Pitchers manage own sessions" ON "public"."sessions" USING ("public"."is_my_profile"("pitcher_id")) WITH CHECK ("public"."is_my_profile"("pitcher_id"));
-
-
-
-CREATE POLICY "Pitchers manage pitches in own sessions" ON "public"."pitches" USING ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "pitches"."session_id") AND "public"."is_my_profile"("s"."pitcher_id"))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "pitches"."session_id") AND "public"."is_my_profile"("s"."pitcher_id")))));
-
-
-
 CREATE POLICY "Pitchers view own memberships" ON "public"."pitcher_teams" FOR SELECT USING ("public"."is_my_profile"("pitcher_id"));
 
 
 
 CREATE POLICY "Pitchers view teams they belong to" ON "public"."teams" FOR SELECT USING ("public"."is_team_member"("id"));
+
+
+
+CREATE POLICY "Pitches: read by the pitcher and the team's coaches" ON "public"."pitches" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."sessions" "s"
+  WHERE (("s"."id" = "pitches"."session_id") AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id"))))));
+
+
+
+CREATE POLICY "Sessions: read by the pitcher and the team's coaches" ON "public"."sessions" FOR SELECT USING (("public"."is_my_profile"("pitcher_id") OR "public"."is_team_coach"("team_id")));
+
+
+
+CREATE POLICY "Sessions: report link written by the pitcher and the team's coa" ON "public"."sessions" FOR UPDATE USING (("public"."is_my_profile"("pitcher_id") OR "public"."is_team_coach"("team_id"))) WITH CHECK (("public"."is_my_profile"("pitcher_id") OR "public"."is_team_coach"("team_id")));
 
 
 
@@ -3136,6 +3508,12 @@ ALTER TABLE "public"."pitches" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."rate_limit_config" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."rate_limit_events" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."roster_seen" ENABLE ROW LEVEL SECURITY;
@@ -3326,6 +3704,12 @@ GRANT ALL ON FUNCTION "public"."get_unopened_sessions"("p_team_id" "uuid", "p_vi
 
 
 
+GRANT ALL ON FUNCTION "public"."h1_child_lock"() TO "anon";
+GRANT ALL ON FUNCTION "public"."h1_child_lock"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."h1_child_lock"() TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."hand_off_team_head"("p_team_id" "uuid", "p_new_head_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."hand_off_team_head"("p_team_id" "uuid", "p_new_head_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."hand_off_team_head"("p_team_id" "uuid", "p_new_head_id" "uuid") TO "service_role";
@@ -3482,6 +3866,16 @@ GRANT ALL ON FUNCTION "public"."profiles_s4_cap"() TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."rate_limit_refusal"("p_key" "text", "p_retry_at" timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rate_limit_refusal"("p_key" "text", "p_retry_at" timestamp with time zone) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."rate_limit_take"("p_actor" "uuid", "p_kind" "text", "p_recipients" "text"[], "p_global_cap" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rate_limit_take"("p_actor" "uuid", "p_kind" "text", "p_recipients" "text"[], "p_global_cap" integer) TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."record_attestation"("p_status" "text", "p_terms_version" "text", "p_guardian_email" "text", "p_via" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."record_attestation"("p_status" "text", "p_terms_version" "text", "p_guardian_email" "text", "p_via" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."record_attestation"("p_status" "text", "p_terms_version" "text", "p_guardian_email" "text", "p_via" "text") TO "service_role";
@@ -3574,6 +3968,12 @@ GRANT ALL ON FUNCTION "public"."sessions_g3_team_check"() TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."sessions_h1_lock"() TO "anon";
+GRANT ALL ON FUNCTION "public"."sessions_h1_lock"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."sessions_h1_lock"() TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint, "p_profile" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint, "p_profile" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint, "p_profile" "uuid") TO "service_role";
@@ -3583,6 +3983,12 @@ GRANT ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_nu
 REVOKE ALL ON FUNCTION "public"."set_uniform_number"("p_team_id" "uuid", "p_pitcher_id" "uuid", "p_number" smallint, "p_expected" smallint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_uniform_number"("p_team_id" "uuid", "p_pitcher_id" "uuid", "p_number" smallint, "p_expected" smallint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."set_uniform_number"("p_team_id" "uuid", "p_pitcher_id" "uuid", "p_number" smallint, "p_expected" smallint) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."sync_session"("p_session" "jsonb", "p_pitches" "jsonb", "p_events" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."sync_session"("p_session" "jsonb", "p_pitches" "jsonb", "p_events" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."sync_session"("p_session" "jsonb", "p_pitches" "jsonb", "p_events" "jsonb") TO "service_role";
 
 
 
@@ -3741,6 +4147,20 @@ GRANT SELECT("guardian_consented_at") ON TABLE "public"."profiles" TO "authentic
 
 
 GRANT SELECT("consent_via") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT ALL ON TABLE "public"."rate_limit_config" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."rate_limit_events" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."rate_limit_events_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."rate_limit_events_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."rate_limit_events_id_seq" TO "service_role";
 
 
 

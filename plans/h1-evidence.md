@@ -61,9 +61,28 @@ Database scripts: `supabase/tests/h1_part1_acceptance.sql`, `supabase/tests/h1_p
    refuses any recipient that isn't one of the player's saved report contacts (400, nothing sent),
    for pitchers and coaches alike.
 
+## Preconditions 6–7 — Supabase Auth email (Joel, from the dashboards, Oct 5)
+
+| | Staging | Production |
+|---|---|---|
+| Auth emails per hour | 2 (Supabase's fixed limit for its built-in sender) | 50 |
+| SMTP | built-in (`noreply@mail.app.supabase.io`) | custom: `smtp.resend.com`, sender `nate@knuckleballonline.com` |
+
+Only two kinds of email still go through Supabase Auth: password resets and coach invites of
+brand-new pitchers (`invite-pitcher`). Recommendation: keep production at 50/hour (a full roster
+invite plus resets fits). Staging's 2/hour is fine for testing but can't exercise bulk invites
+(landmine 6).
+
+Because production's Auth SMTP is Resend, invites and resets use the same 100/day free quota but
+are not counted by H1's circuit breaker (it sees only Knuckleball's own functions). Today's daily
+email volume is far below 100 (most reports are opened by link, which uses no email). Options if a
+roster-invite day ever coincides with heavy report sending: set production `RESEND_DAILY_QUOTA`
+to 70 (breaker at 63, ~30 left for invites/resets), or move to a paid Resend plan and raise the
+quota to match. The other Auth rate-limit rows (sign-ups/sign-ins, token refresh, verifications)
+were not reported; nothing in H1 depends on them.
+
 ## Still open
 
-- Preconditions 6–7: Supabase Auth rate limits and SMTP settings from both dashboards (Joel).
 - Production: fresh backup; apply both migrations; deploy the five functions; set
   `RESEND_DAILY_QUOTA` and `ALERT_EMAIL`; push v145 to main; regenerate schema.sql; Joel's phone
   offline pen + P1-01 offline checks 1–3 in both sports.

@@ -31,7 +31,21 @@ time from the stored catcher-frame coordinate plus batter side (`zoneNumberFor`)
 never stored and never a second copy of the mapping. Labels therefore mirror on
 screen with perspective (and, after U2, batter side) so the low column is always on
 the batter's side; the "Inside" accuracy highlight must always sit under the 1/4/7
-labels. Reports and history always render the catcher's view, labeled as such.
+labels. ~~Reports and history always render the catcher's view~~ — superseded by Amendment 16 below.
+
+**Pitcher's view after the fact (Amendment 16 / U12, Joel, Oct 6 2026).** Every report grid (pen and
+game) and every after-the-fact grid in the app (History's heat map, the accuracy-zone editor) is drawn
+in the PITCHER'S view, captioned as such. One setting each side, kept in step: `REPORT_VIEW` in
+`send-session-report/helpers.ts` and in the tracker. It is a draw-time left-right mirror only
+(`viewCol` / `perspectiveCol(col, REPORT_PERSPECTIVE)`); zone labels come from `zoneNumberFor` with the
+STORED column, so 1/4/7 stay inside for both batter sides; miss-tendency left/right reads as drawn; taps
+in the zone editor map back to stored columns. Storage is untouched and the charting screen keeps the
+charter's own perspective. `send-session-report/from_rows.ts` rebuilds a report from stored rows alone
+(same builders as the app, session's own team only, today's names/numbers); it backs the operator-only
+`rerender-reports` function (OPERATOR_EMAILS secret; dry run by default; archives originals to the
+private `reports-archive` bucket with a SHA-256 manifest; rollback mode). The Cairn University Baseball
+re-render (team `7e1648c1-0582-44e9-984d-a9735a88e4da`, dated 2026-10-06) is the single exception to
+"reports are frozen" — never re-render anything else without Joel's explicit decision.
 Stored coordinates stay catcher-frame, always — this protocol changes nothing about
 storage.
 

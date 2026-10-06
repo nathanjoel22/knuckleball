@@ -5,7 +5,7 @@
 // trusted. Nothing here reads a database -- it operates purely on the payload
 // object it's given.
 // ============================================================================
-import { escapeHtml, safeNum, colorForType, TYPE_PALETTE_HEX, isStrikeCell, timesToHomeLine, themedCss, asSport, type Sport } from './helpers.ts'
+import { escapeHtml, safeNum, colorForType, TYPE_PALETTE_HEX, isStrikeCell, timesToHomeLine, themedCss, asSport, type Sport, VIEW_NAME, REPORT_VIEW, viewNote } from './helpers.ts'
 import { drawGrid, drawLegend, drawLineChart, drawTypeGrids } from './svg.ts'
 import {
   computeSummary, computeCommandDetail, computePerSideBlock, computeExcludedNullSide,
@@ -49,9 +49,7 @@ function renderHeader(p: ReportPayload): string {
   // (batter_side NULL on every pitch), "Mixed" when some did and some didn't.
   const sided = p.pitches.filter(x => x.batterSide === 'R' || x.batterSide === 'L').length
   const batterBit = !p.pitches.length ? '' : sided === 0 ? ' · No batter' : sided < p.pitches.length ? ' · Mixed' : ''
-  const perspectiveNote = p.chartingPerspective === 'behind_pitcher'
-    ? `<p class="header-note">Charted from behind the pitcher. Every plot in this report is still catcher's view.</p>`
-    : ''
+  const perspectiveNote = viewNote(p.chartingPerspective)   // Amendment 16
   return `
   <header class="report-header">
     <div class="brand-mark">KNUCKLEBALL<span class="brand-dot">.</span></div>
@@ -86,7 +84,7 @@ function renderLocationChart(p: ReportPayload): string {
   })
   return `
   <section class="section">
-    <h2>Location — catcher's view</h2>
+    <h2>Location — ${VIEW_NAME}</h2>
     <div class="grid-row">${grid}${drawLegend(allTypes)}</div>
     <p class="caption">Every pitch this pen, both batter sides mixed. Numbers and directional words like "inside" depend on who's hitting, so this plot uses neither.</p>
   </section>`
@@ -106,7 +104,7 @@ function renderTypeGrids(p: ReportPayload): string {
   if (!allTypes.some(t => stats[t].count > 0)) return ''
   return `
   <section class="section">
-    <h2>Location by pitch type — catcher's view</h2>
+    <h2>Location by pitch type — ${VIEW_NAME}</h2>
     ${drawTypeGrids({ gridSize: p.gridSize, allTypes, stats, pitches: p.pitches.map(x => ({ row: x.actualRow, col: x.actualCol, type: x.type })) })}
     <p class="caption">Where each pitch type went, both batter sides mixed. Strike % is in the strike zone. A small count means read it lightly.</p>
   </section>`
@@ -122,7 +120,7 @@ function renderCommandDetail(p: ReportPayload): string {
     const zoneCell = r.hasZone ? `${r.zoneAccuracyPct}%` : '—'
     const veloCell = r.hasVelo ? `${fmtVelo(r.avgVelo)} avg · ${fmtVelo(r.peakVelo)} peak` : '—'
     const miss = r.missTendency
-      ? `up ${r.missTendency.up}% · down ${r.missTendency.down}% · left ${r.missTendency.left}% · right ${r.missTendency.right}%`
+      ? `up ${r.missTendency.up}% · down ${r.missTendency.down}% · left ${REPORT_VIEW === 'pitcher' ? r.missTendency.right : r.missTendency.left}% · right ${REPORT_VIEW === 'pitcher' ? r.missTendency.left : r.missTendency.right}%`   /* computed catcher-frame; shown as drawn */
       : 'On target every pitch.'
     return `<tr>
       <td><span class="dot" style="background:${colorForType(r.type, allTypes)}"></span>${escapeHtml(r.type)}</td>
@@ -138,7 +136,7 @@ function renderCommandDetail(p: ReportPayload): string {
       <thead><tr><th>Type</th><th>Count</th><th>Usage</th><th>Strike %</th><th>Zone %</th><th>Exact %</th><th>Velocity</th><th>Miss tendency</th></tr></thead>
       <tbody>${body}</tbody>
     </table></div>
-    <p class="caption">Miss tendency is direction on this same catcher's-view grid (up/down/left/right), not "arm side" or "inside" -- those depend on batter side.</p>
+    <p class="caption">Miss tendency is direction on this same ${VIEW_NAME} grid (up/down/left/right), not "arm side" or "inside" -- those depend on batter side.</p>
   </section>`
 }
 
@@ -313,7 +311,7 @@ function renderFooter(p: ReportPayload): string {
   return `
   <footer class="report-footer">
     <p>Numbers and patterns only -- this report doesn't grade or compare to a benchmark. That's a conversation between a pitcher and his coach.</p>
-    <p>Grids are always drawn catcher's view, looking out toward the mound.</p>
+    <p>Grids are always drawn in the ${VIEW_NAME}, ${REPORT_VIEW === 'pitcher' ? 'looking in from the mound toward home plate' : 'looking out toward the mound'}.</p>
     <p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="${signInUrl(asSport(p.sport))}">knuckleballonline.com</a> &middot; <a href="https://knuckleballonline.com/privacy.html#${asSport(p.sport)}">Privacy</a> &middot; <a href="https://knuckleballonline.com/terms.html#${asSport(p.sport)}">Terms</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </footer>`
 }

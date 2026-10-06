@@ -2087,6 +2087,14 @@ function mirrorCol(col){ return (GRID_SIZE - 1) - col; }
 function perspectiveCol(col, chartingPerspective){
   return chartingPerspective === 'behind_pitcher' ? mirrorCol(col) : col;
 }
+// Amendment 16 (Joel, Oct 6 2026): after-the-fact displays (History's grid, the accuracy-zone
+// editor) and every report use the PITCHER'S view -- the same left-right mirror as charting from
+// behind the pitcher. Storage stays catcher-frame; labels come from zoneNumberFor with the STORED
+// column. The charting screen keeps the charter's own choice (U5). Same setting as the report's
+// REPORT_VIEW (send-session-report/helpers.ts).
+const REPORT_VIEW = 'pitcher';
+const REPORT_PERSPECTIVE = REPORT_VIEW === 'pitcher' ? 'behind_pitcher' : 'behind_catcher';
+const REPORT_VIEW_NAME = REPORT_VIEW === 'pitcher' ? "Pitcher's view" : "Catcher's view";
 function sessionPerspective(session){
   return (session && session.chartingPerspective) || 'behind_catcher';
 }
@@ -5483,12 +5491,13 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
     const maxCount = Math.max(1, ...Object.values(heat));
     for(let row=0; row<GRID_SIZE; row++){
       for(let col=0; col<GRID_SIZE; col++){
-        const key = row+'-'+col;
+        // Amendment 16: drawn in the report view; `sc` is the STORED (catcher-frame) column
+        // this drawn cell shows -- counts and the zone label both come from it.
+        const sc = perspectiveCol(col, REPORT_PERSPECTIVE);
+        const key = row+'-'+sc;
         const count = heat[key] || 0;
         const inZone = isStrikeCell(row,col);
-        // D8: history/heat-map rows ARE stored (catcher-frame) coordinates
-        // already -- no transform, always "Catcher's view" (see caption).
-        const num = zoneNumberFor(row, col);
+        const num = zoneNumberFor(row, sc);
         const intensity = count / maxCount;
         const bg = `background:${heatColor(intensity)};opacity:${0.4 + 0.5*intensity};`;
         const cls = 'zone-cell' + (inZone ? ' in-zone' : '');
@@ -9064,7 +9073,7 @@ function renderHistoryView(){
         </div>
         ${expanded ? `
         <div class="session-card-body">
-          <div class="zone-wrap">${renderZoneGrid(s.pitches, false)}<div class="zone-caption">Location heat map · Catcher's view${sportCfg().zoneNote ? ' · ' + sportCfg().zoneNote : ''}</div></div>
+          <div class="zone-wrap">${renderZoneGrid(s.pitches, false)}<div class="zone-caption">Location heat map · ${REPORT_VIEW_NAME}${sportCfg().zoneNote ? ' · ' + sportCfg().zoneNote : ''}</div></div>
           <div style="flex:1;min-width:220px;">
             <table class="breakdown-table">
               <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th><th>Relative Acc%</th></tr></thead>
@@ -9164,22 +9173,24 @@ function renderZonePainter(){
   let cells = '';
   for(let row = 0; row < GRID_SIZE; row++){
     for(let col = 0; col < GRID_SIZE; col++){
-      const num = zoneNumberFor(row, col, zp.side);
-      const painted = zp.cells.indexOf(row + '-' + col) >= 0;
+      // Amendment 16: drawn in the report view; taps and labels use the STORED column.
+      const sc = perspectiveCol(col, REPORT_PERSPECTIVE);
+      const num = zoneNumberFor(row, sc, zp.side);
+      const painted = zp.cells.indexOf(row + '-' + sc) >= 0;
       const cls = 'zone-cell' + (isStrikeCell(row, col) ? ' in-zone' : '') + ' clickable' + (painted ? ' zone-painted' : '');
-      cells += `<div class="${cls}" onclick="paintZoneCell(${row},${col})">${num !== null ? `<span class="zone-number">${num}</span>` : ''}</div>`;
+      cells += `<div class="${cls}" onclick="paintZoneCell(${row},${sc})">${num !== null ? `<span class="zone-number">${num}</span>` : ''}</div>`;
     }
   }
-  // Catcher's view: a RHB stands on the LEFT, a LHB on the right (D8).
-  const onLeft = insideColumnOnScreenLeft('behind_catcher', zp.side);
-  const grid = `<div class="zone-grid">${cells}${renderHomePlate('behind_catcher')}${renderBatterSilhouette(zp.side, onLeft, 'zonePaintFlipSide()')}</div>`;
+  // The batter stands on his own side of the drawn view (pitcher's view: a RHB on the RIGHT).
+  const onLeft = insideColumnOnScreenLeft(REPORT_PERSPECTIVE, zp.side);
+  const grid = `<div class="zone-grid">${cells}${renderHomePlate(REPORT_PERSPECTIVE)}${renderBatterSilhouette(zp.side, onLeft, 'zonePaintFlipSide()')}</div>`;
   const saved = zoneCellsFor(zp.pitcherId, zp.type, zp.side);
   return `<div class="zone-paint">
     <div class="profile-row">
       <button class="throws-btn${zp.side === 'R' ? ' selected' : ''}" onclick="zonePaintSide('R')">vs RHB</button>
       <button class="throws-btn${zp.side === 'L' ? ' selected' : ''}" onclick="zonePaintSide('L')">vs LHB</button>
     </div>
-    <div class="zone-wrap">${grid}<div class="zone-caption">Catcher's view · tap the cells that count as accurate</div></div>
+    <div class="zone-wrap">${grid}<div class="zone-caption">${REPORT_VIEW_NAME} · tap the cells that count as accurate</div></div>
     <div class="profile-row">
       <button class="btn btn-primary" onclick="saveZonePaint()">Save zone</button>
       <button class="btn btn-ghost" onclick="clearZonePaint()" ${saved ? '' : 'disabled'}>Clear</button>

@@ -6,7 +6,7 @@
 // game-only stylesheet addition below, so the two reports read as one
 // product (content spec: "Same theme and typography as the pen report").
 // ============================================================================
-import { escapeHtml, safeNum, colorForType, timesToHomeLine, asSport, themedCss, type Sport } from './helpers.ts'
+import { escapeHtml, safeNum, colorForType, timesToHomeLine, asSport, themedCss, type Sport, VIEW_NAME, REPORT_VIEW, viewNote } from './helpers.ts'
 import { ZONE_NAMES } from './helpers.ts'
 import { drawGrid, drawLegend, drawLineChart, drawGridByResult, drawResultLegend, resultCategoryOf, drawTypeGrids } from './svg.ts'
 import { CSS as PEN_CSS } from './template.ts'
@@ -79,8 +79,7 @@ function renderHeader(p: GameReportPayload): string {
   const dateStr = new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   const numBit = p.uniformNumber !== null && p.uniformNumber !== undefined ? ` <span class="header-num">#${escapeHtml(p.uniformNumber)}</span>` : ''
   const chartedBy = p.loggedByCoach ? 'the coaching staff' : escapeHtml(p.pitcherName)
-  const perspectiveNote = p.chartingPerspective === 'behind_pitcher'
-    ? `<p class="header-note">Charted from behind the pitcher. Every plot in this report is still catcher's view.</p>` : ''
+  const perspectiveNote = viewNote(p.chartingPerspective)   // Amendment 16
   const oppBit = p.opponent ? ` vs ${escapeHtml(p.opponent)}` : ''
   const ipNote = s.outs_source === 'derived' ? ' (outs from pitches)' : ''
   return `
@@ -167,7 +166,7 @@ function renderTypeGrids(p: GameReportPayload): string {
   if (!Object.keys(stats).length) return ''
   return `
   <section class="section">
-    <h2>Location by pitch type — catcher's view</h2>
+    <h2>Location by pitch type — ${VIEW_NAME}</h2>
     ${drawTypeGrids({ gridSize: p.gridSize, allTypes, stats, pitches: p.pitches.map(x => ({ row: x.actualRow, col: x.actualCol, type: x.type })) })}
     <p class="caption">Where each pitch type went, both batter sides mixed. Strike % counts balls and strikes by result, same as the table below. A small count means read it lightly.</p>
   </section>`
@@ -185,7 +184,7 @@ function renderLocationCharts(p: GameReportPayload): string {
   const resultGrid = drawGridByResult({ gridSize: p.gridSize, batterSide: null, pitches: resultPts })
   return `
   <section class="section">
-    <h2>Location — catcher's view</h2>
+    <h2>Location — ${VIEW_NAME}</h2>
     <div class="grid-row"><div><h3>By pitch type</h3>${typeGrid}${drawLegend(allTypes)}</div></div>
     <div class="grid-row" style="margin-top:16px;"><div><h3>By result</h3>${resultGrid}${drawResultLegend(categoriesPresent)}</div></div>
     <p class="caption">Both batter sides mixed, physical framing -- numbers and directional words depend on who's hitting, so neither plot uses them.</p>
@@ -493,7 +492,7 @@ function renderFooter(p: GameReportPayload): string {
   <footer class="report-footer">
     <p>Numbers and patterns only -- this report doesn't grade or compare to a benchmark. That's a conversation between a pitcher and his coach.</p>
     <p>A strike is: called strike, swinging strike, foul, any ball in play, sac bunt/fly, dropped third. A ball is: ball, HBP. Interference and "other" count toward pitches but neither bucket.</p>
-    <p>Grids are always drawn catcher's view, looking out toward the mound.</p>
+    <p>Grids are always drawn in the ${VIEW_NAME}, ${REPORT_VIEW === 'pitcher' ? 'looking in from the mound toward home plate' : 'looking out toward the mound'}.</p>
     <p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="https://knuckleballonline.com/login.html?sport=${asSport(p.sport)}">knuckleballonline.com</a> &middot; <a href="https://knuckleballonline.com/privacy.html#${asSport(p.sport)}">Privacy</a> &middot; <a href="https://knuckleballonline.com/terms.html#${asSport(p.sport)}">Terms</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </footer>`
 }

@@ -2,7 +2,7 @@
 // Inline SVG drawing -- no charting library, no external requests. Every
 // function returns a plain string of SVG markup. Grid size is a parameter.
 // ============================================================================
-import { isStrikeCell, zoneNumber, colorForType, escapeHtml } from './helpers.ts'
+import { isStrikeCell, zoneNumber, colorForType, escapeHtml, viewCol } from './helpers.ts'
 
 export interface Pt { row: number; col: number; type: string }
 
@@ -59,19 +59,19 @@ export function drawGrid(opts: {
       const inZone = isStrikeCell(row, col, gridSize)
       cells += `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" fill="${inZone ? '#E8F3EC' : '#FFFFFF'}" stroke="#CFE6D7" stroke-width="1"/>`
       if (batterSide) {
-        const num = zoneNumber(row, col, batterSide, gridSize)
+        const num = zoneNumber(row, viewCol(col, gridSize), batterSide, gridSize)   // label from the STORED column (Amendment 16)
         if (num !== null) cells += `<text x="${x + 4}" y="${y + 11}" font-size="8" fill="#7C8C82" font-family="Georgia, serif">${num}</text>`
       }
     }
   }
 
-  const dots = drawDots(pitches.map(p => ({ row: p.row, col: p.col, color: colorForType(p.type, allTypes) })), cell)
+  const dots = drawDots(pitches.map(p => ({ row: p.row, col: viewCol(p.col, gridSize), color: colorForType(p.type, allTypes) })), cell)
 
   return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Pitch location grid">` +
     `<rect x="0" y="0" width="${size}" height="${size}" fill="#FFFFFF" stroke="#CFE6D7"/>` + cells + dots + `</svg>`
 }
 
-// U11 (4): one small location grid per pitch type -- catcher's view,
+// U11 (4): one small location grid per pitch type -- report view (Amendment 16),
 // physical framing (batterSide null: both sides mixed, so no 1-9 numbers),
 // drawn by the SAME drawGrid -> drawDots as every other report grid (same
 // palette, dots and halos). Each report supplies its own per-type count and
@@ -162,13 +162,13 @@ export function drawGridByResult(opts: {
       const inZone = isStrikeCell(row, col, gridSize)
       cells += `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" fill="${inZone ? '#E8F3EC' : '#FFFFFF'}" stroke="#CFE6D7" stroke-width="1"/>`
       if (batterSide) {
-        const num = zoneNumber(row, col, batterSide, gridSize)
+        const num = zoneNumber(row, viewCol(col, gridSize), batterSide, gridSize)   // label from the STORED column (Amendment 16)
         if (num !== null) cells += `<text x="${x + 4}" y="${y + 11}" font-size="8" fill="#7C8C82" font-family="Georgia, serif">${num}</text>`
       }
     }
   }
 
-  const dots = drawDots(pitches.map(p => ({ row: p.row, col: p.col, color: RESULT_COLORS[p.category] })), cell)
+  const dots = drawDots(pitches.map(p => ({ row: p.row, col: viewCol(p.col, gridSize), color: RESULT_COLORS[p.category] })), cell)
 
   return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Pitch location by result">` +
     `<rect x="0" y="0" width="${size}" height="${size}" fill="#FFFFFF" stroke="#CFE6D7"/>` + cells + dots + `</svg>`

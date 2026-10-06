@@ -95,6 +95,22 @@ export function isStrikeCell(row: number, col: number, gridSize = 5): boolean {
 // BATTER'S own side -- never stored, always computed at render time from the
 // physical cell + which side is at the plate. Only valid/meaningful inside a
 // fixed-batter-side block; callers must never call this for a mixed-side plot.
+// Amendment 16 (Joel, Oct 6 2026): every location grid in a report is drawn in the PITCHER'S
+// view -- looking in from the mound, the way pitchers and pitching coaches read a chart. It's a
+// left-right mirror at DRAW time only: stored coordinates stay catcher-frame, and zone numbers
+// still come from zoneNumber() with the stored (catcher-frame) column, so 1/4/7 stay inside for
+// either batter. One setting for the whole report (the app has the same REPORT_VIEW).
+export const REPORT_VIEW: 'pitcher' | 'catcher' = 'pitcher'
+export const VIEW_NAME = REPORT_VIEW === 'pitcher' ? "pitcher's view" : "catcher's view"
+// Stored column <-> drawn column. Its own inverse, so it converts both ways.
+export function viewCol(col: number, gridSize = 5): number { return REPORT_VIEW === 'pitcher' ? gridSize - 1 - col : col }
+// The header note: only when the charter stood on the other side from the view drawn.
+export function viewNote(chartingPerspective: string | null | undefined): string {
+  const chartedFromPitcher = chartingPerspective === 'behind_pitcher'
+  if (chartedFromPitcher === (REPORT_VIEW === 'pitcher')) return ''
+  return `<p class="header-note">Charted from behind the ${chartedFromPitcher ? 'pitcher' : 'catcher'}. Every plot in this report is drawn in the ${VIEW_NAME}.</p>`
+}
+
 export function zoneNumber(row: number, col: number, batterSide: 'R' | 'L', gridSize = 5): number | null {
   if (!isStrikeCell(row, col, gridSize)) return null
   const inset = Math.floor(gridSize / 2) - 1

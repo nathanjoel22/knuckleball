@@ -42,3 +42,7 @@ policies); deployed `send-session-report` and `rerender-reports`; `OPERATOR_EMAI
 Refusals: no token 401; public app key only 401; operator with the wrong `expect_count` (8) 409
 "nothing was changed" (files re-checked, still the originals); head coach of this team
 (`+malachistaging`, not an operator) 403 "This tool is for the operator only."
+
+Check 3 (Joel, staging, Oct 6): History heat map and the accuracy-zone editor in the pitcher's view,
+agreeing with the report — "passes with flying colors"; charting screen unchanged. Production operator:
+`nate@knuckleballonline.com` (Joel created the production login to match).

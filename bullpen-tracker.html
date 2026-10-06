@@ -10066,8 +10066,14 @@ window.dismissSetupReminderForSession = function(){
 // endpoint with the same session payload, differing only in whether
 // `emails` is non-empty. Kept as ONE function so the two call sites can't
 // drift (the U6-nulling / history-shape rules only need stating once).
+// R4 follow-up (Joel, Oct 6): a report belongs to the team its session was charted for -- its
+// team name, uniform number and trend sections come from THAT team's sessions only, never from
+// the other teams R4 lets the viewer see.
+function reportTeamId(session){ return session.teamId || state.currentTeamId; }
+function sameReportTeam(s, tid){ return (s.teamId || state.currentTeamId) === tid; }
 function buildReportPayload(session, p){
-  const team = state.teams.find(t => t.id === state.currentTeamId);
+  const tid = reportTeamId(session);
+  const team = state.teams.find(t => t.id === tid);
 
   // U4b: the renderer computes everything itself from raw pitches -- no
   // more precomputed stats/per-type history. isDefaultVeloReading is
@@ -10087,7 +10093,7 @@ function buildReportPayload(session, p){
   // rule. Just the per-session aggregates the Trends section actually
   // reads, not the old per-type breakdown the PDF's trend charts used.
   const history = state.sessions
-    .filter(s => s.id !== session.id && (s.kind || 'bullpen') === 'bullpen')
+    .filter(s => s.id !== session.id && (s.kind || 'bullpen') === 'bullpen' && sameReportTeam(s, tid))
     .slice().sort((a,b) => a.date - b.date)
     .map(s => {
       const sStats = sessionStats(s.pitches);
@@ -10133,9 +10139,9 @@ function buildReportPayload(session, p){
 // not a recomputation of any session's OWN already-shown number.
 // undefined below the 3-pen minimum (content spec section 10) -- the
 // renderer already treats a missing recentPens as "omit the section."
-function buildRecentPensForGame(gameDateMs){
+function buildRecentPensForGame(gameDateMs, tid){
   const priorPens = state.sessions
-    .filter(s => !s.deletedAt && (s.kind || 'bullpen') === 'bullpen' && s.date < gameDateMs)
+    .filter(s => !s.deletedAt && (s.kind || 'bullpen') === 'bullpen' && s.date < gameDateMs && sameReportTeam(s, tid))
     .slice().sort((a, b) => b.date - a.date)
     .slice(0, 5);
   if(priorPens.length < 3) return undefined;
@@ -10210,13 +10216,14 @@ async function buildGameTrendEntries(gameSessions){
 // The game-session sibling of buildReportPayload above. async (unlike its
 // bullpen counterpart) because building gameTrend means RPC calls.
 async function buildGameReportPayload(session, p){
-  const team = state.teams.find(t => t.id === state.currentTeamId);
+  const tid = reportTeamId(session);
+  const team = state.teams.find(t => t.id === tid);
   const pitchesForReport = session.pitches.map(pt =>
     isDefaultVeloReading(pt) ? { ...pt, velo: null } : pt
   );
 
   const priorGames = state.sessions
-    .filter(s => s.id !== session.id && !s.deletedAt && (s.kind || 'bullpen') === 'game')
+    .filter(s => s.id !== session.id && !s.deletedAt && (s.kind || 'bullpen') === 'game' && sameReportTeam(s, tid))
     .slice().sort((a, b) => b.date - a.date)
     .slice(0, 5);
   // Chronological order (oldest first), THIS game last -- matches the
@@ -10237,7 +10244,7 @@ async function buildGameReportPayload(session, p){
     loggedByCoach: session.loggedByCoach,
     pitchTypes: p.pitchTypes,
     pitches: pitchesForReport,
-    recentPens: buildRecentPensForGame(session.date),
+    recentPens: buildRecentPensForGame(session.date, tid),
     gameTrend
   };
 }

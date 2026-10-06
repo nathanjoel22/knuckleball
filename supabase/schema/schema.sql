@@ -850,8 +850,8 @@ CREATE OR REPLACE FUNCTION "public"."get_roster_latest"("p_team_id" "uuid") RETU
     AS $$
   select s.pitcher_id, max(s.ended_at)
     from public.sessions s
-    join public.pitcher_teams pt on pt.team_id = s.team_id and pt.pitcher_id = s.pitcher_id
-   where s.team_id = p_team_id
+    join public.pitcher_teams pt on pt.team_id = p_team_id and pt.pitcher_id = s.pitcher_id
+   where (s.team_id = p_team_id or not public.is_team_archived(p_team_id))
      and s.deleted_at is null
      and s.ended_at is not null
      and s.started_at >= pt.joined_at
@@ -1075,9 +1075,9 @@ CREATE OR REPLACE FUNCTION "public"."get_unopened_sessions"("p_team_id" "uuid", 
   )
   select s.id, s.pitcher_id
     from v, public.sessions s
-    join public.pitcher_teams pt on pt.team_id = s.team_id and pt.pitcher_id = s.pitcher_id
+    join public.pitcher_teams pt on pt.team_id = p_team_id and pt.pitcher_id = s.pitcher_id
    where v.viewer is not null
-     and s.team_id = p_team_id
+     and (s.team_id = p_team_id or not public.is_team_archived(p_team_id))
      and s.deleted_at is null
      and s.ended_at is not null
      and s.started_at >= pt.joined_at
@@ -1276,6 +1276,24 @@ $$;
 
 
 ALTER FUNCTION "public"."is_coach_of_session_team"("p_session_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_current_coach_of_pitcher"("p_pitcher" "uuid", "p_at" timestamp with time zone) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  -- The caller coaches a non-archived team the pitcher is on now, and joined it at or before p_at.
+  select exists (
+    select 1 from public.pitcher_teams pt
+     where pt.pitcher_id = p_pitcher
+       and pt.joined_at <= p_at
+       and public.is_team_coach(pt.team_id)
+       and not public.is_team_archived(pt.team_id)
+  );
+$$;
+
+
+ALTER FUNCTION "public"."is_current_coach_of_pitcher"("p_pitcher" "uuid", "p_at" timestamp with time zone) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."is_default_velo_reading"("p_velo" integer, "p_ts" timestamp with time zone) RETURNS boolean
@@ -1629,6 +1647,21 @@ $$;
 ALTER FUNCTION "public"."pitcher_report_block"("p_pitcher_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."pitcher_session_teams"("p_pitcher" "uuid") RETURNS TABLE("team_id" "uuid", "team_name" "text", "team_archived" boolean)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select distinct t.id, t.name, t.archived_at is not null
+    from public.sessions s join public.teams t on t.id = s.team_id
+   where s.pitcher_id = p_pitcher
+     and (public.is_my_profile(s.pitcher_id) or public.is_team_coach(s.team_id)
+          or public.is_current_coach_of_pitcher(s.pitcher_id, s.started_at));
+$$;
+
+
+ALTER FUNCTION "public"."pitcher_session_teams"("p_pitcher" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."pitcher_teams_g3_departure"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -1642,6 +1675,34 @@ $$;
 
 
 ALTER FUNCTION "public"."pitcher_teams_g3_departure"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."pitcher_workload"("p_profiles" "uuid"[]) RETURNS TABLE("pitcher_id" "uuid", "last_at" timestamp with time zone, "last_kind" "text", "last_pitches" integer, "d7_bullpen" integer, "d7_game" integer, "d30_bullpen" integer, "d30_game" integer)
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  with ss as (
+    select s.id, s.pitcher_id, s.kind, s.started_at,
+           (select count(*) from public.pitches p where p.session_id = s.id)::int as n
+      from public.sessions s
+     where s.pitcher_id = any(p_profiles) and s.deleted_at is null and s.ended_at is not null
+  ), last as (
+    select distinct on (ss.pitcher_id) ss.pitcher_id, ss.started_at, ss.kind, ss.n
+      from ss order by ss.pitcher_id, ss.started_at desc
+  )
+  select pid, l.started_at, l.kind, l.n,
+         coalesce(sum(ss.n) filter (where ss.kind = 'bullpen' and ss.started_at > now() - interval '7 days'), 0)::int,
+         coalesce(sum(ss.n) filter (where ss.kind = 'game'    and ss.started_at > now() - interval '7 days'), 0)::int,
+         coalesce(sum(ss.n) filter (where ss.kind = 'bullpen' and ss.started_at > now() - interval '30 days'), 0)::int,
+         coalesce(sum(ss.n) filter (where ss.kind = 'game'    and ss.started_at > now() - interval '30 days'), 0)::int
+    from unnest(p_profiles) pid
+    left join last l on l.pitcher_id = pid
+    left join ss on ss.pitcher_id = pid
+   group by pid, l.started_at, l.kind, l.n;
+$$;
+
+
+ALTER FUNCTION "public"."pitcher_workload"("p_profiles" "uuid"[]) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."profiles_s4_cap"() RETURNS "trigger"
@@ -3509,9 +3570,9 @@ CREATE POLICY "Coaches view their teams' coaching staff" ON "public"."team_coach
 
 
 
-CREATE POLICY "Game events: read by the pitcher and the team's coaches" ON "public"."game_events" FOR SELECT USING ((EXISTS ( SELECT 1
+CREATE POLICY "Game events: read by the pitcher, the recording team's coaches " ON "public"."game_events" FOR SELECT USING ((EXISTS ( SELECT 1
    FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "game_events"."session_id") AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id"))))));
+  WHERE (("s"."id" = "game_events"."session_id") AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id") OR "public"."is_current_coach_of_pitcher"("s"."pitcher_id", "s"."started_at"))))));
 
 
 
@@ -3555,9 +3616,11 @@ CREATE POLICY "Invited person views invite addressed to their email" ON "public"
 
 
 
-CREATE POLICY "Notes readable by author, pitcher and his team's coaches" ON "public"."session_notes" FOR SELECT USING (("public"."is_my_profile"("author_id") OR (EXISTS ( SELECT 1
+CREATE POLICY "Notes readable by author, pitcher, the recording team's coaches" ON "public"."session_notes" FOR SELECT USING (("public"."is_my_profile"("author_id") OR (EXISTS ( SELECT 1
    FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "session_notes"."session_id") AND "public"."is_my_profile"("s"."pitcher_id")))) OR "public"."is_coach_of_session_team"("session_id")));
+  WHERE (("s"."id" = "session_notes"."session_id") AND "public"."is_my_profile"("s"."pitcher_id")))) OR "public"."is_coach_of_session_team"("session_id") OR (EXISTS ( SELECT 1
+   FROM "public"."sessions" "s"
+  WHERE (("s"."id" = "session_notes"."session_id") AND "public"."is_current_coach_of_pitcher"("s"."pitcher_id", "s"."started_at"))))));
 
 
 
@@ -3581,13 +3644,13 @@ CREATE POLICY "Pitchers view teams they belong to" ON "public"."teams" FOR SELEC
 
 
 
-CREATE POLICY "Pitches: read by the pitcher and the team's coaches" ON "public"."pitches" FOR SELECT USING ((EXISTS ( SELECT 1
+CREATE POLICY "Pitches: read by the pitcher, the recording team's coaches and " ON "public"."pitches" FOR SELECT USING ((EXISTS ( SELECT 1
    FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "pitches"."session_id") AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id"))))));
+  WHERE (("s"."id" = "pitches"."session_id") AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id") OR "public"."is_current_coach_of_pitcher"("s"."pitcher_id", "s"."started_at"))))));
 
 
 
-CREATE POLICY "Sessions: read by the pitcher and the team's coaches" ON "public"."sessions" FOR SELECT USING (("public"."is_my_profile"("pitcher_id") OR "public"."is_team_coach"("team_id")));
+CREATE POLICY "Sessions: read by the pitcher, the recording team's coaches and" ON "public"."sessions" FOR SELECT USING (("public"."is_my_profile"("pitcher_id") OR "public"."is_team_coach"("team_id") OR "public"."is_current_coach_of_pitcher"("pitcher_id", "started_at")));
 
 
 
@@ -3899,6 +3962,13 @@ GRANT ALL ON FUNCTION "public"."is_coach_of_session_team"("p_session_id" "uuid")
 
 
 
+REVOKE ALL ON FUNCTION "public"."is_current_coach_of_pitcher"("p_pitcher" "uuid", "p_at" timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."is_current_coach_of_pitcher"("p_pitcher" "uuid", "p_at" timestamp with time zone) TO "anon";
+GRANT ALL ON FUNCTION "public"."is_current_coach_of_pitcher"("p_pitcher" "uuid", "p_at" timestamp with time zone) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_current_coach_of_pitcher"("p_pitcher" "uuid", "p_at" timestamp with time zone) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."is_default_velo_reading"("p_velo" integer, "p_ts" timestamp with time zone) TO "anon";
 GRANT ALL ON FUNCTION "public"."is_default_velo_reading"("p_velo" integer, "p_ts" timestamp with time zone) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_default_velo_reading"("p_velo" integer, "p_ts" timestamp with time zone) TO "service_role";
@@ -4015,8 +4085,20 @@ GRANT ALL ON FUNCTION "public"."pitcher_report_block"("p_pitcher_id" "uuid") TO 
 
 
 
+REVOKE ALL ON FUNCTION "public"."pitcher_session_teams"("p_pitcher" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."pitcher_session_teams"("p_pitcher" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."pitcher_session_teams"("p_pitcher" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."pitcher_teams_g3_departure"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."pitcher_teams_g3_departure"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."pitcher_workload"("p_profiles" "uuid"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."pitcher_workload"("p_profiles" "uuid"[]) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."pitcher_workload"("p_profiles" "uuid"[]) TO "service_role";
 
 
 

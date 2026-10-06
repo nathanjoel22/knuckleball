@@ -26,3 +26,15 @@ pitcher's other-sport profile never appears to these coaches.
 
 Not cached offline (by decision): other-team sessions behave like every session — History loads
 online. Leaderboards unchanged (each counts only its own team's sessions).
+
+## Production (Oct 5 2026, Joel, after backup 2026-10-05-2323)
+
+Operator Nathan / joelhauserman@gmail.com; backup confirmed post-P1-09, pre-R4. Applied
+`20261005020000_r4_cross_team.sql`; deployed `send-session-report`; pushed v151 to main after clean
+pre-push checks. Production after: 34 policies (4 read rules use `is_current_coach_of_pitcher`), the
+three new functions, 82 sessions and 11 teams untouched. No production pitcher is on two teams yet,
+so nobody's visibility changed at ship time; it applies the moment one is. Live: v151, privacy
+Version 2026-10-05 with the new "Your coaches" wording, production config. schema.sql regenerated.
+
+**Still to do (Joel):** P1-01 offline checks 1–3 in both sports; the real case (Cairn + Kings
+Christian sharing a pitcher) checked from each coach's side once it exists on production.

@@ -38,3 +38,14 @@ Version 2026-10-05 with the new "Your coaches" wording, production config. schem
 
 **Still to do (Joel):** P1-01 offline checks 1–3 in both sports; the real case (Cairn + Kings
 Christian sharing a pitcher) checked from each coach's side once it exists on production.
+
+## Follow-up (Oct 6 2026, Joel: "restore it"; shipped as v152, commit 2ccfc41)
+
+Found during U12's precondition report: report trend sections (bullpen history, game recent pens,
+game trend) were built from the History list, which R4 widened to every team the viewer can see — so
+a new report could have frozen another team's sessions into a shareable link. Also, a pitcher's
+mixed-team History meant a report generated while a different team was selected took that team's
+name and uniform number. Fixed: all of these now come from the session's own team only (as before
+R4). Harness: a Cairn pen reported while Kings is selected shows Cairn, Cairn's uniform number and
+only Cairn's other pens; single-team payloads byte-identical to main. Nothing leaked: no production
+pitcher was on two teams (the 2 reports generated after R4 shipped are single-team).

@@ -46,3 +46,22 @@ Refusals: no token 401; public app key only 401; operator with the wrong `expect
 Check 3 (Joel, staging, Oct 6): History heat map and the accuracy-zone editor in the pitcher's view,
 agreeing with the report — "passes with flying colors"; charting screen unchanged. Production operator:
 `nate@knuckleballonline.com` (Joel created the production login to match).
+
+## Production (Oct 6 2026, Joel: "ship it", after backup 2026-10-06-1251)
+
+Operator Nathan / joelhauserman@gmail.com. Backup checked: 82 session rows, Cairn team, R4 functions;
+no archive bucket yet (pre-change). Applied `20261006000000_u12_reports_archive.sql`; deployed
+`send-session-report` and `rerender-reports`; `OPERATOR_EMAILS` = `nate@knuckleballonline.com`; v153
+pushed to main after 12 clean pre-push checks. schema.sql unchanged (the bucket lives in `storage`,
+outside the public-schema dump).
+
+| # | Check | Result |
+|---|-------|--------|
+| 5 | Dry run lists every Cairn report | PASS: 200, 23 (5 pens, 18 games, 12 pitchers, Sept 18 – Oct 3) — exactly the 23 Cairn files of the 37 in the bucket, 0 others; Joel approved by running it |
+| 6 | Archive + manifest; old links; no email; others untouched | PASS: run 200, 23 of 23 ok. All 23 files changed, each with two "— pitcher's view" headings and no "catcher's view"; the 14 non-Cairn files byte-identical (SHA-256 before/after); all 82 session rows identical; `reports-archive/2026-10-06/` holds 23 copies, each the original's exact byte size, + manifest.json. Manifest hashes are in a private bucket (not checked from here); the rollback mode verifies each one before restoring |
+
+**Still to do (Joel):** open three Cairn links on his phone with a pitcher (packet VERIFICATION);
+P1-01 offline checks 1–3 on v153.
+
+Rollback, if ever needed: the `rerender-reports` rollback mode for team
+`7e1648c1-0582-44e9-984d-a9735a88e4da`, archive `2026-10-06` (rehearsed on staging, byte-identical).

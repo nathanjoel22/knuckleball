@@ -105,3 +105,6 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
   (1, 2, 12–14, 16) are not tappable there. Harness: the two shadings together cover all 25 boxes, with 3, 11, 15,
   17, 23 split into opposite halves; box 13 ignored on the location step; box 15 accepted. Flow + foul tests re-run
   (the old all-25-box location test retired: foul boxes are reached through Foul Out now). v163.
+- Joel, Oct 7: nothing above the fence arc shades on the location step; the top row (5–9) shades only the strip below
+  the arc (clip polygons computed from the arc: circle centre (250,700), r 650, in the field's 100-a-box units).
+  Area over the fence shades on neither screen. v164.

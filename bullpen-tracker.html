@@ -1518,8 +1518,17 @@
   .g5-roll-out > .zone-grid{ animation:g5rollout 350ms ease; }
   @keyframes g5rollout{ from{ transform:rotate(-45deg) scale(var(--g5-to, 1)); } to{ transform:rotate(0deg) scale(1); } }
   .ph-layout .g5-roll-out > .zone-grid{ --g5-to:0.70711; }
+  /* Phones, Joel Oct 7: the 3x3 has the chart's own cells -- the chart is 5 cells of (W - 18px) / 5 in a
+     W = min(100%, 340px) box, so the 3x3 grid is 3 of them plus its gaps, and its box is that x √2. */
+  .ph-layout .g5-wrap.g5-compact{ max-width:calc(((min(100%, 340px) - 18px) * 0.6 + 12px) * 1.41421); }
+  .g5-grid.g5-g3{ grid-template-columns:repeat(3, minmax(0, 1fr)); grid-template-rows:repeat(3, minmax(0, 1fr)); }
+  .ph-layout .g5-roll-in.g5-g3{ --g5-from:1; }
+  .ph-layout .g5-roll-out.g5-from-compact > .zone-grid{ --g5-to:1; }
+  /* ...and zooms out to the 5x5 (smaller cells) for the location and bases questions */
+  .g5-zoom{ animation:g5zoom 350ms ease; }
+  @keyframes g5zoom{ from{ transform:rotate(-45deg) scale(1.45); } to{ transform:rotate(-45deg) scale(1); } }
   @media (prefers-reduced-motion: reduce){
-    .g5-roll-in, .g5-roll-out > .zone-grid, .g5-roll-in .g5-field, .g5-roll-in .g5-cell > .g5-in, .g5-choice, .g5-pick{ animation:none !important; }
+    .g5-roll-in, .g5-zoom, .g5-roll-out > .zone-grid, .g5-roll-in .g5-field, .g5-roll-in .g5-cell > .g5-in, .g5-choice, .g5-pick{ animation:none !important; }
   }
   .g5-below{ margin-top:10px; display:flex; flex-direction:column; gap:8px; }
   .g5-q{ font-weight:700; font-size:14px; }
@@ -7693,6 +7702,14 @@ const G5_OUTCOME = { H: 'hit', O: 'out', E: 'error' };
 const G5_HOW = { 11: ['ground', 'GB', 'Ground'], 8: ['pop', 'Pop', 'Pop fly'], 21: ['line', 'LD', 'Line drive'], 10: ['fly', 'Fly', 'Fly ball'], 7: ['bunt', 'Bunt', ''] };
 const G5_BASE_BOX = { 3: 4, 25: 2, 15: 1 };   // the bases screen's tap boxes -> runner bit (3rd=4, 2nd=2, 1st=1)
 const G5_BASE_LABEL = { 4: '3B', 2: '2B', 1: '1B' };
+// Joel, Oct 7: on phones the first three questions (What happened? / H-O-E / How was it hit?) roll into a
+// 3x3 -- the infield (17, 18, 24, 25) and the five boxes above it (19-23) -- so its boxes are the chart's
+// own size. The prompts keep the 5x5 pattern, shifted into it (5x5 box -> 3x3 box). The location and
+// bases questions zoom out to the full 5x5.
+const G5_COMPACT_STEPS = { what: 1, hoe: 1, how: 1 };
+const G5_COMPACT_BOX = { 8: 20, 10: 22, 7: 19, 21: 25, 11: 23 };
+const G5_COMPACT_FROM = { 20: 8, 22: 10, 19: 7, 25: 21, 23: 11 };
+function g5Compact(step){ return isPhoneWidth() && !!G5_COMPACT_STEPS[step]; }
 
 function g5Step(){
   const s = state.activeSession;
@@ -7725,6 +7742,7 @@ window.g5What = async function(code){
   // Ball four: the runners question first (pre-filled with the forced advances), then save.
   if(result === 'ball' && s.balls === 3 && g5ProjectedOuts(g) < 3){
     g.walk = true; g.step = 'bases'; g.bases = g5WalkMask(s.runners);
+    if(isPhoneWidth()) state.g5Anim = 'zoom';
     return g5Save();
   }
   return g5Commit(result);
@@ -7740,6 +7758,7 @@ window.g5How = async function(t){
   const g = state.activeSession.g5;
   if(!g || g.step !== 'how') return;
   g.bbType = t; g.step = 'where';
+  if(isPhoneWidth()) state.g5Anim = 'zoom';   // the 3x3 zooms out to the full field
   return g5Save();
 };
 window.g5Where = async function(box){
@@ -7774,6 +7793,7 @@ window.g5Back = async function(){
   if(!g) return;
   switch(g.step){
     case 'what':
+      state.g5FromCompact = g5Compact('what');
       s.g5 = null; s.gamePendingPitch = null; s.gameDot = null;
       state.g5Anim = 'out';
       return g5Save();
@@ -7798,6 +7818,7 @@ async function g5Commit(result){
     extra.sprayBox = g.box;
   }
   if(g.step === 'bases' && g5ProjectedOuts(g) < 3) extra.runnersAfter = g.bases || 0;
+  state.g5FromCompact = g5Compact(g.step);
   s.g5 = null;
   state.g5Anim = 'out';
   return recordGameResult(result, extra);
@@ -7833,12 +7854,12 @@ window.g5NextPitch = async function(){
 };
 
 // ---- the field (one SVG in the grid's own coordinates: 100 units a cell, home at the 1/2/16/17 corner) ----
-function g5FieldSvg(){
+function g5FieldSvg(compact){
   const soft = currentSport() === 'softball';
   const g = state.activeSession && state.activeSession.g5;
   const occ = (g && g.step === 'bases') ? (g.bases || 0) : runnersBitmask(state.activeSession ? state.activeSession.runners : {});
   const base = (x, y, bit) => `<rect x="${x}" y="${y}" width="22" height="22" rx="2" class="g5-base${occ & bit ? ' on' : ''}"/>`;
-  return `<svg class="g5-field" viewBox="0 0 500 500" aria-hidden="true">
+  return `<svg class="g5-field" viewBox="${compact ? '100 100 300 300' : '0 0 500 500'}" aria-hidden="true">
 <rect width="500" height="500" style="fill:var(--gg-fence)"/>
 <path d="M100,400 L100,0 L241.42,0 A424.26,424.26 0 0 1 500,258.58 L500,400 Z" style="fill:var(--gg-grass)"/>
 <path d="M241.42,0 A424.26,424.26 0 0 1 500,258.58" fill="none" style="stroke:var(--gg-line)" stroke-width="6" opacity="0.75"/>
@@ -7875,12 +7896,14 @@ function g5Caption(step){
 }
 function renderG5Diamond(){
   const s = state.activeSession, g = s.g5, step = g.step;
+  const compact = g5Compact(step);
+  const lo = compact ? 1 : 0, hi = compact ? 3 : 4;
   let cells = '';
-  for(let r = 0; r < 5; r++){
-    for(let c = 0; c < 5; c++){
+  for(let r = lo; r <= hi; r++){
+    for(let c = lo; c <= hi; c++){
       const box = G5_BOX[r][c];
-      const b = g5CellInner(step, box);
-      const pos = `grid-row:${r + 1};grid-column:${c + 1};`;
+      const b = g5CellInner(step, compact ? (G5_COMPACT_FROM[box] || 0) : box);
+      const pos = `grid-row:${r - lo + 1};grid-column:${c - lo + 1};`;
       cells += b && b.onclick
         ? `<button type="button" class="g5-cell ${b.cls}" style="${pos}" data-box="${box}" onclick="${b.onclick}"><span class="g5-in">${b.inner}</span></button>`
         : `<div class="g5-cell${b ? ' ' + b.cls : ''}" style="${pos}" data-box="${box}">${b ? `<span class="g5-in">${b.inner}</span>` : ''}</div>`;
@@ -7889,9 +7912,9 @@ function renderG5Diamond(){
   const pill = (step === 'where' || step === 'bases') ? `<div class="g5-pill">${escHtml(g5Caption(step))}</div>` : '';
   const added = g.addOuts ? ` · ${g.addOuts}` : '';
   const next = (step === 'bases' && ggRadarOn()) ? `<button type="button" class="g5-corner g5-next" onclick="g5Next()">Next ›</button>` : '';
-  const anim = state.g5Anim === 'in' ? ' g5-roll-in' : '';
-  return `<div class="g5-wrap gg-field"><div class="g5-sq">
-    <div class="g5-grid${anim}" data-step="${step}">${g5FieldSvg()}${cells}</div>
+  const anim = state.g5Anim === 'in' ? ' g5-roll-in' : state.g5Anim === 'zoom' ? ' g5-zoom' : '';
+  return `<div class="g5-wrap gg-field${compact ? ' g5-compact' : ''}"><div class="g5-sq">
+    <div class="g5-grid${compact ? ' g5-g3' : ''}${anim}" data-step="${step}">${g5FieldSvg(compact)}${cells}</div>
     ${pill}
     <button type="button" class="g5-corner g5-addout" onclick="g5AddOut()" ${g5ProjectedOuts(g) >= 3 ? 'disabled' : ''}>+ Add out${added}</button>
     ${next}
@@ -7900,7 +7923,7 @@ function renderG5Diamond(){
 }
 // The square chart, rolling back in (right) when a play has just ended.
 function g5Chart(gridHtml){
-  return state.g5Anim === 'out' ? `<div class="g5-roll-out">${gridHtml}</div>` : gridHtml;
+  return state.g5Anim === 'out' ? `<div class="g5-roll-out${state.g5FromCompact ? ' g5-from-compact' : ''}">${gridHtml}</div>` : gridHtml;
 }
 // Joel, Oct 6: after the roll back, velocity sits IN the chart -- the bar on its second-to-last
 // row, Reset + Next pitch on the last row -- so nothing is added below the chart.
@@ -10430,7 +10453,7 @@ function render(){
   attachVeloStrip();
   attachGameVeloSlide();   // G1b-r3: no-op unless the Live Game velocity row is on screen
   attachGamePanelScroll();
-  state.g5Anim = null;     // G5: the roll plays once, on the render that starts it
+  state.g5Anim = null; state.g5FromCompact = false;     // G5: the roll plays once, on the render that starts it
 }
 
 init();

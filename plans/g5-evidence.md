@@ -63,3 +63,9 @@ runners_after → refused (`pitches_g5_fields_check`); (3) box 0, box 26, bases 
   types sit level with the Knuckleball logo and the chart / diamond gain that row's height (phones unchanged;
   Profile and Leaderboard keep the separate row). Full-page render at 1180×820: header level with the logo block,
   diamond larger and fully on screen. v156.
+- Joel, Oct 7 (phones): the first flip rolls into a 3×3 — the infield (17, 18, 24, 25) and the five boxes above it
+  (19–23) — whose cells are the chart's own size; the prompts keep the 5×5 pattern shifted into it (Looking 20,
+  Foul 22; Ball 19, Swing 25, In Play 23; E 19, H 25, O 23; Pop 20, Fly 22, Bunt 19, LD 25, GB 23). The location
+  and bases questions zoom out to the 5×5; Next rolls back to the chart. Measured: chart 64px, 3×3 64px at 390 and
+  375; 5×5 location 44px. iPad / laptop unchanged (5×5 throughout). Flow, box map, tiebreak, resume tests re-run:
+  unchanged. v157.

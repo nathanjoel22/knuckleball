@@ -67,7 +67,7 @@ storage.
 
 ## What this is
 
-Knuckleball (knuckleballonline.com) is a bullpen and live-game tracking app for baseball and softball pitching coaches and pitchers: two-tap pitch charting on a 5×5 zone grid (target vs. actual), pitch types, velocity, heat maps, accuracy percentages (including a "relative accuracy" mode), trend charts, and an emailed link to a frozen HTML session report. Charting typically happens on an **iPhone/iPad, often with no wifi** — never assume network availability in the tracker flow.
+Knuckleball (knuckleballonline.com) is a bullpen and live-game tracking app for baseball and softball pitching coaches and pitchers: two-tap pitch charting on a 7×7 zone grid since U2 (legacy 5×5 sessions still render; target vs. actual), pitch types, velocity, heat maps, accuracy percentages (including a "relative accuracy" mode), trend charts, and an emailed link to a frozen HTML session report. Charting typically happens on an **iPhone/iPad, often with no wifi** — never assume network availability in the tracker flow.
 
 **Operator context that changes how you work:** the owner (Joel) is a solo, part-time developer, newer to the terminal, on a Mac. Prefer copy-paste one-liners, explain what commands do, and never assume a CI system, a second environment, or another human reviewer exists unless DEPLOY.md says so. Current scale: 1–3 teams. Bias every decision toward simple and operable over scalable.
 
@@ -94,7 +94,7 @@ There are 34 RLS policies (production, Oct 5 2026 after the teams hotfix; S3 ses
 
 **Live Game events and levels (G3).** `game_events` also stores `seq` and the count/inning before each event. Event types now include `illegal_pitch` (softball: ADV = with runner_advances, no ADV = without; always followed by its `auto_ball`) and `tiebreak_runner` (extra innings, "Start with runner on 2B?"). Game reports and `compute_game_summary` count IBB / auto-ball-four / auto-strike-three as BB/K and list them under "Other events"; pitch stats never include them. `teams.level` (baseball little_league / high_school / college; softball little_league / high_school_up, CHECK-tied to sport, head coach sets it) decides the first extra inning: 7 / 8 / 10 and 7 / 8.
 
-**Migration history.** Every schema change up to P1-08 was applied to production by hand; `supabase/migrations/20260826082320_baseline.sql` is the snapshot of that state and the first real migration this repo has. Production has no `supabase_migrations` history table yet, so a one-time `supabase migration repair --status applied` is required before the first `db push` (see DEPLOY.md). Keep regenerating the dump in `supabase/schema/schema.sql` after any approved schema change — it stays the human-readable source of truth.
+**Migration history.** Every schema change up to P1-08 was applied to production by hand; `supabase/migrations/20260826082320_baseline.sql` is the snapshot of that state and the first real migration this repo has. The baseline was later registered on production, and `supabase migration list` (Oct 6 2026) showed every migration recorded there, identical to this repo; `db push` runs only new files (see DEPLOY.md). Keep regenerating the dump in `supabase/schema/schema.sql` after any approved schema change — it stays the human-readable source of truth.
 
 **Report gate invariant (P1-10, Oct 2 2026).** A report can be generated or sent only when: the pitcher's LOGIN is email-verified AND the pitcher is on a team AND the calling coach is verified (Amendment 11) AND the pitcher's login is attested 'adult' OR has guardian approval (13-17) AND, for a parent-added player, the player's own consent stamp is set (S4 B). Existing logins that haven't answered the one-time age box get NO reports until they answer (Joel, option a). The age bracket, terms version and guardian state live on the login's PRIMARY profile; `guardian_email` and `guardian_consent_token` are never client-readable; guardian emails go only to the stored address, once per 10 minutes (`claim_guardian_send`). The one-time box is decided only on the online load -- it never appears offline. Policy pages (`privacy.html`, `terms.html`, Version 2026-10-03b: parent accounts and under-13s approved Oct 2, the accurate leaderboard sentence approved Oct 3) were approved by Joel; any text change needs his re-approval in the commit message. Fonts and supabase-js are self-hosted under `vendor/` -- pages load nothing from third-party hosts; keep it that way (the privacy policy says so).
 
@@ -184,7 +184,7 @@ Function secrets live in Supabase (`supabase secrets list`): `SUPABASE_URL`, `SU
 
 ## Coding conventions
 
-Vanilla JS in single-file pages; small shared JS only if a `js/` directory already exists. Match the existing style of the file you're editing. Edge Functions: Deno, esm.sh imports, the CORS-headers pattern already in both functions. Errors returned as JSON `{ error: string }` with proper status codes. No new dependencies without approval.
+Vanilla JS in single-file pages; small shared JS only if a `js/` directory already exists. Match the existing style of the file you're editing. Edge Functions: Deno, esm.sh imports, the CORS-headers pattern already in the existing functions. Errors returned as JSON `{ error: string }` with proper status codes. No new dependencies without approval.
 
 ## Rules of engagement
 

@@ -7689,6 +7689,12 @@ const G5_FOUL_GROUND = { 1: '', 2: '', 16: '', 14: '', 13: '', 12: '',
   3: 'polygon(0 0, 0 100%, 100% 100%)', 17: 'polygon(0 0, 0 100%, 100% 100%)',
   23: 'polygon(100% 0, 100% 100%, 0 100%)', 11: 'polygon(100% 0, 100% 100%, 0 100%)',
   15: 'polygon(0 0, 50% 50%, 100% 0, 100% 100%, 0 100%)' };
+// Joel, Oct 7: a ball in play's location shades the opposite -- fair ground only: every box that has no foul
+// ground whole, the fair side of the line in 3, 17, 23 and 11, and in 15 only the triangle from home up.
+const G5_FAIR_GROUND = { 4: '', 5: '', 6: '', 7: '', 8: '', 9: '', 10: '', 18: '', 19: '', 20: '', 21: '', 22: '', 24: '', 25: '',
+  3: 'polygon(0 0, 100% 0, 100% 100%)', 17: 'polygon(0 0, 100% 0, 100% 100%)',
+  23: 'polygon(0 0, 100% 0, 0 100%)', 11: 'polygon(0 0, 100% 0, 0 100%)',
+  15: 'polygon(0 0, 100% 0, 50% 50%)' };
 const G5_HOE = { 20: ['H', 'Hit'], 10: ['O', 'Out'], 4: ['E', 'Error'] };   // Joel, Oct 7
 const G5_OUTCOME = { H: 'hit', O: 'out', E: 'error' };
 const G5_HOW = { 10: ['ground', 'GB', 'Ground'], 6: ['pop', 'Pop', 'Pop fly'], 20: ['line', 'LD', 'Line drive'], 8: ['fly', 'Fly', 'Fly ball'], 4: ['bunt', 'Bunt', ''] };   // Joel, Oct 7
@@ -7767,7 +7773,7 @@ window.g5How = async function(t){
 };
 window.g5Where = async function(box){
   const s = state.activeSession, g = s.g5;
-  if(!g || g.step !== 'where' || !(box >= 1 && box <= 25)) return;
+  if(!g || g.step !== 'where' || G5_FAIR_GROUND[box] === undefined) return;
   g.box = box;
   if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');   // the half-inning is over: no runners question
   g.step = 'bases'; g.bases = runnersBitmask(s.runners);     // the runners as they were; the charter adds the batter
@@ -7896,7 +7902,10 @@ function g5CellInner(step, box){
   }
   if(step === 'hoe' && G5_HOE[box]){ const [e, cap] = G5_HOE[box]; return btn(ggBig(e, cap), `g5Entry('${e}')`, 'g5-choice'); }
   if(step === 'how' && G5_HOW[box]){ const [t, big, cap] = G5_HOW[box]; return btn(ggBig(big, cap), `g5How('${t}')`, 'g5-choice'); }
-  if(step === 'where') return btn('', `g5Where(${box})`, 'g5-pick');
+  if(step === 'where' && G5_FAIR_GROUND[box] !== undefined){
+    const clip = G5_FAIR_GROUND[box];
+    return btn(`<span class="g5-shade"${clip ? ` style="clip-path:${clip};-webkit-clip-path:${clip};"` : ''}></span>`, `g5Where(${box})`, 'g5-foulpick');
+  }
   if(step === 'bases'){
     if(g.box === box && !g.walk) return { inner: G5_BALL_SVG, onclick: null, cls: 'g5-marked' };
     if(G5_BASE_BOX[box]){

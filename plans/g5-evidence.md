@@ -100,3 +100,8 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
   and Ball go straight to velocity (ball four still asks the runners first, per the spec). Harness: every button
   in its box; flow and foul tests re-run. v161.
 - Joel, Oct 7: What happened? → Foul 4, Looking 6, Swing 20, Ball 8, In Play 10. v162.
+- Joel, Oct 7: a ball in play's location shades fair ground only — the exact opposite of Foul Out (boxes 4–10, 18–22,
+  24, 25 whole; the fair side of the line in 3, 17, 23, 11; in 15 only the triangle from home up). All-foul boxes
+  (1, 2, 12–14, 16) are not tappable there. Harness: the two shadings together cover all 25 boxes, with 3, 11, 15,
+  17, 23 split into opposite halves; box 13 ignored on the location step; box 15 accepted. Flow + foul tests re-run
+  (the old all-25-box location test retired: foul boxes are reached through Foul Out now). v163.

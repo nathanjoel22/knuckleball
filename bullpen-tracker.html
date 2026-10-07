@@ -7701,9 +7701,10 @@ const G5_FAIR_GROUND = { 4: '', 10: '', 18: '', 19: '', 20: '', 21: '', 22: '', 
   3: 'polygon(0 0, 100% 0, 100% 100%)', 17: 'polygon(0 0, 100% 0, 100% 100%)',
   23: 'polygon(0 0, 100% 0, 0 100%)', 11: 'polygon(0 0, 100% 0, 0 100%)',
   15: 'polygon(0 0, 100% 0, 50% 50%)' };
-// Joel, Oct 7: on a fly-ball hit, box 13 offers "HR?" while the field flashes; it switches the flashing to the
+// Joel, Oct 7: on a fly-ball or line-drive hit, box 13 offers "HR?" while the field flashes; it switches the flashing to the
 // area above the fence (the top row above the arc), where a tap records the home run.
 const G5_HR_BOX = 13;
+const G5_HR_CONTACT = { fly: 1, line: 1 };
 const G5_OVER_FENCE = {
   5: 'polygon(0 0, 100% 0, 100% 67.5%, 87.5% 70.6%, 75% 74.0%, 62.5% 77.6%, 50% 81.5%, 37.5% 85.7%, 25% 90.2%, 12.5% 94.9%, 0% 100.0%)',
   6: 'polygon(0 0, 100% 0, 100% 51.9%, 87.5% 53.0%, 75% 54.3%, 62.5% 55.9%, 50% 57.7%, 37.5% 59.8%, 25% 62.1%, 12.5% 64.7%, 0% 67.5%)',
@@ -7797,7 +7798,7 @@ window.g5Where = async function(box){
 };
 window.g5HrAsk = async function(){
   const g = state.activeSession.g5;
-  if(!g || g.step !== 'where' || g.entry !== 'H' || g.bbType !== 'fly') return;
+  if(!g || g.step !== 'where' || g.entry !== 'H' || !G5_HR_CONTACT[g.bbType]) return;
   g.step = 'hr';
   return g5Save();
 };
@@ -7933,7 +7934,7 @@ function g5CellInner(step, box){
   }
   if(step === 'hoe' && G5_HOE[box]){ const [e, cap] = G5_HOE[box]; return btn(ggBig(e, cap), `g5Entry('${e}')`, 'g5-choice'); }
   if(step === 'how' && G5_HOW[box]){ const [t, big, cap] = G5_HOW[box]; return btn(ggBig(big, cap), `g5How('${t}')`, 'g5-choice'); }
-  if(step === 'where' && box === G5_HR_BOX && g.entry === 'H' && g.bbType === 'fly') return btn('<span class="g5-word">HR?</span>', 'g5HrAsk()', 'g5-choice');
+  if(step === 'where' && box === G5_HR_BOX && g.entry === 'H' && G5_HR_CONTACT[g.bbType]) return btn('<span class="g5-word">HR?</span>', 'g5HrAsk()', 'g5-choice');
   if(step === 'hr' && G5_OVER_FENCE[box]){
     const clip = G5_OVER_FENCE[box];
     return btn(`<span class="g5-shade" style="clip-path:${clip};-webkit-clip-path:${clip};"></span>`, `g5HR(${box})`, 'g5-foulpick');

@@ -13,3 +13,10 @@ Packet: `plans/g5-live-game-diamond.md` (GitHub, Oct 6 2026). Precondition repor
 
 Migration `20261007000000_g5_spray_box.sql`: generated from the live `sync_session` (identical on staging and
 production); the only function change is the two new columns in the pitches insert.
+
+## Migration on staging (Oct 6 2026, Joel: "apply to staging")
+
+Applied `20261007000000_g5_spray_box.sql`; policies 34 → 34. `supabase/tests/g5_migration_acceptance.sql`
+(rolled back): (1) a game through `sync_session` → saved, 3 pitches; stored ball -/-/-, single box 22
+runners_after 1 outs 0, groundout DP box 19 runners_after 0 outs 2; (2) bullpen pitch with spray_box or
+runners_after → refused (`pitches_g5_fields_check`); (3) box 0, box 26, bases 8 → refused; (4) policies 34.

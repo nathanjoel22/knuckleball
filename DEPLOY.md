@@ -17,7 +17,10 @@ is about to touch.
 Each project has its own copies of the same secret names, set independently via
 `supabase secrets set ... --project-ref <ref>`:
 
-- `INVITE_REDIRECT_URL`, `RESEND_API_KEY`, `REPORT_FROM_EMAIL` — set manually per project.
+- `INVITE_REDIRECT_URL`, `RESEND_API_KEY`, `REPORT_FROM_EMAIL`, `VERIFY_FROM_EMAIL`,
+  `VERIFY_REDIRECT_URL`, `RESEND_DAILY_QUOTA` and `ALERT_EMAIL` (since H1), and `OPERATOR_EMAILS`
+  (since U12; the only logins `rerender-reports` accepts) — set manually per project. CLAUDE.md
+  has the authoritative list and what each one is for.
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — reserved names, injected
   automatically by the platform into every Edge Function. You cannot and don't need to set
   these yourself (`supabase secrets set SUPABASE_...` is rejected by the CLI).
@@ -39,38 +42,33 @@ supabase secrets list --project-ref wpsscxwawgiwmifpjpec
 for Auth settings** (see SETUP.md — it can reset unspecified dashboard settings like Site
 URL/redirect URLs).
 
-### One-time prerequisite — register the baseline on production (NOT done yet)
+### Migration history on production (baseline registered — done)
 
-Do this **once**, before the very first `supabase db push` to production. Skipping it
-turns the first real migration into a mid-deploy failure.
+Production was originally built by hand, so the baseline
+(`supabase/migrations/20260826082320_baseline.sql`) had to be marked as already applied there
+before the first `supabase db push` (`supabase migration repair --status applied 20260826082320`).
+That has been done: on 2026-10-06, `supabase migration list` against production showed every
+migration in this folder (55, from `20260826082320` to `20261006000000`) applied on both sides,
+with Local and Remote identical. So the history is complete, and the next `db push` to
+production runs only genuinely new files.
 
-Production was built entirely by hand and has no `supabase_migrations.schema_migrations`
-table, so the CLI has no record that `supabase/migrations/20260826082320_baseline.sql`
-is already live there. Left as-is, the first `db push` to production will try to *run*
-the baseline against the real database and abort partway through — the baseline's
-`CREATE POLICY` statements have no `IF NOT EXISTS`, so it dies on the first policy that
-already exists (`42710 "policy already exists"`), after it has already created the
-migrations table. Staging doesn't have this problem: it was built *from* the baseline.
-
-Mark the baseline as already-applied on production instead:
+To check the history at any time (read-only; enter the database password at the prompt):
 
 ```bash
-supabase migration repair --status applied 20260826082320 --project-ref fkgccjhuimkkbupbanxp --password <prod-db-password>
+supabase migration list --project-ref fkgccjhuimkkbupbanxp
 ```
 
-Then confirm — the baseline should now show as applied on both sides, and nothing else:
-
-```bash
-supabase migration list --project-ref fkgccjhuimkkbupbanxp --password <prod-db-password>
-```
-
-From here on, only genuinely new migration files run against production in step 5.
+Every row should show the same version under Local and Remote. A version with no Remote entry
+has not reached production yet; a Remote entry with no Local file means a change reached
+production outside this repo — stop and investigate before the next `db push`.
 
 1. **Write a migration file.**
    ```bash
    supabase migration new <short_description>
    ```
-   This creates a timestamped file in `supabase/migrations/`. Write plain SQL in it —
+   This creates a timestamped file in `supabase/migrations/`. (Many files here use hand-set
+   round timestamps instead, e.g. `20261005020000_r4_cross_team.sql`; that works as long as each
+   new version sorts after the last one applied.) Write plain SQL in it —
    `CREATE TABLE`, `ALTER TABLE`, `CREATE POLICY`, etc. Per the RLS rule in CLAUDE.md, if the
    policy needs a cross-table check, use a `SECURITY DEFINER` helper function (see
    `is_team_coach`/`is_team_member` in the baseline migration) — never a direct subquery
@@ -103,9 +101,13 @@ From here on, only genuinely new migration files run against production in step 
 
 ### Rollback (schema)
 
-There is no automatic down-migration. Write and apply a new migration file that reverses
-the change (e.g. `DROP POLICY` / re-`CREATE POLICY` with the old definition), following the
-same staging-first order above. Never hand-edit a production policy from the dashboard to
+There is no automatic down-migration. Since Oct 2, each risky migration has a hand-written down
+script in `supabase/rollback/` (`<version>_<name>_down.sql`, 10 so far), written from production's
+definitions before the change. `db push` never runs these (they are outside
+`supabase/migrations/`): run one deliberately, staging first, only when that change has to be
+undone. Otherwise, write and apply a new migration file that reverses the change (e.g.
+`DROP POLICY` / re-`CREATE POLICY` with the old definition), following the same staging-first
+order above. Never hand-edit a production policy from the dashboard to
 "just fix it quickly" — that's exactly how this project ended up with no migration history
 in the first place (see `supabase/schema/SCHEMA_NOTES.md`).
 
@@ -117,9 +119,11 @@ supabase functions deploy <name> --project-ref wpsscxwawgiwmifpjpec   # staging 
 supabase functions deploy <name> --project-ref fkgccjhuimkkbupbanxp   # production
 ```
 
-Both `invite-pitcher` and `send-session-report` deploy the same way. `supabase/config.toml`
-carries no per-function `verify_jwt` overrides — both functions default to platform JWT
-verification on both projects; keep it that way (see P0-01's history with
+All seven functions deploy the same way: `invite-pitcher`, `request-email-change`,
+`rerender-reports`, `send-guardian-consent`, `send-removal-notice`, `send-session-report` and
+`send-verification-email` (`_shared/` holds common code and is not deployed on its own).
+`supabase/config.toml` carries no per-function `verify_jwt` overrides, so every function
+defaults to platform JWT verification on both projects; keep it that way (see P0-01's history with
 `send-session-report` and `verify_jwt = false`).
 
 ### Rollback (functions)

@@ -7671,8 +7671,9 @@ function attachGameVeloSlide(){
    undoLastGameAction. Nothing is written until the play is complete. */
 // Joel's box numbers by unrotated row/column (row 0 top, column 0 left).
 const G5_BOX = [[5, 6, 7, 8, 9], [4, 19, 20, 21, 10], [3, 18, 25, 22, 11], [2, 17, 24, 23, 12], [1, 16, 15, 14, 13]];
-const G5_WHAT = { 7: ['ball', 'icon-ball.png', 'Ball'], 8: ['looking', 'icon-looking.png', 'Looking'], 21: ['swing', 'icon-swinging.png', 'Swing'],
-  10: ['foul', 'icon-foul.png', 'Foul'], 11: ['inplay', 'batter-icon.png', 'In Play'] };
+// Joel, Oct 7: Foul 4, Looking 19, Swing 20, Ball 21, In Play 10.
+const G5_WHAT = { 21: ['ball', 'icon-ball.png', 'Ball'], 19: ['looking', 'icon-looking.png', 'Looking'], 20: ['swing', 'icon-swinging.png', 'Swing'],
+  4: ['foul', 'icon-foul.png', 'Foul'], 10: ['inplay', 'batter-icon.png', 'In Play'] };
 const G5_RESULT = { ball: 'ball', looking: 'strike_looking', swing: 'strike_swinging', foul: 'foul' };
 const G5_HOE = { 21: ['H', 'Hit'], 11: ['O', 'Out'], 7: ['E', 'Error'] };
 const G5_OUTCOME = { H: 'hit', O: 'out', E: 'error' };
@@ -7826,6 +7827,7 @@ window.g5NextPitch = async function(){
 // Home plate mid box 15; foul lines diagonally through 17 and 3 (left), 23 and 11 (right); the fence arc from
 // box 4's top-left corner, peaking mid box 7, to box 10's top-right corner; 1B mid 23, 2B mid 25, 3B mid 17;
 // the dirt from box 17's top-left corner, peaking mid 25, to box 23's top-right corner; the mound mid 24.
+// 2B sits at the bottom of box 25, clear of the outfield grass (Joel, Oct 7).
 // Same drawing in send-session-report/diamond.ts -- change both or neither.
 function g5FieldSvg(){
   const soft = currentSport() === 'softball';
@@ -7837,10 +7839,10 @@ function g5FieldSvg(){
 <path d="M250,450 L0,200 L0,100 A650,650 0 0 1 500,100 L500,200 Z" style="fill:var(--gg-grass)"/>
 <path d="M0,100 A650,650 0 0 1 500,100" fill="none" style="stroke:var(--gg-line)" stroke-width="6" opacity="0.75"/>
 <path d="M250,450 L100,300 A250,250 0 0 1 400,300 Z" style="fill:var(--gg-dirt)"/>
-<polygon points="250,428 328,350 250,272 172,350" style="fill:${soft ? 'var(--gg-dirt)' : 'var(--gg-infield)'}"/>
+<polygon points="250,428 314,364 250,300 186,364" style="fill:${soft ? 'var(--gg-dirt)' : 'var(--gg-infield)'}"/>
 ${soft ? '<circle cx="250" cy="350" r="16" fill="none" stroke="#fff" stroke-width="2.5"/>' : '<circle cx="250" cy="350" r="14" style="fill:var(--gg-mound)"/>'}
 <path d="M250,450 L0,200 M250,450 L500,200" stroke="#fff" stroke-width="4"/>
-${base(350, 350, 1)}${base(250, 250, 2)}${base(150, 350, 4)}
+${base(350, 350, 1)}${base(250, 282, 2)}${base(150, 350, 4)}
 <polygon points="237,438 263,438 263,451 250,464 237,451" fill="#fff" style="stroke:var(--gg-line)" stroke-width="1.5"/>
 </svg>`;
 }

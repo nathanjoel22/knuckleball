@@ -83,3 +83,5 @@ drawn bases); "Next pitch" (radar off) moves to 24; + Add out, Next and ‹ Back
 Old-game fielder → box re-placed for the upright field, to confirm: C 15, P 24, 1B 23, 2B 22, SS 18, 3B 17, LF 19,
 CF 20, RF 21. Reports draw the same upright field. Flow / box map / tiebreak / resume tests re-run with the new
 base boxes: all pass. v158. send-session-report + rerender-reports redeployed to staging.
+- Joel, Oct 7: 2B moved to the bottom of box 25, clear of the outfield grass (the grass diamond shrinks under it);
+  What happened? → Foul 4, Looking 19, Swing 20, Ball 21, In Play 10. Same 2B in the reports' field. v159.

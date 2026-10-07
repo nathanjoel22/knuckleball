@@ -8,7 +8,7 @@
 // restated here because it runs in another runtime: the same 5x5 grid in its
 // own coordinates (100 units a box), upright (Joel, Oct 7): home plate mid
 // box 15, foul lines through 17/3 and 23/11, the fence arc from box 4's
-// top-left corner to box 10's top-right corner. Change both or neither.
+// top-left corner to box 10's top-right corner; 2B at the bottom of box 25. Change both or neither.
 // ============================================================================
 import { escapeHtml, colorForType } from './helpers.ts'
 import { drawGrid } from './svg.ts'
@@ -58,10 +58,10 @@ export function drawDiamond(opts: { counts: Record<number, number>; sport: 'base
 <path d="M250,450 L0,200 L0,100 A650,650 0 0 1 500,100 L500,200 Z" fill="${c.grass}"/>
 <path d="M0,100 A650,650 0 0 1 500,100" fill="none" stroke="${c.line}" stroke-width="6" opacity="0.75"/>
 <path d="M250,450 L100,300 A250,250 0 0 1 400,300 Z" fill="${c.dirt}"/>
-<polygon points="250,428 328,350 250,272 172,350" fill="${soft ? c.dirt : c.infield}"/>
+<polygon points="250,428 314,364 250,300 186,364" fill="${soft ? c.dirt : c.infield}"/>
 ${soft ? '<circle cx="250" cy="350" r="16" fill="none" stroke="#FFFFFF" stroke-width="2.5"/>' : `<circle cx="250" cy="350" r="14" fill="${c.mound}"/>`}
 <path d="M250,450 L0,200 M250,450 L500,200" stroke="#FFFFFF" stroke-width="4"/>
-<g fill="#FFFFFF" stroke="${c.line}" stroke-width="1.5">${base(350, 350)}${base(250, 250)}${base(150, 350)}</g>
+<g fill="#FFFFFF" stroke="${c.line}" stroke-width="1.5">${base(350, 350)}${base(250, 282)}${base(150, 350)}</g>
 <polygon points="237,438 263,438 263,451 250,464 237,451" fill="#FFFFFF" stroke="${c.line}" stroke-width="1.5"/>`
   return `<svg class="kb-diamond" width="${size}" height="${size}" viewBox="0 0 500 500" role="img" aria-label="Field boxes">${field}${cells}</svg>`
 }

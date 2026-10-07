@@ -7689,9 +7689,9 @@ const G5_FOUL_GROUND = { 1: '', 2: '', 16: '', 14: '', 13: '', 12: '',
   3: 'polygon(0 0, 0 100%, 100% 100%)', 17: 'polygon(0 0, 0 100%, 100% 100%)',
   23: 'polygon(100% 0, 100% 100%, 0 100%)', 11: 'polygon(100% 0, 100% 100%, 0 100%)',
   15: 'polygon(0 0, 50% 50%, 100% 0, 100% 100%, 0 100%)' };
-const G5_HOE = { 21: ['H', 'Hit'], 11: ['O', 'Out'], 7: ['E', 'Error'] };
+const G5_HOE = { 20: ['H', 'Hit'], 10: ['O', 'Out'], 4: ['E', 'Error'] };   // Joel, Oct 7
 const G5_OUTCOME = { H: 'hit', O: 'out', E: 'error' };
-const G5_HOW = { 11: ['ground', 'GB', 'Ground'], 8: ['pop', 'Pop', 'Pop fly'], 21: ['line', 'LD', 'Line drive'], 10: ['fly', 'Fly', 'Fly ball'], 7: ['bunt', 'Bunt', ''] };
+const G5_HOW = { 10: ['ground', 'GB', 'Ground'], 6: ['pop', 'Pop', 'Pop fly'], 20: ['line', 'LD', 'Line drive'], 8: ['fly', 'Fly', 'Fly ball'], 4: ['bunt', 'Bunt', ''] };   // Joel, Oct 7
 const G5_BASE_BOX = { 17: 4, 25: 2, 23: 1 };   // the bases screen's tap boxes -> runner bit (3rd=4, 2nd=2, 1st=1)
 const G5_BASE_LABEL = { 4: '3B', 2: '2B', 1: '1B' };
 const G5_NEXT_BOX = 24;   // Joel, Oct 7: "Next pitch" (radar off) on the mound box; 3B is in 17 now
@@ -7909,7 +7909,7 @@ function g5CellInner(step, box){
 }
 function g5Caption(step){
   return { what: 'What happened?', foul: 'Foul tip or foul out?', foulout: 'Select where the foul ball was caught',
-    hoe: 'In play — hit, out or error?', how: 'How was it hit?',
+    hoe: 'In play — hit, out or error?', how: 'What type of contact?',
     where: 'Select Ball in Play Location', bases: 'Select current bases for baserunners' }[step] || '';
 }
 // The field: the back of the chart. Same square, same 25 boxes.

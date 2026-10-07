@@ -96,3 +96,6 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
 - Joel confirmed (Oct 7): Foul Tip = any foul ball (as built). Foul Out = any caught foul, including a strike three
   caught by the catcher; stored as an out on a ball in play in its foul box, so it does not count as a K (told Joel).
   After a Foul Out: the runners question, then velocity (radar on), then the chart (as built).
+- Joel, Oct 7: H/O/E → E 4, H 20, O 10; "What type of contact?" → Bunt 4, Pop 6, LD 20, Fly 8, GB 10. Looking, Swing
+  and Ball go straight to velocity (ball four still asks the runners first, per the spec). Harness: every button
+  in its box; flow and foul tests re-run. v161.

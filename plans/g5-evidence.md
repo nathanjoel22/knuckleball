@@ -108,3 +108,9 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
 - Joel, Oct 7: nothing above the fence arc shades on the location step; the top row (5–9) shades only the strip below
   the arc (clip polygons computed from the arc: circle centre (250,700), r 650, in the field's 100-a-box units).
   Area over the fence shades on neither screen. v164.
+- Joel, Oct 7: on a fly-ball hit, box 13 shows "HR?" while the field flashes; it switches the flashing to the area
+  above the fence (top row above the arc), where a tap records the home run: in play, hit, hit_type HR, fly, the
+  box; the bases go empty with no runners question (my choices, to confirm: HR? only on H + Fly; no runners
+  question after a homer). Report at-bat log reads "HR · Fly · box 7". Harness: HR? only on H+Fly; over-the-fence
+  boxes 5–9 only; HR stored as above, runners_after 0, delivery back to Windup, next screen velocity; Back returns
+  to the location step with nothing saved. v165; send-session-report redeployed to staging.

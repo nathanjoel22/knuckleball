@@ -305,7 +305,7 @@ function atBatEndingLabel(lastPitch: GamePitch, isDroppedThirdReached: boolean):
     case 'in_play': {
       // G5: "Hit · LD · box 22" -- what was charted; no hit type or fielder is invented.
       if (typeof lastPitch.sprayBox === 'number') {
-        const what = lastPitch.inPlayOutcome === 'hit' ? 'Hit' : lastPitch.inPlayOutcome === 'error' ? 'Error' : 'Out'
+        const what = lastPitch.hitType === 'HR' ? 'HR' : lastPitch.inPlayOutcome === 'hit' ? 'Hit' : lastPitch.inPlayOutcome === 'error' ? 'Error' : 'Out'
         return [what, lastPitch.bbType ? (G5_BB_LABEL[lastPitch.bbType] ?? '') : '', `box ${lastPitch.sprayBox}`].filter(Boolean).join(' · ')
       }
       if (lastPitch.inPlayOutcome === 'hit') return `${lastPitch.hitType ?? 'Hit'}${fielder ? ' to ' + fielder : ''}`

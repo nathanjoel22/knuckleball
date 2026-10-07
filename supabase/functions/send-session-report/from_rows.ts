@@ -17,7 +17,7 @@ import { asSport, useSportPalette } from './helpers.ts'
 const U6_CUTOFF_TS = 1789965601000   // the app's U6_CUTOFF_TS: a 65 mph reading before it is the old default, not a real speed
 const PITCH_COLS = 'session_id, type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, in_accuracy_zone, ' +
   'accuracy_zone_cells, batter_side, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, ' +
-  'balls_before, strikes_before, at_bat_index, time_to_plate'
+  'balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after'
 
 type Row = Record<string, unknown>
 // deno-lint-ignore no-explicit-any
@@ -42,7 +42,9 @@ export function pitchFromRow(p: Row): AppPitch {
     delivery: p.delivery || null,
     timeToPlate: nn(p.time_to_plate) === null ? null : Number(p.time_to_plate),
     inning: nn(p.inning), outsBefore: nn(p.outs_before), ballsBefore: nn(p.balls_before),
-    strikesBefore: nn(p.strikes_before), atBatIndex: nn(p.at_bat_index)
+    strikesBefore: nn(p.strikes_before), atBatIndex: nn(p.at_bat_index),
+    // G5: the field sections (app mapping: loadSessionsForCurrentSelection)
+    bbType: p.bb_type || null, runnersBefore: nn(p.runners_before), sprayBox: nn(p.spray_box), runnersAfter: nn(p.runners_after)
   }
 }
 const isDefaultVelo = (pt: AppPitch) => pt.velo === 65 && pt.ts < U6_CUTOFF_TS

@@ -5343,7 +5343,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate), session_notes(id, author_id, author_name, body, created_at)')
+    .select('id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after), session_notes(id, author_id, author_name, body, created_at)')
     .eq('pitcher_id', pitcherId)
     .order('started_at', { ascending: false });   // R4: every team -- RLS decides what this viewer sees
   if(error){ console.error(error); state.sessions = []; state.deletedSessions = []; return; }
@@ -5403,7 +5403,12 @@ async function loadSessionsForCurrentSelection(){
       outsBefore: p.outs_before === null || p.outs_before === undefined ? null : p.outs_before,
       ballsBefore: p.balls_before === null || p.balls_before === undefined ? null : p.balls_before,
       strikesBefore: p.strikes_before === null || p.strikes_before === undefined ? null : p.strikes_before,
-      atBatIndex: p.at_bat_index === null || p.at_bat_index === undefined ? null : p.at_bat_index
+      atBatIndex: p.at_bat_index === null || p.at_bat_index === undefined ? null : p.at_bat_index,
+      // G5: the game report's field sections (spray box, how it was hit, bases before / after)
+      bbType: p.bb_type || null,
+      runnersBefore: (p.runners_before === null || p.runners_before === undefined) ? null : p.runners_before,
+      sprayBox: (p.spray_box === null || p.spray_box === undefined) ? null : p.spray_box,
+      runnersAfter: (p.runners_after === null || p.runners_after === undefined) ? null : p.runners_after
     }))
   }));
   // P1-15: soft-deleted sessions never enter state.sessions, so every existing

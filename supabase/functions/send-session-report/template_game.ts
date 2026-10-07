@@ -18,6 +18,7 @@ import {
 } from './compute_game.ts'
 import { computeVelocityDepth } from './compute.ts'
 import { type GameEvent } from './compute_game.ts'
+import { renderSprayCharts, renderWhatLedToIt, renderBaseStates, DIAMOND_CSS } from './diamond.ts'
 
 // The one definition this report does NOT compute itself -- it's the exact
 // object public.compute_game_summary(session_id) returns, fetched by
@@ -122,6 +123,7 @@ function renderPitchingLine(p: GameReportPayload): string {
   const twoB = hits.filter(x => x.hitType === '2B').length
   const threeB = hits.filter(x => x.hitType === '3B').length
   const hr = hits.filter(x => x.hitType === 'HR').length
+  const hasHitTypes = hits.some(x => x.hitType)
   const byPosition = new Map<string, { outs: number; hits: number; errors: number }>()
   for (const x of inPlay) {
     if (!x.fielder) continue
@@ -138,10 +140,10 @@ function renderPitchingLine(p: GameReportPayload): string {
   <section class="section">
     <h2>Pitching line</h2>
     <div class="table-scroll"><table class="data-table wide">
-      <thead><tr><th>IP</th><th>BF</th><th>Pitches</th><th>Strikes</th><th>K</th><th>BB</th><th>H</th><th>1B/2B/3B/HR</th><th>HBP</th><th>E</th><th>Outs in play</th></tr></thead>
+      <thead><tr><th>IP</th><th>BF</th><th>Pitches</th><th>Strikes</th><th>K</th><th>BB</th><th>H</th>${hasHitTypes ? '<th>1B/2B/3B/HR</th>' : ''}<th>HBP</th><th>E</th><th>Outs in play</th></tr></thead>
       <tbody><tr>
         <td>${fmtIP(s.outs_recorded)}</td><td>${s.batters_faced}</td><td>${s.pitches}</td><td>${s.strikes}</td>
-        <td>${s.k}</td><td>${s.bb}</td><td>${s.h}</td><td>${oneB}/${twoB}/${threeB}/${hr}</td>
+        <td>${s.k}</td><td>${s.bb}</td><td>${s.h}</td>${hasHitTypes ? `<td>${oneB}/${twoB}/${threeB}/${hr}</td>` : ''}
         <td>${s.hbp}</td><td>${s.errors}</td><td>${s.outs_in_play}</td>
       </tr></tbody>
     </table></div>
@@ -512,7 +514,7 @@ export function buildGameReportHtml(p: GameReportPayload): string {
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
-<style>${PEN_CSS}${GAME_CSS}</style>
+<style>${PEN_CSS}${GAME_CSS}${DIAMOND_CSS}</style>
 </head>
 <body>
 <div class="page">
@@ -521,6 +523,9 @@ ${renderSummary(p)}
 ${renderPitchingLine(p)}
 ${renderLocationCharts(p)}
 ${renderTypeGrids(p)}
+${renderSprayCharts(p.pitches, allTypesOf(p), asSport(p.sport))}
+${renderWhatLedToIt(p.pitches, allTypesOf(p), p.gridSize ?? 5)}
+${renderBaseStates(p.pitches, allTypesOf(p))}
 ${renderByType(p)}
 ${renderByInning(p)}
 ${renderByCount(p)}

@@ -32,6 +32,11 @@ export interface GamePitch {
   strikesBefore: number
   atBatIndex: number | null
   timeToPlate?: number | null   // U11 (7)
+  // G5: the field box (1-25) of a ball in play, how it was hit, and the bases before / after.
+  sprayBox?: number | null
+  bbType?: string | null
+  runnersBefore?: number | null
+  runnersAfter?: number | null
 }
 
 // Decision 2 + Joel's foul-tip ruling (Sept 28, 2026 chat -- not yet a
@@ -279,6 +284,7 @@ function pitchEndsAtBat(p: GamePitch): boolean {
   }
 }
 
+const G5_BB_LABEL: Record<string, string> = { ground: 'GB', line: 'LD', pop: 'Pop', fly: 'Fly', bunt: 'Bunt' }
 const FIELDER_LABEL: Record<string, string> = {
   P: 'P', C: 'C', '1B': '1B', '2B': '2B', '3B': '3B', SS: 'SS', LF: 'LF', CF: 'CF', RF: 'RF'
 }
@@ -297,6 +303,11 @@ function atBatEndingLabel(lastPitch: GamePitch, isDroppedThirdReached: boolean):
     case 'strike_looking': case 'strike_swinging': return lastPitch.strikesBefore >= 2 ? 'K' : ''
     case 'ball': return lastPitch.ballsBefore >= 3 ? 'BB' : ''
     case 'in_play': {
+      // G5: "Hit · LD · box 22" -- what was charted; no hit type or fielder is invented.
+      if (typeof lastPitch.sprayBox === 'number') {
+        const what = lastPitch.inPlayOutcome === 'hit' ? 'Hit' : lastPitch.inPlayOutcome === 'error' ? 'Error' : 'Out'
+        return [what, lastPitch.bbType ? (G5_BB_LABEL[lastPitch.bbType] ?? '') : '', `box ${lastPitch.sprayBox}`].filter(Boolean).join(' · ')
+      }
       if (lastPitch.inPlayOutcome === 'hit') return `${lastPitch.hitType ?? 'Hit'}${fielder ? ' to ' + fielder : ''}`
       if (lastPitch.inPlayOutcome === 'error') return `Error${fielder ? ' (' + fielder + ')' : ''}`
       return `Out${fielder ? ' (' + fielder + ')' : ''}`

@@ -59,3 +59,7 @@ runners_after → refused (`pitches_g5_fields_check`); (3) box 0, box 26, bases 
   the one-draw roll-back wrapper shrink-wrapped, and the phone chart is width:100% of its parent; my earlier
   renders skipped that draw. Fixed (the wrapper takes the full width); re-rendered with the animation draw at
   390 and 375 — full-size chart, bar on row 4, Reset + Next pitch on row 5. v155.
+- Joel, Oct 7: on iPad / laptop the account button moved into the pitcher header's row, so the name, photo and pitch
+  types sit level with the Knuckleball logo and the chart / diamond gain that row's height (phones unchanged;
+  Profile and Leaderboard keep the separate row). Full-page render at 1180×820: header level with the logo block,
+  diamond larger and fully on screen. v156.

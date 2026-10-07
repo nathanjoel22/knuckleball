@@ -1241,6 +1241,7 @@
   .policy-foot a{ color:var(--ink-faint); }
   /* S4: account menu (profiles + Add a sport), Who's charting? */
   .acct-row{ display:flex; justify-content:flex-end; margin:-6px 0 6px; position:relative; z-index:20; }
+  .acct-row.acct-inline{ margin:0; align-self:center; }   /* Joel, Oct 7: in the pitcher header's row on iPad / laptop */
   .acct-wrap{ position:relative; }
   .acct-btn{ display:flex; align-items:center; gap:6px; padding:4px 10px 4px 4px; border:1px solid var(--border-strong); border-radius:999px; background:var(--card-bg); color:var(--field-dark); font:inherit; font-size:12.5px; font-weight:600; cursor:pointer; min-height:36px; }
   .acct-avatar{ width:28px; height:28px; border-radius:50%; background:var(--surface); border:1px solid var(--surface-border); display:inline-flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700; color:var(--field-dark); flex:0 0 auto; }
@@ -10382,6 +10383,10 @@ function render(){
     const setupReminderBanner = verifyBanner ? '' : renderSetupReminderBanner();
     const guardianBanner = renderGuardianBanner();   // P1-10
 
+    // Joel, Oct 7 (G5): on iPad and laptop the account button joins the pitcher header's row, so the
+    // name, photo and pitch types sit level with the Knuckleball logo and the chart / diamond get the
+    // height its own row took. Phones keep the separate row.
+    const acctInHeader = !isPhoneWidth() && state.view !== 'profile' && state.view !== 'leaderboard';
     const headerHtml = `
       <div class="pitcher-header">
         ${renderPlayerIdent(p, true, arsenalChips)}
@@ -10390,12 +10395,13 @@ function render(){
           ${isCoach()
             ? `<button class="btn btn-ghost hide-phone" onclick="setView('profile')">Profile</button>`
             : `<button class="btn btn-ghost" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>`}
+          ${acctInHeader ? `<div class="acct-row acct-inline">${renderAccountButton()}</div>` : ''}
         </div>
       </div>
       ${contactsPanel}`;
 
     main = `
-      <div class="acct-row">${renderAccountButton()}</div>
+      ${acctInHeader ? '' : `<div class="acct-row">${renderAccountButton()}</div>`}
       ${renderAddSportBanner()}
       ${verifyBanner}
       ${guardianBanner}

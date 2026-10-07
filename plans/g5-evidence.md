@@ -99,3 +99,4 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
 - Joel, Oct 7: H/O/E → E 4, H 20, O 10; "What type of contact?" → Bunt 4, Pop 6, LD 20, Fly 8, GB 10. Looking, Swing
   and Ball go straight to velocity (ball four still asks the runners first, per the spec). Harness: every button
   in its box; flow and foul tests re-run. v161.
+- Joel, Oct 7: What happened? → Foul 4, Looking 6, Swing 20, Ball 8, In Play 10. v162.

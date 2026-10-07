@@ -1519,10 +1519,21 @@
   }
   .g5-below{ margin-top:10px; display:flex; flex-direction:column; gap:8px; }
   .g5-q{ font-weight:700; font-size:14px; }
-  .g5-qbtns, .g5-velo-foot{ display:flex; gap:8px; justify-content:space-between; }
-  .g5-velo{ background:var(--surface); border:1px solid var(--border-strong); border-radius:10px; padding:10px; }
-  .g5-velo-head{ display:flex; align-items:baseline; justify-content:space-between; }
-  .g5-velo-read{ font-size:26px; font-weight:800; }
+  .g5-qbtns{ display:flex; gap:8px; justify-content:space-between; }
+  /* Velocity in the chart (Joel, Oct 6): the bar over row 4, Reset + Next pitch over row 5 --
+     placed from the grid's own track math (3px padding, 3px gaps, five equal cells). */
+  .g5-velo-row, .g5-next-row{ position:absolute; left:3px; right:3px; z-index:4; height:calc((100% - 18px) / 5); display:flex; gap:3px; }
+  .g5-velo-row{ top:calc(3px + 3 * ((100% - 18px) / 5 + 3px)); }
+  .g5-next-row{ top:calc(3px + 4 * ((100% - 18px) / 5 + 3px)); }
+  /* the bar reuses the in-grid bar's look (.gg-velo: five speeds, small arrows, gold center window) */
+  .g5-velo-row{ --gg-gold:#C9A227; --gg-ink:#17261D; }
+  html[data-sport="softball"] .g5-velo-row{ --gg-gold:#E98DB0; --gg-ink:#1B3550; }
+  .g5-velo-row .game-velo{ display:flex; }
+  .g5-velo-row .velo-strip-wrap{ flex:1; min-width:0; background:var(--card-bg); border-radius:8px; }
+  .g5-velo-row .velo-cell{ min-height:0; height:100%; }
+  .g5-reset, .g5-nextpitch{ height:100%; border-radius:6px; font:inherit; font-weight:800; cursor:pointer; }
+  .g5-reset{ flex:0 0 calc((100% - 12px) / 5); background:#fff; color:var(--ink); border:1.5px solid var(--border-strong); font-size:13px; }
+  .g5-nextpitch{ flex:1; background:var(--amber); color:#111; border:0; font-size:16px; }
   /* ---------- G1b-r3: in-grid play entry (docs/game-grid-reference.html) ---------- */
   .gg-field{
     --gg-fence:#B9D1C4; --gg-grass:#C7DCBD;   /* Joel, Oct 1: a shade darker (field art matches) */ --gg-dirt:#C9A97C;
@@ -4523,7 +4534,7 @@ window.recordVelo = async function(v){
 // mph (starting from whatever sits in the center window) and keep it
 // centered -- same result as sliding the bar one notch.
 window.gameVeloArrow = function(dir){
-  const strip = document.querySelector('.gg-velo .velo-strip, .g5-velo .velo-strip');
+  const strip = document.querySelector('.gg-velo .velo-strip, .g5-velo-row .velo-strip');
   if(!strip) return veloStripShift(dir);
   const t = gameVeloTarget();
   if(!t) return;
@@ -7637,7 +7648,7 @@ function ggBig(big, cap, short){
 // Selection waits for the scroll to settle (debounced, no scrollend: older
 // iOS WebKit lacks it), then records the centered speed once.
 function attachGameVeloSlide(){
-  const strip = document.querySelector('.gg-velo .velo-strip, .g5-velo .velo-strip');
+  const strip = document.querySelector('.gg-velo .velo-strip, .g5-velo-row .velo-strip');
   if(!strip) return;
   let userMoved = false, timer = null;
   const mark = () => { userMoved = true; };
@@ -7887,28 +7898,27 @@ function renderG5Diamond(){
 function g5Chart(gridHtml){
   return state.g5Anim === 'out' ? `<div class="g5-roll-out">${gridHtml}</div>` : gridHtml;
 }
-// Under the square chart: the extra-inning question, or velocity + Next pitch.
+// Joel, Oct 6: after the roll back, velocity sits IN the chart -- the bar on its second-to-last
+// row, Reset + Next pitch on the last row -- so nothing is added below the chart.
+function g5VeloRows(){
+  return `<div class="g5-velo-row gg-velo">${renderGameVeloStrip()}</div>
+    <div class="g5-next-row"><button type="button" class="g5-reset" onclick="recordGameVelo(null)">Reset</button>
+    <button type="button" class="g5-nextpitch" onclick="g5NextPitch()">Next pitch ›</button></div>`;
+}
+// Under the square chart: the extra-inning question.
 function g5BelowChart(step){
   if(step === 'tiebreak'){
     return `<div class="g5-below"><div class="g5-q">Extra inning — start with a runner on 2B?</div>
       <div class="g5-qbtns"><button type="button" class="btn btn-primary" onclick="gridTiebreak(true)">Yes</button>
       <button type="button" class="btn btn-ghost" onclick="gridTiebreak(false)">No</button></div></div>`;
   }
-  if(step === 'velo'){
-    const t = gameVeloTarget();
-    const v = t ? t.obj.velo : null;
-    return `<div class="g5-below g5-velo">
-      <div class="g5-velo-head"><span class="field-label">Velocity · last pitch</span><span class="g5-velo-read mono">${(v !== null && v !== undefined) ? escHtml(String(v)) : '—'}</span></div>
-      ${renderGameVeloStrip()}
-      <div class="g5-velo-foot"><button type="button" class="btn btn-ghost" onclick="recordGameVelo(null)">Reset</button>
-      <button type="button" class="btn btn-primary" onclick="g5NextPitch()">Next pitch ›</button></div></div>`;
-  }
   return '';
 }
 function g5Surface(pitches, chartingPerspective, currentBatterSide){
-  return g5OnDiamond()
-    ? renderG5Diamond()
-    : g5Chart(renderZoneGrid(pitches, true, state.flashCell, null, chartingPerspective, currentBatterSide, 'handleGameZoneTap'));
+  if(g5OnDiamond()) return renderG5Diamond();
+  let chart = renderZoneGrid(pitches, true, state.flashCell, null, chartingPerspective, currentBatterSide, 'handleGameZoneTap');
+  if(g5Step() === 'velo') chart = chart.replace(/<\/div>$/, g5VeloRows() + '</div>');   // inside .zone-grid, over its last two rows
+  return g5Chart(chart);
 }
 
 function renderGameSessionView(p){

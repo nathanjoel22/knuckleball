@@ -55,3 +55,7 @@ runners_after → refused (`pitches_g5_fields_check`); (3) box 0, box 26, bases 
 - iPad/laptop (option 2): the chart keeps its full size and the diamond fits the screen. At 1180×820: chart 550px
   (106px cells; was 444 under option a); diamond box 628px, 85px cells, bottom at 775 of 820 (no scrolling). The
   roll scales between the two sizes.
+- Joel's iPhone 14 (Oct 7): after the roll back the chart collapsed to a tiny square under the velocity bar. Cause:
+  the one-draw roll-back wrapper shrink-wrapped, and the phone chart is width:100% of its parent; my earlier
+  renders skipped that draw. Fixed (the wrapper takes the full width); re-rendered with the animation draw at
+  390 and 375 — full-size chart, bar on row 4, Reset + Next pitch on row 5. v155.

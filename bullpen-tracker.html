@@ -1512,6 +1512,8 @@
   .ph-layout .g5-roll-in{ --g5-from:1.41421; }
   .g5-roll-in .g5-field, .g5-roll-in .g5-cell > .g5-in{ animation:g5fade 350ms ease; }
   @keyframes g5fade{ from{ opacity:0; } to{ opacity:1; } }
+  /* the roll-back wrapper must not shrink-wrap: the phone chart is width:100% of its parent */
+  .g5-roll-out{ width:100%; align-self:stretch; display:flex; flex-direction:column; align-items:center; }
   .g5-roll-out > .zone-grid{ animation:g5rollout 350ms ease; }
   @keyframes g5rollout{ from{ transform:rotate(-45deg) scale(var(--g5-to, 1)); } to{ transform:rotate(0deg) scale(1); } }
   .ph-layout .g5-roll-out > .zone-grid{ --g5-to:0.70711; }

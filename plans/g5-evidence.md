@@ -93,3 +93,6 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
   Harness: Foul Tip at 0-1 → 0-2, at 0-2 stays; tappable boxes exactly 1,2,3,11,12,13,14,15,16,17,23; foul out
   in 13 with a runner on 1st → out, box 13, runners_after 1; foul out for the third out → inning 2, no bases;
   a fair box ignored; Back: bases → foulout → foul → what → chart, nothing saved. v160.
+- Joel confirmed (Oct 7): Foul Tip = any foul ball (as built). Foul Out = any caught foul, including a strike three
+  caught by the catcher; stored as an out on a ball in play in its foul box, so it does not count as a K (told Joel).
+  After a Foul Out: the runners question, then velocity (radar on), then the chart (as built).

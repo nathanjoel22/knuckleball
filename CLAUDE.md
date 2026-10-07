@@ -6,7 +6,7 @@ Standing context for every Claude session working in this repo. Read fully befor
 
 **Charting never requires the network. Only syncing and sending reports do.** A team must be able to open Knuckleball anywhere — including with no internet — and chart a complete bullpen. Login is the single honest exception, and only on first use: the standard is **log in once, then chart anywhere forever**. A token refresh that fails purely for lack of network must never bounce a charter to a login screen or block charting; genuine auth failures while online still must. Reports are never generated from an unsynced session. Any change that makes charting depend on a network round trip is a regression, whatever else it improves.
 
-## Roster & visibility model (decided by Joel, Aug 28 2026 — built as Track R, Phase 2)
+## Roster & visibility model (decided by Joel, Aug 28 2026 — Track R, built in stages; the status board says which are live)
 
 Data follows the player. Sessions belong to the pitcher permanently; a team's view of a pitcher exists only through a current pitcher_teams membership row. Specifics, all decided — do not relitigate:
 - Adding an existing account to a roster ALWAYS requires the player's in-app acceptance (pending invite shown at login). No auto-add, no acceptance email.
@@ -15,7 +15,6 @@ Data follows the player. Sessions belong to the pitcher permanently; a team's vi
 - Membership ending — player leaves or coach removes, both with explicit confirmation — instantly removes the team's ENTIRE view of that player, both directions, automatically. The player keeps every session regardless of who recorded it. Re-joining restores nothing retroactively.
 - Saved sessions are IMMUTABLE. Pitches are freely editable during a session (in-session correction on any row of the recent-pitches log). The moment "End session & save" is pressed — from a pitcher account or a team account — the pitch data is final for everyone, including coaches. Never build a post-hoc pitch editor; one was built and deliberately reverted on Aug 28 2026. Self-reported performance data that can be quietly revised after the fact is not trustworthy, and this data informs development and recruiting conversations.
 - Deletion remains available: the pitcher may delete their own sessions, the coach may delete their team's. Every deletion leaves a visible tombstone in history showing the date, the number of pitches thrown, that it was deleted, and which account deleted it (player or team). Deleted sessions are excluded from all stats, trends, and reports.
-Until Track R ships: inviting an already-registered email must fail honestly ("existing account — coming soon"), never auto-add and never half-succeed silently.
 
 ## Charting surface decisions (Joel, Aug 29 2026 — Track U)
 - The grid is drawn from the CATCHER'S perspective. Stored pitch coordinates are always physical; the left-handed-batter view mirrors DISPLAY NUMBERING ONLY, never stored data.

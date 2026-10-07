@@ -2,7 +2,7 @@
 
 Packet: `plans/g5-live-game-diamond.md` (GitHub, Oct 6 2026). Precondition report given Oct 6; Joel's answers:
 
-1. iPad/laptop: (a) the square is sized so its diamond fits the screen; diamond and chart cells are the same size.
+1. iPad/laptop: (a) the square is sized so its diamond fits the screen; diamond and chart cells are the same size. **Changed Oct 6 (Joel, option 2):** with velocity moved into the chart, the chart keeps its full size and the diamond shrinks to fit the screen with its own cells.
 2. Phone: today's 340px footprint (cells ≈ 44.4px at 390 and 375).
 3. The Live Game chart keeps the charter's chosen perspective (U12); reports are always the pitcher's view.
 4. Old games: fielder → box, for now — C 1, P 17, 1B 24, 3B 18, 2B 22, SS 20, LF 7, CF 21, RF 11.
@@ -47,3 +47,11 @@ runners_after → refused (`pitches_g5_fields_check`); (3) box 0, box 26, bases 
   a fixture game. Old games are placed by fielder (C 1, P 17, 1B 24, 3B 18, 2B 22, SS 20, LF 7, CF 21, RF 11).
   The 1B/2B/3B/HR column shows only when a hit has a hit type. App ↔ from_rows payload parity unchanged (5 staging
   sessions identical).
+
+## Joel's changes after the first look (Oct 6)
+
+- Velocity after the roll back sits in the chart: the bar on the second-to-last row, Reset + Next pitch on the last
+  row, on every layout; nothing below the chart.
+- iPad/laptop (option 2): the chart keeps its full size and the diamond fits the screen. At 1180×820: chart 550px
+  (106px cells; was 444 under option a); diamond box 628px, 85px cells, bottom at 775 of 820 (no scrolling). The
+  roll scales between the two sizes.

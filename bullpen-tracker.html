@@ -1465,11 +1465,12 @@
      grid as the chart, rotated 45° left, with the field drawn in its own
      coordinates (g5FieldSvg) so it rolls with the cells. Taps go to the rotated
      cells themselves. Phones: today's 340px footprint. Stacked (iPad
-     portrait): the chart's own 52px cells. Wide: the chart's --zg, which
-     sizeWideGrid keeps small enough for the diamond to fit (Joel, option a). */
+     portrait): the chart's own 52px cells. Wide: the chart keeps its full
+     size and the diamond shrinks to fit the screen (--g5box, sizeWideGrid;
+     Joel, Oct 6, option 2). */
   .g5-wrap{ width:100%; max-width:393px; margin:0 auto; }
   .ph-layout .g5-wrap{ max-width:340px; }
-  .wide-right .g5-wrap{ max-width:calc(var(--zg, 278px) * 1.41421); }
+  .wide-right .g5-wrap{ max-width:var(--g5box, calc(var(--zg, 278px) * 1.41421)); }
   .g5-sq{ position:relative; width:100%; padding-bottom:100%; }
   .g5-grid{
     position:absolute; left:14.645%; top:14.645%; width:70.711%; height:70.711%; box-sizing:border-box;
@@ -8291,9 +8292,6 @@ function sizeWideGrid(){
   const room = roomAll - below;
   let h = H0;
   let side = Math.min(CAP, (colW - 12) / (1 + 2 * A * H0), room / Math.max(1, H0));
-  // G5 (Joel, option a): in Live Game the chart and its diamond share cells, so the
-  // square is sized for the diamond (√2 wider and taller) to fit too.
-  if(state.activeSession && state.activeSession.kind === 'game') side = Math.min(side, (colW - 12) / 1.41421, roomAll / 1.41421);
   if(side < MIN){
     side = MIN;
     h = Math.max(0.6, Math.min(H0, ((colW - side) / 2 - 6) / (A * side)));
@@ -8302,6 +8300,12 @@ function sizeWideGrid(){
   right.style.setProperty('--zg', side + 'px');
   right.style.setProperty('--kbh', (h * 100).toFixed(1) + '%');
   right.style.setProperty('--kbo', Math.max(0, Math.ceil((h - 1) * side)) + 'px');
+  // G5 (Joel, Oct 6, option 2): the chart keeps its full size; the diamond shrinks to fit the
+  // screen (its own, smaller cells). The roll scales between the two.
+  const diamondBox = Math.max(MIN * 1.41421 * 0.75, Math.min(side * 1.41421, colW - 12, roomAll));
+  right.style.setProperty('--g5box', Math.floor(diamondBox) + 'px');
+  right.style.setProperty('--g5-from', (side * 1.41421 / diamondBox).toFixed(4));
+  right.style.setProperty('--g5-to', (diamondBox / (side * 1.41421)).toFixed(4));
 }
 window.addEventListener('resize', onWideResize);
 // WIDE-SIZE-END

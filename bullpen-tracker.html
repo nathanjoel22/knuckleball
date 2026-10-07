@@ -1490,6 +1490,12 @@
   html[data-sport="softball"] .g5-pick{ background:rgba(27,53,80,0.42) !important; }
   html[data-sport="softball"] .g5-pick.on{ background:#fff !important; }
   .g5-pick.on{ background:#fff !important; animation:none; }
+  .g5-foulpick{ background:transparent; border-color:rgba(201,162,39,0.85); }
+  .g5-foulpick .g5-in{ position:absolute; inset:0; }
+  .g5-shade{ position:absolute; inset:0; border-radius:3px; background:rgba(16,40,28,0.42); animation:g5shade 1.1s ease-in-out infinite; }
+  @keyframes g5shade{ 50%{ opacity:0.55; } }
+  html[data-sport="softball"] .g5-shade{ background:rgba(27,53,80,0.42); }
+  .g5-word{ font-weight:800; font-size:13px; line-height:1.1; text-align:center; color:var(--gg-ink); padding:0 2px; }
   .g5-baselbl{ font-weight:800; font-size:14px; color:#111; }
   .g5-marked{ background:rgba(255,255,255,0.25); }
   .g5-ball{ width:24px; height:24px; display:block; }
@@ -1505,7 +1511,7 @@
   @keyframes g5flash{ 50%{ box-shadow:0 0 0 3px rgba(201,162,39,0.45); } }
   @keyframes g5tint{ 50%{ background:rgba(16,40,28,0.24); } }
   @media (prefers-reduced-motion: reduce){
-    .g5-flip-in, .g5-flip-out, .g5-choice, .g5-pick{ animation:none !important; }
+    .g5-flip-in, .g5-flip-out, .g5-choice, .g5-pick, .g5-shade{ animation:none !important; }
   }
   .g5-below{ margin-top:10px; display:flex; flex-direction:column; gap:8px; }
   .g5-q{ font-weight:700; font-size:14px; }
@@ -7675,6 +7681,14 @@ const G5_BOX = [[5, 6, 7, 8, 9], [4, 19, 20, 21, 10], [3, 18, 25, 22, 11], [2, 1
 const G5_WHAT = { 21: ['ball', 'icon-ball.png', 'Ball'], 19: ['looking', 'icon-looking.png', 'Looking'], 20: ['swing', 'icon-swinging.png', 'Swing'],
   4: ['foul', 'icon-foul.png', 'Foul'], 10: ['inplay', 'batter-icon.png', 'In Play'] };
 const G5_RESULT = { ball: 'ball', looking: 'strike_looking', swing: 'strike_swinging', foul: 'foul' };
+// Joel, Oct 7: Foul asks "Foul Tip or Foul Out?". Foul Tip records the foul; Foul Out asks where it was caught,
+// on foul ground only -- the whole of boxes 1, 2, 16, 14, 13, 12, and the foul side of the line in 3, 17, 23, 11
+// and 15 (15: all but the triangle from home up to its top corners). Shapes are clip-path polygons in the box.
+const G5_FOUL = { 19: ['tip', 'Foul Tip'], 21: ['out', 'Foul Out'] };
+const G5_FOUL_GROUND = { 1: '', 2: '', 16: '', 14: '', 13: '', 12: '',
+  3: 'polygon(0 0, 0 100%, 100% 100%)', 17: 'polygon(0 0, 0 100%, 100% 100%)',
+  23: 'polygon(100% 0, 100% 100%, 0 100%)', 11: 'polygon(100% 0, 100% 100%, 0 100%)',
+  15: 'polygon(0 0, 50% 50%, 100% 0, 100% 100%, 0 100%)' };
 const G5_HOE = { 21: ['H', 'Hit'], 11: ['O', 'Out'], 7: ['E', 'Error'] };
 const G5_OUTCOME = { H: 'hit', O: 'out', E: 'error' };
 const G5_HOW = { 11: ['ground', 'GB', 'Ground'], 8: ['pop', 'Pop', 'Pop fly'], 21: ['line', 'LD', 'Line drive'], 10: ['fly', 'Fly', 'Fly ball'], 7: ['bunt', 'Bunt', ''] };
@@ -7709,6 +7723,7 @@ window.g5What = async function(code){
   const s = state.activeSession, g = s.g5;
   if(!g || g.step !== 'what') return;
   if(code === 'inplay'){ g.step = 'hoe'; return g5Save(); }
+  if(code === 'foul'){ g.step = 'foul'; return g5Save(); }   // Foul Tip or Foul Out?
   const result = G5_RESULT[code];
   if(!result) return;
   // Ball four: the runners question first (pre-filled with the forced advances), then save.
@@ -7717,6 +7732,25 @@ window.g5What = async function(code){
     return g5Save();
   }
   return g5Commit(result);
+};
+window.g5Foul = async function(kind){
+  const g = state.activeSession.g5;
+  if(!g || g.step !== 'foul') return;
+  if(kind === 'tip') return g5Commit('foul');
+  if(kind === 'out'){
+    if(state.activeSession.outs + 1 + (g.addOuts || 0) > 3) return;
+    g.step = 'foulout';
+    return g5Save();
+  }
+};
+// A foul ball caught: an out on a ball in play, in the foul box where it was caught.
+window.g5FoulOut = async function(box){
+  const s = state.activeSession, g = s.g5;
+  if(!g || g.step !== 'foulout' || G5_FOUL_GROUND[box] === undefined) return;
+  g.entry = 'O'; g.bbType = null; g.box = box; g.foulOut = true;
+  if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');
+  g.step = 'bases'; g.bases = runnersBitmask(s.runners);
+  return g5Save();
 };
 window.g5Entry = async function(e){
   const g = state.activeSession.g5;
@@ -7768,10 +7802,13 @@ window.g5Back = async function(){
       state.g5Anim = 'out';
       return g5Save();
     case 'hoe': g.step = 'what'; break;
+    case 'foul': g.step = 'what'; break;
+    case 'foulout': g.step = 'foul'; break;
     case 'how': g.entry = null; g.step = 'hoe'; break;
     case 'where': g.bbType = null; g.step = 'how'; break;
     case 'bases':
       if(g.walk){ g.walk = false; g.bases = null; g.step = 'what'; }
+      else if(g.foulOut){ g.foulOut = false; g.entry = null; g.box = null; g.bases = null; g.step = 'foulout'; }
       else { g.box = null; g.bases = null; g.step = 'where'; }
       break;
   }
@@ -7852,6 +7889,11 @@ function g5CellInner(step, box){
   const s = state.activeSession, g = s.g5;
   const btn = (inner, onclick, cls) => ({ inner, onclick, cls });
   if(step === 'what' && G5_WHAT[box]){ const [code, icon, cap] = G5_WHAT[box]; return btn(ggIcon(icon, cap), `g5What('${code}')`, 'g5-choice'); }
+  if(step === 'foul' && G5_FOUL[box]){ const [k, label] = G5_FOUL[box]; return btn(`<span class="g5-word">${label}</span>`, `g5Foul('${k}')`, 'g5-choice'); }
+  if(step === 'foulout' && G5_FOUL_GROUND[box] !== undefined){
+    const clip = G5_FOUL_GROUND[box];
+    return btn(`<span class="g5-shade"${clip ? ` style="clip-path:${clip};-webkit-clip-path:${clip};"` : ''}></span>`, `g5FoulOut(${box})`, 'g5-foulpick');
+  }
   if(step === 'hoe' && G5_HOE[box]){ const [e, cap] = G5_HOE[box]; return btn(ggBig(e, cap), `g5Entry('${e}')`, 'g5-choice'); }
   if(step === 'how' && G5_HOW[box]){ const [t, big, cap] = G5_HOW[box]; return btn(ggBig(big, cap), `g5How('${t}')`, 'g5-choice'); }
   if(step === 'where') return btn('', `g5Where(${box})`, 'g5-pick');
@@ -7866,7 +7908,8 @@ function g5CellInner(step, box){
   return null;
 }
 function g5Caption(step){
-  return { what: 'What happened?', hoe: 'In play — hit, out or error?', how: 'How was it hit?',
+  return { what: 'What happened?', foul: 'Foul tip or foul out?', foulout: 'Select where the foul ball was caught',
+    hoe: 'In play — hit, out or error?', how: 'How was it hit?',
     where: 'Select Ball in Play Location', bases: 'Select current bases for baserunners' }[step] || '';
 }
 // The field: the back of the chart. Same square, same 25 boxes.

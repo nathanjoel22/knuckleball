@@ -85,3 +85,11 @@ CF 20, RF 21. Reports draw the same upright field. Flow / box map / tiebreak / r
 base boxes: all pass. v158. send-session-report + rerender-reports redeployed to staging.
 - Joel, Oct 7: 2B moved to the bottom of box 25, clear of the outfield grass (the grass diamond shrinks under it);
   What happened? → Foul 4, Looking 19, Swing 20, Ball 21, In Play 10. Same 2B in the reports' field. v159.
+- Joel, Oct 7: Foul asks Foul Tip (box 19) or Foul Out (box 21) — boxes my choice, to confirm. Foul Tip records a
+  plain foul (strike below two, count stays at two; true foul tips remain unmodeled per the spec — to confirm).
+  Foul Out shades foul ground only: boxes 1, 2, 16, 14, 13, 12 whole; 3 and 17 left of the line; 23 and 11 right
+  of it; 15 everything outside the triangle from home to its top corners. A tap records an out on a ball in play
+  in that box (no batted-ball type), then the bases question pre-filled as before (skipped on the third out).
+  Harness: Foul Tip at 0-1 → 0-2, at 0-2 stays; tappable boxes exactly 1,2,3,11,12,13,14,15,16,17,23; foul out
+  in 13 with a runner on 1st → out, box 13, runners_after 1; foul out for the third out → inning 2, no bases;
+  a fair box ignored; Back: bases → foulout → foul → what → chart, nothing saved. v160.

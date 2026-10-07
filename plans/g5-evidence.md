@@ -69,3 +69,17 @@ runners_after → refused (`pitches_g5_fields_check`); (3) box 0, box 26, bases 
   and bases questions zoom out to the 5×5; Next rolls back to the chart. Measured: chart 64px, 3×3 64px at 390 and
   375; 5×5 location 44px. iPad / laptop unchanged (5×5 throughout). Flow, box map, tiebreak, resume tests re-run:
   unchanged. v157.
+
+## Revert to a card flip and an upright field (Joel, Oct 7)
+
+Joel replaced the 45° roll (and the phone 3×3 / zoom) with a card flip: the field is the back of the pitch chart —
+the same square and the same 25 boxes in every layout. Demo approved first (artifact BQgxSMrV5KszUoXMV1Mt17).
+Field geometry (Joel): home plate mid box 15; foul lines diagonally through 17 and 3, and 23 and 11; the fence arc
+from box 4's top-left corner, peaking mid box 7, to box 10's top-right corner; 1B mid 23, 2B mid 25, 3B mid 17;
+the dirt from box 17's top-left corner, peaking mid 25, to box 23's top-right corner. Added (not specified): a
+grass diamond inside the bases, the mound mid 24 (softball: all dirt, pitcher's circle).
+Interim until Joel reassigns the prompts: prompts keep their box numbers; the bases screen taps 17 / 25 / 23 (the
+drawn bases); "Next pitch" (radar off) moves to 24; + Add out, Next and ‹ Back sit in a row under the field.
+Old-game fielder → box re-placed for the upright field, to confirm: C 15, P 24, 1B 23, 2B 22, SS 18, 3B 17, LF 19,
+CF 20, RF 21. Reports draw the same upright field. Flow / box map / tiebreak / resume tests re-run with the new
+base boxes: all pass. v158. send-session-report + rerender-reports redeployed to staging.

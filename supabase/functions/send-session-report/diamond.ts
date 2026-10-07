@@ -6,8 +6,9 @@
 //
 // The field geometry is the tracker's g5FieldSvg() (bullpen-tracker.html),
 // restated here because it runs in another runtime: the same 5x5 grid in its
-// own coordinates (100 units a cell, home plate's flat edge on the corner of
-// boxes 1/2/16/17), rotated 45° left. Change both or neither.
+// own coordinates (100 units a box), upright (Joel, Oct 7): home plate mid
+// box 15, foul lines through 17/3 and 23/11, the fence arc from box 4's
+// top-left corner to box 10's top-right corner. Change both or neither.
 // ============================================================================
 import { escapeHtml, colorForType } from './helpers.ts'
 import { drawGrid } from './svg.ts'
@@ -16,8 +17,10 @@ import type { GamePitch } from './compute_game.ts'
 // Joel's box numbers by unrotated row/column (row 0 top, column 0 left).
 export const G5_BOX = [[5, 6, 7, 8, 9], [4, 19, 20, 21, 10], [3, 18, 25, 22, 11], [2, 17, 24, 23, 12], [1, 16, 15, 14, 13]]
 // Games charted before G5 have no box: they're placed by the fielder who made
-// the play (Joel, Oct 6 2026, "for now").
-export const FIELDER_BOX: Record<string, number> = { C: 1, P: 17, '1B': 24, '3B': 18, '2B': 22, SS: 20, LF: 7, CF: 21, RF: 11 }
+// the play ("for now", Joel Oct 6; re-placed on the upright field Oct 7 --
+// to confirm): C in home's box, P on the mound, each base's fielder at it,
+// 2B and SS beside 2B, outfielders in the row inside the fence.
+export const FIELDER_BOX: Record<string, number> = { C: 15, P: 24, '1B': 23, '2B': 22, SS: 18, '3B': 17, LF: 19, CF: 20, RF: 21 }
 export const BB_LABEL: Record<string, string> = { ground: 'GB', line: 'LD', pop: 'Pop', fly: 'Fly', bunt: 'Bunt' }
 const BB_ORDER = ['ground', 'line', 'pop', 'fly', 'bunt']
 const OUTCOME_LABEL: Record<string, string> = { hit: 'Hits', out: 'Outs', error: 'Errors' }
@@ -47,21 +50,20 @@ export function drawDiamond(opts: { counts: Record<number, number>; sport: 'base
       const n = opts.counts[box] || 0
       const x = col * 100, y = r * 100
       cells += `<rect x="${x + 3}" y="${y + 3}" width="94" height="94" rx="6" fill="${n ? `rgba(${shadeRgb},${(0.18 + 0.6 * n / max).toFixed(2)})` : 'none'}" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="2"/>`
-      if (n) cells += `<text x="${x + 50}" y="${y + 50}" transform="rotate(45 ${x + 50} ${y + 50})" text-anchor="middle" dominant-baseline="central" font-size="34" font-weight="800" fill="#FFFFFF" stroke="rgba(0,0,0,0.35)" stroke-width="1.5" paint-order="stroke">${n}</text>`
+      if (n) cells += `<text x="${x + 50}" y="${y + 50}" text-anchor="middle" dominant-baseline="central" font-size="34" font-weight="800" fill="#FFFFFF" stroke="rgba(0,0,0,0.35)" stroke-width="1.5" paint-order="stroke">${n}</text>`
     }
   }
+  const base = (x: number, y: number) => `<rect x="${x - 11}" y="${y - 11}" width="22" height="22" rx="2" transform="rotate(45 ${x} ${y})"/>`
   const field = `<rect width="500" height="500" fill="${c.fence}"/>
-<path d="M100,400 L100,0 L241.42,0 A424.26,424.26 0 0 1 500,258.58 L500,400 Z" fill="${c.grass}"/>
-<path d="M241.42,0 A424.26,424.26 0 0 1 500,258.58" fill="none" stroke="${c.line}" stroke-width="6" opacity="0.75"/>
-<path d="M100,400 L100,204 A196,196 0 0 1 296,400 Z" fill="${c.dirt}"/>
-<rect x="115" y="284" width="101" height="101" fill="${soft ? c.dirt : c.infield}"/>
-${soft ? '<circle cx="165" cy="335" r="15" fill="none" stroke="#FFFFFF" stroke-width="2.5"/>' : `<circle cx="165" cy="335" r="13" fill="${c.mound}"/>`}
-<path d="M100,400 L100,0 M100,400 L500,400" stroke="#FFFFFF" stroke-width="4"/>
-<g fill="#FFFFFF" stroke="${c.line}" stroke-width="1.5"><rect x="217" y="378" width="22" height="22" rx="2"/><rect x="216" y="262" width="22" height="22" rx="2"/><rect x="100" y="261" width="22" height="22" rx="2"/></g>
-<polygon points="91.5,391.5 108.5,408.5 100,417 83,417 83,400" fill="#FFFFFF" stroke="${c.line}" stroke-width="1.5"/>`
-  // 500x500 grid rotated -45° about its center fits a 707x707 box.
-  return `<svg class="kb-diamond" width="${size}" height="${size}" viewBox="-103.55 -103.55 707.1 707.1" role="img" aria-label="Field boxes">
-<g transform="rotate(-45 250 250)">${field}${cells}</g></svg>`
+<path d="M250,450 L0,200 L0,100 A650,650 0 0 1 500,100 L500,200 Z" fill="${c.grass}"/>
+<path d="M0,100 A650,650 0 0 1 500,100" fill="none" stroke="${c.line}" stroke-width="6" opacity="0.75"/>
+<path d="M250,450 L100,300 A250,250 0 0 1 400,300 Z" fill="${c.dirt}"/>
+<polygon points="250,428 328,350 250,272 172,350" fill="${soft ? c.dirt : c.infield}"/>
+${soft ? '<circle cx="250" cy="350" r="16" fill="none" stroke="#FFFFFF" stroke-width="2.5"/>' : `<circle cx="250" cy="350" r="14" fill="${c.mound}"/>`}
+<path d="M250,450 L0,200 M250,450 L500,200" stroke="#FFFFFF" stroke-width="4"/>
+<g fill="#FFFFFF" stroke="${c.line}" stroke-width="1.5">${base(350, 350)}${base(250, 250)}${base(150, 350)}</g>
+<polygon points="237,438 263,438 263,451 250,464 237,451" fill="#FFFFFF" stroke="${c.line}" stroke-width="1.5"/>`
+  return `<svg class="kb-diamond" width="${size}" height="${size}" viewBox="0 0 500 500" role="img" aria-label="Field boxes">${field}${cells}</svg>`
 }
 function hexToRgb(hex: string): string {
   const h = hex.replace('#', '')

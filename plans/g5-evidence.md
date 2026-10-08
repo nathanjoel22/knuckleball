@@ -162,3 +162,4 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
   only IF 12, OF 13 (+ HR? 14 on an LD hit); bunt to 24 saved IF; flow 14/14 (old cases now pick IF / OF).
   Size check (Joel asked): chart and field are identical in both sports — phone 340px grid / 64px cells, iPad
   landscape 550px / 106px; the softball field only looks bigger (no Set/Windup row above it, all-dirt infield). v178.
+- Joel, Oct 8 (Live Game, phones): Set/Windup and ⏱ moved into the right of the status bar; the pitch-type row spans the full width (as in softball). Bullpen phone layout unchanged. v179.

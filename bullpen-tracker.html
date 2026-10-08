@@ -182,6 +182,11 @@
     background:var(--card-bg); color:var(--field-dark); border:1.5px solid var(--field-dark); cursor:pointer; }
   .deliv-one.on{ background:var(--field-dark); color:var(--chalk); }
   .ttp-btn.ttp-compact{ flex:none; min-width:36px; height:var(--chip); padding:0 4px; border-radius:10px; font-size:14px; }
+  /* Joel, Oct 8: in the Live Game status bar (phones) */
+  .ph-status-deliv{ margin-left:auto; display:flex; align-items:center; gap:6px; }
+  .ph-status .deliv-one{ width:76px; height:34px; padding:0 8px; font-size:14px; border-color:var(--chalk); }
+  .ph-status .deliv-one.on{ background:var(--chalk); color:var(--field-dark); }
+  .ph-status .ttp-btn.ttp-compact{ height:34px; min-width:40px; }
   .pstrip-wrap{ flex:1; min-width:0; display:flex; align-items:center; gap:2px; }
   .pstrip-arrow{ flex:none; width:16px; height:var(--chip); padding:0; border:0; background:none; font:inherit; font-size:22px; font-weight:800;
     color:var(--field-dark); cursor:pointer; }
@@ -8156,8 +8161,9 @@ function renderGameSessionView(p){
         <div class="ph-status">
           <span class="ph-inn">▲${s.inning}</span><span class="ph-item">${s.outs} OUT</span><span class="ph-item mono">${s.balls}-${s.strikes}</span>
           <span class="ph-diamond">${renderRunnerDiamond()}</span>
+          ${renderStatusDelivery()}
         </div>
-        ${renderPhoneDeliveryRow(p)}
+        ${renderPhoneDeliveryRow(p, true)}
         <div class="ph-grid-wrap">${renderPhoneHint()}
           <div class="zone-wrap${g5OnDiamond() ? ' g5-on' : ''}">
             ${g5Surface(pitches, chartingPerspective, currentBatterSide)}
@@ -8500,9 +8506,14 @@ function attachPitchStrip(){
   updatePitchStripArrows();
   st.addEventListener('scroll', updatePitchStripArrows, { passive: true });
 }
-function renderPhoneDeliveryRow(p){
-  const withDelivery = sportCfg().hasDelivery;
+function renderPhoneDeliveryRow(p, deliveryInStatus){
+  const withDelivery = sportCfg().hasDelivery && !deliveryInStatus;
   return `<div class="deliv-row">${withDelivery ? renderDeliveryOne() + renderTimeToPlateBtn(true) : ''}${renderPitchStrip(p)}</div>`;
+}
+// Joel, Oct 8 (Live Game, phones): Set/Windup and ⏱ ride on the right of the status bar; the pitch-type row
+// gets the full width.
+function renderStatusDelivery(){
+  return sportCfg().hasDelivery ? `<span class="ph-status-deliv">${renderDeliveryOne()}${renderTimeToPlateBtn(true)}</span>` : '';
 }
 // The hint overlays the top edge of the grid instead of taking a row.
 function renderPhoneHint(){

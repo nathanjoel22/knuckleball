@@ -119,3 +119,7 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
 - Joel, Oct 7: buttons moved to the bottom corners — What happened? Swing 1, Looking 2, Foul 14, In Play 13, Ball 12;
   Foul Tip 13, Foul Out 12; E 14, H 13, O 12; Bunt 1, Pop 2, LD 14, Fly 13, GB 12. Harness: every button in its box;
   flow (14/14), foul and HR tests re-run. v168.
+- Joel, Oct 7 (phones): about 5px between the field and + Add out / ‹ Back, and between those and Undo / New batter /
+  New inning. The field side drops the chart's batter-pill band; the question rides between Add out and Back in a
+  short form (no separate caption line). Measured at 390 and 375: grid→buttons 5px, buttons→Undo 5px. No :has()
+  (older iOS) — plain classes. v169.

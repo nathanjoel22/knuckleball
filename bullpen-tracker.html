@@ -1502,7 +1502,12 @@
   .g5-nextbox .g5-np{ font-size:10px; font-weight:800; text-align:center; line-height:1.1; color:var(--gg-ink); }
   .g5-actions{ display:flex; gap:8px; align-items:center; width:100%; max-width:340px; margin:0 auto; }
   .wide-right .g5-actions{ max-width:var(--zg, 340px); }
-  .g5-act-gap{ flex:1; }
+  .g5-act-gap{ flex:1; min-width:0; text-align:center; }
+  .g5-act-cap{ font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.06em; line-height:1.2; }
+  /* Joel, Oct 7: phones -- about 5px between the field and its buttons, and between those and Undo / New batter / New inning */
+  .ph-layout .g5-card{ margin-bottom:0 !important; }
+  .ph-layout .zone-wrap.g5-on{ gap:5px; }
+  .ph-layout .ph-actions.g5-on{ margin-top:-3px; }
   .g5-act{ min-height:44px; padding:0 14px; border-radius:10px; font:inherit; font-weight:700; font-size:14px;
     background:#fff; color:var(--ink); border:1.5px solid var(--border-strong); cursor:pointer; }
   .g5-act:disabled{ opacity:0.4; cursor:default; }
@@ -7953,6 +7958,9 @@ function g5CellInner(step, box){
   }
   return null;
 }
+// Phones: the question sits between + Add out and ‹ Back, so it gets a short form.
+const G5_SHORT_CAPTION = { what: 'What happened?', foul: 'Tip or out?', foulout: 'Where caught?', hoe: 'Hit, out or error?',
+  how: 'Type of contact?', where: 'Where fielded?', hr: 'Where did it leave?', bases: 'Runners on base' };
 function g5Caption(step){
   return { what: 'What happened?', foul: 'Foul tip or foul out?', foulout: 'Select where the foul ball was caught',
     hoe: 'In play — hit, out or error?', how: 'What type of contact?',
@@ -7981,7 +7989,7 @@ function g5FieldActions(){
   const next = (g.step === 'bases' && ggRadarOn()) ? `<button type="button" class="g5-act g5-act-next" onclick="g5Next()">Next ›</button>` : '';
   return `<div class="g5-actions">
     <button type="button" class="g5-act" onclick="g5AddOut()" ${g5ProjectedOuts(g) >= 3 ? 'disabled' : ''}>+ Add out${added}</button>
-    <span class="g5-act-gap"></span>${next}
+    <span class="g5-act-gap">${isPhoneWidth() ? `<span class="g5-act-cap">${escHtml(G5_SHORT_CAPTION[g.step] || '')}</span>` : ''}</span>${next}
     <button type="button" class="g5-act" onclick="g5Back()">‹ Back</button>
   </div>`;
 }
@@ -8077,12 +8085,11 @@ function renderGameSessionView(p){
         </div>
         ${renderPhoneDeliveryRow(p)}
         <div class="ph-grid-wrap">${renderPhoneHint()}
-          <div class="zone-wrap">
+          <div class="zone-wrap${g5OnDiamond() ? ' g5-on' : ''}">
             ${g5Surface(pitches, chartingPerspective, currentBatterSide)}
-            ${g5OnDiamond() ? `<div class="zone-caption">${zoneCaption}</div>` : ''}
           </div>${g5Below}
         </div>
-        <div class="ph-actions">
+        <div class="ph-actions${g5OnDiamond() ? ' g5-on' : ''}">
           <button type="button" class="ph-act" onclick="undoLastGameAction()">↶ Undo</button>
           <button type="button" class="ph-act" onclick="gameNewBatter()">New batter</button>
           <button type="button" class="ph-act" onclick="gameNewInning()">New inning</button>

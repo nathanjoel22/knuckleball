@@ -200,3 +200,14 @@ Report check — game b035593a (Malachi, 14 pitches, report sent), stored rows v
   and still asks the runners question (pre-filled; Next flips back; no velocity — no pitch). Harness: chart 3-1
   runner on 1st + Ball → question pre-filled 1st+2nd, tap 3B + Next → loaded; mid-play + Ball four → pitch dropped,
   question opens, Back keeps the walk; a non-ball-four + Ball only moves the count. Flow 14/14. v184.
+
+## Production (Oct 8 2026, Joel: "a", after backup 2026-10-08-1527)
+
+Operator Nathan / joelhauserman@gmail.com. Backup checked: 91 sessions (= production), no spray_box (pre-G5);
+production sync_session unchanged since the migration was written. Applied 20261007000000_g5_spray_box.sql and
+20261008000000_g5_spray_field.sql (policies 34 → 34; the three columns present; sync_session saves them; 91
+sessions untouched). Deployed send-session-report and rerender-reports. Pre-push check flagged that main had 5
+newer commits (Jordan's docs-only PRs #2 and #3, merged by Joel Oct 6) — stopped and told Joel; merged them in with
+no conflicts, and (Joel: "a") corrected one of them: CLAUDE.md said charting is 7×7 since U2, but GRID_SIZE = 5.
+All other checks clean. Pushed v184 to main (e81584d); live site serves kb-shell-v184 with production config.
+schema.sql regenerated. Still to do (Joel): a phone check on production; P1-01 offline checks 1–3.

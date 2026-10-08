@@ -2481,14 +2481,14 @@ begin
          accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, kind, result, in_play_outcome,
          hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, bb_type,
          bb_x, bb_y, fielders, runners_before, batter_to, runner_advances, outs_on_play, runs_scored, sacrifice,
-         bb_from_position, time_to_plate)
+         bb_from_position, time_to_plate, spray_box, runners_after, spray_field)
   select r.id, v_id, r.type, r.velo, coalesce(r.ts, now()), r.target_row, r.target_col,
          coalesce(r.actual_row, 0), coalesce(r.actual_col, 0),
          r.accuracy_mode, r.batter_side, r.in_accuracy_zone, r.accuracy_zone_cells,
          coalesce(r.kind, coalesce(nullif(p_session ->> 'kind', ''), 'bullpen')), r.result, r.in_play_outcome,
          r.hit_type, r.fielder, r.delivery, r.inning, r.outs_before, r.balls_before, r.strikes_before, r.at_bat_index,
          r.bb_type, r.bb_x, r.bb_y, r.fielders, r.runners_before, r.batter_to, r.runner_advances, r.outs_on_play,
-         r.runs_scored, r.sacrifice, r.bb_from_position, r.time_to_plate
+         r.runs_scored, r.sacrifice, r.bb_from_position, r.time_to_plate, r.spray_box, r.runners_after, r.spray_field
     from jsonb_populate_recordset(null::public.pitches, coalesce(p_pitches, '[]'::jsonb)) r
    where r.id is not null
   on conflict (id) do nothing;
@@ -2729,6 +2729,9 @@ CREATE TABLE IF NOT EXISTS "public"."pitches" (
     "sacrifice" "text",
     "bb_from_position" boolean,
     "time_to_plate" numeric(4,2),
+    "spray_box" smallint,
+    "runners_after" smallint,
+    "spray_field" "text",
     CONSTRAINT "pitches_accuracy_mode_check" CHECK ((("accuracy_mode" IS NULL) OR ("accuracy_mode" = ANY (ARRAY['ring'::"text", 'nothingUp'::"text", 'nothingLow'::"text", 'nothingAway'::"text", 'nothingInside'::"text"])))),
     CONSTRAINT "pitches_batter_side_check" CHECK ((("batter_side" IS NULL) OR ("batter_side" = ANY (ARRAY['R'::"text", 'L'::"text"])))),
     CONSTRAINT "pitches_batter_to_check" CHECK ((("batter_to" IS NULL) OR (("batter_to" >= 0) AND ("batter_to" <= 4)))),
@@ -2736,15 +2739,20 @@ CREATE TABLE IF NOT EXISTS "public"."pitches" (
     CONSTRAINT "pitches_delivery_check" CHECK (("delivery" = ANY (ARRAY['set'::"text", 'windup'::"text"]))),
     CONSTRAINT "pitches_fielder_check" CHECK (("fielder" = ANY (ARRAY['P'::"text", 'C'::"text", '1B'::"text", '2B'::"text", '3B'::"text", 'SS'::"text", 'LF'::"text", 'CF'::"text", 'RF'::"text"]))),
     CONSTRAINT "pitches_g1b_fields_check" CHECK (((("kind" = 'bullpen'::"text") AND ("bb_type" IS NULL) AND ("bb_x" IS NULL) AND ("bb_y" IS NULL) AND ("fielders" IS NULL) AND ("runners_before" IS NULL) AND ("batter_to" IS NULL) AND ("runner_advances" IS NULL) AND ("outs_on_play" IS NULL) AND ("runs_scored" IS NULL) AND ("sacrifice" IS NULL) AND ("bb_from_position" IS NULL)) OR ("kind" = 'game'::"text"))),
+    CONSTRAINT "pitches_g5_fields_check" CHECK ((("kind" = 'game'::"text") OR (("spray_box" IS NULL) AND ("runners_after" IS NULL)))),
+    CONSTRAINT "pitches_g5_spray_field_game_check" CHECK ((("kind" = 'game'::"text") OR ("spray_field" IS NULL))),
     CONSTRAINT "pitches_hit_type_check" CHECK (("hit_type" = ANY (ARRAY['1B'::"text", '2B'::"text", '3B'::"text", 'HR'::"text"]))),
     CONSTRAINT "pitches_in_play_outcome_check" CHECK (("in_play_outcome" = ANY (ARRAY['hit'::"text", 'out'::"text", 'error'::"text", 'fc'::"text", 'reached'::"text"]))),
     CONSTRAINT "pitches_kind_check" CHECK (("kind" = ANY (ARRAY['bullpen'::"text", 'game'::"text"]))),
     CONSTRAINT "pitches_outs_on_play_check" CHECK ((("outs_on_play" IS NULL) OR (("outs_on_play" >= 0) AND ("outs_on_play" <= 3)))),
     CONSTRAINT "pitches_result_check" CHECK (("result" = ANY (ARRAY['ball'::"text", 'strike_looking'::"text", 'strike_swinging'::"text", 'foul'::"text", 'in_play'::"text", 'hbp'::"text", 'sac_bunt'::"text", 'sac_fly'::"text", 'dropped_third'::"text", 'interference'::"text", 'other'::"text", 'batter_interference'::"text", 'foul_tip'::"text"]))),
     CONSTRAINT "pitches_runner_advances_is_array" CHECK ((("runner_advances" IS NULL) OR ("jsonb_typeof"("runner_advances") = 'array'::"text"))),
+    CONSTRAINT "pitches_runners_after_check" CHECK ((("runners_after" IS NULL) OR (("runners_after" >= 0) AND ("runners_after" <= 7)))),
     CONSTRAINT "pitches_runners_before_check" CHECK ((("runners_before" IS NULL) OR (("runners_before" >= 0) AND ("runners_before" <= 7)))),
     CONSTRAINT "pitches_runs_scored_check" CHECK ((("runs_scored" IS NULL) OR (("runs_scored" >= 0) AND ("runs_scored" <= 4)))),
     CONSTRAINT "pitches_sacrifice_check" CHECK ((("sacrifice" IS NULL) OR ("sacrifice" = ANY (ARRAY['SF'::"text", 'SAC'::"text"])))),
+    CONSTRAINT "pitches_spray_box_check" CHECK ((("spray_box" IS NULL) OR (("spray_box" >= 1) AND ("spray_box" <= 25)))),
+    CONSTRAINT "pitches_spray_field_check" CHECK ((("spray_field" IS NULL) OR ("spray_field" = ANY (ARRAY['IF'::"text", 'OF'::"text"])))),
     CONSTRAINT "pitches_target_matches_kind" CHECK (((("kind" = 'bullpen'::"text") AND ("target_row" IS NOT NULL) AND ("target_col" IS NOT NULL)) OR (("kind" = 'game'::"text") AND ("target_row" IS NULL) AND ("target_col" IS NULL)))),
     CONSTRAINT "pitches_time_to_plate_check" CHECK ((("time_to_plate" IS NULL) OR (("time_to_plate" >= 0.80) AND ("time_to_plate" <= 3.00))))
 );
@@ -2806,6 +2814,18 @@ COMMENT ON COLUMN "public"."pitches"."bb_from_position" IS 'True when bb_x/bb_y 
 
 
 COMMENT ON COLUMN "public"."pitches"."time_to_plate" IS 'U11 (7): time to home from the stretch, in seconds (first move to the catcher''s glove), stopwatch-timed by the charter on this pitch. NULL = not timed. 0.80-3.00 only.';
+
+
+
+COMMENT ON COLUMN "public"."pitches"."spray_box" IS 'G5: field box 1-25 (box 1 holds home plate; up the 3B line to 5; clockwise round the edge to 16; inner ring 17-24; 25 center) where a ball in play was fielded. NULL for every other pitch and for games before G5 (reports map those from fielder).';
+
+
+
+COMMENT ON COLUMN "public"."pitches"."runners_after" IS 'G5: bases occupied after this plate appearance, as tapped by the charter (1st=1, 2nd=2, 3rd=4). Written after walks and balls in play; NULL for strikeouts, pitches that did not end the at-bat, and games before G5.';
+
+
+
+COMMENT ON COLUMN "public"."pitches"."spray_field" IS 'G5: IF or OF -- where a ball in play was fielded (the charter taps IF or OF on the field); NULL when not chosen and for every other pitch.';
 
 
 

@@ -135,3 +135,10 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
   from_rows payload parity re-checked (identical, incl. recentPenPitches). Hand-checked on a fixture: FB
   middle-center pen 4 / 100% / 75% vs game 4 / 3 strikes / 2 outs; first-pitch strikes 4 of 5. v170;
   send-session-report + rerender-reports redeployed to staging.
+- Joel, Oct 8: + Strike and + Ball beside + Out on the field, and under the chart (Joel chose: auto strike / auto
+  ball events; chart and field). Saved as the existing auto_strike / auto_ball game_events (ball four walks with
+  forced runners, no runners question; strike three is a K; listed under "Other events"; never a pitch). On the
+  field the pitch being charted carries on unless the event ended the plate appearance, then it's dropped and the
+  chart flips back. Harness: 1-0 +S → 1-1; 3-1 runner on 1st +B → walk, runners 1st+2nd; 0-2 +S → K; mid-play +B
+  → 1-0 and the play saves with balls_before 1; field 0-2 +S → K and flip back; Undo restores 0-2. Phone: the
+  field row is + Out · + Strike · + Ball · (Next) · ‹ Back; the chart gets its own + Strike · + Ball row. v171.

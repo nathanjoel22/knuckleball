@@ -1503,6 +1503,10 @@
   .g5-actions{ display:flex; gap:8px; align-items:center; width:100%; max-width:340px; margin:0 auto; }
   .wide-right .g5-actions{ max-width:var(--zg, 340px); }
   .g5-act-gap{ flex:1; min-width:0; text-align:center; }
+  .ph-layout .g5-actions{ gap:5px; }
+  .ph-layout .g5-act{ flex:1 1 0; min-width:0; padding:0 4px; font-size:13px; }
+  .ph-layout .g5-act-gap{ display:none; }
+  .ph-addcount{ margin-top:-7px; }
   .g5-act-cap{ font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.06em; line-height:1.2; }
   /* Joel, Oct 7: phones -- about 5px between the field and its buttons, and between those and Undo / New batter / New inning */
   .ph-layout .g5-card{ margin-bottom:0 !important; }
@@ -7833,6 +7837,26 @@ window.g5AddOut = async function(){
   if(g.step === 'bases' && g5ProjectedOuts(g) >= 3) return g5Commit(g.walk ? 'ball' : 'in_play');
   return g5Save();
 };
+// Joel, Oct 8: + Strike / + Ball -- a strike or ball with no pitch (a pitch-clock violation), saved as the
+// existing auto_strike / auto_ball events (ball four walks, strike three is a K; the report lists them under
+// "Other events"). On the field the pitch being charted carries on, unless the event ended the plate
+// appearance -- then that pitch is dropped and the chart flips back.
+window.g5AddCount = async function(kind){
+  const s = state.activeSession;
+  if(!s || s.kind !== 'game') return;
+  const g = s.g5, pending = s.gamePendingPitch, dot = s.gameDot;
+  const face = g ? g5FieldFace() : null;
+  const ab = s.atBatIndex, inning = s.inning;
+  await commitNoPitchEvent(kind === 'ball' ? 'auto_ball' : 'auto_strike', null, true);
+  if(g){
+    if(s.atBatIndex === ab && s.inning === inning){ s.g5 = g; s.gamePendingPitch = pending; s.gameDot = dot; }
+    else { s.g5 = null; s.gameDot = null; state.g5LastFace = face; state.g5Anim = 'out'; }
+  } else {
+    s.gameVeloIdx = null; s.gameDot = null; state.veloTargetIdx = null;
+  }
+  await storSet(draftKey(), s);
+  render();
+};
 window.g5Back = async function(){
   const s = state.activeSession, g = s.g5;
   if(!g) return;
@@ -7988,8 +8012,10 @@ function g5FieldActions(){
   const added = g.addOuts ? ` · ${g.addOuts}` : '';
   const next = (g.step === 'bases' && ggRadarOn()) ? `<button type="button" class="g5-act g5-act-next" onclick="g5Next()">Next ›</button>` : '';
   return `<div class="g5-actions">
-    <button type="button" class="g5-act" onclick="g5AddOut()" ${g5ProjectedOuts(g) >= 3 ? 'disabled' : ''}>+ Add out${added}</button>
-    <span class="g5-act-gap">${isPhoneWidth() ? `<span class="g5-act-cap">${escHtml(G5_SHORT_CAPTION[g.step] || '')}</span>` : ''}</span>${next}
+    <button type="button" class="g5-act" onclick="g5AddOut()" ${g5ProjectedOuts(g) >= 3 ? 'disabled' : ''}>+ Out${added}</button>
+    <button type="button" class="g5-act" onclick="g5AddCount('strike')">+ Strike</button>
+    <button type="button" class="g5-act" onclick="g5AddCount('ball')">+ Ball</button>
+    <span class="g5-act-gap"></span>${next}
     <button type="button" class="g5-act" onclick="g5Back()">‹ Back</button>
   </div>`;
 }
@@ -8094,6 +8120,7 @@ function renderGameSessionView(p){
           <button type="button" class="ph-act" onclick="gameNewBatter()">New batter</button>
           <button type="button" class="ph-act" onclick="gameNewInning()">New inning</button>
         </div>
+        ${g5OnDiamond() ? '' : `<div class="ph-actions ph-addcount"><button type="button" class="ph-act" onclick="g5AddCount('strike')">+ Strike</button><button type="button" class="ph-act" onclick="g5AddCount('ball')">+ Ball</button></div>`}
       </div>
       <div class="panel log-panel">
         <div class="ph-statline mono">Pitches ${stats.total} · Strike% ${stats.strikePct} · K ${stats.k} · BB ${stats.bb} · H ${stats.h}</div>
@@ -8147,6 +8174,8 @@ function renderGameSessionView(p){
           <button class="btn btn-ghost" onclick="undoLastGameAction()">Undo last action</button>
           <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
           <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
+          <button class="btn btn-ghost" onclick="g5AddCount('strike')">+ Strike</button>
+          <button class="btn btn-ghost" onclick="g5AddCount('ball')">+ Ball</button>
         </div>
         <div style="margin:12px 0 8px;">
           <div class="field-label" style="margin-bottom:4px;">Opponent (optional)</div>
@@ -8189,6 +8218,8 @@ function renderGameSessionView(p){
             <button class="btn btn-ghost" onclick="undoLastGameAction()">Undo last action</button>
             <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
             <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
+            <button class="btn btn-ghost" onclick="g5AddCount('strike')">+ Strike</button>
+            <button class="btn btn-ghost" onclick="g5AddCount('ball')">+ Ball</button>
           </div>
         </div>
       </div>

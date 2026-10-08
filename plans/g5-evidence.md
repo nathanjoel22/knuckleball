@@ -195,3 +195,8 @@ Report check — game b035593a (Malachi, 14 pitches, report sent), stored rows v
   pitches 2 hits; 1st+2nd 1 pitch 1 out. Pitching line 1.2 IP, 8 BF, 0/0/0/1. At-bat log "HR · LD · box 7";
   Auto strike / Auto ball under Other events. Bullpen to game: pen columns "—" is correct — his 7 pen pitches
   (stored columns 0–1) never share a spot with his 14 game pitches (columns 3–4).
+- Joel confirmed (Oct 8): offline (airplane mode, close, Resume, save offline, sync) and radar off (Next pitch in
+  box 24) both worked; old games placed by fielder as built. Change: ball four by + Ball moves the forced runners up
+  and still asks the runners question (pre-filled; Next flips back; no velocity — no pitch). Harness: chart 3-1
+  runner on 1st + Ball → question pre-filled 1st+2nd, tap 3B + Next → loaded; mid-play + Ball four → pitch dropped,
+  question opens, Back keeps the walk; a non-ball-four + Ball only moves the count. Flow 14/14. v184.

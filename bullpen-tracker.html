@@ -7871,13 +7871,25 @@ window.g5Base = async function(box){
   return g5Save();
 };
 window.g5Next = async function(){
-  const g = state.activeSession.g5;
+  const s = state.activeSession, g = s.g5;
   if(!g || g.step !== 'bases') return;
+  if(g.walkEvent){ return g5CloseWalkEvent(); }
   return g5Commit(g.walk ? 'ball' : 'in_play');
 };
+// The runners question after a + Ball walk: no pitch to save -- set the bases and flip back.
+async function g5CloseWalkEvent(){
+  const s = state.activeSession, g = s.g5;
+  state.g5LastFace = g5FieldFace();
+  s.runners = runnersFromBitmask(g.bases || 0);
+  defaultGameDelivery(s);
+  s.g5 = null;
+  state.g5Anim = 'out';
+  await storSet(draftKey(), s);
+  render();
+}
 window.g5AddOut = async function(){
   const s = state.activeSession, g = s.g5;
-  if(!g) return;
+  if(!g || g.walkEvent) return;
   if(g5ProjectedOuts(g) >= 3) return;                         // never past three
   g.addOuts = (g.addOuts || 0) + 1;
   if(g.step === 'bases' && g5ProjectedOuts(g) >= 3) return g5Commit(g.walk ? 'ball' : 'in_play');
@@ -7893,9 +7905,17 @@ window.g5AddCount = async function(kind){
   const g = s.g5, pending = s.gamePendingPitch, dot = s.gameDot;
   const face = g ? g5FieldFace() : null;
   const ab = s.atBatIndex, inning = s.inning;
+  if(g && g.walkEvent) return;   // already answering a walk's runners question
   await commitNoPitchEvent(kind === 'ball' ? 'auto_ball' : 'auto_strike', null, true);
-  if(g){
-    if(s.atBatIndex === ab && s.inning === inning){ s.g5 = g; s.gamePendingPitch = pending; s.gameDot = dot; }
+  const ended = !(s.atBatIndex === ab && s.inning === inning);
+  if(kind === 'ball' && ended){
+    // Joel, Oct 8: ball four by + Ball moves the forced runners up, then still asks the runners question
+    // (pre-filled with them); Next goes back to the chart. No pitch, so no velocity step.
+    s.gamePendingPitch = null; s.gameDot = null; s.gameVeloIdx = null; state.veloTargetIdx = null;
+    s.g5 = { step: 'bases', walkEvent: true, addOuts: 0, bases: runnersBitmask(s.runners) };
+    if(!g) state.g5Anim = 'in';
+  } else if(g){
+    if(!ended){ s.g5 = g; s.gamePendingPitch = pending; s.gameDot = dot; }
     else { s.g5 = null; s.gameDot = null; state.g5LastFace = face; state.g5Anim = 'out'; }
   } else {
     s.gameVeloIdx = null; s.gameDot = null; state.veloTargetIdx = null;
@@ -7921,6 +7941,7 @@ window.g5Back = async function(){
       g.zone = null; g.bbType = null; g.step = 'how'; break;
     case 'hr': g.step = 'where'; break;
     case 'bases':
+      if(g.walkEvent){ return g5CloseWalkEvent(); }   // the walk stands; Back keeps the forced runners
       if(g.walk){ g.walk = false; g.bases = null; g.step = 'what'; }
       else if(g.foulOut){ g.foulOut = false; g.entry = null; g.box = null; g.bases = null; g.step = 'foulout'; }
       else { g.box = null; g.field = null; g.bases = null; g.step = 'where'; }

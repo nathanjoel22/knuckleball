@@ -116,3 +116,6 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
   to the location step with nothing saved. v165; send-session-report redeployed to staging.
 - Joel confirmed (Oct 7): HR? on a fly ball OR a line drive (hits only); no runners question after a home run. Harness: HR? shown on H+LD, still not on an out. v166.
 - Joel, Oct 7: What happened? → Foul 4, Looking 2, Swing 1, Ball 8, In Play 10. v167.
+- Joel, Oct 7: buttons moved to the bottom corners — What happened? Swing 1, Looking 2, Foul 14, In Play 13, Ball 12;
+  Foul Tip 13, Foul Out 12; E 14, H 13, O 12; Bunt 1, Pop 2, LD 14, Fly 13, GB 12. Harness: every button in its box;
+  flow (14/14), foul and HR tests re-run. v168.

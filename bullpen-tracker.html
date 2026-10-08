@@ -7677,14 +7677,14 @@ function attachGameVeloSlide(){
    undoLastGameAction. Nothing is written until the play is complete. */
 // Joel's box numbers by unrotated row/column (row 0 top, column 0 left).
 const G5_BOX = [[5, 6, 7, 8, 9], [4, 19, 20, 21, 10], [3, 18, 25, 22, 11], [2, 17, 24, 23, 12], [1, 16, 15, 14, 13]];
-// Joel, Oct 7: Foul 4, Looking 2, Swing 1, Ball 8, In Play 10.
-const G5_WHAT = { 8: ['ball', 'icon-ball.png', 'Ball'], 2: ['looking', 'icon-looking.png', 'Looking'], 1: ['swing', 'icon-swinging.png', 'Swing'],
-  4: ['foul', 'icon-foul.png', 'Foul'], 10: ['inplay', 'batter-icon.png', 'In Play'] };
+// Joel, Oct 7: Swing 1, Looking 2, Foul 14, In Play 13, Ball 12.
+const G5_WHAT = { 12: ['ball', 'icon-ball.png', 'Ball'], 2: ['looking', 'icon-looking.png', 'Looking'], 1: ['swing', 'icon-swinging.png', 'Swing'],
+  14: ['foul', 'icon-foul.png', 'Foul'], 13: ['inplay', 'batter-icon.png', 'In Play'] };
 const G5_RESULT = { ball: 'ball', looking: 'strike_looking', swing: 'strike_swinging', foul: 'foul' };
 // Joel, Oct 7: Foul asks "Foul Tip or Foul Out?". Foul Tip records the foul; Foul Out asks where it was caught,
 // on foul ground only -- the whole of boxes 1, 2, 16, 14, 13, 12, and the foul side of the line in 3, 17, 23, 11
 // and 15 (15: all but the triangle from home up to its top corners). Shapes are clip-path polygons in the box.
-const G5_FOUL = { 19: ['tip', 'Foul Tip'], 21: ['out', 'Foul Out'] };
+const G5_FOUL = { 13: ['tip', 'Foul Tip'], 12: ['out', 'Foul Out'] };   // Joel, Oct 7
 const G5_FOUL_GROUND = { 1: '', 2: '', 16: '', 14: '', 13: '', 12: '',
   3: 'polygon(0 0, 0 100%, 100% 100%)', 17: 'polygon(0 0, 0 100%, 100% 100%)',
   23: 'polygon(100% 0, 100% 100%, 0 100%)', 11: 'polygon(100% 0, 100% 100%, 0 100%)',
@@ -7712,9 +7712,9 @@ const G5_OVER_FENCE = {
   8: 'polygon(0 0, 100% 0, 100% 67.5%, 87.5% 64.7%, 75% 62.1%, 62.5% 59.8%, 50% 57.7%, 37.5% 55.9%, 25% 54.3%, 12.5% 53.0%, 0% 51.9%)',
   9: 'polygon(0 0, 100% 0, 100% 100.0%, 87.5% 94.9%, 75% 90.2%, 62.5% 85.7%, 50% 81.5%, 37.5% 77.6%, 25% 74.0%, 12.5% 70.6%, 0% 67.5%)',
 };
-const G5_HOE = { 20: ['H', 'Hit'], 10: ['O', 'Out'], 4: ['E', 'Error'] };   // Joel, Oct 7
+const G5_HOE = { 13: ['H', 'Hit'], 12: ['O', 'Out'], 14: ['E', 'Error'] };   // Joel, Oct 7
 const G5_OUTCOME = { H: 'hit', O: 'out', E: 'error' };
-const G5_HOW = { 10: ['ground', 'GB', 'Ground'], 6: ['pop', 'Pop', 'Pop fly'], 20: ['line', 'LD', 'Line drive'], 8: ['fly', 'Fly', 'Fly ball'], 4: ['bunt', 'Bunt', ''] };   // Joel, Oct 7
+const G5_HOW = { 12: ['ground', 'GB', 'Ground'], 2: ['pop', 'Pop', 'Pop fly'], 14: ['line', 'LD', 'Line drive'], 13: ['fly', 'Fly', 'Fly ball'], 1: ['bunt', 'Bunt', ''] };   // Joel, Oct 7
 const G5_BASE_BOX = { 17: 4, 25: 2, 23: 1 };   // the bases screen's tap boxes -> runner bit (3rd=4, 2nd=2, 1st=1)
 const G5_BASE_LABEL = { 4: '3B', 2: '2B', 1: '1B' };
 const G5_NEXT_BOX = 24;   // Joel, Oct 7: "Next pitch" (radar off) on the mound box; 3B is in 17 now

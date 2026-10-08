@@ -1081,6 +1081,13 @@
      of charting cells and must never swallow a tap. */
   /* Joel, Oct 8: the real-plate look under History's heat maps -- the strike zone's width (3 of 5 columns) */
   .persp-plate-wrap{ width:calc(60% - 4px); margin:2px auto 0; }
+  .hp-wrap{ width:100%; max-width:320px; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .hp-plot{ display:block; width:100%; height:auto; }
+  .hp-wrap .persp-plate-wrap{ width:58%; margin-top:0; }
+  .hp-legend{ display:flex; flex-wrap:wrap; gap:6px 12px; justify-content:center; font-size:12px; }
+  .hp-key{ display:inline-flex; align-items:center; gap:5px; }
+  .hp-dot{ width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .hp-caption{ text-transform:none; letter-spacing:0; font-size:11.5px; line-height:1.4; text-align:center; }
   .persp-plate{ display:block; width:100%; height:auto; overflow:visible; }
   .zone-grid.heat-grid{ margin-bottom:0 !important; }   /* no batter-pill band under a heat map */
   .home-plate-overlay{
@@ -5652,6 +5659,44 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
    unchanged, opaque below-grid plate -- that view always shows canonical,
    unmirrored data (see mirrorCol's comment), independent of any session's
    own perspective, so its plate stays independent of perspective too. */
+// Joel, Oct 8: History's location plot -- the report's first chart in the app: every pitch as a dot in its
+// pitch type's color, in the pitcher's view (draw-time mirror only), both batter sides mixed, so no zone numbers
+// and no heat shading. The strike zone is a cloudy light cream, the cells around it a grey translucent ring; a
+// home plate in perspective sits below. Dots overlapping in a cell spiral out (the report's drawDots).
+function renderHistoryPlot(session, p){
+  const N = GRID_SIZE, cell = 100;
+  let cells = '';
+  for(let r = 0; r < N; r++) for(let c = 0; c < N; c++){
+    const zone = isStrikeCell(r, c);
+    cells += `<rect x="${c * cell + 3}" y="${r * cell + 3}" width="${cell - 6}" height="${cell - 6}" rx="8" fill="${zone ? 'url(#hpCream)' : 'rgba(120,130,125,0.22)'}"/>`;
+  }
+  const seen = {};
+  let halos = '', dots = '';
+  (session.pitches || []).forEach(pt => {
+    const r = pt.actualRow, c = perspectiveCol(pt.actualCol, REPORT_PERSPECTIVE);
+    if(r === null || r === undefined || c === null || c === undefined) return;
+    const key = r + '-' + c, idx = seen[key] || 0;
+    seen[key] = idx + 1;
+    const angle = idx * 137.508 * Math.PI / 180, rad = idx === 0 ? 0 : Math.min(cell * 0.32, 8 + idx * 6);
+    const x = (c * cell + cell / 2 + rad * Math.cos(angle)).toFixed(1), y = (r * cell + cell / 2 + rad * Math.sin(angle)).toFixed(1);
+    const color = colorForType(p, pt.type);
+    halos += `<circle cx="${x}" cy="${y}" r="22" fill="${color}"/>`;
+    dots += `<circle cx="${x}" cy="${y}" r="11" fill="${color}" stroke="#FFFFFF" stroke-width="2.5"/>`;
+  });
+  const types = [];
+  (session.pitches || []).forEach(pt => { if(types.indexOf(pt.type) < 0) types.push(pt.type); });
+  const legend = types.map(t => `<span class="hp-key"><span class="hp-dot" style="background:${colorForType(p, t)}"></span>${escHtml(pitchLabel(t))}</span>`).join('');
+  const what = (session.kind || 'bullpen') === 'game' ? 'game' : 'pen';
+  return `<div class="hp-wrap">
+    <svg class="hp-plot" viewBox="0 0 ${N * cell} ${N * cell}" role="img" aria-label="Every pitch this ${what}, pitcher's view">
+      <defs><radialGradient id="hpCream" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#FFFBF0"/><stop offset="0.6" stop-color="#F6EEDC"/><stop offset="1" stop-color="#EFE4CC"/></radialGradient></defs>
+      ${cells}<g opacity="0.28">${halos}</g>${dots}
+    </svg>
+    ${renderPerspectivePlate()}
+    <div class="hp-legend">${legend}</div>
+    <div class="zone-caption hp-caption">Every pitch this ${what} · ${REPORT_VIEW_NAME} · both batter sides mixed. Numbers and directional words like "inside" depend on who's hitting, so this plot uses neither.</div>
+  </div>`;
+}
 // A drawn home plate in perspective from the mound (Joel's ballpark photo, turned around): wide front edge at
 // the bottom, the sides running back to the point; white top, a darker rubber edge, a little dirt around it.
 function renderPerspectivePlate(){
@@ -9052,7 +9097,7 @@ function renderHistoryView(){
           </div>
           ${expanded ? `
           <div class="session-card-body">
-            <div class="zone-wrap">${renderZoneGrid(s.pitches, false)}<div class="zone-caption">Location heat map · ${REPORT_VIEW_NAME}${sportCfg().zoneNote ? ' · ' + sportCfg().zoneNote : ''}</div></div>
+            <div class="zone-wrap">${renderHistoryPlot(s, p)}</div>
             <div style="flex:1;min-width:220px;">
               ${gameHistoryTypeTable(p, s.pitches)}
               ${renderSessionNotes(s)}${reportPanel}
@@ -9187,7 +9232,7 @@ function renderHistoryView(){
         </div>
         ${expanded ? `
         <div class="session-card-body">
-          <div class="zone-wrap">${renderZoneGrid(s.pitches, false)}<div class="zone-caption">Location heat map · ${REPORT_VIEW_NAME}${sportCfg().zoneNote ? ' · ' + sportCfg().zoneNote : ''}</div></div>
+          <div class="zone-wrap">${renderHistoryPlot(s, p)}</div>
           <div style="flex:1;min-width:220px;">
             <table class="breakdown-table">
               <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th><th>Relative Acc%</th></tr></thead>

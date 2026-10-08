@@ -165,3 +165,9 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
 - Joel, Oct 8 (Live Game, phones): Set/Windup and ⏱ moved into the right of the status bar; the pitch-type row spans the full width (as in softball). Bullpen phone layout unchanged. v179.
 - Joel, Oct 8 (iPad): field buttons spilled past the 5×5 at its edges — the flash's glow was drawn outside each box. Now drawn inside (inset), and Safari's default button styling is off on the field boxes. Measured at iPad landscape: buttons 0px past the grid; screenshot at peak flash contained. v180.
 - Joel, Oct 8: on iPad / laptop the field buttons' icons, letters, captions, base labels and the ball marker scale with the box size (one box = (--zg − 18px) / 5; icon ≈ half the box). Phones unchanged. v181.
+- Joel's iPad photo (Oct 8, portrait and landscape): right after the flip, the field's buttons drew larger than their
+  boxes and past the 5×5, while the plain boxes lined up — Safari kept the flashing buttons on their own 3D layer
+  under the flip's perspective (Chrome doesn't, so the laptop and my renders looked right). Fix: once the flip-in
+  has played (~0.7s) the field is drawn again flat, with no 3D transform left (the flip back already did this).
+  Also: + Out / + Strike / + Ball / ‹ Back stay on one line. Harness: the flip draw schedules the redraw; the
+  redraw has no flip classes and keeps every button. To confirm on Joel's iPad. v182.

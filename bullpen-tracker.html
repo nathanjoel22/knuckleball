@@ -1531,7 +1531,7 @@
   .ph-layout .g5-card{ margin-bottom:0 !important; }
   .ph-layout .zone-wrap.g5-on{ gap:5px; }
   .ph-layout .ph-actions.g5-on{ margin-top:-3px; }
-  .g5-act{ min-height:44px; padding:0 14px; border-radius:10px; font:inherit; font-weight:700; font-size:14px;
+  .g5-act{ min-height:44px; padding:0 14px; border-radius:10px; font:inherit; font-weight:700; font-size:14px; white-space:nowrap;
     background:#fff; color:var(--ink); border:1.5px solid var(--border-strong); cursor:pointer; }
   .g5-act:disabled{ opacity:0.4; cursor:default; }
   .g5-act-next{ background:#C9A227; border-color:#C9A227; color:#111; }
@@ -8108,6 +8108,9 @@ function g5BelowChart(step){
 function g5Surface(pitches, chartingPerspective, currentBatterSide){
   let chart = renderZoneGrid(pitches, true, state.flashCell, null, chartingPerspective, currentBatterSide, 'handleGameZoneTap');
   if(g5OnDiamond()){
+    // Joel's iPad photo, Oct 8: Safari kept the field's buttons on their own 3D layer after the flip, drawn a
+    // little closer (bigger) under the perspective. Once the flip has played, draw the field again flat.
+    if(state.g5Anim === 'in') setTimeout(() => { if(!state.g5Anim && g5OnDiamond()) render(); }, 700);
     return g5Card(g5FieldFace(), state.g5Anim === 'in' ? 'in' : null, chart) + g5FieldActions();
   }
   if(g5Step() === 'velo') chart = chart.replace(/<\/div>$/, g5VeloRows() + '</div>');   // inside .zone-grid, over its last two rows

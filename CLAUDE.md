@@ -77,7 +77,7 @@ Built far past the uploaded spec `plans/g5-live-game-diamond.md` -- where they d
 
 ## What this is
 
-Knuckleball (knuckleballonline.com) is a bullpen and live-game tracking app for baseball and softball pitching coaches and pitchers: two-tap pitch charting on a 7×7 zone grid since U2 (legacy 5×5 sessions still render; target vs. actual), pitch types, velocity, heat maps, accuracy percentages (including a "relative accuracy" mode), trend charts, and an emailed link to a frozen HTML session report. Charting typically happens on an **iPhone/iPad, often with no wifi** — never assume network availability in the tracker flow.
+Knuckleball (knuckleballonline.com) is a bullpen and live-game tracking app for baseball and softball pitching coaches and pitchers: two-tap pitch charting on a 5×5 zone grid (target vs. actual; `GRID_SIZE = 5` -- the U2 7×7 grid was specified but never shipped), pitch types, velocity, heat maps, accuracy percentages (including a "relative accuracy" mode), trend charts, and an emailed link to a frozen HTML session report. Charting typically happens on an **iPhone/iPad, often with no wifi** — never assume network availability in the tracker flow.
 
 **Operator context that changes how you work:** the owner (Joel) is a solo, part-time developer, newer to the terminal, on a Mac. Prefer copy-paste one-liners, explain what commands do, and never assume a CI system, a second environment, or another human reviewer exists unless DEPLOY.md says so. Current scale: 1–3 teams. Bias every decision toward simple and operable over scalable.
 

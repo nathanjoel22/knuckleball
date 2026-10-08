@@ -164,3 +164,4 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
   landscape 550px / 106px; the softball field only looks bigger (no Set/Windup row above it, all-dirt infield). v178.
 - Joel, Oct 8 (Live Game, phones): Set/Windup and ⏱ moved into the right of the status bar; the pitch-type row spans the full width (as in softball). Bullpen phone layout unchanged. v179.
 - Joel, Oct 8 (iPad): field buttons spilled past the 5×5 at its edges — the flash's glow was drawn outside each box. Now drawn inside (inset), and Safari's default button styling is off on the field boxes. Measured at iPad landscape: buttons 0px past the grid; screenshot at peak flash contained. v180.
+- Joel, Oct 8: on iPad / laptop the field buttons' icons, letters, captions, base labels and the ball marker scale with the box size (one box = (--zg − 18px) / 5; icon ≈ half the box). Phones unchanged. v181.

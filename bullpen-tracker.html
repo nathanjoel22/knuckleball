@@ -1509,6 +1509,16 @@
   .g5-marked{ background:rgba(255,255,255,0.25); }
   .g5-ball{ width:24px; height:24px; display:block; }
   .g5-nextbox .g5-np{ font-size:10px; font-weight:800; text-align:center; line-height:1.1; color:var(--gg-ink); }
+  /* Joel, Oct 8: on iPad / laptop the field buttons' contents grow with the box (one box = (--zg - 18px) / 5) */
+  .wide-right .g5-cell{ --g5c:calc((var(--zg, 278px) - 18px) / 5); }
+  .wide-right .g5-choice .gg-ic{ width:calc(var(--g5c) * 0.52); height:calc(var(--g5c) * 0.38); max-width:none; }
+  .wide-right .g5-choice .gg-cap{ font-size:calc(var(--g5c) * 0.11); letter-spacing:0.03em; }
+  .wide-right .g5-choice .gg-big{ font-size:calc(var(--g5c) * 0.30); }
+  .wide-right .g5-choice .gg-big-long{ font-size:calc(var(--g5c) * 0.22); }
+  .wide-right .g5-word{ font-size:calc(var(--g5c) * 0.19); }
+  .wide-right .g5-baselbl{ font-size:calc(var(--g5c) * 0.22); }
+  .wide-right .g5-nextbox .g5-np{ font-size:calc(var(--g5c) * 0.15); }
+  .wide-right .g5-ball{ width:calc(var(--g5c) * 0.36); height:calc(var(--g5c) * 0.36); }
   .g5-actions{ display:flex; gap:8px; align-items:center; width:100%; max-width:340px; margin:0 auto; }
   .wide-right .g5-actions{ max-width:var(--zg, 340px); }
   .g5-act-gap{ flex:1; min-width:0; text-align:center; }

@@ -54,16 +54,15 @@ export function drawDiamond(opts: { counts: Record<number, number>; sport: 'base
     }
   }
   const base = (x: number, y: number) => `<rect x="${x - 11}" y="${y - 11}" width="22" height="22" rx="2" transform="rotate(45 ${x} ${y})"/>`
-  // Joel, Oct 8 (both sports): the app's g5FieldSvg grass -- a mowed checkerboard turned 45°, light #8CBA5A and
-  // dark #60963C, foul territory dark; softball's infield stays all dirt.
-  const mow = `<defs><pattern id="kbmow" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="80" height="80" fill="#60963C"/><rect width="40" height="40" fill="#8CBA5A"/><rect x="40" y="40" width="40" height="40" fill="#8CBA5A"/></pattern><linearGradient id="kbsun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.10"/><stop offset="1" stop-color="#000000" stop-opacity="0.08"/></linearGradient></defs>`
-  const field = `${mow}<rect width="500" height="500" fill="#60963C"/>
+  // Joel, Oct 8 (both sports): the app's g5FieldSvg grass -- mower stripes parallel to each foul line meeting in
+  // a V, foul ground darker, a crosshatch plaid on the infield grass; softball's infield stays all dirt.
+  const mow = `<defs><pattern id="kbfl" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="80" height="80" fill="#6FA548"/><rect width="80" height="40" fill="#8CBA5A"/></pattern><pattern id="kbfr" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(-45 250 450)"><rect width="80" height="80" fill="#6FA548"/><rect width="80" height="40" fill="#8CBA5A"/></pattern><pattern id="kbdl" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="80" height="80" fill="#548A35"/><rect width="80" height="40" fill="#60963C"/></pattern><pattern id="kbdr" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(-45 250 450)"><rect width="80" height="80" fill="#548A35"/><rect width="80" height="40" fill="#60963C"/></pattern><pattern id="kbpl" width="24" height="24" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 350)"><rect width="24" height="24" fill="#8CBA5A"/><rect width="12" height="24" fill="#000000" fill-opacity="0.10"/><rect width="24" height="12" fill="#000000" fill-opacity="0.10"/></pattern><linearGradient id="kbsun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.10"/><stop offset="1" stop-color="#000000" stop-opacity="0.08"/></linearGradient></defs>`
+  const field = `${mow}<rect width="250" height="500" fill="url(#kbdl)"/><rect x="250" width="250" height="500" fill="url(#kbdr)"/>
 <path d="M0,0 L500,0 L500,100 A650,650 0 0 0 0,100 Z" fill="${c.fence}"/>
-<path d="M250,450 L0,200 L0,100 A650,650 0 0 1 500,100 L500,200 Z" fill="url(#kbmow)"/>
-<rect width="500" height="500" fill="url(#kbsun)"/>
+<path d="M250,450 L0,200 L0,100 A650,650 0 0 1 250,50 Z" fill="url(#kbfl)"/><path d="M250,450 L500,200 L500,100 A650,650 0 0 0 250,50 Z" fill="url(#kbfr)"/><rect width="500" height="500" fill="url(#kbsun)"/>
 <path d="M0,100 A650,650 0 0 1 500,100" fill="none" stroke="${c.line}" stroke-width="6" opacity="0.75"/>
 <path d="M250,450 L100,300 A250,250 0 0 1 400,300 Z" fill="${c.dirt}"/>
-<polygon points="250,428 314,364 250,300 186,364" fill="${soft ? c.dirt : c.infield}"/>
+<polygon points="250,428 314,364 250,300 186,364" fill="${soft ? c.dirt : 'url(#kbpl)'}"/>
 ${soft ? '<circle cx="250" cy="350" r="16" fill="none" stroke="#FFFFFF" stroke-width="2.5"/>' : `<circle cx="250" cy="350" r="14" fill="${c.mound}"/>`}
 <path d="M250,450 L0,200 M250,450 L500,200" stroke="#FFFFFF" stroke-width="4"/>
 <g fill="#FFFFFF" stroke="${c.line}" stroke-width="1.5">${base(342.2, 342.2)}${base(250, 282)}${base(157.8, 342.2)}</g>

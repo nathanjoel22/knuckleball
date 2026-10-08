@@ -7939,20 +7939,18 @@ function g5FieldSvg(){
   const g = state.activeSession && state.activeSession.g5;
   const occ = (g && g.step === 'bases') ? (g.bases || 0) : runnersBitmask(state.activeSession ? state.activeSession.runners : {});
   const base = (x, y, bit) => `<rect x="${x - 11}" y="${y - 11}" width="22" height="22" rx="2" transform="rotate(45 ${x} ${y})" class="g5-base${occ & bit ? ' on' : ''}"/>`;
-  // Joel, Oct 8 (both sports, from his ballpark photo): the fair outfield is a mowed checkerboard turned 45° --
-  // light #8CBA5A and dark #60963C -- under a soft light falloff; foul territory is the dark green. Over the fence
-  // keeps its color; softball's infield stays all dirt (no grass).
-  const foul = '#60963C';
-  const grass = 'url(#g5mow)';
-  const mow = `<defs><pattern id="g5mow" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="80" height="80" fill="#60963C"/><rect width="40" height="40" fill="#8CBA5A"/><rect x="40" y="40" width="40" height="40" fill="#8CBA5A"/></pattern><linearGradient id="g5sun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.10"/><stop offset="1" stop-color="#000" stop-opacity="0.08"/></linearGradient></defs>`;
+  // Joel, Oct 8 (both sports, from his ballpark photo): mower stripes parallel to each foul line, meeting in a V at
+  // center field -- fair grass light #8CBA5A / #6FA548, foul ground the darker #60963C / #548A35 -- and a crosshatch
+  // plaid on the infield grass; a soft light falloff over it. Over the fence keeps its color; softball's infield
+  // stays all dirt (no grass). Same drawing in send-session-report/diamond.ts.
+  const mow = `<defs><pattern id="g5fl" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="80" height="80" fill="#6FA548"/><rect width="80" height="40" fill="#8CBA5A"/></pattern><pattern id="g5fr" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(-45 250 450)"><rect width="80" height="80" fill="#6FA548"/><rect width="80" height="40" fill="#8CBA5A"/></pattern><pattern id="g5dl" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="80" height="80" fill="#548A35"/><rect width="80" height="40" fill="#60963C"/></pattern><pattern id="g5dr" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(-45 250 450)"><rect width="80" height="80" fill="#548A35"/><rect width="80" height="40" fill="#60963C"/></pattern><pattern id="g5pl" width="24" height="24" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 350)"><rect width="24" height="24" fill="#8CBA5A"/><rect width="12" height="24" fill="#000000" fill-opacity="0.10"/><rect width="24" height="12" fill="#000000" fill-opacity="0.10"/></pattern><linearGradient id="g5sun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.10"/><stop offset="1" stop-color="#000000" stop-opacity="0.08"/></linearGradient></defs>`;
   return `<svg class="g5-field" viewBox="0 0 500 500" aria-hidden="true">${mow}
-<rect width="500" height="500" style="fill:${foul}"/>
+<rect width="250" height="500" fill="url(#g5dl)"/><rect x="250" width="250" height="500" fill="url(#g5dr)"/>
 <path d="M0,0 L500,0 L500,100 A650,650 0 0 0 0,100 Z" style="fill:var(--gg-fence)"/>
-<path d="M250,450 L0,200 L0,100 A650,650 0 0 1 500,100 L500,200 Z" style="fill:${grass}"/>
-<rect width="500" height="500" fill="url(#g5sun)"/>
+<path d="M250,450 L0,200 L0,100 A650,650 0 0 1 250,50 Z" fill="url(#g5fl)"/><path d="M250,450 L500,200 L500,100 A650,650 0 0 0 250,50 Z" fill="url(#g5fr)"/><rect width="500" height="500" fill="url(#g5sun)"/>
 <path d="M0,100 A650,650 0 0 1 500,100" fill="none" style="stroke:var(--gg-line)" stroke-width="6" opacity="0.75"/>
 <path d="M250,450 L100,300 A250,250 0 0 1 400,300 Z" style="fill:var(--gg-dirt)"/>
-<polygon points="250,428 314,364 250,300 186,364" style="fill:${soft ? 'var(--gg-dirt)' : 'var(--gg-infield)'}"/>
+<polygon points="250,428 314,364 250,300 186,364" style="fill:${soft ? 'var(--gg-dirt)' : 'url(#g5pl)'}"/>
 ${soft ? '<circle cx="250" cy="350" r="16" fill="none" stroke="#fff" stroke-width="2.5"/>' : '<circle cx="250" cy="350" r="14" style="fill:var(--gg-mound)"/>'}
 <path d="M250,450 L0,200 M250,450 L500,200" stroke="#fff" stroke-width="4"/>
 ${base(342.2, 342.2, 1)}${base(250, 282, 2)}${base(157.8, 342.2, 4)}

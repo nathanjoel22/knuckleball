@@ -19,17 +19,17 @@ begin
       'inning',1, 'at_bat_index',0, 'balls_before',0, 'strikes_before',0, 'outs_before',0, 'runners_before',0),
     jsonb_build_object('id', gen_random_uuid(), 'type','fb', 'kind','game', 'result','in_play', 'in_play_outcome','hit', 'bb_type','line',
       'actual_row',2, 'actual_col',2, 'inning',1, 'at_bat_index',0, 'balls_before',1, 'strikes_before',0, 'outs_before',0,
-      'runners_before',0, 'spray_box',22, 'runners_after',1, 'outs_on_play',0),
+      'runners_before',0, 'spray_box',22, 'spray_field','OF', 'runners_after',1, 'outs_on_play',0),
     jsonb_build_object('id', gen_random_uuid(), 'type','cb', 'kind','game', 'result','in_play', 'in_play_outcome','out', 'bb_type','ground',
       'actual_row',3, 'actual_col',2, 'inning',1, 'at_bat_index',1, 'balls_before',0, 'strikes_before',0, 'outs_before',0,
-      'runners_before',1, 'spray_box',19, 'runners_after',0, 'outs_on_play',2));
+      'runners_before',1, 'spray_box',25, 'spray_field','IF', 'runners_after',0, 'outs_on_play',2));
   sess := jsonb_build_object('id', S1, 'pitcher_id', P, 'team_id', T, 'logged_by', P, 'started_at', now() - interval '1 hour',
           'ended_at', now(), 'kind', 'game', 'opponent', 'Rivals', 'game_final_inning', 1, 'game_outs_recorded', 2);
   perform set_config('request.jwt.claims', json_build_object('sub', P, 'role','authenticated')::text, true); execute 'set local role authenticated';
   r := public.sync_session(sess, pj, '[]'::jsonb);
   execute 'reset role';
-  out := '1. game via sync_session: ' || r::text || ' -> stored (result, spray_box, runners_after, outs_on_play): ' ||
-    (select string_agg(concat_ws('/', result, coalesce(spray_box::text,'-'), coalesce(runners_after::text,'-'), coalesce(outs_on_play::text,'-')), ' ; ' order by ts, id)
+  out := '1. game via sync_session: ' || r::text || ' -> stored (result, spray_box, spray_field, runners_after, outs_on_play): ' ||
+    (select string_agg(concat_ws('/', result, coalesce(spray_box::text,'-'), coalesce(spray_field,'-'), coalesce(runners_after::text,'-'), coalesce(outs_on_play::text,'-')), ' ; ' order by ts, id)
        from (select * from public.pitches where session_id = S1) x);
 
   -- 2. a bullpen pitch with either column filled is refused
@@ -54,6 +54,13 @@ begin
     out := out || ', bases 8: ALLOWED (BAD)';
   exception when others then out := out || ', bases 8: ' || sqlerrm; end;
 
+  -- 3b. spray_field: only IF / OF, and never on a bullpen pitch
+  begin insert into public.pitches (id, session_id, type, kind, actual_row, actual_col, spray_field) values (gen_random_uuid(), S2, 'fb', 'game', 2, 2, 'XX');
+    out := out || ' | 3b. field XX: ALLOWED (BAD)';
+  exception when others then out := out || ' | 3b. field XX: ' || sqlerrm; end;
+  begin insert into public.pitches (id, session_id, type, kind, actual_row, actual_col, spray_field) values (gen_random_uuid(), S2, 'fb', 'bullpen', 2, 2, 'IF');
+    out := out || ', bullpen with IF: ALLOWED (BAD)';
+  exception when others then out := out || ', bullpen with IF: ' || sqlerrm; end;
   -- 4. policies unchanged
   out := out || ' | 4. policies: ' || (select count(*) from pg_policies where schemaname = 'public');
   raise exception 'RESULTS(rolled back):%', out;

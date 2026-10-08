@@ -98,10 +98,12 @@ export function renderSprayCharts(pitches: GamePitch[], allTypes: string[], spor
   const byBB = BB_ORDER.map(t => [t, bip.filter(p => p.bbType === t)] as const).filter(([, ps]) => ps.length)
   const byType = allTypes.map(t => [t, bip.filter(p => p.type === t)] as const).filter(([, ps]) => ps.length)
   const oldGame = bip.some(p => typeof p.sprayBox !== 'number')
+  const nIF = bip.filter(p => p.sprayField === 'IF').length, nOF = bip.filter(p => p.sprayField === 'OF').length
   return `
   <section class="section">
     <h2>Balls in play — the field</h2>
     <div class="grid-row">${figure('All balls in play', d(bip), bip.length)}</div>
+    ${nIF + nOF ? `<p class="caption"><strong>Infield ${nIF} · Outfield ${nOF}</strong>${bip.length - nIF - nOF ? ` · not marked ${bip.length - nIF - nOF}` : ''}</p>` : ''}
     ${byResult.length ? `<h3>By result</h3><div class="grid-row">${byResult.map(([o, ps]) => figure(OUTCOME_LABEL[o], d(ps), ps.length)).join('')}</div>` : ''}
     ${byBB.length ? `<h3>By how it was hit</h3><div class="grid-row">${byBB.map(([t, ps]) => figure(BB_LABEL[t], d(ps), ps.length)).join('')}</div>` : ''}
     <h3>By pitch type</h3><div class="grid-row">${byType.map(([t, ps]) => figure(t.toUpperCase(), d(ps, colorForType(t, allTypes)), ps.length)).join('')}</div>

@@ -34,6 +34,7 @@ export interface GamePitch {
   timeToPlate?: number | null   // U11 (7)
   // G5: the field box (1-25) of a ball in play, how it was hit, and the bases before / after.
   sprayBox?: number | null
+  sprayField?: 'IF' | 'OF' | null   // Joel, Oct 8: infield or outfield, when the charter chose
   bbType?: string | null
   runnersBefore?: number | null
   runnersAfter?: number | null

@@ -147,3 +147,12 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
 - Joel, Oct 8: grass restyled to match his ballpark photo — a mowed checkerboard turned 45°, light #8CBA5A / dark #60963C (picked by eye from the image he pasted; the Downloads file itself was not read), soft light falloff; foul territory the dark green. Both sports, app and reports. v174.
 - Joel, Oct 8: 1B and 3B sit just inside the foul lines, outer side on the line (moved 11 units along the inward normal: 1B (342.2,342.2), 3B (157.8,342.2)); corner check: two corners on each line (0.03), two inside. App + reports. v175.
 - Joel, Oct 8 (second ballpark photo): mower stripes parallel to each foul line meeting in a V at center field (fair #8CBA5A/#6FA548, foul #60963C/#548A35), a crosshatch plaid on the infield grass (baseball), soft light falloff; dirt shape unchanged. App + reports. v176.
+- Joel, Oct 8: IF (box 12) and OF (box 13) on the location step after a ground ball, pop fly or line drive. IF flashes
+  only the infield (dirt + the grass inside it), OF only the fair outfield grass inside the fence (drawn as shapes
+  in the field, not per box); a tap anywhere in a box holding both records the chosen side. Stored in the new
+  pitches.spray_field ('IF' / 'OF'; Joel chose to store it) — migration 20261008000000_g5_spray_field.sql applied
+  to staging (policies 34 → 34; test: sync_session saves IF / OF, 'XX' and a bullpen IF refused). With neither
+  chosen, an all-infield or all-outfield box records its side; boxes 18 / 22 / 25 record none. HR? moves to box 14
+  while IF / OF show (Joel). Back leaves IF / OF first. Reports: "Infield N · Outfield N" under the spray chart.
+  Harness: buttons per contact type, IF / OF tappable sets, box 25 saved IF in IF mode and OF in OF mode, box 20
+  ignored in IF mode, LD homer from box 14. v177; both report functions redeployed to staging.

@@ -1079,6 +1079,10 @@
      aspect-ratio:1/1 under the mobile media query below) without a
      separate calc(). pointer-events:none in both modes -- it sits on top
      of charting cells and must never swallow a tap. */
+  /* Joel, Oct 8: the real-plate look under History's heat maps -- the strike zone's width (3 of 5 columns) */
+  .persp-plate-wrap{ width:calc(60% - 4px); margin:2px auto 0; }
+  .persp-plate{ display:block; width:100%; height:auto; overflow:visible; }
+  .zone-grid.heat-grid{ margin-bottom:0 !important; }   /* no batter-pill band under a heat map */
   .home-plate-overlay{
     position:absolute; pointer-events:none;
     left:20.86%; width:58.27%;
@@ -5618,10 +5622,10 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
       }
     }
   }
-  // Joel, Oct 8: History's heat maps (not clickable, no perspective passed) draw the plate the way the report
-  // view sees it -- the pitcher's view, inside the grid like the charting screen -- not the catcher's plate below.
-  const platePerspective = chartingPerspective || (clickable ? null : REPORT_PERSPECTIVE);
-  const plate = renderHomePlate(platePerspective);
+  // Joel, Oct 8: History's heat maps (not clickable) sit just above a real home plate, seen from the mound in
+  // perspective -- the wide front edge nearest, the point away -- the strike zone's width, below the grid.
+  const platePerspective = chartingPerspective || null;
+  const plate = clickable ? renderHomePlate(platePerspective) : renderPerspectivePlate();
   // U2a: the silhouette is ALWAYS an absolutely-positioned child inside
   // .zone-grid (never a layout sibling -- that shipped once and pushed the
   // home plate out of position), only for the live/clickable grid. History
@@ -5638,7 +5642,7 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
   // unchanged, below-grid, non-translucent markup.
   return platePerspective
     ? `<div class="zone-grid">${cells}${plate}${silhouette}</div>`
-    : `<div class="zone-grid">${cells}${silhouette}</div>${plate}`;
+    : `<div class="zone-grid${clickable ? '' : ' heat-grid'}">${cells}${silhouette}</div>${plate}`;
 }
 
 /* One pentagon shape for the live grid, in both perspectives -- CSS
@@ -5648,6 +5652,17 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
    unchanged, opaque below-grid plate -- that view always shows canonical,
    unmirrored data (see mirrorCol's comment), independent of any session's
    own perspective, so its plate stays independent of perspective too. */
+// A drawn home plate in perspective from the mound (Joel's ballpark photo, turned around): wide front edge at
+// the bottom, the sides running back to the point; white top, a darker rubber edge, a little dirt around it.
+function renderPerspectivePlate(){
+  return `<div class="persp-plate-wrap" aria-hidden="true"><svg class="persp-plate" viewBox="0 0 200 64" preserveAspectRatio="xMidYMid meet">
+    <defs><linearGradient id="pplTop" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E4E6E2"/></linearGradient>
+      <radialGradient id="pplDirt" cx="0.5" cy="0.55" r="0.55"><stop offset="0" stop-color="#C9A97C" stop-opacity="0.85"/><stop offset="1" stop-color="#C9A97C" stop-opacity="0"/></radialGradient></defs>
+    <ellipse cx="100" cy="32" rx="128" ry="34" fill="url(#pplDirt)"/>
+    <polygon points="2,46 198,46 196,51 4,51" fill="#9A9C98"/>
+    <polygon points="2,46 198,46 184,27 100,10 16,27" fill="url(#pplTop)" stroke="#B9BBB6" stroke-width="0.8"/>
+  </svg></div>`;
+}
 function renderHomePlate(chartingPerspective){
   if(!chartingPerspective){
     return `<div class="home-plate-wrap"><svg class="home-plate" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Home plate">

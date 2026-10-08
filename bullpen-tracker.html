@@ -7720,6 +7720,9 @@ const G5_FAIR_GROUND = { 4: '', 10: '', 18: '', 19: '', 20: '', 21: '', 22: '', 
 // area above the fence (the top row above the arc), where a tap records the home run.
 const G5_HR_BOX = 13;
 const G5_HR_CONTACT = { fly: 1, line: 1 };
+// Joel, Oct 8: a fly ball flashes only the outfield and a bunt only the infield, at once (no IF / OF to choose).
+// A ground ball, pop fly or line drive flashes nothing until IF or OF is chosen.
+const G5_AUTO_ZONE = { fly: 'OF', bunt: 'IF' };
 // Joel, Oct 8: on a ground ball, pop fly or line drive the location step offers IF (box 12) and OF (box 13).
 // IF flashes only the infield (the dirt and the grass inside it); OF only the fair outfield grass inside the
 // fence. A tap anywhere in a box that holds both records the side that was chosen (pitches.spray_field). HR?
@@ -7810,12 +7813,13 @@ window.g5How = async function(t){
   const g = state.activeSession.g5;
   if(!g || g.step !== 'how') return;
   g.bbType = t; g.step = 'where';
+  g.zone = G5_AUTO_ZONE[t] || null;
   return g5Save();
 };
 window.g5Where = async function(box){
   const s = state.activeSession, g = s.g5;
-  if(!g || g.step !== 'where') return;
-  if(g.zone ? !(g.zone === 'IF' ? G5_IF_BOXES : G5_OF_BOXES)[box] : G5_FAIR_GROUND[box] === undefined) return;
+  if(!g || g.step !== 'where' || !g.zone) return;   // every contact type picks its side first (fly / bunt: on their own)
+  if(!(g.zone === 'IF' ? G5_IF_BOXES : G5_OF_BOXES)[box]) return;
   g.box = box;
   // IF / OF: what was chosen; with neither chosen, a box that is all infield or all outfield says which on its own
   g.field = g.zone || (G5_IF_BOXES[box] && !G5_OF_BOXES[box] ? 'IF' : G5_OF_BOXES[box] && !G5_IF_BOXES[box] ? 'OF' : null);
@@ -7895,8 +7899,8 @@ window.g5Back = async function(){
     case 'foulout': g.step = 'foul'; break;
     case 'how': g.entry = null; g.step = 'hoe'; break;
     case 'where':
-      if(g.zone){ g.zone = null; break; }   // first back out of IF / OF to the whole field
-      g.bbType = null; g.step = 'how'; break;
+      if(g.zone && !G5_AUTO_ZONE[g.bbType]){ g.zone = null; break; }   // first back out of the IF / OF that was tapped
+      g.zone = null; g.bbType = null; g.step = 'how'; break;
     case 'hr': g.step = 'where'; break;
     case 'bases':
       if(g.walk){ g.walk = false; g.bases = null; g.step = 'what'; }
@@ -8011,6 +8015,7 @@ function g5CellInner(step, box){
     const clip = G5_OVER_FENCE[box];
     return btn(`<span class="g5-shade" style="clip-path:${clip};-webkit-clip-path:${clip};"></span>`, `g5HR(${box})`, 'g5-foulpick');
   }
+  if(step === 'where' && !g.zone) return null;   // ground ball / pop / line drive: nothing flashes until IF or OF
   if(step === 'where' && G5_FAIR_GROUND[box] !== undefined){
     const clip = G5_FAIR_GROUND[box];
     return btn(`<span class="g5-shade"${clip ? ` style="clip-path:${clip};-webkit-clip-path:${clip};"` : ''}></span>`, `g5Where(${box})`, 'g5-foulpick');

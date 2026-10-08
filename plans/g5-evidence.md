@@ -156,3 +156,9 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
   while IF / OF show (Joel). Back leaves IF / OF first. Reports: "Infield N · Outfield N" under the spray chart.
   Harness: buttons per contact type, IF / OF tappable sets, box 25 saved IF in IF mode and OF in OF mode, box 20
   ignored in IF mode, LD homer from box 14. v177; both report functions redeployed to staging.
+- Joel, Oct 8: Fly Ball flashes only the outfield and Bunt only the infield, at once (no IF / OF buttons; Back goes
+  straight to the contact question); Ground Ball, Pop Fly and Line Drive flash nothing until IF or OF is tapped
+  (taps before that are ignored). Harness: fly → outfield shade + HR? 13; bunt → infield shade; GB / Pop / LD →
+  only IF 12, OF 13 (+ HR? 14 on an LD hit); bunt to 24 saved IF; flow 14/14 (old cases now pick IF / OF).
+  Size check (Joel asked): chart and field are identical in both sports — phone 340px grid / 64px cells, iPad
+  landscape 550px / 106px; the softball field only looks bigger (no Set/Windup row above it, all-dirt infield). v178.

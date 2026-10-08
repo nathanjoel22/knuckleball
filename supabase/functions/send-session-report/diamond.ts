@@ -66,7 +66,7 @@ export function drawDiamond(opts: { counts: Record<number, number>; sport: 'base
 <polygon points="250,428 314,364 250,300 186,364" fill="${soft ? c.dirt : c.infield}"/>
 ${soft ? '<circle cx="250" cy="350" r="16" fill="none" stroke="#FFFFFF" stroke-width="2.5"/>' : `<circle cx="250" cy="350" r="14" fill="${c.mound}"/>`}
 <path d="M250,450 L0,200 M250,450 L500,200" stroke="#FFFFFF" stroke-width="4"/>
-<g fill="#FFFFFF" stroke="${c.line}" stroke-width="1.5">${base(350, 350)}${base(250, 282)}${base(150, 350)}</g>
+<g fill="#FFFFFF" stroke="${c.line}" stroke-width="1.5">${base(342.2, 342.2)}${base(250, 282)}${base(157.8, 342.2)}</g>
 <polygon points="237,438 263,438 263,451 250,464 237,451" fill="#FFFFFF" stroke="${c.line}" stroke-width="1.5"/>`
   return `<svg class="kb-diamond" width="${size}" height="${size}" viewBox="0 0 500 500" role="img" aria-label="Field boxes">${field}${cells}</svg>`
 }

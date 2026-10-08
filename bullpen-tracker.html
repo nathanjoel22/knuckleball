@@ -7932,6 +7932,7 @@ window.g5NextPitch = async function(){
 // box 4's top-left corner, peaking mid box 7, to box 10's top-right corner; 1B mid 23, 2B mid 25, 3B mid 17;
 // the dirt from box 17's top-left corner, peaking mid 25, to box 23's top-right corner; the mound mid 24.
 // 2B sits at the bottom of box 25, clear of the outfield grass (Joel, Oct 7).
+// 1B and 3B sit just inside the foul lines, their outer side on the line (Joel, Oct 8).
 // Same drawing in send-session-report/diamond.ts -- change both or neither.
 function g5FieldSvg(){
   const soft = currentSport() === 'softball';
@@ -7954,7 +7955,7 @@ function g5FieldSvg(){
 <polygon points="250,428 314,364 250,300 186,364" style="fill:${soft ? 'var(--gg-dirt)' : 'var(--gg-infield)'}"/>
 ${soft ? '<circle cx="250" cy="350" r="16" fill="none" stroke="#fff" stroke-width="2.5"/>' : '<circle cx="250" cy="350" r="14" style="fill:var(--gg-mound)"/>'}
 <path d="M250,450 L0,200 M250,450 L500,200" stroke="#fff" stroke-width="4"/>
-${base(350, 350, 1)}${base(250, 282, 2)}${base(150, 350, 4)}
+${base(342.2, 342.2, 1)}${base(250, 282, 2)}${base(157.8, 342.2, 4)}
 <polygon points="237,438 263,438 263,451 250,464 237,451" fill="#fff" style="stroke:var(--gg-line)" stroke-width="1.5"/>
 </svg>`;
 }

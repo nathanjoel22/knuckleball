@@ -171,3 +171,11 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
   has played (~0.7s) the field is drawn again flat, with no 3D transform left (the flip back already did this).
   Also: + Out / + Strike / + Ball / ‹ Back stay on one line. Harness: the flip draw schedules the redraw; the
   redraw has no flip classes and keeps every button. To confirm on Joel's iPad. v182.
+- Joel's clearer iPad photo (Oct 8): the field's grid came out taller and wider than the drawing (bottom row past
+  the field, buttons past its edges) — the field was a layer laid over the chart's box, which iPad Safari didn't
+  size square. Fix: at rest the field is built exactly like the chart (its 25 boxes straight in the .zone-grid,
+  the drawing behind); the two-face card exists only during the flip. The flip itself is now flat (the outgoing
+  face narrows, the incoming widens; no perspective or backface — rules out Safari's 3D quirks). Button edges are
+  drawn inside the box (inset outline, no border). Measured (Chrome): chart = field, square, boxes 0px past the
+  edge, both sports — phone 340 (390 and 375), iPad portrait 320, iPad landscape 550, laptop 560; WebKit (Quick
+  Look) render of the iPad field also contained. Flow 14/14. v183. To confirm on Joel's iPad.

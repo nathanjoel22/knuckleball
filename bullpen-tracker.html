@@ -1470,25 +1470,25 @@
      The field is the back of the pitch chart: the same square (.zone-grid sizing in every layout), the same
      25 boxes, drawn upright (g5FieldSvg). After a location tap the chart flips over to it like a card. */
   .g5-card{ position:relative; background:transparent !important; overflow:visible; }
-  .g5-face{ position:absolute; inset:0; border-radius:6px; backface-visibility:hidden; -webkit-backface-visibility:hidden; }
+  .g5-face{ position:absolute; inset:0; border-radius:6px; }
   .g5-back{ display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); grid-template-rows:repeat(5, minmax(0, 1fr));
     gap:3px; padding:3px; background:rgba(255,255,255,0.35); }
+  .g5-card.g5-flat{ background:rgba(255,255,255,0.35) !important; }
   .g5-front > .zone-grid{ position:absolute !important; inset:0; width:100% !important; height:100% !important; max-width:none !important; margin:0 !important; }
-  .g5-flip-in, .g5-flip-out{ transform-style:preserve-3d; -webkit-transform-style:preserve-3d; }
-  .g5-flip-in{ transform:perspective(1100px) rotateY(180deg); }   /* the resting state, so Reduce Motion lands on the field */
-  .g5-flip-in{ animation:g5flipin 650ms cubic-bezier(.45,.05,.35,1) forwards; }
-  .g5-flip-out{ animation:g5flipout 650ms cubic-bezier(.45,.05,.35,1) forwards; }
-  .g5-flip-in .g5-back, .g5-flip-out .g5-back{ transform:rotateY(180deg); }
-  @keyframes g5flipin{ from{ transform:perspective(1100px) rotateY(0deg); } to{ transform:perspective(1100px) rotateY(180deg); } }
-  @keyframes g5flipout{ from{ transform:perspective(1100px) rotateY(180deg); } to{ transform:perspective(1100px) rotateY(0deg); } }
+  /* Joel's iPad (Oct 8): Safari drew the field's buttons too big under a 3D flip, so the flip is flat -- the face
+     going away narrows to a sliver, then the face coming in widens from it (~650 ms). No perspective, no backface. */
+  .g5-flip-in .g5-front, .g5-flip-out .g5-back{ animation:g5halfaway 325ms ease-in forwards; }
+  .g5-flip-in .g5-back, .g5-flip-out .g5-front{ transform:scaleX(0); animation:g5halfin 325ms ease-out 325ms forwards; }
+  @keyframes g5halfaway{ from{ transform:scaleX(1); } to{ transform:scaleX(0); } }
+  @keyframes g5halfin{ from{ transform:scaleX(0); } to{ transform:scaleX(1); } }
   .g5-field{ position:absolute; left:1.5px; top:1.5px; width:calc(100% - 3px); height:calc(100% - 3px); z-index:0; pointer-events:none; border-radius:6px; }
   .g5-base{ fill:#fff; stroke:var(--gg-line); stroke-width:1.5; }
   .g5-base.on{ fill:#F4C430; }
   .g5-cell{ position:relative; z-index:1; display:flex; align-items:center; justify-content:center; min-width:0; min-height:0;
     border:1px solid rgba(255,255,255,0.55); border-radius:4px; background:transparent; padding:0; font:inherit; color:var(--gg-ink); }
-  button.g5-cell{ cursor:pointer; -webkit-tap-highlight-color:transparent; -webkit-appearance:none; appearance:none; box-sizing:border-box; margin:0; overflow:hidden; }
+  button.g5-cell{ cursor:pointer; -webkit-tap-highlight-color:transparent; -webkit-appearance:none; appearance:none; box-sizing:border-box; margin:0; overflow:hidden; width:100%; height:100%; }
   .g5-in{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; pointer-events:none; }
-  .g5-choice{ background:#fff !important; border:2px solid var(--gg-gold) !important; animation:g5flash 1.1s ease-in-out infinite; }
+  .g5-choice{ background:#fff !important; border:0 !important; box-shadow:inset 0 0 0 2px var(--gg-gold); animation:g5flash 1.1s ease-in-out infinite; }
   .g5-choice .gg-ic{ width:30px; height:22px; color:var(--gg-ink); }
   .g5-choice .gg-cap{ font-size:8px; color:var(--gg-ink); }
   .g5-pick{ background:rgba(16,40,28,0.42) !important; border-color:rgba(201,162,39,0.85) !important; animation:g5tint 1.1s ease-in-out infinite; }
@@ -1540,7 +1540,9 @@
   @keyframes g5flash{ 50%{ box-shadow:inset 0 0 0 3px rgba(201,162,39,0.55); } }
   @keyframes g5tint{ 50%{ background:rgba(16,40,28,0.24); } }
   @media (prefers-reduced-motion: reduce){
-    .g5-flip-in, .g5-flip-out, .g5-choice, .g5-pick, .g5-shade, .g5-zone-shade{ animation:none !important; }
+    .g5-flip-in .g5-front, .g5-flip-out .g5-back{ display:none; }
+    .g5-flip-in .g5-back, .g5-flip-out .g5-front{ transform:none !important; }
+    .g5-flip-in .g5-front, .g5-flip-in .g5-back, .g5-flip-out .g5-front, .g5-flip-out .g5-back, .g5-choice, .g5-pick, .g5-shade, .g5-zone-shade{ animation:none !important; }
   }
   .g5-below{ margin-top:10px; display:flex; flex-direction:column; gap:8px; }
   .g5-q{ font-weight:700; font-size:14px; }
@@ -8056,6 +8058,9 @@ function g5Caption(step){
 }
 // The field: the back of the chart. Same square, same 25 boxes.
 function g5FieldFace(){
+  return `<div class="g5-face g5-back gg-field" data-step="${state.activeSession.g5.step}">${g5FieldInner()}</div>`;
+}
+function g5FieldInner(){
   const s = state.activeSession, g = s.g5, step = g.step;
   let cells = '';
   for(let r = 0; r < 5; r++){
@@ -8068,7 +8073,7 @@ function g5FieldFace(){
         : `<div class="g5-cell${b ? ' ' + b.cls : ''}" style="${pos}" data-box="${box}">${b ? `<span class="g5-in">${b.inner}</span>` : ''}</div>`;
     }
   }
-  return `<div class="g5-face g5-back gg-field" data-step="${step}">${g5FieldSvg()}${cells}</div>`;
+  return `${g5FieldSvg()}${cells}`;
 }
 // + Add out and ‹ Back (and Next on the bases question, radar on) sit under the field.
 function g5FieldActions(){
@@ -8086,8 +8091,11 @@ function g5FieldActions(){
 // The card flip (Joel, Oct 7): the chart turns over to the field and back, like a card. The flipping
 // draw holds both faces; the draws after it hold only the face that's up.
 function g5Card(face, flip, chartHtml){
-  const front = flip ? `<div class="g5-face g5-front">${chartHtml}</div>` : '';
-  return `<div class="zone-grid g5-card${flip ? ' g5-flip-' + flip : ''}">${front}${face}</div>`;
+  // At rest the field is built exactly like the chart -- its 25 boxes straight in the .zone-grid, the drawing
+  // behind them -- so it is the chart's own square on every screen (Joel's iPad, Oct 8: a layer laid over the
+  // box came out taller than wide there). The two-face card is only for the flip itself.
+  if(!flip) return `<div class="zone-grid g5-card g5-flat gg-field" data-step="${state.activeSession.g5.step}">${g5FieldInner()}</div>`;
+  return `<div class="zone-grid g5-card g5-flip-${flip}"><div class="g5-face g5-front">${chartHtml}</div>${face}</div>`;
 }
 // Joel, Oct 6: after the flip back, velocity sits IN the chart -- the bar on its second-to-last
 // row, Reset + Next pitch on the last row -- so nothing is added below the chart.

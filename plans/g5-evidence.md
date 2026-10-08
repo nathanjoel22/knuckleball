@@ -179,3 +179,19 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
   drawn inside the box (inset outline, no border). Measured (Chrome): chart = field, square, boxes 0px past the
   edge, both sports — phone 340 (390 and 375), iPad portrait 320, iPad landscape 550, laptop 560; WebKit (Quick
   Look) render of the iPad field also contained. Flow 14/14. v183. To confirm on Joel's iPad.
+
+## Joel's staging games (Oct 8) and the report vs SQL
+
+Joel charted four games on staging (phone, iPad, laptop): three for Malachi Pugh (Staging Knights, baseball), one
+for Clementine Pugh (Staging Softball Team); all saved and sealed. Joel: "everything checks out great".
+Report check — game b035593a (Malachi, 14 pitches, report sent), stored rows vs the report:
+- Stored: K (2-strike swing), walk (runners_after 1), LD single box 22 OF (runners_after 3), GB double play box 25
+  IF with + Out for the third out (outs_on_play 2, no runners answer — inning over), foul out box 15, bunt error
+  box 24 IF, LD homer box 7 (hit_type HR, runners_after 0), pop out box 18 IF; auto_strike + auto_ball events.
+  compute_game_summary: 14 pitches, 9 strikes, 1 K, 1 BB, 2 H (1 XBH), 1 E, 5 outs, 8 batters.
+- Report: pitches that mattered K 1, first-pitch strikes 5 of 7, hits 2, outs in play 3, walks 1, errors 1 — all
+  match SQL. Spray 6 balls in play, "Infield 3 · Outfield 1 · not marked 2" (foul out, homer). Pitch type ×
+  result 5 / 1 / 1 / 1 / 2 / 3 / 1 = 14. Base states: empty 11 pitches 55% (6/11) 3 BIP 2 outs 1 K 1 BB; 1st 2
+  pitches 2 hits; 1st+2nd 1 pitch 1 out. Pitching line 1.2 IP, 8 BF, 0/0/0/1. At-bat log "HR · LD · box 7";
+  Auto strike / Auto ball under Other events. Bullpen to game: pen columns "—" is correct — his 7 pen pitches
+  (stored columns 0–1) never share a spot with his 14 game pitches (columns 3–4).

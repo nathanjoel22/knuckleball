@@ -7938,11 +7938,11 @@ function g5FieldSvg(){
   const g = state.activeSession && state.activeSession.g5;
   const occ = (g && g.step === 'bases') ? (g.bases || 0) : runnersBitmask(state.activeSession ? state.activeSession.runners : {});
   const base = (x, y, bit) => `<rect x="${x - 11}" y="${y - 11}" width="22" height="22" rx="2" transform="rotate(45 ${x} ${y})" class="g5-base${occ & bit ? ' on' : ''}"/>`;
-  // Joel, Oct 8 (baseball): foul territory #228B22; the fair outfield grass a criss-cross mowing pattern of #228B22
-  // and #3F704D; over the fence keeps its color. Softball keeps its own theme.
-  const foul = soft ? 'var(--gg-fence)' : '#228B22';
-  const grass = soft ? 'var(--gg-grass)' : 'url(#g5mow)';
-  const mow = soft ? '' : `<defs><pattern id="g5mow" width="50" height="50" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="50" height="50" fill="#228B22"/><rect width="25" height="25" fill="#3F704D"/><rect x="25" y="25" width="25" height="25" fill="#3F704D"/></pattern></defs>`;
+  // Joel, Oct 8 (both sports): foul territory #228B22; the fair outfield grass a criss-cross mowing pattern of
+  // #228B22 and #3F704D; over the fence keeps its color. Softball's infield stays all dirt (no grass).
+  const foul = '#228B22';
+  const grass = 'url(#g5mow)';
+  const mow = `<defs><pattern id="g5mow" width="50" height="50" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="50" height="50" fill="#228B22"/><rect width="25" height="25" fill="#3F704D"/><rect x="25" y="25" width="25" height="25" fill="#3F704D"/></pattern></defs>`;
   return `<svg class="g5-field" viewBox="0 0 500 500" aria-hidden="true">${mow}
 <rect width="500" height="500" style="fill:${foul}"/>
 <path d="M0,0 L500,0 L500,100 A650,650 0 0 0 0,100 Z" style="fill:var(--gg-fence)"/>

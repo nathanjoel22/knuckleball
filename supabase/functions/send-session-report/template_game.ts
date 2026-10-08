@@ -19,6 +19,7 @@ import {
 import { computeVelocityDepth } from './compute.ts'
 import { type GameEvent } from './compute_game.ts'
 import { renderSprayCharts, renderWhatLedToIt, renderBaseStates, DIAMOND_CSS } from './diamond.ts'
+import { renderPitchesThatMattered, renderBullpenToGame, CONNECT_CSS, type PenPitch } from './connect.ts'
 
 // The one definition this report does NOT compute itself -- it's the exact
 // object public.compute_game_summary(session_id) returns, fetched by
@@ -52,6 +53,7 @@ export interface GameReportPayload {
   gridSize?: number
   pitches: GamePitch[]
   recentPens?: RecentPenTypeRow[]
+  recentPenPitches?: PenPitch[]   // Joel, Oct 7: the last 5 bullpens' pitches (same team), for "Bullpen to game"
   gameTrend: GameHistoryEntry[]
   summary: GameSummary
   events?: GameEvent[]   // G3: no-pitch events, read server-side under the caller's RLS
@@ -514,7 +516,7 @@ export function buildGameReportHtml(p: GameReportPayload): string {
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
-<style>${PEN_CSS}${GAME_CSS}${DIAMOND_CSS}</style>
+<style>${PEN_CSS}${GAME_CSS}${DIAMOND_CSS}${CONNECT_CSS}</style>
 </head>
 <body>
 <div class="page">
@@ -523,6 +525,7 @@ ${renderSummary(p)}
 ${renderPitchingLine(p)}
 ${renderLocationCharts(p)}
 ${renderTypeGrids(p)}
+${renderPitchesThatMattered(p.pitches, allTypesOf(p), p.gridSize ?? 5)}
 ${renderSprayCharts(p.pitches, allTypesOf(p), asSport(p.sport))}
 ${renderWhatLedToIt(p.pitches, allTypesOf(p), p.gridSize ?? 5)}
 ${renderBaseStates(p.pitches, allTypesOf(p))}
@@ -532,6 +535,7 @@ ${renderByCount(p)}
 ${renderPerSide(p)}
 ${renderVelocity(p)}
 ${renderRecentPens(p)}
+${renderBullpenToGame(p.pitches, p.recentPenPitches, allTypesOf(p), p.gridSize ?? 5)}
 ${renderGameTrends(p)}
 ${renderOtherEvents(p)}${renderAtBatLog(p)}
 ${renderFooter(p)}

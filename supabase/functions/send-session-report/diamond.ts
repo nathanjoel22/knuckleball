@@ -1,7 +1,7 @@
 // ============================================================================
 // G5 (Joel, Oct 6 2026): the game report's field sections -- spray charts on
 // the 25-box diamond, what led to each ball in play, the pitch type x result
-// matrix, the deciding pitch of every plate appearance, and base states.
+// matrix and base states (the deciding pitches moved to connect.ts, "The pitches that mattered").
 // Spec: plans/g5-live-game-diamond.md, "The field" and "Reports" 1-3.
 //
 // The field geometry is the tracker's g5FieldSvg() (bullpen-tracker.html),
@@ -137,15 +137,6 @@ export function renderWhatLedToIt(pitches: GamePitch[], allTypes: string[], grid
     const tp = pitches.filter(p => p.type === t)
     return `<tr><td><strong>${escapeHtml(t.toUpperCase())}</strong></td><td>${tp.length}</td>${MATRIX_COLS.map(([, f]) => `<td>${tp.filter(f).length}</td>`).join('')}</tr>`
   }).join('')
-  const deciding: [string, GamePitch[]][] = [
-    ['Strikeouts', pitches.filter(isKDecider)],
-    ['Walks', pitches.filter(isBBDecider)],
-    ['Hits', pitches.filter(p => p.result === 'in_play' && p.inPlayOutcome === 'hit')],
-    ['Outs in play', pitches.filter(p => p.result === 'in_play' && p.inPlayOutcome === 'out')],
-    ['Errors', pitches.filter(p => p.result === 'in_play' && p.inPlayOutcome === 'error')]
-  ]
-  const decidingFigs = deciding.filter(([, ps]) => ps.length).map(([label, ps]) =>
-    `<figure class="kb-fig"><figcaption>${escapeHtml(label)} <span class="kb-n">(${ps.length})</span></figcaption>${smallGrid(ps, allTypes, gridSize)}<div class="kb-mix">${mixText(ps)}</div></figure>`).join('')
   const tableHead = '<thead><tr><th></th><th>Balls in play</th><th>Pitch types</th><th>Pitch locations</th></tr></thead>'
   return `
   <section class="section">
@@ -157,8 +148,7 @@ export function renderWhatLedToIt(pitches: GamePitch[], allTypes: string[], grid
       <thead><tr><th>Type</th><th>Pitches</th>${MATRIX_COLS.map(([h]) => `<th>${h}</th>`).join('')}</tr></thead>
       <tbody>${matrix}</tbody>
     </table></div>
-    ${decidingFigs ? `<h3>The deciding pitch</h3><div class="grid-row">${decidingFigs}</div>
-    <p class="caption">The last pitch of each strikeout, walk and ball in play: its type and where it was thrown. Location grids mix both batter sides.</p>` : ''}
+
   </section>`
 }
 

@@ -94,6 +94,7 @@ interface ReportRequestBody extends Omit<ReportPayload, 'pitches' | 'history'> {
   // never the client (drafting decision 1).
   opponent?: string | null
   recentPens?: GameReportPayload['recentPens']
+  recentPenPitches?: GameReportPayload['recentPenPitches']
   gameTrend?: GameReportPayload['gameTrend']
 }
 
@@ -380,6 +381,7 @@ Deno.serve(async (req) => {
         gridSize: body.gridSize,
         pitches: body.pitches as unknown as GamePitch[],
         recentPens: body.recentPens,
+        recentPenPitches: Array.isArray(body.recentPenPitches) ? body.recentPenPitches : undefined,
         gameTrend: Array.isArray(body.gameTrend) ? body.gameTrend : [],
         summary: summary as unknown as GameSummary,
         events: (evRows ?? []).map((e: Record<string, unknown>) => ({

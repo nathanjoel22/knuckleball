@@ -123,3 +123,15 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
   New inning. The field side drops the chart's batter-pill band; the question rides between Add out and Back in a
   short form (no separate caption line). Measured at 390 and 375: grid→buttons 5px, buttons→Undo 5px. No :has()
   (older iOS) — plain classes. v169.
+
+## Report additions (Joel, Oct 7)
+
+- "The pitches that mattered": strike three, first-pitch strikes (0-0 pitches with a strike result), hits, outs in
+  play, walks and errors — each with its pitch-type mix and a location grid (replaces "The deciding pitch").
+- "Bullpen to game": per pitch type, bullpen vs game location grids; "Same pitch, same spot" — every pitch type ×
+  location thrown in the game next to the same pitch at the same spot in the last 5 bullpens before the game (same
+  team): pen thrown, pen strike % (location), pen command %; game thrown, strikes, whiffs, hits, outs in play.
+  The app sends recentPenPitches (type, location, target, accuracy-zone flag); from_rows builds the same — app ↔
+  from_rows payload parity re-checked (identical, incl. recentPenPitches). Hand-checked on a fixture: FB
+  middle-center pen 4 / 100% / 75% vs game 4 / 3 strikes / 2 outs; first-pitch strikes 4 of 5. v170;
+  send-session-report + rerender-reports redeployed to staging.

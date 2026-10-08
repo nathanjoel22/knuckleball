@@ -98,6 +98,17 @@ function recentPensForGame(teamSessions: AppSession[], gameDateMs: number): Rece
   })
 }
 
+function recentPenPitchesForGame(teamSessions: AppSession[], gameDateMs: number) {
+  const pens = teamSessions.filter(s => !s.deletedAt && s.kind === 'bullpen' && s.date < gameDateMs)
+    .slice().sort((a, b) => b.date - a.date).slice(0, 5)
+  const out = pens.flatMap(s => s.pitches.map(p => ({
+    type: p.type, actualRow: p.actualRow, actualCol: p.actualCol,
+    targetRow: p.targetRow === undefined ? null : p.targetRow, targetCol: p.targetCol === undefined ? null : p.targetCol,
+    inAccuracyZone: (p.inAccuracyZone === true || p.inAccuracyZone === false) ? p.inAccuracyZone : null
+  })))
+  return out.length ? out : undefined
+}
+
 export interface RenderedReport { html: string; kind: string; sport: string; payload: ReportPayload | GameReportPayload }
 
 // Everything read with `db` (the rerender job passes the admin client; it is operator-gated).
@@ -179,6 +190,7 @@ export async function renderReportFromRows(db: SupabaseClient, sessionId: string
     opponent: (s.opponent ?? null) as string | null,
     pitches: pitches as unknown as GamePitch[],
     recentPens: recentPensForGame(teamSessions, date),
+    recentPenPitches: recentPenPitchesForGame(teamSessions, date),
     gameTrend,
     summary: summary as unknown as GameSummary,
     events: (evRows ?? []).map((e: Row) => ({

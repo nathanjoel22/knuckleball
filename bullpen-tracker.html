@@ -10144,6 +10144,21 @@ function buildRecentPensForGame(gameDateMs, tid){
 // at all), so those two are computed directly from each session's own
 // already-loaded raw pitches, same isDefaultVeloReading-filtered average
 // every other velocity display in this app uses.
+// Joel, Oct 7: "Bullpen to game" -- the pitches of this pitcher's last 5 bullpens before the game, same team
+// (the same pens buildRecentPensForGame pools), with where each landed and whether it hit its target.
+function buildRecentPenPitchesForGame(gameDateMs, tid){
+  const pens = state.sessions
+    .filter(s => !s.deletedAt && (s.kind || 'bullpen') === 'bullpen' && s.date < gameDateMs && sameReportTeam(s, tid))
+    .slice().sort((a, b) => b.date - a.date)
+    .slice(0, 5);
+  const out = [];
+  pens.forEach(s => s.pitches.forEach(p => out.push({
+    type: p.type, actualRow: p.actualRow, actualCol: p.actualCol,
+    targetRow: (p.targetRow === undefined) ? null : p.targetRow, targetCol: (p.targetCol === undefined) ? null : p.targetCol,
+    inAccuracyZone: (p.inAccuracyZone === true || p.inAccuracyZone === false) ? p.inAccuracyZone : null
+  })));
+  return out.length ? out : undefined;
+}
 async function buildGameTrendEntries(gameSessions){
   const entries = [];
   for(const s of gameSessions){
@@ -10196,6 +10211,7 @@ async function buildGameReportPayload(session, p){
     pitchTypes: p.pitchTypes,
     pitches: pitchesForReport,
     recentPens: buildRecentPensForGame(session.date, tid),
+    recentPenPitches: buildRecentPenPitchesForGame(session.date, tid),
     gameTrend
   };
 }

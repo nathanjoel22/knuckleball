@@ -142,3 +142,4 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
   chart flips back. Harness: 1-0 +S → 1-1; 3-1 runner on 1st +B → walk, runners 1st+2nd; 0-2 +S → K; mid-play +B
   → 1-0 and the play saves with balls_before 1; field 0-2 +S → K and flip back; Undo restores 0-2. Phone: the
   field row is + Out · + Strike · + Ball · (Next) · ‹ Back; the chart gets its own + Strike · + Ball row. v171.
+- Joel, Oct 8 (baseball): foul territory #228B22; fair outfield grass a criss-cross mowing pattern of #228B22 and #3F704D; over the fence and the infield unchanged; same in the reports' field. Softball unchanged (to confirm). Flagged: the dark selection tint is hard to see on the darker green. v172.

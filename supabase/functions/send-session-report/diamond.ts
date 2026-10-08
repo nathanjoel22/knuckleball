@@ -54,8 +54,11 @@ export function drawDiamond(opts: { counts: Record<number, number>; sport: 'base
     }
   }
   const base = (x: number, y: number) => `<rect x="${x - 11}" y="${y - 11}" width="22" height="22" rx="2" transform="rotate(45 ${x} ${y})"/>`
-  const field = `<rect width="500" height="500" fill="${c.fence}"/>
-<path d="M250,450 L0,200 L0,100 A650,650 0 0 1 500,100 L500,200 Z" fill="${c.grass}"/>
+  // Joel, Oct 8 (baseball): foul territory #228B22, fair outfield a criss-cross of #228B22 and #3F704D (the app's g5FieldSvg)
+  const mow = soft ? '' : `<defs><pattern id="kbmow" width="50" height="50" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="50" height="50" fill="#228B22"/><rect width="25" height="25" fill="#3F704D"/><rect x="25" y="25" width="25" height="25" fill="#3F704D"/></pattern></defs>`
+  const field = `${mow}<rect width="500" height="500" fill="${soft ? c.fence : '#228B22'}"/>
+<path d="M0,0 L500,0 L500,100 A650,650 0 0 0 0,100 Z" fill="${c.fence}"/>
+<path d="M250,450 L0,200 L0,100 A650,650 0 0 1 500,100 L500,200 Z" fill="${soft ? c.grass : 'url(#kbmow)'}"/>
 <path d="M0,100 A650,650 0 0 1 500,100" fill="none" stroke="${c.line}" stroke-width="6" opacity="0.75"/>
 <path d="M250,450 L100,300 A250,250 0 0 1 400,300 Z" fill="${c.dirt}"/>
 <polygon points="250,428 314,364 250,300 186,364" fill="${soft ? c.dirt : c.infield}"/>

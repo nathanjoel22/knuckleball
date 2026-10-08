@@ -115,3 +115,4 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
   boxes 5–9 only; HR stored as above, runners_after 0, delivery back to Windup, next screen velocity; Back returns
   to the location step with nothing saved. v165; send-session-report redeployed to staging.
 - Joel confirmed (Oct 7): HR? on a fly ball OR a line drive (hits only); no runners question after a home run. Harness: HR? shown on H+LD, still not on an out. v166.
+- Joel, Oct 7: What happened? → Foul 4, Looking 2, Swing 1, Ball 8, In Play 10. v167.

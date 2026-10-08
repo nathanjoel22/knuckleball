@@ -6783,6 +6783,27 @@ function gameEventText(ev){
 // strike_swinging -- it's the only foul that can BE strike three (a plain
 // 'foul' below never can, see applyGameResultProgression's foul case).
 const GAME_STRIKE_RESULTS = new Set(['strike_looking', 'strike_swinging', 'foul', 'foul_tip', 'in_play', 'sac_bunt', 'sac_fly', 'dropped_third']);
+// Joel, Oct 8: an expanded Live Game in History shows the same heat map a bullpen does, and this table --
+// per pitch type: count, velocity, and strikes by RESULT (called, swinging, foul, in play), like the game's
+// own strike %; no accuracy columns (game pitches have no target).
+function gameHistoryTypeTable(p, pitches){
+  const by = {};
+  pitches.forEach(pt => {
+    const t = by[pt.type] || (by[pt.type] = { count: 0, strikes: 0, velos: [] });
+    t.count++;
+    if(GAME_STRIKE_RESULTS.has(pt.result)) t.strikes++;
+    if(pt.velo !== null && pt.velo !== undefined && !isDefaultVeloReading(pt)) t.velos.push(pt.velo);
+  });
+  const rows = Object.entries(by).map(([type, t]) => {
+    const has = t.velos.length > 0;
+    const avg = has ? Math.round(t.velos.reduce((a, b) => a + b, 0) / t.velos.length) : null;
+    return `<tr><td><span class="plr-dot" style="background:${colorForType(p, type)}"></span>${escHtml(pitchLabel(type))}</td><td class="mono">${t.count}</td><td class="mono">${has ? avg + ' mph' : '—'}</td><td class="mono">${has ? Math.min(...t.velos) + '–' + Math.max(...t.velos) : '—'}</td><td class="mono">${Math.round(100 * t.strikes / t.count)}%</td></tr>`;
+  }).join('');
+  return rows ? `<table class="breakdown-table">
+    <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>` : '';
+}
 function gameStats(pitches){
   let k = 0, bb = 0, h = 0, strikeCount = 0, maxInning = 1;
   pitches.forEach(pt => {
@@ -9013,7 +9034,9 @@ function renderHistoryView(){
           </div>
           ${expanded ? `
           <div class="session-card-body">
+            <div class="zone-wrap">${renderZoneGrid(s.pitches, false)}<div class="zone-caption">Location heat map · ${REPORT_VIEW_NAME}${sportCfg().zoneNote ? ' · ' + sportCfg().zoneNote : ''}</div></div>
             <div style="flex:1;min-width:220px;">
+              ${gameHistoryTypeTable(p, s.pitches)}
               ${renderSessionNotes(s)}${reportPanel}
               ${deleteZone}
             </div>

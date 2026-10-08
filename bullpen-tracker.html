@@ -5618,7 +5618,10 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
       }
     }
   }
-  const plate = renderHomePlate(chartingPerspective);
+  // Joel, Oct 8: History's heat maps (not clickable, no perspective passed) draw the plate the way the report
+  // view sees it -- the pitcher's view, inside the grid like the charting screen -- not the catcher's plate below.
+  const platePerspective = chartingPerspective || (clickable ? null : REPORT_PERSPECTIVE);
+  const plate = renderHomePlate(platePerspective);
   // U2a: the silhouette is ALWAYS an absolutely-positioned child inside
   // .zone-grid (never a layout sibling -- that shipped once and pushed the
   // home plate out of position), only for the live/clickable grid. History
@@ -5633,7 +5636,7 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
   // positioned plate against THAT would drift on phone widths). History
   // never passes a chartingPerspective, so it always falls through to the
   // unchanged, below-grid, non-translucent markup.
-  return chartingPerspective
+  return platePerspective
     ? `<div class="zone-grid">${cells}${plate}${silhouette}</div>`
     : `<div class="zone-grid">${cells}${silhouette}</div>${plate}`;
 }

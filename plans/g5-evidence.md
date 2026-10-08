@@ -144,3 +144,4 @@ base boxes: all pass. v158. send-session-report + rerender-reports redeployed to
   field row is + Out · + Strike · + Ball · (Next) · ‹ Back; the chart gets its own + Strike · + Ball row. v171.
 - Joel, Oct 8 (baseball): foul territory #228B22; fair outfield grass a criss-cross mowing pattern of #228B22 and #3F704D; over the fence and the infield unchanged; same in the reports' field. Softball unchanged (to confirm). Flagged: the dark selection tint is hard to see on the darker green. v172.
 - Joel, Oct 8: softball gets the same greens (foul #228B22, outfield criss-cross); its infield stays all dirt. The dark selection tint stays until Joel has seen it. v173.
+- Joel, Oct 8: grass restyled to match his ballpark photo — a mowed checkerboard turned 45°, light #8CBA5A / dark #60963C (picked by eye from the image he pasted; the Downloads file itself was not read), soft light falloff; foul territory the dark green. Both sports, app and reports. v174.

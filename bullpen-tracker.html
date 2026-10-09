@@ -149,27 +149,27 @@
   }
   .sess-back{ all:unset; cursor:pointer; display:flex; align-items:center; gap:4px; min-height:44px; padding:0 6px;
     font-size:16px; color:var(--chalk); max-width:32%; min-width:0; }
-  .sess-team{ font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sess-team{ font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sess-who{ display:flex; align-items:center; gap:8px; min-width:0; flex:1; }
-  .sess-who .headshot{ width:28px; height:28px; font-size:11px; flex:none; }
+  .sess-who .headshot{ width:28px; height:28px; font-size:10px; flex:none; }
   .sess-name{ font-weight:700; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:2.5em; }
   .sess-num{ font-size:14px; color:var(--chalk-dim); flex:none; }
   .sess-offline{ flex:none; width:9px; height:9px; border-radius:50%; background:var(--amber-bright); }   /* offline: a dot, so the name keeps its room */
   .sess-more{ all:unset; cursor:pointer; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center;
-    font-size:22px; color:var(--chalk-dim); }
+    font-size:24px; color:var(--chalk-dim); }
   .dots9{ display:grid; grid-template-columns:repeat(3, 4px); gap:3px; }
   .dots9 i{ width:4px; height:4px; border-radius:50%; background:var(--chalk); }
   .ph-layout .controls-panel.ph-controls{ padding:6px; gap:8px; border:0; box-shadow:none; background:transparent; }
   .ph-layout{ gap:12px !important; }
   .ph-status{
     display:flex; align-items:center; gap:14px; min-height:44px; padding:0 14px;
-    background:var(--field-dark); color:var(--chalk); border-radius:10px; font-weight:700; font-size:17px;
+    background:var(--field-dark); color:var(--chalk); border-radius:10px; font-weight:700; font-size:16px;
   }
-  .ph-status .ph-inn{ font-size:18px; }
+  .ph-status .ph-inn{ font-size:20px; }
   .ph-status .ph-diamond{ margin-left:2px; display:flex; align-items:center; }
   .ph-status .ph-diamond .runner-diamond-btn{ min-height:40px; }
   .ph-count{ display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%;
-    background:var(--chalk); color:var(--field-dark); font-size:15px; }
+    background:var(--chalk); color:var(--field-dark); font-size:16px; }
   .ph-lbl{ font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:var(--chalk-dim); margin-left:-6px; }
   .ph-persp{ margin-left:auto; font-size:14px; color:var(--chalk); }
   .ph-persp.locked{ color:var(--chalk-dim); }
@@ -178,7 +178,7 @@
   .ph-layout{ --chip:calc((min(100vw - 28px, 320px) - 18px) / 5); }
   .deliv-row{ display:flex; align-items:center; gap:4px; min-height:var(--chip); }
   /* Joel, Oct 1: Set and Windup are the same width */
-  .deliv-one{ flex:none; width:78px; height:var(--chip); text-align:center; padding:0 10px; border-radius:10px; font:inherit; font-weight:700; font-size:15px;
+  .deliv-one{ flex:none; width:78px; height:var(--chip); text-align:center; padding:0 10px; border-radius:10px; font:inherit; font-weight:700; font-size:16px;
     background:var(--card-bg); color:var(--field-dark); border:1.5px solid var(--field-dark); cursor:pointer; }
   .deliv-one.on{ background:var(--field-dark); color:var(--chalk); }
   .ttp-btn.ttp-compact{ flex:none; min-width:36px; height:var(--chip); padding:0 4px; border-radius:10px; font-size:14px; }
@@ -188,7 +188,7 @@
   .ph-status .deliv-one.on{ background:var(--chalk); color:var(--field-dark); }
   .ph-status .ttp-btn.ttp-compact{ height:34px; min-width:40px; }
   .pstrip-wrap{ flex:1; min-width:0; display:flex; align-items:center; gap:2px; }
-  .pstrip-arrow{ flex:none; width:16px; height:var(--chip); padding:0; border:0; background:none; font:inherit; font-size:22px; font-weight:800;
+  .pstrip-arrow{ flex:none; width:16px; height:var(--chip); padding:0; border:0; background:none; font:inherit; font-size:24px; font-weight:800;
     color:var(--field-dark); cursor:pointer; }
   .pstrip-arrow:disabled{ opacity:0.25; cursor:default; }
   .pstrip{ flex:1; min-width:0; display:flex; gap:4px; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; }
@@ -196,7 +196,7 @@
   /* Joel, Oct 1: pitch squares are the size of a 5x5 grid square, rounded,
      abbreviations in capitals */
   .pstrip-chip{ flex:0 0 var(--chip); width:var(--chip); height:var(--chip); min-width:0; overflow:hidden; text-overflow:clip; scroll-snap-align:start; border-radius:10px; text-transform:uppercase; border:1.5px solid var(--border-strong);
-    background:var(--card-bg); font:inherit; font-weight:800; font-size:13px; letter-spacing:0; cursor:pointer; padding:0 1px; white-space:nowrap; }
+    background:var(--card-bg); font:inherit; font-weight:800; font-size:12px; letter-spacing:0; cursor:pointer; padding:0 1px; white-space:nowrap; }
   .pstrip-chip.selected{ box-shadow:inset 0 0 0 2.5px rgba(0,0,0,0.28); }   /* inside the square, so the strip's edge never clips it */
   .ph-grid-wrap{ position:relative; margin-top:6px; }
   /* Joel, Oct 1: a bigger grid on phones (340px, was 320) -- as big as it
@@ -217,22 +217,22 @@
   .ph-act{ flex:1; min-height:44px; border-radius:10px; border:1.5px solid var(--border-strong); background:var(--card-bg);
     font:inherit; font-size:14px; font-weight:700; color:var(--field-dark); cursor:pointer; padding:0 4px; }
   .velo-slim{ display:flex; align-items:center; gap:6px; min-height:52px; padding:4px 8px; background:var(--surface); border-radius:10px; }
-  .velo-slim-lbl{ flex:none; max-width:56px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-faint); line-height:1.2; }
+  .velo-slim-lbl{ flex:none; max-width:56px; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-faint); line-height:1.2; }
   .velo-slim-strip{ flex:1; min-width:0; }
   .velo-slim .velo-help{ display:none; }
   .velo-slim .velo-strip{ --velo-visible:3; }
   .velo-slim .velo-arrow{ flex-basis:22px; min-height:var(--chip); }
   .velo-slim .velo-cell{ min-height:var(--chip); border-radius:10px; }
-  .velo-slim-reset{ flex:none; border:0; background:none; font:inherit; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
+  .velo-slim-reset{ flex:none; border:0; background:none; font:inherit; font-size:10px; letter-spacing:0.06em; text-transform:uppercase;
     color:var(--ink-dim); min-height:40px; cursor:pointer; padding:0 2px; }
   .velo-slim-reset:disabled{ opacity:0.4; cursor:default; }
-  .ph-statline{ font-size:12.5px; font-weight:700; margin-bottom:6px; }
+  .ph-statline{ font-size:12px; font-weight:700; margin-bottom:6px; }
   .sheet-overlay{ align-items:flex-end; padding:0; }
   .sess-sheet{ width:100%; max-width:520px; background:var(--card-bg); border-radius:16px 16px 0 0; padding:18px 16px calc(16px + env(safe-area-inset-bottom, 0px));
     display:flex; flex-direction:column; gap:12px; max-height:85vh; overflow:auto; }
   .sess-sheet-title{ font-weight:800; font-size:16px; }
   /* Joel, Oct 1: End session & save, Discard and Close are the same size */
-  .sess-sheet .btn{ width:100%; min-height:48px; margin:0; font-size:15px; text-align:center; }
+  .sess-sheet .btn{ width:100%; min-height:48px; margin:0; font-size:16px; text-align:center; }
   .sess-sheet .delete-row{ display:flex; flex-direction:column; gap:12px; }
   /* ---------- S1: the softball theme (docs/softball-theme-reference.html) ----------
      Only theme variables change; pitch colors, strike/ball colors and the
@@ -273,7 +273,7 @@
     --gg-ink:#1B3550; --gg-border:#9FC3DD; --gg-gold:#E98DB0; --gg-muted:#5F7A91;
     --gg-on-fg:#EAF4FB; --gg-on-cap:#BFDCEF; --gg-line:#234B6E;
   }
-  .zone-note{ font-size:11.5px; color:var(--ink-faint); text-align:center; margin-top:-4px; }
+  .zone-note{ font-size:12px; color:var(--ink-faint); text-align:center; margin-top:-4px; }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -324,9 +324,9 @@
     width:10px; height:10px; border-radius:2px; background:var(--amber);
     transform:rotate(45deg); flex-shrink:0; margin-bottom:3px;
   }
-  .brand h1{ font-size:30px; line-height:1; margin:0; letter-spacing:0.02em; }
+  .brand h1{ font-size:32px; line-height:1; margin:0; letter-spacing:0.02em; }
   .brand h1.brand-word{ font-size:24px; }   /* Black Ops One runs wide: KNUCKLEBALL fits the sidebar's brand block */
-  .boot-screen .brand h1.brand-word{ font-size:28px; }
+  .boot-screen .brand h1.brand-word{ font-size:24px; }
   .brand span{ color:var(--amber); }
   .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:0.14em; color:var(--chalk-faint); }
 
@@ -350,14 +350,14 @@
     min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:14px; text-align:center; padding:40px 24px;
   }
-  .boot-screen .brand h1{ font-size:34px; }
-  .boot-msg{ font-size:13px; color:var(--ink-faint); margin:0; line-height:1.5; }
+  .boot-screen .brand h1{ font-size:32px; }
+  .boot-msg{ font-size:12px; color:var(--ink-faint); margin:0; line-height:1.5; }
   .boot-msg.boot-offline{ color:var(--clay); font-weight:600; }
 
   .team-select-wrap{ display:flex; flex-direction:column; gap:5px; }
   .team-select{
     background:var(--card-bg); border:1px solid var(--border-strong); border-radius:6px;
-    color:var(--field-dark); padding:9px 10px; font-size:13.5px; width:100%;
+    color:var(--field-dark); padding:9px 10px; font-size:14px; width:100%;
   }
   /* U10 (9): coach's team line. Above phone width the Profile button here is
      hidden (.show-phone) and the row holds only the team selector, laid out
@@ -372,7 +372,7 @@
   }
 
   .roster-label{
-    font-size:11px; text-transform:uppercase; letter-spacing:0.12em;
+    font-size:10px; text-transform:uppercase; letter-spacing:0.12em;
     color:var(--ink-faint); margin:4px 0 -4px;
   }
   .roster-toggle-btn{
@@ -381,7 +381,7 @@
   }
   .roster-toggle-btn .roster-label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
   .roster-chevron{
-    flex-shrink:0; color:var(--ink-faint); font-size:11px; line-height:1;
+    flex-shrink:0; color:var(--ink-faint); font-size:10px; line-height:1;
     transition:transform 200ms ease; transform:rotate(0deg);
   }
   .roster-chevron.open{ transform:rotate(180deg); }
@@ -390,7 +390,7 @@
     min-height:36px; cursor:pointer;
   }
   .persp-rollup:disabled{ cursor:default; }
-  .persp-current{ margin-left:auto; font-size:13px; font-weight:700; color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .persp-current{ margin-left:auto; font-size:12px; font-weight:700; color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
   /* Collapse animation: overflow-hidden max-height + opacity, ~200ms, so the list
      visibly rolls up/down rather than just vanishing. max-height's open value only
      needs to exceed the tallest real roster; it doesn't have to match exactly. */
@@ -409,9 +409,9 @@
   .roster-item.active{ background:var(--surface-border); border-color:var(--surface-border); }
   .roster-item.active .roster-item-num{ color:var(--field-dark); font-weight:700; }
   .roster-item-main{ display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
-  .roster-item-name{ font-weight:600; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .throws-tag{ margin-left:7px; font-size:10.5px; font-weight:700; letter-spacing:.05em; color:var(--amber); vertical-align:1px; }
-  .roster-item-types{ font-size:11px; color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .roster-item-name{ font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .throws-tag{ margin-left:7px; font-size:10px; font-weight:700; letter-spacing:.05em; color:var(--amber); vertical-align:1px; }
+  .roster-item-types{ font-size:10px; color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .roster-item-num{ font-family:'Teko',sans-serif; font-size:20px; color:var(--ink-faint); flex-shrink:0; }
   /* U10 (3) revised: the roster red dot -- sits in the item's left padding,
      so names never shift when a dot comes or goes. */
@@ -425,7 +425,7 @@
   .roster-dot-count{
     display:inline-flex; align-items:center; justify-content:center; flex:none;
     min-width:18px; height:18px; padding:0 5px; margin-left:6px; border-radius:9px;
-    background:var(--red); color:#fff; font-size:11px; font-weight:700; letter-spacing:0; line-height:1;
+    background:var(--red); color:#fff; font-size:10px; font-weight:700; letter-spacing:0; line-height:1;
   }
   .tab-dot, .session-dot{
     display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--red);
@@ -437,7 +437,7 @@
   .invite-btn{
     display:flex; align-items:center; justify-content:center; gap:6px;
     background:transparent; border:1px dashed var(--border-strong);
-    color:var(--ink-dim); border-radius:6px; padding:10px; font-size:13px; font-weight:600;
+    color:var(--ink-dim); border-radius:6px; padding:10px; font-size:12px; font-weight:600;
   }
   .invite-btn:hover{ border-color:var(--field-dark); color:var(--field-dark); }
 
@@ -449,18 +449,18 @@
   .invite-link-row{ display:flex; gap:6px; }
   .invite-link-text{
     flex:1; min-width:0; background:var(--page-bg); border:1px solid var(--border-strong);
-    border-radius:5px; color:var(--ink-dim); padding:7px 9px; font-size:11.5px;
+    border-radius:5px; color:var(--ink-dim); padding:7px 9px; font-size:12px;
     font-family:'IBM Plex Mono',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     user-select:all; -webkit-user-select:all;
   }
   .invite-link-copy-btn{
     flex-shrink:0; background:var(--page-bg); border:1px solid var(--border-strong);
-    color:var(--ink-dim); border-radius:5px; padding:7px 10px; font-size:11.5px; font-weight:600;
+    color:var(--ink-dim); border-radius:5px; padding:7px 10px; font-size:12px; font-weight:600;
   }
   .invite-link-copy-btn:hover{ border-color:var(--field-dark); color:var(--field-dark); }
   .invite-regen-row{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
   .invite-regen-btn{
-    background:none; border:none; color:var(--ink-faint); font-size:11.5px;
+    background:none; border:none; color:var(--ink-faint); font-size:12px;
     text-decoration:underline; padding:0;
   }
   .invite-regen-btn:hover{ color:var(--red); }
@@ -471,7 +471,7 @@
 
   /* R0: verification badge + remove control on a coach's roster items. */
   .verify-badge{
-    font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;
+    font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;
     padding:2px 6px; border-radius:20px; background:rgba(193,122,69,0.18); color:var(--clay);
     margin-left:6px; flex-shrink:0;
   }
@@ -495,7 +495,7 @@
     background:rgba(193,122,69,0.12); border:1px solid var(--clay-dim); border-radius:8px;
     padding:12px 16px; margin-bottom:16px;
   }
-  .verify-banner p{ margin:0; font-size:13px; color:var(--ink-dim); flex:1; min-width:220px; }
+  .verify-banner p{ margin:0; font-size:12px; color:var(--ink-dim); flex:1; min-width:220px; }
   .verify-banner-actions{ display:flex; gap:8px; flex-wrap:wrap; }
   .change-email-form{
     background:var(--card-bg); border:1px solid var(--border-strong);
@@ -504,7 +504,7 @@
 
   .sign-out-btn{
     margin-top:auto; background:transparent; border:1px solid var(--border);
-    color:var(--ink-faint); border-radius:6px; padding:9px; font-size:12.5px;
+    color:var(--ink-faint); border-radius:6px; padding:9px; font-size:12px;
     font-weight:600; text-align:center;
   }
   .sign-out-btn:hover{ border-color:var(--red); color:var(--red); }
@@ -515,20 +515,20 @@
     background:rgba(193,122,69,0.12); border:1px solid var(--clay-dim); border-radius:6px;
     padding:8px 10px; font-size:12px; color:var(--ink-dim);
   }
-  .outbox-badge .btn{ padding:5px 10px; font-size:11.5px; flex-shrink:0; }
+  .outbox-badge .btn{ padding:5px 10px; font-size:12px; flex-shrink:0; }
 
   .invite-form{
     background:var(--card-bg); border:1px solid var(--border-strong);
     border-radius:8px; padding:16px; display:flex; flex-direction:column; gap:10px;
   }
-  .field-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-faint); }
+  .field-label{ font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-faint); }
   .text-input{
     background:var(--card-bg); border:1px solid var(--border-strong); border-radius:5px;
     color:var(--field-dark); padding:8px 10px; font-size:14px; width:100%;
   }
   .text-input::placeholder{ color:var(--ink-faint); }
   .form-row-buttons{ display:flex; gap:8px; margin-top:2px; }
-  .btn{ border-radius:6px; padding:9px 14px; font-size:13px; font-weight:600; border:1px solid transparent; display:inline-block; text-decoration:none; }
+  .btn{ border-radius:6px; padding:9px 14px; font-size:12px; font-weight:600; border:1px solid transparent; display:inline-block; text-decoration:none; }
   .btn-primary{ background:var(--primary-bg); color:var(--primary-fg); }
   .btn-primary:hover{ background:var(--primary-bg-hover); }
   .btn-primary:disabled{ opacity:0.5; cursor:not-allowed; }
@@ -546,7 +546,7 @@
     flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
     text-align:center; gap:10px; color:var(--ink-faint); padding:60px 20px;
   }
-  .empty-state .display{ font-size:42px; color:var(--ink-dim); }
+  .empty-state .display{ font-size:44px; color:var(--ink-dim); }
 
   .pitcher-header{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
   .pitcher-header h2{ font-family:'Teko',sans-serif; font-size:44px; font-weight:600; margin:0; line-height:1; }
@@ -554,8 +554,8 @@
   .uniform-field{ display:flex; flex-direction:column; gap:4px; }
   .uniform-field input{ width:72px; padding:6px 8px; text-align:center; }
   .uniform-locked{ display:flex; gap:8px; align-items:center; }
-  .uniform-locked-num{ font-family:'Teko',sans-serif; font-size:26px; line-height:1; min-width:36px; text-align:center; color:var(--field-dark); }
-  .uniform-msg{ font-size:11.5px; color:var(--ink-faint); max-width:260px; }
+  .uniform-locked-num{ font-family:'Teko',sans-serif; font-size:24px; line-height:1; min-width:36px; text-align:center; color:var(--field-dark); }
+  .uniform-msg{ font-size:12px; color:var(--ink-faint); max-width:260px; }
   .pitcher-sub{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
   /* U10 (8): player header -- photo (or initials), name, "#12". */
   .pitcher-ident{ display:flex; align-items:center; gap:14px; min-width:0; }
@@ -573,7 +573,7 @@
   }
   .headshot-initials{
     display:inline-flex; align-items:center; justify-content:center;
-    font-weight:700; font-size:22px; color:var(--ink-dim); letter-spacing:0.02em;
+    font-weight:700; font-size:24px; color:var(--ink-dim); letter-spacing:0.02em;
   }
   /* Phones: one compact row -- 40px photo, name and number on one line
      (ellipsis if long), chips hidden -- no taller than ~56px, so the
@@ -582,13 +582,13 @@
     .pitcher-header{ flex-wrap:nowrap; align-items:center; gap:10px; }
     .pitcher-header .pitcher-ident{ flex:1 1 auto; gap:10px; }
     .pitcher-header .headshot{ width:40px; height:40px; }
-    .pitcher-header .headshot-initials{ font-size:15px; }
-    .pitcher-header h2{ font-size:28px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .pitcher-header .headshot-initials{ font-size:16px; }
+    .pitcher-header h2{ font-size:24px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .pitcher-header .pitcher-sub{ display:none; }
     .pitcher-header-actions{ flex:none; }
   }
   .pitch-chip{
-    font-size:11px; font-weight:600; padding:4px 9px; border-radius:20px; letter-spacing:0.02em;
+    font-size:10px; font-weight:600; padding:4px 9px; border-radius:20px; letter-spacing:0.02em;
     border:1px solid var(--border-strong); color:var(--field-dark);
   }
   /* gap:4px is the ONLY inter-tab spacing (the .tab-btn margin-right below was a redundant
@@ -602,7 +602,7 @@
      groundwork per the request. */
   .tabs{ display:flex; gap:4px; border-bottom:1px solid var(--border); padding-right:max(8px, env(safe-area-inset-right)); }
   .tab-btn{
-    background:none; border:none; color:var(--ink-faint); font-size:13px; font-weight:600;
+    background:none; border:none; color:var(--ink-faint); font-size:12px; font-weight:600;
     padding:10px 3px; border-bottom:2px solid transparent; text-transform:uppercase; white-space:nowrap;
   }
   .tab-btn:hover{ color:var(--field-dark); }
@@ -641,7 +641,7 @@
   .kind-choice-btn{
     display:flex; align-items:center; justify-content:center; gap:8px;
     width:100%; max-width:280px; min-height:72px; border-radius:12px; border:none; background:var(--kind-btn);
-    color:#fff; font-family:'Teko',sans-serif; font-size:28px; font-weight:600;
+    color:#fff; font-family:'Teko',sans-serif; font-size:24px; font-weight:600;
     letter-spacing:0.02em; box-shadow:0 2px 6px rgba(var(--ink-rgb),0.15);
   }
   .kind-choice-btn:hover{ background:var(--kind-btn-hover); }
@@ -658,7 +658,7 @@
     position:absolute; right:12px; top:50%; transform:translateY(-50%);
     min-height:44px; align-items:center; padding:0 14px; border-radius:6px;
     background:transparent; border:1px solid var(--border-on-dark, rgba(241,236,221,0.25));
-    color:var(--chalk); font:inherit; font-size:13px; font-weight:600; cursor:pointer;
+    color:var(--chalk); font:inherit; font-size:12px; font-weight:600; cursor:pointer;
   }
   /* G1: the profile-setup modal. This file has no other modal/dialog
      pattern (see renderPerspectiveToggle's own comment) -- one is
@@ -680,7 +680,7 @@
   .modal-close-x{
     position:absolute; top:10px; right:10px; width:32px; height:32px;
     border-radius:50%; border:none; background:transparent; color:var(--ink-faint);
-    font-size:18px; cursor:pointer; line-height:1;
+    font-size:20px; cursor:pointer; line-height:1;
   }
   .modal-close-x:hover{ background:rgba(var(--ink-rgb),0.08); }
   .panel{ background:var(--card-bg); border:1px solid var(--border); border-radius:10px; padding:22px; box-shadow:0 1px 3px rgba(var(--ink-rgb),0.06); }
@@ -704,13 +704,13 @@
      chips and the grid below (not centered under its own label -- Joel, Sept 22:
      that read as inset/indented against everything else in this column). */
   .pitch-counter{ display:flex; flex-direction:row; align-items:center; gap:10px; flex-shrink:0; }
-  .pitch-counter-num{ font-family:'Teko',sans-serif; font-size:22px; line-height:1; color:var(--field-dark); }
+  .pitch-counter-num{ font-family:'Teko',sans-serif; font-size:24px; line-height:1; color:var(--field-dark); }
   .pitch-count-badge{
     width:44px; height:44px; padding:0;
     background:var(--surface); /* same green as the 3x3 strike-zone cells, see .zone-cell.in-zone */
   }
   .add-type-inline{ display:flex; gap:6px; align-items:center; }
-  .add-type-inline input, .add-type-inline select{ flex:1; padding:6px 8px; font-size:12.5px; }
+  .add-type-inline input, .add-type-inline select{ flex:1; padding:6px 8px; font-size:12px; }
   .add-type-inline button{ background:none; border:1px solid var(--border-strong); color:var(--ink-dim); border-radius:5px; padding:6px 10px; font-size:12px; }
   .add-type-inline button:hover{ color:var(--field-dark); border-color:var(--field-dark); }
 
@@ -739,7 +739,7 @@
     border-radius:8px; color:var(--ink-dim); font-size:20px; padding:0;
   }
   .velo-arrow:disabled{ cursor:not-allowed; }
-  .velo-help{ margin-top:6px; font-size:11.5px; color:var(--ink-faint); }
+  .velo-help{ margin-top:6px; font-size:12px; color:var(--ink-faint); }
   /* G1b-r2a: game-only wrapper (see renderGameVeloStrip) -- reference's own
      .velo/.velo .strip b.on: a light-green well and a dark (not amber)
      selected cell. Scoped so bullpen's own velo strip is untouched. */
@@ -861,7 +861,7 @@
   .zone-cell.in-zone{ background:var(--surface); border-color:var(--border-strong); }
   .zone-cell.clickable{ cursor:pointer; }
   .zone-cell.clickable:hover{ outline:2px solid var(--amber); outline-offset:-2px; }
-  .zone-caption{ font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.1em; }
+  .zone-caption{ font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.1em; }
 
   /* G1b-r2: the field picture is gone entirely (GameChanger's patent
      filings) -- every .field-* rule that drew or positioned it (.field-wrap,
@@ -873,10 +873,10 @@
      itself stays, in JS, purely as the bb_x/bb_y anchor lookup G1b-r's
      decision 5 still uses). */
   .walkthrough-summary{
-    font-size:13px; color:var(--ink-dim); line-height:1.5; margin:10px 0 0;
+    font-size:12px; color:var(--ink-dim); line-height:1.5; margin:10px 0 0;
     display:flex; align-items:center; justify-content:center; gap:10px; text-align:center; flex-wrap:wrap;
   }
-  .walkthrough-disabled-reason{ font-size:11.5px; color:var(--clay); margin:6px 0 0; text-align:center; }
+  .walkthrough-disabled-reason{ font-size:12px; color:var(--clay); margin:6px 0 0; text-align:center; }
   /* G1b-r2e retired Fix -- "What happened to the runners?" is always shown
      inline now, so there's nothing left for a separate reveal control to
      do. .fix-link is gone with it (was the reference's own pill button). */
@@ -915,10 +915,10 @@
     mask-size:contain; mask-repeat:no-repeat; mask-position:center;
   }
   .scorebook-btn-glyph{
-    display:block; font-family:'Teko',sans-serif; font-size:22px; font-weight:700; line-height:1;
+    display:block; font-family:'Teko',sans-serif; font-size:24px; font-weight:700; line-height:1;
   }
   .scorebook-btn-caption{
-    font-size:8.5px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase;
+    font-size:10px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase;
     color:var(--ink-dim); opacity:0.75; line-height:1.1;
   }
 
@@ -931,7 +931,7 @@
   .perspective-delivery-row > div{ flex:1; min-width:180px; }
   /* U11 (7): the stopwatch sits with Windup / Set. Disabled (greyed) unless Set. */
   .ttp-btn{
-    font:inherit; font-size:13px; font-weight:700; padding:7px 12px; border-radius:20px; cursor:pointer;
+    font:inherit; font-size:12px; font-weight:700; padding:7px 12px; border-radius:20px; cursor:pointer;
     background:var(--card-bg); color:var(--field-dark); border:1.5px solid var(--border-strong); min-width:84px;
   }
   .ttp-btn:disabled{ opacity:0.4; cursor:not-allowed; }
@@ -979,7 +979,7 @@
   .game-panel-header .stat-lbl{ color:rgba(232,243,236,0.65); }
   .game-panel-handle{ color:rgba(232,243,236,0.7); font-size:12px; letter-spacing:0.08em; flex:0 0 auto; }
   .game-panel-undo{
-    flex:0 0 auto; font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase;
+    flex:0 0 auto; font-size:10px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase;
     color:var(--surface); background:transparent; border:1.5px solid rgba(232,243,236,0.4);
     border-radius:14px; padding:4px 10px; cursor:pointer;
   }
@@ -999,7 +999,7 @@
   .next-pitch-btn{
     display:block; width:100%; margin-top:10px; background:var(--game-gold); color:var(--field-dark);
     border:none; border-radius:10px; text-align:center; font-weight:800; padding:11px;
-    font-size:15px; letter-spacing:0.05em; text-transform:uppercase; cursor:pointer;
+    font-size:16px; letter-spacing:0.05em; text-transform:uppercase; cursor:pointer;
   }
   .next-pitch-btn:disabled{ background:var(--surface-border); color:var(--ink-faint); cursor:not-allowed; }
   /* The position swipe row (replaces the field's own tap targets): one
@@ -1017,7 +1017,7 @@
   .position-swipe-chip{
     position:relative; flex:0 0 auto; scroll-snap-align:start;
     min-width:64px; min-height:46px; padding:0 14px; border-radius:8px;
-    font-size:15px; font-weight:700; border:1.5px solid var(--game-chip-border);
+    font-size:16px; font-weight:700; border:1.5px solid var(--game-chip-border);
     background:var(--card-bg); color:var(--ink-dim); cursor:pointer;
   }
   /* G1b-r2a: matches the reference's .chip.on -- solid dark, not amber. */
@@ -1050,7 +1050,7 @@
   .scorebook-cell{ background:var(--card-bg); border:1.5px solid var(--field-dark); border-radius:4px; padding:0; box-sizing:border-box; }
   .scorebook-cell.small{ opacity:0.85; }
   .scorebook-cell svg{ display:block; }
-  .scorebook-cell-code{ font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; }
+  .scorebook-cell-code{ font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700; }
   .scorebook-cell-code.strong{ fill:var(--field-dark); }
   .scorebook-cell-code.muted{ fill:var(--ink-faint); font-weight:600; }
   .scorebook-cell-diamond{ fill:none; stroke:var(--field-dark); stroke-width:1.5; }
@@ -1092,7 +1092,7 @@
   html[data-sport="softball"] .coach-dock{ background:rgba(35,75,110,0.74); }
   .coach-dock.dock-hidden{ transform:translateY(calc(100% + 24px)); opacity:0; pointer-events:none; }
   .dock-btn{ flex:1; min-width:0; min-height:50px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-    background:none; border:0; border-radius:12px; color:rgba(242,235,221,0.86); font:inherit; font-size:11px; font-weight:700; letter-spacing:0.02em; cursor:pointer;
+    background:none; border:0; border-radius:12px; color:rgba(242,235,221,0.86); font:inherit; font-size:10px; font-weight:700; letter-spacing:0.02em; cursor:pointer;
     -webkit-tap-highlight-color:transparent; }
   .dock-btn svg{ width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .dock-btn{ position:relative; z-index:1; transition:color 160ms ease; }
@@ -1113,7 +1113,7 @@
   .hp-legend{ display:flex; flex-wrap:wrap; gap:6px 12px; justify-content:center; font-size:12px; }
   .hp-key{ display:inline-flex; align-items:center; gap:5px; }
   .hp-dot{ width:10px; height:10px; border-radius:50%; display:inline-block; }
-  .hp-caption{ text-transform:none; letter-spacing:0; font-size:11.5px; line-height:1.4; text-align:center; }
+  .hp-caption{ text-transform:none; letter-spacing:0; font-size:12px; line-height:1.4; text-align:center; }
   .persp-plate{ display:block; width:100%; height:auto; overflow:visible; }
   .zone-grid.heat-grid{ margin-bottom:0 !important; }   /* no batter-pill band under a heat map */
   .home-plate-overlay{
@@ -1146,19 +1146,19 @@
   }
   .flash-letter{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    font-family:'Teko',sans-serif; font-size:26px; font-weight:700; color:var(--flash-fg);
+    font-family:'Teko',sans-serif; font-size:24px; font-weight:700; color:var(--flash-fg);
     animation:letterFade 1.4s ease forwards;
   }
   @keyframes letterFade{ 0%{ opacity:1; } 55%{ opacity:1; } 100%{ opacity:0; } }
 
   .zone-number{
     position:absolute; top:3px; left:5px; font-family:'IBM Plex Mono',monospace;
-    font-size:9.5px; color:rgba(var(--ink-rgb),0.35); pointer-events:none; line-height:1;
+    font-size:10px; color:rgba(var(--ink-rgb),0.35); pointer-events:none; line-height:1;
   }
   .zone-number-heat{ color:rgba(var(--ink-rgb),0.55); font-weight:600; }
   .zone-count{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; color:var(--field-dark);
+    font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600; color:var(--field-dark);
   }
   .zone-cell-target{ outline:2px solid var(--amber); outline-offset:-2px; background:rgba(var(--amber-rgb),0.16); }
   .target-dot{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
@@ -1177,23 +1177,23 @@
   .log-panel{ min-width:230px; flex:1; display:flex; flex-direction:column; gap:16px; }
   .stat-readout{ display:flex; gap:18px; flex-wrap:wrap; }
   .stat-box{ display:flex; flex-direction:column; }
-  .stat-num{ font-family:'Teko',sans-serif; font-size:38px; line-height:1; color:var(--field-dark); }
-  .stat-lbl{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-faint); }
+  .stat-num{ font-family:'Teko',sans-serif; font-size:32px; line-height:1; color:var(--field-dark); }
+  .stat-lbl{ font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-faint); }
   .pitch-log{ display:flex; flex-direction:column; gap:5px; max-height:220px; overflow-y:auto; }
   .pitch-log-row{
-    display:flex; align-items:center; justify-content:space-between; font-size:12.5px;
+    display:flex; align-items:center; justify-content:space-between; font-size:12px;
     padding:7px 10px; background:var(--surface); border-radius:5px;
   }
   .pitch-log-row .mono{ color:var(--ink-dim); }
   .plr-dot{ width:8px; height:8px; border-radius:2px; display:inline-block; margin-right:7px; transform:rotate(45deg); }
-  .undo-btn{ background:none; border:none; color:var(--ink-faint); font-size:11px; text-decoration:underline; }
+  .undo-btn{ background:none; border:none; color:var(--ink-faint); font-size:10px; text-decoration:underline; }
   .undo-btn:hover{ color:var(--red); }
   .pitch-row-actions{ display:flex; gap:9px; flex-shrink:0; }
-  .row-x-btn{ background:none; border:none; color:var(--ink-faint); font-size:13px; line-height:1; padding:0 2px; }
+  .row-x-btn{ background:none; border:none; color:var(--ink-faint); font-size:12px; line-height:1; padding:0 2px; }
   .row-x-btn:hover{ color:var(--red); }
   .pitch-log-row.editing{ flex-direction:column; align-items:stretch; gap:8px; }
   .edit-row-fields{ display:flex; gap:8px; }
-  .edit-mini{ background:var(--card-bg); border:1px solid var(--border-strong); border-radius:5px; color:var(--field-dark); padding:5px 7px; font-size:12.5px; }
+  .edit-mini{ background:var(--card-bg); border:1px solid var(--border-strong); border-radius:5px; color:var(--field-dark); padding:5px 7px; font-size:12px; }
   .edit-mini.edit-velo{ width:74px; }
   .edit-row-actions{ display:flex; gap:12px; }
   .end-session-btn{ align-self:flex-start; }
@@ -1203,7 +1203,7 @@
     display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
     background:rgba(193,122,69,0.12); border:1px solid var(--clay-dim); border-radius:8px; padding:12px 16px;
   }
-  .draft-banner p{ margin:0; font-size:13px; color:var(--ink-dim); }
+  .draft-banner p{ margin:0; font-size:12px; color:var(--ink-dim); }
 
   /* HISTORY */
   .session-card{ background:var(--card-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 1px 3px rgba(var(--ink-rgb),0.06); }
@@ -1228,8 +1228,8 @@
   .meta-num{ font-family:'Teko',sans-serif; font-size:24px; color:var(--field-dark); line-height:1; }
   .meta-lbl{ font-size:10px; text-transform:uppercase; color:var(--ink-faint); letter-spacing:0.08em; }
   .session-card-body{ padding:16px 20px 20px; display:flex; gap:24px; flex-wrap:wrap; }
-  .breakdown-table{ width:100%; border-collapse:collapse; font-size:12.5px; margin-top:14px; }
-  .breakdown-table th{ text-align:left; color:var(--ink-faint); font-weight:600; font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; padding:4px 8px 6px 0; border-bottom:1px solid var(--border); }
+  .breakdown-table{ width:100%; border-collapse:collapse; font-size:12px; margin-top:14px; }
+  .breakdown-table th{ text-align:left; color:var(--ink-faint); font-weight:600; font-size:10px; text-transform:uppercase; letter-spacing:0.06em; padding:4px 8px 6px 0; border-bottom:1px solid var(--border); }
   .breakdown-table td{ padding:6px 8px 6px 0; border-bottom:1px solid var(--border); }
 
   /* Deleted-session tombstone + delete control (P1-15) */
@@ -1240,13 +1240,13 @@
     color:var(--ink-faint); background:rgba(241,236,221,0.06);
     border:1px solid var(--border-strong); padding:2px 7px; border-radius:20px; margin-left:6px; vertical-align:middle;
   }
-  .deleted-meta{ font-size:11.5px; color:var(--ink-faint); }
+  .deleted-meta{ font-size:12px; color:var(--ink-faint); }
   .deleted-summary-row{ text-align:center; padding:12px 0 4px; }
   .delete-zone{ margin-top:16px; padding-top:4px; }
-  .delete-warn{ margin:0 0 8px; font-size:12.5px; color:var(--ink-dim); line-height:1.5; }
+  .delete-warn{ margin:0 0 8px; font-size:12px; color:var(--ink-dim); line-height:1.5; }
   .delete-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
 
-  .empty-hist{ text-align:center; color:var(--ink-faint); padding:40px 20px; font-size:13.5px; }
+  .empty-hist{ text-align:center; color:var(--ink-faint); padding:40px 20px; font-size:14px; }
 
   .contacts-panel{
     display:flex; gap:14px; flex-wrap:wrap; background:var(--card-bg); border:1px solid var(--border);
@@ -1254,13 +1254,13 @@
   }
   .contacts-panel .field{ flex:1; min-width:200px; }
   .contacts-save-row{ flex-basis:100%; display:flex; align-items:center; gap:12px; margin-top:2px; }
-  .contacts-saved-msg{ font-size:12.5px; color:#6FA287; font-weight:600; }
+  .contacts-saved-msg{ font-size:12px; color:#6FA287; font-weight:600; }
 
   /* R4: other-team chip, workload line, pitcher team filter */
-  .team-chip{ font-size:10.5px; font-weight:600; padding:1px 7px; border-radius:20px; background:rgba(var(--ink-rgb),0.07); color:var(--ink-dim); margin-left:6px; white-space:nowrap; }
-  .workload-line{ display:block; font-size:11px; color:var(--ink-faint); margin-top:2px; line-height:1.35; }
-  .workload-banner{ font-size:12.5px; color:var(--ink-dim); margin:0 0 10px; line-height:1.45; }
-  .history-team-select{ max-width:200px; padding:6px 8px; font-size:13px; margin-left:auto; }
+  .team-chip{ font-size:10px; font-weight:600; padding:1px 7px; border-radius:20px; background:rgba(var(--ink-rgb),0.07); color:var(--ink-dim); margin-left:6px; white-space:nowrap; }
+  .workload-line{ display:block; font-size:10px; color:var(--ink-faint); margin-top:2px; line-height:1.35; }
+  .workload-banner{ font-size:12px; color:var(--ink-dim); margin:0 0 10px; line-height:1.45; }
+  .history-team-select{ max-width:200px; padding:6px 8px; font-size:12px; margin-left:auto; }
   /* P1-09: archived team banner + danger zone */
   .archived-banner{ margin-bottom:12px; }
   .team-danger-confirm{ display:flex; flex-direction:column; gap:8px; margin-top:8px; }
@@ -1274,21 +1274,21 @@
     padding:16px; background:rgba(20, 38, 66, 0.62); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); overflow-y:auto; }
   .attest-backdrop .attest-card{ margin:auto; box-shadow:0 18px 50px rgba(10, 20, 40, 0.45); }
   .attest-options{ display:flex; flex-direction:column; gap:4px; }
-  .attest-opt{ display:flex; align-items:center; gap:10px; font-size:15px; min-height:40px; cursor:pointer; }
+  .attest-opt{ display:flex; align-items:center; gap:10px; font-size:16px; min-height:40px; cursor:pointer; }
   .attest-opt input, .attest-check input{ width:20px; height:20px; accent-color:var(--field-dark); margin:0; flex:0 0 auto; }
   .attest-check{ display:flex; gap:10px; align-items:flex-start; font-size:14px; color:var(--ink-dim); line-height:1.45; cursor:pointer; }
   .attest-check a{ color:var(--field-dark); }
-  .attest-stop{ font-size:13.5px; background:var(--surface); border:1px solid var(--surface-border); border-radius:8px; padding:10px 12px; margin:0; }
-  .policy-foot{ font-size:11.5px; color:var(--ink-faint); text-align:center; padding:14px 0 6px; }
+  .attest-stop{ font-size:14px; background:var(--surface); border:1px solid var(--surface-border); border-radius:8px; padding:10px 12px; margin:0; }
+  .policy-foot{ font-size:12px; color:var(--ink-faint); text-align:center; padding:14px 0 6px; }
   .policy-foot a{ color:var(--ink-faint); }
   /* S4: account menu (profiles + Add a sport), Who's charting? */
   .acct-row{ display:flex; justify-content:flex-end; margin:-6px 0 6px; position:relative; z-index:20; }
   .acct-row.acct-inline{ margin:0; align-self:center; }   /* Joel, Oct 7: in the pitcher header's row on iPad / laptop */
   .acct-wrap{ position:relative; }
-  .acct-btn{ display:flex; align-items:center; gap:6px; padding:4px 10px 4px 4px; border:1px solid var(--border-strong); border-radius:999px; background:var(--card-bg); color:var(--field-dark); font:inherit; font-size:12.5px; font-weight:600; cursor:pointer; min-height:36px; }
-  .acct-avatar{ width:28px; height:28px; border-radius:50%; background:var(--surface); border:1px solid var(--surface-border); display:inline-flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700; color:var(--field-dark); flex:0 0 auto; }
+  .acct-btn{ display:flex; align-items:center; gap:6px; padding:4px 10px 4px 4px; border:1px solid var(--border-strong); border-radius:999px; background:var(--card-bg); color:var(--field-dark); font:inherit; font-size:12px; font-weight:600; cursor:pointer; min-height:36px; }
+  .acct-avatar{ width:28px; height:28px; border-radius:50%; background:var(--surface); border:1px solid var(--surface-border); display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--field-dark); flex:0 0 auto; }
   .acct-caret{ font-size:10px; color:var(--ink-faint); }
-  .acct-chip{ font-size:10.5px; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; padding:2px 7px; border-radius:999px; }
+  .acct-chip{ font-size:10px; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; padding:2px 7px; border-radius:999px; }
   .acct-chip-baseball{ background:#E8F3EC; color:#0F241B; border:1px solid #CFE6D7; }
   .acct-chip-softball{ background:#EAF4FB; color:#234B6E; border:1px solid #BFDCEF; }
   .acct-chip-none{ background:var(--surface); color:var(--ink-dim); }
@@ -1301,7 +1301,7 @@
   .acct-meta{ font-size:12px; color:var(--ink-faint); display:flex; align-items:center; gap:6px; }
   .acct-badge{ font-size:10px; font-weight:700; text-transform:uppercase; background:var(--amber); color:var(--field-dark); border-radius:999px; padding:1px 6px; }
   .acct-check{ color:var(--field-dark); font-weight:800; }
-  .acct-add{ margin-top:4px; padding:10px 8px; border:1px dashed var(--border-strong); border-radius:8px; background:none; font:inherit; font-size:13.5px; font-weight:600; color:var(--field-dark); cursor:pointer; text-align:left; min-height:44px; }
+  .acct-add{ margin-top:4px; padding:10px 8px; border:1px dashed var(--border-strong); border-radius:8px; background:none; font:inherit; font-size:14px; font-weight:600; color:var(--field-dark); cursor:pointer; text-align:left; min-height:44px; }
   .acct-add:disabled{ opacity:0.5; }
   .acct-msg{ font-size:12px; color:var(--clay); margin:4px 8px; }
   .who-card{ width:min(380px, 100%); background:var(--card-bg); border:1px solid var(--border); border-radius:14px; padding:22px; display:flex; flex-direction:column; gap:6px; box-shadow:0 1px 3px rgba(var(--ink-rgb),0.06); }
@@ -1313,10 +1313,10 @@
   .note-body{ font-size:14px; color:var(--field-dark); line-height:1.45; margin-top:4px; overflow-wrap:anywhere; }
   .note-del{ margin-left:auto; border:0; background:none; cursor:pointer; font-size:14px; padding:2px 4px; min-width:32px; min-height:32px; }
   .note-del:disabled{ opacity:0.4; cursor:not-allowed; }
-  .note-input{ width:100%; resize:vertical; font-family:inherit; min-height:72px; font-size:15px; line-height:1.4; }
+  .note-input{ width:100%; resize:vertical; font-family:inherit; min-height:72px; font-size:16px; line-height:1.4; }
   .note-add-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:6px; }
-  .note-count{ font-size:11.5px; color:var(--ink-faint); }
-  .note-hint{ font-size:12.5px; color:var(--ink-faint); margin:0; }
+  .note-count{ font-size:12px; color:var(--ink-faint); }
+  .note-hint{ font-size:12px; color:var(--ink-faint); margin:0; }
   .report-panel{
     margin-top:16px; padding-top:14px; border-top:1px solid var(--border);
     display:flex; flex-direction:column; gap:8px; align-items:flex-start;
@@ -1331,10 +1331,10 @@
   /* PROFILE (U7) */
   .profile-page{ display:flex; flex-direction:column; gap:22px; max-width:560px; }
   .profile-section{ display:flex; flex-direction:column; gap:12px; }
-  .profile-section h3{ margin:0; font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-faint); font-weight:600; }
+  .profile-section h3{ margin:0; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-faint); font-weight:600; }
   .profile-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .profile-note{ margin:0; font-size:12px; color:var(--ink-faint); }
-  .profile-msg{ margin:0; font-size:12.5px; color:var(--clay); }
+  .profile-msg{ margin:0; font-size:12px; color:var(--clay); }
   .throws-btn{ min-height:44px; min-width:88px; padding:10px 16px; border-radius:22px; border:1.5px solid var(--border-strong); background:transparent; color:var(--ink-dim); font-size:14px; font-weight:600; }
   .throws-btn.selected{ background:var(--amber); border-color:var(--amber); color:var(--field-dark); }
   .mix-prompt{ margin:8px 0 0; font-size:12px; color:var(--clay); }
@@ -1344,27 +1344,27 @@
   .lb-team-select{ max-width:100%; }
   .lb-toggle{ display:flex; gap:8px; flex-wrap:wrap; }
   .lb-sub{ margin:0; font-size:12px; color:var(--ink-faint); }
-  .lb-asof{ margin:0; font-size:12.5px; color:var(--clay); }
+  .lb-asof{ margin:0; font-size:12px; color:var(--clay); }
   .lb-section{ display:flex; flex-direction:column; gap:2px; }
-  .lb-title{ margin:0 0 6px; font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-faint); font-weight:600; }
-  .lb-empty{ margin:0; font-size:12.5px; color:var(--ink-faint); }
+  .lb-title{ margin:0 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-faint); font-weight:600; }
+  .lb-empty{ margin:0; font-size:12px; color:var(--ink-faint); }
   .lb-row{ display:grid; grid-template-columns:22px 22px minmax(0,1fr) auto; column-gap:8px; align-items:center; padding:8px 8px; border-radius:6px; }
   .lb-row.me{ background:var(--surface-border); box-shadow:inset 0 0 0 1px var(--amber); }
   .lb-row.unq{ opacity:0.5; }
   .lb-rank{ font-family:'Teko',sans-serif; font-size:20px; color:var(--ink-faint); text-align:right; }
   .lb-star{ width:20px; height:20px; display:block; }
   .lb-star-gap{ display:block; width:20px; height:20px; }
-  .lb-name{ font-weight:600; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .lb-name{ font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
   .lb-num{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); font-weight:500; }
-  .lb-val{ font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:600; color:var(--field-dark); text-align:right; }
+  .lb-val{ font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:600; color:var(--field-dark); text-align:right; }
   .lb-val-btn{ background:none; border:1px dashed var(--amber); border-radius:5px; padding:2px 8px; cursor:pointer; }
-  .lb-unq-note{ font-size:11.5px; color:var(--ink-faint); font-weight:500; }
-  .lb-n{ grid-column:3 / 5; font-size:11px; color:var(--ink-faint); }
-  .lb-exclude-panel{ grid-column:1 / -1; display:flex; flex-direction:column; gap:8px; margin-top:6px; padding:10px; border:1px solid var(--border-strong); border-radius:6px; font-size:13px; }
+  .lb-unq-note{ font-size:12px; color:var(--ink-faint); font-weight:500; }
+  .lb-n{ grid-column:3 / 5; font-size:10px; color:var(--ink-faint); }
+  .lb-exclude-panel{ grid-column:1 / -1; display:flex; flex-direction:column; gap:8px; margin-top:6px; padding:10px; border:1px solid var(--border-strong); border-radius:6px; font-size:12px; }
   .lb-exclude-actions{ display:flex; gap:8px; flex-wrap:wrap; }
-  .lb-exclude-note{ font-size:11.5px; color:var(--ink-faint); }
+  .lb-exclude-note{ font-size:12px; color:var(--ink-faint); }
   .lb-undo{ grid-column:auto; }
-  .edit-error{ margin:4px 0 0; font-size:11.5px; color:var(--clay); }
+  .edit-error{ margin:4px 0 0; font-size:12px; color:var(--clay); }
   .zone-row{ display:flex; flex-direction:column; gap:6px; padding:8px 0; border-top:1px solid var(--border); }
   .zone-paint{ display:flex; flex-direction:column; gap:12px; align-items:flex-start; }
   .zone-cell.zone-painted{ background:rgba(var(--amber-rgb),0.5); box-shadow:inset 0 0 0 2px var(--amber); }
@@ -1425,7 +1425,7 @@
     .roster-collapse, .outbox-badge{ flex:1 1 100%; }
     .sign-out-btn{ margin-top:0; margin-left:auto; padding:8px 12px; }
     .main{ padding:14px 16px; gap:14px; }
-    .pitcher-header h2{ font-size:36px; }
+    .pitcher-header h2{ font-size:32px; }
     .pitcher-sub{ margin-top:6px; }
     .controls-panel{ gap:10px; }
     .panel{ padding:14px; }
@@ -1455,7 +1455,7 @@
     .wide-bl .ttp-btn{ min-height:38px; }
     .wide-br{ grid-column:2; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
     .pt-two{ display:grid; grid-template-columns:repeat(2, max-content); }   /* never more than two pitch types across */
-    .wide-hint{ color:var(--clay); text-transform:none; letter-spacing:0; font-size:12.5px; font-weight:600; }
+    .wide-hint{ color:var(--clay); text-transform:none; letter-spacing:0; font-size:12px; font-weight:600; }
     /* Joel, Oct 1: pen pitch counter to the right of the perspective chips
        (label above both, "Pitch count" on two lines under the badge). */
     .persp-count{ display:grid; grid-template-columns:minmax(0, 1fr) auto; column-gap:8px; }
@@ -1528,7 +1528,7 @@
   .g5-in{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; pointer-events:none; }
   .g5-choice{ background:#fff !important; border:0 !important; box-shadow:inset 0 0 0 2px var(--gg-gold); animation:g5flash 1.1s ease-in-out infinite; }
   .g5-choice .gg-ic{ width:30px; height:22px; color:var(--gg-ink); }
-  .g5-choice .gg-cap{ font-size:8px; color:var(--gg-ink); }
+  .g5-choice .gg-cap{ font-size:10px; color:var(--gg-ink); }
   .g5-pick{ background:rgba(16,40,28,0.42) !important; border-color:rgba(201,162,39,0.85) !important; animation:g5tint 1.1s ease-in-out infinite; }
   html[data-sport="softball"] .g5-pick{ background:rgba(27,53,80,0.42) !important; }
   html[data-sport="softball"] .g5-pick.on{ background:#fff !important; }
@@ -1542,7 +1542,7 @@
   .g5-shade{ position:absolute; inset:0; border-radius:3px; background:rgba(16,40,28,0.42); animation:g5shade 1.1s ease-in-out infinite; }
   @keyframes g5shade{ 50%{ opacity:0.55; } }
   html[data-sport="softball"] .g5-shade{ background:rgba(27,53,80,0.42); }
-  .g5-word{ font-weight:800; font-size:13px; line-height:1.1; text-align:center; color:var(--gg-ink); padding:0 2px; }
+  .g5-word{ font-weight:800; font-size:12px; line-height:1.1; text-align:center; color:var(--gg-ink); padding:0 2px; }
   .g5-baselbl{ font-weight:800; font-size:14px; color:#111; }
   .g5-marked{ background:rgba(255,255,255,0.25); }
   .g5-ball{ width:24px; height:24px; display:block; }
@@ -1561,10 +1561,10 @@
   .wide-right .g5-actions{ max-width:var(--zg, 340px); }
   .g5-act-gap{ flex:1; min-width:0; text-align:center; }
   .ph-layout .g5-actions{ gap:5px; }
-  .ph-layout .g5-act{ flex:1 1 0; min-width:0; padding:0 4px; font-size:13px; }
+  .ph-layout .g5-act{ flex:1 1 0; min-width:0; padding:0 4px; font-size:12px; }
   .ph-layout .g5-act-gap{ display:none; }
   .ph-addcount{ margin-top:-7px; }
-  .g5-act-cap{ font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.06em; line-height:1.2; }
+  .g5-act-cap{ font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.06em; line-height:1.2; }
   /* Joel, Oct 7: phones -- about 5px between the field and its buttons, and between those and Undo / New batter / New inning */
   .ph-layout .g5-card{ margin-bottom:0 !important; }
   .ph-layout .zone-wrap.g5-on{ gap:5px; }
@@ -1597,7 +1597,7 @@
   .g5-velo-row .velo-strip-wrap{ flex:1; min-width:0; background:var(--card-bg); border-radius:8px; }
   .g5-velo-row .velo-cell{ min-height:0; height:100%; }
   .g5-reset, .g5-nextpitch{ height:100%; border-radius:6px; font:inherit; font-weight:800; cursor:pointer; }
-  .g5-reset{ flex:0 0 calc((100% - 12px) / 5); background:#fff; color:var(--ink); border:1.5px solid var(--border-strong); font-size:13px; }
+  .g5-reset{ flex:0 0 calc((100% - 12px) / 5); background:#fff; color:var(--ink); border:1.5px solid var(--border-strong); font-size:12px; }
   .g5-nextpitch{ flex:1; background:var(--amber); color:#111; border:0; font-size:16px; }
   /* ---------- G1b-r3: in-grid play entry (docs/game-grid-reference.html) ---------- */
   .gg-field{
@@ -1633,7 +1633,7 @@
   .gg-btn.on .gg-cap{ color:var(--gg-on-cap); }
   .gg-btn:disabled{ opacity:0.35; cursor:not-allowed; box-shadow:none; }
   .gg-ic{ width:40px; height:30px; max-width:80%; display:block; background:currentColor; mask-size:contain; -webkit-mask-size:contain; mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat; mask-position:center; -webkit-mask-position:center; }
-  .gg-cap{ max-width:100%; padding:0 3px; box-sizing:border-box; font-size:9px; letter-spacing:0.02em; text-transform:uppercase; color:var(--gg-muted); text-align:center; line-height:1.15; }
+  .gg-cap{ max-width:100%; padding:0 3px; box-sizing:border-box; font-size:10px; letter-spacing:0.02em; text-transform:uppercase; color:var(--gg-muted); text-align:center; line-height:1.15; }
   /* Narrow phones: captions break only BETWEEN words (never mid-word), and
      the text steps down so two short lines fit inside a ~45px box. */
   .cap-short{ display:none; }
@@ -1642,21 +1642,21 @@
     .cap-short{ display:inline; }
     .gg-big{ font-size:16px; }
     .gg-big-long{ font-size:12px; }
-    .gg-cap{ font-size:8px; letter-spacing:0; padding:0 2px; }
+    .gg-cap{ font-size:10px; letter-spacing:0; padding:0 2px; }
     .gg-btn{ gap:1px; }
   }
   .gg-big{ font-size:20px; font-weight:800; line-height:1; }
-  .gg-big-long{ font-size:15px; letter-spacing:-0.01em; }   /* BUNT: fits inside its box */
+  .gg-big-long{ font-size:16px; letter-spacing:-0.01em; }   /* BUNT: fits inside its box */
   .gg-cap-only{ font-size:10px; font-weight:700; color:var(--gg-ink); line-height:1.2; }
   .gg-seq{ position:absolute; top:-7px; right:-5px; background:var(--gg-gold); color:var(--field-dark); border-radius:10px; font-size:10px; padding:1px 6px; font-weight:800; }
-  .gg-done{ font-size:15px; font-weight:800; }
-  .gg-next{ background:var(--gg-gold); border-color:var(--gg-gold); font-size:15px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; }
+  .gg-done{ font-size:16px; font-weight:800; }
+  .gg-next{ background:var(--gg-gold); border-color:var(--gg-gold); font-size:16px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; }
   .gg-next:disabled{ opacity:0.45; }
   .gg-book{
     position:relative; margin:1px; background:#fff; color:var(--gg-ink);
     border:1.5px solid var(--gg-ink); border-radius:6px; overflow:hidden;
   }
-  .gg-book > span{ position:absolute; font-size:11px; font-weight:700; }
+  .gg-book > span{ position:absolute; font-size:10px; font-weight:700; }
   .gg-book-tl{ left:7px; top:5px; }
   .gg-book-ask{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; text-align:center; padding:6px; }
   .gg-book-ask > span{ position:static; }
@@ -1676,8 +1676,8 @@
     margin:1px; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
     background:#fff; border:1.5px solid var(--gg-border); border-radius:9px; padding:4px;
   }
-  .gg-velo-read{ font-size:30px; font-weight:800; color:var(--gg-ink); line-height:1; }
-  .gg-velo-unit{ font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--gg-muted); text-align:center; }
+  .gg-velo-read{ font-size:32px; font-weight:800; color:var(--gg-ink); line-height:1; }
+  .gg-velo-unit{ font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--gg-muted); text-align:center; }
   .gg-noread{ font:inherit; font-size:10px; font-weight:700; color:var(--gg-muted); background:#fff; border:1px solid var(--gg-border); border-radius:8px; padding:4px 10px; cursor:pointer; min-height:28px; white-space:nowrap; }
   /* Row 4: the slider. Full grid width, 5 speeds across, center-snapped; the
      fixed frame marks the center window -- whatever settles in it is picked. */
@@ -1693,14 +1693,14 @@
   /* Joel, Oct 1: small < > arrows on the sides of the full-width bar. */
   .gg-velo .velo-arrow{
     flex:0 0 22px; min-height:0; background:none; border:0; border-radius:0; padding:0;
-    color:var(--gg-ink); font-size:18px; font-weight:800; line-height:1; cursor:pointer;
+    color:var(--gg-ink); font-size:20px; font-weight:800; line-height:1; cursor:pointer;
   }
   .gg-velo .velo-arrow:disabled{ opacity:0.35; }
   .gg-velo .velo-help{ display:none; }
   .gg-velo .velo-cell{ min-height:44px; scroll-snap-align:center; }
-  .gg-adv .gg-big{ font-size:17px; }
+  .gg-adv .gg-big{ font-size:16px; }
   @media (max-width:360px){ .gg-adv .gg-big{ font-size:14px; } }
-  .gg-back{ font-size:13px; font-weight:800; white-space:nowrap; border-color:var(--gg-ink); }   /* dark outline, as in docs/field-option3-reference.html */
+  .gg-back{ font-size:12px; font-weight:800; white-space:nowrap; border-color:var(--gg-ink); }   /* dark outline, as in docs/field-option3-reference.html */
   @media (max-width:360px){ .gg-back{ font-size:12px; } }
   .gg-velo .velo-help{ display:none; }
   .gg-velo .velo-cell{ min-height:44px; }
@@ -2067,8 +2067,8 @@ function renderAttestScreen(){
       ${state.attestChoice === 'under_13' ? `<p class="attest-stop">Players under 13 need a parent or guardian to create their profile. Ask them to sign up and choose "Add a player". Contact <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a> about this account.</p>` : ''}
       <label class="attest-check"><input type="checkbox" id="attest-terms" ${state.attestTerms ? 'checked' : ''} onchange="state.attestTerms = this.checked"> <span>I agree to the ${terms}.</span></label>`;
   return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="One quick question"><div class="who-card attest-card">
-    <div class="display" style="font-size:30px;line-height:1;">One quick question</div>
-    <p class="note-hint" style="font-size:13.5px;">${coach ? 'Please confirm the statement below.' : 'Tell us your age.'} You'll only be asked once.</p>
+    <div class="display" style="font-size:32px;line-height:1;">One quick question</div>
+    <p class="note-hint" style="font-size:14px;">${coach ? 'Please confirm the statement below.' : 'Tell us your age.'} You'll only be asked once.</p>
     ${body}
     ${err}
     <button type="button" class="btn btn-primary" ${state.attestBusy || state.attestChoice === 'under_13' ? 'disabled' : ''} onclick="submitAttestation()">${state.attestBusy ? 'Saving…' : 'Continue'}</button>
@@ -3358,7 +3358,7 @@ window.submitAddPlayer = async function(){
 function renderWhoPicker(){
   const pool = (state.whoPicker || []).map(id => (state.myProfiles || []).find(p => p.id === id)).filter(Boolean);
   return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="Who's charting?"><div class="who-card attest-card">
-    <div class="display" style="font-size:28px;margin-bottom:2px;">Who's charting?</div>
+    <div class="display" style="font-size:24px;margin-bottom:2px;">Who's charting?</div>
     ${pool.map(p => `<button type="button" class="acct-item" onclick="switchProfile('${p.id}')">
       <span class="acct-avatar">${escHtml(initialsOf(p.full_name))}</span>
       <span class="acct-who"><span class="acct-name">${escHtml(p.full_name)}</span><span class="acct-meta">${profileChip(p)} ${ROLE_NAME[p.role] || ''}</span></span>
@@ -5876,7 +5876,7 @@ function renderPerspectiveToggle(forceFull){
     const style = selected ? `background:var(--amber);border-color:var(--amber);` : `color:var(--ink-faint);border-color:var(--border-strong);`;
     return `<button class="type-chip${selected?' selected':''}" style="${style}" ${locked?'disabled':''} onclick="selectPerspective('${o.key}')">${o.label}</button>`;
   }).join('');
-  const lockedNote = locked ? `<p style="color:var(--ink-faint);font-size:11.5px;margin:6px 0 0;">Locked after the first pitch.</p>` : '';
+  const lockedNote = locked ? `<p style="color:var(--ink-faint);font-size:12px;margin:6px 0 0;">Locked after the first pitch.</p>` : '';
   // Joel, Oct 1: on phones it's a drop-down -- open at the start of a
   // session, rolled up to one line once a perspective is picked (and always
   // once the first pitch locks it). Tap the line to open it again.
@@ -8402,7 +8402,7 @@ function renderGameSessionView(p){
     return `<div class="pitch-log-row">
       <span><span class="plr-dot" style="background:var(--ink-faint);"></span><span class="mono">Event</span> · ${escHtml(gameEventText(ev))} · <span style="color:var(--ink-faint);">Inn ${ev.inningBefore}, ${ev.ballsBefore}-${ev.strikesBefore}, ${ev.outsBeforeCount} out</span></span>
     </div>`;
-  }).join('') || `<p style="color:var(--ink-faint);font-size:12.5px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
+  }).join('') || `<p style="color:var(--ink-faint);font-size:12px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
 
   // G1b-r3: the drop-down panel (r2/r2a) and the velocity strip below the
   // grid are gone from Live Game -- once a location is tapped, the grid
@@ -8888,7 +8888,7 @@ function renderSessionView(){
         <button class="row-x-btn" onclick="removePitch(${realIdx})" title="Remove this pitch" aria-label="Remove this pitch">✕</button>
       </span>
     </div>`;
-  }).join('') || `<p style="color:var(--ink-faint);font-size:12.5px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
+  }).join('') || `<p style="color:var(--ink-faint);font-size:12px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
 
   const zoneCaption = state.pendingTarget
     ? `Now tap where it actually landed <a href="#" onclick="resetTarget();return false;" style="color:var(--accent-text);">(reset target)</a>`
@@ -9756,7 +9756,7 @@ function renderEmailSection(){
     </div>`;
   const form = state.changeEmailOpen ? `
     <div class="change-email-form">
-      <p style="margin:0;font-size:12.5px;color:var(--ink-dim);">Use an email you check on your phone. School addresses often block our mail.</p>
+      <p style="margin:0;font-size:12px;color:var(--ink-dim);">Use an email you check on your phone. School addresses often block our mail.</p>
       <div class="field"><span class="field-label">New email</span><input class="text-input" id="change-email-input" type="email" placeholder="you@example.com"></div>
       <div class="contacts-save-row">
         <button class="btn btn-primary" ${state.changeEmailStatus === 'sending' ? 'disabled' : ''} onclick="submitChangeEmail()">${state.changeEmailStatus === 'sending' ? 'Sending…' : 'Send verification'}</button>
@@ -9796,7 +9796,7 @@ function renderThrowsSection(p){
 function renderPitchMixSection(p){
   const chips = (p.pitchTypes || []).map(t =>
     `<span class="pitch-chip" style="background:${colorForType(p, t)};">${pitchLabel(t)} <span onclick="removePitchType(${escHtml(JSON.stringify(t))})" style="cursor:pointer;margin-left:4px;">✕</span></span>`
-  ).join('') || `<span style="color:var(--ink-faint);font-size:12.5px;">No pitches set yet</span>`;
+  ).join('') || `<span style="color:var(--ink-faint);font-size:12px;">No pitches set yet</span>`;
   const remaining = PITCH_CATALOG.filter(c => !(p.pitchTypes || []).includes(c.name));
   return `<div class="profile-section"><h3>Pitch mix</h3>
     <div class="pitcher-sub" style="margin:0;">${chips}</div>
@@ -10042,7 +10042,7 @@ function renderCoachTeamAdmin(){
           <button class="invite-link-copy-btn" onclick="copyInviteLink()">${state.inviteCopyStatus === 'copied' ? 'Copied!' : state.inviteCopyStatus === 'error' ? 'Copy failed' : 'Copy'}</button>
         </div>
         <div class="invite-regen-row">
-          <span style="font-size:11px;color:var(--ink-faint);">Rotated ${state.teamInviteLinks.invite_token_rotated_at ? new Date(state.teamInviteLinks.invite_token_rotated_at).toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '—'}</span>
+          <span style="font-size:10px;color:var(--ink-faint);">Rotated ${state.teamInviteLinks.invite_token_rotated_at ? new Date(state.teamInviteLinks.invite_token_rotated_at).toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '—'}</span>
           ${state.regenerateArmed ? '' : '<button class="invite-regen-btn" onclick="armRegenerateInvite()">Regenerate</button>'}
         </div>
         ${state.regenerateArmed ? `
@@ -10059,7 +10059,7 @@ function renderCoachTeamAdmin(){
           <button class="invite-link-copy-btn" onclick="copyCoachInviteLink()">${state.coachInviteCopyStatus === 'copied' ? 'Copied!' : state.coachInviteCopyStatus === 'error' ? 'Copy failed' : 'Copy'}</button>
         </div>
         <div class="invite-regen-row">
-          <span style="font-size:11px;color:var(--ink-faint);">Rotated ${state.teamInviteLinks.coach_invite_token_rotated_at ? new Date(state.teamInviteLinks.coach_invite_token_rotated_at).toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '—'}</span>
+          <span style="font-size:10px;color:var(--ink-faint);">Rotated ${state.teamInviteLinks.coach_invite_token_rotated_at ? new Date(state.teamInviteLinks.coach_invite_token_rotated_at).toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '—'}</span>
           ${state.coachRegenerateArmed ? '' : '<button class="invite-regen-btn" onclick="armRegenerateCoachInvite()">Regenerate</button>'}
         </div>
         ${state.coachRegenerateArmed ? `
@@ -10757,7 +10757,7 @@ function render(){
         <span class="roster-chevron${collapsed ? '' : ' open'}">▾</span>
       </button>` : `<div class="roster-label" style="margin:0;">Roster</div>`}
       <div class="roster-collapse${collapsed ? ' collapsed' : ''}">
-        <div class="roster-list">${rosterItems || '<p style="color:var(--ink-faint);font-size:12.5px;">No pitchers on this team yet.</p>'}</div>
+        <div class="roster-list">${rosterItems || '<p style="color:var(--ink-faint);font-size:12px;">No pitchers on this team yet.</p>'}</div>
       </div>`;
     phoneFooter = `<div class="phone-footer"><button class="sign-out-btn" onclick="signOut()">Sign out</button></div>`;
   } else {
@@ -10804,7 +10804,7 @@ function render(){
     const arsenalChips = p.pitchTypes.map(t => {
       const c = colorForType(p, t);
       return `<span class="pitch-chip" style="background:${c};">${pitchLabel(t)}</span>`;
-    }).join('') || `<span style="color:var(--ink-faint);font-size:12.5px;">No pitches set yet</span>`;
+    }).join('') || `<span style="color:var(--ink-faint);font-size:12px;">No pitches set yet</span>`;
 
     const contacts = p.contactEmails || {};
     const coachFieldValue = contacts.coach || '';
@@ -10822,7 +10822,7 @@ function render(){
           <span class="field-label">${state.profile && state.profile.managed_by ? 'Parent email (reports go here)' : 'Your email'}</span>
           <input class="text-input" value="${escHtml(myEmail)}${state.myVerification.emailConfirmed ? '' : ' (unverified)'}" disabled style="opacity:0.7;">
         </div>
-        <p style="flex-basis:100%;margin:-4px 0 0;font-size:11.5px;color:var(--ink-faint);">Coach email is who the report is also cc'd to — edit or clear it as needed. Your own email always follows your account (change it above if it's wrong).</p>
+        <p style="flex-basis:100%;margin:-4px 0 0;font-size:12px;color:var(--ink-faint);">Coach email is who the report is also cc'd to — edit or clear it as needed. Your own email always follows your account (change it above if it's wrong).</p>
         <div class="contacts-save-row">
           <button class="btn btn-primary" onclick="saveContactEmails()">Save</button>
           ${state.contactsSavedAt ? '<span class="contacts-saved-msg">Saved</span>' : ''}

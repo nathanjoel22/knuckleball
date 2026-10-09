@@ -12,6 +12,7 @@
 <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'sha256-1d1xsDiJxO+8b1YP6MFOixOwKyyboaG+nLItY+cVybQ='; object-src 'none'; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bullpen Session Report — Knuckleball</title>
+<link rel="stylesheet" href="buttons.css">   <!-- U13: shared button shapes (Joel, Oct 9 2026) -->
 <style>
   :root{
     /* Same token values as bullpen-tracker.html's light theme -- this page
@@ -44,12 +45,6 @@
   }
   .kb-mark{ color:var(--amber); font-weight:700; font-size:14px; letter-spacing:0.04em; }
   .kb-actions{ display:flex; gap:8px; }
-  .kb-btn{
-    font:inherit; font-size:13px; font-weight:600; padding:7px 14px; border-radius:6px;
-    border:1px solid var(--border-on-dark); background:transparent; color:var(--chalk-dim); cursor:pointer;
-  }
-  .kb-btn:hover{ border-color:var(--chalk-dim); color:var(--chalk); }
-  .kb-btn:disabled{ opacity:0.4; cursor:not-allowed; }
   #kb-state{
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     text-align:center; padding:80px 24px; color:var(--ink-dim);
@@ -83,8 +78,8 @@
   <div class="kb-bar">
     <div class="kb-mark">KNUCKLEBALL</div>
     <div class="kb-actions">
-      <button class="kb-btn" id="btn-download" disabled>Download</button>
-      <button class="kb-btn" id="btn-print" disabled>Print</button>
+      <button class="btn btn-secondary btn-sm on-dark kb-btn" id="btn-download" disabled>Download</button>
+      <button class="btn btn-secondary btn-sm on-dark kb-btn" id="btn-print" disabled>Print</button>
     </div>
   </div>
   <!-- Visible from the start, so if the script ever can't run (e.g. the

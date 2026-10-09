@@ -1,0 +1,112 @@
+/* Knuckleball buttons -- U13, the segmented style (Joel, Oct 9 2026; plans/u13-segmented-buttons.md).
+   One shared file for every page. Shape and behavior only: every color comes from the page's own theme
+   variables (baseball green/gold, softball navy/pink), so a palette change later is a token swap here,
+   never another button pass. Eight roles: tray/segment, primary, secondary, tertiary, icon, danger, nav
+   (a tray), and charting targets -- which are NOT styled here (grid cells, field boxes, bases, velocity).
+
+   Tokens resolve against each page's existing variables. The app defines --primary-bg/--primary-fg,
+   --surface and --red-bg; the sign-in pages don't, so they fall back to the gold they use today. */
+:root{
+  --btn-ink:        var(--field-dark);
+  --btn-soft:       var(--surface, rgba(255,255,255,0.10));
+  --btn-primary:    var(--primary-bg, var(--amber));
+  --btn-on-primary: var(--primary-fg, var(--field-dark));
+  --btn-accent:     var(--field-dark);   /* Joel, Oct 9 (E): the selected underline is each sport's dark ink */
+  --btn-danger:     var(--red-bg, #A83A31);   /* Joel, Oct 9 (F): the red today's danger buttons use */
+  --btn-disabled-bg:#F1F3F6;
+  --btn-disabled-fg:#ADB4C0;
+  --btn-h:44px;
+}
+
+/* ---------- Standalone buttons ---------- */
+.btn{
+  -webkit-appearance:none; appearance:none; box-sizing:border-box;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  min-height:var(--btn-h); padding:0 16px; margin:0;
+  border:0; border-radius:12px;
+  background:var(--btn-soft); color:var(--btn-ink);
+  font:inherit; font-size:16px; font-weight:600; line-height:1.2; letter-spacing:normal; text-transform:none;
+  text-align:center; text-decoration:none; white-space:nowrap; cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:background-color .15s ease, box-shadow .15s ease, transform .1s ease;
+}
+.btn-primary{ background:var(--btn-primary); color:var(--btn-on-primary); }
+.btn-secondary{ background:var(--btn-soft); color:var(--btn-ink); }
+.btn-tertiary{ background:transparent; color:var(--btn-ink); }
+.btn-icon{ width:var(--btn-h); min-width:var(--btn-h); padding:0; flex:none; background:var(--btn-soft); font-size:20px; }
+.btn-danger{ background:var(--btn-soft); color:var(--btn-danger); }
+.btn-sm{ font-size:14px; padding:0 12px; }          /* size variant: dense rows */
+.btn-block{ display:flex; width:100%; }             /* size variant: full width */
+/* A single button that shows a state (Set/Windup, the batter pill): the selected look. */
+.btn.is-selected{ background:#fff; color:var(--btn-ink); box-shadow:0 1px 3px rgba(0,0,0,.18), inset 0 -3px 0 var(--btn-accent); }
+
+/* Pressed: the fill 4% darker (an inset overlay, so the text keeps its color), a hair smaller. */
+.btn:active:not(:disabled){ box-shadow:inset 0 0 0 999px rgba(0,0,0,.04); transform:scale(.98); }
+.btn.is-selected:active:not(:disabled){ box-shadow:0 1px 3px rgba(0,0,0,.18), inset 0 -3px 0 var(--btn-accent), inset 0 0 0 999px rgba(0,0,0,.04); }
+
+/* ---------- Trays: 2-5 mutually exclusive choices ---------- */
+.tray{
+  position:relative; box-sizing:border-box;
+  display:flex; align-items:stretch; gap:0;
+  min-height:var(--btn-h); padding:3px; margin:0;
+  border-radius:12px; background:var(--btn-soft);
+}
+.tray-grid{ display:grid; grid-template-columns:1fr 1fr; }          /* wide pitch types: two per row (r6) */
+.tray-scroll{ overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.tray-scroll::-webkit-scrollbar{ display:none; }
+.seg{
+  -webkit-appearance:none; appearance:none; box-sizing:border-box;
+  position:relative; z-index:1;
+  flex:1 1 0; min-width:0; min-height:38px; padding:0 10px; margin:0;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  border:0; border-radius:9px; background:transparent; color:var(--btn-ink);
+  font:inherit; font-size:14px; font-weight:600; line-height:1.15; letter-spacing:normal; text-transform:none;
+  white-space:nowrap; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:color .15s ease;
+}
+/* A segment's tap area covers the tray's 3px padding too, so every target is 44px tall. */
+.seg::before{ content:''; position:absolute; left:0; right:0; top:-3px; bottom:-3px; }
+.tray-grid .seg{ min-height:44px; }               /* rows touch, so the segment itself is 44 tall */
+.tray-grid .seg::before{ top:0; bottom:0; }
+.seg[aria-pressed="true"]{ background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.18), inset 0 -3px 0 var(--seg-accent, var(--btn-accent)); }
+.seg:active:not(:disabled){ background-color:rgba(0,0,0,.04); }
+.seg[aria-pressed="true"]:active:not(:disabled){ background-color:#fff; }
+/* The sliding indicator (placed by the page's script): the selected segment rises on it. */
+.tray-ind{
+  position:absolute; z-index:0; left:3px; top:3px; width:0; height:0; pointer-events:none;
+  border-radius:9px; background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.18), inset 0 -3px 0 var(--seg-accent, var(--btn-accent));
+  transition:left 150ms ease, top 150ms ease, width 150ms ease, height 150ms ease;
+}
+.tray.has-ind .seg[aria-pressed="true"]{ background:transparent; box-shadow:none; }
+.tray:not(.has-ind) .tray-ind{ display:none; }
+
+/* Pitch types: unselected segments show a dot in their type color; the selected one is underlined in it.
+   The --type-color value comes from the page's generated palette classes (.ptc-0 ... ). */
+.seg .type-dot{ width:8px; height:8px; border-radius:50%; flex:none; background:var(--type-color, var(--btn-ink)); }
+.seg[aria-pressed="true"] .type-dot{ display:none; }
+.seg[class*="ptc-"]{ --seg-accent:var(--type-color); }
+
+/* ---------- Disabled, focus, reduced motion ---------- */
+.btn:disabled, .seg:disabled{ background:var(--btn-disabled-bg); color:var(--btn-disabled-fg); box-shadow:none; transform:none; cursor:not-allowed; }
+.btn-tertiary:disabled, .seg:disabled{ background:transparent; }
+.btn:focus{ outline:none; }
+.btn:focus-visible, .seg:focus-visible{ outline:3px solid var(--btn-accent); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce){
+  .btn, .seg, .tray-ind{ transition:none !important; }
+  .btn:active:not(:disabled){ transform:none; }
+}
+
+/* ---------- On dark surfaces (status bar, session header, dark panels, sign-in pages, report toolbar) ---------- */
+.on-dark .tray, .tray.on-dark{ background:rgba(255,255,255,.10); }
+.on-dark .seg, .tray.on-dark .seg{ color:rgba(255,255,255,.8); }
+.on-dark .seg[aria-pressed="true"], .tray.on-dark .seg[aria-pressed="true"]{ color:var(--btn-ink); }
+.on-dark .btn-secondary, .btn-secondary.on-dark,
+.on-dark .btn-icon, .btn-icon.on-dark{ background:rgba(255,255,255,.10); color:#fff; }
+.on-dark .btn-tertiary, .btn-tertiary.on-dark{ color:#fff; }
+.on-dark .btn.is-selected, .btn.is-selected.on-dark{ background:#fff; color:var(--btn-ink); }
+.on-dark .btn:disabled, .btn.on-dark:disabled{ background:rgba(255,255,255,.06); color:rgba(255,255,255,.35); }
+
+/* ---------- A 44px tap area where the visible control can't grow (a full bar, a table row) ---------- */
+.hit44{ position:relative; }
+.hit44::after{ content:''; position:absolute; left:50%; top:50%; width:max(100%, 44px); height:max(100%, 44px); transform:translate(-50%, -50%); }

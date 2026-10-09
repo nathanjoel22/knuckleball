@@ -20,6 +20,7 @@
     document.documentElement.setAttribute('data-sport', window.KB_SPORT);
   })();
 </script>
+<link rel="stylesheet" href="buttons.css">   <!-- U13: shared button shapes (Joel, Oct 9 2026) -->
 <style>
   @import url('vendor/fonts/fonts.css');
 
@@ -82,9 +83,7 @@
   .card{ max-width:460px; }
   .summary{ font-size:13.5px; color:var(--chalk-dim); line-height:1.55; margin:0; }
   .summary strong{ color:var(--chalk); }
-  .approve-btn{ font:inherit; font-size:15px; font-weight:700; padding:13px 16px; border-radius:10px; border:0; cursor:pointer;
-    background:var(--amber); color:var(--field-dark); }
-  .approve-btn:disabled{ opacity:0.6; cursor:not-allowed; }
+  .approve-btn{ white-space:normal; min-height:48px; padding:10px 16px; }
   .policy-links{ display:flex; gap:16px; flex-wrap:wrap; }
   .site-footer{ font-size:11.5px; color:var(--chalk-faint); text-align:center; margin-top:4px; }
   body{ flex-direction:column; gap:14px; }   /* P1-10: the footer sits under the card */
@@ -123,7 +122,7 @@
     <p class="summary">We don't sell or share it, and there's no advertising or tracking. You can ask for it to be exported or
       deleted at <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a>.</p>
     <div class="policy-links"><a id="privacy-link" href="privacy.html">Privacy Policy</a><a id="terms-link" href="terms.html">Terms</a></div>
-    <button class="approve-btn" id="approve-btn" type="button">I'm their parent or guardian &mdash; approve</button>
+    <button class="btn btn-primary btn-block approve-btn" id="approve-btn" type="button">I'm their parent or guardian &mdash; approve</button>
     <p class="spinner-msg step-hidden" id="approve-err"></p>
   </div>
 

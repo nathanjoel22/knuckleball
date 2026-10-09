@@ -45,6 +45,7 @@
     document.documentElement.setAttribute('data-sport', sp);
   })();
 </script>
+<link rel="stylesheet" href="buttons.css">   <!-- U13: shared button shapes (Joel, Oct 9 2026) -->
 <style>
   @import url('vendor/fonts/fonts.css');
 
@@ -163,9 +164,7 @@
     transition:transform 250ms ease-out, opacity 250ms ease-out; }
   .frame.off-left{ transform:translateX(-100%); opacity:0; pointer-events:none; }
   .frame.off-right{ transform:translateX(100%); opacity:0; pointer-events:none; }
-  .back-link{ align-self:flex-start; background:none; border:0; color:var(--chalk); font:inherit;
-    font-size:15px; font-weight:700; cursor:pointer; padding:8px 2px; letter-spacing:0.01em; }
-  .back-link:hover{ color:var(--amber-bright); }
+  .back-link{ align-self:flex-start; padding:0 10px; margin-left:-10px; }
   .option-icon svg.ball{ width:34px; height:34px; }
   /* Joel, Oct 1 -- phones: the page is taller than the screen, and centering
      it pushed the logo off the top. Start from the top and tighten the
@@ -183,7 +182,6 @@
     .option-icon svg.ball{ width:34px; height:34px; }
     .option-title{ font-size:32px; }
     .option-desc{ font-size:13.5px; }
-    .back-link{ padding:4px 2px; }
   }
   /* shorter phones (SE and smaller): same stacked cards, tighter, so the whole
      page still fits one screen */
@@ -237,7 +235,7 @@
     </div>
     </div>
     <div class="frame off-right" id="frame-role">
-    <button type="button" class="back-link" onclick="backToSport()">‹ Baseball / Softball</button>
+    <button type="button" class="btn btn-tertiary on-dark back-link" onclick="backToSport()">‹ Baseball / Softball</button>
     <h2 class="display" id="role-title">Who are you?</h2>
     <div class="options">
       <a class="option-card" data-role="pitcher" href="login.html?role=pitcher&sport=baseball">

@@ -42,6 +42,7 @@
       href="vendor/fonts/fonts.css"
       onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="vendor/fonts/fonts.css"></noscript>
+<link rel="stylesheet" href="buttons.css">   <!-- U13: every button's shape (Joel, Oct 9 2026) -->
 <style>
   /* Visual refresh (light theme). Every color the app uses lives here now --
      the several dozen hard-coded hexes that used to be scattered through
@@ -147,16 +148,14 @@
     display:flex; align-items:center; gap:8px; min-height:44px; padding:0 6px 0 4px;
     background:var(--field-dark); color:var(--chalk); border-radius:10px; margin:8px 0 0;
   }
-  .sess-back{ all:unset; cursor:pointer; display:flex; align-items:center; gap:4px; min-height:44px; padding:0 6px;
-    font-size:16px; color:var(--chalk); max-width:32%; min-width:0; }
+  .sess-back{ display:flex; justify-content:flex-start; gap:4px; padding:0 6px; max-width:32%; min-width:0; }
   .sess-team{ font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sess-who{ display:flex; align-items:center; gap:8px; min-width:0; flex:1; }
   .sess-who .headshot{ width:28px; height:28px; font-size:10px; flex:none; }
   .sess-name{ font-weight:700; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:2.5em; }
   .sess-num{ font-size:14px; color:var(--chalk-dim); flex:none; }
   .sess-offline{ flex:none; width:9px; height:9px; border-radius:50%; background:var(--amber-bright); }   /* offline: a dot, so the name keeps its room */
-  .sess-more{ all:unset; cursor:pointer; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center;
-    font-size:24px; color:var(--chalk-dim); }
+  .sess-more{ font-size:24px; }
   .dots9{ display:grid; grid-template-columns:repeat(3, 4px); gap:3px; }
   .dots9 i{ width:4px; height:4px; border-radius:50%; background:var(--chalk); }
   .ph-layout .controls-panel.ph-controls{ padding:6px; gap:8px; border:0; box-shadow:none; background:transparent; }
@@ -176,28 +175,22 @@
   /* one grid square on a phone: the grid is min(screen - 28px, 320px) wide,
      3px padding each side and 3px gaps, five across */
   .ph-layout{ --chip:calc((min(100vw - 28px, 320px) - 18px) / 5); }
-  .deliv-row{ display:flex; align-items:center; gap:4px; min-height:var(--chip); }
+  .deliv-row{ display:flex; align-items:center; gap:4px; min-height:44px; }
   /* Joel, Oct 1: Set and Windup are the same width */
-  .deliv-one{ flex:none; width:78px; height:var(--chip); text-align:center; padding:0 10px; border-radius:10px; font:inherit; font-weight:700; font-size:16px;
-    background:var(--card-bg); color:var(--field-dark); border:1.5px solid var(--field-dark); cursor:pointer; }
-  .deliv-one.on{ background:var(--field-dark); color:var(--chalk); }
-  .ttp-btn.ttp-compact{ flex:none; min-width:36px; height:var(--chip); padding:0 4px; border-radius:10px; font-size:14px; }
+  .deliv-one{ flex:none; width:78px; padding:0 10px; font-weight:700; }
+  .ttp-btn.ttp-compact{ flex:none; font-size:16px; }
   /* Joel, Oct 8: in the Live Game status bar (phones) */
   .ph-status-deliv{ margin-left:auto; display:flex; align-items:center; gap:6px; }
-  .ph-status .deliv-one{ width:76px; height:34px; padding:0 8px; font-size:14px; border-color:var(--chalk); }
-  .ph-status .deliv-one.on{ background:var(--chalk); color:var(--field-dark); }
-  .ph-status .ttp-btn.ttp-compact{ height:34px; min-width:40px; }
+  .ph-status .deliv-one{ width:76px; height:34px; min-height:34px; padding:0 8px; font-size:14px; }
+  .ph-status .ttp-btn.ttp-compact{ width:40px; min-width:40px; height:34px; min-height:34px; }
   .pstrip-wrap{ flex:1; min-width:0; display:flex; align-items:center; gap:2px; }
-  .pstrip-arrow{ flex:none; width:16px; height:var(--chip); padding:0; border:0; background:none; font:inherit; font-size:24px; font-weight:800;
-    color:var(--field-dark); cursor:pointer; }
-  .pstrip-arrow:disabled{ opacity:0.25; cursor:default; }
-  .pstrip{ flex:1; min-width:0; display:flex; gap:4px; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; }
-  .pstrip::-webkit-scrollbar{ display:none; }
+  .pstrip-arrow{ flex:none; width:20px; min-width:0; padding:0; font-size:24px; font-weight:800; }
+  .pstrip-arrow:disabled{ background:transparent; }
+  .pstrip{ flex:1; min-width:0; scroll-snap-type:x mandatory; }
   /* Joel, Oct 1: pitch squares are the size of a 5x5 grid square, rounded,
      abbreviations in capitals */
-  .pstrip-chip{ flex:0 0 var(--chip); width:var(--chip); height:var(--chip); min-width:0; overflow:hidden; text-overflow:clip; scroll-snap-align:start; border-radius:10px; text-transform:uppercase; border:1.5px solid var(--border-strong);
-    background:var(--card-bg); font:inherit; font-weight:800; font-size:12px; letter-spacing:0; cursor:pointer; padding:0 1px; white-space:nowrap; }
-  .pstrip-chip.selected{ box-shadow:inset 0 0 0 2.5px rgba(0,0,0,0.28); }   /* inside the square, so the strip's edge never clips it */
+  .pstrip-chip{ flex:0 0 var(--chip); width:var(--chip); padding:0 2px; scroll-snap-align:start; text-transform:uppercase; font-weight:700; }
+/* inside the square, so the strip's edge never clips it */
   .ph-grid-wrap{ position:relative; margin-top:6px; }
   /* Joel, Oct 1: a bigger grid on phones (340px, was 320) -- as big as it
      can get with everything through the velocity strip still under 700px;
@@ -210,22 +203,17 @@
   .pb-zone .zone-grid{ margin-bottom:0 !important; }
   .pb-zone .kb-batter{ display:none !important; }
   .pb-pill-row{ display:flex; justify-content:center; }
-  .pb-pill{ min-width:160px; height:48px; padding:0 24px; border-radius:999px; font:inherit; font-size:16px; font-weight:800; cursor:pointer;
-    background:var(--field-dark); color:var(--chalk); border:1.5px solid var(--field-dark); }
-  .pb-pill.none{ background:var(--card-bg); color:var(--ink-dim); border-color:var(--border-strong); font-weight:700; }
+  .pb-pill{ min-width:160px; padding:0 24px; font-weight:700; }
   .ph-actions{ display:flex; gap:8px; }
-  .ph-act{ flex:1; min-height:44px; border-radius:10px; border:1.5px solid var(--border-strong); background:var(--card-bg);
-    font:inherit; font-size:14px; font-weight:700; color:var(--field-dark); cursor:pointer; padding:0 4px; }
+  .ph-act{ flex:1; }
   .velo-slim{ display:flex; align-items:center; gap:6px; min-height:52px; padding:4px 8px; background:var(--surface); border-radius:10px; }
   .velo-slim-lbl{ flex:none; max-width:56px; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-faint); line-height:1.2; }
   .velo-slim-strip{ flex:1; min-width:0; }
   .velo-slim .velo-help{ display:none; }
   .velo-slim .velo-strip{ --velo-visible:3; }
-  .velo-slim .velo-arrow{ flex-basis:22px; min-height:var(--chip); }
+  .velo-slim .velo-arrow{ flex:0 0 22px; width:22px; min-width:0; min-height:var(--chip); background:transparent; }
   .velo-slim .velo-cell{ min-height:var(--chip); border-radius:10px; }
-  .velo-slim-reset{ flex:none; border:0; background:none; font:inherit; font-size:10px; letter-spacing:0.06em; text-transform:uppercase;
-    color:var(--ink-dim); min-height:40px; cursor:pointer; padding:0 2px; }
-  .velo-slim-reset:disabled{ opacity:0.4; cursor:default; }
+  .velo-slim-reset{ flex:none; padding:0 6px; }
   .ph-statline{ font-size:12px; font-weight:700; margin-bottom:6px; }
   .sheet-overlay{ align-items:flex-end; padding:0; }
   .sess-sheet{ width:100%; max-width:520px; background:var(--card-bg); border-radius:16px 16px 0 0; padding:18px 16px calc(16px + env(safe-area-inset-bottom, 0px));
@@ -375,21 +363,14 @@
     font-size:10px; text-transform:uppercase; letter-spacing:0.12em;
     color:var(--ink-faint); margin:4px 0 -4px;
   }
-  .roster-toggle-btn{
-    all:unset; display:flex; align-items:center; justify-content:space-between; gap:8px;
-    cursor:pointer; padding:4px 0; margin:0 0 -4px; min-height:32px;
-  }
+  .roster-toggle-btn{ display:flex; width:100%; justify-content:space-between; gap:8px; padding:0 14px; margin:0; }
   .roster-toggle-btn .roster-label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
   .roster-chevron{
     flex-shrink:0; color:var(--ink-faint); font-size:10px; line-height:1;
     transition:transform 200ms ease; transform:rotate(0deg);
   }
   .roster-chevron.open{ transform:rotate(180deg); }
-  .persp-rollup{
-    all:unset; box-sizing:border-box; display:flex; align-items:center; gap:8px; width:100%;
-    min-height:36px; cursor:pointer;
-  }
-  .persp-rollup:disabled{ cursor:default; }
+  .persp-rollup{ justify-content:flex-start; gap:8px; padding:0 14px; }
   .persp-current{ margin-left:auto; font-size:12px; font-weight:700; color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
   /* Collapse animation: overflow-hidden max-height + opacity, ~200ms, so the list
      visibly rolls up/down rather than just vanishing. max-height's open value only
@@ -453,17 +434,8 @@
     font-family:'IBM Plex Mono',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     user-select:all; -webkit-user-select:all;
   }
-  .invite-link-copy-btn{
-    flex-shrink:0; background:var(--page-bg); border:1px solid var(--border-strong);
-    color:var(--ink-dim); border-radius:5px; padding:7px 10px; font-size:12px; font-weight:600;
-  }
-  .invite-link-copy-btn:hover{ border-color:var(--field-dark); color:var(--field-dark); }
+  .invite-link-copy-btn{ flex-shrink:0; }
   .invite-regen-row{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
-  .invite-regen-btn{
-    background:none; border:none; color:var(--ink-faint); font-size:12px;
-    text-decoration:underline; padding:0;
-  }
-  .invite-regen-btn:hover{ color:var(--red); }
   .invite-regen-warn{
     font-size:12px; color:var(--ink-dim); line-height:1.5; margin:0;
   }
@@ -481,11 +453,7 @@
      "runs into the number 25"). Now its own row under the pitch-type line,
      never subject to that truncation regardless of name length. */
   .roster-verify-badge{ align-self:flex-start; margin-left:0; margin-top:1px; }
-  .roster-item-remove{
-    background:none; border:none; color:var(--ink-faint); font-size:12px;
-    padding:2px 4px; flex-shrink:0;
-  }
-  .roster-item-remove:hover{ color:var(--red); }
+  .roster-item-remove{ flex-shrink:0; }
 
   /* R0: deferred-verification banner, shown to a pitcher whose account
      email isn't confirmed. Persistent, never a blocking modal (Joel's own
@@ -502,12 +470,7 @@
     border-radius:8px; padding:16px; display:flex; flex-direction:column; gap:10px; margin-bottom:16px;
   }
 
-  .sign-out-btn{
-    margin-top:auto; background:transparent; border:1px solid var(--border);
-    color:var(--ink-faint); border-radius:6px; padding:9px; font-size:12px;
-    font-weight:600; text-align:center;
-  }
-  .sign-out-btn:hover{ border-color:var(--red); color:var(--red); }
+  .sign-out-btn{ margin-top:auto; }
   .phone-footer{ display:none; }   /* shown on phones only, see the max-width:500px block */
 
   .outbox-badge{
@@ -515,7 +478,7 @@
     background:rgba(193,122,69,0.12); border:1px solid var(--clay-dim); border-radius:6px;
     padding:8px 10px; font-size:12px; color:var(--ink-dim);
   }
-  .outbox-badge .btn{ padding:5px 10px; font-size:12px; flex-shrink:0; }
+  .outbox-badge .btn{ flex-shrink:0; }
 
   .invite-form{
     background:var(--card-bg); border:1px solid var(--border-strong);
@@ -528,12 +491,6 @@
   }
   .text-input::placeholder{ color:var(--ink-faint); }
   .form-row-buttons{ display:flex; gap:8px; margin-top:2px; }
-  .btn{ border-radius:6px; padding:9px 14px; font-size:12px; font-weight:600; border:1px solid transparent; display:inline-block; text-decoration:none; }
-  .btn-primary{ background:var(--primary-bg); color:var(--primary-fg); }
-  .btn-primary:hover{ background:var(--primary-bg-hover); }
-  .btn-primary:disabled{ opacity:0.5; cursor:not-allowed; }
-  .btn-ghost{ background:transparent; border-color:var(--border-strong); color:var(--ink-dim); }
-  .btn-ghost:hover{ border-color:var(--ink-dim); color:var(--field-dark); }
   .invite-status{ font-size:12px; margin:0; }
   .invite-status-sending{ color:var(--ink-faint); }
   .invite-status-sent{ color:#6FA287; }
@@ -600,13 +557,8 @@
      corner -- inert today since no page here sets viewport-fit=cover, so the env() call
      currently always resolves to 0 and only the 8px floor applies; kept as forward-compatible
      groundwork per the request. */
-  .tabs{ display:flex; gap:4px; border-bottom:1px solid var(--border); padding-right:max(8px, env(safe-area-inset-right)); }
-  .tab-btn{
-    background:none; border:none; color:var(--ink-faint); font-size:12px; font-weight:600;
-    padding:10px 3px; border-bottom:2px solid transparent; text-transform:uppercase; white-space:nowrap;
-  }
-  .tab-btn:hover{ color:var(--field-dark); }
-  .tab-btn.active{ color:var(--field-dark); font-weight:700; border-bottom-color:var(--amber); }
+  .tabs{ margin:0 env(safe-area-inset-right, 0px) 0 0; }
+  .tab-btn{ padding:0 6px; text-transform:uppercase; letter-spacing:0.02em; }
   /* U9: "Player Profile" is the longest tab label this app has ever had,
      and it now shares the row with the corner control -- confirmed
      overflowing at 375px with the full label (measured: 429px of content
@@ -638,15 +590,8 @@
      content center the pair under the question in both layouts. */
   .kind-chooser{ display:flex; flex-direction:column; align-items:center; padding:48px 16px; }
   .kind-chooser-buttons{ display:flex; flex-direction:column; align-items:center; gap:16px; width:100%; }
-  .kind-choice-btn{
-    display:flex; align-items:center; justify-content:center; gap:8px;
-    width:100%; max-width:280px; min-height:72px; border-radius:12px; border:none; background:var(--kind-btn);
-    color:#fff; font-family:'Teko',sans-serif; font-size:24px; font-weight:600;
-    letter-spacing:0.02em; box-shadow:0 2px 6px rgba(var(--ink-rgb),0.15);
-  }
-  .kind-choice-btn:hover{ background:var(--kind-btn-hover); }
-  .kind-choice-btn:active{ background:var(--kind-btn-active); }
-  @media (min-width:861px){ .kind-chooser-buttons{ flex-direction:row; justify-content:center; } .kind-choice-btn{ width:220px; } }
+  .kind-tray{ width:100%; max-width:360px; }
+  @media (min-width:861px){ .kind-chooser-buttons{ flex-direction:row; justify-content:center; } }
   /* U10 (1): back to the chooser. Above phone width it's a plain
      .btn.btn-ghost in the pitcher header's action row -- no extra rules, so
      it's exactly the size of Contacts/Profile beside it (Joel: "same
@@ -654,12 +599,8 @@
   /* Phone spot: overlaid on the brand strip's right end (position:absolute,
      so it adds no height to the strip), light-on-dark like the strip. */
   .brand-block{ position:relative; }
-  .back-to-chooser-brand{
-    position:absolute; right:12px; top:50%; transform:translateY(-50%);
-    min-height:44px; align-items:center; padding:0 14px; border-radius:6px;
-    background:transparent; border:1px solid var(--border-on-dark, rgba(241,236,221,0.25));
-    color:var(--chalk); font:inherit; font-size:12px; font-weight:600; cursor:pointer;
-  }
+  .back-to-chooser-brand{ position:absolute; right:12px; top:50%; transform:translateY(-50%); }
+  .back-to-chooser-brand:active:not(:disabled){ transform:translateY(-50%) scale(.98); }
   /* G1: the profile-setup modal. This file has no other modal/dialog
      pattern (see renderPerspectiveToggle's own comment) -- one is
      introduced here rather than reused from anywhere else. Scrollable on
@@ -677,25 +618,37 @@
     max-width:560px; width:100%; max-height:100%; overflow-y:auto;
     padding:32px 24px 24px; box-shadow:0 8px 32px rgba(var(--ink-rgb),0.35);
   }
-  .modal-close-x{
-    position:absolute; top:10px; right:10px; width:32px; height:32px;
-    border-radius:50%; border:none; background:transparent; color:var(--ink-faint);
-    font-size:20px; cursor:pointer; line-height:1;
-  }
-  .modal-close-x:hover{ background:rgba(var(--ink-rgb),0.08); }
+  .modal-close-x{ position:absolute; top:8px; right:8px; }
   .panel{ background:var(--card-bg); border:1px solid var(--border); border-radius:10px; padding:22px; box-shadow:0 1px 3px rgba(var(--ink-rgb),0.06); }
   .controls-panel{ display:flex; flex-direction:column; gap:18px; min-width:260px; flex:1; }
   .chip-row{ display:flex; flex-wrap:wrap; gap:10px; }
+  /* U13 layout helpers: spacing that used to sit inline on buttons, and where trays go */
+  .mt-6{ margin-top:6px; } .mt-10{ margin-top:10px; } .mt-12{ margin-top:12px; }
+  .roster-name-btn{ all:unset; flex:1; min-width:0; min-height:44px; align-self:stretch; display:flex; align-items:center; cursor:pointer; }
+  .roster-name-btn:focus-visible{ outline:3px solid var(--btn-accent); outline-offset:2px; border-radius:8px; }
+  .tray-gap{ margin-top:8px; }
+  /* a soft button on the soft green sidebar would vanish: there, buttons sit on white */
+  .sidebar{ --btn-soft:var(--card-bg); }
+  /* page tabs size to their labels; smaller type on phones */
+  .tabs .seg{ flex:1 1 auto; }
+  @media (max-width:500px){ .tabs .seg{ font-size:12px; padding:0 6px; letter-spacing:0; } }
+  .tray-fit{ display:inline-flex; min-width:220px; }
+  .history-tray{ flex:1 1 260px; max-width:420px; }
+  .deliv-tray-row{ display:flex; align-items:center; gap:10px; }
+  .deliv-tray-row .tray{ flex:1 1 auto; max-width:260px; }
+  .chip-x{ min-height:0; padding:0 0 0 4px; color:inherit; font-size:12px; }
+  /* the iPad/laptop left column is narrow: the perspective's two long choices stack */
+  .wide-left .tray[data-tray="persp"]{ flex-direction:column; }
+  .wide-left .tray[data-tray="persp"] .seg{ min-height:44px; }
+  .wide-left .tray[data-tray="persp"] .seg::before{ top:0; bottom:0; }
   /* .pitch-count-badge shares this block's shape/border/sizing so the pitch-count
      badge (below) and the pitch-type chips stay visually consistent -- see its own
      comment for the one thing it overrides (a fixed width instead of a minimum). */
-  .type-chip, .pitch-count-badge{
+  .pitch-count-badge{
     display:inline-flex; align-items:center; justify-content:center;
     min-height:44px; min-width:44px; padding:10px 16px; border-radius:22px; font-size:14px; font-weight:600;
     border:1.5px solid var(--border-strong); background:transparent; color:var(--ink-dim);
   }
-  .type-chip.selected{ color:var(--field-dark); border-color:transparent; }
-  .type-chip:disabled{ opacity:0.5; cursor:not-allowed; }
   /* Used to hold this pitch counter beside a "Relative accuracy" dropdown
      (removed in U7 -- relative accuracy now lives in Profile); kept as the
      wrapper since renderSessionView still nests .pitch-counter inside it. */
@@ -734,11 +687,7 @@
   .velo-cell.typical{ box-shadow:inset 0 0 0 2px var(--amber); color:var(--field-dark); font-weight:700; }
   .velo-cell.selected{ background:var(--amber); color:var(--field-dark); box-shadow:none; }
   .velo-cell:disabled{ cursor:not-allowed; }
-  .velo-arrow{
-    flex:0 0 32px; min-height:48px; background:var(--card-bg); border:1px solid var(--border-strong);
-    border-radius:8px; color:var(--ink-dim); font-size:20px; padding:0;
-  }
-  .velo-arrow:disabled{ cursor:not-allowed; }
+  .velo-arrow{ flex:0 0 44px; align-self:stretch; height:auto; }
   .velo-help{ margin-top:6px; font-size:12px; color:var(--ink-faint); }
   /* G1b-r2a: game-only wrapper (see renderGameVeloStrip) -- reference's own
      .velo/.velo .strip b.on: a light-green well and a dark (not amber)
@@ -930,14 +879,10 @@
   .perspective-delivery-row{ display:flex; flex-wrap:wrap; gap:20px; }
   .perspective-delivery-row > div{ flex:1; min-width:180px; }
   /* U11 (7): the stopwatch sits with Windup / Set. Disabled (greyed) unless Set. */
-  .ttp-btn{
-    font:inherit; font-size:12px; font-weight:700; padding:7px 12px; border-radius:20px; cursor:pointer;
-    background:var(--card-bg); color:var(--field-dark); border:1.5px solid var(--border-strong); min-width:84px;
-  }
-  .ttp-btn:disabled{ opacity:0.4; cursor:not-allowed; }
-  .ttp-btn.ttp-running{ border-color:var(--amber); color:var(--field-dark); }
-  .ttp-btn.ttp-ok{ background:var(--field-dark); color:var(--surface); border-color:var(--field-dark); }
-  .ttp-btn.ttp-bad{ color:var(--red); border-color:var(--red); }
+  .ttp-btn:not(.ttp-compact){ min-width:84px; }
+  .ttp-btn.ttp-running{ box-shadow:inset 0 0 0 2px var(--amber); }
+  .ttp-btn.ttp-ok{ background:var(--field-dark); color:var(--surface); }
+  .ttp-btn.ttp-bad{ color:var(--red); box-shadow:inset 0 0 0 2px var(--red); }
   /* U11 (5): no batter -- the RHB frame stays, the silhouette flip doesn't. */
   .no-batter .kb-batter{ display:none; }
   /* Reserved band for the result row, directly above the grid (G1b-r2:
@@ -1096,11 +1041,11 @@
     -webkit-tap-highlight-color:transparent; }
   .dock-btn svg{ width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .dock-btn{ position:relative; z-index:1; transition:color 160ms ease; }
-  .dock-btn.on{ color:#fff; }
+  .dock-btn.on{ color:var(--btn-ink); }
   /* the highlight pill: one button wide, glides under the finger, snaps with a short ease */
   .dock-pill{ position:absolute; z-index:0; left:8px; top:6px; bottom:6px; width:calc((100% - 16px) / 4); border-radius:12px;
-    background:rgba(255,255,255,0.18); transition:transform 220ms cubic-bezier(.3,.7,.3,1), opacity 160ms ease; will-change:transform; }
-  .dock-pill.dragging{ transition:none; background:rgba(255,255,255,0.24); }
+    background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.18), inset 0 -3px 0 var(--btn-accent); transition:transform 220ms cubic-bezier(.3,.7,.3,1), opacity 160ms ease; will-change:transform; }
+  .dock-pill.dragging{ transition:none; }
   .dock-pill.off{ opacity:0; }
   .coach-dock{ touch-action:none; }   /* a slide along the bar moves the highlight, never the page */
   @media (prefers-reduced-motion: reduce){ .coach-dock, .dock-pill, .dock-btn{ transition:none; } }
@@ -1186,18 +1131,14 @@
   }
   .pitch-log-row .mono{ color:var(--ink-dim); }
   .plr-dot{ width:8px; height:8px; border-radius:2px; display:inline-block; margin-right:7px; transform:rotate(45deg); }
-  .undo-btn{ background:none; border:none; color:var(--ink-faint); font-size:10px; text-decoration:underline; }
-  .undo-btn:hover{ color:var(--red); }
   .pitch-row-actions{ display:flex; gap:9px; flex-shrink:0; }
-  .row-x-btn{ background:none; border:none; color:var(--ink-faint); font-size:12px; line-height:1; padding:0 2px; }
-  .row-x-btn:hover{ color:var(--red); }
+  .row-x-btn{ min-height:0; padding:0 4px; line-height:1; }
   .pitch-log-row.editing{ flex-direction:column; align-items:stretch; gap:8px; }
   .edit-row-fields{ display:flex; gap:8px; }
   .edit-mini{ background:var(--card-bg); border:1px solid var(--border-strong); border-radius:5px; color:var(--field-dark); padding:5px 7px; font-size:12px; }
   .edit-mini.edit-velo{ width:74px; }
   .edit-row-actions{ display:flex; gap:12px; }
   .end-session-btn{ align-self:flex-start; }
-  .end-session-btn:disabled{ opacity:0.6; cursor:not-allowed; }
 
   .draft-banner{
     display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
@@ -1285,7 +1226,7 @@
   .acct-row{ display:flex; justify-content:flex-end; margin:-6px 0 6px; position:relative; z-index:20; }
   .acct-row.acct-inline{ margin:0; align-self:center; }   /* Joel, Oct 7: in the pitcher header's row on iPad / laptop */
   .acct-wrap{ position:relative; }
-  .acct-btn{ display:flex; align-items:center; gap:6px; padding:4px 10px 4px 4px; border:1px solid var(--border-strong); border-radius:999px; background:var(--card-bg); color:var(--field-dark); font:inherit; font-size:12px; font-weight:600; cursor:pointer; min-height:36px; }
+  .acct-btn{ gap:6px; padding:0 10px 0 4px; }
   .acct-avatar{ width:28px; height:28px; border-radius:50%; background:var(--surface); border:1px solid var(--surface-border); display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--field-dark); flex:0 0 auto; }
   .acct-caret{ font-size:10px; color:var(--ink-faint); }
   .acct-chip{ font-size:10px; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; padding:2px 7px; border-radius:999px; }
@@ -1294,15 +1235,13 @@
   .acct-chip-none{ background:var(--surface); color:var(--ink-dim); }
   .acct-menu{ position:absolute; right:0; top:calc(100% + 6px); width:min(300px, calc(100vw - 32px)); background:var(--card-bg); border:1px solid var(--border-strong); border-radius:12px; box-shadow:0 10px 26px rgba(var(--ink-rgb),0.22); padding:8px; display:flex; flex-direction:column; gap:4px; }
   .acct-email{ font-size:12px; color:var(--ink-faint); padding:4px 8px 8px; border-bottom:1px solid var(--border); margin-bottom:4px; overflow-wrap:anywhere; }
-  .acct-item{ display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:8px; border:0; border-radius:8px; background:none; font:inherit; color:var(--field-dark); cursor:pointer; min-height:48px; }
-  .acct-item:hover, .acct-item.on{ background:var(--surface); }
+  .acct-item{ justify-content:flex-start; gap:10px; width:100%; text-align:left; padding:8px; min-height:48px; font-weight:400; }
   .acct-who{ display:flex; flex-direction:column; gap:3px; min-width:0; flex:1; }
   .acct-name{ font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .acct-meta{ font-size:12px; color:var(--ink-faint); display:flex; align-items:center; gap:6px; }
   .acct-badge{ font-size:10px; font-weight:700; text-transform:uppercase; background:var(--amber); color:var(--field-dark); border-radius:999px; padding:1px 6px; }
   .acct-check{ color:var(--field-dark); font-weight:800; }
-  .acct-add{ margin-top:4px; padding:10px 8px; border:1px dashed var(--border-strong); border-radius:8px; background:none; font:inherit; font-size:14px; font-weight:600; color:var(--field-dark); cursor:pointer; text-align:left; min-height:44px; }
-  .acct-add:disabled{ opacity:0.5; }
+  .acct-add{ margin-top:4px; width:100%; }
   .acct-msg{ font-size:12px; color:var(--clay); margin:4px 8px; }
   .who-card{ width:min(380px, 100%); background:var(--card-bg); border:1px solid var(--border); border-radius:14px; padding:22px; display:flex; flex-direction:column; gap:6px; box-shadow:0 1px 3px rgba(var(--ink-rgb),0.06); }
   /* S3: coaches notes in History */
@@ -1311,8 +1250,7 @@
   .note-meta{ font-size:12px; color:var(--ink-faint); display:flex; align-items:center; gap:6px; }
   .note-meta strong{ color:var(--field-dark); }
   .note-body{ font-size:14px; color:var(--field-dark); line-height:1.45; margin-top:4px; overflow-wrap:anywhere; }
-  .note-del{ margin-left:auto; border:0; background:none; cursor:pointer; font-size:14px; padding:2px 4px; min-width:32px; min-height:32px; }
-  .note-del:disabled{ opacity:0.4; cursor:not-allowed; }
+  .note-del{ margin-left:auto; }
   .note-input{ width:100%; resize:vertical; font-family:inherit; min-height:72px; font-size:16px; line-height:1.4; }
   .note-add-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:6px; }
   .note-count{ font-size:12px; color:var(--ink-faint); }
@@ -1335,14 +1273,12 @@
   .profile-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .profile-note{ margin:0; font-size:12px; color:var(--ink-faint); }
   .profile-msg{ margin:0; font-size:12px; color:var(--clay); }
-  .throws-btn{ min-height:44px; min-width:88px; padding:10px 16px; border-radius:22px; border:1.5px solid var(--border-strong); background:transparent; color:var(--ink-dim); font-size:14px; font-weight:600; }
-  .throws-btn.selected{ background:var(--amber); border-color:var(--amber); color:var(--field-dark); }
   .mix-prompt{ margin:8px 0 0; font-size:12px; color:var(--clay); }
   /* LEADERBOARD (U8) */
   .lb-page{ display:flex; flex-direction:column; gap:18px; max-width:640px; }
   .lb-controls{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
   .lb-team-select{ max-width:100%; }
-  .lb-toggle{ display:flex; gap:8px; flex-wrap:wrap; }
+  .lb-toggle{ width:100%; max-width:440px; }
   .lb-sub{ margin:0; font-size:12px; color:var(--ink-faint); }
   .lb-asof{ margin:0; font-size:12px; color:var(--clay); }
   .lb-section{ display:flex; flex-direction:column; gap:2px; }
@@ -1357,7 +1293,7 @@
   .lb-name{ font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
   .lb-num{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); font-weight:500; }
   .lb-val{ font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:600; color:var(--field-dark); text-align:right; }
-  .lb-val-btn{ background:none; border:1px dashed var(--amber); border-radius:5px; padding:2px 8px; cursor:pointer; }
+  .lb-val-btn{ min-height:0; padding:2px 8px; }
   .lb-unq-note{ font-size:12px; color:var(--ink-faint); font-weight:500; }
   .lb-n{ grid-column:3 / 5; font-size:10px; color:var(--ink-faint); }
   .lb-exclude-panel{ grid-column:1 / -1; display:flex; flex-direction:column; gap:8px; margin-top:6px; padding:10px; border:1px solid var(--border-strong); border-radius:6px; font-size:12px; }
@@ -1423,7 +1359,7 @@
     .sidebar > .roster-label{ margin:0; }
     .roster-toggle-btn{ flex:1 1 200px; }
     .roster-collapse, .outbox-badge{ flex:1 1 100%; }
-    .sign-out-btn{ margin-top:0; margin-left:auto; padding:8px 12px; }
+    .sign-out-btn{ margin-top:0; margin-left:auto; }
     .main{ padding:14px 16px; gap:14px; }
     .pitcher-header h2{ font-size:32px; }
     .pitcher-sub{ margin-top:6px; }
@@ -1452,17 +1388,15 @@
     .wide-game{ display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:20px; row-gap:16px; }
     .wide-game .wide-left{ max-width:180px; }
     .wide-bl{ grid-column:1; display:flex; align-items:center; }
-    .wide-bl .ttp-btn{ min-height:38px; }
     .wide-br{ grid-column:2; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
-    .pt-two{ display:grid; grid-template-columns:repeat(2, max-content); }   /* never more than two pitch types across */
+/* never more than two pitch types across */
     .wide-hint{ color:var(--clay); text-transform:none; letter-spacing:0; font-size:12px; font-weight:600; }
     /* Joel, Oct 1: pen pitch counter to the right of the perspective chips
        (label above both, "Pitch count" on two lines under the badge). */
     .persp-count{ display:grid; grid-template-columns:minmax(0, 1fr) auto; column-gap:8px; }
-    .persp-count .type-chip{ white-space:nowrap; }
     .persp-count > div:first-child{ display:contents; }
     .persp-count > div:first-child > .field-label{ grid-column:1 / -1; }
-    .persp-count .chip-row{ grid-column:1; grid-row:2; }
+    .persp-count .tray{ grid-column:1; grid-row:2; }
     .persp-count > div:first-child > p{ grid-column:1 / -1; }
     .persp-count .wide-count{ grid-column:2; grid-row:2; align-self:start; flex-direction:column; gap:5px; }
     .persp-count .wide-count .field-label{ width:48px; text-align:center; line-height:1.3; }
@@ -1561,7 +1495,7 @@
   .wide-right .g5-actions{ max-width:var(--zg, 340px); }
   .g5-act-gap{ flex:1; min-width:0; text-align:center; }
   .ph-layout .g5-actions{ gap:5px; }
-  .ph-layout .g5-act{ flex:1 1 0; min-width:0; padding:0 4px; font-size:12px; }
+  .ph-layout .g5-act{ flex:1 1 0; min-width:0; padding:0 4px; }
   .ph-layout .g5-act-gap{ display:none; }
   .ph-addcount{ margin-top:-7px; }
   .g5-act-cap{ font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.06em; line-height:1.2; }
@@ -1569,11 +1503,7 @@
   .ph-layout .g5-card{ margin-bottom:0 !important; }
   .ph-layout .zone-wrap.g5-on{ gap:5px; }
   .ph-layout .ph-actions.g5-on{ margin-top:-3px; }
-  .g5-act{ min-height:44px; padding:0 14px; border-radius:10px; font:inherit; font-weight:700; font-size:14px; white-space:nowrap;
-    background:#fff; color:var(--ink); border:1.5px solid var(--border-strong); cursor:pointer; }
-  .g5-act:disabled{ opacity:0.4; cursor:default; }
-  .g5-act-next{ background:#C9A227; border-color:#C9A227; color:#111; }
-  html[data-sport="softball"] .g5-act-next{ background:#E98DB0; border-color:#E98DB0; }
+  .g5-act{ padding:0 14px; }
   /* Joel, Oct 8 (iPad): the flash glows INSIDE the box, so a box on the field's edge never spills past the grid */
   @keyframes g5flash{ 50%{ box-shadow:inset 0 0 0 3px rgba(201,162,39,0.55); } }
   @keyframes g5tint{ 50%{ background:rgba(16,40,28,0.24); } }
@@ -1584,7 +1514,7 @@
   }
   .g5-below{ margin-top:10px; display:flex; flex-direction:column; gap:8px; }
   .g5-q{ font-weight:700; font-size:14px; }
-  .g5-qbtns{ display:flex; gap:8px; justify-content:space-between; }
+  .g5-qbtns{ width:100%; }
   /* Velocity in the chart (Joel, Oct 6): the bar over row 4, Reset + Next pitch over row 5 --
      placed from the grid's own track math (3px padding, 3px gaps, five equal cells). */
   .g5-velo-row, .g5-next-row{ position:absolute; left:3px; right:3px; z-index:4; height:calc((100% - 18px) / 5); display:flex; gap:3px; }
@@ -1596,9 +1526,9 @@
   .g5-velo-row .game-velo{ display:flex; }
   .g5-velo-row .velo-strip-wrap{ flex:1; min-width:0; background:var(--card-bg); border-radius:8px; }
   .g5-velo-row .velo-cell{ min-height:0; height:100%; }
-  .g5-reset, .g5-nextpitch{ height:100%; border-radius:6px; font:inherit; font-weight:800; cursor:pointer; }
-  .g5-reset{ flex:0 0 calc((100% - 12px) / 5); background:#fff; color:var(--ink); border:1.5px solid var(--border-strong); font-size:12px; }
-  .g5-nextpitch{ flex:1; background:var(--amber); color:#111; border:0; font-size:16px; }
+  .g5-reset, .g5-nextpitch{ height:100%; }
+  .g5-reset{ flex:0 0 calc((100% - 12px) / 5); padding:0 4px; }
+  .g5-nextpitch{ flex:1; }
   /* ---------- G1b-r3: in-grid play entry (docs/game-grid-reference.html) ---------- */
   .gg-field{
     --gg-fence:#B9D1C4; --gg-grass:#C7DCBD;   /* Joel, Oct 1: a shade darker (field art matches) */ --gg-dirt:#C9A97C;
@@ -1691,10 +1621,7 @@
   }
   .gg-velo .velo-strip{ --velo-visible:5; }
   /* Joel, Oct 1: small < > arrows on the sides of the full-width bar. */
-  .gg-velo .velo-arrow{
-    flex:0 0 22px; min-height:0; background:none; border:0; border-radius:0; padding:0;
-    color:var(--gg-ink); font-size:20px; font-weight:800; line-height:1; cursor:pointer;
-  }
+  .gg-velo .velo-arrow{ flex:0 0 22px; width:22px; min-width:0; min-height:0; background:transparent; color:var(--gg-ink); font-size:20px; font-weight:800; line-height:1; }
   .gg-velo .velo-arrow:disabled{ opacity:0.35; }
   .gg-velo .velo-help{ display:none; }
   .gg-velo .velo-cell{ min-height:44px; scroll-snap-align:center; }
@@ -1782,6 +1709,7 @@ function applySport(){
   const cfg = sportCfg();
   PITCH_CATALOG = cfg.catalog;
   TYPE_PALETTE = cfg.palette;
+  applyPitchColorClasses();
   VELO_MIN = cfg.veloMin; VELO_MAX = cfg.veloMax; VELO_DEFAULT_CENTER = cfg.veloCenter;
   document.documentElement.setAttribute('data-sport', currentSport());
   try{ localStorage.setItem('kb:sport', currentSport()); }catch(e){}
@@ -1793,6 +1721,79 @@ function pitchLabel(name){
   return c.abbr;
 }
 let TYPE_PALETTE = SPORTS.baseball.palette;   // the active sport's (applySport)
+/* ---------- BUTTONS (U13, Joel Oct 9 2026; buttons.css) ----------
+   Every pick-one group renders through segTray(): one tray, a segment per choice with aria-pressed, arrow
+   keys move the choice, and the selected segment slides (placeTrayIndicators, after each render). Each
+   option still calls its own handler -- only the markup is shared. */
+function segTray(items, o){
+  o = o || {};
+  const segs = items.map(it => `<button type="button" class="seg${it.cls ? ' ' + it.cls : ''}" aria-pressed="${it.selected ? 'true' : 'false'}"${it.disabled ? ' disabled' : ''}${it.title ? ` title="${it.title}"` : ''} onclick="${it.onclick}">${it.label}</button>`).join('');
+  return `<div class="tray${o.cls ? ' ' + o.cls : ''}" role="group"${o.label ? ` aria-label="${o.label}"` : ''}${o.key ? ` data-tray="${o.key}"` : ''}${o.id ? ` id="${o.id}"` : ''}>${segs}${o.key ? '<span class="tray-ind" aria-hidden="true"></span>' : ''}</div>`;
+}
+const trayLastBox = {};
+let trayFocus = null;
+function placeTrayIndicators(){
+  const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const trays = document.querySelectorAll('.tray[data-tray]');
+  for(let i = 0; i < trays.length; i++){
+    const t = trays[i], key = t.getAttribute('data-tray');
+    const ind = t.querySelector('.tray-ind'), sel = t.querySelector('.seg[aria-pressed="true"]');
+    if(!ind || !sel || !sel.offsetWidth){ t.classList.remove('has-ind'); delete trayLastBox[key]; continue; }
+    const box = { l: sel.offsetLeft, t: sel.offsetTop, w: sel.offsetWidth, h: sel.offsetHeight };
+    const put = b => { ind.style.left = b.l + 'px'; ind.style.top = b.t + 'px'; ind.style.width = b.w + 'px'; ind.style.height = b.h + 'px'; };
+    const accent = getComputedStyle(sel).getPropertyValue('--seg-accent');
+    if(accent && accent.trim()) ind.style.setProperty('--seg-accent', accent.trim());
+    const prev = trayLastBox[key];
+    if(prev && !reduce && (prev.l !== box.l || prev.t !== box.t || prev.w !== box.w)){
+      ind.style.transition = 'none'; put(prev); void ind.offsetWidth; ind.style.transition = '';
+    }
+    put(box);
+    t.classList.add('has-ind');
+    trayLastBox[key] = box;
+  }
+  if(trayFocus){
+    const t = document.querySelector('.tray[data-tray="' + trayFocus.key + '"]');
+    const seg = t ? t.querySelectorAll('.seg')[trayFocus.idx] : null;
+    if(seg) seg.focus();
+    trayFocus = null;
+  }
+}
+// Arrow keys move the choice along a tray; focus follows it across the re-render.
+document.addEventListener('keydown', e => {
+  const seg = e.target && e.target.closest ? e.target.closest('.seg') : null;
+  if(!seg || !/^Arrow(Left|Right|Up|Down)$/.test(e.key)) return;
+  const tray = seg.closest('.tray');
+  if(!tray) return;
+  const all = Array.prototype.slice.call(tray.querySelectorAll('.seg'));
+  const segs = all.filter(x => !x.disabled);
+  const step = (e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : -1;
+  const next = segs[(segs.indexOf(seg) + step + segs.length) % segs.length];
+  if(!next || next === seg) return;
+  e.preventDefault();
+  if(tray.getAttribute('data-tray')) trayFocus = { key: tray.getAttribute('data-tray'), idx: all.indexOf(next) };
+  next.focus();
+  next.click();
+});
+// Pitch-type colors as classes, built from the active sport's palette -- no second copy of it (landmine 4).
+function applyPitchColorClasses(){
+  try{
+    let el = document.getElementById('kb-ptc');
+    if(!el){ el = document.createElement('style'); el.id = 'kb-ptc'; document.head.appendChild(el); }
+    el.textContent = TYPE_PALETTE.map((c, i) => `.ptc-${i}{--type-color:${c};}`).join('');
+  }catch(e){}
+}
+function typeColorClass(pitcher, type){
+  const idx = pitchTypesFor(pitcher).indexOf(type);
+  return 'ptc-' + (idx >= 0 ? idx % TYPE_PALETTE.length : 0);
+}
+// A pitch-type tray (wide layouts: two per row).
+function pitchTypeTray(p, grid){
+  return segTray(pitchTypesFor(p).map(t => ({
+    label: `<span class="type-dot" aria-hidden="true"></span>${pitchLabel(t)}`,
+    cls: typeColorClass(p, t), selected: state.selectedType === t,
+    onclick: `selectType(${escHtml(JSON.stringify(t))})`
+  })), { key: 'ptype', label: 'Pitch type', cls: grid ? 'tray-grid' : '' });
+}
 const GRID_SIZE = 5;
 
 /* ---------- LOCAL DRAFT SAFETY NET ----------
@@ -2136,10 +2137,10 @@ function renderGuardianBanner(){
     ${state.guardianEditOpen ? `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <input class="text-input" style="max-width:260px;" type="email" placeholder="Parent or guardian email" value="${escHtml(state.guardianDraft || '')}" oninput="state.guardianDraft = this.value">
         <button class="btn btn-primary" ${state.guardianBusy ? 'disabled' : ''} onclick="changeGuardianEmail()">Save &amp; send</button>
-        <button class="btn btn-ghost" onclick="closeGuardianEdit()">Cancel</button></div>`
+        <button class="btn btn-secondary" onclick="closeGuardianEdit()">Cancel</button></div>`
       : `<div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-ghost" ${state.guardianBusy || !isOnline() ? 'disabled' : ''} onclick="resendGuardian()">${state.guardianBusy ? 'Sending…' : 'Resend'}</button>
-        <button class="btn btn-ghost" ${!isOnline() ? 'disabled' : ''} onclick="openGuardianEdit()">Change guardian email</button></div>`}
+        <button class="btn btn-secondary" ${state.guardianBusy || !isOnline() ? 'disabled' : ''} onclick="resendGuardian()">${state.guardianBusy ? 'Sending…' : 'Resend'}</button>
+        <button class="btn btn-secondary" ${!isOnline() ? 'disabled' : ''} onclick="openGuardianEdit()">Change guardian email</button></div>`}
     ${state.guardianMsg ? `<p class="report-status" style="margin:6px 0 0;">${escHtml(state.guardianMsg)}</p>` : ''}
   </div>`;
 }
@@ -2950,9 +2951,9 @@ function renderHeadshotButtons(p){
   const has = !!p.headshotUpdatedAt;
   const busy = state.headshotBusy;
   return `<div class="profile-row" style="margin-top:12px;">
-        <button class="btn btn-ghost" ${busy ? 'disabled' : ''} onclick="pickHeadshot('library')">${busy ? 'Saving…' : has ? 'Upload new photo' : 'Upload photo'}</button>
-        <button class="btn btn-ghost touch-only" ${busy ? 'disabled' : ''} onclick="pickHeadshot('camera')">Take photo</button>
-        ${has ? `<button class="btn btn-ghost" ${busy ? 'disabled' : ''} onclick="removeHeadshot()">Remove photo</button>` : ''}
+        <button class="btn btn-secondary" ${busy ? 'disabled' : ''} onclick="pickHeadshot('library')">${busy ? 'Saving…' : has ? 'Upload new photo' : 'Upload photo'}</button>
+        <button class="btn btn-secondary touch-only" ${busy ? 'disabled' : ''} onclick="pickHeadshot('camera')">Take photo</button>
+        ${has ? `<button class="btn btn-secondary" ${busy ? 'disabled' : ''} onclick="removeHeadshot()">Remove photo</button>` : ''}
       </div>
       <input type="file" id="headshot-input" accept="image/*" style="display:none" onchange="onHeadshotPicked(this)">
       <input type="file" id="headshot-camera" accept="image/*" capture="user" style="display:none" onchange="onHeadshotPicked(this)">
@@ -3248,18 +3249,18 @@ function renderAccountButton(){
   const list = all.filter(p => p.role !== 'parent');   // a parent profile never charts (S4 B2)
   const menu = state.acctOpen ? `<div class="acct-menu" role="menu">
       ${state.myVerification && state.myVerification.email ? `<div class="acct-email">${escHtml(state.myVerification.email)}</div>` : ''}
-      ${list.map(p => `<button type="button" class="acct-item${p.id === state.profile.id ? ' on' : ''}" role="menuitem" onclick="switchProfile('${p.id}')">
+      ${list.map(p => `<button type="button" class="btn btn-tertiary acct-item${p.id === state.profile.id ? ' is-selected' : ''}" role="menuitem" onclick="switchProfile('${p.id}')">
           <span class="acct-avatar">${escHtml(initialsOf(p.full_name))}</span>
           <span class="acct-who"><span class="acct-name">${escHtml(p.full_name)}${p.managed_by ? ' <span class="acct-badge">Player</span>' : ''}</span>
             <span class="acct-meta">${profileChip(p)} ${ROLE_NAME[p.role] || ''}</span></span>
           ${p.id === state.profile.id ? '<span class="acct-check" aria-label="Active">✓</span>' : ''}
         </button>`).join('')}
-      ${sportsToAdd().map(sp => `<button type="button" class="acct-add" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')">+ Add ${sp}</button>`).join('')}
-      ${canAddPlayer() ? `<button type="button" class="acct-add" onclick="openAddPlayer()">+ Add a player</button>` : ''}
+      ${sportsToAdd().map(sp => `<button type="button" class="btn btn-secondary btn-sm acct-add" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')">+ Add ${sp}</button>`).join('')}
+      ${canAddPlayer() ? `<button type="button" class="btn btn-secondary btn-sm acct-add" onclick="openAddPlayer()">+ Add a player</button>` : ''}
       ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
     </div>` : '';
   return `<div class="acct-wrap">
-    <button type="button" class="acct-btn" aria-haspopup="menu" aria-expanded="${state.acctOpen ? 'true' : 'false'}" onclick="toggleAcctMenu()" title="Your profiles">
+    <button type="button" class="btn btn-secondary btn-sm acct-btn" aria-haspopup="menu" aria-expanded="${state.acctOpen ? 'true' : 'false'}" onclick="toggleAcctMenu()" title="Your profiles">
       <span class="acct-avatar">${escHtml(initialsOf(state.profile.full_name))}</span>${list.length > 1 ? profileChip(state.profile) : ''}<span class="acct-caret">▾</span>
     </button>${menu}
   </div>`;
@@ -3306,11 +3307,11 @@ function renderAddPlayerScreen(){
           <label class="attest-check"><input type="checkbox" id="ap-consent" ${f.consent ? 'checked' : ''} onchange="state.addPlayer.consent = this.checked"> <span>I am this player's parent or legal guardian, and I consent to Knuckleball storing their pitching data. (<a href="${policyHref('privacy.html')}" target="_blank" rel="noopener">Privacy Policy</a>)</span></label>
           <div class="form-row-buttons">
             <button class="btn btn-primary" ${state.addPlayerBusy ? 'disabled' : ''} onclick="submitAddPlayer()">${state.addPlayerBusy ? 'Adding…' : 'Add player'}</button>
-            ${first ? '' : `<button class="btn btn-ghost" ${state.addPlayerBusy ? 'disabled' : ''} onclick="closeAddPlayer()">Cancel</button>`}
+            ${first ? '' : `<button class="btn btn-secondary" ${state.addPlayerBusy ? 'disabled' : ''} onclick="closeAddPlayer()">Cancel</button>`}
           </div>
           ${err}
         </div>
-        ${first ? '<button class="sign-out-btn" style="margin-top:6px;" onclick="signOut()">Sign out</button>' : ''}
+        ${first ? '<button class="btn btn-secondary sign-out-btn mt-6" onclick="signOut()">Sign out</button>' : ''}
       </div>
     </div>`;
 }
@@ -3359,7 +3360,7 @@ function renderWhoPicker(){
   const pool = (state.whoPicker || []).map(id => (state.myProfiles || []).find(p => p.id === id)).filter(Boolean);
   return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="Who's charting?"><div class="who-card attest-card">
     <div class="display" style="font-size:24px;margin-bottom:2px;">Who's charting?</div>
-    ${pool.map(p => `<button type="button" class="acct-item" onclick="switchProfile('${p.id}')">
+    ${pool.map(p => `<button type="button" class="btn btn-tertiary acct-item" onclick="switchProfile('${p.id}')">
       <span class="acct-avatar">${escHtml(initialsOf(p.full_name))}</span>
       <span class="acct-who"><span class="acct-name">${escHtml(p.full_name)}</span><span class="acct-meta">${profileChip(p)} ${ROLE_NAME[p.role] || ''}</span></span>
     </button>`).join('')}
@@ -3371,7 +3372,7 @@ function renderAddSportBanner(){
   return `<div class="verify-banner acct-banner"><p>You came in on the <strong>${SPORT_NAME[sp]}</strong> side. This login doesn't have a ${sp} profile yet.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn btn-primary" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')">Add ${sp}</button>
-      <button class="btn btn-ghost" onclick="dismissAddSport()">Not now</button>
+      <button class="btn btn-secondary" onclick="dismissAddSport()">Not now</button>
     </div></div>`;
 }
 
@@ -4261,12 +4262,12 @@ function uniformRowHtml(teamId, pitcherId, label){
   if(t.number !== null && !editing){
     return `<div class="uniform-field"><span class="field-label">${escHtml(label)}</span>
       <div class="uniform-locked"><span class="uniform-locked-num">${t.number}</span>
-      <button class="btn btn-ghost" onclick="editUniformNumber('${teamId}','${pitcherId}')">Change number</button></div>${msg}</div>`;
+      <button class="btn btn-secondary" onclick="editUniformNumber('${teamId}','${pitcherId}')">Change number</button></div>${msg}</div>`;
   }
   return `<div class="uniform-field"><span class="field-label">${escHtml(label)}</span>
     <div class="uniform-locked"><input id="uniform-input-${teamId}" class="text-input" type="number" inputmode="numeric" min="0" max="99" placeholder="—" value="${t.number === null ? '' : t.number}" onkeydown="if(event.key==='Enter')saveUniformNumber('${teamId}','${pitcherId}')">
     <button class="btn btn-primary" onclick="saveUniformNumber('${teamId}','${pitcherId}')">Save</button>
-    ${t.number !== null ? '<button class="btn btn-ghost" onclick="cancelUniformEdit()">Cancel</button>' : ''}</div>${msg}</div>`;
+    ${t.number !== null ? '<button class="btn btn-secondary" onclick="cancelUniformEdit()">Cancel</button>' : ''}</div>${msg}</div>`;
 }
 window.editUniformNumber = function(teamId, pitcherId){
   state.uniformEditKey = pitcherId + ':' + teamId;
@@ -4513,12 +4514,8 @@ function renderBatterModeToggle(){
   const s = state.activeSession;
   const current = isNoBatter(s) ? 'none' : sessionBatterSide(s);
   const opts = [['none', 'None'], ['R', 'RHB'], ['L', 'LHB']];
-  const chips = opts.map(([k, l]) => {
-    const on = current === k;
-    const style = on ? `background:var(--amber);border-color:var(--amber);` : `color:var(--ink-faint);border-color:var(--border-strong);`;
-    return `<button class="type-chip${on ? ' selected' : ''}" style="${style}" onclick="setBatterMode('${k}')">${l}</button>`;
-  }).join('');
-  return `<div><div class="field-label" style="margin-bottom:8px;">Batter</div><div class="chip-row">${chips}</div></div>`;
+  const tray = segTray(opts.map(([k, l]) => ({ label: l, selected: current === k, onclick: `setBatterMode('${k}')` })), { key: 'batter', label: 'Batter' });
+  return `<div><div class="field-label" style="margin-bottom:8px;">Batter</div>${tray}</div>`;
 }
 
 /* ---------- U11 (7): TIME TO HOME (stopwatch) ----------
@@ -4574,7 +4571,7 @@ function renderTimeToPlateBtn(compact){
   const s = state.activeSession;
   const enabled = !!s && s.delivery === 'set';
   const t = ttpState();
-  let label = compact ? '⏱' : '⏱ Time', cls = 'ttp-btn' + (compact ? ' ttp-compact' : '');
+  let label = compact ? '⏱' : '⏱ Time', cls = 'btn ttp-btn ' + (compact ? 'btn-icon hit44 ttp-compact' : 'btn-secondary btn-sm');
   if(t.phase === 'running'){ label = '⏱ ' + ((Date.now() - t.startedAt) / 1000).toFixed(2); cls += ' ttp-running'; }
   else if(t.phase === 'stopped'){ label = '⏱ ' + t.value.toFixed(2); cls += ttpValid(t.value) ? ' ttp-ok' : ' ttp-bad'; }
   return `<button type="button" id="ttp-btn" class="${cls}" ${enabled ? '' : 'disabled'} title="${enabled ? 'Time to home: tap at first move, tap again at the glove' : 'Time to home is timed from the stretch: choose Set'}" onclick="tapTimeToPlate()">${label}</button>`;
@@ -4738,9 +4735,9 @@ function renderVeloStrip(){
     : (state.pendingTarget ? 'Tap where it landed to finish this pitch, then add its velocity.' : 'Velocity opens after each pitch is recorded.');
   return `
     <div class="velo-strip-wrap${active ? '' : ' disabled'}">
-      <button class="velo-arrow" ${active ? '' : 'disabled'} onclick="veloStripShift(-1)" aria-label="Lower speeds">‹</button>
+      <button class="btn btn-icon velo-arrow" ${active ? '' : 'disabled'} onclick="veloStripShift(-1)" aria-label="Lower speeds">‹</button>
       <div class="velo-strip" id="velo-strip" data-key="${state.veloTargetIdx}|${type}|${center}|${veloVisible()}" data-center="${center}">${cells}</div>
-      <button class="velo-arrow" ${active ? '' : 'disabled'} onclick="veloStripShift(1)" aria-label="Higher speeds">›</button>
+      <button class="btn btn-icon velo-arrow" ${active ? '' : 'disabled'} onclick="veloStripShift(1)" aria-label="Higher speeds">›</button>
     </div>
     <div class="velo-help">${help}</div>`;
 }
@@ -4833,9 +4830,9 @@ function renderGameVeloStrip(){
   // .velo-cell.selected rule bullpen's own renderVeloStrip also uses.
   return `<div class="game-velo">
     <div class="velo-strip-wrap${t ? '' : ' disabled'}">
-      <button class="velo-arrow" ${t ? '' : 'disabled'} onclick="gameVeloArrow(-1)" aria-label="Slower">&lt;</button>
+      <button class="btn btn-icon velo-arrow" ${t ? '' : 'disabled'} onclick="gameVeloArrow(-1)" aria-label="Slower">&lt;</button>
       <div class="velo-strip" id="velo-strip" data-key="${stripKey}" data-center="${center}">${cells}</div>
-      <button class="velo-arrow" ${t ? '' : 'disabled'} onclick="gameVeloArrow(1)" aria-label="Faster">&gt;</button>
+      <button class="btn btn-icon velo-arrow" ${t ? '' : 'disabled'} onclick="gameVeloArrow(1)" aria-label="Faster">&gt;</button>
     </div>
     <div class="velo-help">${help}</div>
   </div>`;
@@ -5383,11 +5380,11 @@ function renderSessionNotes(s){
     const mine = isMine(n.authorId);
     const armed = state.noteDeleteArmed === n.id;
     return `<div class="note-item">
-      <div class="note-meta"><strong>${escHtml(n.authorName)}</strong> · ${escHtml(when)}${mine && !armed ? ` <button type="button" class="note-del" ${isOnline() ? '' : 'disabled'} onclick="armDeleteNote('${n.id}')" aria-label="Delete this note">🗑</button>` : ''}</div>
+      <div class="note-meta"><strong>${escHtml(n.authorName)}</strong> · ${escHtml(when)}${mine && !armed ? ` <button type="button" class="btn btn-icon btn-danger note-del" ${isOnline() ? '' : 'disabled'} onclick="armDeleteNote('${n.id}')" aria-label="Delete this note">🗑</button>` : ''}</div>
       <div class="note-body">${escHtml(n.body).replace(/\n/g, '<br>')}</div>
       ${armed ? `<div class="delete-row" style="margin-top:6px;"><span class="delete-warn" style="margin:0;">Delete this note? The pitcher won't see it anymore.</span>
-        <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" onclick="deleteSessionNote('${s.id}','${n.id}')">Delete</button>
-        <button class="btn btn-ghost" onclick="armDeleteNote(null)">Keep</button></div>` : ''}
+        <button class="btn btn-danger" onclick="deleteSessionNote('${s.id}','${n.id}')">Delete</button>
+        <button class="btn btn-secondary" onclick="armDeleteNote(null)">Keep</button></div>` : ''}
     </div>`;
   }).join('');
   let box = '';
@@ -5487,7 +5484,7 @@ function otherTeamReportPanel(s){
   const name = (state.sessionTeamNames || {})[s.teamId] || 'its team';
   return `<div class="report-panel"><div class="field-label">Report</div>
     <p class="report-recipients">Charted for ${escHtml(name)}. Only that team's coaches and the pitcher can create or send its report${s.reportPath ? '.' : ' (none yet).'}</p>
-    ${s.reportPath ? `<div class="report-actions"><a class="btn btn-ghost" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a></div>` : ''}</div>`;
+    ${s.reportPath ? `<div class="report-actions"><a class="btn btn-secondary" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a></div>` : ''}</div>`;
 }
 window.setHistoryTeam = function(v){ state.historyTeam = v; render(); };
 // Pitch counts across all the pitcher's teams that this viewer can see (pitcher_workload runs
@@ -5868,14 +5865,7 @@ function renderPerspectiveToggle(forceFull){
     { key: 'behind_catcher', label: 'Behind the catcher' },
     { key: 'behind_pitcher', label: 'Behind the pitcher' }
   ];
-  const chips = opts.map(o => {
-    const selected = current === o.key;
-    // Unselected reads as plain, neutral chrome (dark ink text, not yellow -- yellow text
-    // on the new light card background would fail the "accent only" rule); selected still
-    // uses the amber fill with dark ink text, an allowed accent use.
-    const style = selected ? `background:var(--amber);border-color:var(--amber);` : `color:var(--ink-faint);border-color:var(--border-strong);`;
-    return `<button class="type-chip${selected?' selected':''}" style="${style}" ${locked?'disabled':''} onclick="selectPerspective('${o.key}')">${o.label}</button>`;
-  }).join('');
+  const chips = segTray(opts.map(o => ({ label: o.label, selected: current === o.key, disabled: locked, onclick: `selectPerspective('${o.key}')` })), { key: 'persp', label: 'Charting perspective' });
   const lockedNote = locked ? `<p style="color:var(--ink-faint);font-size:12px;margin:6px 0 0;">Locked after the first pitch.</p>` : '';
   // Joel, Oct 1: on phones it's a drop-down -- open at the start of a
   // session, rolled up to one line once a perspective is picked (and always
@@ -5883,14 +5873,14 @@ function renderPerspectiveToggle(forceFull){
   if(isPhoneWidth() && !forceFull){
     const label = (opts.find(o => o.key === current) || opts[0]).label;
     const rolled = locked || state.perspectiveRolledUp;
-    const head = `<button type="button" class="persp-rollup" onclick="togglePerspectiveRoll()" ${locked ? 'disabled' : ''} aria-expanded="${rolled ? 'false' : 'true'}">
+    const head = `<button type="button" class="btn btn-secondary btn-block persp-rollup" onclick="togglePerspectiveRoll()" ${locked ? 'disabled' : ''} aria-expanded="${rolled ? 'false' : 'true'}">
         <span class="field-label" style="margin:0;">Charting perspective</span>
         ${rolled ? `<span class="persp-current">${label}${locked ? ' · locked' : ''}</span>` : ''}
         ${locked ? '' : `<span class="roster-chevron${rolled ? '' : ' open'}">▾</span>`}
       </button>`;
-    return rolled ? `<div>${head}</div>` : `<div>${head}<div class="chip-row" style="margin-top:8px;">${chips}</div></div>`;
+    return rolled ? `<div>${head}</div>` : `<div>${head}<div class="tray-gap">${chips}</div></div>`;
   }
-  return `<div><div class="field-label" style="margin-bottom:8px;">Charting perspective</div><div class="chip-row">${chips}</div>${lockedNote}</div>`;
+  return `<div><div class="field-label" style="margin-bottom:8px;">Charting perspective</div>${chips}${lockedNote}</div>`;
 }
 
 // U2a (D8): box "1" is always the inside column. Asking zoneNumberFor
@@ -5929,8 +5919,7 @@ function renderSessionKindChooser(){
   return `<div class="kind-chooser">
     <h2 class="display" style="margin:0 0 20px;text-align:center;">What will we be charting today?</h2>
     <div class="kind-chooser-buttons">
-      <button class="kind-choice-btn" onclick="chooseSessionKind('bullpen')">Bullpen</button>
-      ${sportCfg().hasLiveGame ? `<button class="kind-choice-btn" onclick="chooseSessionKind('game')">Live Game</button>` : ''}
+      ${segTray([{ label: 'Bullpen', onclick: "chooseSessionKind('bullpen')" }].concat(sportCfg().hasLiveGame ? [{ label: 'Live Game', onclick: "chooseSessionKind('game')" }] : []), { label: 'What will we be charting today?', cls: 'kind-tray' })}
     </div>
   </div>`;
 }
@@ -5960,12 +5949,12 @@ function showBackToChooser(){
 }
 function renderBackToChooserBtn(){
   return showBackToChooser()
-    ? `<button type="button" class="btn btn-ghost back-to-chooser hide-phone" onclick="backToChooser()">‹ Back</button>`
+    ? `<button type="button" class="btn btn-secondary back-to-chooser hide-phone" onclick="backToChooser()">‹ Back</button>`
     : '';
 }
 function renderBackToChooserBrandBtn(){
   return showBackToChooser()
-    ? `<button type="button" class="back-to-chooser-brand show-phone" onclick="backToChooser()">‹ Back</button>`
+    ? `<button type="button" class="btn btn-secondary on-dark back-to-chooser-brand show-phone" onclick="backToChooser()">‹ Back</button>`
     : '';
 }
 window.backToChooser = async function(){
@@ -6897,8 +6886,8 @@ function renderAdjustRunnersFlow(){
     return `<div class="panel adjust-runners-panel">
       <div class="field-label" style="margin-bottom:8px;">Adjust runners — which runner?</div>
       <div class="chip-row">
-        ${occupied.map(b => `<button class="type-chip" style="${neutral}" onclick="chooseAdjustRunner(${b})">Runner on ${baseName(b)}</button>`).join('')}
-        <button class="btn btn-ghost" onclick="cancelAdjustRunners()">Cancel</button>
+        ${occupied.map(b => `<button class="btn btn-secondary btn-sm" onclick="chooseAdjustRunner(${b})">Runner on ${baseName(b)}</button>`).join('')}
+        <button class="btn btn-secondary" onclick="cancelAdjustRunners()">Cancel</button>
       </div>
     </div>`;
   }
@@ -6907,8 +6896,8 @@ function renderAdjustRunnersFlow(){
     return `<div class="panel adjust-runners-panel">
       <div class="field-label" style="margin-bottom:8px;">Runner on ${baseName(ar.runner)} — where did he go?</div>
       <div class="chip-row">
-        ${opts.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="chooseAdjustDestination('${k}')">${l}</button>`).join('')}
-        <button class="btn btn-ghost" onclick="cancelAdjustRunners()">Cancel</button>
+        ${opts.map(([k, l]) => `<button class="btn btn-secondary btn-sm" onclick="chooseAdjustDestination('${k}')">${l}</button>`).join('')}
+        <button class="btn btn-secondary" onclick="cancelAdjustRunners()">Cancel</button>
       </div>
     </div>`;
   }
@@ -6918,8 +6907,8 @@ function renderAdjustRunnersFlow(){
       <div class="field-label" style="margin-bottom:8px;">Why?</div>
       ${reason
         ? `<p class="walkthrough-disabled-reason">${escHtml(reason)}</p>`
-        : `<div class="chip-row">${ADJUST_REASONS.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="commitAdjustEvent('${k}')">${l}</button>`).join('')}</div>`}
-      <button class="btn btn-ghost" onclick="backAdjustRunners()">Back</button>
+        : `<div class="chip-row">${ADJUST_REASONS.map(([k, l]) => `<button class="btn btn-secondary btn-sm" onclick="commitAdjustEvent('${k}')">${l}</button>`).join('')}</div>`}
+      <button class="btn btn-secondary" onclick="backAdjustRunners()">Back</button>
     </div>`;
   }
   return '';
@@ -7027,13 +7016,9 @@ function renderGameStatusBar(){
 function renderDeliveryToggle(noTime){
   const s = state.activeSession;
   const opts = [{ key: 'windup', label: 'Windup' }, { key: 'set', label: 'Set' }];
-  const chips = opts.map(o => {
-    const selected = s.delivery === o.key;
-    const style = selected ? `background:var(--amber);border-color:var(--amber);` : `color:var(--ink-faint);border-color:var(--border-strong);`;
-    return `<button class="type-chip${selected?' selected':''}" style="${style}" onclick="setGameDelivery('${o.key}')">${o.label}</button>`;
-  }).join('');
+  const tray = segTray(opts.map(o => ({ label: o.label, selected: s.delivery === o.key, onclick: `setGameDelivery('${o.key}')` })), { key: 'deliv', label: 'Delivery' });
   const label = 'Delivery' + (!s.delivery ? ' — pick one before the next pitch' : '');
-  return `<div><div class="field-label" style="margin-bottom:8px;">${label}</div><div class="chip-row">${chips}${noTime ? '' : renderTimeToPlateBtn()}</div></div>`;
+  return `<div><div class="field-label" style="margin-bottom:8px;">${label}</div><div class="deliv-tray-row">${tray}${noTime ? '' : renderTimeToPlateBtn()}</div></div>`;
 }
 // G1b-r decisions 2/3/10, updated by G1b-r2: six buttons now, not seven --
 // H and O fold into one In Play icon button (opens the walkthrough, which
@@ -7844,13 +7829,13 @@ function renderRunnerFixPanel(fp){
     if(label === null) return '';
     const keyArg = typeof key === 'string' ? `'${key}'` : key;
     const active = fp.editing === key || fp.pendingOutFor === key;
-    return `<button class="type-chip" style="${active ? amber : neutral}" onclick="openFieldEndingPicker(${keyArg})">${label}</button>`;
+    return `<button class="btn btn-sm ${active ? 'is-selected' : 'btn-secondary'}" onclick="openFieldEndingPicker(${keyArg})">${label}</button>`;
   }).join('');
   const destOptions = [['1', '1st'], ['2', '2nd'], ['3', '3rd'], ['home', '⌂ Home'], ['out', '✕ Out']];
   const editingKeyArg = typeof fp.editing === 'string' ? `'${fp.editing}'` : fp.editing;
   const editingPicker = fp.editing !== null ? `
     <div class="chip-row" style="margin-top:4px;">
-      ${destOptions.map(([k, l]) => `<button class="type-chip" style="${neutral}" onclick="setFieldEnding(${editingKeyArg},'${k}')">${l}</button>`).join('')}
+      ${destOptions.map(([k, l]) => `<button class="btn btn-secondary btn-sm" onclick="setFieldEnding(${editingKeyArg},'${k}')">${l}</button>`).join('')}
     </div>` : '';
   // The "at which base" follow-up (Decision: doubled off/FC/DP/TP are
   // derived from this, never tapped). Only bases from the runner's own
@@ -7860,7 +7845,7 @@ function renderRunnerFixPanel(fp){
   const outAtPicker = (typeof fp.pendingOutFor === 'number') ? `
     <div class="chip-row" style="margin-top:4px;">
       ${Array.from({ length: 4 - fp.pendingOutFor + 1 }, (_, i) => fp.pendingOutFor + i).map(b =>
-        `<button class="type-chip" style="${neutral}" onclick="setFieldOutAtBase(${fp.pendingOutFor},${b})">${OUT_AT_BASE_LABEL[b]}</button>`
+        `<button class="btn btn-secondary btn-sm" onclick="setFieldOutAtBase(${fp.pendingOutFor},${b})">${OUT_AT_BASE_LABEL[b]}</button>`
       ).join('')}
     </div>` : '';
 
@@ -8318,13 +8303,13 @@ function g5FieldInner(){
 function g5FieldActions(){
   const g = state.activeSession.g5;
   const added = g.addOuts ? ` · ${g.addOuts}` : '';
-  const next = (g.step === 'bases' && ggRadarOn()) ? `<button type="button" class="g5-act g5-act-next" onclick="g5Next()">Next ›</button>` : '';
+  const next = (g.step === 'bases' && ggRadarOn()) ? `<button type="button" class="btn btn-primary btn-sm g5-act g5-act-next" onclick="g5Next()">Next ›</button>` : '';
   return `<div class="g5-actions">
-    <button type="button" class="g5-act" onclick="g5AddOut()" ${g5ProjectedOuts(g) >= 3 ? 'disabled' : ''}>+ Out${added}</button>
-    <button type="button" class="g5-act" onclick="g5AddCount('strike')">+ Strike</button>
-    <button type="button" class="g5-act" onclick="g5AddCount('ball')">+ Ball</button>
+    <button type="button" class="btn btn-secondary btn-sm g5-act" onclick="g5AddOut()" ${g5ProjectedOuts(g) >= 3 ? 'disabled' : ''}>+ Out${added}</button>
+    <button type="button" class="btn btn-secondary btn-sm g5-act" onclick="g5AddCount('strike')">+ Strike</button>
+    <button type="button" class="btn btn-secondary btn-sm g5-act" onclick="g5AddCount('ball')">+ Ball</button>
     <span class="g5-act-gap"></span>${next}
-    <button type="button" class="g5-act" onclick="g5Back()">‹ Back</button>
+    <button type="button" class="btn btn-secondary btn-sm g5-act" onclick="g5Back()">‹ Back</button>
   </div>`;
 }
 // The card flip (Joel, Oct 7): the chart turns over to the field and back, like a card. The flipping
@@ -8340,15 +8325,14 @@ function g5Card(face, flip, chartHtml){
 // row, Reset + Next pitch on the last row -- so nothing is added below the chart.
 function g5VeloRows(){
   return `<div class="g5-velo-row gg-velo">${renderGameVeloStrip()}</div>
-    <div class="g5-next-row"><button type="button" class="g5-reset" onclick="recordGameVelo(null)">Reset</button>
-    <button type="button" class="g5-nextpitch" onclick="g5NextPitch()">Next pitch ›</button></div>`;
+    <div class="g5-next-row"><button type="button" class="btn btn-secondary btn-sm g5-reset" onclick="recordGameVelo(null)">Reset</button>
+    <button type="button" class="btn btn-primary g5-nextpitch" onclick="g5NextPitch()">Next pitch ›</button></div>`;
 }
 // Under the square chart: the extra-inning question.
 function g5BelowChart(step){
   if(step === 'tiebreak'){
     return `<div class="g5-below"><div class="g5-q">Extra inning — start with a runner on 2B?</div>
-      <div class="g5-qbtns"><button type="button" class="btn btn-primary" onclick="gridTiebreak(true)">Yes</button>
-      <button type="button" class="btn btn-ghost" onclick="gridTiebreak(false)">No</button></div></div>`;
+      ${segTray([{ label: 'Yes', onclick: 'gridTiebreak(true)' }, { label: 'No', onclick: 'gridTiebreak(false)' }], { label: 'Start with a runner on 2B?', cls: 'g5-qbtns' })}</div>`;
   }
   return '';
 }
@@ -8375,11 +8359,6 @@ function renderGameSessionView(p){
   const stats = gameStats(pitches);
   const chartingPerspective = sessionPerspective(s);
   const currentBatterSide = sessionBatterSide(s);
-  const typeChips = pitchTypesFor(p).map(t => {
-    const color = colorForType(p, t);
-    const selected = state.selectedType === t;
-    return `<button class="type-chip${selected?' selected':''}" style="${selected ? `background:${color};border-color:${color};color:${readableTextOn(color)};` : `color:${color};border-color:${color}55;`}" onclick="selectType(${escHtml(JSON.stringify(t))})">${pitchLabel(t)}</button>`;
-  }).join('');
 
   // G1b-r decision 10: pitches and events merged by seq -- the ONE ordered
   // log, so a no-pitch event (IBB/auto ball/auto strike/balk, or any Adjust
@@ -8419,7 +8398,7 @@ function renderGameSessionView(p){
     <div class="session-grid-layout ph-layout">
       <div class="panel controls-panel ph-controls">
         ${renderAdjustRunnersFlow()}
-        <div class="ph-status">
+        <div class="ph-status on-dark">
           <span class="ph-inn">▲${s.inning}</span><span class="ph-item">${s.outs} OUT</span><span class="ph-item mono">${s.balls}-${s.strikes}</span>
           <span class="ph-diamond">${renderRunnerDiamond()}</span>
           ${renderStatusDelivery()}
@@ -8431,11 +8410,11 @@ function renderGameSessionView(p){
           </div>${g5Below}
         </div>
         <div class="ph-actions${g5OnDiamond() ? ' g5-on' : ''}">
-          <button type="button" class="ph-act" onclick="undoLastGameAction()">↶ Undo</button>
-          <button type="button" class="ph-act" onclick="gameNewBatter()">New batter</button>
-          <button type="button" class="ph-act" onclick="gameNewInning()">New inning</button>
+          <button type="button" class="btn btn-secondary btn-sm ph-act" onclick="undoLastGameAction()">↶ Undo</button>
+          <button type="button" class="btn btn-secondary btn-sm ph-act" onclick="gameNewBatter()">New batter</button>
+          <button type="button" class="btn btn-secondary btn-sm ph-act" onclick="gameNewInning()">New inning</button>
         </div>
-        ${g5OnDiamond() ? '' : `<div class="ph-actions ph-addcount"><button type="button" class="ph-act" onclick="g5AddCount('strike')">+ Strike</button><button type="button" class="ph-act" onclick="g5AddCount('ball')">+ Ball</button></div>`}
+        ${g5OnDiamond() ? '' : `<div class="ph-actions ph-addcount"><button type="button" class="btn btn-secondary btn-sm ph-act" onclick="g5AddCount('strike')">+ Strike</button><button type="button" class="btn btn-secondary btn-sm ph-act" onclick="g5AddCount('ball')">+ Ball</button></div>`}
       </div>
       <div class="panel log-panel">
         <div class="ph-statline mono">Pitches ${stats.total} · Strike% ${stats.strikePct} · K ${stats.k} · BB ${stats.bb} · H ${stats.h}</div>
@@ -8461,11 +8440,11 @@ function renderGameSessionView(p){
         </div>
         <div>
           <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
-          <div class="chip-row">${typeChips}</div>
+          ${pitchTypeTray(p, false)}
           ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
             ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
             : 'Add your pitches in Profile to start charting.'}</p>
-          <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
+          <button class="btn btn-secondary" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
         </div>
         <div class="hint-msg">${state.hint}</div>
         <div class="gridwrap">
@@ -8486,11 +8465,11 @@ function renderGameSessionView(p){
         <div class="field-label">Recent pitches</div>
         <div class="pitch-log">${logRows}</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          <button class="btn btn-ghost" onclick="undoLastGameAction()">Undo last action</button>
-          <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
-          <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
-          <button class="btn btn-ghost" onclick="g5AddCount('strike')">+ Strike</button>
-          <button class="btn btn-ghost" onclick="g5AddCount('ball')">+ Ball</button>
+          <button class="btn btn-secondary" onclick="undoLastGameAction()">Undo last action</button>
+          <button class="btn btn-secondary" onclick="gameNewBatter()">New batter</button>
+          <button class="btn btn-secondary" onclick="gameNewInning()">New inning</button>
+          <button class="btn btn-secondary" onclick="g5AddCount('strike')">+ Strike</button>
+          <button class="btn btn-secondary" onclick="g5AddCount('ball')">+ Ball</button>
         </div>
         <div style="margin:12px 0 8px;">
           <div class="field-label" style="margin-bottom:4px;">Opponent (optional)</div>
@@ -8512,11 +8491,11 @@ function renderGameSessionView(p){
             ${renderPerspectiveToggle()}
             <div>
               <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
-              <div class="chip-row pt-two">${typeChips}</div>
+              ${pitchTypeTray(p, true)}
               ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
                 ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
                 : 'Add your pitches in Profile to start charting.'}</p>
-              <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
+              <button class="btn btn-secondary" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
             </div>
             ${sportCfg().hasDelivery ? renderDeliveryToggle(true) : ''}
           </div>
@@ -8530,11 +8509,11 @@ function renderGameSessionView(p){
           </div>
           <div class="wide-bl">${sportCfg().hasTimeToPlate ? renderTimeToPlateBtn() : ''}</div>
           <div class="wide-br">
-            <button class="btn btn-ghost" onclick="undoLastGameAction()">Undo last action</button>
-            <button class="btn btn-ghost" onclick="gameNewBatter()">New batter</button>
-            <button class="btn btn-ghost" onclick="gameNewInning()">New inning</button>
-            <button class="btn btn-ghost" onclick="g5AddCount('strike')">+ Strike</button>
-            <button class="btn btn-ghost" onclick="g5AddCount('ball')">+ Ball</button>
+            <button class="btn btn-secondary" onclick="undoLastGameAction()">Undo last action</button>
+            <button class="btn btn-secondary" onclick="gameNewBatter()">New batter</button>
+            <button class="btn btn-secondary" onclick="gameNewInning()">New inning</button>
+            <button class="btn btn-secondary" onclick="g5AddCount('strike')">+ Strike</button>
+            <button class="btn btn-secondary" onclick="g5AddCount('ball')">+ Ball</button>
           </div>
         </div>
       </div>
@@ -8579,10 +8558,10 @@ function renderSessionHeader(p){
   const num = jerseyNumberOf(p);
   const last = String(p.name || '').trim().split(/\s+/).pop();
   return `<div class="sess-head">
-    <button type="button" class="sess-back" onclick="sessionLeave()" aria-label="Back to the roster (this session is kept)">‹ <span class="sess-team">${escHtml(team ? team.name : '')}</span></button>
+    <button type="button" class="btn btn-tertiary on-dark sess-back" onclick="sessionLeave()" aria-label="Back to the roster (this session is kept)">‹ <span class="sess-team">${escHtml(team ? team.name : '')}</span></button>
     <span class="sess-who">${renderHeadshot(p)}<span class="sess-name">${escHtml(last)}</span>${(num === null || num === undefined) ? '' : `<span class="sess-num">#${escHtml(String(num))}</span>`}</span>
     ${isOnline() ? '' : '<span class="sess-offline" title="Offline -- saved on this device" aria-label="Offline, saved on this device"></span>'}
-    <button type="button" class="sess-more" onclick="openSessionSheet()" aria-label="Session options"><span class="dots9" aria-hidden="true">${'<i></i>'.repeat(9)}</span></button>
+    <button type="button" class="btn btn-icon on-dark sess-more" onclick="openSessionSheet()" aria-label="Session options"><span class="dots9" aria-hidden="true">${'<i></i>'.repeat(9)}</span></button>
   </div>`;
 }
 // ‹ team (Joel, Oct 1): never the session sheet -- that box is only behind
@@ -8623,13 +8602,13 @@ function renderEndSessionRow(){
   if(state.sessionDiscardArmed) return `<div>
       <p class="delete-warn">Discard this ${game ? 'game' : 'pen'}? ${n ? `The ${what} charted so far are deleted from this device.` : ''} This can't be undone.</p>
       <div class="delete-row">
-        <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" onclick="discardActiveSession()">Discard</button>
-        <button class="btn btn-ghost" onclick="closeSessionSheet()">Keep charting</button>
+        <button class="btn btn-danger" onclick="discardActiveSession()">Discard</button>
+        <button class="btn btn-secondary" onclick="closeSessionSheet()">Keep charting</button>
       </div>
     </div>`;
   return `<div class="delete-row">
       <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
-      <button class="btn btn-ghost" ${state.saving ? 'disabled' : ''} onclick="armDiscardSession()">Discard session</button>
+      <button class="btn btn-danger" ${state.saving ? 'disabled' : ''} onclick="armDiscardSession()">Discard session</button>
     </div>`;
 }
 function renderSessionSheet(){
@@ -8646,31 +8625,30 @@ function renderSessionSheet(){
       ${state.sessionDiscardArmed ? `
         <p class="delete-warn">Discard this ${game ? 'game' : 'pen'}? ${n ? `The ${what} charted so far are deleted from this device.` : ''} This can't be undone.</p>
         <div class="delete-row">
-          <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" onclick="discardActiveSession()">Discard</button>
-          <button class="btn btn-ghost" onclick="closeSessionSheet()">Keep charting</button>
-        </div>` : `<button class="btn btn-ghost" onclick="armDiscardSession()">Discard</button>`}
-      <button class="btn btn-ghost" onclick="closeSessionSheet()">Close</button>
+          <button class="btn btn-danger" onclick="discardActiveSession()">Discard</button>
+          <button class="btn btn-secondary" onclick="closeSessionSheet()">Keep charting</button>
+        </div>` : `<button class="btn btn-secondary" onclick="armDiscardSession()">Discard</button>`}
+      <button class="btn btn-secondary" onclick="closeSessionSheet()">Close</button>
     </div>
   </div>`;
 }
 // Set / Windup as ONE button that flips (same auto-set rules as before).
 function renderDeliveryOne(){
   const set = state.activeSession.delivery === 'set';
-  return `<button type="button" class="deliv-one${set ? ' on' : ''}" onclick="setGameDelivery('${set ? 'windup' : 'set'}')">${set ? 'Set' : 'Windup'}</button>`;
+  return `<button type="button" class="btn btn-secondary deliv-one hit44${set ? ' is-selected' : ''}" onclick="setGameDelivery('${set ? 'windup' : 'set'}')">${set ? 'Set' : 'Windup'}</button>`;   // U13: Set looks selected, Windup secondary
 }
 // The pitch types as a strip like the velocity bar: five across at 390px,
 // four below that; swipe, or ‹ › one chip; arrows grey at the ends.
 function renderPitchStrip(p){
+  // U13: a scrollable tray -- each type's dot and selected underline in its own color (Joel, Oct 1 kept the colors).
   const chips = pitchTypesFor(p).map(t => {
-    const color = colorForType(p, t);
     const sel = state.selectedType === t;
-    // Joel, Oct 1: each pitch keeps its own color; selected = filled with it.
-    return `<button type="button" class="pstrip-chip${sel ? ' selected' : ''}" style="${sel ? `background:${color};border-color:${color};color:${readableTextOn(color)};` : `color:${color};border-color:${color}77;`}" onclick="selectType(${escHtml(JSON.stringify(t))})">${pitchLabel(t)}</button>`;
+    return `<button type="button" class="seg pstrip-chip ${typeColorClass(p, t)}" aria-pressed="${sel ? 'true' : 'false'}" onclick="selectType(${escHtml(JSON.stringify(t))})"><span class="type-dot" aria-hidden="true"></span>${pitchLabel(t)}</button>`;
   }).join('');
   return `<div class="pstrip-wrap">
-    <button type="button" class="pstrip-arrow" id="pstrip-prev" onclick="pitchStripStep(-1)" aria-label="Earlier pitch types">‹</button>
-    <div class="pstrip" id="pitch-strip">${chips}</div>
-    <button type="button" class="pstrip-arrow" id="pstrip-next" onclick="pitchStripStep(1)" aria-label="More pitch types">›</button>
+    <button type="button" class="btn btn-tertiary pstrip-arrow" id="pstrip-prev" onclick="pitchStripStep(-1)" aria-label="Earlier pitch types">‹</button>
+    <div class="tray tray-scroll pstrip" id="pitch-strip" role="group" aria-label="Pitch type" data-tray="pstrip">${chips}<span class="tray-ind" aria-hidden="true"></span></div>
+    <button type="button" class="btn btn-tertiary pstrip-arrow" id="pstrip-next" onclick="pitchStripStep(1)" aria-label="More pitch types">›</button>
   </div>`;
 }
 window.pitchStripStep = function(dir){
@@ -8761,7 +8739,7 @@ function attachPitchStrip(){
   if(state.pitchStripScroll !== null){
     st.scrollLeft = state.pitchStripScroll;
   } else {
-    const sel = st.querySelector('.pstrip-chip.selected');
+    const sel = st.querySelector('.pstrip-chip[aria-pressed="true"]');
     if(sel && sel.offsetLeft + sel.offsetWidth > st.offsetLeft + st.clientWidth) st.scrollLeft = sel.offsetLeft - st.offsetLeft;
   }
   updatePitchStripArrows();
@@ -8790,7 +8768,7 @@ function renderPenBatterPill(){
   const s = state.activeSession;
   const none = isNoBatter(s);
   const label = none ? 'No batter' : (sessionBatterSide(s) === 'R' ? 'vs RHB' : 'vs LHB');
-  return `<div class="pb-pill-row"><button type="button" class="pb-pill${none ? ' none' : ''}" onclick="cycleBatterMode()" aria-label="Batter: ${label}. Tap to change.">${label}</button></div>`;
+  return `<div class="pb-pill-row"><button type="button" class="btn pb-pill${none ? ' btn-secondary' : ' is-selected'}" onclick="cycleBatterMode()" aria-label="Batter: ${label}. Tap to change.">${label}</button></div>`;
 }
 // Pen: velocity on one line -- the last pitch's type, the strip, Reset.
 function renderVeloSlim(){
@@ -8800,7 +8778,7 @@ function renderVeloSlim(){
   return `<div class="velo-slim">
     <span class="velo-slim-lbl">${label}</span>
     <div class="velo-slim-strip">${renderVeloStrip()}</div>
-    <button type="button" class="velo-slim-reset" ${active ? '' : 'disabled'} onclick="recordVelo(null)">Reset</button>
+    <button type="button" class="btn btn-tertiary btn-sm velo-slim-reset" ${active ? '' : 'disabled'} onclick="recordVelo(null)">Reset</button>
   </div>`;
 }
 
@@ -8824,7 +8802,7 @@ function renderSessionView(){
         <p><strong>Unfinished session found</strong> — ${state.pendingDraft.pitches.length} pitch(es) logged. Resume where you left off, or discard and start fresh.</p>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-primary" onclick="resumeDraft()">Resume session</button>
-          <button class="btn btn-ghost" onclick="discardDraft()">Discard</button>
+          <button class="btn btn-secondary" onclick="discardDraft()">Discard</button>
         </div>
       </div>`;
   }
@@ -8838,11 +8816,6 @@ function renderSessionView(){
   const stats = sessionStats(pitches);
   const chartingPerspective = sessionPerspective(state.activeSession);
   const currentBatterSide = sessionBatterSide(state.activeSession);
-  const typeChips = pitchTypesFor(p).map(t => {
-    const color = colorForType(p, t);
-    const selected = state.selectedType === t;
-    return `<button class="type-chip${selected?' selected':''}" style="${selected ? `background:${color};border-color:${color};color:${readableTextOn(color)};` : `color:${color};border-color:${color}55;`}" onclick="selectType(${escHtml(JSON.stringify(t))})">${pitchLabel(t)}</button>`;
-  }).join('');
 
   const logRows = pitches.slice().reverse().slice(0, 12).map((pt, i) => {
     const realIdx = pitches.length - 1 - i;
@@ -8858,8 +8831,8 @@ function renderSessionView(){
         </div>
         ${state.editVeloError ? `<p class="edit-error">${state.editVeloError}</p>` : ''}
         <div class="edit-row-actions">
-          <button class="undo-btn" onclick="saveEditDraftRow(${realIdx})">Save</button>
-          <button class="undo-btn" onclick="cancelEditDraftRow()">Cancel</button>
+          <button class="btn btn-tertiary btn-sm" onclick="saveEditDraftRow(${realIdx})">Save</button>
+          <button class="btn btn-tertiary btn-sm" onclick="cancelEditDraftRow()">Cancel</button>
         </div>
       </div>`;
     }
@@ -8884,8 +8857,8 @@ function renderSessionView(){
     return `<div class="pitch-log-row">
       <span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pitchLabel(pt.type)}</span> · ${veloText}${strike ? 'Strike' : 'Ball'} · <span style="color:var(--ink-faint);">${locText}</span></span>
       <span class="pitch-row-actions">
-        <button class="undo-btn" onclick="startEditDraftRow(${realIdx})">edit</button>
-        <button class="row-x-btn" onclick="removePitch(${realIdx})" title="Remove this pitch" aria-label="Remove this pitch">✕</button>
+        <button class="btn btn-tertiary btn-sm" onclick="startEditDraftRow(${realIdx})">edit</button>
+        <button class="btn btn-tertiary btn-sm hit44 row-x-btn" onclick="removePitch(${realIdx})" title="Remove this pitch" aria-label="Remove this pitch">✕</button>
       </span>
     </div>`;
   }).join('') || `<p style="color:var(--ink-faint);font-size:12px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
@@ -8899,7 +8872,7 @@ function renderSessionView(){
     return `
     <div class="session-grid-layout ph-layout">
       <div class="panel controls-panel ph-controls">
-        <div class="ph-status">
+        <div class="ph-status on-dark">
           <span class="ph-count mono">${stats.total}</span><span class="ph-lbl">${stats.total === 1 ? 'Pitch' : 'Pitches'}</span>
           <span class="ph-persp${locked ? ' locked' : ''}">${chartingPerspective === 'behind_pitcher' ? 'Pitcher' : 'Catcher'}${locked ? ' · locked' : ''}</span>
         </div>
@@ -8933,11 +8906,11 @@ function renderSessionView(){
         <div class="perspective-delivery-row bullpen-setup-row">${renderPerspectiveToggle()}${renderBatterModeToggle()}${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}</div>
         <div>
           <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
-          <div class="chip-row">${typeChips}</div>
+          ${pitchTypeTray(p, false)}
           ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
             ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
             : 'Add your pitches in Profile to start charting.'}</p>
-          <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
+          <button class="btn btn-secondary" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
         </div>
         <div class="accuracy-count-row">
           <div class="pitch-counter">
@@ -8986,11 +8959,11 @@ function renderSessionView(){
             </div>
             <div>
               <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
-              <div class="chip-row pt-two">${typeChips}</div>
+              ${pitchTypeTray(p, true)}
               ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
                 ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
                 : 'Add your pitches in Profile to start charting.'}</p>
-              <button class="btn btn-ghost" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
+              <button class="btn btn-secondary" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
             </div>
             ${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}
             ${renderBatterModeToggle()}
@@ -9038,14 +9011,14 @@ function renderOutboxBadge(){
   const notice = state.syncNotice ? `
     <div class="outbox-badge">
       <span>${escHtml(state.syncNotice)}</span>
-      <button class="btn btn-ghost" onclick="dismissSyncNotice()">OK</button>
+      <button class="btn btn-secondary" onclick="dismissSyncNotice()">OK</button>
     </div>` : '';
   if(!state.outbox.length) return notice;
   const n = state.outbox.length;
   return `
     <div class="outbox-badge">
       <span>${n} session${n === 1 ? '' : 's'} pending sync</span>
-      <button class="btn btn-ghost" ${state.syncing ? 'disabled' : ''} onclick="triggerSync()">${state.syncing ? 'Syncing…' : 'Sync now'}</button>
+      <button class="btn btn-secondary" ${state.syncing ? 'disabled' : ''} onclick="triggerSync()">${state.syncing ? 'Syncing…' : 'Sync now'}</button>
     </div>` + notice;
 }
 
@@ -9074,7 +9047,7 @@ function renderAccountSetupScreen(){
         <input id="setup-team" class="text-input" style="margin-top:5px;" value="${attr(state.setupTeam)}" placeholder="e.g. Cairn University Baseball"></div>`;
     buttons = `
       <button class="btn btn-primary" ${busy} onclick="submitAccountSetup('coach')">${state.setupBusy ? 'Setting up…' : 'I’m a coach'}</button>
-      <button class="btn btn-ghost" ${busy} onclick="submitAccountSetup('pitcher')">I’m a pitcher</button>`;
+      <button class="btn btn-secondary" ${busy} onclick="submitAccountSetup('pitcher')">I’m a pitcher</button>`;
   }
 
   return `
@@ -9087,7 +9060,7 @@ function renderAccountSetupScreen(){
           <div class="form-row-buttons">${buttons}</div>
           ${err}
         </div>
-        <button class="sign-out-btn" style="margin-top:6px;" onclick="signOut()">Sign out</button>
+        <button class="btn btn-secondary sign-out-btn mt-6" onclick="signOut()">Sign out</button>
       </div>
     </div>`;
 }
@@ -9099,11 +9072,7 @@ window.setHistoryFilter = function(f){
 };
 function renderHistoryFilter(){
   const opts = [{ key: 'all', label: 'All' }, { key: 'bullpen', label: 'Bullpen' }, { key: 'game', label: 'Live Game' }];
-  const chips = opts.map(o => {
-    const selected = state.historyFilter === o.key;
-    const style = selected ? `background:var(--amber);border-color:var(--amber);` : `color:var(--ink-faint);border-color:var(--border-strong);`;
-    return `<button class="type-chip${selected?' selected':''}" style="${style}" onclick="setHistoryFilter('${o.key}')">${o.label}</button>`;
-  }).join('');
+  const chips = segTray(opts.map(o => ({ label: o.label, selected: state.historyFilter === o.key, onclick: `setHistoryFilter('${o.key}')` })), { key: 'hfilter', label: 'Show', cls: 'history-tray' });
   // R4: a pitcher whose sessions span teams can narrow History to one.
   const teamIds = Object.keys(state.sessionTeamNames || {});
   const teamSel = (!isCoach() && teamIds.length > 1) ? `<select class="text-input history-team-select" onchange="setHistoryTeam(this.value)">
@@ -9145,7 +9114,7 @@ function renderHistoryView(){
   const visible = state.oldTombstonesExpanded ? combined : combined.filter(s => !isOldTombstone(s));
   const oldSummaryHtml = oldTombstoneCount ? `
     <div class="deleted-summary-row">
-      <button class="undo-btn" onclick="toggleOldTombstones()">${state.oldTombstonesExpanded ? 'Hide' : ''} ${oldTombstoneCount} deleted session${oldTombstoneCount === 1 ? '' : 's'}</button>
+      <button class="btn btn-tertiary btn-sm" onclick="toggleOldTombstones()">${state.oldTombstonesExpanded ? 'Hide' : ''} ${oldTombstoneCount} deleted session${oldTombstoneCount === 1 ? '' : 's'}</button>
     </div>` : '';
   return renderHistoryFilter() + visible.map(s => {
     // G1/G2: a game session gets its own, much simpler card -- innings,
@@ -9175,8 +9144,8 @@ function renderHistoryView(){
         : [];
       const rs = state.reportStatus && state.reportStatus.sessionId === s.id ? state.reportStatus : null;
       const viewControl = s.reportPath
-        ? `<a class="btn btn-ghost" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>`
-        : (pEligible ? `<button class="btn btn-ghost" onclick="viewSessionReport('${s.id}')">View report</button>` : '');
+        ? `<a class="btn btn-secondary" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>`
+        : (pEligible ? `<button class="btn btn-secondary" onclick="viewSessionReport('${s.id}')">View report</button>` : '');
       const reportPanel = s.otherTeam ? otherTeamReportPanel(s) : s.pending ? `
         <div class="report-panel">
           <div class="field-label">Email this report</div>
@@ -9203,18 +9172,18 @@ function renderHistoryView(){
         </div>`;
 
       const deleteZone = (s.pending || s.otherTeam || !canDeleteSessions()) ? '' : (!isOnline() ? `
-        <div class="delete-zone"><button class="undo-btn" disabled title="Deleting requires a connection">Connect to delete</button></div>` : (state.deletingSessionId === s.id ? `
+        <div class="delete-zone"><button class="btn btn-danger btn-sm" disabled title="Deleting requires a connection">Connect to delete</button></div>` : (state.deletingSessionId === s.id ? `
         <div class="delete-zone">
           <p class="delete-warn">This permanently removes the ${stats.total} pitch${stats.total === 1 ? '' : 'es'} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
           ${state.deleteError ? `<p class="report-status report-status-error" style="margin:0 0 8px;">${state.deleteError}</p>` : ''}
           <div class="delete-row">
             <input id="delete-confirm-input" class="text-input" style="max-width:150px;" placeholder="Type DELETE"
               value="${String(state.deleteConfirmText).replace(/"/g,'&quot;')}" oninput="onDeleteConfirmInput(this.value)">
-            <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.deleteBusy ? 'disabled' : ''} onclick="confirmDeleteSession()">${state.deleteBusy ? 'Deleting…' : 'Delete session'}</button>
-            <button class="btn btn-ghost" ${state.deleteBusy ? 'disabled' : ''} onclick="cancelDeleteSession()">Cancel</button>
+            <button class="btn btn-danger" ${state.deleteBusy ? 'disabled' : ''} onclick="confirmDeleteSession()">${state.deleteBusy ? 'Deleting…' : 'Delete session'}</button>
+            <button class="btn btn-secondary" ${state.deleteBusy ? 'disabled' : ''} onclick="cancelDeleteSession()">Cancel</button>
           </div>
         </div>` : `
-        <div class="delete-zone"><button class="undo-btn" onclick="startDeleteSession('${s.id}')">Delete this session</button></div>`));
+        <div class="delete-zone"><button class="btn btn-danger btn-sm" onclick="startDeleteSession('${s.id}')">Delete this session</button></div>`));
       return `
         <div class="session-card">
           <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
@@ -9302,8 +9271,8 @@ function renderHistoryView(){
     // it's a button that generates one (gated on the same eligibility as
     // sending, since generating is the same server call either way).
     const viewControl = s.reportPath
-      ? `<a class="btn btn-ghost" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>`
-      : (pEligible ? `<button class="btn btn-ghost" onclick="viewSessionReport('${s.id}')">View report</button>` : '');
+      ? `<a class="btn btn-secondary" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>`
+      : (pEligible ? `<button class="btn btn-secondary" onclick="viewSessionReport('${s.id}')">View report</button>` : '');
     const reportPanel = s.otherTeam ? otherTeamReportPanel(s) : s.pending ? `
       <div class="report-panel">
         <div class="field-label">Email this report</div>
@@ -9336,18 +9305,18 @@ function renderHistoryView(){
     // P1-15: delete a saved (synced) session. Pending sessions are left to
     // P1-01. No pitch editing anywhere -- delete is the only post-save action.
     const deleteZone = (s.pending || s.otherTeam || !canDeleteSessions()) ? '' : (!isOnline() ? `
-      <div class="delete-zone"><button class="undo-btn" disabled title="Deleting requires a connection">Connect to delete</button></div>` : (state.deletingSessionId === s.id ? `
+      <div class="delete-zone"><button class="btn btn-danger btn-sm" disabled title="Deleting requires a connection">Connect to delete</button></div>` : (state.deletingSessionId === s.id ? `
       <div class="delete-zone">
         <p class="delete-warn">This permanently removes the ${stats.total} pitch${stats.total === 1 ? '' : 'es'} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
         ${state.deleteError ? `<p class="report-status report-status-error" style="margin:0 0 8px;">${state.deleteError}</p>` : ''}
         <div class="delete-row">
           <input id="delete-confirm-input" class="text-input" style="max-width:150px;" placeholder="Type DELETE"
             value="${String(state.deleteConfirmText).replace(/"/g,'&quot;')}" oninput="onDeleteConfirmInput(this.value)">
-          <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.deleteBusy ? 'disabled' : ''} onclick="confirmDeleteSession()">${state.deleteBusy ? 'Deleting…' : 'Delete session'}</button>
-          <button class="btn btn-ghost" ${state.deleteBusy ? 'disabled' : ''} onclick="cancelDeleteSession()">Cancel</button>
+          <button class="btn btn-danger" ${state.deleteBusy ? 'disabled' : ''} onclick="confirmDeleteSession()">${state.deleteBusy ? 'Deleting…' : 'Delete session'}</button>
+          <button class="btn btn-secondary" ${state.deleteBusy ? 'disabled' : ''} onclick="cancelDeleteSession()">Cancel</button>
         </div>
       </div>` : `
-      <div class="delete-zone"><button class="undo-btn" onclick="startDeleteSession('${s.id}')">Delete this session</button></div>`));
+      <div class="delete-zone"><button class="btn btn-danger btn-sm" onclick="startDeleteSession('${s.id}')">Delete this session</button></div>`));
 
     return `
       <div class="session-card">
@@ -9480,14 +9449,13 @@ function renderZonePainter(){
   const saved = zoneCellsFor(zp.pitcherId, zp.type, zp.side);
   return `<div class="zone-paint">
     <div class="profile-row">
-      <button class="throws-btn${zp.side === 'R' ? ' selected' : ''}" onclick="zonePaintSide('R')">vs RHB</button>
-      <button class="throws-btn${zp.side === 'L' ? ' selected' : ''}" onclick="zonePaintSide('L')">vs LHB</button>
+      ${segTray([{ label: 'vs RHB', selected: zp.side === 'R', onclick: "zonePaintSide('R')" }, { label: 'vs LHB', selected: zp.side === 'L', onclick: "zonePaintSide('L')" }], { key: 'zside', label: 'Batter side', cls: 'tray-fit' })}
     </div>
     <div class="zone-wrap">${grid}<div class="zone-caption">${REPORT_VIEW_NAME} · tap the cells that count as accurate</div></div>
     <div class="profile-row">
       <button class="btn btn-primary" onclick="saveZonePaint()">Save zone</button>
-      <button class="btn btn-ghost" onclick="clearZonePaint()" ${saved ? '' : 'disabled'}>Clear</button>
-      <button class="btn btn-ghost" onclick="cancelZonePaint()">Close</button>
+      <button class="btn btn-secondary" onclick="clearZonePaint()" ${saved ? '' : 'disabled'}>Clear</button>
+      <button class="btn btn-secondary" onclick="cancelZonePaint()">Close</button>
     </div>
     ${state.zoneMsg ? `<p class="profile-note">${state.zoneMsg}</p>` : ''}
   </div>`;
@@ -9502,7 +9470,7 @@ function renderRelAccuracySection(p){
       const open = state.zonePaint && state.zonePaint.pitcherId === p.id && state.zonePaint.type === t;
       return `<div class="zone-row">
         <div class="profile-row"><strong>${pitchLabel(t)}</strong>
-          <button class="btn btn-ghost" onclick="${open ? 'cancelZonePaint()' : `openZonePaint(${escHtml(JSON.stringify(t))})`}">${open ? 'Close' : 'Edit zones'}</button></div>
+          <button class="btn btn-secondary" onclick="${open ? 'cancelZonePaint()' : `openZonePaint(${escHtml(JSON.stringify(t))})`}">${open ? 'Close' : 'Edit zones'}</button></div>
         <p class="profile-note">${stat('vs RHB', r)} · ${stat('vs LHB', l)}</p>
         ${open ? renderZonePainter() : ''}
       </div>`;
@@ -9628,7 +9596,7 @@ function lbRow(r, unit, minimum, isHead, cat){
   if(unq){
     val = `<span class="lb-val lb-unq-note">not enough pitches (${r.pitch_count} of ${minimum})</span>`;
   } else if(cat === 'velocity' && isHead && rank === 1 && r.peak_pitch_id){
-    val = `<button class="lb-val lb-val-btn" onclick="openLbExclude('${escHtml(r.peak_pitch_id)}')" title="Review this reading">${escHtml(r.value)}${unit}</button>`;
+    val = `<button class="btn btn-tertiary btn-sm hit44 lb-val lb-val-btn" onclick="openLbExclude('${escHtml(r.peak_pitch_id)}')" title="Review this reading">${escHtml(r.value)}${unit}</button>`;
   } else {
     val = `<span class="lb-val">${escHtml(r.value)}${unit}</span>`;
   }
@@ -9637,8 +9605,8 @@ function lbRow(r, unit, minimum, isHead, cat){
     extra = `<div class="lb-exclude-panel">
       <span>Peak reading: <strong>${escHtml(r.value)} mph</strong> on ${escHtml(lbDate(r.peak_pitch_ts))}.</span>
       <span class="lb-exclude-actions">
-        <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.lbBusy ? 'disabled' : ''} onclick="excludeLbReading('${escHtml(r.peak_pitch_id)}')">${state.lbBusy ? 'Excluding…' : 'Exclude this reading'}</button>
-        <button class="btn btn-ghost" onclick="openLbExclude(null)">Cancel</button>
+        <button class="btn btn-danger" ${state.lbBusy ? 'disabled' : ''} onclick="excludeLbReading('${escHtml(r.peak_pitch_id)}')">${state.lbBusy ? 'Excluding…' : 'Exclude this reading'}</button>
+        <button class="btn btn-secondary" onclick="openLbExclude(null)">Cancel</button>
       </span>
       <span class="lb-exclude-note">The pitch itself is not changed in History or reports. The next-highest reading takes over.</span>
     </div>`;
@@ -9663,8 +9631,8 @@ function renderLeaderboardView(){
   const picker = teams.length > 1
     ? `<select class="team-select lb-team-select" onchange="setLbTeam(this.value)">${teams.map(t => `<option value="${escHtml(t.id)}" ${t.id === teamId ? 'selected' : ''}>${escHtml(t.name)}</option>`).join('')}</select>`
     : '';
-  const toggle = `<div class="lb-toggle">${LB_WINDOWS.map(([k, label]) => `<button class="throws-btn${state.lbWindow === k ? ' selected' : ''}" onclick="setLbWindow('${k}')">${label}</button>`).join('')}</div>`;
-  const catToggle = `<div class="lb-toggle lb-cats">${LB_CATS.map(([k, label]) => `<button class="throws-btn${state.lbCat === k ? ' selected' : ''}" onclick="setLbCat('${k}')">${label}</button>`).join('')}</div>`;
+  const toggle = segTray(LB_WINDOWS.map(([k, label]) => ({ label, selected: state.lbWindow === k, onclick: `setLbWindow('${k}')` })), { key: 'lbwin', label: 'Time window', cls: 'lb-toggle' });
+  const catToggle = segTray(LB_CATS.map(([k, label]) => ({ label, selected: state.lbCat === k, onclick: `setLbCat('${k}')` })), { key: 'lbcat', label: 'Category', cls: 'lb-toggle lb-cats' });
   let body;
   const data = lb && lb.data;
   if(!lb || (!data && (lb.status === 'loading'))){
@@ -9697,7 +9665,7 @@ function renderLeaderboardView(){
       ${cat === 'velocity' && data.is_coach && (data.excluded || []).length ? `<div class="panel lb-section"><h3 class="lb-title">Excluded readings</h3>
         ${(data.excluded).map(e => `<div class="lb-row"><span class="lb-name">${escHtml(e.name)}</span>
           <span class="lb-val">${escHtml(e.value)} mph</span><span class="lb-n">${escHtml(lbDate(e.pitch_ts))}</span>
-          ${isHead ? `<button class="btn btn-ghost lb-undo" ${state.lbBusy ? 'disabled' : ''} onclick="restoreLbReading('${escHtml(e.pitch_id)}')">Undo</button>` : ''}</div>`).join('')}
+          ${isHead ? `<button class="btn btn-secondary lb-undo" ${state.lbBusy ? 'disabled' : ''} onclick="restoreLbReading('${escHtml(e.pitch_id)}')">Undo</button>` : ''}</div>`).join('')}
       </div>` : ''}`;
   }
   return `<div class="lb-page">
@@ -9723,17 +9691,16 @@ function renderLeaderboardView(){
 // see headerHtml's pitcher-header-actions). This row is just the 4 tabs.
 function renderTabs(){
   const fourthTab = isCoach()
-    ? `<button class="tab-btn${state.view==='pitcherProfile'?' active':''}" onclick="setView('pitcherProfile')"><span class="tab-label-full">Player Profile</span><span class="tab-label-short">Player</span></button>`
-    : `<button class="tab-btn${state.view==='profile'?' active':''}" onclick="setView('profile')">Profile</button>`;
+    ? { label: '<span class="tab-label-full">Player Profile</span><span class="tab-label-short">Player</span>', selected: state.view === 'pitcherProfile', onclick: "setView('pitcherProfile')" }
+    : { label: 'Profile', selected: state.view === 'profile', onclick: "setView('profile')" };
   // P1-09: a coach has no New Session on an archived team (a pitcher keeps the tab, which explains).
-  const sessionTab = (isCoach() && currentTeamArchived()) ? '' :
-    `<button class="tab-btn${state.view==='session'?' active':''}" onclick="setView('session')">${state.draftAvailable ? 'Resume' : 'New Session'}</button>`;
-  return `${renderArchivedBanner()}<div class="tabs">
-    ${sessionTab}
-    <button class="tab-btn${state.view==='history'?' active':''}" onclick="setView('history')">History${!isCoach() && state.profile && hasRosterDot(state.profile.id) ? '<span class="tab-dot" aria-label="New session"></span>' : ''}</button>
-    ${hasLeaderboard() ? `<button class="tab-btn${state.view==='leaderboard'?' active':''}" onclick="setView('leaderboard')"><span class="tab-label-full">Leaderboard</span><span class="tab-label-short">Leaders</span></button>` : ''}
-    ${fourthTab}
-  </div>`;
+  const sessionTab = (isCoach() && currentTeamArchived()) ? null :
+    { label: state.draftAvailable ? 'Resume' : 'New Session', selected: state.view === 'session', onclick: "setView('session')" };
+  const tabs = [sessionTab,
+    { label: 'History' + (!isCoach() && state.profile && hasRosterDot(state.profile.id) ? '<span class="tab-dot" aria-label="New session"></span>' : ''), selected: state.view === 'history', onclick: "setView('history')" },
+    hasLeaderboard() ? { label: '<span class="tab-label-full">Leaderboard</span><span class="tab-label-short">Leaders</span>', selected: state.view === 'leaderboard', onclick: "setView('leaderboard')" } : null,
+    fourthTab].filter(Boolean);
+  return `${renderArchivedBanner()}${segTray(tabs.map(t => Object.assign({ cls: 'tab-btn' }, t)), { key: 'tabs', label: 'Pages', cls: 'tabs' })}`;
 }
 function renderEmailSection(){
   const email = state.myVerification.email || (state.session && state.session.user && state.session.user.email) || '';
@@ -9750,7 +9717,7 @@ function renderEmailSection(){
     : '<span class="profile-note" style="color:var(--clay);">unverified</span>';
   const resendRow = state.myVerification.emailConfirmed ? '' : `
     <div class="profile-row" style="margin-top:2px;">
-      <button class="btn btn-ghost" ${state.verifyResendStatus === 'sending' ? 'disabled' : ''} onclick="resendVerification()">${state.verifyResendStatus === 'sending' ? 'Sending…' : 'Resend verification email'}</button>
+      <button class="btn btn-secondary" ${state.verifyResendStatus === 'sending' ? 'disabled' : ''} onclick="resendVerification()">${state.verifyResendStatus === 'sending' ? 'Sending…' : 'Resend verification email'}</button>
       ${state.verifyResendStatus === 'sent' ? '<span class="contacts-saved-msg">Check your inbox.</span>' : ''}
       ${state.verifyResendStatus === 'error' ? `<span class="error-msg">${escHtml(state.verifyResendMsg || 'Could not resend — try again in a moment.')}</span>` : ''}
     </div>`;
@@ -9770,7 +9737,7 @@ function renderEmailSection(){
     : `<p class="error-msg" style="margin:0 0 6px;">${n.error === 'still_pending' ? 'Your email change is still waiting on a confirmation. Check both inboxes.' : n.error === 'no_pending_change' ? 'That confirmation link was already used or replaced by a newer one.' : "We couldn't confirm your new email. Use Resend verification email below."}</p>`;
   return `<div class="profile-section"><h3>Email</h3>${notice}
     <div class="profile-row"><span style="font-size:14px;">${escHtml(email)}</span>${badge}
-      <button class="btn btn-ghost" onclick="toggleChangeEmail()">${state.changeEmailOpen ? 'Cancel' : 'Change email'}</button></div>
+      <button class="btn btn-secondary" onclick="toggleChangeEmail()">${state.changeEmailOpen ? 'Cancel' : 'Change email'}</button></div>
     ${resendRow}
     ${form}</div>`;
 }
@@ -9789,13 +9756,12 @@ function renderPasswordSection(){
 function renderThrowsSection(p){
   return `<div class="profile-section"><h3>Throws</h3>
     <div class="profile-row">
-      <button class="throws-btn${p.throws === 'L' ? ' selected' : ''}" onclick="setThrows('L')">Left</button>
-      <button class="throws-btn${p.throws === 'R' ? ' selected' : ''}" onclick="setThrows('R')">Right</button>
+      ${segTray([{ label: 'Left', selected: p.throws === 'L', onclick: "setThrows('L')" }, { label: 'Right', selected: p.throws === 'R', onclick: "setThrows('R')" }], { key: 'throws', label: 'Throws', cls: 'tray-fit' })}
     </div></div>`;
 }
 function renderPitchMixSection(p){
   const chips = (p.pitchTypes || []).map(t =>
-    `<span class="pitch-chip" style="background:${colorForType(p, t)};">${pitchLabel(t)} <span onclick="removePitchType(${escHtml(JSON.stringify(t))})" style="cursor:pointer;margin-left:4px;">✕</span></span>`
+    `<span class="pitch-chip" style="background:${colorForType(p, t)};">${pitchLabel(t)} <button type="button" class="btn btn-tertiary btn-sm hit44 chip-x" onclick="removePitchType(${escHtml(JSON.stringify(t))})" aria-label="Remove ${pitchLabel(t)}">✕</button></span>`
   ).join('') || `<span style="color:var(--ink-faint);font-size:12px;">No pitches set yet</span>`;
   const remaining = PITCH_CATALOG.filter(c => !(p.pitchTypes || []).includes(c.name));
   return `<div class="profile-section"><h3>Pitch mix</h3>
@@ -9805,7 +9771,7 @@ function renderPitchMixSection(p){
         <option value="">Add a pitch…</option>
         ${remaining.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
       </select>
-      <button onclick="addPitchType()">Add</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="addPitchType()">Add</button>
     </div></div>`;
 }
 // U9: name editing, added for the first time (nothing wrote profiles.full_name
@@ -9827,7 +9793,7 @@ function renderNameSection(p, self){
     </div>` : '';
   return `<div class="profile-section"><h3>Name</h3>
     <div class="profile-row"><span style="font-size:14px;">${escHtml(p.name)}</span>
-      <button class="btn btn-ghost" onclick="toggleNameEdit()">${editing ? 'Cancel' : 'Change name'}</button></div>
+      <button class="btn btn-secondary" onclick="toggleNameEdit()">${editing ? 'Cancel' : 'Change name'}</button></div>
     ${form}</div>`;
 }
 window.toggleNameEdit = function(){
@@ -9865,8 +9831,7 @@ function renderRadarGunSection(p, self){
   return `<div class="profile-section"><h3>Radar gun</h3>
     <p class="profile-note" style="margin:0 0 8px;">Will ${self ? 'you' : escHtml(p.name)} be using a radar gun while charting?</p>
     <div class="profile-row">
-      <button class="throws-btn${on ? ' selected' : ''}" onclick="setUsesRadarGun(true, ${self})">Yes</button>
-      <button class="throws-btn${!on ? ' selected' : ''}" onclick="setUsesRadarGun(false, ${self})">No</button>
+      ${segTray([{ label: 'Yes', selected: on, onclick: `setUsesRadarGun(true, ${self})` }, { label: 'No', selected: !on, onclick: `setUsesRadarGun(false, ${self})` }], { key: 'radar', label: 'Radar gun', cls: 'tray-fit' })}
     </div></div>`;
 }
 window.setUsesRadarGun = async function(val, self){
@@ -9918,10 +9883,10 @@ function renderTeamDangerSection(team){
         <span class="field-label">Type the team name to confirm</span>
         <input id="team-danger-input" class="text-input" style="max-width:280px;" autocomplete="off" value="${escHtml(state.teamDangerText || '')}" oninput="state.teamDangerText = this.value">
         <div class="invite-regen-confirm-row">
-          <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.teamDangerBusy || !isOnline() ? 'disabled' : ''} onclick="confirmTeamDanger('${kind}')">${state.teamDangerBusy ? (kind === 'archive' ? 'Archiving…' : 'Deleting…') : (kind === 'archive' ? 'Archive team' : 'Delete team')}</button>
-          <button class="btn btn-ghost" ${state.teamDangerBusy ? 'disabled' : ''} onclick="cancelTeamDanger()">Cancel</button>
+          <button class="btn btn-danger" ${state.teamDangerBusy || !isOnline() ? 'disabled' : ''} onclick="confirmTeamDanger('${kind}')">${state.teamDangerBusy ? (kind === 'archive' ? 'Archiving…' : 'Deleting…') : (kind === 'archive' ? 'Archive team' : 'Delete team')}</button>
+          <button class="btn btn-secondary" ${state.teamDangerBusy ? 'disabled' : ''} onclick="cancelTeamDanger()">Cancel</button>
         </div>
-      </div>` : `<button class="btn btn-ghost" ${!isOnline() ? 'disabled' : ''} onclick="openTeamDanger('${team.id}')">${kind === 'archive' ? 'Archive team…' : 'Delete team…'}</button>`}
+      </div>` : `<button class="btn btn-secondary" ${!isOnline() ? 'disabled' : ''} onclick="openTeamDanger('${team.id}')">${kind === 'archive' ? 'Archive team…' : 'Delete team…'}</button>`}
     ${state.teamDangerError && state.teamDangerFor === team.id ? `<p class="profile-msg">${escHtml(state.teamDangerError)}</p>` : ''}`}
   </div>`;
 }
@@ -10001,10 +9966,10 @@ function renderCoachTeamAdmin(){
     if(head && c.role === 'assistant'){
       control = state.removeCoachArmedId === c.coachId
         ? `<span class="invite-regen-confirm-row">
-             <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.removeCoachBusy?'disabled':''} onclick="confirmRemoveCoach('${c.coachId}')">${state.removeCoachBusy?'Removing…':'Remove now'}</button>
-             <button class="btn btn-ghost" ${state.removeCoachBusy?'disabled':''} onclick="cancelRemoveCoach()">Cancel</button>
+             <button class="btn btn-danger" ${state.removeCoachBusy?'disabled':''} onclick="confirmRemoveCoach('${c.coachId}')">${state.removeCoachBusy?'Removing…':'Remove now'}</button>
+             <button class="btn btn-secondary" ${state.removeCoachBusy?'disabled':''} onclick="cancelRemoveCoach()">Cancel</button>
            </span>`
-        : `<button class="undo-btn" onclick="armRemoveCoach('${c.coachId}')">Remove</button>`;
+        : `<button class="btn btn-danger btn-sm" onclick="armRemoveCoach('${c.coachId}')">Remove</button>`;
     }
     return `<div class="profile-row" style="justify-content:space-between;">
       <span>${escHtml(c.name)} ${tag}</span>
@@ -10022,13 +9987,13 @@ function renderCoachTeamAdmin(){
           <option value="">Choose an assistant…</option>
           ${assistants.map(a => `<option value="${a.coachId}" ${state.handoffTargetId===a.coachId?'selected':''}>${escHtml(a.name)}</option>`).join('')}
         </select>
-        ${state.handoffArmed ? '' : `<button class="btn btn-ghost" ${state.handoffTargetId?'':'disabled'} onclick="armHandoff()">Hand off</button>`}
+        ${state.handoffArmed ? '' : `<button class="btn btn-secondary" ${state.handoffTargetId?'':'disabled'} onclick="armHandoff()">Hand off</button>`}
       </div>
       ${state.handoffArmed ? `
         <p class="invite-regen-warn">This makes ${escHtml((assistants.find(a=>a.coachId===state.handoffTargetId)||{}).name || 'them')} the head coach immediately. You'll keep full access as an assistant, but lose admin controls for this team.</p>
         <div class="invite-regen-confirm-row">
-          <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.handoffBusy?'disabled':''} onclick="confirmHandoff()">${state.handoffBusy?'Handing off…':'Confirm hand-off'}</button>
-          <button class="btn btn-ghost" ${state.handoffBusy?'disabled':''} onclick="cancelHandoff()">Cancel</button>
+          <button class="btn btn-danger" ${state.handoffBusy?'disabled':''} onclick="confirmHandoff()">${state.handoffBusy?'Handing off…':'Confirm hand-off'}</button>
+          <button class="btn btn-secondary" ${state.handoffBusy?'disabled':''} onclick="cancelHandoff()">Cancel</button>
         </div>` : ''}
     </div>` : '';
 
@@ -10039,34 +10004,34 @@ function renderCoachTeamAdmin(){
       <div class="invite-link-panel">
         <div class="invite-link-row">
           <span class="invite-link-text">${inviteLinkFor()}</span>
-          <button class="invite-link-copy-btn" onclick="copyInviteLink()">${state.inviteCopyStatus === 'copied' ? 'Copied!' : state.inviteCopyStatus === 'error' ? 'Copy failed' : 'Copy'}</button>
+          <button class="btn btn-secondary btn-sm invite-link-copy-btn" onclick="copyInviteLink()">${state.inviteCopyStatus === 'copied' ? 'Copied!' : state.inviteCopyStatus === 'error' ? 'Copy failed' : 'Copy'}</button>
         </div>
         <div class="invite-regen-row">
           <span style="font-size:10px;color:var(--ink-faint);">Rotated ${state.teamInviteLinks.invite_token_rotated_at ? new Date(state.teamInviteLinks.invite_token_rotated_at).toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '—'}</span>
-          ${state.regenerateArmed ? '' : '<button class="invite-regen-btn" onclick="armRegenerateInvite()">Regenerate</button>'}
+          ${state.regenerateArmed ? '' : '<button class="btn btn-tertiary btn-sm invite-regen-btn" onclick="armRegenerateInvite()">Regenerate</button>'}
         </div>
         ${state.regenerateArmed ? `
           <p class="invite-regen-warn">This makes a new link and the current one stops working immediately — anyone who hasn't joined yet with the old link will need the new one.</p>
           <div class="invite-regen-confirm-row">
-            <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.regenerateBusy?'disabled':''} onclick="confirmRegenerateInvite()">${state.regenerateBusy?'Regenerating…':'Regenerate now'}</button>
-            <button class="btn btn-ghost" ${state.regenerateBusy?'disabled':''} onclick="cancelRegenerateInvite()">Cancel</button>
+            <button class="btn btn-danger" ${state.regenerateBusy?'disabled':''} onclick="confirmRegenerateInvite()">${state.regenerateBusy?'Regenerating…':'Regenerate now'}</button>
+            <button class="btn btn-secondary" ${state.regenerateBusy?'disabled':''} onclick="cancelRegenerateInvite()">Cancel</button>
           </div>` : ''}
       </div>
       <div class="field-label" style="margin:14px 0 6px;">Coach invite link</div>
       <div class="invite-link-panel">
         <div class="invite-link-row">
           <span class="invite-link-text">${coachInviteLinkFor()}</span>
-          <button class="invite-link-copy-btn" onclick="copyCoachInviteLink()">${state.coachInviteCopyStatus === 'copied' ? 'Copied!' : state.coachInviteCopyStatus === 'error' ? 'Copy failed' : 'Copy'}</button>
+          <button class="btn btn-secondary btn-sm invite-link-copy-btn" onclick="copyCoachInviteLink()">${state.coachInviteCopyStatus === 'copied' ? 'Copied!' : state.coachInviteCopyStatus === 'error' ? 'Copy failed' : 'Copy'}</button>
         </div>
         <div class="invite-regen-row">
           <span style="font-size:10px;color:var(--ink-faint);">Rotated ${state.teamInviteLinks.coach_invite_token_rotated_at ? new Date(state.teamInviteLinks.coach_invite_token_rotated_at).toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '—'}</span>
-          ${state.coachRegenerateArmed ? '' : '<button class="invite-regen-btn" onclick="armRegenerateCoachInvite()">Regenerate</button>'}
+          ${state.coachRegenerateArmed ? '' : '<button class="btn btn-tertiary btn-sm invite-regen-btn" onclick="armRegenerateCoachInvite()">Regenerate</button>'}
         </div>
         ${state.coachRegenerateArmed ? `
           <p class="invite-regen-warn">This makes a new link and the current one stops working immediately.</p>
           <div class="invite-regen-confirm-row">
-            <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.coachRegenerateBusy?'disabled':''} onclick="confirmRegenerateCoachInvite()">${state.coachRegenerateBusy?'Regenerating…':'Regenerate now'}</button>
-            <button class="btn btn-ghost" ${state.coachRegenerateBusy?'disabled':''} onclick="cancelRegenerateCoachInvite()">Cancel</button>
+            <button class="btn btn-danger" ${state.coachRegenerateBusy?'disabled':''} onclick="confirmRegenerateCoachInvite()">${state.coachRegenerateBusy?'Regenerating…':'Regenerate now'}</button>
+            <button class="btn btn-secondary" ${state.coachRegenerateBusy?'disabled':''} onclick="cancelRegenerateCoachInvite()">Cancel</button>
           </div>` : ''}
       </div>
     </div>` : '';
@@ -10078,10 +10043,10 @@ function renderCoachTeamAdmin(){
         <div class="profile-row">
           <input id="rename-team-input" class="text-input" style="max-width:260px;" value="${escHtml(state.renameTeamDraft)}" oninput="onRenameTeamInput(this.value)">
           <button class="btn btn-primary" ${state.renameTeamBusy?'disabled':''} onclick="submitRenameTeam()">${state.renameTeamBusy?'Saving…':'Save'}</button>
-          <button class="btn btn-ghost" ${state.renameTeamBusy?'disabled':''} onclick="cancelRenameTeam()">Cancel</button>
+          <button class="btn btn-secondary" ${state.renameTeamBusy?'disabled':''} onclick="cancelRenameTeam()">Cancel</button>
         </div>
         ${state.renameTeamError ? `<p class="profile-msg">${escHtml(state.renameTeamError)}</p>` : ''}
-      ` : `<div class="profile-row" style="justify-content:space-between;"><strong>${escHtml(team.name)}</strong><button class="btn btn-ghost" onclick="openRenameTeam()">Rename</button></div>`}
+      ` : `<div class="profile-row" style="justify-content:space-between;"><strong>${escHtml(team.name)}</strong><button class="btn btn-secondary" onclick="openRenameTeam()">Rename</button></div>`}
     </div>` : `<div class="profile-section"><h3>Team</h3><div class="profile-row"><strong>${escHtml(team.name)}</strong></div></div>`;
 
   // G3 item 5: level of play decides when extra innings start. Head coach
@@ -10117,10 +10082,10 @@ function renderCoachTeamAdmin(){
         <div class="profile-row">
           <input id="create-team-input" class="text-input" style="max-width:260px;" placeholder="e.g. Kings Christian Baseball" value="${escHtml(state.createTeamDraft)}" oninput="onCreateTeamInput(this.value)">
           <button class="btn btn-primary" ${state.createTeamBusy?'disabled':''} onclick="submitCreateTeam()">${state.createTeamBusy?'Creating…':'Create'}</button>
-          <button class="btn btn-ghost" ${state.createTeamBusy?'disabled':''} onclick="cancelCreateTeam()">Cancel</button>
+          <button class="btn btn-secondary" ${state.createTeamBusy?'disabled':''} onclick="cancelCreateTeam()">Cancel</button>
         </div>
         ${state.createTeamError ? `<p class="profile-msg">${escHtml(state.createTeamError)}</p>` : ''}
-      ` : `<button class="btn btn-ghost" onclick="openCreateTeam()">Create a team</button>`}
+      ` : `<button class="btn btn-secondary" onclick="openCreateTeam()">Create a team</button>`}
     </div>
   `;
 }
@@ -10224,13 +10189,12 @@ function renderSetupView(){
     <div class="profile-section"><h3>Radar gun</h3>
       <p class="profile-note" style="margin:0 0 8px;">Will you be using a radar gun while charting?</p>
       <div class="profile-row">
-        <button class="btn ${p.usesRadarGun ? 'btn-primary' : 'btn-ghost'}" onclick="setSetupRadar(true)">Yes</button>
-        <button class="btn ${p.usesRadarGun ? 'btn-ghost' : 'btn-primary'}" onclick="setSetupRadar(false)">No</button>
+        ${segTray([{ label: 'Yes', selected: !!p.usesRadarGun, onclick: 'setSetupRadar(true)' }, { label: 'No', selected: !p.usesRadarGun, onclick: 'setSetupRadar(false)' }], { key: 'setupradar', label: 'Radar gun', cls: 'tray-fit' })}
       </div>
     </div>
     <div class="profile-row" style="margin-top:8px;">
       <button class="btn btn-primary" onclick="dismissSetup()">Save Profile</button>
-      <button class="btn btn-ghost" onclick="dismissSetup()">Set Up Later</button>
+      <button class="btn btn-secondary" onclick="dismissSetup()">Set Up Later</button>
     </div>
   </div>`;
 }
@@ -10242,7 +10206,7 @@ function renderSetupView(){
 function renderSetupModal(){
   return `<div class="modal-overlay" onclick="if(event.target===this) closeSetupModal();">
     <div class="modal-panel">
-      <button class="modal-close-x" onclick="closeSetupModal()" aria-label="Close">✕</button>
+      <button class="btn btn-icon modal-close-x" onclick="closeSetupModal()" aria-label="Close">✕</button>
       ${isCoach() ? renderCoachWelcome() : renderSetupView()}
     </div>
   </div>`;
@@ -10257,7 +10221,7 @@ function renderCoachWelcome(){
   const linkRow = (url, copyFn, status) => links
     ? `<div class="invite-link-panel"><div class="invite-link-row">
          <span class="invite-link-text">${escHtml(url)}</span>
-         <button class="invite-link-copy-btn" onclick="${copyFn}()">${copyLabel(status)}</button>
+         <button class="btn btn-secondary btn-sm invite-link-copy-btn" onclick="${copyFn}()">${copyLabel(status)}</button>
        </div></div>`
     : `<p class="profile-note">${isOnline() ? 'Loading your link…' : 'Connect to the internet to get your link.'}</p>`;
   return `<div class="profile-page setup-page">
@@ -10274,7 +10238,7 @@ function renderCoachWelcome(){
     <p class="profile-note">Both links are always on your Profile, under Invite links.</p>
     <div class="profile-row" style="margin-top:8px;">
       <button class="btn btn-primary" onclick="dismissSetup()">Done</button>
-      <button class="btn btn-ghost" onclick="dismissSetup()">Set Up Later</button>
+      <button class="btn btn-secondary" onclick="dismissSetup()">Set Up Later</button>
     </div>
   </div>`;
 }
@@ -10355,8 +10319,8 @@ function renderSetupReminderBanner(){
   return `<div class="verify-banner">
     <p>Finish setting up your profile (uniform #, throw side, pitch mix) so charting works well for you.</p>
     <div class="verify-banner-actions">
-      <button class="btn btn-ghost" onclick="openSetupModal()">Finish setup</button>
-      <button class="btn btn-ghost" onclick="dismissSetupReminderForSession()">Dismiss</button>
+      <button class="btn btn-secondary" onclick="openSetupModal()">Finish setup</button>
+      <button class="btn btn-secondary" onclick="dismissSetupReminderForSession()">Dismiss</button>
     </div>
   </div>`;
 }
@@ -10694,7 +10658,7 @@ function render(){
       <div class="sidebar">
         <div class="brand-block"><div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div><span class="tagline">Always a Step Ahead</span>${renderOfflinePill()}</div>
         ${renderOutboxBadge()}
-        <button class="sign-out-btn" onclick="signOut()">Sign out</button>
+        <button class="btn btn-secondary sign-out-btn" onclick="signOut()">Sign out</button>
       </div>
       <div class="main"><div class="acct-row">${renderAccountButton()}</div><div class="empty-state"><div class="display">No team yet</div>${msg}</div></div>`;
     return;
@@ -10719,7 +10683,7 @@ function render(){
       <div class="roster-item-wrap">
         <div class="roster-item${p.id===state.currentPitcherId?' active':''}" style="display:flex;">
           ${hasRosterDot(p.id) ? '<span class="roster-dot" aria-label="New session"></span>' : ''}
-          <button style="all:unset;flex:1;min-width:0;display:flex;align-items:center;cursor:pointer;" onclick="selectPitcher('${p.id}')">
+          <button type="button" class="roster-name-btn" onclick="selectPitcher('${p.id}')">
             <div class="roster-item-main">
               <span class="roster-item-name">${escHtml(p.name)}${p.throws ? `<span class="throws-tag">${p.throws}HP</span>` : ''}</span>
               <span class="roster-item-types">${p.pitchTypes.map(pitchLabel).join(' · ') || 'No pitches set yet'}</span>${workloadRosterLine(p.id)}
@@ -10727,13 +10691,13 @@ function render(){
             </div>
             <span class="roster-item-num">${p.uniformNumber === null ? '—' : p.uniformNumber}</span>
           </button>
-          ${canRemovePitcher ? `<button class="roster-item-remove" title="Remove ${escHtml(p.name)} from this team" onclick="event.stopPropagation();armRemoveRosterPitcher('${p.id}')">✕</button>` : ''}
+          ${canRemovePitcher ? `<button class="btn btn-icon btn-danger btn-sm roster-item-remove" title="Remove ${escHtml(p.name)} from this team" onclick="event.stopPropagation();armRemoveRosterPitcher('${p.id}')">✕</button>` : ''}
         </div>
         ${(canRemovePitcher && state.removeArmedPitcherId === p.id) ? `
           <div class="invite-regen-warn" style="padding:0 4px 8px;">Removes ${escHtml(p.name)} from this team's roster and emails them to let them know. Their sessions and stats aren't deleted -- only this team's view of them.</div>
           <div class="invite-regen-confirm-row" style="padding:0 4px 8px;">
-            <button class="btn btn-primary" style="background:var(--red-bg);color:var(--chalk);" ${state.removeBusy ? 'disabled' : ''} onclick="confirmRemoveRosterPitcher('${p.id}')">${state.removeBusy ? 'Removing…' : 'Remove now'}</button>
-            <button class="btn btn-ghost" ${state.removeBusy ? 'disabled' : ''} onclick="cancelRemoveRosterPitcher()">Cancel</button>
+            <button class="btn btn-danger" ${state.removeBusy ? 'disabled' : ''} onclick="confirmRemoveRosterPitcher('${p.id}')">${state.removeBusy ? 'Removing…' : 'Remove now'}</button>
+            <button class="btn btn-secondary" ${state.removeBusy ? 'disabled' : ''} onclick="cancelRemoveRosterPitcher()">Cancel</button>
           </div>` : ''}
       </div>`).join('');
 
@@ -10751,15 +10715,15 @@ function render(){
     const dottedCount = state.roster.filter(x => hasRosterDot(x.id)).length;   // U10 (3)
     const rosterLabel = collapsed && selectedForLabel ? `Roster · ${escHtml(selectedForLabel.name)}` : 'Roster';
     sidebarBody = `
-      <div class="team-line">${teamSelector}<button class="btn btn-ghost show-phone coach-profile-link" onclick="setView('profile')">Profile</button></div>
-      ${canCollapse ? `<button class="roster-toggle-btn" onclick="toggleRosterCollapsed()" aria-expanded="${collapsed ? 'false' : 'true'}">
+      <div class="team-line">${teamSelector}<button class="btn btn-secondary show-phone coach-profile-link" onclick="setView('profile')">Profile</button></div>
+      ${canCollapse ? `<button class="btn btn-secondary roster-toggle-btn" onclick="toggleRosterCollapsed()" aria-expanded="${collapsed ? 'false' : 'true'}">
         <span style="display:flex;align-items:center;min-width:0;"><span class="roster-label" style="margin:0;">${rosterLabel}</span>${collapsed && dottedCount ? `<span class="roster-dot-count" aria-label="${dottedCount} with new sessions">${dottedCount}</span>` : ''}</span>
         <span class="roster-chevron${collapsed ? '' : ' open'}">▾</span>
       </button>` : `<div class="roster-label" style="margin:0;">Roster</div>`}
       <div class="roster-collapse${collapsed ? ' collapsed' : ''}">
         <div class="roster-list">${rosterItems || '<p style="color:var(--ink-faint);font-size:12px;">No pitchers on this team yet.</p>'}</div>
       </div>`;
-    phoneFooter = `<div class="phone-footer"><button class="sign-out-btn" onclick="signOut()">Sign out</button></div>`;
+    phoneFooter = `<div class="phone-footer"><button class="btn btn-secondary sign-out-btn" onclick="signOut()">Sign out</button></div>`;
   } else {
     sidebarBody = `
       ${teamSelector}
@@ -10778,7 +10742,7 @@ function render(){
       </div>
       ${sidebarBody}
       ${renderOutboxBadge()}
-      <button class="sign-out-btn${isCoach() ? ' hide-phone' : ''}" onclick="signOut()">Sign out</button>
+      <button class="btn btn-secondary sign-out-btn${isCoach() ? ' hide-phone' : ''}" onclick="signOut()">Sign out</button>
     </div>`;
 
   const p = currentPitcher();
@@ -10797,9 +10761,9 @@ function render(){
       : `<div class="empty-state"><div class="display">No pitcher selected</div>${
           currentTeamArchived() ? '<p>This team is archived and has no pitchers on its roster.</p>'
           : `<p>Invite a pitcher to this team to get started.</p>${
-          isHeadOfCurrentTeam() ? `<button class="btn btn-primary" style="margin-top:12px;" onclick="openCoachWelcome()">Get the invite link</button>`
+          isHeadOfCurrentTeam() ? `<button class="btn btn-primary mt-12" onclick="openCoachWelcome()">Get the invite link</button>`
                                 : '<p class="profile-note">Ask your head coach for the pitcher invite link.</p>'}`}
-          <button class="btn btn-ghost hide-phone" style="margin-top:10px;" onclick="setView('profile')">Profile</button></div>`);   // the coach's Profile button normally lives in the pitcher header, which an empty roster doesn't have
+          <button class="btn btn-secondary hide-phone mt-10" onclick="setView('profile')">Profile</button></div>`);   // the coach's Profile button normally lives in the pitcher header, which an empty roster doesn't have
   } else {
     const arsenalChips = p.pitchTypes.map(t => {
       const c = colorForType(p, t);
@@ -10838,8 +10802,8 @@ function render(){
       <div class="verify-banner">
         <p>Verify your email so we can send you your reports. ${state.verifyResendStatus === 'sent' ? 'Verification email sent — check your inbox.' : ''}${state.verifyResendStatus === 'error' ? escHtml(state.verifyResendMsg || 'Could not resend — try again in a moment.') : ''}</p>
         <div class="verify-banner-actions">
-          <button class="btn btn-ghost" ${state.verifyResendStatus === 'sending' ? 'disabled' : ''} onclick="resendVerification()">${state.verifyResendStatus === 'sending' ? 'Sending…' : 'Resend'}</button>
-          <button class="btn btn-ghost" onclick="goToProfileEmail()">Wrong email? Change it in Profile</button>
+          <button class="btn btn-secondary" ${state.verifyResendStatus === 'sending' ? 'disabled' : ''} onclick="resendVerification()">${state.verifyResendStatus === 'sending' ? 'Sending…' : 'Resend'}</button>
+          <button class="btn btn-secondary" onclick="goToProfileEmail()">Wrong email? Change it in Profile</button>
         </div>
       </div>` : '';
 
@@ -10859,8 +10823,8 @@ function render(){
         <div class="pitcher-header-actions">
           ${renderBackToChooserBtn()}
           ${isCoach()
-            ? `<button class="btn btn-ghost hide-phone" onclick="setView('profile')">Profile</button>`
-            : `<button class="btn btn-ghost" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>`}
+            ? `<button class="btn btn-secondary hide-phone" onclick="setView('profile')">Profile</button>`
+            : `<button class="btn btn-secondary" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>`}
           ${acctInHeader ? `<div class="acct-row acct-inline">${renderAccountButton()}</div>` : ''}
         </div>
       </div>
@@ -10894,6 +10858,7 @@ function render(){
   app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}${policyFoot}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet() + (dockOn ? renderCoachDock() : '');
   if(app.classList) app.classList.toggle('has-dock', dockOn);
   if(dockOn) attachCoachDock();
+  placeTrayIndicators();   // U13
   attachPitchStrip();   // G1b-r5: no-op unless the phone pitch strip is on screen
   sizeWideGrid();       // G1b-r6: no-op unless the iPad/laptop session grid is on screen
   attachVeloStrip();

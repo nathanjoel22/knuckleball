@@ -21,6 +21,7 @@
     document.documentElement.setAttribute('data-sport', window.KB_SPORT);
   })();
 </script>
+<link rel="stylesheet" href="buttons.css">   <!-- U13: shared button shapes (Joel, Oct 9 2026) -->
 <style>
   @import url('vendor/fonts/fonts.css');
 
@@ -89,12 +90,6 @@
   .text-input::placeholder{ color:var(--chalk-faint); }
   .text-input:focus{ border-color:var(--amber); }
 
-  .btn-primary{
-    background:var(--amber); color:var(--field-dark); border:none; border-radius:7px;
-    padding:12px 14px; font-size:14px; font-weight:700; letter-spacing:0.02em;
-  }
-  .btn-primary:hover{ background:var(--amber-bright); }
-  .btn-primary:disabled{ opacity:0.6; cursor:not-allowed; }
 
   .error-msg{ font-size:12.5px; color:var(--red); min-height:16px; }
   .info-msg{ font-size:13px; color:var(--chalk-dim); line-height:1.5; background:var(--field-panel-2); border:1px solid var(--border-strong); border-radius:8px; padding:14px; }
@@ -171,7 +166,7 @@
 
     <label class="terms-check"><input type="checkbox" id="att-terms-ok"> <span>I am 18 or older and I agree to the <a href="terms.html" target="_blank" class="policy-link">Terms</a> and <a href="privacy.html" target="_blank" class="policy-link">Privacy Policy</a>.</span></label>
     <div class="error-msg" id="att-error-msg"></div>
-    <button type="submit" class="btn-primary" id="att-submit-btn">Continue &amp; join</button>
+    <button type="submit" class="btn btn-primary btn-block" id="att-submit-btn">Continue &amp; join</button>
   </form>
 
   <form class="card step-hidden" id="join-form" autocomplete="off">
@@ -200,7 +195,7 @@
 
     <label class="terms-check"><input type="checkbox" id="terms-ok"> <span>I am 18 or older and I agree to the <a href="terms.html" target="_blank" class="policy-link">Terms</a> and <a href="privacy.html" target="_blank" class="policy-link">Privacy Policy</a>.</span></label>
     <div class="error-msg" id="error-msg"></div>
-    <button type="submit" class="btn-primary" id="submit-btn">Create account &amp; join</button>
+    <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Create account &amp; join</button>
     <div class="foot-row">
       <a href="index.html">&larr; Back</a>
       <a href="login.html">Already have an account? Log in</a>

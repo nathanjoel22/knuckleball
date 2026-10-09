@@ -55,6 +55,7 @@
     document.documentElement.setAttribute('data-sport', window.KB_SPORT);
   })();
 </script>
+<link rel="stylesheet" href="buttons.css">   <!-- U13: shared button shapes (Joel, Oct 9 2026) -->
 <style>
   @import url('vendor/fonts/fonts.css');
 
@@ -147,12 +148,6 @@
   .text-input::placeholder{ color:var(--chalk-faint); }
   .text-input:focus{ border-color:var(--amber); }
 
-  .btn-primary{
-    background:var(--amber); color:var(--field-dark); border:none; border-radius:7px;
-    padding:12px 14px; font-size:14px; font-weight:700; letter-spacing:0.02em;
-  }
-  .btn-primary:hover{ background:var(--amber-bright); }
-  .btn-primary:disabled{ opacity:0.6; cursor:not-allowed; }
 
   .error-msg{ font-size:12.5px; color:var(--red); min-height:16px; }
 
@@ -194,7 +189,7 @@
 
     <div class="error-msg" id="error-msg"></div>
 
-    <button type="submit" class="btn-primary" id="submit-btn">Log in</button>
+    <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Log in</button>
 
     <div class="foot-row">
       <a href="index.html?choose=1">&larr; Back</a>

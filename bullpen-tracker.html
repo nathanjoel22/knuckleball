@@ -1084,6 +1084,21 @@
      separate calc(). pointer-events:none in both modes -- it sits on top
      of charting cells and must never swallow a tap. */
   /* Joel, Oct 8: the real-plate look under History's heat maps -- the strike zone's width (3 of 5 columns) */
+  /* Coach dock (Joel, Oct 8): phones, translucent, fixed to the bottom; slides away scrolling down */
+  .coach-dock{ position:fixed; left:10px; right:10px; bottom:calc(10px + env(safe-area-inset-bottom, 0px)); z-index:60;
+    display:flex; justify-content:space-around; gap:4px; padding:6px 8px; border-radius:18px;
+    background:rgba(15,36,27,0.72); -webkit-backdrop-filter:blur(14px) saturate(140%); backdrop-filter:blur(14px) saturate(140%);
+    box-shadow:0 6px 24px rgba(0,0,0,0.22); transition:transform 260ms ease, opacity 260ms ease; }
+  html[data-sport="softball"] .coach-dock{ background:rgba(35,75,110,0.74); }
+  .coach-dock.dock-hidden{ transform:translateY(calc(100% + 24px)); opacity:0; pointer-events:none; }
+  .dock-btn{ flex:1; min-width:0; min-height:50px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    background:none; border:0; border-radius:12px; color:rgba(242,235,221,0.86); font:inherit; font-size:11px; font-weight:700; letter-spacing:0.02em; cursor:pointer;
+    -webkit-tap-highlight-color:transparent; }
+  .dock-btn svg{ width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .dock-btn.on{ color:#fff; background:rgba(255,255,255,0.14); }
+  @media (prefers-reduced-motion: reduce){ .coach-dock{ transition:none; } }
+  #app.has-dock .main{ padding-bottom:calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
+  #app.has-dock .phone-footer{ margin-bottom:calc(84px + env(safe-area-inset-bottom, 0px)); }
   .persp-plate-wrap{ width:calc(60% - 4px); margin:2px auto 0; }
   .hp-wrap{ width:100%; max-width:320px; display:flex; flex-direction:column; align-items:center; gap:6px; }
   .hp-plot{ display:block; width:100%; height:auto; }
@@ -3542,6 +3557,49 @@ async function loadCoachAdminData(teamId){
 function rosterCanCollapse(){
   return window.matchMedia('(max-width:860px)').matches;
 }
+/* ---------- COACH DOCK (Joel, Oct 8 2026) ----------
+   Phones, coach accounts, outside the charting screen: a translucent bar fixed to the bottom with Home (New
+   Session -- "What will we be charting today?"), Charts (History), Roster (opens the pitcher list and scrolls to
+   its top) and Profile. It slides away while scrolling down and comes back on scrolling up. */
+const DOCK_ICONS = {
+  home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.2 12 4l9 7.2"/><path d="M5.5 9.6V20h4.8v-5.4h3.4V20h4.8V9.6"/></svg>',
+  charts: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="M8.5 10h7M8.5 13.5h7M8.5 17h4.5"/></svg>',
+  roster: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20.5c.8-4 3.6-6.3 7.2-6.3s6.4 2.3 7.2 6.3"/></svg>',
+  profile: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.6"/></svg>'
+};
+function coachDockShown(phoneSession){ return isCoach() && isPhoneWidth() && !phoneSession && !!state.profile; }
+function renderCoachDock(){
+  const v = state.view, on = k => (k === 'home' && v === 'session') || (k === 'charts' && v === 'history') || (k === 'profile' && v === 'profile');
+  const btn = (k, label, fn) => `<button type="button" class="dock-btn${on(k) ? ' on' : ''}" onclick="${fn}" aria-label="${label}">${DOCK_ICONS[k]}<span>${label}</span></button>`;
+  return `<nav class="coach-dock${state.dockHidden ? ' dock-hidden' : ''}" aria-label="Coach shortcuts">
+    ${btn('home', 'Home', 'dockGo(\'home\')')}${btn('charts', 'Charts', 'dockGo(\'charts\')')}${btn('roster', 'Roster', 'dockGo(\'roster\')')}${btn('profile', 'Profile', 'dockGo(\'profile\')')}
+  </nav>`;
+}
+window.dockGo = function(where){
+  state.dockHidden = false;
+  if(where === 'roster'){
+    state.rosterCollapsed = false;
+    render();
+    const list = document.querySelector('.roster-toggle-btn') || document.querySelector('.roster-list');
+    if(list && list.scrollIntoView) list.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    return;
+  }
+  setView(where === 'home' ? 'session' : where === 'charts' ? 'history' : 'profile');
+  window.scrollTo(0, 0);
+};
+// Down: away; up (or near the top): back. Moves the bar in place -- no re-render while scrolling.
+let dockLastY = 0;
+window.addEventListener('scroll', () => {
+  const y = window.pageYOffset || 0, dy = y - dockLastY;
+  if(Math.abs(dy) < 6) return;
+  const hide = y > 40 && dy > 0;
+  dockLastY = y;
+  if(hide === !!state.dockHidden) return;
+  state.dockHidden = hide;
+  const dock = document.querySelector('.coach-dock');
+  if(dock) dock.classList.toggle('dock-hidden', hide);
+}, { passive: true });
+
 window.toggleRosterCollapsed = function(){
   state.rosterCollapsed = !state.rosterCollapsed;
   render();
@@ -10761,7 +10819,9 @@ function render(){
   const setupModalHtml = (state.showSetupModal && (isCoach() ? isHeadOfCurrentTeam() : !state.draftAvailable)) ? renderSetupModal() : '';
 
   const policyFoot = phoneSession ? '' : `<div class="policy-foot">Knuckleball LLC 2026 &middot; <a href="${policyHref('privacy.html')}">Privacy</a> &middot; <a href="${policyHref('terms.html')}">Terms</a></div>`;   // P1-10
-  app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}${policyFoot}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet();
+  const dockOn = coachDockShown(phoneSession);
+  app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}${policyFoot}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet() + (dockOn ? renderCoachDock() : '');
+  if(app.classList) app.classList.toggle('has-dock', dockOn);
   attachPitchStrip();   // G1b-r5: no-op unless the phone pitch strip is on screen
   sizeWideGrid();       // G1b-r6: no-op unless the iPad/laptop session grid is on screen
   attachVeloStrip();

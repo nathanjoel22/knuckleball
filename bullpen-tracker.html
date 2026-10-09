@@ -1448,9 +1448,9 @@
   .g5-card.g5-flat{ background:rgba(255,255,255,0.35) !important; }
   .g5-front > .zone-grid{ position:absolute !important; inset:0; width:100% !important; height:100% !important; max-width:none !important; margin:0 !important; }
   /* Joel's iPad (Oct 8): Safari drew the field's buttons too big under a 3D flip, so the flip is flat -- the face
-     going away narrows to a sliver, then the face coming in widens from it (~650 ms). No perspective, no backface. */
-  .g5-flip-in .g5-front, .g5-flip-out .g5-back{ animation:g5halfaway 325ms ease-in forwards; }
-  .g5-flip-in .g5-back, .g5-flip-out .g5-front{ transform:scaleX(0); animation:g5halfin 325ms ease-out 325ms forwards; }
+     going away narrows to a sliver, then the face coming in widens from it (~400 ms; Joel, Oct 9: faster than the first 650). No perspective, no backface. */
+  .g5-flip-in .g5-front, .g5-flip-out .g5-back{ animation:g5halfaway 200ms ease-in forwards; }
+  .g5-flip-in .g5-back, .g5-flip-out .g5-front{ transform:scaleX(0); animation:g5halfin 200ms ease-out 200ms forwards; }
   @keyframes g5halfaway{ from{ transform:scaleX(1); } to{ transform:scaleX(0); } }
   @keyframes g5halfin{ from{ transform:scaleX(0); } to{ transform:scaleX(1); } }
   .g5-field{ position:absolute; left:1.5px; top:1.5px; width:calc(100% - 3px); height:calc(100% - 3px); z-index:0; pointer-events:none; border-radius:6px; }
@@ -8407,13 +8407,13 @@ function g5Surface(pitches, chartingPerspective, currentBatterSide){
   if(g5OnDiamond()){
     // Joel's iPad photo, Oct 8: Safari kept the field's buttons on their own 3D layer after the flip, drawn a
     // little closer (bigger) under the perspective. Once the flip has played, draw the field again flat.
-    if(state.g5Anim === 'in') setTimeout(() => { if(!state.g5Anim && g5OnDiamond()) render(); }, 700);
+    if(state.g5Anim === 'in') setTimeout(() => { if(!state.g5Anim && g5OnDiamond()) render(); }, 450);
     return g5Card(g5FieldFace(), state.g5Anim === 'in' ? 'in' : null, chart) + g5FieldActions();
   }
   if(g5Step() === 'velo') chart = chart.replace(/<\/div>$/, g5VeloRows() + '</div>');   // inside .zone-grid, over its last two rows
   if(state.g5Anim === 'out' && state.g5LastFace){
     // the flip back: the field turns over to the chart; one plain draw follows once it has finished
-    setTimeout(() => { if(!state.g5Anim && !g5OnDiamond()) render(); }, 700);
+    setTimeout(() => { if(!state.g5Anim && !g5OnDiamond()) render(); }, 450);
     return g5Card(state.g5LastFace, 'out', chart);
   }
   return chart;

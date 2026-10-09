@@ -71,6 +71,8 @@
   }
   .brand-block{ display:flex; flex-direction:column; gap:4px; }
   .brand{ display:flex; align-items:baseline; gap:8px; }
+  /* Joel, Oct 8: the wordmark is KNUCKLEBALL in Black Ops One -- no diamond, no period */
+  .brand-word{ font-family:'Black Ops One', 'Teko', sans-serif !important; font-weight:400 !important; letter-spacing:0.02em; white-space:nowrap; }
   .brand-mark{ width:10px; height:10px; border-radius:2px; background:var(--amber); transform:rotate(45deg); margin-bottom:3px; }
   .brand h1{ font-size:22px; line-height:1; margin:0; letter-spacing:0.02em; }
   .brand span{ color:var(--amber); }
@@ -132,7 +134,7 @@
        form and never a raw error, per item (b)/(c) and check 2. -->
   <div class="card" id="loading-card">
     <div class="brand-block">
-      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
     <p class="spinner-msg">Loading invite…</p>
@@ -140,7 +142,7 @@
 
   <div class="card step-hidden" id="invalid-card">
     <div class="brand-block">
-      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
     <h2 class="display">Link no longer valid</h2>
@@ -150,7 +152,7 @@
 
   <form class="card step-hidden" id="attest-card" autocomplete="off">
     <div class="brand-block">
-      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
     <div>
@@ -179,7 +181,7 @@
 
   <form class="card step-hidden" id="join-form" autocomplete="off">
     <div class="brand-block">
-      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
     <div>
@@ -228,7 +230,7 @@
   <!-- S4 B3: a login with players picks who joins (or adds a new player). -->
   <div class="card step-hidden" id="joinas-card">
     <div class="brand-block">
-      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
     <div>
@@ -266,7 +268,7 @@
        there -- no separate recovery path needed. -->
   <div class="card step-hidden" id="confirm-card">
     <div class="brand-block">
-      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
     <h2 class="display">Check your email</h2>
@@ -275,7 +277,7 @@
 
   <div class="card step-hidden" id="joining-card">
     <div class="brand-block">
-      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
     <p class="spinner-msg">Joining…</p>

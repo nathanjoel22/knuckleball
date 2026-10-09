@@ -15,7 +15,7 @@
 // stale-while-revalidate fetch handler below is the offline/secondary
 // path -- it is not what ships a code change. This bump is a required
 // step in DEPLOY.md ("Frontend: deploy to production").
-const CACHE_VERSION = 'kb-shell-v188';
+const CACHE_VERSION = 'kb-shell-v189';
 
 const PRECACHE_URLS = [
   '/',
@@ -38,7 +38,8 @@ const PRECACHE_URLS = [
   '/privacy.html',
   '/terms.html',
   '/vendor/supabase.js',
-  '/vendor/fonts/fonts.css'
+  '/vendor/fonts/fonts.css',
+  '/vendor/fonts/BlackOpsOne-Regular.ttf'   // the KNUCKLEBALL wordmark, offline too (Oct 8)
 ];
 
 self.addEventListener('install', (event) => {

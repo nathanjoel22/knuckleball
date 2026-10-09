@@ -1,5 +1,13 @@
 /* Self-hosted (P1-10, Oct 2 2026): Teko, IBM Plex Sans, IBM Plex Mono -- SIL Open Font License 1.1
    (vendor/fonts/OFL-*.txt). Copied from Google Fonts' stylesheet; latin + latin-ext subsets only. */
+/* Black Ops One (Joel, Oct 8 2026): the KNUCKLEBALL wordmark only -- SIL Open Font License 1.1 (vendor/fonts/OFL.txt). */
+@font-face {
+  font-family: 'Black Ops One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(BlackOpsOne-Regular.ttf) format('truetype');
+}
 /* latin-ext */
 @font-face {
   font-family: 'IBM Plex Mono';

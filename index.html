@@ -100,6 +100,8 @@
 
   .brand-block{ display:flex; flex-direction:column; align-items:center; gap:4px; }
   .brand{ display:flex; align-items:baseline; gap:8px; }
+  /* Joel, Oct 8: the wordmark is KNUCKLEBALL in Black Ops One -- no diamond, no period */
+  .brand-word{ font-family:'Black Ops One', 'Teko', sans-serif !important; font-weight:400 !important; letter-spacing:0.02em; white-space:nowrap; }
   .brand-mark{ width:11px; height:11px; border-radius:2px; background:var(--amber); transform:rotate(45deg); margin-bottom:3px; }
   .brand h1{ font-size:26px; line-height:1; margin:0; letter-spacing:0.02em; }
   .brand span{ color:var(--amber); }
@@ -208,7 +210,7 @@
 <body>
   <div class="wrap">
     <div class="brand-block">
-      <div class="brand"><span class="brand-mark"></span><h1 class="display">Knuckleball<span>.</span></h1></div>
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
 

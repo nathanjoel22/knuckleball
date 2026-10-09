@@ -3605,14 +3605,23 @@ window.dockGo = function(where){
   if(where === 'roster'){
     state.rosterCollapsed = false;
     render();
-    const list = document.querySelector('.roster-toggle-btn') || document.querySelector('.roster-list');
-    if(list && list.scrollIntoView) list.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    dockScroll(0);   // Joel, Oct 8: Roster goes to the top of the page
     return;
   }
   state.rosterCollapsed = rosterCanCollapse();   // Joel, Oct 8: any other button rolls the roster back up
   setView(where === 'home' ? 'session' : where === 'charts' ? 'history' : 'profile');
-  window.scrollTo(0, 0);
+  // ...and lands with the box holding the pitcher's name at the top of the screen (Profile has no pitcher
+  // box -- it lands at the top of the page's content).
+  const anchor = document.querySelector('.pitcher-header') || document.querySelector('.main');
+  dockScroll(anchor ? anchor.getBoundingClientRect().top + (window.pageYOffset || 0) - 8 : 0);
 };
+// A dock jump scrolls on its own; the bar must not take that for the user scrolling down and hide.
+let dockQuietUntil = 0;
+function dockScroll(top){
+  dockQuietUntil = Date.now() + 900;
+  state.dockHidden = false;
+  try{ window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); }catch(e){ window.scrollTo(0, Math.max(0, top)); }
+}
 // Joel, Oct 8: slide a finger along the bar -- the pill glides under it (one frame at a time), and letting go
 // snaps it to the nearest button and opens it. A plain tap still works through the button's own onclick.
 function attachCoachDock(){
@@ -3652,6 +3661,7 @@ function attachCoachDock(){
 let dockLastY = 0;
 window.addEventListener('scroll', () => {
   const y = window.pageYOffset || 0, dy = y - dockLastY;
+  if(Date.now() < dockQuietUntil){ dockLastY = y; return; }   // a dock jump, not the user
   if(Math.abs(dy) < 6) return;
   const hide = y > 40 && dy > 0;
   dockLastY = y;

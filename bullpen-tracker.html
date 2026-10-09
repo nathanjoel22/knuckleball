@@ -1774,6 +1774,72 @@ document.addEventListener('keydown', e => {
   next.focus();
   next.click();
 });
+// Slide along a tray (Joel, Oct 9): the white segment glides under the finger and letting go picks the
+// segment it's on -- through that segment's own click, so every handler is unchanged. Only trays that show a
+// selection (a data-tray key); never the scrolling pitch strip, and never action pairs like Bullpen / Live Game.
+// Vertical moves still scroll the page (touch-action: pan-y in buttons.css). A plain tap is an ordinary click.
+let traySlide = null;
+function traySegAt(tray, x, y){
+  const segs = Array.prototype.filter.call(tray.querySelectorAll('.seg'), s => !s.disabled);
+  let best = null, bestD = Infinity;
+  segs.forEach(s => {
+    const r = s.getBoundingClientRect();
+    const dx = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
+    const dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0;
+    const d = dx * dx + dy * dy;
+    if(d < bestD){ bestD = d; best = s; }
+  });
+  return best;
+}
+document.addEventListener('touchstart', e => {
+  const tray = e.target && e.target.closest ? e.target.closest('.tray[data-tray]') : null;
+  traySlide = null;
+  if(!tray || tray.classList.contains('tray-scroll') || !tray.classList.contains('has-ind') || e.touches.length !== 1) return;
+  const ind = tray.querySelector('.tray-ind');
+  if(!ind) return;
+  const t = e.touches[0];
+  traySlide = { tray, ind, x0: t.clientX, y0: t.clientY, x: t.clientX, y: t.clientY, moved: false,
+    row: getComputedStyle(tray).flexDirection !== 'column' && !tray.classList.contains('tray-grid') };
+}, { passive: true });
+document.addEventListener('touchmove', e => {
+  const sl = traySlide;
+  if(!sl) return;
+  const t = e.touches[0];
+  sl.x = t.clientX; sl.y = t.clientY;
+  if(!sl.moved){
+    if(Math.abs(sl.x - sl.x0) < 8 && Math.abs(sl.y - sl.y0) < 8) return;
+    if(sl.row && Math.abs(sl.y - sl.y0) > Math.abs(sl.x - sl.x0)){ traySlide = null; return; }   // a page scroll, not a slide
+    sl.moved = true;
+  }
+  const seg = traySegAt(sl.tray, sl.x, sl.y);
+  if(!seg) return;
+  const tb = sl.tray.getBoundingClientRect();
+  sl.ind.style.transition = sl.row ? 'none' : '';
+  if(sl.row){   // glide with the finger, one segment wide, kept inside the tray
+    const w = seg.offsetWidth, maxL = sl.tray.clientWidth - 3 - w;
+    sl.ind.style.width = w + 'px'; sl.ind.style.top = seg.offsetTop + 'px'; sl.ind.style.height = seg.offsetHeight + 'px';
+    sl.ind.style.left = Math.max(3, Math.min(maxL, sl.x - tb.left - w / 2)) + 'px';
+  } else {      // grid or stacked trays: hop from segment to segment
+    sl.ind.style.left = seg.offsetLeft + 'px'; sl.ind.style.top = seg.offsetTop + 'px';
+    sl.ind.style.width = seg.offsetWidth + 'px'; sl.ind.style.height = seg.offsetHeight + 'px';
+  }
+  const accent = getComputedStyle(seg).getPropertyValue('--seg-accent');
+  if(accent && accent.trim()) sl.ind.style.setProperty('--seg-accent', accent.trim());
+}, { passive: true });
+document.addEventListener('touchend', e => {
+  const sl = traySlide;
+  traySlide = null;
+  if(!sl || !sl.moved) return;
+  e.preventDefault();   // the slide replaces the tap
+  const seg = traySegAt(sl.tray, sl.x, sl.y);
+  const key = sl.tray.getAttribute('data-tray');
+  // the snap to the chosen segment starts from where the finger left the white segment
+  trayLastBox[key] = { l: parseFloat(sl.ind.style.left) || 0, t: parseFloat(sl.ind.style.top) || 0, w: parseFloat(sl.ind.style.width) || 0, h: parseFloat(sl.ind.style.height) || 0 };
+  sl.ind.style.transition = '';
+  if(seg && seg.getAttribute('aria-pressed') !== 'true') seg.click();
+  else placeTrayIndicators();
+}, { passive: false });
+document.addEventListener('touchcancel', () => { if(traySlide){ traySlide = null; placeTrayIndicators(); } }, { passive: true });
 // Pitch-type colors as classes, built from the active sport's palette -- no second copy of it (landmine 4).
 function applyPitchColorClasses(){
   try{

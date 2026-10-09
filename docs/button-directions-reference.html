@@ -1,0 +1,161 @@
+<title>Knuckleball Button Directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one column of reading text, then a five-up specimen board with a sport switch; specimens keep their own fixed colors */
+:root{--bg:#F3F5F9;--surface:#FFFFFF;--fg:#13294B;--muted:#56637A;--line:#D8DEE8;--accent:#3E7FB8;
+ --display:"Barlow Condensed","Arial Narrow",sans-serif;--body:"Barlow",Helvetica,Arial,sans-serif}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0D1526;--surface:#16213A;--fg:#E7EEF8;--muted:#9BAAC2;--line:#2A3858;--accent:#8EC1E6;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0D1526;--surface:#16213A;--fg:#E7EEF8;--muted:#9BAAC2;--line:#2A3858;--accent:#8EC1E6;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.5}
+.wrap{max-width:1640px;margin:0 auto;padding-inline:20px;padding-block:28px 48px}
+.eyebrow{font-family:var(--display);text-transform:uppercase;letter-spacing:.12em;font-size:14px;color:var(--accent);font-weight:700}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,5vw,52px);line-height:1;margin:6px 0 12px;text-wrap:balance;letter-spacing:.01em}
+.intro{max-width:68ch;color:var(--muted);margin:0 0 22px}
+.intro b{color:var(--fg)}
+.bar{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:center;margin:0 0 18px}
+.sw{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px}
+.sw button{font:600 15px var(--body);border:0;background:transparent;color:var(--muted);padding:9px 18px;border-radius:7px;cursor:pointer;min-height:40px}
+.sw button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.sw button:focus-visible,.spec b:focus-visible,.spec span:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.chips{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:14px}
+.chips i{width:18px;height:18px;border-radius:4px;border:1px solid var(--line);display:inline-block}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,262px),1fr));gap:14px}
+.opt{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.opt h3{font-family:var(--display);font-size:22px;font-weight:700;margin:0;letter-spacing:.02em}
+.opt header p{margin:2px 0 0;color:var(--muted);font-size:14px;line-height:1.4;min-height:3.9em}
+.lean{font-family:var(--display);text-transform:uppercase;letter-spacing:.1em;font-size:12px;font-weight:700;color:var(--accent);margin-left:6px}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:28px}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;min-width:0}
+.note h2{font-family:var(--display);font-size:22px;margin:0 0 8px;letter-spacing:.02em}
+.note p,.note li{color:var(--muted);margin:0 0 8px;max-width:65ch} .note ul{padding-left:18px;margin:0} .note b{color:var(--fg)}
+.src{margin-top:22px;font-size:13px;color:var(--muted)} .src a{color:var(--accent)}
+/* ---- specimens: fixed palette colors, independent of page theme ---- */
+.spec{font-family:var(--body);color:#13294B}
+.spec .stage{border-radius:10px;padding:14px;background:#fff;border:1px solid #E6EAF0}
+
+.lbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#7b8496;margin:10px 0 6px;font-weight:700} .lbl:first-child{margin-top:0}
+.row{display:flex;gap:6px;margin-bottom:8px;align-items:center} .row.two .btn{flex:1} .row .pri{flex:1}
+.btn,.chip,.ch,.tog b,.ico,.velo{display:inline-flex;align-items:center;justify-content:center;height:44px;font-weight:700;font-size:15px}
+.chip,.ch{flex:1;font-size:13px;white-space:nowrap;padding:0 2px} .tog{display:inline-flex} .tog b{padding:0 16px;font-size:14px}
+.ico{width:44px} .velo{width:56px;font-size:20px;color:var(--ink)} .row.icons .dis{flex:1;margin-left:6px;white-space:nowrap;font-size:13px}
+.btn,.chip,.ch,.tog b,.ico{color:var(--ink)}
+.o1 .btn,.o1 .chip,.o1 .ch{border-radius:999px} .o1 .pri{background:var(--pri);color:var(--prit)} .o1 .sec,.o1 .ter,.o1 .chip,.o1 .ch,.o1 .ico{background:var(--soft);font-weight:600}
+.o1 .on{background:var(--sel)!important;color:var(--selt)!important} .o1 .tog{background:var(--soft);border-radius:999px;padding:3px} .o1 .tog b{border-radius:999px;height:38px;font-weight:600}
+.o1 .ico{border-radius:50%} .o1 .dis{background:#F1F3F6;color:#B7BDC8}
+.o2 .btn,.o2 .chip,.o2 .ch,.o2 .tog b,.o2 .ico{border-radius:4px} .o2 .pri{background:var(--pri2);color:var(--pri2t)}
+.o2 .sec,.o2 .ter,.o2 .chip,.o2 .ch,.o2 .ico{background:#fff;border:1px solid var(--ink);font-weight:600}
+.o2 .on{background:var(--sel)!important;color:var(--selt)!important;border-color:var(--ink)} .o2 .tog{border:1px solid var(--ink);border-radius:4px} .o2 .tog b{height:42px;font-weight:600}
+.o2 .dis{background:#fff;border:1px solid #cfd5df;color:#aab2bf}
+.o3 .stage{background:var(--dark);border:0} .o3 .lbl{color:#8a97ad}
+.o3 .btn,.o3 .chip,.o3 .ch,.o3 .ico{border-radius:10px;background:var(--tile);color:var(--tilet);font-weight:600}
+.o3 .on{background:var(--tileon)!important;color:#fff!important;box-shadow:inset 0 -3px 0 var(--acc)}
+.o3 .pri{background:var(--pri2);color:var(--pri2t);font-weight:800} .o3 .ter{color:var(--out)} .o3 .velo{color:#fff;font-size:24px}
+.o3 .tog{background:var(--tile);border-radius:10px;padding:3px} .o3 .tog b{border-radius:8px;height:38px;color:#97A6BE} .o3 .dis{color:#56627a}
+.o4 .btn,.o4 .chip,.o4 .ch,.o4 .tog b,.o4 .ico{border-radius:0;font-family:"Barlow Condensed","Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:.08em;font-size:13px}
+.o4 .ch{font-size:13px!important;letter-spacing:.02em!important}
+.o4 .pri{background:var(--ink);color:#fff;box-shadow:inset 6px 0 0 var(--acc)} .o4 .sec{background:#fff;border:2px solid var(--ink)} .o4 .ter,.o4 .chip,.o4 .ch,.o4 .tog,.o4 .ico{background:var(--soft)}
+.o4 .on{background:var(--ink)!important;color:#fff!important;box-shadow:inset 0 -4px 0 var(--acc)} .o4 .tog b{height:44px}
+.o4 .velo{font-family:"Barlow Condensed",ui-monospace,monospace;background:var(--ink);color:var(--velo);font-size:22px} .o4 .dis{background:#F1F3F6;color:#aab2bf}
+.o5 .stage{background:#F7F8FA}
+.o5 .seg,.o5 .tog{background:var(--soft);border-radius:12px;padding:3px;gap:0} .o5 .seg b,.o5 .tog b{border-radius:9px;height:38px;font-weight:600;background:transparent}
+.o5 .seg .on,.o5 .tog .on{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18),inset 0 -3px 0 var(--acc)}
+.o5 .btn{border-radius:12px;font-weight:600} .o5 .pri{background:var(--pri);color:var(--prit)} .o5 .sec{background:var(--soft)} .o5 .ter{background:transparent}
+.o5 .ico{border-radius:12px;background:var(--soft)} .o5 .dis{background:#F1F3F6;color:#adb4c0}
+.spec .btn,.spec .chip,.spec .ch,.spec .tog b,.spec .ico{cursor:pointer}
+.spec .velo{font-family:var(--display);font-weight:700}
+@media (prefers-reduced-motion:no-preference){.spec b,.spec .btn{transition:background-color .15s,color .15s,box-shadow .15s}}
+</style>
+<div class="wrap">
+<div class="eyebrow">Knuckleball · UI direction · for discussion</div>
+<h1>Button directions</h1>
+<p class="intro">Five button styles for the charting app, each drawn with the same real controls: <b>Windup/Set, pitch types, result choice, Next pitch, Back, + Add out, the velocity arrows and a greyed-out button</b>. Every button is 44pt tall for a thumb in the dugout. Switch between the baseball and softball colors below; tap the choices to see the selected state.</p>
+<div class="bar">
+ <div class="sw" role="group" aria-label="Sport colors"><button id="b-base" aria-pressed="true" data-p="base">Baseball</button><button id="b-soft" aria-pressed="false" data-p="soft">Softball</button></div>
+ <div class="chips" id="chips"></div>
+</div>
+<div class="board" id="board" style="--ink:#13294B;--sel:#13294B;--selt:#FFFFFF;--pri:#13294B;--prit:#FFFFFF;--acc:#7BAFD4;--pri2:#7BAFD4;--pri2t:#13294B;--dark:#0B1630;--tile:#16264A;--tileon:#22396B;--tilet:#E6EEF8;--soft:#EAF2F9;--out:#7BAFD4;--velo:#7BAFD4"><article class="opt o1"><header><h3>1 · Pill</h3><p>Nike / Under Armour. Fully rounded; solid primary, soft secondary, round icon buttons.</p></header>
+<div class="spec"><div class="stage">
+ <div class="lbl">Delivery · pitch type</div>
+ <div class="row"><span class="tog"><b class="on">Windup</b><b>Set</b></span></div>
+ <div class="row seg"><b class="chip on">FB</b><b class="chip">SL</b><b class="chip">CB</b><b class="chip">CH</b></div>
+ <div class="lbl">Result choice</div>
+ <div class="row seg"><b class="ch">Ball</b><b class="ch on">Looking</b><b class="ch">Swing</b><b class="ch">Foul</b></div>
+ <div class="lbl">Actions</div>
+ <div class="row"><span class="btn pri">Next pitch ›</span></div>
+ <div class="row two"><span class="btn ter">+ Add out</span><span class="btn sec">‹ Back</span></div>
+ <div class="row icons"><span class="ico">‹</span><span class="velo">86</span><span class="ico">›</span><span class="btn dis">Save session</span></div>
+</div></div></article><article class="opt o2"><header><h3>2 · Squared</h3><p>Strava. 4px corners, one solid accent for the main action, thin outlines elsewhere.</p></header>
+<div class="spec"><div class="stage">
+ <div class="lbl">Delivery · pitch type</div>
+ <div class="row"><span class="tog"><b class="on">Windup</b><b>Set</b></span></div>
+ <div class="row seg"><b class="chip on">FB</b><b class="chip">SL</b><b class="chip">CB</b><b class="chip">CH</b></div>
+ <div class="lbl">Result choice</div>
+ <div class="row seg"><b class="ch">Ball</b><b class="ch on">Looking</b><b class="ch">Swing</b><b class="ch">Foul</b></div>
+ <div class="lbl">Actions</div>
+ <div class="row"><span class="btn pri">Next pitch ›</span></div>
+ <div class="row two"><span class="btn ter">+ Add out</span><span class="btn sec">‹ Back</span></div>
+ <div class="row icons"><span class="ico">‹</span><span class="velo">86</span><span class="ico">›</span><span class="btn dis">Save session</span></div>
+</div></div></article><article class="opt o3"><header><h3>3 · Dark tile</h3><p>WHOOP. Dark surfaces; the accent color only where it means go.</p></header>
+<div class="spec"><div class="stage">
+ <div class="lbl">Delivery · pitch type</div>
+ <div class="row"><span class="tog"><b class="on">Windup</b><b>Set</b></span></div>
+ <div class="row seg"><b class="chip on">FB</b><b class="chip">SL</b><b class="chip">CB</b><b class="chip">CH</b></div>
+ <div class="lbl">Result choice</div>
+ <div class="row seg"><b class="ch">Ball</b><b class="ch on">Looking</b><b class="ch">Swing</b><b class="ch">Foul</b></div>
+ <div class="lbl">Actions</div>
+ <div class="row"><span class="btn pri">Next pitch ›</span></div>
+ <div class="row two"><span class="btn ter">+ Add out</span><span class="btn sec">‹ Back</span></div>
+ <div class="row icons"><span class="ico">‹</span><span class="velo">86</span><span class="ico">›</span><span class="btn dis">Save session</span></div>
+</div></div></article><article class="opt o4"><header><h3>4 · Scoreboard</h3><p>TV score graphic. Square corners, condensed capitals, accent bar on the active choice.</p></header>
+<div class="spec"><div class="stage">
+ <div class="lbl">Delivery · pitch type</div>
+ <div class="row"><span class="tog"><b class="on">Windup</b><b>Set</b></span></div>
+ <div class="row seg"><b class="chip on">FB</b><b class="chip">SL</b><b class="chip">CB</b><b class="chip">CH</b></div>
+ <div class="lbl">Result choice</div>
+ <div class="row seg"><b class="ch">Ball</b><b class="ch on">Looking</b><b class="ch">Swing</b><b class="ch">Foul</b></div>
+ <div class="lbl">Actions</div>
+ <div class="row"><span class="btn pri">Next pitch ›</span></div>
+ <div class="row two"><span class="btn ter">+ Add out</span><span class="btn sec">‹ Back</span></div>
+ <div class="row icons"><span class="ico">‹</span><span class="velo">86</span><span class="ico">›</span><span class="btn dis">Save session</span></div>
+</div></div></article><article class="opt o5"><header><h3>5 · Segmented</h3><p>iPhone style. Choices share one tray; the selected one rises.</p></header>
+<div class="spec"><div class="stage">
+ <div class="lbl">Delivery · pitch type</div>
+ <div class="row"><span class="tog"><b class="on">Windup</b><b>Set</b></span></div>
+ <div class="row seg"><b class="chip on">FB</b><b class="chip">SL</b><b class="chip">CB</b><b class="chip">CH</b></div>
+ <div class="lbl">Result choice</div>
+ <div class="row seg"><b class="ch">Ball</b><b class="ch on">Looking</b><b class="ch">Swing</b><b class="ch">Foul</b></div>
+ <div class="lbl">Actions</div>
+ <div class="row"><span class="btn pri">Next pitch ›</span></div>
+ <div class="row two"><span class="btn ter">+ Add out</span><span class="btn sec">‹ Back</span></div>
+ <div class="row icons"><span class="ico">‹</span><span class="velo">86</span><span class="ico">›</span><span class="btn dis">Save session</span></div>
+</div></div></article></div>
+<div class="notes">
+ <section class="note"><h2>The two palettes</h2>
+ <p><b>Baseball: navy, Carolina blue, white.</b> Navy carries most of the weight; Carolina blue is the accent: the underline on a selected choice, the Scoreboard bar, and Next pitch in styles 2 and 3.</p>
+ <p><b>Softball: Carolina blue, pink, white.</b> Pink is the main action (Next pitch); Carolina blue marks the selected choice. White or pink text on Carolina blue is too faint outdoors, so a dark navy-slate does the job of text color (and the dark backgrounds in styles 3 and 4).</p></section>
+ <section class="note"><h2>Suggested starting point</h2>
+ <p><b>Style 4 on the live charting screens, style 2 everywhere else.</b> They share square corners, so the app still reads as one design. The scoreboard look reads fast in a dugout; the squared look keeps forms and settings calm.</p>
+ <p>A suggestion from the design pass, not a decision. Joel picks.</p></section>
+ <section class="note"><h2>What changes if we adopt this</h2>
+ <ul><li>Baseball moves off green and gold; the softball theme in the app today (navy bar, pink, blue) is replaced.</li>
+ <li>The logo, reports and landing page should switch at the same time, so the app never shows two color schemes.</li>
+ <li>The condensed type in style 4 would be a self-hosted font, like the app's other fonts.</li></ul></section>
+</div>
+<p class="src">References: <a href="https://getdesign.md/design-md/nike/preview" target="_blank" rel="noopener">Nike</a> · <a href="https://www.shadcn.io/design/under-armour" target="_blank" rel="noopener">Under Armour</a> · <a href="https://styles.refero.design/style/efdd6d8f-4488-4312-86a7-4ee8e016c83a" target="_blank" rel="noopener">Strava</a> · <a href="https://www.925studios.co/blog/whoop-design-breakdown" target="_blank" rel="noopener">WHOOP</a>. Style 4 is an original take on a TV score graphic; style 5 follows the iPhone's built-in controls.</p>
+</div>
+<script>
+const PAL={"base": {"ink": "#13294B", "sel": "#13294B", "selt": "#FFFFFF", "pri": "#13294B", "prit": "#FFFFFF", "acc": "#7BAFD4", "pri2": "#7BAFD4", "pri2t": "#13294B", "dark": "#0B1630", "tile": "#16264A", "tileon": "#22396B", "tilet": "#E6EEF8", "soft": "#EAF2F9", "out": "#7BAFD4", "velo": "#7BAFD4"}, "soft": {"ink": "#1E2B45", "sel": "#7BAFD4", "selt": "#1E2B45", "pri": "#D9437E", "prit": "#FFFFFF", "acc": "#E85A93", "pri2": "#D9437E", "pri2t": "#FFFFFF", "dark": "#1E2B45", "tile": "#2B3A5A", "tileon": "#3B5378", "tilet": "#EEF4FA", "soft": "#EEF4FA", "out": "#F29BBE", "velo": "#F29BBE"}};
+const SW={base:[['#13294B','Navy'],['#7BAFD4','Carolina blue'],['#FFFFFF','White']],soft:[['#7BAFD4','Carolina blue'],['#D9437E','Pink'],['#FFFFFF','White'],['#1E2B45','Slate (text)']]};
+const board=document.getElementById('board'),chips=document.getElementById('chips');
+function setP(k){for(const [n,v] of Object.entries(PAL[k]))board.style.setProperty('--'+n,v);
+ document.querySelectorAll('.sw button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.p===k));
+ chips.innerHTML=SW[k].map(([c,n])=>'<span style="display:inline-flex;gap:6px;align-items:center"><i style="background:'+c+'"></i>'+n+'</span>').join('');
+ try{localStorage.setItem('kb-btn-pal',k)}catch(e){} }
+document.querySelectorAll('.sw button').forEach(b=>b.addEventListener('click',()=>setP(b.dataset.p)));
+let start='base';try{const s=localStorage.getItem('kb-btn-pal');if(s&&PAL[s])start=s}catch(e){}
+if(location.hash==='#softball')start='soft';setP(start);
+document.querySelectorAll('.spec .tog b,.spec .chip,.spec .ch').forEach(el=>{el.tabIndex=0;el.setAttribute('role','button');
+ const pick=()=>{el.parentElement.querySelectorAll('.on').forEach(x=>x.classList.remove('on'));el.classList.add('on')};
+ el.addEventListener('click',pick);el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick()}})});
+</script>

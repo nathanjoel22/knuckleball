@@ -1372,7 +1372,7 @@
   @media (max-width: 860px){
     #app{ flex-direction:column; }
     .sidebar{ width:100%; border-right:none; border-bottom:1px solid var(--border); max-height:none; }
-    .roster-list{ max-height:220px; }
+    .roster-list{ max-height:none; overflow:visible; }   /* Joel, Oct 9: Roster opens the whole list; the page scrolls, not a box */
     /* Visual refresh: the extra padding/gaps added for "more white space" (session-grid
        gap, controls-panel gap, panel padding) measurably pushed the charting grid and
        the velocity strip further down at this width -- checked in a real browser: ~40px

@@ -1096,6 +1096,8 @@
     -webkit-tap-highlight-color:transparent; }
   .dock-btn svg{ width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .dock-btn.on{ color:#fff; background:rgba(255,255,255,0.14); }
+  .dock-btn.swipe-on{ color:#fff; background:rgba(255,255,255,0.26); }
+  .coach-dock{ touch-action:none; }   /* a slide along the bar moves the highlight, never the page */
   @media (prefers-reduced-motion: reduce){ .coach-dock{ transition:none; } }
   #app.has-dock .main{ padding-bottom:calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
   #app.has-dock .phone-footer{ margin-bottom:calc(84px + env(safe-area-inset-bottom, 0px)); }
@@ -3413,7 +3415,7 @@ window.onTeamChange = async function(teamId, skipRender){
     loadWorkload(state.roster.map(r => r.id));   // R4: roster pitch counts (background, online)
     state.currentPitcherId = state.roster.length ? state.roster[0].id : null;
     if(skipRender) adoptDraftPitcher();   // launch: land on the pitcher whose session is in progress
-    state.rosterCollapsed = false;   // a fresh team load always starts with the roster open
+    state.rosterCollapsed = isPhoneWidth();   // a fresh team load starts open -- except on phones (Joel, Oct 8: rolled up until Roster is tapped)
     // Launch (skipRender) always opens on New Session; a coach who switches teams
     // from the dropdown still lands on History, as before.
     state.view = skipRender ? 'session' : 'history';
@@ -3570,7 +3572,7 @@ const DOCK_ICONS = {
 function coachDockShown(phoneSession){ return isCoach() && isPhoneWidth() && !phoneSession && !!state.profile; }
 function renderCoachDock(){
   const v = state.view, on = k => (k === 'home' && v === 'session') || (k === 'charts' && v === 'history') || (k === 'profile' && v === 'profile');
-  const btn = (k, label, fn) => `<button type="button" class="dock-btn${on(k) ? ' on' : ''}" onclick="${fn}" aria-label="${label}">${DOCK_ICONS[k]}<span>${label}</span></button>`;
+  const btn = (k, label, fn) => `<button type="button" class="dock-btn${on(k) ? ' on' : ''}" data-go="${k}" onclick="${fn}" aria-label="${label}">${DOCK_ICONS[k]}<span>${label}</span></button>`;
   return `<nav class="coach-dock${state.dockHidden ? ' dock-hidden' : ''}" aria-label="Coach shortcuts">
     ${btn('home', 'Home', 'dockGo(\'home\')')}${btn('charts', 'Charts', 'dockGo(\'charts\')')}${btn('roster', 'Roster', 'dockGo(\'roster\')')}${btn('profile', 'Profile', 'dockGo(\'profile\')')}
   </nav>`;
@@ -3587,6 +3589,35 @@ window.dockGo = function(where){
   setView(where === 'home' ? 'session' : where === 'charts' ? 'history' : 'profile');
   window.scrollTo(0, 0);
 };
+// Joel, Oct 8: slide a finger along the bar -- the highlight follows it, and letting go opens that button.
+// A plain tap still works through the button's own onclick.
+function attachCoachDock(){
+  const dock = document.querySelector('.coach-dock');
+  if(!dock || dock.dataset.swipe) return;
+  dock.dataset.swipe = '1';
+  let startX = 0, moved = false, over = null;
+  const pick = (x, y) => {
+    const el = document.elementFromPoint(x, y);
+    const b = el && el.closest ? el.closest('.dock-btn') : null;
+    if(b === over) return;
+    if(over) over.classList.remove('swipe-on');
+    over = b;
+    if(over) over.classList.add('swipe-on');
+  };
+  dock.addEventListener('touchstart', e => { const t = e.touches[0]; startX = t.clientX; moved = false; pick(t.clientX, t.clientY); }, { passive: true });
+  dock.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    if(Math.abs(t.clientX - startX) > 8) moved = true;
+    pick(t.clientX, t.clientY);
+    if(moved) e.preventDefault();
+  }, { passive: false });
+  dock.addEventListener('touchend', e => {
+    const target = over;
+    if(over) over.classList.remove('swipe-on');
+    over = null;
+    if(moved && target){ e.preventDefault(); dockGo(target.dataset.go); }   // a slide: go where the finger lifted
+  });
+}
 // Down: away; up (or near the top): back. Moves the bar in place -- no re-render while scrolling.
 let dockLastY = 0;
 window.addEventListener('scroll', () => {
@@ -8527,7 +8558,7 @@ window.sessionLeave = async function(){
   state.pendingTarget = null; state.veloTargetIdx = null; state.hint = '';
   state.sessionSheetOpen = false; state.sessionDiscardArmed = false;
   await refreshDraftState();
-  state.rosterCollapsed = false;
+  state.rosterCollapsed = isPhoneWidth();   // Joel, Oct 8: phones keep the roster rolled up unless Roster is tapped
   render();
   try{ window.scrollTo(0, 0); }catch(e){}
 };
@@ -10822,6 +10853,7 @@ function render(){
   const dockOn = coachDockShown(phoneSession);
   app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}${policyFoot}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet() + (dockOn ? renderCoachDock() : '');
   if(app.classList) app.classList.toggle('has-dock', dockOn);
+  if(dockOn) attachCoachDock();
   attachPitchStrip();   // G1b-r5: no-op unless the phone pitch strip is on screen
   sizeWideGrid();       // G1b-r6: no-op unless the iPad/laptop session grid is on screen
   attachVeloStrip();

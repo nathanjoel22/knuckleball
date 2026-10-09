@@ -1086,7 +1086,7 @@
   /* Joel, Oct 8: the real-plate look under History's heat maps -- the strike zone's width (3 of 5 columns) */
   /* Coach dock (Joel, Oct 8): phones, translucent, fixed to the bottom; slides away scrolling down */
   .coach-dock{ position:fixed; left:10px; right:10px; bottom:calc(10px + env(safe-area-inset-bottom, 0px)); z-index:60;
-    display:flex; justify-content:space-around; gap:4px; padding:6px 8px; border-radius:18px;
+    display:flex; gap:0; padding:6px 8px; border-radius:18px; overflow:hidden;
     background:rgba(15,36,27,0.72); -webkit-backdrop-filter:blur(14px) saturate(140%); backdrop-filter:blur(14px) saturate(140%);
     box-shadow:0 6px 24px rgba(0,0,0,0.22); transition:transform 260ms ease, opacity 260ms ease; }
   html[data-sport="softball"] .coach-dock{ background:rgba(35,75,110,0.74); }
@@ -1095,10 +1095,15 @@
     background:none; border:0; border-radius:12px; color:rgba(242,235,221,0.86); font:inherit; font-size:11px; font-weight:700; letter-spacing:0.02em; cursor:pointer;
     -webkit-tap-highlight-color:transparent; }
   .dock-btn svg{ width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
-  .dock-btn.on{ color:#fff; background:rgba(255,255,255,0.14); }
-  .dock-btn.swipe-on{ color:#fff; background:rgba(255,255,255,0.26); }
+  .dock-btn{ position:relative; z-index:1; transition:color 160ms ease; }
+  .dock-btn.on{ color:#fff; }
+  /* the highlight pill: one button wide, glides under the finger, snaps with a short ease */
+  .dock-pill{ position:absolute; z-index:0; left:8px; top:6px; bottom:6px; width:calc((100% - 16px) / 4); border-radius:12px;
+    background:rgba(255,255,255,0.18); transition:transform 220ms cubic-bezier(.3,.7,.3,1), opacity 160ms ease; will-change:transform; }
+  .dock-pill.dragging{ transition:none; background:rgba(255,255,255,0.24); }
+  .dock-pill.off{ opacity:0; }
   .coach-dock{ touch-action:none; }   /* a slide along the bar moves the highlight, never the page */
-  @media (prefers-reduced-motion: reduce){ .coach-dock{ transition:none; } }
+  @media (prefers-reduced-motion: reduce){ .coach-dock, .dock-pill, .dock-btn{ transition:none; } }
   #app.has-dock .main{ padding-bottom:calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
   #app.has-dock .phone-footer{ margin-bottom:calc(84px + env(safe-area-inset-bottom, 0px)); }
   .persp-plate-wrap{ width:calc(60% - 4px); margin:2px auto 0; }
@@ -3570,15 +3575,33 @@ const DOCK_ICONS = {
   profile: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.6"/></svg>'
 };
 function coachDockShown(phoneSession){ return isCoach() && isPhoneWidth() && !phoneSession && !!state.profile; }
+const DOCK_KEYS = ['home', 'charts', 'roster', 'profile'];
+function dockActiveIndex(){
+  if(state.dockRoster && !state.rosterCollapsed) return 2;   // Roster stays lit while its list is open
+  const v = state.view;
+  return v === 'session' ? 0 : v === 'history' ? 1 : v === 'profile' ? 3 : -1;
+}
 function renderCoachDock(){
-  const v = state.view, on = k => (k === 'home' && v === 'session') || (k === 'charts' && v === 'history') || (k === 'profile' && v === 'profile');
-  const btn = (k, label, fn) => `<button type="button" class="dock-btn${on(k) ? ' on' : ''}" data-go="${k}" onclick="${fn}" aria-label="${label}">${DOCK_ICONS[k]}<span>${label}</span></button>`;
+  const idx = dockActiveIndex();
+  const btn = (k, label) => `<button type="button" class="dock-btn${DOCK_KEYS[idx] === k ? ' on' : ''}" data-go="${k}" onclick="dockTap('${k}')" aria-label="${label}">${DOCK_ICONS[k]}<span>${label}</span></button>`;
   return `<nav class="coach-dock${state.dockHidden ? ' dock-hidden' : ''}" aria-label="Coach shortcuts">
-    ${btn('home', 'Home', 'dockGo(\'home\')')}${btn('charts', 'Charts', 'dockGo(\'charts\')')}${btn('roster', 'Roster', 'dockGo(\'roster\')')}${btn('profile', 'Profile', 'dockGo(\'profile\')')}
+    <span class="dock-pill${idx < 0 ? ' off' : ''}" style="transform:translateX(${Math.max(idx, 0) * 100}%)"></span>
+    ${btn('home', 'Home')}${btn('charts', 'Charts')}${btn('roster', 'Roster')}${btn('profile', 'Profile')}
   </nav>`;
 }
+// Glide the pill to a button, then go there (a short beat so the move is seen).
+function dockSlideTo(i){
+  const pill = document.querySelector('.dock-pill');
+  if(pill){ pill.classList.remove('off', 'dragging'); pill.style.transform = `translateX(${i * 100}%)`; }
+  document.querySelectorAll('.dock-btn').forEach((b, j) => b.classList.toggle('on', j === i));
+}
+window.dockTap = function(k){
+  dockSlideTo(DOCK_KEYS.indexOf(k));
+  setTimeout(() => dockGo(k), 170);
+};
 window.dockGo = function(where){
   state.dockHidden = false;
+  state.dockRoster = where === 'roster';
   if(where === 'roster'){
     state.rosterCollapsed = false;
     render();
@@ -3586,36 +3609,43 @@ window.dockGo = function(where){
     if(list && list.scrollIntoView) list.scrollIntoView({ block: 'start', behavior: 'smooth' });
     return;
   }
+  state.rosterCollapsed = rosterCanCollapse();   // Joel, Oct 8: any other button rolls the roster back up
   setView(where === 'home' ? 'session' : where === 'charts' ? 'history' : 'profile');
   window.scrollTo(0, 0);
 };
-// Joel, Oct 8: slide a finger along the bar -- the highlight follows it, and letting go opens that button.
-// A plain tap still works through the button's own onclick.
+// Joel, Oct 8: slide a finger along the bar -- the pill glides under it (one frame at a time), and letting go
+// snaps it to the nearest button and opens it. A plain tap still works through the button's own onclick.
 function attachCoachDock(){
   const dock = document.querySelector('.coach-dock');
   if(!dock || dock.dataset.swipe) return;
   dock.dataset.swipe = '1';
-  let startX = 0, moved = false, over = null;
-  const pick = (x, y) => {
-    const el = document.elementFromPoint(x, y);
-    const b = el && el.closest ? el.closest('.dock-btn') : null;
-    if(b === over) return;
-    if(over) over.classList.remove('swipe-on');
-    over = b;
-    if(over) over.classList.add('swipe-on');
+  const pill = dock.querySelector('.dock-pill');
+  let startX = 0, moved = false, x = 0, frame = 0, box = null, w = 0;
+  const place = () => {
+    frame = 0;
+    const pos = Math.max(0, Math.min(3 * w, x - box.left - 8 - w / 2));
+    pill.style.transform = `translateX(${pos}px)`;
+    const i = Math.round(pos / w);
+    dock.querySelectorAll('.dock-btn').forEach((b, j) => b.classList.toggle('on', j === i));
   };
-  dock.addEventListener('touchstart', e => { const t = e.touches[0]; startX = t.clientX; moved = false; pick(t.clientX, t.clientY); }, { passive: true });
+  dock.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX; moved = false;
+    box = dock.getBoundingClientRect(); w = (box.width - 16) / 4;
+  }, { passive: true });
   dock.addEventListener('touchmove', e => {
-    const t = e.touches[0];
-    if(Math.abs(t.clientX - startX) > 8) moved = true;
-    pick(t.clientX, t.clientY);
-    if(moved) e.preventDefault();
+    x = e.touches[0].clientX;
+    if(!moved && Math.abs(x - startX) > 6){ moved = true; pill.classList.remove('off'); pill.classList.add('dragging'); }
+    if(!moved) return;
+    e.preventDefault();
+    if(!frame) frame = requestAnimationFrame(place);
   }, { passive: false });
   dock.addEventListener('touchend', e => {
-    const target = over;
-    if(over) over.classList.remove('swipe-on');
-    over = null;
-    if(moved && target){ e.preventDefault(); dockGo(target.dataset.go); }   // a slide: go where the finger lifted
+    if(!moved) return;   // a tap: the button's onclick handles it
+    e.preventDefault();
+    if(frame){ cancelAnimationFrame(frame); place(); }
+    const i = Math.max(0, Math.min(3, Math.round(Math.max(0, Math.min(3 * w, x - box.left - 8 - w / 2)) / w)));
+    dockSlideTo(i);
+    setTimeout(() => dockGo(DOCK_KEYS[i]), 170);
   });
 }
 // Down: away; up (or near the top): back. Moves the bar in place -- no re-render while scrolling.

@@ -209,4 +209,6 @@ Vanilla JS in single-file pages; small shared JS only if a `js/` directory alrea
 
 **Always:** work from a task packet when one exists, and respect its Out-of-scope and Escalate-if clauses; make schema changes as migration files; prefer the smallest change that passes acceptance; leave the codebase style-consistent.
 
+**Release log (Joel, Oct 10 2026).** After every packet -- or request shipped without one -- reaches staging or production, add an entry at the TOP of `STATUS.md`: date, packet ID, staging or production, branch, commit, cache version, what was built, what deviated from the packet, open items. CLAUDE.md stays the rules; STATUS.md is the log. **At the start of every session, read the top of `STATUS.md`** (at least the newest few entries and "Standing open items") before starting work: it says what's on staging vs production right now and what's still open.
+
 **Definition of done:** a task is complete only when every numbered acceptance check in its packet has been executed and the evidence (command output, query result, or click-path result) is shown. "It should work" is not done. If an acceptance check can't be run, say so explicitly — do not claim completion. If reality contradicts the packet (a file isn't where it says, the schema differs), stop and report the discrepancy instead of improvising around it.

@@ -5915,7 +5915,7 @@ function renderPerspectiveToggle(forceFull){
     { key: 'behind_catcher', label: 'Behind the catcher' },
     { key: 'behind_pitcher', label: 'Behind the pitcher' }
   ];
-  const chips = segTray(opts.map(o => ({ label: o.label, selected: current === o.key, disabled: locked, onclick: `selectPerspective('${o.key}')` })), { key: 'persp', label: 'Charting perspective' });
+  const chips = segTray(opts.map(o => ({ label: o.label, selected: current === o.key, disabled: locked, onclick: `selectPerspective('${o.key}')` })), { key: 'persp', label: 'Charting perspective' + (locked ? ', locked after the first pitch' : ''), cls: locked ? 'tray-locked' : '' });
   const lockedNote = locked ? `<p style="color:var(--ink-faint);font-size:12px;margin:6px 0 0;">Locked after the first pitch.</p>` : '';
   // Joel, Oct 1: on phones it's a drop-down -- open at the start of a
   // session, rolled up to one line once a perspective is picked (and always
@@ -8677,7 +8677,7 @@ function renderSessionSheet(){
         <div class="delete-row">
           <button class="btn btn-danger" onclick="discardActiveSession()">Discard</button>
           <button class="btn btn-secondary" onclick="closeSessionSheet()">Keep charting</button>
-        </div>` : `<button class="btn btn-secondary" onclick="armDiscardSession()">Discard</button>`}
+        </div>` : `<button class="btn btn-danger" onclick="armDiscardSession()">Discard</button>`}
       <button class="btn btn-secondary" onclick="closeSessionSheet()">Close</button>
     </div>
   </div>`;

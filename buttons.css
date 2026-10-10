@@ -80,6 +80,10 @@
 }
 .tray.has-ind .seg[aria-pressed="true"]{ background:transparent; box-shadow:none; }
 .tray:not(.has-ind) .tray-ind{ display:none; }
+/* A locked tray (e.g. the charting perspective after the first pitch) reads as locked: dimmed, the choice flattened. */
+.tray-locked{ opacity:.55; }
+.tray-locked .tray-ind, .tray-locked .seg[aria-pressed="true"]{ box-shadow:0 1px 2px rgba(0,0,0,.10); }
+.tray-locked .seg:disabled{ color:var(--btn-ink); }
 
 /* Pitch types: unselected segments show a dot in their type color; the selected one is underlined in it.
    The --type-color value comes from the page's generated palette classes (.ptc-0 ... ). */

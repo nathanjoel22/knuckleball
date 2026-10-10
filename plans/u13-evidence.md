@@ -1,4 +1,6 @@
-# U13 evidence (Oct 9, 2026), branch `u13-segmented-buttons`, v196
+# U13 evidence (Oct 9–10, 2026), branch `u13-segmented-buttons`, v200
+
+Spec: `plans/u13-segmented-buttons.md` plus the Oct 10 update `plans/u13-segmented-buttons-2.md` (adds the draggable bottom menu tray; no drag on any other tray).
 
 Built to `plans/u13-segmented-buttons.md` with Joel's Oct 9 answers to `plans/u13-preconditions.md`:
 - **A:** trays on iPad/laptop, single buttons on phones.
@@ -60,3 +62,16 @@ Built to `plans/u13-segmented-buttons.md` with Joel's Oct 9 answers to `plans/u1
     - **Inline `style=""` on buttons: 1** (the `g5-cell` position, decision C).
     - **Danger buttons: 20, all `btn-danger`, zero inline red.**
     - The other classes on buttons are layout hooks. Those that still set a look are the charting targets (field boxes, bases, batter), the coach dock (the nav role's sliding pill), the narrow arrows above, and three text-color details.
+
+**Oct 10 update (spec -2): the bottom menu tray** (v200)
+- The coach dock is the one draggable tray: `role="tablist"`, a translucent glass segment (`rgba(255,255,255,.85)`, 12 px blur, the accent underline), a 300 ms spring (`cubic-bezier(.34,1.56,.64,1)`), pointer events with pointer capture, `touch-action:none` on the dock only.
+- Tested in Chrome with simulated touch pointers:
+  - **Quick tap:** switched once, never lifted, sprang.
+  - **Hold:** not lifted at 80 ms, lifted at 200 ms (`scale(1.06)`, deeper shadow).
+  - **Drag:** followed the finger continuously (232 → 7 px), previewing Roster > Charts > Home; the page didn't switch during the drag, then switched once on release.
+  - **Keys:** ArrowRight moved focus and segment, Enter selected; selected tab `aria-selected="true"`.
+  - **Reduced motion:** no lift, no spring.
+- A quick sideways slide (before 150 ms) also picks the segment up. The spec doesn't cover this case; it keeps the Oct 8 swipe working.
+- **Removed:** the Oct 9 slide-to-pick on every other tray (v197), per the spec's "no other tray is draggable". Ordinary trays are tap-only again, with the 150 ms slide.
+- Also on this branch: the G5 chart flip is 325 ms (Joel, Oct 10; it was 650).
+- Still needed: acceptance 4b, a video on a real iPhone (Joel).

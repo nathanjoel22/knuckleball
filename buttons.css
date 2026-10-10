@@ -79,7 +79,6 @@
   transition:left 150ms ease, top 150ms ease, width 150ms ease, height 150ms ease;
 }
 .tray.has-ind .seg[aria-pressed="true"]{ background:transparent; box-shadow:none; }
-.tray[data-tray]:not(.tray-scroll){ touch-action:pan-y; }   /* a sideways slide picks; up and down still scroll the page */
 .tray:not(.has-ind) .tray-ind{ display:none; }
 
 /* Pitch types: unselected segments show a dot in their type color; the selected one is underlined in it.

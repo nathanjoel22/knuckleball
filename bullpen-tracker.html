@@ -167,6 +167,10 @@
   .ph-status .ph-inn{ font-size:20px; }
   .ph-status .ph-diamond{ margin-left:2px; display:flex; align-items:center; }
   .ph-status .ph-diamond .runner-diamond-btn{ min-height:40px; }
+  /* Joel, Oct 12: never wrap "0 OUT 0-0" -- each item stays on one line, and the bar tightens on narrower phones */
+  .ph-status .ph-item, .ph-status .ph-inn{ white-space:nowrap; }
+  @media (max-width:389px){ .ph-status{ gap:8px; padding:0 10px; } }
+  @media (max-width:359px){ .ph-status{ gap:6px; padding:0 8px; } .ph-status .ph-item{ font-size:14px; } .ph-status .deliv-one{ width:64px; padding:0 4px; } }
   .ph-count{ display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%;
     background:var(--chalk); color:var(--field-dark); font-size:16px; }
   .ph-lbl{ font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:var(--chalk-dim); margin-left:-6px; }

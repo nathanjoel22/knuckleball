@@ -594,6 +594,15 @@
      content center the pair under the question in both layouts. */
   .kind-chooser{ display:flex; flex-direction:column; align-items:center; padding:48px 16px; }
   .kind-chooser-buttons{ display:flex; flex-direction:column; align-items:center; gap:16px; width:100%; }
+  .home-tiles{ display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; max-width:340px; margin:4px 0 24px; }
+  @media (min-width:501px){ .home-tiles{ max-width:560px; } }
+  .home-tile{ flex-direction:column; justify-content:center; gap:6px; min-height:96px; padding:12px 8px; white-space:normal; text-align:center; }
+  .home-ic svg{ width:32px; height:32px; display:block; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .home-lbl{ font-size:16px; font-weight:700; line-height:1.15; }
+  .home-note{ font-size:12px; font-weight:600; color:var(--ink-faint); }
+  .home-soon{ cursor:default; }
+  .home-soon .home-ic, .home-soon .home-lbl{ opacity:.55; }
+  .home-soon:active{ transform:none !important; box-shadow:none !important; }
   .kind-tray{ width:100%; max-width:420px; }
   .kind-tray .seg{ min-height:72px; font-size:24px; font-weight:700; }   /* Joel, Oct 12: bigger (scale sizes: 24px type) */
   /* the start questions (Joel, Oct 12) */
@@ -1895,7 +1904,7 @@ let state = {
   createTeamBusy: false,
   createTeamError: null,
   sessions: [],
-  view: 'session',          // session | history | profile | pitcherProfile (coach editing the selected pitcher)
+  view: 'home',             // home | session | history | profile | pitcherProfile (coach editing the selected pitcher)
   activeSession: null,
   selectedType: null,
   veloTargetIdx: null,      // U6: index of the last recorded pitch that may still take a velocity (null = locked)
@@ -2402,7 +2411,7 @@ function applyCachedContext(cached){
   state.currentTeamId = cached.currentTeamId;
   state.currentPitcherId = cached.currentPitcherId;
   state.myVerification = cached.myVerification || { email: null, emailConfirmed: false };
-  state.view = 'session';   // U7: always open on New Session (a draft, if any, shows Resume Session)
+  state.view = 'home';   // Joel, Oct 12: open on Home (Charting / History / ...), never straight into the chart question
 }
 
 async function init(){
@@ -3467,13 +3476,13 @@ window.onTeamChange = async function(teamId, skipRender){
     state.currentPitcherId = state.roster.length ? state.roster[0].id : null;
     if(skipRender) adoptDraftPitcher();   // launch: land on the pitcher whose session is in progress
     state.rosterCollapsed = isPhoneWidth();   // a fresh team load starts open -- except on phones (Joel, Oct 8: rolled up until Roster is tapped)
-    // Launch (skipRender) always opens on New Session; a coach who switches teams
+    // Launch (skipRender) opens on Home (Joel, Oct 12); a coach who switches teams
     // from the dropdown still lands on History, as before.
-    state.view = skipRender ? 'session' : 'history';
+    state.view = skipRender ? 'home' : 'history';
     if(teamIsArchived(teamId)) state.view = 'history';   // P1-09: read-only, no New Session
   } else {
     state.currentPitcherId = state.profile.id;
-    state.view = 'session';
+    state.view = 'home';
   }
   await loadSessionsForCurrentSelection();
   await loadZones();
@@ -3632,7 +3641,7 @@ const DOCK_KEYS = ['home', 'charts', 'roster', 'profile'];
 function dockActiveIndex(){
   if(state.dockRoster && !state.rosterCollapsed) return 2;   // Roster stays lit while its list is open
   const v = state.view;
-  return v === 'session' ? 0 : v === 'history' ? 1 : v === 'profile' ? 3 : -1;
+  return v === 'home' ? 0 : v === 'history' ? 1 : v === 'profile' ? 3 : -1;   // Oct 12: Home is the Home screen
 }
 function renderCoachDock(){
   const idx = dockActiveIndex();
@@ -3671,7 +3680,7 @@ window.dockGo = function(where){
     return;
   }
   state.rosterCollapsed = rosterCanCollapse();   // Joel, Oct 8: any other button rolls the roster back up
-  setView(where === 'home' ? 'session' : where === 'charts' ? 'history' : 'profile');
+  setView(where === 'home' ? 'home' : where === 'charts' ? 'history' : 'profile');
   // ...and lands with the box holding the pitcher's name at the top of the screen (Profile has no pitcher
   // box -- it lands at the top of the page's content).
   const anchor = document.querySelector('.pitcher-header') || document.querySelector('.main');
@@ -3779,7 +3788,7 @@ window.selectPitcher = async function(pitcherId){
   // U10 (3), Joel Sept 30: a name with a red dot opens his History (which
   // clears the name dot); any other name opens New Session.
   state.historyLandingNoClear = null;
-  state.view = hasRosterDot(pitcherId) ? 'history' : 'session';
+  state.view = hasRosterDot(pitcherId) ? 'history' : 'home';   // Joel, Oct 12: Home, not the chart question
   state.uniformEditKey = null; state.uniformMsg = '';
   state.expandedSessionId = null;
   state.oldTombstonesExpanded = false;
@@ -10050,6 +10059,30 @@ function renderLeaderboardView(){
 // didn't want it stacking with the pre-existing "Pitcher profile" button
 // in the header above; that button is now repurposed for this instead,
 // see headerHtml's pitcher-header-actions). This row is just the 4 tabs.
+/* ---------- HOME (Joel, Oct 12) ----------
+   The first screen after login, under the photo and name: Charting (the "What will we be charting today?"
+   chooser, or Resume), History, Armcare and Mental Game (not built yet -- shown, go nowhere), and Profile (your
+   own profile to edit). Two tiles to a row, the whole block no wider than the 5x5 chart (340px on phones, 560px
+   on iPad/laptop), so a tile is never wider than half the chart. */
+const HOME_ICONS = {
+  charting: DOCK_ICONS.charts,
+  history: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 20.5h17"/><path d="M4.5 16.5l5-5 3.5 3.5 6.5-6.5"/><path d="M15 8.5h4.5V13"/></svg>',
+  armcare: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h12.5c2.5 0 4.5-1.8 4.5-4.2V8.5c0-1.4-.4-3-1.6-3.9-1.3-1-3.4-1-4.4.3-.6.8-.6 2 .1 2.7l.6.6v4c-1.3-1.9-3.6-2.8-5.8-2.2-1.3.3-2.4 1.1-3.1 2.2-.9.7-2 1.1-3.3 1.2z"/><path d="M9.5 16.8c1.2-.6 2.6-.6 3.8 0"/></svg>',
+  mental: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5c-.6-1.4-2-2.2-3.5-2-1.7.2-2.9 1.6-2.9 3.3-1.6.4-2.6 1.9-2.4 3.5-1.1.8-1.6 2.3-1.1 3.6.4 1.1 1.4 1.8 2.5 1.9.1 1.7 1.5 3.1 3.2 3.2.9 1.4 2.6 2 4.2 1.4V5.5z"/><path d="M12 5.5c.6-1.4 2-2.2 3.5-2 1.7.2 2.9 1.6 2.9 3.3 1.6.4 2.6 1.9 2.4 3.5 1.1.8 1.6 2.3 1.1 3.6-.4 1.1-1.4 1.8-2.5 1.9-.1 1.7-1.5 3.1-3.2 3.2-.9 1.4-2.6 2-4.2 1.4"/><path d="M8 9.5c1 .1 1.8.8 2 1.8M6.5 14c1-.6 2.4-.4 3.1.6M16 9.5c-1 .1-1.8.8-2 1.8M17.5 14c-1-.6-2.4-.4-3.1.6"/></svg>',
+  profile: DOCK_ICONS.profile
+};
+function renderHomeTiles(){
+  const archived = isCoach() && currentTeamArchived();   // P1-09: no New Session on an archived team
+  const tile = (key, label, onclick, note, off) => `<button type="button" class="btn btn-secondary home-tile${off ? ' home-soon' : ''}" ${onclick ? `onclick="${onclick}"` : 'aria-disabled="true"'} ${off && !onclick ? 'tabindex="-1"' : ''}>
+      <span class="home-ic">${HOME_ICONS[key]}</span><span class="home-lbl">${label}</span>${note ? `<span class="home-note">${note}</span>` : ''}</button>`;
+  return `<div class="home-tiles" role="navigation" aria-label="Home">
+    ${tile('charting', 'Charting', archived ? '' : "setView('session')", archived ? 'Archived team' : (state.draftAvailable ? 'Resume' : ''), archived)}
+    ${tile('history', 'History', "setView('history')")}
+    ${tile('armcare', 'Armcare', '', 'Coming soon', true)}
+    ${tile('mental', 'Mental Game', '', 'Coming soon', true)}
+    ${tile('profile', 'Profile', "setView('profile')")}
+  </div>`;
+}
 function renderTabs(){
   const fourthTab = isCoach()
     ? { label: '<span class="tab-label-full">Player Profile</span><span class="tab-label-short">Player</span>', selected: state.view === 'pitcherProfile', onclick: "setView('pitcherProfile')" }
@@ -10057,7 +10090,7 @@ function renderTabs(){
   // P1-09: a coach has no New Session on an archived team (a pitcher keeps the tab, which explains).
   const sessionTab = (isCoach() && currentTeamArchived()) ? null :
     { label: state.draftAvailable ? 'Resume' : 'New Session', selected: state.view === 'session', onclick: "setView('session')" };
-  const tabs = [sessionTab,
+  const tabs = [{ label: 'Home', selected: state.view === 'home', onclick: "setView('home')" }, sessionTab,
     { label: 'History' + (!isCoach() && state.profile && hasRosterDot(state.profile.id) ? '<span class="tab-dot" aria-label="New session"></span>' : ''), selected: state.view === 'history', onclick: "setView('history')" },
     hasLeaderboard() ? { label: '<span class="tab-label-full">Leaderboard</span><span class="tab-label-short">Leaders</span>', selected: state.view === 'leaderboard', onclick: "setView('leaderboard')" } : null,
     fourthTab].filter(Boolean);
@@ -11115,7 +11148,9 @@ function render(){
     // U9: 'pitcherProfile' with no pitcher selected has its own message
     // ("Select a pitcher to see his profile," not this generic one) --
     // renderPitcherProfileView() already handles p === null itself.
-    main = `<div class="acct-row">${renderAccountButton()}</div>` + renderAddSportBanner() + renderTabs() + (state.view === 'profile'
+    main = `<div class="acct-row">${renderAccountButton()}</div>` + renderAddSportBanner() + (state.view === 'home' ? '' : renderTabs()) + (state.view === 'home'
+      ? renderHomeTiles()
+      : state.view === 'profile'
       ? renderProfileView()
       : state.view === 'leaderboard' ? renderLeaderboardView()
       : state.view === 'pitcherProfile' ? renderPitcherProfileView()
@@ -11198,8 +11233,9 @@ function render(){
       ${guardianBanner}
       ${setupReminderBanner}
       ${(state.view === 'profile' || state.view === 'leaderboard') ? '' : headerHtml}
-      ${tabs}
-      ${state.view === 'session' ? renderSessionView()
+      ${state.view === 'home' ? '' : tabs}
+      ${state.view === 'home' ? renderHomeTiles()
+        : state.view === 'session' ? renderSessionView()
         : state.view === 'profile' ? renderProfileView()
         : state.view === 'leaderboard' ? renderLeaderboardView()
         : state.view === 'pitcherProfile' ? renderPitcherProfileView()

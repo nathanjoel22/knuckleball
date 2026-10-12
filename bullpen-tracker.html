@@ -601,13 +601,12 @@
   .home-small{ grid-column:span 2; }                   /* a third of the row */
   .home-big .home-ic svg{ width:44px; height:44px; }
   .home-big .home-lbl{ font-size:20px; }
-  /* Joel, Oct 12: on phones every tile is the screen's width, one under the other (Charting and History taller) */
+  /* Joel, Oct 12: on phones every tile is the screen's width, one under the other, all the same size */
   @media (max-width:500px){
     .home-tiles{ grid-template-columns:1fr; max-width:none; }
-    .home-big, .home-small{ grid-column:auto; }
-    .home-big{ min-height:112px; }
-    .home-small{ min-height:64px; flex-direction:row; justify-content:flex-start; gap:12px; padding:10px 16px; text-align:left; }
-    .home-small .home-note{ margin-left:auto; }
+    .home-big, .home-small{ grid-column:auto; min-height:128px; }
+    .home-tile .home-ic svg{ width:44px; height:44px; }
+    .home-tile .home-lbl{ font-size:20px; }
   }
   .home-ic svg{ width:32px; height:32px; display:block; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .home-lbl{ font-size:16px; font-weight:700; line-height:1.15; }

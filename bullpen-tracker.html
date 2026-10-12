@@ -1533,7 +1533,8 @@
   .g5-move{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
   .g5-move-btns{ display:flex; gap:6px; flex-wrap:wrap; }
   .g5-move-btns .g5-act{ flex:1 1 0; }
-  .g5-why .g5-act{ flex:1 1 30%; }
+  .g5-why .g5-act{ flex:1 1 30%; white-space:normal; line-height:1.15; text-align:center; }
+  @media (max-width:500px){ .g5-why .g5-act{ flex-basis:40%; } }   /* Joel, Oct 12: two to a row on phones, so "Caught stealing" fits */
   .g5-runner{ display:block; flex:none; width:24px; height:24px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.35), inset 0 0 0 4px var(--btn-accent); }
   .g5-batter{ width:26px; height:26px; }
   .g5-cell.g5-home .g5-in{ display:flex; align-items:center; justify-content:center; width:100%; height:100%; }

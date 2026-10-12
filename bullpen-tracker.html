@@ -625,7 +625,7 @@
     -webkit-mask-position:center; mask-position:center; -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; }
   .ic-arm{ -webkit-mask-image:url(vendor/icons/arm.png); mask-image:url(vendor/icons/arm.png); }
   .ic-brain{ -webkit-mask-image:url(vendor/icons/brain.png); mask-image:url(vendor/icons/brain.png); }
-  .ic-clipboard{ -webkit-mask-image:url(vendor/icons/clipboard.png); mask-image:url(vendor/icons/clipboard.png); }
+  .ic-scatter{ -webkit-mask-image:url(vendor/icons/scatter.png); mask-image:url(vendor/icons/scatter.png); }   /* a clipboard holding a pitch chart (Joel, Oct 12: vendor/scatter.png) */
   .ic-graph{ -webkit-mask-image:url(vendor/icons/graph.png); mask-image:url(vendor/icons/graph.png); }
   .ic-gear{ -webkit-mask-image:url(vendor/icons/gear.png); mask-image:url(vendor/icons/gear.png); }
   .home-lbl{ font-size:16px; font-weight:700; line-height:1.15; }
@@ -10093,10 +10093,10 @@ function renderLeaderboardView(){
    The first screen after login, under the photo and name: Charting (the "What will we be charting today?"
    chooser, or Resume) and History as two big tiles on top; Armcare and Mental Game (not built yet -- shown, go
    nowhere) and Profile (your own profile to edit) as a row of three beneath, each big tile about twice their
-   size (Joel, Oct 12). Icons: all five are Joel's own drawings (vendor/icons/, split from his vendor/brain-arm.png
-   and vendor/clipboard-graph-gear.png), filled with the tile's color through a mask. The whole block is no wider than the 5x5 chart (340px on phones, 560px on iPad/laptop). */
+   size (Joel, Oct 12). Icons: all five are Joel's own drawings (vendor/icons/, from his vendor/brain-arm.png,
+   vendor/clipboard-graph-gear.png and vendor/scatter.png), filled with the tile's color through a mask. The whole block is no wider than the 5x5 chart (340px on phones, 560px on iPad/laptop). */
 const HOME_ICONS = {
-  charting: '<span class="ic-img ic-clipboard" aria-hidden="true"></span>',
+  charting: '<span class="ic-img ic-scatter" aria-hidden="true"></span>',
   history: '<span class="ic-img ic-graph" aria-hidden="true"></span>',
   armcare: '<span class="ic-img ic-arm" aria-hidden="true"></span>',
   mental: '<span class="ic-img ic-brain" aria-hidden="true"></span>',

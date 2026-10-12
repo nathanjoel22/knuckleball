@@ -8164,6 +8164,7 @@ window.g5Base = async function(box){
 window.g5Next = async function(){
   const s = state.activeSession, g = s.g5;
   if(!g || g.step !== 'bases') return;
+  if(g5NeedsBatter(g)) return;   // put the batter on base first
   if(g.walkEvent){ return g5CloseWalkEvent(); }
   return g5Commit(g.walk ? 'ball' : 'in_play');
 };
@@ -8364,7 +8365,7 @@ function g5CellInner(step, box){
       const bit = G5_BASE_BOX[box], on = !!((g.bases || 0) & bit);
       return btn(on ? `<span class="g5-baselbl">${G5_BASE_LABEL[bit]}</span>` : '', `g5Base(${box})`, 'g5-pick' + (on ? ' on g5-drag' : ''));
     }
-    if(box === G5_NEXT_BOX && !ggRadarOn()) return btn('<span class="g5-np">Next pitch</span>', 'g5Next()', 'g5-choice g5-nextbox');
+    if(box === G5_NEXT_BOX && !ggRadarOn() && !g5NeedsBatter(g)) return btn('<span class="g5-np">Next pitch</span>', 'g5Next()', 'g5-choice g5-nextbox');
   }
   return null;
 }
@@ -8404,7 +8405,8 @@ function g5FieldActions(){
     return `<div class="g5-actions"><span class="g5-act-gap"></span><button type="button" class="btn btn-primary btn-sm g5-act" onclick="g5RunnersDone()">Done ›</button></div>`;
   }
   const added = g.addOuts ? ` · ${g.addOuts}` : '';
-  const next = (g.step === 'bases' && ggRadarOn()) ? `<button type="button" class="btn btn-primary btn-sm g5-act g5-act-next" onclick="g5Next()">Next ›</button>` : '';
+  const blocked = g5NeedsBatter(g);
+  const next = (g.step === 'bases' && ggRadarOn()) ? `<button type="button" class="btn btn-primary btn-sm g5-act g5-act-next" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>` : '';
   return `<div class="g5-actions">
     <button type="button" class="btn btn-secondary btn-sm g5-act" onclick="g5AddOut()" ${g5ProjectedOuts(g) >= 3 ? 'disabled' : ''}>+ Out${added}</button>
     <button type="button" class="btn btn-secondary btn-sm g5-act" onclick="g5AddCount('strike')">+ Strike</button>
@@ -8425,6 +8427,9 @@ const G5_WHY = {
   safe: [['stolen_base', 'Stolen base'], ['wild_pitch', 'Wild pitch'], ['passed_ball', 'Passed ball'], ['balk', 'Balk'], ['other', 'Other']],
   out: [['caught_stealing', 'Caught stealing'], ['pickoff', 'Pickoff'], ['other', 'Other']]
 };
+// Joel, Oct 12: on a hit (or an error -- the batter reaches either way) the field can't turn back over until the
+// batter has been put on a base: tapped onto one, or dragged from home and called safe.
+function g5NeedsBatter(g){ return !!g && g.step === 'bases' && (g.entry === 'H' || g.entry === 'E') && !g.foulOut && !g.hr && !g.batterPlaced; }
 function g5BatterCanDrag(g){ return g.step === 'bases' && !g.walk && !g.walkEvent && !g.foulOut && !g.batterPlaced; }
 function g5BaseName(b){ return b === 'home' ? 'home' : b === 'batter' ? 'the batter' : ['', '1B', '2B', '3B'][b]; }
 window.g5OpenRunners = async function(){
@@ -8654,7 +8659,7 @@ function renderGameSessionView(p){
   // G5: after a location tap the chart flips over to the field chart (g5Surface); under the
   // square chart sit the extra-inning question or velocity + Next pitch (g5BelowChart).
   const g5Now = g5Step();
-  const zoneCaption = (s.g5 && g5Now) ? g5Caption(g5Now) : `Tap where the pitch landed`;
+  const zoneCaption = (s.g5 && g5Now) ? (g5NeedsBatter(s.g5) ? 'Put the batter on base (tap a base, or drag from home)' : g5Caption(g5Now)) : `Tap where the pitch landed`;
   const g5Below = g5OnDiamond() ? '' : g5BelowChart(g5Now);
 
   if(phoneSessionMode(p)){

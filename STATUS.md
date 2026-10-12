@@ -16,7 +16,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 ---
 
 ## 2026-10-12 · no packet (Live Game: results under the chart, runner moves, ponytail) · **staging**
-- **Branch / cache:** `live-game-oct12` (on top of `u13-segmented-buttons`) · `kb-shell-v208` (v207: the Live Game status bar stays on one line at 320/375/390; v204/v206/v208: the ponytail attached to the back of the helmet, tip curling up, a little space above the shoulder; v205: the result letters at 32 px with no words under them -- screen readers still hear each word). `send-session-report` deployed to staging only. No database change: every event type was already allowed. The live site is still v195.
+- **Branch / cache:** `live-game-oct12` (on top of `u13-segmented-buttons`) · `kb-shell-v209` (v209: on a hit or an error the field can't turn back over until the batter is placed; v207: the Live Game status bar stays on one line at 320/375/390; v204/v206/v208: the ponytail attached to the back of the helmet, tip curling up, a little space above the shoulder; v205: the result letters at 32 px with no words under them -- screen readers still hear each word). `send-session-report` deployed to staging only. No database change: every event type was already allowed. The live site is still v195.
 - **Built** (from Joel's Oct 12 list and his answers):
   1. Softball batter ponytail (mirrors with the figure); baseball unchanged.
   2. What happened as big letters (no words): K swing, backwards K looking, B, F, IP.
@@ -26,7 +26,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
      - safe: stolen base / wild pitch / passed ball / balk (softball: illegal pitch, via its existing ball-added save) / other;
      - out: caught stealing / pickoff / other.
   6. Dragging also works on the runners question after a play, including the batter from home; Safe or Out with no "why". Taps still work.
-  7. The game report's Other events lists stolen bases, caught stealing, pickoffs, wild pitches, passed balls and other runner moves.
+  7. On a hit or error, Next stays greyed out until the batter is put on a base (tapped, or dragged from home and called safe). Joel asked for hits; errors are included because the batter reaches there too.
+  8. The game report's Other events lists stolen bases, caught stealing, pickoffs, wild pitches, passed balls and other runner moves.
 - **Deviations / choices:**
   - A balk moves every runner up (the rule), whichever runner was dragged.
   - The field stays up after a runner move for the next one (Done to leave) and closes itself when the bases empty.

@@ -594,9 +594,13 @@
      content center the pair under the question in both layouts. */
   .kind-chooser{ display:flex; flex-direction:column; align-items:center; padding:48px 16px; }
   .kind-chooser-buttons{ display:flex; flex-direction:column; align-items:center; gap:16px; width:100%; }
-  .home-tiles{ display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; max-width:340px; margin:4px 0 24px; }
+  .home-tiles{ display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:10px; width:100%; max-width:340px; margin:4px 0 24px; }
   @media (min-width:501px){ .home-tiles{ max-width:560px; } }
-  .home-tile{ flex-direction:column; justify-content:center; gap:6px; min-height:96px; padding:12px 8px; white-space:normal; text-align:center; }
+  .home-tile{ flex-direction:column; justify-content:center; gap:6px; min-height:88px; padding:10px 6px; white-space:normal; text-align:center; min-width:0; }
+  .home-big{ grid-column:span 3; min-height:128px; }    /* half the row; about twice a small tile's area */
+  .home-small{ grid-column:span 2; }                   /* a third of the row */
+  .home-big .home-ic svg{ width:44px; height:44px; }
+  .home-big .home-lbl{ font-size:20px; }
   .home-ic svg{ width:32px; height:32px; display:block; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .home-lbl{ font-size:16px; font-weight:700; line-height:1.15; }
   .home-note{ font-size:12px; font-weight:600; color:var(--ink-faint); }
@@ -10061,9 +10065,9 @@ function renderLeaderboardView(){
 // see headerHtml's pitcher-header-actions). This row is just the 4 tabs.
 /* ---------- HOME (Joel, Oct 12) ----------
    The first screen after login, under the photo and name: Charting (the "What will we be charting today?"
-   chooser, or Resume), History, Armcare and Mental Game (not built yet -- shown, go nowhere), and Profile (your
-   own profile to edit). Two tiles to a row, the whole block no wider than the 5x5 chart (340px on phones, 560px
-   on iPad/laptop), so a tile is never wider than half the chart. */
+   chooser, or Resume) and History as two big tiles on top; Armcare and Mental Game (not built yet -- shown, go
+   nowhere) and Profile (your own profile to edit) as a row of three beneath, each big tile about twice their
+   size (Joel, Oct 12). The whole block is no wider than the 5x5 chart (340px on phones, 560px on iPad/laptop). */
 const HOME_ICONS = {
   charting: DOCK_ICONS.charts,
   history: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 20.5h17"/><path d="M4.5 16.5l5-5 3.5 3.5 6.5-6.5"/><path d="M15 8.5h4.5V13"/></svg>',
@@ -10073,11 +10077,11 @@ const HOME_ICONS = {
 };
 function renderHomeTiles(){
   const archived = isCoach() && currentTeamArchived();   // P1-09: no New Session on an archived team
-  const tile = (key, label, onclick, note, off) => `<button type="button" class="btn btn-secondary home-tile${off ? ' home-soon' : ''}" ${onclick ? `onclick="${onclick}"` : 'aria-disabled="true"'} ${off && !onclick ? 'tabindex="-1"' : ''}>
+  const tile = (key, label, onclick, note, off, big) => `<button type="button" class="btn btn-secondary home-tile ${big ? 'home-big' : 'home-small'}${off ? ' home-soon' : ''}" ${onclick ? `onclick="${onclick}"` : 'aria-disabled="true"'} ${off && !onclick ? 'tabindex="-1"' : ''}>
       <span class="home-ic">${HOME_ICONS[key]}</span><span class="home-lbl">${label}</span>${note ? `<span class="home-note">${note}</span>` : ''}</button>`;
   return `<div class="home-tiles" role="navigation" aria-label="Home">
-    ${tile('charting', 'Charting', archived ? '' : "setView('session')", archived ? 'Archived team' : (state.draftAvailable ? 'Resume' : ''), archived)}
-    ${tile('history', 'History', "setView('history')")}
+    ${tile('charting', 'Charting', archived ? '' : "setView('session')", archived ? 'Archived team' : (state.draftAvailable ? 'Resume' : ''), archived, true)}
+    ${tile('history', 'History', "setView('history')", '', false, true)}
     ${tile('armcare', 'Armcare', '', 'Coming soon', true)}
     ${tile('mental', 'Mental Game', '', 'Coming soon', true)}
     ${tile('profile', 'Profile', "setView('profile')")}

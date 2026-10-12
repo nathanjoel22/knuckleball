@@ -1521,9 +1521,8 @@
   /* Joel, Oct 12: what happened, under the chart -- letters with a small word; a backwards K for looking */
   .g5-results{ display:flex; gap:6px; margin-top:8px; }
   .g5-res{ flex:1 1 0; min-width:0; flex-direction:column; gap:1px; padding:0 2px; min-height:52px; }
-  .g5-res-l{ font-size:20px; font-weight:800; line-height:1; }
+  .g5-res-l{ font-size:32px; font-weight:800; line-height:1; }
   .g5-kback{ display:inline-block; transform:scaleX(-1); }
-  .g5-res-w{ font-size:10px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; line-height:1.1; }
   .g5-res-wide{ font-size:16px; }
   .g5-res-back{ flex:0 0 auto; padding:0 8px; }
   /* runners on the field: tap or drag, then Safe / Out (and why, between pitches) */
@@ -8570,14 +8569,14 @@ function g5VeloRows(){
     <div class="g5-next-row"><button type="button" class="btn btn-secondary btn-sm g5-reset" onclick="recordGameVelo(null)">Reset</button>
     <button type="button" class="btn btn-primary g5-nextpitch" onclick="g5NextPitch()">Next pitch ›</button></div>`;
 }
-// Joel, Oct 12: what happened, as letters (a small word under each), under the chart: K swinging, a backwards K
+// Joel, Oct 12: what happened, as big letters (no words; screen readers still hear each word), under the chart: K swinging, a backwards K
 // looking (the scorebook's called third strike), B ball, F foul, IP in play. Foul then asks tip or out here too.
 const G5_RESULT_BTNS = [['swing', 'K', 'Swing', false], ['looking', 'K', 'Looking', true], ['ball', 'B', 'Ball', false], ['foul', 'F', 'Foul', false], ['inplay', 'IP', 'In Play', false]];
 function g5ResultRow(step){
   const back = `<button type="button" class="btn btn-tertiary btn-sm g5-res-back" onclick="g5Back()" aria-label="Back: clear the location">‹ Back</button>`;
   if(step === 'what'){
     return `<div class="g5-results" role="group" aria-label="What happened?">${G5_RESULT_BTNS.map(([code, letter, word, mirror]) =>
-      `<button type="button" class="btn btn-secondary g5-res" onclick="g5What('${code}')" aria-label="${word === 'Swing' ? 'Strike swinging' : word === 'Looking' ? 'Strike looking' : word}"><span class="g5-res-l${mirror ? ' g5-kback' : ''}" aria-hidden="true">${letter}</span><span class="g5-res-w" aria-hidden="true">${word}</span></button>`).join('')}${back}</div>`;
+      `<button type="button" class="btn btn-secondary g5-res" onclick="g5What('${code}')" aria-label="${word === 'Swing' ? 'Strike swinging' : word === 'Looking' ? 'Strike looking' : word}"><span class="g5-res-l${mirror ? ' g5-kback' : ''}" aria-hidden="true">${letter}</span></button>`).join('')}${back}</div>`;
   }
   if(step === 'foul'){
     return `<div class="g5-results" role="group" aria-label="Foul tip or foul out?">

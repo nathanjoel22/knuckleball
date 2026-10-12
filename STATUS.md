@@ -16,10 +16,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 ---
 
 ## 2026-10-12 · no packet (Live Game: results under the chart, runner moves, ponytail) · **staging**
-- **Branch / cache:** `live-game-oct12` (on top of `u13-segmented-buttons`) · `kb-shell-v204` (v204: the ponytail drawn with a little space from the helmet and shoulder). `send-session-report` deployed to staging only. No database change: every event type was already allowed. The live site is still v195.
+- **Branch / cache:** `live-game-oct12` (on top of `u13-segmented-buttons`) · `kb-shell-v205` (v204: the ponytail drawn with a little space from the helmet and shoulder; v205: the result letters at 32 px with no words under them -- screen readers still hear each word). `send-session-report` deployed to staging only. No database change: every event type was already allowed. The live site is still v195.
 - **Built** (from Joel's Oct 12 list and his answers):
   1. Softball batter ponytail (mirrors with the figure); baseball unchanged.
-  2. What happened as letters with a small word: K swing, backwards K looking, B, F, IP.
+  2. What happened as big letters (no words): K swing, backwards K looking, B, F, IP.
   3. Those buttons sit under the 5×5 with the tapped spot marked; Foul asks tip or out there too.
   4. Only In Play, a Foul Out (to pick where it was caught), the runners question after a walk, and a runner move flip to the field.
   5. Between pitches the status-bar diamond opens the field: drag a runner to a base or home, or tap runner then base. "Safe or out?" then "Why?":
@@ -31,7 +31,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - A balk moves every runner up (the rule), whichever runner was dragged.
   - The field stays up after a runner move for the next one (Done to leave) and closes itself when the bases empty.
   - The ponytail shows wherever the silhouette shows (iPad/laptop and the zone editor). Phones show the vs RHB pill, not the figure.
-- **Open items:** Joel's phone/iPad check (both sports): a pitch through every result, a foul out, a walk, a steal, a caught stealing, and a drag on the runners question; then a game report from staging showing the runner moves.
+- **Open items:** at 375 px (iPhone SE / mini) the Live Game status bar wraps "0 OUT 0-0" -- already so on the live site, not new. Joel's phone/iPad check (both sports): a pitch through every result, a foul out, a walk, a steal, a caught stealing, and a drag on the runners question; then a game report from staging showing the runner moves.
 
 ## 2026-10-10 · U13 (+ spec update `-2`) · **staging**
 - **Branch / commit / cache:** `u13-segmented-buttons` · `61102f9` · `kb-shell-v202`. The live site is still v195.

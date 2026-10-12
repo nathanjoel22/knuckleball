@@ -594,7 +594,19 @@
      content center the pair under the question in both layouts. */
   .kind-chooser{ display:flex; flex-direction:column; align-items:center; padding:48px 16px; }
   .kind-chooser-buttons{ display:flex; flex-direction:column; align-items:center; gap:16px; width:100%; }
-  .kind-tray{ width:100%; max-width:360px; }
+  .kind-tray{ width:100%; max-width:420px; }
+  .kind-tray .seg{ min-height:72px; font-size:24px; font-weight:700; }   /* Joel, Oct 12: bigger (scale sizes: 24px type) */
+  /* the start questions (Joel, Oct 12) */
+  .start-q{ display:flex; flex-direction:column; gap:20px; width:100%; max-width:420px; margin:0 auto; padding:24px 16px 32px; box-sizing:border-box; }
+  .start-q-input{ width:100%; box-sizing:border-box; }
+  .start-q-title{ margin:0; text-align:center; }
+  .start-q-item{ display:flex; flex-direction:column; gap:8px; }
+  .start-q-label{ font-size:16px; font-weight:600; color:var(--field-dark); }
+  .start-q-note{ margin:0; font-size:12px; color:var(--ink-faint); }
+  .start-yn{ max-width:240px; }
+  .start-q-input{ font-size:16px; min-height:44px; }
+  .start-q-actions{ display:flex; gap:10px; margin-top:4px; }
+  .start-q-actions .start-q-go{ flex:1; }
   @media (min-width:861px){ .kind-chooser-buttons{ flex-direction:row; justify-content:center; } }
   /* U10 (1): back to the chooser. Above phone width it's a plain
      .btn.btn-ghost in the pitcher header's action row -- no extra rules, so
@@ -2295,6 +2307,7 @@ function sessionBatterSide(session){
 // session always tracks the CURRENT toggle, so switching to it after a
 // change just works.
 function sessionUsesRadarGun(session){
+  if(session && session.radarAsked) return !!session.usesRadarGun;   // Joel, Oct 12: "radar gun today?" answered at the start
   const p = currentPitcher();
   const live = !!(p && p.usesRadarGun);
   if(session && session.pitches && session.pitches.length > 0){
@@ -3484,6 +3497,13 @@ function adoptDraftPitcher(){
    that count as accurate. The pitcher's relative-accuracy switch and zones apply no
    matter who is charting. Cached with the roster snapshot so charting reads them
    with no network. */
+// Joel, Oct 12: "use relative accuracy today?" -- No turns it off for this pen; Yes scores against the zones painted
+// in the pitcher's profile. Unanswered (a draft from before this) follows the profile's switch, as before.
+function sessionRelAccuracy(s, p){
+  if(s && s.relAccuracyToday === false) return false;
+  if(s && s.relAccuracyToday === true) return true;
+  return !!(p && p.relativeAccuracy);
+}
 function zoneCellsFor(pitcherId, type, side){
   const z = state.zones[pitcherId];
   const c = z && z[type] && z[type][side];
@@ -4945,7 +4965,7 @@ window.handleZoneTap = async function(row, col){
   // of the cells) so repainting a zone later never changes a saved session. Zones are in
   // catcher frame, and the tapped column is normalized to it here, like every coordinate.
   const chartPitcher = currentPitcher();
-  const zoneCells = (chartPitcher && chartPitcher.relativeAccuracy)
+  const zoneCells = sessionRelAccuracy(state.activeSession, chartPitcher)
     ? zoneCellsFor(state.currentPitcherId, state.selectedType, batterSide) : null;
   const inAccuracyZone = zoneCells ? zoneCells.includes(row + '-' + perspectiveCol(col, chartingPerspective)) : null;
   // U9: this is the actual freeze point for the radar-gun setting -- right
@@ -5787,7 +5807,7 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
     // U7B: on tap 1, light the pitcher's zone for (this pitch type, current batter side).
     // Zones are stored in catcher frame; the grid is drawn in the charter's screen frame.
     const gp = currentPitcher();
-    const zoneNow = (isBullpenTap && pendingTarget && state.selectedType && gp && gp.relativeAccuracy)
+    const zoneNow = (isBullpenTap && pendingTarget && state.selectedType && sessionRelAccuracy(state.activeSession, gp))
       ? zoneCellsFor(state.currentPitcherId, state.selectedType, batterSide) : null;
     const glowCells = zoneNow
       ? new Set(zoneNow.map(k => { const [zr, zc] = k.split('-').map(Number); return zr + '-' + perspectiveCol(zc, chartingPerspective); }))
@@ -6098,9 +6118,79 @@ window.chooseSessionKind = async function(kind){
     // of activeSession -> autosaved for free, same as everything else here.
     state.activeSession.panelOpen = false;
   }
+  // Joel, Oct 12: then the start questions -- radar gun today, relative accuracy (bullpen), opponent (Live Game).
+  // Defaults come from the profile; the answers belong to this session only.
+  const pq = currentPitcher();
+  state.activeSession.startQ = { radar: !!(pq && pq.usesRadarGun), rel: !!(pq && pq.relativeAccuracy) };
+  if(kind === 'game') loadOpponents();   // the saved list, refreshed in the background when online
   await storSet(draftKey(), state.activeSession);
   render();
 };
+window.setStartQ = async function(k, v){
+  const q = state.activeSession && state.activeSession.startQ;
+  if(!q) return;
+  q[k] = v;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.startSessionNow = async function(){
+  const s = state.activeSession, q = s && s.startQ;
+  if(!q) return;
+  s.usesRadarGun = !!q.radar; s.radarAsked = true;
+  if(s.kind === 'bullpen') s.relAccuracyToday = !!q.rel;
+  if(s.kind === 'game'){
+    const el = document.getElementById('start-opponent');
+    const name = String((el && el.value) || s.opponent || '').trim().slice(0, 60);
+    s.opponent = name || null;
+    if(name) rememberOpponent(name);
+  }
+  s.startQ = null;
+  await storSet(draftKey(), s);
+  render();
+};
+// Opponents for the quick-pick list: every opponent this team's games were charted against, plus every name typed
+// here, newest first. Kept on the device per team (works offline); refreshed from the team's saved games when online.
+function opponentsKey(){ return 'kb:opponents:' + (state.currentTeamId || 'none'); }
+function savedOpponents(){ try{ const a = JSON.parse(localStorage.getItem(opponentsKey()) || '[]'); return Array.isArray(a) ? a : []; }catch(e){ return []; } }
+function rememberOpponent(name){
+  const list = [name].concat(savedOpponents().filter(n => n.toLowerCase() !== name.toLowerCase())).slice(0, 100);
+  try{ localStorage.setItem(opponentsKey(), JSON.stringify(list)); }catch(e){}
+}
+async function loadOpponents(){
+  if(!isOnline() || !state.currentTeamId) return;
+  try{
+    const { data, error } = await supabaseClient.from('sessions').select('opponent, started_at')
+      .eq('team_id', state.currentTeamId).eq('kind', 'game').not('opponent', 'is', null).order('started_at', { ascending: false }).limit(300);
+    if(error || !data) return;
+    const have = savedOpponents(), seen = new Set(have.map(n => n.toLowerCase()));
+    const add = [];
+    data.forEach(r => { const n = String(r.opponent || '').trim(); if(n && !seen.has(n.toLowerCase())){ seen.add(n.toLowerCase()); add.push(n); } });
+    if(add.length){
+      try{ localStorage.setItem(opponentsKey(), JSON.stringify(have.concat(add).slice(0, 100))); }catch(e){}
+      if(state.activeSession && state.activeSession.startQ) render();
+    }
+  }catch(e){}
+}
+function opponentDatalist(){
+  return `<datalist id="opponent-list">${savedOpponents().map(n => `<option value="${escHtml(n)}"></option>`).join('')}</datalist>`;
+}
+function renderStartQuestions(p){
+  const s = state.activeSession, q = s.startQ, game = s.kind === 'game';
+  const yn = (k, v) => segTray([{ label: 'Yes', selected: !!v, onclick: `setStartQ('${k}', true)` }, { label: 'No', selected: !v, onclick: `setStartQ('${k}', false)` }], { key: 'sq-' + k, label: k, cls: 'start-yn' });
+  const who = isCoach() ? escHtml(p.name) + "'s" : 'your';
+  return `<div class="start-q">
+    <h2 class="display start-q-title">${game ? 'Live Game' : 'Bullpen'}</h2>
+    <div class="start-q-item"><div class="start-q-label">Will you be using a radar gun today?</div>${yn('radar', q.radar)}</div>
+    ${game ? '' : `<div class="start-q-item"><div class="start-q-label">Would you like to use relative accuracy?</div>${yn('rel', q.rel)}
+      <p class="start-q-note">${q.rel ? `Scores against the accuracy zones set in ${who} profile.` : 'Accuracy counts a pitch only when it lands on the target.'}</p></div>`}
+    ${game ? `<div class="start-q-item"><label class="start-q-label" for="start-opponent">Opponent (optional)</label>
+      <input id="start-opponent" class="text-input start-q-input" list="opponent-list" maxlength="60" autocomplete="off" placeholder="Type or pick a team" value="${escHtml(s.opponent || '')}" oninput="onGameOpponentInput(this.value)">${opponentDatalist()}</div>` : ''}
+    <div class="start-q-actions">
+      <button type="button" class="btn btn-secondary" onclick="backToChooser()">‹ Back</button>
+      <button type="button" class="btn btn-primary start-q-go" onclick="startSessionNow()">Start ${game ? 'game' : 'bullpen'} ›</button>
+    </div>
+  </div>`;
+}
 
 /* ---------- LIVE GAME CHARTING (G1) ----------
    A game pitch is captured in two steps, same shape as a bullpen's two
@@ -8744,7 +8834,7 @@ function renderGameSessionView(p){
         <div style="margin:12px 0 8px;">
           <div class="field-label" style="margin-bottom:4px;">Opponent (optional)</div>
           <input class="text-input" placeholder="e.g. Eastern" maxlength="60"
-            value="${escHtml(s.opponent || '')}" oninput="onGameOpponentInput(this.value)">
+            value="${escHtml(s.opponent || '')}" list="opponent-list" autocomplete="off" oninput="onGameOpponentInput(this.value)">${opponentDatalist()}
         </div>
         ${renderEndSessionRow()}
       </div>
@@ -8800,7 +8890,7 @@ function renderGameSessionView(p){
         <div style="margin:12px 0 8px;">
           <div class="field-label" style="margin-bottom:4px;">Opponent (optional)</div>
           <input class="text-input" placeholder="e.g. Eastern" maxlength="60"
-            value="${escHtml(s.opponent || '')}" oninput="onGameOpponentInput(this.value)">
+            value="${escHtml(s.opponent || '')}" list="opponent-list" autocomplete="off" oninput="onGameOpponentInput(this.value)">${opponentDatalist()}
         </div>
         ${renderEndSessionRow()}
       </div>
@@ -8821,7 +8911,7 @@ function renderGameSessionView(p){
    docs/pen-phone-layout-reference.html. */
 function phoneSessionMode(p){
   return isPhoneWidth() && !!p && state.view === 'session' && !state.draftAvailable
-    && !!(state.activeSession && state.activeSession.kind);
+    && !!(state.activeSession && state.activeSession.kind) && !state.activeSession.startQ;
 }
 function renderSessionHeader(p){
   const team = state.teams.find(t => t.id === state.currentTeamId);
@@ -8890,7 +8980,7 @@ function renderSessionSheet(){
       <div class="sess-sheet-title">${game ? 'Live Game' : 'Bullpen'} · ${what}</div>
       ${renderPerspectiveToggle(true)}
       ${game ? `<div><div class="field-label" style="margin-bottom:4px;">Opponent (optional)</div>
-        <input class="text-input" placeholder="e.g. Eastern" maxlength="60" value="${escHtml(s.opponent || '')}" oninput="onGameOpponentInput(this.value)"></div>` : ''}
+        <input class="text-input" placeholder="e.g. Eastern" maxlength="60" value="${escHtml(s.opponent || '')}" list="opponent-list" autocomplete="off" oninput="onGameOpponentInput(this.value)">${opponentDatalist()}</div>` : ''}
       <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="closeSessionSheet();endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
       ${state.sessionDiscardArmed ? `
         <p class="delete-warn">Discard this ${game ? 'game' : 'pen'}? ${n ? `The ${what} charted so far are deleted from this device.` : ''} This can't be undone.</p>
@@ -9081,6 +9171,7 @@ function renderSessionView(){
   // Bullpen path below this point is completely unchanged -- acceptance
   // check 1 is that it's byte-for-byte today's behavior.
   if(!state.activeSession.kind) return renderSessionKindChooser();
+  if(state.activeSession.startQ) return renderStartQuestions(p);   // Joel, Oct 12
   if(state.activeSession.kind === 'game') return renderGameSessionView(p);
   const pitches = state.activeSession.pitches;
   const stats = sessionStats(pitches);

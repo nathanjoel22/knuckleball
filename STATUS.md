@@ -15,6 +15,21 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-12 · no packet (session start questions, bigger mode buttons) · **staging**
+- **Branch / cache:** `live-game-oct12` · `kb-shell-v211`. No database change. The live site is still v195.
+- **Built:**
+  - Bullpen / Live Game buttons are bigger: 24 px type, 72 px tall, a size variant of the tray.
+  - After picking, the start questions:
+    - "Will you be using a radar gun today?" (default from the profile).
+    - Bullpen only: "Would you like to use relative accuracy?" No turns it off for this pen; Yes scores against the zones painted in the profile.
+    - Live Game: an optional opponent box with a drop-down of saved opponents.
+  - The answers belong to the session (they never change the profile). A radar answer holds for the whole session.
+  - Opponents are saved on the device per team, newest first; when online the list is refreshed from the team's saved games. Every opponent box (start, phone sheet, iPad/laptop) offers the same list.
+- **Deviations / choices:**
+  - Relative accuracy isn't asked for Live Game (no target there, so accuracy isn't scored).
+  - The opponent list uses the browser's own type-ahead (`datalist`; iOS Safari 12.2+).
+- **Open items:** Joel's check on phone and iPad.
+
 ## 2026-10-12 · no packet (Live Game: results under the chart, runner moves, ponytail) · **staging**
 - **Branch / cache:** `live-game-oct12` (on top of `u13-segmented-buttons`) · `kb-shell-v210` (v210: the runner-move Why buttons wrap, two to a row on phones; v209: on a hit or an error the field can't turn back over until the batter is placed; v207: the Live Game status bar stays on one line at 320/375/390; v204/v206/v208: the ponytail attached to the back of the helmet, tip curling up, a little space above the shoulder; v205: the result letters at 32 px with no words under them -- screen readers still hear each word). `send-session-report` deployed to staging only. No database change: every event type was already allowed. The live site is still v195.
 - **Built** (from Joel's Oct 12 list and his answers):

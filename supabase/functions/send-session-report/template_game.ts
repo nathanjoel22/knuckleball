@@ -414,7 +414,9 @@ function renderGameTrends(p: GameReportPayload): string {
 // One row per no-pitch event (inning · count before · event), sport labels,
 // and a total line. An illegal pitch's own ball rides on its row. Omitted
 // entirely when there are none, so those reports are byte-identical.
-const OTHER_EVENT_TYPES = ['intentional_walk', 'balk', 'auto_ball', 'auto_strike', 'illegal_pitch', 'tiebreak_runner']
+// Joel, Oct 12: runner moves between pitches (dragged or tapped on the field) are listed too.
+const OTHER_EVENT_TYPES = ['intentional_walk', 'balk', 'auto_ball', 'auto_strike', 'illegal_pitch', 'tiebreak_runner',
+  'stolen_base', 'caught_stealing', 'pickoff', 'wild_pitch', 'passed_ball', 'other']
 function otherEventLabel(e: GameEvent, softball: boolean): string {
   switch (e.eventType) {
     case 'intentional_walk': return 'IBB'
@@ -423,6 +425,12 @@ function otherEventLabel(e: GameEvent, softball: boolean): string {
     case 'auto_strike': return 'Auto strike'
     case 'illegal_pitch': return (Array.isArray(e.runnerAdvances) && e.runnerAdvances.length) ? 'Illegal pitch (ADV)' : 'Illegal pitch (no ADV)'
     case 'tiebreak_runner': return 'Tiebreak runner on 2B'
+    case 'stolen_base': return 'Stolen base'
+    case 'caught_stealing': return 'Caught stealing'
+    case 'pickoff': return 'Pickoff'
+    case 'wild_pitch': return 'Wild pitch'
+    case 'passed_ball': return 'Passed ball'
+    case 'other': return 'Runner moved (other)'
     default: return e.eventType
   }
 }

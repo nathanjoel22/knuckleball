@@ -1518,6 +1518,29 @@
     .g5-flip-in .g5-front, .g5-flip-in .g5-back, .g5-flip-out .g5-front, .g5-flip-out .g5-back, .g5-choice, .g5-pick, .g5-shade, .g5-zone-shade{ animation:none !important; }
   }
   .g5-below{ margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+  /* Joel, Oct 12: what happened, under the chart -- letters with a small word; a backwards K for looking */
+  .g5-results{ display:flex; gap:6px; margin-top:8px; }
+  .g5-res{ flex:1 1 0; min-width:0; flex-direction:column; gap:1px; padding:0 2px; min-height:52px; }
+  .g5-res-l{ font-size:20px; font-weight:800; line-height:1; }
+  .g5-kback{ display:inline-block; transform:scaleX(-1); }
+  .g5-res-w{ font-size:10px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; line-height:1.1; }
+  .g5-res-wide{ font-size:16px; }
+  .g5-res-back{ flex:0 0 auto; padding:0 8px; }
+  /* runners on the field: tap or drag, then Safe / Out (and why, between pitches) */
+  .g5-move{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+  .g5-move-btns{ display:flex; gap:6px; flex-wrap:wrap; }
+  .g5-move-btns .g5-act{ flex:1 1 0; }
+  .g5-why .g5-act{ flex:1 1 30%; }
+  .g5-runner{ display:block; flex:none; width:24px; height:24px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.35), inset 0 0 0 4px var(--btn-accent); }
+  .g5-batter{ width:26px; height:26px; }
+  .g5-cell.g5-home .g5-in{ display:flex; align-items:center; justify-content:center; width:100%; height:100%; }
+  .gg-field[data-step="runners"] .g5-cell, .gg-field[data-step="bases"] .g5-cell.g5-drag{ touch-action:none; }
+  .g5-cell.g5-drag{ cursor:grab; }
+  .g5-cell.g5-dragging{ opacity:.45; }
+  .g5-cell.g5-over, .g5-cell.g5-target{ box-shadow:inset 0 0 0 3px #fff; background:rgba(255,255,255,.28) !important; }
+  .g5-cell.g5-sel{ box-shadow:inset 0 0 0 3px var(--gg-gold); }
+  .g5-drag-token{ position:fixed; left:0; top:0; z-index:200; width:36px; height:36px; border-radius:50%; pointer-events:none;
+    background:#fff; box-shadow:0 6px 16px rgba(0,0,0,.35), inset 0 0 0 4px var(--btn-accent); }
   .g5-q{ font-weight:700; font-size:14px; }
   .g5-qbtns{ width:100%; }
   /* Velocity in the chart (Joel, Oct 6): the bar over row 4, Reset + Next pitch over row 5 --
@@ -5949,12 +5972,15 @@ function insideColumnOnScreenLeft(chartingPerspective, batterSide){
 // before; only the markup/CSS changed here, not that decision. The pill
 // label is the actual state indicator (a silhouette alone is ambiguous
 // between handedness and viewpoint), never the figure.
+// Joel, Oct 12: the softball batter wears a ponytail (out the back of the helmet, down onto the shoulder);
+// the whole figure mirrors for a left-handed batter, so it flips with it. Baseball's batter is unchanged.
+const KB_PONYTAIL = '<path d="M77 93 C80 92 83 93 85 96 C93 98 100 105 101 113 C102 119 100 125 97 130 C96 124 94 119 90 116 L77 115 Z"/>';
 function renderBatterSilhouette(batterSide, onScreenLeft, onclickJs = 'toggleBatterSide()'){
   const label = batterSide === 'R' ? 'RHB' : 'LHB';
   const otherHand = batterSide === 'R' ? 'left' : 'right';
   const thisHand = batterSide === 'R' ? 'right' : 'left';
   return `<button type="button" class="kb-batter ${onScreenLeft ? 'is-left' : 'is-right'}" onclick="${onclickJs}" aria-label="Pitching to a ${thisHand}-handed batter. Tap to switch to ${otherHand}-handed.">
-    <svg class="kb-batter__fig" viewBox="0 0 167 504" aria-hidden="true" focusable="false">
+    <svg class="kb-batter__fig" viewBox="0 0 167 504" aria-hidden="true" focusable="false">${currentSport() === 'softball' ? KB_PONYTAIL : ''}
       <path d="M48.8 503C44.1 500.1 48.8 492 55.2 492C59.1 492 69.5 486.3 71.1 483.3C71.8 482 73.9 480 75.7 478.9C79.2 476.7 80.1 474.6 79.7 469C79.5 466.1 79.9 465.4 81.7 465.2C86 464.6 86.3 462.8 84 452.3C81.7 441.7 78.8 431.4 76 423.5C75 420.8 73.7 416 73 413C72.4 410 71.4 406.1 70.9 404.5C70.4 402.9 68.8 397.5 67.4 392.7C64.7 383.7 61 379 56.7 379C54.8 379 40.4 371.6 37.8 369.3C33.8 365.7 27.8 353.9 27.8 349.4C27.8 340.6 61.5 290.3 75.9 277.5C86 268.7 89.1 260.2 85.3 252.2C83.3 247.8 74 233.5 68.6 226.5C54.5 207.8 47.5 197.8 45.4 193.3C42.8 187.4 42.1 187.1 39.5 190C38.3 191.3 36.4 192 34 192C31.9 192 27.8 193.3 24.4 195C15.8 199.4 7.7 198.9 2.3 193.8C-1.5 190.3 -1 180.3 3.1 175.9C7.9 170.8 9 168.8 9 165.5C9 163.8 9.9 160.9 11 159C17.3 147.9 17.2 148.3 17.1 136.5C16.9 124.5 18 121.8 24.3 118.3C25.9 117.5 26.1 116.7 25.3 112.9L24.4 108.5L19.7 108.5C13.6 108.5 13.5 107.4 19 103.5L23.5 100.3L24 89.7C24.7 76.5 25.3 75.7 39.3 70.1C45.2 67.7 58.6 69.2 66.1 73.1C72.4 76.4 71.1 77.6 103.4 39C111.8 29 122.5 16.9 133.4 5.3C138.8 -0.6 141.2 -1.2 145.4 2.1C151.6 7 151.4 7.3 113.7 45.1C74.2 84.7 75.4 83.2 77.1 89.2C77.8 91.6 78.3 98.1 78.4 103.7C78.5 113.3 78.6 114 80.5 114.1C81.6 114.2 88.2 114.1 95.1 114C109.3 113.8 112.1 114.6 116.3 120.2C119.8 124.9 120.4 127.3 120.5 138C120.6 145.4 121.1 148.5 122.8 152.3C124 155 125.6 161.9 126.5 168.8C128.5 184.1 135.6 212.4 138.5 217C139.8 219 143.5 223.8 146.7 227.6C149.9 231.4 153.8 236.3 155.3 238.5C156.7 240.7 159.2 243.8 160.6 245.5C165.6 251.2 167 255.6 167 266.5C167 283.8 164.5 290.2 151.2 306.3C142.5 316.9 134.4 328 125 342C118.5 351.7 111.8 360.7 104.8 369.2C100.1 374.9 100.1 375.4 106.5 382.8C116.4 394.2 122.8 399.3 126.5 398.7C129.1 398.3 130.9 398.8 134.6 401.3C137.2 403.1 139.8 404.8 140.4 405.1C142 406.1 150.7 408 153.4 408C156.9 408 161 411.7 161 414.9C161 418.3 152.8 435.3 150.3 437.1C147 439.5 145 443.3 145 447.1C145 451.8 138.5 465.6 132.6 473.8C128.5 479.3 127.6 480 124.6 480C119.3 480 118.5 478.2 118.4 465.1C118.3 441.8 113.9 427.9 107.5 430.4C103.9 431.7 107.3 468.1 111.5 473.1C113 475 113.9 477.7 114.3 482.4C114.6 486 115.5 490.8 116.1 492.9C118.8 502.1 114.9 504.5 98.5 503.6C85.5 502.9 87.1 502.9 67.5 503.5C56.3 503.9 49.9 503.7 48.8 503Z"></path>
     </svg>
     <span class="kb-batter__label">vs ${label}</span>
@@ -6113,9 +6139,8 @@ window.handleGameZoneTap = async function(row, col){
   state.activeSession.gamePendingHitType = null;
   state.activeSession.fieldPlay = null;
   state.veloTargetIdx = null;
-  // G5: the chart rolls 45° left into the diamond; the outcome is tapped there.
+  // G5 (Joel, Oct 12): what happened is asked under the chart; the chart stays up.
   state.activeSession.g5 = { step: 'what', addOuts: 0 };
-  state.g5Anim = 'in';
   await storSet(draftKey(), state.activeSession);
   render();
 };
@@ -6623,7 +6648,7 @@ window.recordGameResult = async function(result, extra){
 // pitches already used before events existed.
 // G5: New batter / New inning drop a play in progress (nothing of it was saved yet).
 function g5Cancel(s){
-  if(s.g5){ state.g5LastFace = g5FieldFace(); state.g5Anim = 'out'; }
+  g5FlipOut();
   s.g5 = null; s.gamePendingPitch = null; s.gameDot = null; s.gameVeloIdx = null;
   state.veloTargetIdx = null;
 }
@@ -6672,7 +6697,7 @@ window.undoLastGameAction = async function(){
   s.adjustRunners = null;
   // G1b-r2a: nothing left pending to hold the panel open for.
   s.panelOpen = false;
-  if(s.g5){ state.g5LastFace = g5FieldFace(); state.g5Anim = 'out'; }
+  g5FlipOut();
   s.g5 = null; s.gameDot = null; s.gameVeloIdx = null;   // G5
   state.veloTargetIdx = null;
   await storSet(draftKey(), s);
@@ -6914,8 +6939,8 @@ function renderRunnerDiamond(){
   const s = state.activeSession;
   const occ = n => s.runners[n] ? 'var(--game-gold)' : 'transparent';
   const strokeFor = n => s.runners[n] ? 'var(--game-gold)' : 'var(--surface)';
-  const canAdjust = !s.gamePendingPitch && !s.fieldPlay && (s.runners[1] || s.runners[2] || s.runners[3]);
-  return `<button class="runner-diamond-btn" ${canAdjust ? '' : 'disabled'} onclick="openAdjustRunners()" title="Adjust runners">
+  const canAdjust = !s.gamePendingPitch && !s.fieldPlay && !s.g5 && (s.runners[1] || s.runners[2] || s.runners[3]);
+  return `<button class="runner-diamond-btn" ${canAdjust ? '' : 'disabled'} onclick="g5OpenRunners()" title="Move runners (steal, wild pitch, pickoff...)" aria-label="Move runners">
     <svg viewBox="0 0 40 40" width="32" height="32" role="img" aria-label="Base runners">
       <rect x="14" y="4" width="10" height="10" transform="rotate(45 19 9)" fill="${occ(2)}" stroke="${strokeFor(2)}" stroke-width="1.5"/>
       <rect x="4" y="14" width="10" height="10" transform="rotate(45 9 19)" fill="${occ(3)}" stroke="${strokeFor(3)}" stroke-width="1.5"/>
@@ -8026,7 +8051,13 @@ function g5Step(){
   if(s.gameVeloIdx !== null && s.gameVeloIdx !== undefined && s.pitches[s.gameVeloIdx] && ggRadarOn()) return 'velo';
   return null;
 }
-function g5OnDiamond(){ const s = state.activeSession; return !!(s && s.kind === 'game' && s.g5); }
+// Joel, Oct 12: the first questions after a pitch (what happened; foul tip or foul out) are buttons under the
+// chart -- the chart stays up. Only In Play, a Foul Out's location, the runners question and a runner move flip
+// it over to the field.
+const G5_CHART_STEPS = { what: 1, foul: 1 };
+function g5OnDiamond(){ const s = state.activeSession; return !!(s && s.kind === 'game' && s.g5 && !G5_CHART_STEPS[s.g5.step]); }
+function g5FlipIn(){ state.g5Anim = 'in'; }
+function g5FlipOut(){ if(g5OnDiamond()){ state.g5LastFace = g5FieldFace(); state.g5Anim = 'out'; } }
 // Outs the play would leave on the board -- O and a strikeout count one; every + Add out tap one more.
 function g5ProjectedOuts(g){
   const s = state.activeSession;
@@ -8043,13 +8074,14 @@ async function g5Save(){ await storSet(draftKey(), state.activeSession); render(
 window.g5What = async function(code){
   const s = state.activeSession, g = s.g5;
   if(!g || g.step !== 'what') return;
-  if(code === 'inplay'){ g.step = 'hoe'; return g5Save(); }
-  if(code === 'foul'){ g.step = 'foul'; return g5Save(); }   // Foul Tip or Foul Out?
+  if(code === 'inplay'){ g.step = 'hoe'; g5FlipIn(); return g5Save(); }   // only In Play turns the chart over
+  if(code === 'foul'){ g.step = 'foul'; return g5Save(); }   // Foul Tip or Foul Out? (still under the chart)
   const result = G5_RESULT[code];
   if(!result) return;
   // Ball four: the runners question first (pre-filled with the forced advances), then save.
   if(result === 'ball' && s.balls === 3 && g5ProjectedOuts(g) < 3){
     g.walk = true; g.step = 'bases'; g.bases = g5WalkMask(s.runners);
+    g5FlipIn();   // the runners question is on the field
     return g5Save();
   }
   return g5Commit(result);
@@ -8061,6 +8093,7 @@ window.g5Foul = async function(kind){
   if(kind === 'out'){
     if(state.activeSession.outs + 1 + (g.addOuts || 0) > 3) return;
     g.step = 'foulout';
+    g5FlipIn();   // Joel, Oct 12: a foul out turns the chart over to pick where it was caught
     return g5Save();
   }
 };
@@ -8121,6 +8154,7 @@ window.g5Base = async function(box){
   const g = state.activeSession.g5;
   if(!g || g.step !== 'bases' || !G5_BASE_BOX[box]) return;
   g.bases = (g.bases || 0) ^ G5_BASE_BOX[box];
+  if(g.bases & G5_BASE_BOX[box]) g.batterPlaced = true;   // a base tapped on: the batter is placed (no token left at home)
   return g5Save();
 };
 window.g5Next = async function(){
@@ -8156,7 +8190,8 @@ window.g5AddCount = async function(kind){
   const s = state.activeSession;
   if(!s || s.kind !== 'game') return;
   const g = s.g5, pending = s.gamePendingPitch, dot = s.gameDot;
-  const face = g ? g5FieldFace() : null;
+  const onField = g5OnDiamond();
+  const face = onField ? g5FieldFace() : null;
   const ab = s.atBatIndex, inning = s.inning;
   if(g && g.walkEvent) return;   // already answering a walk's runners question
   await commitNoPitchEvent(kind === 'ball' ? 'auto_ball' : 'auto_strike', null, true);
@@ -8166,10 +8201,10 @@ window.g5AddCount = async function(kind){
     // (pre-filled with them); Next goes back to the chart. No pitch, so no velocity step.
     s.gamePendingPitch = null; s.gameDot = null; s.gameVeloIdx = null; state.veloTargetIdx = null;
     s.g5 = { step: 'bases', walkEvent: true, addOuts: 0, bases: runnersBitmask(s.runners) };
-    if(!g) state.g5Anim = 'in';
+    if(!onField) state.g5Anim = 'in';
   } else if(g){
     if(!ended){ s.g5 = g; s.gamePendingPitch = pending; s.gameDot = dot; }
-    else { s.g5 = null; s.gameDot = null; state.g5LastFace = face; state.g5Anim = 'out'; }
+    else { s.g5 = null; s.gameDot = null; if(onField){ state.g5LastFace = face; state.g5Anim = 'out'; } }
   } else {
     s.gameVeloIdx = null; s.gameDot = null; state.veloTargetIdx = null;
   }
@@ -8181,13 +8216,14 @@ window.g5Back = async function(){
   if(!g) return;
   switch(g.step){
     case 'what':
-      state.g5LastFace = g5FieldFace();
-      s.g5 = null; s.gamePendingPitch = null; s.gameDot = null;
-      state.g5Anim = 'out';
+      s.g5 = null; s.gamePendingPitch = null; s.gameDot = null;   // the location is cleared; the chart was up all along
       return g5Save();
-    case 'hoe': g.step = 'what'; break;
+    case 'hoe': g5FlipOut(); g.step = 'what'; break;
     case 'foul': g.step = 'what'; break;
-    case 'foulout': g.step = 'foul'; break;
+    case 'foulout': g5FlipOut(); g.step = 'foul'; break;
+    case 'runners':
+      if(g.move){ g.move = null; break; }   // first back out of a half-made move
+      g5FlipOut(); s.g5 = null; return g5Save();
     case 'how': g.entry = null; g.step = 'hoe'; break;
     case 'where':
       if(g.zone && !G5_AUTO_ZONE[g.bbType]){ g.zone = null; break; }   // first back out of the IF / OF that was tapped
@@ -8195,7 +8231,7 @@ window.g5Back = async function(){
     case 'hr': g.step = 'where'; break;
     case 'bases':
       if(g.walkEvent){ return g5CloseWalkEvent(); }   // the walk stands; Back keeps the forced runners
-      if(g.walk){ g.walk = false; g.bases = null; g.step = 'what'; }
+      if(g.walk){ g5FlipOut(); g.walk = false; g.bases = null; g.step = 'what'; }
       else if(g.foulOut){ g.foulOut = false; g.entry = null; g.box = null; g.bases = null; g.step = 'foulout'; }
       else { g.box = null; g.field = null; g.bases = null; g.step = 'where'; }
       break;
@@ -8215,9 +8251,8 @@ async function g5Commit(result){
     if(g.hr){ extra.hitType = 'HR'; extra.runnersAfter = 0; }   // everyone scores: the bases are empty after it
   }
   if(g.step === 'bases' && g5ProjectedOuts(g) < 3) extra.runnersAfter = g.bases || 0;
-  state.g5LastFace = g5FieldFace();
+  g5FlipOut();   // turns the field back over only if it was up (ball / strike / foul tip never left the chart)
   s.g5 = null;
-  state.g5Anim = 'out';
   return recordGameResult(result, extra);
 }
 // recordGameResult's G5 tail: extra outs, the tapped bases, velocity or reset.
@@ -8260,7 +8295,7 @@ window.g5NextPitch = async function(){
 function g5FieldSvg(){
   const soft = currentSport() === 'softball';
   const g = state.activeSession && state.activeSession.g5;
-  const occ = (g && g.step === 'bases') ? (g.bases || 0) : runnersBitmask(state.activeSession ? state.activeSession.runners : {});
+  const occ = (g && g.step === 'bases') ? (g.bases || 0) : runnersBitmask(state.activeSession ? state.activeSession.runners : {});   // 'runners': the bases as they stand
   const base = (x, y, bit) => `<rect x="${x - 11}" y="${y - 11}" width="22" height="22" rx="2" transform="rotate(45 ${x} ${y})" class="g5-base${occ & bit ? ' on' : ''}"/>`;
   // Joel, Oct 8 (both sports, from his ballpark photo): mower stripes parallel to each foul line, meeting in a V at
   // center field -- fair grass light #8CBA5A / #6FA548, foul ground the darker #60963C / #548A35 -- and a crosshatch
@@ -8312,11 +8347,18 @@ function g5CellInner(step, box){
     const clip = G5_FAIR_GROUND[box];
     return btn(`<span class="g5-shade"${clip ? ` style="clip-path:${clip};-webkit-clip-path:${clip};"` : ''}></span>`, `g5Where(${box})`, 'g5-foulpick');
   }
+  if(step === 'runners'){
+    const occ = runnersBitmask(s.runners), bit = G5_BASE_BOX[box];
+    if(bit && (occ & bit)) return btn(`<span class="g5-runner" aria-hidden="true"></span><span class="g5-baselbl">${G5_BASE_LABEL[bit]}</span>`, `g5RunnerTap(${box})`, 'g5-pick on g5-drag' + (g.sel === box ? ' g5-sel' : ''));
+    if(g.sel && (bit || box === G5_HOME_BOX)) return btn(box === G5_HOME_BOX ? '<span class="g5-baselbl">Home</span>' : '', `g5RunnerTap(${box})`, 'g5-pick g5-target');
+    return null;
+  }
+  if(step === 'bases' && box === G5_HOME_BOX && g5BatterCanDrag(g)) return { inner: '<span class="g5-runner g5-batter" aria-hidden="true"></span>', onclick: null, cls: 'g5-drag g5-home' };
   if(step === 'bases'){
     if(g.box === box && !g.walk) return { inner: G5_BALL_SVG, onclick: null, cls: 'g5-marked' };
     if(G5_BASE_BOX[box]){
       const bit = G5_BASE_BOX[box], on = !!((g.bases || 0) & bit);
-      return btn(on ? `<span class="g5-baselbl">${G5_BASE_LABEL[bit]}</span>` : '', `g5Base(${box})`, 'g5-pick' + (on ? ' on' : ''));
+      return btn(on ? `<span class="g5-baselbl">${G5_BASE_LABEL[bit]}</span>` : '', `g5Base(${box})`, 'g5-pick' + (on ? ' on g5-drag' : ''));
     }
     if(box === G5_NEXT_BOX && !ggRadarOn()) return btn('<span class="g5-np">Next pitch</span>', 'g5Next()', 'g5-choice g5-nextbox');
   }
@@ -8324,11 +8366,12 @@ function g5CellInner(step, box){
 }
 // Phones: the question sits between + Add out and ‹ Back, so it gets a short form.
 const G5_SHORT_CAPTION = { what: 'What happened?', foul: 'Tip or out?', foulout: 'Where caught?', hoe: 'Hit, out or error?',
-  how: 'Type of contact?', where: 'Where fielded?', hr: 'Where did it leave?', bases: 'Runners on base' };
+  how: 'Type of contact?', where: 'Where fielded?', hr: 'Where did it leave?', bases: 'Runners on base', runners: 'Move a runner' };
 function g5Caption(step){
   return { what: 'What happened?', foul: 'Foul tip or foul out?', foulout: 'Select where the foul ball was caught',
     hoe: 'In play — hit, out or error?', how: 'What type of contact?',
-    where: 'Select Ball in Play Location', hr: 'Home run — where did it leave the park?', bases: 'Select current bases for baserunners' }[step] || '';
+    where: 'Select Ball in Play Location', hr: 'Home run — where did it leave the park?', bases: 'Select current bases for baserunners',
+    runners: 'Drag a runner to a base, or tap a runner then a base' }[step] || '';
 }
 // The field: the back of the chart. Same square, same 25 boxes.
 function g5FieldFace(){
@@ -8352,6 +8395,10 @@ function g5FieldInner(){
 // + Add out and ‹ Back (and Next on the bases question, radar on) sit under the field.
 function g5FieldActions(){
   const g = state.activeSession.g5;
+  if(g.move) return g5MovePrompt(g);
+  if(g.step === 'runners'){
+    return `<div class="g5-actions"><span class="g5-act-gap"></span><button type="button" class="btn btn-primary btn-sm g5-act" onclick="g5RunnersDone()">Done ›</button></div>`;
+  }
   const added = g.addOuts ? ` · ${g.addOuts}` : '';
   const next = (g.step === 'bases' && ggRadarOn()) ? `<button type="button" class="btn btn-primary btn-sm g5-act g5-act-next" onclick="g5Next()">Next ›</button>` : '';
   return `<div class="g5-actions">
@@ -8362,6 +8409,150 @@ function g5FieldActions(){
     <button type="button" class="btn btn-secondary btn-sm g5-act" onclick="g5Back()">‹ Back</button>
   </div>`;
 }
+/* ---------- Runners on the field (Joel, Oct 12) ----------
+   Drag a runner to another base or home -- as eager as the coach dock: it moves the moment the finger does --
+   or tap a runner, then a base. Then "Safe or Out?". Between pitches (the status-bar diamond opens the field)
+   it also asks why: stolen base, wild pitch, passed ball, balk / illegal pitch or other when safe; caught
+   stealing, pickoff or other when out -- saved as the game_events the app already has (no database change).
+   On the runners question after a play or a walk there's no "why": Safe moves the runner, Out adds the out. */
+const G5_HOME_BOX = 15;
+const G5_BOX_BASE = { 23: 1, 25: 2, 17: 3, 15: 'home' };
+const G5_WHY = {
+  safe: [['stolen_base', 'Stolen base'], ['wild_pitch', 'Wild pitch'], ['passed_ball', 'Passed ball'], ['balk', 'Balk'], ['other', 'Other']],
+  out: [['caught_stealing', 'Caught stealing'], ['pickoff', 'Pickoff'], ['other', 'Other']]
+};
+function g5BatterCanDrag(g){ return g.step === 'bases' && !g.walk && !g.walkEvent && !g.foulOut && !g.batterPlaced; }
+function g5BaseName(b){ return b === 'home' ? 'home' : b === 'batter' ? 'the batter' : ['', '1B', '2B', '3B'][b]; }
+window.g5OpenRunners = async function(){
+  const s = state.activeSession;
+  if(!s || s.kind !== 'game' || s.g5 || s.gamePendingPitch || !gameHasRunners(s)) return;
+  s.g5 = { step: 'runners', addOuts: 0, sel: null, move: null };
+  g5FlipIn();
+  return g5Save();
+};
+window.g5RunnersDone = async function(){
+  const s = state.activeSession;
+  if(!s.g5 || s.g5.step !== 'runners') return;
+  g5FlipOut(); s.g5 = null;
+  return g5Save();
+};
+// Tap a runner, then a base (between pitches).
+window.g5RunnerTap = async function(box){
+  const s = state.activeSession, g = s.g5;
+  if(!g || g.step !== 'runners' || g.move) return;
+  const b = G5_BOX_BASE[box];
+  if(!g.sel){ if(typeof b === 'number' && s.runners[b]) { g.sel = box; return g5Save(); } return; }
+  if(box === g.sel){ g.sel = null; return g5Save(); }
+  return g5Propose(G5_BOX_BASE[g.sel], b);
+};
+// A move from one base (or the batter at home) to another base or home: ask Safe or Out.
+function g5Propose(from, to){
+  const s = state.activeSession, g = s.g5;
+  if(!g || to === undefined || from === to) return;
+  const occ = g.step === 'bases' ? runnersFromBitmask(g.bases || 0) : s.runners;
+  if(typeof to === 'number' && occ[to]) return;   // that base is taken
+  g.sel = null;
+  g.move = { from, to, result: null };
+  return g5Save();
+}
+function g5MovePrompt(g){
+  const m = g.move, soft = currentSport() === 'softball';
+  const what = `${m.from === 'batter' ? 'The batter' : 'Runner on ' + g5BaseName(m.from)} to ${g5BaseName(m.to)}`;
+  if(!m.result){
+    return `<div class="g5-move"><div class="g5-q">${what} — safe or out?</div>
+      <div class="g5-move-btns"><button type="button" class="btn btn-primary g5-act" onclick="g5MoveResult('safe')">Safe</button>
+      <button type="button" class="btn btn-danger g5-act" onclick="g5MoveResult('out')">Out</button>
+      <button type="button" class="btn btn-tertiary btn-sm g5-act" onclick="g5MoveCancel()">Cancel</button></div></div>`;
+  }
+  const why = G5_WHY[m.result].map(([k, l]) => `<button type="button" class="btn btn-secondary btn-sm g5-act" onclick="g5MoveWhy('${k}')">${k === 'balk' && soft ? 'Illegal pitch' : l}</button>`).join('');
+  return `<div class="g5-move"><div class="g5-q">${what} — ${m.result}. Why?</div><div class="g5-move-btns g5-why">${why}
+    <button type="button" class="btn btn-tertiary btn-sm g5-act" onclick="g5MoveCancel()">Cancel</button></div></div>`;
+}
+window.g5MoveCancel = async function(){ const g = state.activeSession.g5; if(g){ g.move = null; g.sel = null; } return g5Save(); };
+window.g5MoveResult = async function(res){
+  const s = state.activeSession, g = s.g5;
+  if(!g || !g.move || g.move.result) return;
+  const m = g.move;
+  if(g.step === 'bases'){   // the runners question after a play or a walk: no "why"
+    let bases = g.bases || 0;
+    if(typeof m.from === 'number') bases &= ~(1 << (m.from - 1));
+    if(m.from === 'batter') g.batterPlaced = true;
+    if(res === 'safe' && typeof m.to === 'number') bases |= (1 << (m.to - 1));
+    g.bases = bases; g.move = null;
+    if(res === 'out') return g5AddOut();   // counts the out (and ends the half-inning at three)
+    return g5Save();
+  }
+  m.result = res;   // between pitches: then why
+  return g5Save();
+};
+window.g5MoveWhy = async function(reason){
+  const s = state.activeSession, g = s.g5;
+  if(!g || g.step !== 'runners' || !g.move || !g.move.result) return;
+  const m = g.move;
+  g.move = null;
+  if(reason === 'balk'){
+    // A balk (softball: an illegal pitch) moves every runner up a base -- the app's own balk / illegal-pitch save.
+    if(currentSport() === 'softball') await commitIllegalPitch(true); else await commitNoPitchEvent('balk');
+  } else {
+    s.adjustRunners = { step: 'reason', runner: m.from, destination: m.result === 'out' ? 'out' : (m.to === 'home' ? 'home' : String(m.to)) };
+    await commitAdjustEvent(reason);
+  }
+  // still on the field for the next move -- unless the bases are now empty (a third out empties them too)
+  if(state.activeSession.g5 && !gameHasRunners(state.activeSession)){ g5FlipOut(); state.activeSession.g5 = null; }
+  return g5Save();
+};
+// Dragging (both the between-pitch field and the runners question). Pointer events with capture; it starts
+// the moment the finger moves 6 px, like the coach dock, and the page doesn't scroll under it.
+let g5Drag = null, g5DragAt = 0;
+document.addEventListener('pointerdown', e => {
+  const cell = e.target && e.target.closest ? e.target.closest('.gg-field .g5-cell.g5-drag') : null;
+  const s = state.activeSession, g = s && s.g5;
+  if(!cell || !g || (g.step !== 'runners' && g.step !== 'bases') || g.move) return;
+  const box = Number(cell.getAttribute('data-box'));
+  const from = box === G5_HOME_BOX ? 'batter' : G5_BOX_BASE[box];
+  if(from === undefined) return;
+  g5Drag = { from, box, x0: e.clientX, y0: e.clientY, token: null, id: e.pointerId, cell };
+  try{ cell.setPointerCapture(e.pointerId); }catch(err){}
+});
+document.addEventListener('pointermove', e => {
+  const d = g5Drag;
+  if(!d || e.pointerId !== d.id) return;
+  if(!d.token){
+    if(Math.abs(e.clientX - d.x0) < 6 && Math.abs(e.clientY - d.y0) < 6) return;
+    d.token = document.createElement('div');
+    d.token.className = 'g5-drag-token';
+    document.body.appendChild(d.token);
+    d.cell.classList.add('g5-dragging');
+  }
+  d.token.style.transform = `translate(${e.clientX - 18}px, ${e.clientY - 18}px)`;
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const tc = under && under.closest ? under.closest('.gg-field .g5-cell') : null;
+  document.querySelectorAll('.g5-cell.g5-over').forEach(c => c.classList.remove('g5-over'));
+  if(tc && G5_BOX_BASE[Number(tc.getAttribute('data-box'))] !== undefined && tc !== d.cell) tc.classList.add('g5-over');
+});
+function g5EndDrag(e, drop){
+  const d = g5Drag;
+  if(!d || e.pointerId !== d.id) return;
+  g5Drag = null;
+  document.querySelectorAll('.g5-cell.g5-over').forEach(c => c.classList.remove('g5-over'));
+  if(d.cell) d.cell.classList.remove('g5-dragging');
+  if(!d.token) return;   // no movement: an ordinary tap
+  d.token.remove();
+  g5DragAt = Date.now();
+  if(!drop) return;
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const tc = under && under.closest ? under.closest('.gg-field .g5-cell') : null;
+  const to = tc ? G5_BOX_BASE[Number(tc.getAttribute('data-box'))] : undefined;
+  if(to === undefined || to === d.from || (d.from === 'batter' && to === 'home')) return;
+  g5Propose(d.from, to);
+}
+document.addEventListener('pointerup', e => g5EndDrag(e, true));
+document.addEventListener('pointercancel', e => g5EndDrag(e, false));
+// The click that follows a drag isn't a tap on the base it started from.
+document.addEventListener('click', e => {
+  if(Date.now() - g5DragAt < 400 && e.target && e.target.closest && e.target.closest('.gg-field')){ e.stopPropagation(); e.preventDefault(); }
+}, true);
+
 // The card flip (Joel, Oct 7): the chart turns over to the field and back, like a card. The flipping
 // draw holds both faces; the draws after it hold only the face that's up.
 function g5Card(face, flip, chartHtml){
@@ -8378,8 +8569,25 @@ function g5VeloRows(){
     <div class="g5-next-row"><button type="button" class="btn btn-secondary btn-sm g5-reset" onclick="recordGameVelo(null)">Reset</button>
     <button type="button" class="btn btn-primary g5-nextpitch" onclick="g5NextPitch()">Next pitch ›</button></div>`;
 }
-// Under the square chart: the extra-inning question.
+// Joel, Oct 12: what happened, as letters (a small word under each), under the chart: K swinging, a backwards K
+// looking (the scorebook's called third strike), B ball, F foul, IP in play. Foul then asks tip or out here too.
+const G5_RESULT_BTNS = [['swing', 'K', 'Swing', false], ['looking', 'K', 'Looking', true], ['ball', 'B', 'Ball', false], ['foul', 'F', 'Foul', false], ['inplay', 'IP', 'In Play', false]];
+function g5ResultRow(step){
+  const back = `<button type="button" class="btn btn-tertiary btn-sm g5-res-back" onclick="g5Back()" aria-label="Back: clear the location">‹ Back</button>`;
+  if(step === 'what'){
+    return `<div class="g5-results" role="group" aria-label="What happened?">${G5_RESULT_BTNS.map(([code, letter, word, mirror]) =>
+      `<button type="button" class="btn btn-secondary g5-res" onclick="g5What('${code}')" aria-label="${word === 'Swing' ? 'Strike swinging' : word === 'Looking' ? 'Strike looking' : word}"><span class="g5-res-l${mirror ? ' g5-kback' : ''}" aria-hidden="true">${letter}</span><span class="g5-res-w" aria-hidden="true">${word}</span></button>`).join('')}${back}</div>`;
+  }
+  if(step === 'foul'){
+    return `<div class="g5-results" role="group" aria-label="Foul tip or foul out?">
+      <button type="button" class="btn btn-secondary g5-res g5-res-wide" onclick="g5Foul('tip')">Foul Tip</button>
+      <button type="button" class="btn btn-secondary g5-res g5-res-wide" onclick="g5Foul('out')">Foul Out</button>${back}</div>`;
+  }
+  return '';
+}
+// Under the square chart: what happened (Oct 12), or the extra-inning question.
 function g5BelowChart(step){
+  if(step === 'what' || step === 'foul') return g5ResultRow(step);
   if(step === 'tiebreak'){
     return `<div class="g5-below"><div class="g5-q">Extra inning — start with a runner on 2B?</div>
       ${segTray([{ label: 'Yes', onclick: 'gridTiebreak(true)' }, { label: 'No', onclick: 'gridTiebreak(false)' }], { label: 'Start with a runner on 2B?', cls: 'g5-qbtns' })}</div>`;
@@ -8387,7 +8595,9 @@ function g5BelowChart(step){
   return '';
 }
 function g5Surface(pitches, chartingPerspective, currentBatterSide){
-  let chart = renderZoneGrid(pitches, true, state.flashCell, null, chartingPerspective, currentBatterSide, 'handleGameZoneTap');
+  // Joel, Oct 12: while what happened is asked under the chart, the tapped spot stays marked on it
+  const sa = state.activeSession, mark = (sa && sa.g5 && G5_CHART_STEPS[sa.g5.step]) ? sa.gameDot : null;
+  let chart = renderZoneGrid(pitches, true, state.flashCell, mark, chartingPerspective, currentBatterSide, 'handleGameZoneTap');
   if(g5OnDiamond()){
     // Joel's iPad photo, Oct 8: Safari kept the field's buttons on their own 3D layer after the flip, drawn a
     // little closer (bigger) under the perspective. Once the flip has played, draw the field again flat.
@@ -8440,7 +8650,7 @@ function renderGameSessionView(p){
   // G5: after a location tap the chart flips over to the field chart (g5Surface); under the
   // square chart sit the extra-inning question or velocity + Next pitch (g5BelowChart).
   const g5Now = g5Step();
-  const zoneCaption = g5OnDiamond() ? g5Caption(g5Now) : `Tap where the pitch landed`;
+  const zoneCaption = (s.g5 && g5Now) ? g5Caption(g5Now) : `Tap where the pitch landed`;
   const g5Below = g5OnDiamond() ? '' : g5BelowChart(g5Now);
 
   if(phoneSessionMode(p)){

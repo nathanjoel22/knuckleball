@@ -5972,9 +5972,10 @@ function insideColumnOnScreenLeft(chartingPerspective, batterSide){
 // before; only the markup/CSS changed here, not that decision. The pill
 // label is the actual state indicator (a silhouette alone is ambiguous
 // between handedness and viewpoint), never the figure.
-// Joel, Oct 12: the softball batter wears a ponytail (out the back of the helmet, down onto the shoulder);
+// Joel, Oct 12: the softball batter wears a ponytail out the back of the helmet, with a little space between it and
+// the helmet and shoulder;
 // the whole figure mirrors for a left-handed batter, so it flips with it. Baseball's batter is unchanged.
-const KB_PONYTAIL = '<path d="M77 93 C80 92 83 93 85 96 C93 98 100 105 101 113 C102 119 100 125 97 130 C96 124 94 119 90 116 L77 115 Z"/>';
+const KB_PONYTAIL = '<path d="M80 91 C88 89 97 93 102 99 C106 105 105 110 101 112 C99 110 95 108 89 108 C86 108 83 108 80 108 Z"/>';
 function renderBatterSilhouette(batterSide, onScreenLeft, onclickJs = 'toggleBatterSide()'){
   const label = batterSide === 'R' ? 'RHB' : 'LHB';
   const otherHand = batterSide === 'R' ? 'left' : 'right';

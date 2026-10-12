@@ -16,12 +16,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 ---
 
 ## 2026-10-12 · no packet (Home screen) · **staging**
-- **Branch / cache:** `live-game-oct12` · `kb-shell-v215`. No database change. The live site is still v195.
+- **Branch / cache:** `live-game-oct12` · `kb-shell-v216`. No database change. The live site is still v195.
 - **Built:** after login (and after picking a pitcher) the app opens on **Home**, not on "What will we be charting today?".
   - Under the photo and name:
     - **Top row:** Charting (clipboard → the chooser, or "Resume" with a session in progress) and History (rising graph) as two big tiles, each about twice the area of a small one (v213).
     - **Second row:** three small tiles: Armcare (arm) and Mental Game (brain), both "Coming soon" and going nowhere, and Profile (gear → your own profile to edit).
-  - On iPad/laptop the tile block is never wider than the 5×5 chart (560 px). **On phones every tile is the screen's width, one under the other, all the same size** (v215: 128 px tall, 44 px icon over a 20 px label -- a bit bigger than v214's Charting).
+  - On iPad/laptop (v216, from Joel's laptop mock-up) the tiles fill the whole area beside the roster: Charting and History split the top row (5:3 tiles, 32 px labels, 64 px icons); Armcare / Mental Game / Profile split the next into thirds (about square, 24 px labels, 48 px icons). **On phones every tile is the screen's width, one under the other, all the same size** (v215: 128 px tall, 44 px icon over a 20 px label -- a bit bigger than v214's Charting).
   - The tab row gains a **Home** tab, and the coach dock's Home goes to Home.
 - **Deviations / choices:**
   - Picking a roster name opens Home too (a red-dot name still opens History).

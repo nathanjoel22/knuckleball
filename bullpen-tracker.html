@@ -595,7 +595,18 @@
   .kind-chooser{ display:flex; flex-direction:column; align-items:center; padding:48px 16px; }
   .kind-chooser-buttons{ display:flex; flex-direction:column; align-items:center; gap:16px; width:100%; }
   .home-tiles{ display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:10px; width:100%; max-width:340px; margin:4px 0 24px; }
-  @media (min-width:501px){ .home-tiles{ max-width:560px; } }
+  /* Joel, Oct 12 (his laptop mock-up): on iPad and laptop the tiles fill the whole area beside the roster --
+     Charting and History split the top row, Armcare / Mental Game / Profile split the next into thirds */
+  @media (min-width:501px){
+    .home-tiles{ max-width:none; gap:16px; }
+    .home-big{ aspect-ratio:5 / 3; min-height:0; }
+    .home-small{ aspect-ratio:8 / 7; min-height:0; }
+    .home-tiles .home-big .home-ic svg{ width:64px; height:64px; }
+    .home-tiles .home-big .home-lbl{ font-size:32px; }
+    .home-tiles .home-small .home-ic svg{ width:48px; height:48px; }
+    .home-tiles .home-small .home-lbl{ font-size:24px; }
+    .home-tile{ gap:10px; }
+  }
   .home-tile{ flex-direction:column; justify-content:center; gap:6px; min-height:88px; padding:10px 6px; white-space:normal; text-align:center; min-width:0; }
   .home-big{ grid-column:span 3; min-height:128px; }    /* half the row; about twice a small tile's area */
   .home-small{ grid-column:span 2; }                   /* a third of the row */

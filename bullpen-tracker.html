@@ -625,6 +625,9 @@
     -webkit-mask-position:center; mask-position:center; -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; }
   .ic-arm{ -webkit-mask-image:url(vendor/icons/arm.png); mask-image:url(vendor/icons/arm.png); }
   .ic-brain{ -webkit-mask-image:url(vendor/icons/brain.png); mask-image:url(vendor/icons/brain.png); }
+  .ic-clipboard{ -webkit-mask-image:url(vendor/icons/clipboard.png); mask-image:url(vendor/icons/clipboard.png); }
+  .ic-graph{ -webkit-mask-image:url(vendor/icons/graph.png); mask-image:url(vendor/icons/graph.png); }
+  .ic-gear{ -webkit-mask-image:url(vendor/icons/gear.png); mask-image:url(vendor/icons/gear.png); }
   .home-lbl{ font-size:16px; font-weight:700; line-height:1.15; }
   .home-note{ font-size:12px; font-weight:600; color:var(--ink-faint); }
   .home-soon{ cursor:default; }
@@ -10090,14 +10093,14 @@ function renderLeaderboardView(){
    The first screen after login, under the photo and name: Charting (the "What will we be charting today?"
    chooser, or Resume) and History as two big tiles on top; Armcare and Mental Game (not built yet -- shown, go
    nowhere) and Profile (your own profile to edit) as a row of three beneath, each big tile about twice their
-   size (Joel, Oct 12). Icons: Armcare and Mental Game use Joel's own drawings (vendor/icons/, split from his
-   vendor/brain-arm.png), filled with the tile's color through a mask; Profile is a solid gear. The whole block is no wider than the 5x5 chart (340px on phones, 560px on iPad/laptop). */
+   size (Joel, Oct 12). Icons: all five are Joel's own drawings (vendor/icons/, split from his vendor/brain-arm.png
+   and vendor/clipboard-graph-gear.png), filled with the tile's color through a mask. The whole block is no wider than the 5x5 chart (340px on phones, 560px on iPad/laptop). */
 const HOME_ICONS = {
-  charting: DOCK_ICONS.charts,
-  history: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 20.5h17"/><path d="M4.5 16.5l5-5 3.5 3.5 6.5-6.5"/><path d="M15 8.5h4.5V13"/></svg>',
+  charting: '<span class="ic-img ic-clipboard" aria-hidden="true"></span>',
+  history: '<span class="ic-img ic-graph" aria-hidden="true"></span>',
   armcare: '<span class="ic-img ic-arm" aria-hidden="true"></span>',
   mental: '<span class="ic-img ic-brain" aria-hidden="true"></span>',
-  profile: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.93 4.40 L10.02 4.04 L10.28 1.14 L13.72 1.14 L13.98 4.04 L15.07 4.40 L15.20 4.45 L16.22 4.97 L18.47 3.10 L20.90 5.53 L19.03 7.78 L19.55 8.80 L19.60 8.93 L19.96 10.02 L22.86 10.28 L22.86 13.72 L19.96 13.98 L19.60 15.07 L19.55 15.20 L19.03 16.22 L20.90 18.47 L18.47 20.90 L16.22 19.03 L15.20 19.55 L15.07 19.60 L13.98 19.96 L13.72 22.86 L10.28 22.86 L10.02 19.96 L8.93 19.60 L8.80 19.55 L7.78 19.03 L5.53 20.90 L3.10 18.47 L4.97 16.22 L4.45 15.20 L4.40 15.07 L4.04 13.98 L1.14 13.72 L1.14 10.28 L4.04 10.02 L4.40 8.93 L4.45 8.80 L4.97 7.78 L3.10 5.53 L5.53 3.10 L7.78 4.97 L8.80 4.45 Z M15.6 12 A3.6 3.6 0 1 0 8.4 12 A3.6 3.6 0 1 0 15.6 12 Z" fill="currentColor" fill-rule="evenodd" stroke="none"/></svg>'   // Joel, Oct 12: a solid gear
+  profile: '<span class="ic-img ic-gear" aria-hidden="true"></span>'
 };
 function renderHomeTiles(){
   const archived = isCoach() && currentTeamArchived();   // P1-09: no New Session on an archived team

@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-12 · no packet (roster tap scrolls to the top) · **staging**
+- **Branch / cache:** `live-game-oct12` · `kb-shell-v221`. No database change. The live site is still v195.
+- **Built:** tapping a pitcher anywhere in the roster, however far down it's scrolled, smoothly scrolls the page back to the top (his name and the Home tiles), on every screen size. It scrolls once on the tap and again after his page draws. It goes through the dock's scroll helper, so the phone dock doesn't hide.
+- **Open items:** Joel's check on iPad.
+
 ## 2026-10-12 · no packet (Home screen) · **staging**
 - **Branch / cache:** `live-game-oct12` · `kb-shell-v220`. No database change. The live site is still v195.
 - **Built:** after login (and after picking a pitcher) the app opens on **Home**, not on "What will we be charting today?".

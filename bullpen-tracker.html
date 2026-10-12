@@ -3813,6 +3813,9 @@ window.toggleRosterCollapsed = function(){
   render();
 };
 window.selectPitcher = async function(pitcherId){
+  // Joel, Oct 12: tapping a pitcher anywhere in the roster -- however far down it was scrolled -- goes back up to the
+  // top of the page, where his name and the Home tiles are. Through dockScroll, so the phone dock doesn't hide for it.
+  dockScroll(0);
   state.currentPitcherId = pitcherId;
   state.rosterCollapsed = rosterCanCollapse();   // U11 (8): rolls up only where the roster sits above the grid
   // U10 (3), Joel Sept 30: a name with a red dot opens his History (which
@@ -3827,6 +3830,7 @@ window.selectPitcher = async function(pitcherId){
   await refreshDraftState();
   await saveLastKnownContext();
   render();
+  dockScroll(0);   // again once his page is drawn (its height may have changed)
 };
 
 /* ---------- INVITE LINK (coach only, R0) ----------

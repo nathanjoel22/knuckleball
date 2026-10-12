@@ -16,12 +16,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 ---
 
 ## 2026-10-12 · no packet (Home screen) · **staging**
-- **Branch / cache:** `live-game-oct12` · `kb-shell-v213`. No database change. The live site is still v195.
+- **Branch / cache:** `live-game-oct12` · `kb-shell-v214`. No database change. The live site is still v195.
 - **Built:** after login (and after picking a pitcher) the app opens on **Home**, not on "What will we be charting today?".
   - Under the photo and name:
     - **Top row:** Charting (clipboard → the chooser, or "Resume" with a session in progress) and History (rising graph) as two big tiles, each about twice the area of a small one (v213).
     - **Second row:** three small tiles: Armcare (arm) and Mental Game (brain), both "Coming soon" and going nowhere, and Profile (gear → your own profile to edit).
-  - The tile block is never wider than the 5×5 chart (340 px phones, 560 px iPad/laptop).
+  - On iPad/laptop the tile block is never wider than the 5×5 chart (560 px). **On phones (v214) every tile is the screen's width, one under the other:** Charting and History taller, the other three shorter bars with the icon beside the label.
   - The tab row gains a **Home** tab, and the coach dock's Home goes to Home.
 - **Deviations / choices:**
   - Picking a roster name opens Home too (a red-dot name still opens History).

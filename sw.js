@@ -15,7 +15,7 @@
 // stale-while-revalidate fetch handler below is the offline/secondary
 // path -- it is not what ships a code change. This bump is a required
 // step in DEPLOY.md ("Frontend: deploy to production").
-const CACHE_VERSION = 'kb-shell-v216';
+const CACHE_VERSION = 'kb-shell-v217';
 
 const PRECACHE_URLS = [
   '/',

@@ -16,7 +16,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 ---
 
 ## 2026-10-12 · no packet (Home screen) · **staging**
-- **Branch / cache:** `live-game-oct12` · `kb-shell-v217`. No database change. The live site is still v195.
+- **Branch / cache:** `live-game-oct12` · `kb-shell-v218`. No database change. The live site is still v195.
 - **Built:** after login (and after picking a pitcher) the app opens on **Home**, not on "What will we be charting today?".
   - Under the photo and name:
     - **Top row:** Charting (clipboard → the chooser, or "Resume" with a session in progress) and History (rising graph) as two big tiles, each about twice the area of a small one (v213).
@@ -24,7 +24,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - On iPad/laptop (v216, from Joel's laptop mock-up) the tiles fill the whole area beside the roster: Charting and History split the top row (5:3 tiles, 32 px labels, 64 px icons); Armcare / Mental Game / Profile split the next into thirds (about square, 24 px labels, 48 px icons). **On phones every tile is the screen's width, one under the other, all the same size** (v215: 128 px tall, 44 px icon over a 20 px label -- a bit bigger than v214's Charting).
   - The tab row gains a **Home** tab, and the coach dock's Home goes to Home.
 - **Deviations / choices:**
-  - Tile icons (v217): Joel sent example images (from his Downloads, likely stock clip-art). They weren't copied in; a flexed arm, a brain with radiating lines and a solid gear were drawn in their style instead (inline SVG, no image files).
+  - Tile icons: v217 drew a flexed arm, a brain with radiating lines and a solid gear in the style of Joel's examples (those were likely stock clip-art from Downloads, so not copied). v218: Armcare and Mental Game use **Joel's own drawings** instead. He uploaded `vendor/brain-arm.png` to GitHub (`bd2a2a8`, on `main`); it was split into `vendor/icons/arm.png` and `vendor/icons/brain.png` (256 px, transparent, ~40–50 KB each), shown as masks filled with the tile's color and precached. Profile keeps the drawn solid gear.
   - Picking a roster name opens Home too (a red-dot name still opens History).
   - An archived team's Charting tile is greyed ("Archived team").
   - Switching teams from the team drop-down still lands on History.

@@ -601,25 +601,30 @@
     .home-tiles{ max-width:none; gap:16px; }
     .home-big{ aspect-ratio:5 / 3; min-height:0; }
     .home-small{ aspect-ratio:8 / 7; min-height:0; }
-    .home-tiles .home-big .home-ic svg{ width:64px; height:64px; }
+    .home-tiles .home-big .home-ic svg, .home-tiles .home-big .home-ic .ic-img{ width:64px; height:64px; }
     .home-tiles .home-big .home-lbl{ font-size:32px; }
-    .home-tiles .home-small .home-ic svg{ width:48px; height:48px; }
+    .home-tiles .home-small .home-ic svg, .home-tiles .home-small .home-ic .ic-img{ width:48px; height:48px; }
     .home-tiles .home-small .home-lbl{ font-size:24px; }
     .home-tile{ gap:10px; }
   }
   .home-tile{ flex-direction:column; justify-content:center; gap:6px; min-height:88px; padding:10px 6px; white-space:normal; text-align:center; min-width:0; }
   .home-big{ grid-column:span 3; min-height:128px; }    /* half the row; about twice a small tile's area */
   .home-small{ grid-column:span 2; }                   /* a third of the row */
-  .home-big .home-ic svg{ width:44px; height:44px; }
+  .home-big .home-ic svg, .home-big .home-ic .ic-img{ width:44px; height:44px; }
   .home-big .home-lbl{ font-size:20px; }
   /* Joel, Oct 12: on phones every tile is the screen's width, one under the other, all the same size */
   @media (max-width:500px){
     .home-tiles{ grid-template-columns:1fr; max-width:none; }
     .home-big, .home-small{ grid-column:auto; min-height:128px; }
-    .home-tile .home-ic svg{ width:44px; height:44px; }
+    .home-tile .home-ic svg, .home-tile .home-ic .ic-img{ width:44px; height:44px; }
     .home-tile .home-lbl{ font-size:20px; }
   }
   .home-ic svg{ width:32px; height:32px; display:block; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  /* Joel's drawings (Oct 12): the picture is the shape, the tile's text color fills it (so it greys when "Coming soon") */
+  .home-ic .ic-img{ display:block; width:32px; height:32px; background:currentColor;
+    -webkit-mask-position:center; mask-position:center; -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; }
+  .ic-arm{ -webkit-mask-image:url(vendor/icons/arm.png); mask-image:url(vendor/icons/arm.png); }
+  .ic-brain{ -webkit-mask-image:url(vendor/icons/brain.png); mask-image:url(vendor/icons/brain.png); }
   .home-lbl{ font-size:16px; font-weight:700; line-height:1.15; }
   .home-note{ font-size:12px; font-weight:600; color:var(--ink-faint); }
   .home-soon{ cursor:default; }
@@ -10085,13 +10090,13 @@ function renderLeaderboardView(){
    The first screen after login, under the photo and name: Charting (the "What will we be charting today?"
    chooser, or Resume) and History as two big tiles on top; Armcare and Mental Game (not built yet -- shown, go
    nowhere) and Profile (your own profile to edit) as a row of three beneath, each big tile about twice their
-   size (Joel, Oct 12). Icons (Joel, Oct 12, after his examples): a flexed arm, a brain with lines around it, a solid
-   gear -- drawn here, not copied. The whole block is no wider than the 5x5 chart (340px on phones, 560px on iPad/laptop). */
+   size (Joel, Oct 12). Icons: Armcare and Mental Game use Joel's own drawings (vendor/icons/, split from his
+   vendor/brain-arm.png), filled with the tile's color through a mask; Profile is a solid gear. The whole block is no wider than the 5x5 chart (340px on phones, 560px on iPad/laptop). */
 const HOME_ICONS = {
   charting: DOCK_ICONS.charts,
   history: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 20.5h17"/><path d="M4.5 16.5l5-5 3.5 3.5 6.5-6.5"/><path d="M15 8.5h4.5V13"/></svg>',
-  armcare: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.4c-2.7-3.3-7.7-3.6-9.6-.8l-.3-3.4c1-.2 1.7-1.1 1.5-2.1l-.3-1.7c-.2-.9-1-1.5-1.9-1.4l-2.7.3c-.9.1-1.5.9-1.4 1.8l.3 2.4c-1.5 2.6-3.1 5.4-4.1 8.4-.6 1.7.4 3.5 2.1 3.9 3.8.8 7.8 1 11.6.6l4.8-.5M8.4 5.4l2.6-.3M12.6 15.5c1.5-.5 3.1-.4 4.4.3"/></svg>',
-  mental: '<svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(12 11.3) scale(.78) translate(-12 -11.3)"><path d="M12 6.8c-.5-1-1.5-1.6-2.6-1.4-1.2.2-2.1 1.2-2.1 2.4-1.1.3-1.9 1.3-1.7 2.5-.8.6-1.1 1.6-.8 2.6.3.8 1 1.3 1.8 1.4.1 1.2 1.1 2.2 2.3 2.3.7 1 1.9 1.4 3 1V6.8zM12 6.8c.5-1 1.5-1.6 2.6-1.4 1.2.2 2.1 1.2 2.1 2.4 1.1.3 1.9 1.3 1.7 2.5.8.6 1.1 1.6.8 2.6-.3.8-1 1.3-1.8 1.4-.1 1.2-1.1 2.2-2.3 2.3-.7 1-1.9 1.4-3 1M9.1 9.6c.7.1 1.3.6 1.4 1.3M8.2 12.7c.7-.4 1.7-.3 2.2.4M14.9 9.6c-.7.1-1.3.6-1.4 1.3M15.8 12.7c-.7-.4-1.7-.3-2.2.4"/></g><path d="M2.98 8.02L1.48 7.47M5.83 3.95L4.80 2.72M10.33 1.85L10.06 0.27M13.67 1.85L13.94 0.27M18.17 3.95L19.20 2.72M21.02 8.02L22.52 7.47M21.02 14.58L22.52 15.13M2.98 14.58L1.48 15.13M17.51 19.16L18.42 20.47M6.49 19.16L5.58 20.47"/></svg>',
+  armcare: '<span class="ic-img ic-arm" aria-hidden="true"></span>',
+  mental: '<span class="ic-img ic-brain" aria-hidden="true"></span>',
   profile: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.93 4.40 L10.02 4.04 L10.28 1.14 L13.72 1.14 L13.98 4.04 L15.07 4.40 L15.20 4.45 L16.22 4.97 L18.47 3.10 L20.90 5.53 L19.03 7.78 L19.55 8.80 L19.60 8.93 L19.96 10.02 L22.86 10.28 L22.86 13.72 L19.96 13.98 L19.60 15.07 L19.55 15.20 L19.03 16.22 L20.90 18.47 L18.47 20.90 L16.22 19.03 L15.20 19.55 L15.07 19.60 L13.98 19.96 L13.72 22.86 L10.28 22.86 L10.02 19.96 L8.93 19.60 L8.80 19.55 L7.78 19.03 L5.53 20.90 L3.10 18.47 L4.97 16.22 L4.45 15.20 L4.40 15.07 L4.04 13.98 L1.14 13.72 L1.14 10.28 L4.04 10.02 L4.40 8.93 L4.45 8.80 L4.97 7.78 L3.10 5.53 L5.53 3.10 L7.78 4.97 L8.80 4.45 Z M15.6 12 A3.6 3.6 0 1 0 8.4 12 A3.6 3.6 0 1 0 15.6 12 Z" fill="currentColor" fill-rule="evenodd" stroke="none"/></svg>'   // Joel, Oct 12: a solid gear
 };
 function renderHomeTiles(){

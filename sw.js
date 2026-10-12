@@ -15,7 +15,7 @@
 // stale-while-revalidate fetch handler below is the offline/secondary
 // path -- it is not what ships a code change. This bump is a required
 // step in DEPLOY.md ("Frontend: deploy to production").
-const CACHE_VERSION = 'kb-shell-v217';
+const CACHE_VERSION = 'kb-shell-v218';
 
 const PRECACHE_URLS = [
   '/',
@@ -40,6 +40,8 @@ const PRECACHE_URLS = [
   '/vendor/supabase.js',
   '/vendor/fonts/fonts.css',
   '/buttons.css',   // U13: every page's button shapes, offline too (Oct 9)
+  '/vendor/icons/arm.png',     // Home tiles: Joel's drawings, offline too (Oct 12)
+  '/vendor/icons/brain.png',
   '/vendor/fonts/BlackOpsOne-Regular.ttf'   // the KNUCKLEBALL wordmark, offline too (Oct 8)
 ];
 

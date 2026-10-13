@@ -15,6 +15,20 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-13 · D2 Stage C (components and pages) · **staging**
+- **Branch / cache:** `d2-broadcast-rebrand` · `kb-shell-v231`. No database or function change.
+- **Built:**
+  - `css/components.css` (slanted tag, badge, banner, flat card, the sign-in and landing looks).
+  - All 10 sign-in pages plus index in the light look: a dark angled header with wordmark, tagline, slanted tag and a 44px title whose last word is gold / pink. No page CSS left.
+  - D1's dark scope deleted.
+  - App: flat cards; the brand strip with a slanted role tag; the phone status bars as a scoreboard (Big Shoulders numbers over labels); a dark strike-zone frame; 44px inputs; one Next Pitch component (two dead classes deleted).
+  - Privacy / Terms show the KNUCKLEBALL wordmark (approved).
+- **Deviations:** the Live Game scoreboard says "INN" under 400px so it fits with Windup and the clock. No title periods. Home has no section labels to tag. Evidence: `plans/d2-stage-c.md`.
+- **Open items:**
+  - Joel's phone and iPad walk-through (both sports, sign-in pages included).
+  - The airplane-mode open.
+  - The iPad-portrait perspective tray squeeze.
+
 ## 2026-10-13 · D2 Stage B (fonts and type) · **staging**
 - **Branch / cache:** `d2-broadcast-rebrand` · `kb-shell-v230`. No database or function change.
 - **Built:**

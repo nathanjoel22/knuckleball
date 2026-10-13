@@ -1,0 +1,233 @@
+/* ==========================================================================
+   Knuckleball components -- D2 Stage C (Oct 13 2026; plans/d2-broadcast-rebrand.md,
+   docs/design/target/DESIGN.md "Components"). Loaded after css/tokens.css and
+   buttons.css. Reads tokens only: no color, font or size is written here twice.
+
+   Buttons and trays are U13's (buttons.css) and are not restyled here.
+   NOT loaded by report.html: a stored report is drawn inside that page, and
+   nothing here may reach one.
+   ========================================================================== */
+
+/* ---------- Shared pieces (any page) ---------- */
+
+/* Slanted section tag: the sign-in role tag, Home section labels. The fill is skewed;
+   the text stays upright, so a script can set its text directly. */
+.slant-tag{
+  position:relative; z-index:0; display:inline-block; align-self:flex-start;
+  padding:6px 12px; color:var(--on-accent);
+  font-family:var(--font-sans); font-size:var(--t-12); font-weight:800; font-stretch:85%;
+  letter-spacing:var(--tr-tag); text-transform:uppercase; line-height:1;
+}
+.slant-tag::before{
+  content:''; position:absolute; inset:0; z-index:-1;
+  background:var(--accent); transform:skewX(-14deg);
+}
+
+/* Badge: a small status pill */
+.badge{
+  display:inline-flex; align-items:center; min-height:24px; padding:0 9px; border-radius:var(--radius-pill);
+  font-size:var(--t-10); font-weight:700; font-stretch:90%; letter-spacing:0.08em; text-transform:uppercase;
+  background:var(--surface); color:var(--ink-dim);
+}
+
+/* Banner: a warning or notice strip */
+.banner{
+  background:var(--warning-tint); border:1px solid var(--warning-line); border-radius:var(--radius-control);
+  padding:12px 16px; font-size:var(--t-14); color:var(--ink-dim);
+}
+
+/* Card / panel: flat, a 1px line, no shadow */
+.panel{
+  background:var(--card); border:1px solid var(--border); border-radius:var(--radius-control);
+  padding:20px;
+}
+@media (max-width:500px){ .panel{ padding:16px; } }
+
+/* ==========================================================================
+   Sign-in pages (index's role step, login, the sign-ups, join, join-coach,
+   accept-invite, guardian-consent, reset-password, verify-email): <body class="signin">.
+   The light page; each card opens with a full-width dark header whose bottom edge
+   falls --cut across the width: wordmark, tagline, the slanted tag, the title with
+   its last word in the accent. The form sits below on --bg.
+   ========================================================================== */
+body.signin{
+  margin:0; min-height:100vh; overflow-x:hidden;
+  display:flex; flex-direction:column; align-items:center; gap:14px;
+  background:var(--bg); color:var(--ink); font-family:var(--font-sans);
+}
+body.signin *{ box-sizing:border-box; }
+body.signin ::selection{ background:var(--accent); color:var(--on-accent); }
+body.signin button, body.signin input{ font-family:inherit; }
+body.signin a{ color:var(--brand-mid); font-weight:600; font-size:var(--t-14); text-decoration:none; }
+body.signin a:hover{ text-decoration:underline; }
+body.signin button:focus-visible, body.signin input:focus-visible, body.signin a:focus-visible{ outline:var(--focus); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce){ body.signin *{ transition:none !important; animation:none !important; } }
+
+body.signin .card{
+  width:100%; max-width:440px; padding:0 24px 28px;
+  display:flex; flex-direction:column; gap:20px;
+}
+body.signin .step-hidden{ display:none; }
+
+/* the dark angled header, full width of the screen */
+body.signin .signin-head{
+  width:100vw; margin:0 calc(50% - 50vw);
+  padding:40px max(24px, calc(50vw - 196px)) calc(var(--cut) + 28px);
+  background:var(--brand-bg); color:var(--on-dark);
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - var(--cut)), 0 100%);
+  display:flex; flex-direction:column; gap:16px;
+}
+body.signin .brand-block{ display:flex; flex-direction:column; gap:6px; }
+body.signin .brand{ display:flex; align-items:baseline; gap:8px; }
+body.signin .brand h1{ margin:0; font-size:var(--t-24); line-height:1; color:var(--on-dark); }
+body.signin .brand-word{ font-family:var(--font-wordmark) !important; font-weight:400 !important; letter-spacing:0.02em; white-space:nowrap; }
+body.signin .brand-mark{ display:none; }
+body.signin .tagline{
+  font-size:var(--t-10); font-weight:700; font-stretch:90%; letter-spacing:var(--tr-tag);
+  text-transform:uppercase; color:var(--on-dark-faint);
+}
+body.signin .signin-head h2.display{
+  margin:0; font-family:var(--font-display); font-weight:800; font-size:var(--t-44);
+  line-height:0.95; letter-spacing:var(--tr-display); text-transform:uppercase; color:var(--on-dark);
+}
+body.signin .signin-head .last{ color:var(--accent); }
+body.signin .signin-head > div:not(.brand-block){ display:flex; flex-direction:column; gap:12px; }
+body.signin .role-tag{ margin:0; }
+
+/* the form */
+body.signin .display{ font-family:var(--font-display); font-weight:800; letter-spacing:var(--tr-display); text-transform:uppercase; }
+body.signin .field{ display:flex; flex-direction:column; gap:6px; }
+body.signin .field-label{
+  font-size:var(--t-10); font-weight:700; font-stretch:90%; letter-spacing:var(--tr-label);
+  text-transform:uppercase; color:var(--ink-faint);
+}
+body.signin .text-input{
+  width:100%; min-height:var(--tap-min); padding:10px 14px;
+  background:var(--card); color:var(--ink); font-size:var(--t-16);
+  border:1.5px solid var(--border-strong); border-radius:var(--radius-control);
+}
+body.signin .text-input::placeholder{ color:var(--ink-faint); }
+body.signin .text-input:focus{ outline:none; border-color:var(--brand-mid); box-shadow:0 0 0 3px var(--brand-mid-ring); }
+body.signin p.sub{ font-size:var(--t-14); color:var(--ink-dim); margin:0; }
+body.signin .error-msg{ font-size:var(--t-12); color:var(--danger); min-height:16px; }
+body.signin .info-msg{
+  font-size:var(--t-14); color:var(--ink-dim); line-height:1.5;
+  background:var(--surface); border-radius:var(--radius-control); padding:14px;
+}
+body.signin .spinner-msg{ font-size:var(--t-14); color:var(--ink-dim); text-align:center; }
+body.signin .forgot-link{ align-self:flex-end; font-size:var(--t-12); }
+body.signin .foot-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+body.signin .site-footer{ font-size:var(--t-12); color:var(--ink-faint); text-align:center; margin:0 0 24px; }
+body.signin .site-footer a{ font-size:var(--t-12); font-weight:400; color:var(--ink-faint); text-decoration:underline; }
+
+/* age and terms questions (sign-ups, join, accept-invite) */
+body.signin .age-options{ display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+body.signin .age-row{ flex-direction:row; gap:18px; }
+body.signin .age-opt{ display:flex; align-items:center; gap:10px; font-size:var(--t-14); color:var(--ink); cursor:pointer; min-height:34px; }
+body.signin .age-opt input, body.signin .terms-check input{ width:18px; height:18px; accent-color:var(--brand-mid); flex:0 0 auto; margin:0; }
+body.signin .age-note{ font-size:var(--t-12); color:var(--ink-dim); margin:6px 0 0; line-height:1.45; }
+body.signin .age-stop{ font-size:var(--t-14); color:var(--ink); background:var(--surface); border-radius:var(--radius-control); padding:10px 12px; margin:0; line-height:1.45; }
+body.signin .age-stop a{ color:var(--brand-mid); text-decoration:underline; font-size:var(--t-14); }
+body.signin .terms-check{ display:flex; align-items:flex-start; gap:10px; font-size:var(--t-14); color:var(--ink-dim); line-height:1.45; cursor:pointer; }
+body.signin .terms-check a{ color:var(--brand-mid); text-decoration:underline; font-size:var(--t-14); }
+
+/* page-only pieces, kept here so no page carries its own color or font CSS */
+body.signin .section-label{ font-family:var(--font-display); font-size:var(--t-24); font-weight:800; text-transform:uppercase; letter-spacing:var(--tr-display); line-height:1; margin-top:4px; color:var(--ink); }   /* parent-signup */
+body.signin .joinas-list{ display:flex; flex-direction:column; gap:8px; }   /* join: "Join as" */
+body.signin .joinas-btn{ background:var(--card); color:var(--ink); border:1.5px solid var(--border-strong); border-radius:var(--radius-control); padding:12px 14px; font-size:var(--t-16); font-weight:600; text-align:left; min-height:48px; }
+body.signin .joinas-btn:hover{ border-color:var(--brand-mid); }
+body.signin .joinas-btn small{ display:block; font-size:var(--t-12); font-weight:400; color:var(--ink-faint); margin-top:2px; }
+body.signin .joinas-new{ border-style:dashed; }
+body.signin .email-readout{   /* accept-invite */
+  background:var(--surface); border-radius:var(--radius-control); color:var(--ink-dim);
+  padding:11px 14px; font-size:var(--t-14); font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-weight:700;
+}
+body.signin .summary{ font-size:var(--t-14); color:var(--ink-dim); line-height:1.55; margin:0; }   /* guardian-consent */
+body.signin .summary strong{ color:var(--ink); }
+body.signin .approve-btn{ white-space:normal; min-height:48px; padding:10px 16px; }
+body.signin .policy-links{ display:flex; gap:16px; flex-wrap:wrap; }
+body.signin .signin-head p{ margin:0; font-size:var(--t-14); color:var(--on-dark-dim); }   /* a subtitle under the title, on dark */
+body.signin .signin-head a{ color:var(--on-dark); font-weight:600; text-decoration:underline; }
+
+/* ==========================================================================
+   index.html -- "Which sport?" then "Who are you?" (<body class="landing">).
+   The light page: wordmark, the 64px title, cards. The sport cards wear their
+   sport's own colors (tokens --bb-* / --sb-*), side by side, whatever the page's sport.
+   ========================================================================== */
+body.landing{
+  margin:0; min-height:100vh; padding:24px; overflow-x:hidden;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--card); color:var(--ink); font-family:var(--font-sans);
+}
+body.landing *{ box-sizing:border-box; }
+body.landing ::selection{ background:var(--accent); color:var(--on-accent); }
+body.landing a{ color:inherit; }
+body.landing button:focus-visible, body.landing a:focus-visible{ outline:var(--focus); outline-offset:3px; }
+@media (prefers-reduced-motion: reduce){ body.landing *{ transition:none !important; animation:none !important; } }
+body.landing .display{ font-family:var(--font-display); font-weight:800; letter-spacing:var(--tr-display); text-transform:uppercase; }
+body.landing .wrap{ width:100%; max-width:760px; display:flex; flex-direction:column; align-items:center; gap:44px; text-align:center; }
+body.landing .brand-block{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+body.landing .brand{ display:flex; align-items:baseline; gap:8px; }
+body.landing .brand-word{ font-family:var(--font-wordmark) !important; font-weight:400 !important; letter-spacing:0.02em; white-space:nowrap; }
+body.landing .brand-mark{ display:none; }
+body.landing .brand h1{ font-size:var(--t-24); line-height:1; margin:0; color:var(--brand-bg); }
+body.landing .tagline{ font-size:var(--t-10); font-weight:700; font-stretch:90%; letter-spacing:var(--tr-tag); text-transform:uppercase; color:var(--ink-faint); }
+body.landing h2.display{ font-size:var(--t-64); line-height:0.95; margin:0; color:var(--brand-bg); font-weight:900; }
+body.landing .options{ display:flex; gap:22px; width:100%; flex-wrap:wrap; justify-content:center; }
+body.landing .option-card{
+  flex:1; min-width:230px; max-width:300px; padding:36px 26px;
+  background:var(--card); color:var(--ink); border:1px solid var(--border-strong); border-radius:var(--radius-control);
+  display:flex; flex-direction:column; align-items:center; gap:14px; cursor:pointer; text-decoration:none;
+  transition:border-color var(--duration-fast) ease, transform var(--duration-fast) ease, background var(--duration-fast) ease;
+}
+body.landing .option-card:hover{ border-color:var(--brand-mid); background:var(--card-2); transform:translateY(-3px); }
+body.landing .option-icon{ width:56px; height:56px; border-radius:50%; background:var(--surface); display:flex; align-items:center; justify-content:center; }
+body.landing .option-icon svg{ width:26px; height:26px; color:var(--ink); }
+body.landing .option-icon svg.ball{ width:34px; height:34px; }
+body.landing .option-title{ font-family:var(--font-display); font-size:var(--t-32); font-weight:800; text-transform:uppercase; letter-spacing:var(--tr-display); }
+body.landing .option-desc{ font-size:var(--t-14); color:var(--ink-faint); line-height:1.5; }
+/* the two sport cards: each sport's own brand and accent */
+body.landing .option-card.sport-bb{ background:var(--bb-brand); border-color:transparent; color:#FFFFFF; }
+body.landing .option-card.sport-bb:hover{ background:var(--bb-brand-2); border-color:var(--bb-accent); }
+body.landing .option-card.sport-bb .option-icon{ background:var(--bb-brand-2); }
+body.landing .option-card.sport-bb .option-desc{ color:var(--bb-on-dark-dim); }
+body.landing .option-card.sport-bb .option-title{ color:var(--bb-accent); }
+body.landing .option-card.sport-sb{ background:var(--sb-brand); border-color:transparent; color:#FFFFFF; }
+body.landing .option-card.sport-sb:hover{ background:var(--sb-brand-2); border-color:var(--sb-accent); }
+body.landing .option-card.sport-sb .option-icon{ background:var(--sb-brand-2); }
+body.landing .option-card.sport-sb .option-desc{ color:var(--sb-on-dark-dim); }
+body.landing .option-card.sport-sb .option-title{ color:var(--sb-accent); }
+/* two frames -- sport, then role; the sport frame slides out left as the role frame slides in */
+body.landing .stage{ position:relative; width:100%; display:grid; overflow:hidden; padding:6px 0 10px; }
+body.landing .frame{ grid-area:1 / 1; display:flex; flex-direction:column; align-items:center; gap:28px; transition:transform var(--duration-slow) ease-out, opacity var(--duration-slow) ease-out; }
+body.landing .frame.off-left{ transform:translateX(-100%); opacity:0; pointer-events:none; }
+body.landing .frame.off-right{ transform:translateX(100%); opacity:0; pointer-events:none; }
+body.landing .back-link{ align-self:flex-start; padding:0 10px; margin-left:-10px; }
+body.landing .foot{ font-size:var(--t-12); color:var(--ink-faint); letter-spacing:0.06em; text-transform:uppercase; }
+body.landing .foot a{ color:inherit; text-decoration:underline; }
+/* phones: start from the top; the cards stack, full width (Joel, Oct 1) */
+@media (max-width:500px){
+  body.landing{ align-items:flex-start; padding:22px 16px 14px; }
+  body.landing .wrap{ gap:14px; }
+  body.landing h2.display{ font-size:var(--t-44); }
+  body.landing .frame{ gap:14px; }
+  body.landing .options{ flex-direction:column; flex-wrap:nowrap; gap:12px; }
+  body.landing .option-card{ flex:none; min-width:0; width:100%; max-width:none; padding:20px 18px; gap:8px; }
+  body.landing .option-icon{ width:54px; height:54px; }
+}
+@media (max-width:500px) and (max-height:640px){
+  body.landing{ padding-top:16px; }
+  body.landing .wrap{ gap:10px; }
+  body.landing h2.display{ font-size:var(--t-32); }
+  body.landing .frame, body.landing .options{ gap:10px; }
+  body.landing .option-card{ padding:13px 16px; gap:5px; }
+  body.landing .option-icon{ width:44px; height:44px; }
+  body.landing .option-icon svg.ball{ width:28px; height:28px; }
+  body.landing .option-title{ font-size:var(--t-24); }
+}
+@media (max-width:500px) and (max-height:570px){
+  body.landing .tagline{ display:none; }
+  body.landing .option-desc{ font-size:var(--t-12); }
+  body.landing .option-card{ padding:10px 14px; }
+}
+.next-pitch{ white-space:nowrap; }   /* D1/D2: the one Next Pitch component (variants: .g5-nextpitch under the field, .g5-act-next in the field actions) */

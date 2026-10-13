@@ -44,6 +44,7 @@
 <noscript><link rel="stylesheet" href="vendor/fonts/fonts.css"></noscript>
 <link rel="stylesheet" href="css/tokens.css">   <!-- D1: the design tokens, every page (Oct 13 2026) -->
 <link rel="stylesheet" href="buttons.css">   <!-- U13: every button's shape (Joel, Oct 9 2026) -->
+<link rel="stylesheet" href="css/components.css">   <!-- D2 Stage C: shared components (card, slanted tag, badge, banner) -->
 <style>
   /* Visual refresh (light theme). Every color the app uses lives here now --
      the several dozen hard-coded hexes that used to be scattered through
@@ -72,21 +73,25 @@
   .dots9 i{ width:4px; height:4px; border-radius:50%; background:var(--on-dark); }
   .ph-layout .controls-panel.ph-controls{ padding:6px; gap:8px; border:0; box-shadow:none; background:transparent; }
   .ph-layout{ gap:12px !important; }
+  /* D2 Stage C: the scoreboard -- Big Shoulders numbers over small caps labels, cells split by a hairline */
   .ph-status{
-    display:flex; align-items:center; gap:14px; min-height:44px; padding:0 14px;
-    background:var(--brand-bg); color:var(--on-dark); border-radius:10px; font-weight:700; font-size:16px;
+    display:flex; align-items:center; gap:10px; min-height:52px; padding:0 12px;
+    background:var(--brand-bg-deep); color:var(--on-dark); border-radius:var(--radius-control); font-weight:700; font-size:16px;
   }
-  .ph-status .ph-inn{ font-size:20px; }
+  .sb-cell{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:4px 10px 4px 0; border-right:1px solid var(--brand-line); white-space:nowrap; }
+  .sb-cell + .sb-cell{ padding-left:0; }
+  .sb-num{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:var(--t-24); line-height:1; color:var(--on-dark); }
+  .sb-lbl{ font-size:var(--t-10); font-weight:700; font-stretch:90%; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--on-dark-faint); line-height:1; }
+  .sb-lbl .lbl-short{ display:none; }
+  /* most phones (390 and under): the short label and tighter spacing keep the Live Game bar on one line with Windup and the clock */
+  @media (max-width:399px){ .sb-lbl{ letter-spacing:0.05em; } .sb-lbl .lbl-long{ display:none; } .sb-lbl .lbl-short{ display:inline; } .ph-status{ gap:7px; padding:0 10px; } .sb-cell{ padding-right:7px; } }
   .ph-status .ph-diamond{ margin-left:2px; display:flex; align-items:center; }
   .ph-status .ph-diamond .runner-diamond-btn{ min-height:40px; }
   /* Joel, Oct 12: never wrap "0 OUT 0-0" -- each item stays on one line, and the bar tightens on narrower phones */
   .ph-status .ph-item, .ph-status .ph-inn{ white-space:nowrap; }
-  @media (max-width:389px){ .ph-status{ gap:8px; padding:0 10px; } }
-  @media (max-width:359px){ .ph-status{ gap:5px; padding:0 6px; } .ph-status .ph-item{ font-size:14px; } .ph-status .deliv-one{ width:60px; padding:0 4px; } }   /* D2 (Oct 13): room to spare at 320 px (it was 7 px over before Stage B) */
-  .ph-count{ display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%;
-    background:var(--on-dark); color:var(--ink); font-size:16px; }
-  .ph-lbl{ font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:var(--on-dark-dim); margin-left:-6px; }
-  .ph-persp{ margin-left:auto; font-size:14px; color:var(--on-dark); }
+  @media (max-width:389px){ .ph-status{ gap:7px; padding:0 10px; } .sb-cell{ padding-right:7px; } }
+  @media (max-width:359px){ .ph-status{ gap:5px; padding:0 6px; } .sb-cell{ padding-right:5px; } .sb-num{ font-size:var(--t-20); } .ph-status .deliv-one{ width:60px; padding:0 4px; } }   /* D2 (Oct 13): room to spare at 320 px (it was 7 px over before Stage B) */
+  .ph-persp{ margin-left:auto; font-size:var(--t-12); font-weight:800; font-stretch:85%; letter-spacing:var(--tr-label); text-transform:uppercase; text-align:right; color:var(--on-dark); }
   .ph-persp.locked{ color:var(--on-dark-dim); }
   /* one grid square on a phone: the grid is min(screen - 28px, 320px) wide,
      3px padding each side and 3px gaps, five across */
@@ -99,6 +104,7 @@
   .ph-status-deliv{ margin-left:auto; display:flex; align-items:center; gap:6px; }
   .ph-status .deliv-one{ width:76px; height:34px; min-height:34px; padding:0 8px; font-size:14px; }
   .ph-status .ttp-btn.ttp-compact{ width:40px; min-width:40px; height:34px; min-height:34px; }
+  @media (max-width:359px){ .ph-status{ gap:4px; padding:0 6px; } .sb-cell{ padding-right:4px; } .sb-lbl{ letter-spacing:0.02em; } .ph-status-deliv{ gap:4px; } .ph-status .deliv-one{ width:60px; padding:0 4px; } }   /* after the rules above, so the smallest phones win */
   .pstrip-wrap{ flex:1; min-width:0; display:flex; align-items:center; gap:2px; }
   .pstrip-arrow{ flex:none; width:20px; min-width:0; padding:0; font-size:24px; font-weight:800; }
   .pstrip-arrow:disabled{ background:transparent; }
@@ -189,7 +195,7 @@
   .brand-block{
     display:flex; flex-direction:column; gap:4px;
     background:var(--brand-bg); color:var(--on-dark);
-    border-radius:10px; padding:16px 18px;
+    border-radius:var(--radius-control); padding:16px 18px;
   }
   .brand{ display:flex; align-items:baseline; gap:8px; }
   /* Joel, Oct 8: the wordmark is KNUCKLEBALL in Black Ops One -- no diamond, no period */
@@ -202,12 +208,9 @@
   .brand h1.brand-word{ font-size:24px; }   /* Black Ops One runs wide: KNUCKLEBALL fits the sidebar's brand block */
   .boot-screen .brand h1.brand-word{ font-size:24px; }
   .brand span{ color:var(--accent); }
-  .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label); color:var(--on-dark-faint); font-weight:700; font-stretch:90%;}
+  .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-tag); color:var(--on-dark-faint); font-weight:700; font-stretch:90%;}
 
-  .role-badge{
-    align-self:flex-start; font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label);
-    color:var(--accent-bright); background:rgba(var(--accent-rgb),0.12);
-    border:1px solid rgba(var(--accent-rgb),0.3); padding:3px 9px; border-radius:20px; margin-top:2px; font-weight:700; font-stretch:90%;}
+  .role-badge{ margin-top:6px; }   /* D2: the role badge is a .slant-tag (css/components.css) */
 
   /* Offline indicator + instant boot screen (P1-13) */
   .offline-pill{
@@ -342,7 +345,7 @@
      requirement -- they can look around). */
   .verify-banner{
     display:flex; flex-wrap:wrap; align-items:center; gap:10px;
-    background:var(--warning-tint); border:1px solid var(--warning-line); border-radius:8px;
+    background:var(--warning-tint); border:1px solid var(--warning-line); border-radius:var(--radius-control);
     padding:12px 16px; margin-bottom:16px;
   }
   .verify-banner p{ margin:0; font-size:12px; color:var(--ink-dim); flex:1; min-width:220px; }
@@ -357,7 +360,7 @@
 
   .outbox-badge{
     display:flex; align-items:center; justify-content:space-between; gap:8px;
-    background:var(--warning-tint); border:1px solid var(--warning-line); border-radius:6px;
+    background:var(--warning-tint); border:1px solid var(--warning-line); border-radius:var(--radius-control);
     padding:8px 10px; font-size:12px; color:var(--ink-dim);
   }
   .outbox-badge .btn{ flex-shrink:0; }
@@ -368,9 +371,10 @@
   }
   .field-label{ font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label); color:var(--ink-faint); font-weight:700; font-stretch:90%;}
   .text-input{
-    background:var(--card); border:1px solid var(--border-strong); border-radius:5px;
-    color:var(--ink); padding:8px 10px; font-size:14px; width:100%;
+    background:var(--card); border:1.5px solid var(--border-strong); border-radius:var(--radius-control);
+    color:var(--ink); padding:9px 12px; min-height:var(--tap-min); font-size:16px; width:100%;
   }
+  .text-input:focus{ outline:none; border-color:var(--brand-mid); box-shadow:0 0 0 3px var(--brand-mid-ring); }
   .text-input::placeholder{ color:var(--ink-faint); }
   .form-row-buttons{ display:flex; gap:8px; margin-top:2px; }
   .invite-status{ font-size:12px; margin:0; }
@@ -544,7 +548,7 @@
   .start-q-actions .start-q-go{ flex:1; }
   @media (min-width:861px){ .kind-chooser-buttons{ flex-direction:row; justify-content:center; } }
   /* U10 (1): back to the chooser. Above phone width it's a plain
-     .btn.btn-ghost in the pitcher header's action row -- no extra rules, so
+     a secondary button in the pitcher header's action row -- no extra rules, so
      it's exactly the size of Contacts/Profile beside it (Joel: "same
      height"). On phones it's the brand-strip button below. */
   /* Phone spot: overlaid on the brand strip's right end (position:absolute,
@@ -565,12 +569,11 @@
     padding-bottom:calc(24px + env(safe-area-inset-bottom, 0px));
   }
   .modal-panel{
-    position:relative; background:var(--card); border-radius:14px;
+    position:relative; background:var(--card); border-radius:var(--radius-control);
     max-width:560px; width:100%; max-height:100%; overflow-y:auto;
     padding:32px 24px 24px; box-shadow:0 8px 32px rgba(var(--ink-rgb),0.35);
   }
   .modal-close-x{ position:absolute; top:8px; right:8px; }
-  .panel{ background:var(--card); border:1px solid var(--border); border-radius:10px; padding:22px; box-shadow:0 1px 3px rgba(var(--ink-rgb),0.06); }
   .controls-panel{ display:flex; flex-direction:column; gap:18px; min-width:260px; flex:1; }
   .chip-row{ display:flex; flex-wrap:wrap; gap:10px; }
   /* U13 layout helpers: spacing that used to sit inline on buttons, and where trays go */
@@ -608,10 +611,10 @@
      chips and the grid below (not centered under its own label -- Joel, Sept 22:
      that read as inset/indented against everything else in this column). */
   .pitch-counter{ display:flex; flex-direction:row; align-items:center; gap:10px; flex-shrink:0; }
-  .pitch-counter-num{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:24px; line-height:1; color:var(--ink); }
+  .pitch-counter-num{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:24px; line-height:1; color:var(--on-dark); }
   .pitch-count-badge{
-    width:44px; height:44px; padding:0;
-    background:var(--surface); /* same green as the 3x3 strike-zone cells, see .zone-cell.in-zone */
+    width:44px; height:44px; padding:0; border:0; border-radius:var(--radius-control);
+    background:var(--brand-bg-deep); color:var(--on-dark);   /* D2 Stage C: a scoreboard tile */
   }
   .add-type-inline{ display:flex; gap:6px; align-items:center; }
   .add-type-inline input, .add-type-inline select{ flex:1; padding:6px 8px; font-size:12px; }
@@ -752,11 +755,11 @@
   }
   .zone-grid{
     display:grid; grid-template-columns:repeat(5, 52px); grid-template-rows:repeat(5, 52px);
-    gap:3px; background:var(--surface-border); padding:3px; border-radius:6px;
+    gap:3px; background:var(--brand-bg); padding:3px; border-radius:6px;   /* D2 Stage C: the dark frame */
     position:relative; /* containing block for .home-plate-overlay (U5) */
   }
   .zone-cell{
-    background:var(--card); border-radius:3px; position:relative; border:1px solid transparent;
+    background:var(--card); border-radius:var(--radius-cell); position:relative; border:1px solid transparent;
     transition:background-color 0.3s ease;
   }
   .zone-cell.in-zone{ background:var(--surface); border-color:var(--border-strong); }
@@ -894,13 +897,6 @@
   @media (prefers-reduced-motion: reduce){
     .game-panel-body{ transition:none; }
   }
-  /* Next Pitch (renamed from Pitch): the reference's own gold .pitch. */
-  .next-pitch-btn{
-    display:block; width:100%; margin-top:10px; background:var(--accent-game); color:var(--ink);
-    border:none; border-radius:10px; text-align:center; font-weight:800; padding:11px;
-    font-size:16px; letter-spacing:0.05em; text-transform:uppercase; cursor:pointer;
-  }
-  .next-pitch-btn:disabled{ background:var(--surface-border); color:var(--ink-faint); cursor:not-allowed; }
   /* The position swipe row (replaces the field's own tap targets): one
      scrollable line, no visible scrollbar, chips sized 64x46px minimum
      (acceptance 34) so it's usable with a thumb on a 320px phone; scroll-
@@ -1099,12 +1095,12 @@
 
   .draft-banner{
     display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
-    background:var(--warning-tint); border:1px solid var(--warning-line); border-radius:8px; padding:12px 16px;
+    background:var(--warning-tint); border:1px solid var(--warning-line); border-radius:var(--radius-control); padding:12px 16px;
   }
   .draft-banner p{ margin:0; font-size:12px; color:var(--ink-dim); }
 
   /* HISTORY */
-  .session-card{ background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 1px 3px rgba(var(--ink-rgb),0.06); }
+  .session-card{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-control); overflow:hidden; }
   .session-card-head{ display:flex; align-items:center; justify-content:space-between; padding:16px 20px; gap:14px; flex-wrap:wrap; cursor:pointer; }
   .session-card-head:hover{ background:var(--surface); }
   .session-date{ font-weight:600; font-size:14px; }
@@ -1198,7 +1194,7 @@
   .acct-check{ color:var(--ink); font-weight:800; }
   .acct-add{ margin-top:4px; width:100%; }
   .acct-msg{ font-size:12px; color:var(--warning); margin:4px 8px; }
-  .who-card{ width:min(380px, 100%); background:var(--card); border:1px solid var(--border); border-radius:14px; padding:22px; display:flex; flex-direction:column; gap:6px; box-shadow:0 1px 3px rgba(var(--ink-rgb),0.06); }
+  .who-card{ width:min(380px, 100%); background:var(--card); border:1px solid var(--border); border-radius:var(--radius-control); padding:22px; display:flex; flex-direction:column; gap:6px; }
   /* S3: coaches notes in History */
   .notes-block{ display:flex; flex-direction:column; gap:10px; margin:14px 0 4px; padding:12px 14px; border:1px solid var(--surface-border); border-radius:10px; background:var(--surface); }
   .note-item{ background:var(--card); border:1px solid var(--border); border-radius:8px; padding:9px 11px; }
@@ -1560,8 +1556,6 @@
   .gg-cap-only{ font-size:10px; font-weight:700; color:var(--gg-ink); line-height:1.2; }
   .gg-seq{ position:absolute; top:-7px; right:-5px; background:var(--accent-game); color:var(--ink); border-radius:10px; font-size:10px; padding:1px 6px; font-weight:800; }
   .gg-done{ font-size:16px; font-weight:800; }
-  .gg-next{ background:var(--accent-game); border-color:var(--accent-game); font-size:16px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; }
-  .gg-next:disabled{ opacity:0.45; }
   .gg-book{
     position:relative; margin:1px; background:#fff; color:var(--gg-ink);
     border:1.5px solid var(--gg-ink); border-radius:6px; overflow:hidden;
@@ -8523,7 +8517,7 @@ function g5FieldActions(){
   }
   const added = g.addOuts ? ` · ${g.addOuts}` : '';
   const blocked = g5NeedsBatter(g);
-  const next = (g.step === 'bases' && ggRadarOn()) ? `<button type="button" class="btn btn-primary btn-sm g5-act g5-act-next" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>` : '';
+  const next = (g.step === 'bases' && ggRadarOn()) ? `<button type="button" class="btn btn-primary btn-sm g5-act g5-act-next next-pitch" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>` : '';
   return `<div class="g5-actions">
     <button type="button" class="btn btn-secondary btn-sm g5-act" onclick="g5AddOut()" ${g5ProjectedOuts(g) >= 3 ? 'disabled' : ''}>+ Out${added}</button>
     <button type="button" class="btn btn-secondary btn-sm g5-act" onclick="g5AddCount('strike')">+ Strike</button>
@@ -8706,7 +8700,7 @@ function g5Card(face, flip, chartHtml){
 function g5VeloRows(){
   return `<div class="g5-velo-row gg-velo">${renderGameVeloStrip()}</div>
     <div class="g5-next-row"><button type="button" class="btn btn-secondary btn-sm g5-reset" onclick="recordGameVelo(null)">Reset</button>
-    <button type="button" class="btn btn-primary g5-nextpitch" onclick="g5NextPitch()">Next pitch ›</button></div>`;
+    <button type="button" class="btn btn-primary g5-nextpitch next-pitch" onclick="g5NextPitch()">Next pitch ›</button></div>`;
 }
 // Joel, Oct 12: what happened, as big letters (no words; screen readers still hear each word), under the chart: K swinging, a backwards K
 // looking (the scorebook's called third strike), B ball, F foul, IP in play. Foul then asks tip or out here too.
@@ -8805,7 +8799,7 @@ function renderGameSessionView(p){
       <div class="panel controls-panel ph-controls">
         ${renderAdjustRunnersFlow()}
         <div class="ph-status on-dark">
-          <span class="ph-inn">▲${s.inning}</span><span class="ph-item">${displayOuts(s)} OUT</span><span class="ph-item mono">${s.balls}-${s.strikes}</span>
+          <span class="sb-cell"><span class="sb-num ph-inn">▲${s.inning}</span><span class="sb-lbl"><span class="lbl-long">Inning</span><span class="lbl-short">Inn</span></span></span><span class="sb-cell"><span class="sb-num ph-item">${displayOuts(s)}</span><span class="sb-lbl">Out${displayOuts(s) === 1 ? '' : 's'}</span></span><span class="sb-cell"><span class="sb-num ph-item">${s.balls}-${s.strikes}</span><span class="sb-lbl">Count</span></span>
           <span class="ph-diamond">${renderRunnerDiamond()}</span>
           ${renderStatusDelivery()}
         </div>
@@ -9280,7 +9274,7 @@ function renderSessionView(){
     <div class="session-grid-layout ph-layout">
       <div class="panel controls-panel ph-controls">
         <div class="ph-status on-dark">
-          <span class="ph-count mono">${stats.total}</span><span class="ph-lbl">${stats.total === 1 ? 'Pitch' : 'Pitches'}</span>
+          <span class="sb-cell"><span class="sb-num ph-count">${stats.total}</span><span class="sb-lbl">${stats.total === 1 ? 'Pitch' : 'Pitches'}</span></span>
           <span class="ph-persp${locked ? ' locked' : ''}">${chartingPerspective === 'behind_pitcher' ? 'Pitcher' : 'Catcher'}${locked ? ' · locked' : ''}</span>
         </div>
         ${renderPhoneDeliveryRow(p)}
@@ -11168,7 +11162,7 @@ function render(){
       <div class="brand-block">
         <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
         <span class="tagline">Always a Step Ahead</span>
-        <span class="role-badge">${isCoach() ? 'Coach' : 'Pitcher'}</span>
+        <span class="role-badge slant-tag">${isCoach() ? 'Coach' : 'Pitcher'}</span>
         ${renderOfflinePill()}
         ${renderBackToChooserBrandBtn()}
       </div>

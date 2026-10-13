@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,76 +20,26 @@
     document.documentElement.setAttribute('data-sport', window.KB_SPORT);
   })();
 </script>
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
 <link rel="stylesheet" href="css/tokens.css">   <!-- D1: the design tokens, every page (Oct 13 2026) -->
 <link rel="stylesheet" href="buttons.css">   <!-- U13: shared button shapes (Joel, Oct 9 2026) -->
-<style>
-  @import url('vendor/fonts/fonts.css');
-
-  /* S1: softball (docs/softball-theme-reference.html). Only variables change. */
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;height:100%;}
-  body{
-    background:var(--bg);
-    background-image:
-      radial-gradient(circle at 15% 0%, var(--glow-a), transparent 40%),
-      radial-gradient(circle at 85% 100%, var(--glow-b), transparent 45%);
-    color:var(--ink); font-family:var(--font-sans);
-    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
-  }
-  ::selection{ background:var(--accent); color:var(--brand-bg); }
-  .display{ font-family:var(--font-display); font-weight:800; letter-spacing:var(--tr-display); text-transform:uppercase; }   /* D2: Big Shoulders 800, caps */
-  a{ color:var(--ink-faint); text-decoration:none; font-size:14px; }
-  a:hover{ color:var(--ink); }
-  a:focus-visible{ outline:2px solid var(--accent-bright); outline-offset:3px; }
-  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
-
-  .card{
-    width:100%; max-width:400px; background:var(--card); border:1.5px solid var(--border-strong);
-    border-radius:14px; padding:38px 34px; display:flex; flex-direction:column; gap:20px;
-  }
-  .brand-block{ display:flex; flex-direction:column; gap:4px; }
-  .brand{ display:flex; align-items:baseline; gap:8px; }
-  /* Joel, Oct 8: the wordmark is KNUCKLEBALL in Black Ops One -- no diamond, no period */
-  .brand-word{ font-family:var(--font-wordmark) !important; font-weight:400 !important; letter-spacing:0.02em; white-space:nowrap; }
-  .brand-mark{ width:10px; height:10px; border-radius:2px; background:var(--accent); transform:rotate(45deg); margin-bottom:3px; }
-  .brand h1{ font-size:24px; line-height:1; margin:0; letter-spacing:0.02em; }
-  .brand span{ color:var(--accent); }
-  .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label); color:var(--ink-faint); font-weight:700; font-stretch:90%;}
-  h2.display{ font-size:32px; margin:0; line-height:1; }
-
-  .info-msg{ font-size:14px; color:var(--ink-dim); line-height:1.5; background:var(--card-2); border:1px solid var(--border-strong); border-radius:8px; padding:14px; }
-  .spinner-msg{ font-size:14px; color:var(--ink-dim); text-align:center; }
-  .step-hidden{ display:none; }
-  .card{ max-width:460px; }
-  .summary{ font-size:14px; color:var(--ink-dim); line-height:1.55; margin:0; }
-  .summary strong{ color:var(--ink); }
-  .approve-btn{ white-space:normal; min-height:48px; padding:10px 16px; }
-  .policy-links{ display:flex; gap:16px; flex-wrap:wrap; }
-  .site-footer{ font-size:12px; color:var(--ink-faint); text-align:center; margin-top:4px; }
-  body{ flex-direction:column; gap:14px; }   /* P1-10: the footer sits under the card */
-  /* A form taller than the screen starts at the top and scrolls -- centering
-     pushed its top (logo, first fields) off-screen where it couldn't be reached. */
-  html,body{ height:auto; }
-  body{ justify-content:flex-start; }
-  body::before, body::after{ content:''; flex:1 1 0; }
-  .site-footer a{ font-size:12px; }
-</style>
+<link rel="stylesheet" href="css/components.css">   <!-- D2 Stage C: the shared sign-in look (Oct 13 2026) -->
 </head>
-<body>
+<body class="signin">
   <div class="card" id="loading-card">
-    <div class="brand-block">
+    <header class="signin-head"><div class="brand-block">
       <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
       <span class="tagline">Always a Step Ahead</span>
-    </div>
+    </div></header>
     <p class="spinner-msg">Loading…</p>
   </div>
 
   <div class="card step-hidden" id="ask-card">
-    <div class="brand-block">
+    <header class="signin-head"><div class="brand-block">
       <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
-    <h2 class="display">Approve <span id="player-name">this player</span>'s account</h2>
+    <h2 class="display">Approve <span id="player-name">this player</span>'s <span class="last">account</span></h2></header>
     <p class="summary"><strong><span id="player-name-2">The player</span></strong> listed you as a parent or guardian.
       Knuckleball LLC runs Knuckleball, a pitch-charting app. Approving lets them view and send their pitching reports;
       they can already chart without it.</p>
@@ -107,20 +57,20 @@
   </div>
 
   <div class="card step-hidden" id="ok-card">
-    <div class="brand-block">
+    <header class="signin-head"><div class="brand-block">
       <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
-    <h2 class="display">Approved</h2>
+    <h2 class="display">Approved</h2></header>
     <div class="info-msg">Thank you. The account is approved, and its reports are now available. You can close this page.</div>
   </div>
 
   <div class="card step-hidden" id="invalid-card">
-    <div class="brand-block">
+    <header class="signin-head"><div class="brand-block">
       <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
-    <h2 class="display">Link no longer valid</h2>
+    <h2 class="display">Link no longer <span class="last">valid</span></h2></header>
     <div class="info-msg">This approval link was already used or has been replaced. If the player still needs approval, they can send a new link from the app.</div>
   </div>
   <p class="site-footer" id="site-footer">Knuckleball LLC 2026 &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></p>

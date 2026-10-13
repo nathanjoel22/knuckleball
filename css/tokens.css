@@ -10,9 +10,6 @@
    Scopes:
      :root                                  the light app, baseball
      html[data-sport="softball"]            softball, same names (navy and rally pink)
-     html[data-theme="dark"]                the 11 sign-in pages, temporarily: D2 Stage C
-                                            turns them light and deletes this scope
-     html[data-theme="dark"][data-sport="softball"]
 
    VARIABLES ONLY -- no rule here styles an element. report.html loads this file
    and draws every stored (frozen) report inside its own page; each report defines
@@ -48,6 +45,7 @@
   --brand-line:       rgba(255,255,255,0.10);   /* hairlines on dark */
   --brand-mid:        #16593D;   /* links and focus on light: 8.3:1 on white */
   --brand-soft:       #7FC9A1;   /* avatars, secondary chart marks */
+  --brand-mid-ring:   rgba(22,89,61,0.18);   /* the input focus ring */
 
   /* ---- Text on dark ---- */
   --on-dark:          #FFFFFF;
@@ -176,6 +174,7 @@ html[data-sport="softball"]{
   --brand-bg-2:       #12345A;
   --brand-mid:        #1F5C99;   /* 6.9:1 on white */
   --brand-soft:       #8EC3EE;
+  --brand-mid-ring:   rgba(31,92,153,0.18);
   --on-dark-dim:      #C5D3E2;
   --on-dark-faint:    #8A9BB0;   /* 5.5:1 on --brand-bg */
   --accent:           #FF4F9A;   /* rally pink: a fill, never text on light */
@@ -187,40 +186,4 @@ html[data-sport="softball"]{
   --dock-bg:          rgba(11,37,64,0.82);
   --pitch-1: #FF4F9A; --pitch-2: #2F9BFF; --pitch-3: #7A3FB8; --pitch-4: #FF9F1C;
   --pitch-5: #00A99D; --pitch-6: #7A53FF; --pitch-7: #CD4730; --pitch-8: #6C7684;   /* 6-8 darkened from the target (Joel, Oct 13: white chip labels 4.6:1) */
-}
-
-/* ---------- The sign-in pages' dark look, until D2 Stage C (Joel, Oct 13: the new brand
-   colors on the dark look first). Same names, the dark page's jobs: --bg is the dark page,
-   --ink the light text on it, --brand-bg the dark text on gold. ---------- */
-html[data-theme="dark"]{
-  --bg:               var(--bb-brand);
-  --brand-bg:         var(--bb-brand);
-  --card:             var(--bb-brand-2);
-  --card-2:           var(--bb-brand-3);   /* hover, info boxes */
-  --ink:              #FFFFFF;
-  --ink-dim:          #C2CEC6;
-  --ink-faint:        #86978C;
-  --danger:           #FF7A6E;   /* error text on the dark card (the light app's red is 3:1 here) */
-  --warning:          #FFC94F;
-  --border:           rgba(255,255,255,0.12);
-  --border-strong:    rgba(255,255,255,0.24);
-  --glow-a:           rgba(255,184,28,0.08);
-  --glow-b:           rgba(127,201,161,0.06);
-  --btn-on-primary:     var(--brand-bg);
-  --btn-ink:            var(--brand-bg);
-  --btn-soft:           rgba(255,255,255,0.10);
-  --btn-accent:         var(--brand-bg);
-}
-html[data-theme="dark"][data-sport="softball"]{
-  --bg:               var(--sb-brand);
-  --brand-bg:         var(--sb-brand);
-  --card:             var(--sb-brand-2);
-  --card-2:           var(--sb-brand-3);
-  --ink:              #FFFFFF;
-  --ink-dim:          #C5D3E2;
-  --ink-faint:        #9FB2C6;   /* 5.8:1 on the softball card (the light app's #8A9BB0 is 4.4:1 there) */
-  --border:           rgba(255,255,255,0.12);
-  --border-strong:    rgba(255,255,255,0.24);
-  --glow-a:           rgba(255,79,154,0.10);
-  --glow-b:           rgba(47,155,255,0.08);
 }

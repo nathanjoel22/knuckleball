@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,93 +21,21 @@
     document.documentElement.setAttribute('data-sport', window.KB_SPORT);
   })();
 </script>
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
 <link rel="stylesheet" href="css/tokens.css">   <!-- D1: the design tokens, every page (Oct 13 2026) -->
 <link rel="stylesheet" href="buttons.css">   <!-- U13: shared button shapes (Joel, Oct 9 2026) -->
-<style>
-  @import url('vendor/fonts/fonts.css');
-
-  /* S1: softball (docs/softball-theme-reference.html). Only variables change. */
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;height:100%;}
-  body{
-    background:var(--bg);
-    background-image:
-      radial-gradient(circle at 15% 0%, var(--glow-a), transparent 40%),
-      radial-gradient(circle at 85% 100%, var(--glow-b), transparent 45%);
-    color:var(--ink); font-family:var(--font-sans);
-    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
-  }
-  ::selection{ background:var(--accent); color:var(--brand-bg); }
-  .display{ font-family:var(--font-display); font-weight:800; letter-spacing:var(--tr-display); text-transform:uppercase; }   /* D2: Big Shoulders 800, caps */
-  a{ color:var(--ink-faint); text-decoration:none; font-size:14px; }
-  a:hover{ color:var(--ink); }
-  button{ font-family:inherit; cursor:pointer; }
-  input{ font-family:inherit; }
-  button:focus-visible, input:focus-visible, a:focus-visible{ outline:2px solid var(--accent-bright); outline-offset:3px; }
-  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
-
-  .card{
-    width:100%; max-width:400px; background:var(--card); border:1.5px solid var(--border-strong);
-    border-radius:14px; padding:38px 34px; display:flex; flex-direction:column; gap:20px;
-  }
-  .brand-block{ display:flex; flex-direction:column; gap:4px; }
-  .brand{ display:flex; align-items:baseline; gap:8px; }
-  /* Joel, Oct 8: the wordmark is KNUCKLEBALL in Black Ops One -- no diamond, no period */
-  .brand-word{ font-family:var(--font-wordmark) !important; font-weight:400 !important; letter-spacing:0.02em; white-space:nowrap; }
-  .brand-mark{ width:10px; height:10px; border-radius:2px; background:var(--accent); transform:rotate(45deg); margin-bottom:3px; }
-  .brand h1{ font-size:24px; line-height:1; margin:0; letter-spacing:0.02em; }
-  .brand span{ color:var(--accent); }
-  .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label); color:var(--ink-faint); font-weight:700; font-stretch:90%;}
-  h2.display{ font-size:32px; margin:0; line-height:1; }
-  p.sub{ font-size:14px; color:var(--ink-dim); margin:0; }
-
-  .field{ display:flex; flex-direction:column; gap:6px; }
-  .field-label{ font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label); color:var(--ink-faint); font-weight:700; font-stretch:90%;}
-  .text-input{
-    background:var(--bg); border:1px solid var(--border-strong); border-radius:6px;
-    color:var(--ink); padding:11px 12px; font-size:14px; width:100%;
-  }
-  .text-input::placeholder{ color:var(--ink-faint); }
-  .text-input:focus{ border-color:var(--accent); }
-
-
-  .error-msg{ font-size:12px; color:var(--danger); min-height:16px; }
-  .info-msg{ font-size:14px; color:var(--ink-dim); line-height:1.5; background:var(--card-2); border:1px solid var(--border-strong); border-radius:8px; padding:14px; }
-
-  .foot-row{ display:flex; justify-content:space-between; align-items:center; }
-  .step-hidden{ display:none; }
-
-  /* P1-10: age question, guardian email, terms agreement */
-  .age-options{ display:flex; flex-direction:column; gap:6px; margin-top:6px; }
-  .age-opt{ display:flex; align-items:center; gap:10px; font-size:14px; color:var(--ink); cursor:pointer; min-height:34px; }
-  .age-opt input, .terms-check input{ width:18px; height:18px; accent-color:var(--accent); flex:0 0 auto; margin:0; }
-  .age-note{ font-size:12px; color:var(--ink-dim); margin:6px 0 0; line-height:1.45; }
-  .age-stop{ font-size:14px; color:var(--ink); background:var(--card-2); border:1px solid var(--border-strong); border-radius:8px; padding:10px 12px; margin:0; line-height:1.45; }
-  .terms-check{ display:flex; align-items:flex-start; gap:10px; font-size:14px; color:var(--ink-dim); line-height:1.45; cursor:pointer; }
-  .terms-check a{ color:var(--ink); text-decoration:underline; font-size:14px; }
-  .site-footer{ font-size:12px; color:var(--ink-faint); text-align:center; margin-top:4px; }
-  body{ flex-direction:column; gap:14px; }   /* P1-10: the footer sits under the card */
-  /* A form taller than the screen starts at the top and scrolls -- centering
-     pushed its top (logo, first fields) off-screen where it couldn't be reached. */
-  html,body{ height:auto; }
-  body{ justify-content:flex-start; }
-  body::before, body::after{ content:''; flex:1 1 0; }
-  .site-footer a{ font-size:12px; }
-  /* S4 B2 */
-  .section-label{ font-family:var(--font-display); font-size:24px; font-weight:800; text-transform:uppercase; letter-spacing:var(--tr-display); line-height:1; margin-top:4px; color:var(--ink); }
-  .age-row{ flex-direction:row; gap:18px; }
-</style>
+<link rel="stylesheet" href="css/components.css">   <!-- D2 Stage C: the shared sign-in look (Oct 13 2026) -->
 </head>
-<body>
+<body class="signin">
   <form class="card" id="signup-form" autocomplete="off">
-    <div class="brand-block">
+    <header class="signin-head"><div class="brand-block">
       <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
     <div>
-      <h2 class="display">Create a parent account</h2>
+      <h2 class="display">Create a parent <span class="last">account</span></h2>
       <p class="sub">For a parent or guardian setting up a player. Your child doesn't need an email or a login: you chart for them, and their reports come to you.</p>
-    </div>
+    </div></header>
 
     <div class="field">
       <label class="field-label" for="full-name">Your name</label>
@@ -152,11 +80,11 @@
   </form>
 
   <div class="card step-hidden" id="confirm-card">
-    <div class="brand-block">
+    <header class="signin-head"><div class="brand-block">
       <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
       <span class="tagline">Always a Step Ahead</span>
     </div>
-    <h2 class="display">Check your email</h2>
+    <h2 class="display">Check your <span class="last">email</span></h2></header>
     <div class="info-msg">We sent a confirmation link to your email. Click it, then log in and add your player.</div>
     <a href="login.html">Go to login &rarr;</a>
   </div>

@@ -30,9 +30,36 @@ cache_version() {
     | head -n1
 }
 
+palettes() {
+  # print the 16 pitch colors (baseball 1-8, then softball 1-8) one file holds at a commit, upper-case
+  case "$2" in
+    tracker) git show "$1:bullpen-tracker.html" 2>/dev/null | grep -E '^[[:space:]]*palette: \[' ;;
+    report)  git show "$1:supabase/functions/send-session-report/helpers.ts" 2>/dev/null | grep -E '^export const TYPE_PALETTE_HEX|^[[:space:]]*softball: \[' ;;
+    tokens)  git show "$1:css/tokens.css" 2>/dev/null | grep -oE -- '--pitch-[1-8]: *#[0-9A-Fa-f]{6}' ;;
+  esac | grep -oE '#[0-9A-Fa-f]{6}' | tr 'a-f' 'A-F' | tr '\n' ' '
+}
+
+# Palette sync (CLAUDE.md landmine 4; D2 decision 8, Oct 13 2026): the pitch-type colors live in
+# three places -- SPORTS[sport].palette (tracker), SPORT_PALETTE_HEX (report), --pitch-N
+# (css/tokens.css) -- and must be identical, in order. Checked on EVERY push, any branch.
+palette_check() {
+  t=$(palettes "$1" tracker); r=$(palettes "$1" report); k=$(palettes "$1" tokens)
+  [ -z "$t$r$k" ] && return 0   # a commit without these files (old history)
+  if [ "$t" = "$r" ] && [ "$t" = "$k" ] && [ "$(echo $t | wc -w | tr -d ' ')" = 16 ]; then return 0; fi
+  echo "" >&2
+  echo "  PUSH REJECTED - the pitch-type palettes don't match (they must be identical, in order):" >&2
+  echo "      bullpen-tracker.html SPORTS palette: $t" >&2
+  echo "      send-session-report/helpers.ts:      $r" >&2
+  echo "      css/tokens.css --pitch-1..8:         $k" >&2
+  echo "  Change all three together, commit, and push again." >&2
+  echo "" >&2
+  return 1
+}
+
 status=0
 
 while read -r local_ref local_oid remote_ref remote_oid; do
+  [ "$local_oid" != "$zero" ] && { palette_check "$local_oid" || { status=1; continue; }; }
   # only guard the branch that actually publishes to GitHub Pages
   [ "$remote_ref" = "refs/heads/main" ] || continue
   # branch deletion -- nothing to check

@@ -115,22 +115,22 @@
   /* Joel, Oct 1: the Which sport? stage -- white page; each card wears its
      sport's own scheme (baseball green + yellow, softball slate blue + pink).
      These are the two sports' identity colors, shown side by side, so they're
-     fixed here rather than theme variables. */
-  html[data-stage="sport"] body{ background-color:#FFFFFF; background-image:none; color:#17261D; }
-  html[data-stage="sport"] .brand h1{ color:#0F241B; }
+     fixed here (tokens.css --bb-* / --sb-*) rather than the page's sport scope. */
+  html[data-stage="sport"] body{ background-color:#FFFFFF; background-image:none; color:#07140F; }
+  html[data-stage="sport"] .brand h1{ color:var(--bb-brand); }
   html[data-stage="sport"] .tagline,
-  html[data-stage="sport"] .foot{ color:#5C6F63; }
-  html[data-stage="sport"] #frame-sport h2.display{ color:#0F241B; }
-  .option-card.sport-bb{ background:#183527; border-color:rgba(241,236,221,0.22); color:#F1ECDD; }
-  .option-card.sport-bb:hover{ background:#1F4230; border-color:#E8A83D; }
-  .option-card.sport-bb .option-icon{ background:#0F241B; border-color:rgba(241,236,221,0.22); }
-  .option-card.sport-bb:hover .option-icon{ border-color:#E8A83D; }
-  .option-card.sport-bb .option-desc{ color:#B7C2B4; }
-  .option-card.sport-sb{ background:#2B5A82; border-color:rgba(241,236,221,0.22); color:#F1ECDD; }
-  .option-card.sport-sb:hover{ background:#336896; border-color:#F2A7C3; }
-  .option-card.sport-sb .option-icon{ background:#234B6E; border-color:rgba(241,236,221,0.22); }
-  .option-card.sport-sb:hover .option-icon{ border-color:#F2A7C3; }
-  .option-card.sport-sb .option-desc{ color:#C4D3E0; }
+  html[data-stage="sport"] .foot{ color:#56645C; }
+  html[data-stage="sport"] #frame-sport h2.display{ color:var(--bb-brand); }
+  .option-card.sport-bb{ background:var(--bb-brand-2); border-color:rgba(255,255,255,0.22); color:#FFFFFF; }
+  .option-card.sport-bb:hover{ background:var(--bb-brand-3); border-color:var(--bb-accent); }
+  .option-card.sport-bb .option-icon{ background:var(--bb-brand); border-color:rgba(255,255,255,0.22); }
+  .option-card.sport-bb:hover .option-icon{ border-color:var(--bb-accent); }
+  .option-card.sport-bb .option-desc{ color:var(--bb-on-dark-dim); }
+  .option-card.sport-sb{ background:var(--sb-brand-2); border-color:rgba(255,255,255,0.22); color:#FFFFFF; }
+  .option-card.sport-sb:hover{ background:var(--sb-brand-3); border-color:var(--sb-accent); }
+  .option-card.sport-sb .option-icon{ background:var(--sb-brand); border-color:rgba(255,255,255,0.22); }
+  .option-card.sport-sb:hover .option-icon{ border-color:var(--sb-accent); }
+  .option-card.sport-sb .option-desc{ color:var(--sb-on-dark-dim); }
   /* S1: two frames -- sport, then role. The sport frame slides out left as
      the role frame slides in from the right (250 ms); reduced motion (the
      rule above) makes it an instant swap. */
@@ -201,7 +201,7 @@
       </a>
       <a class="option-card sport-sb" href="#" onclick="chooseSport('softball');return false;">
         <div class="option-icon"><svg class="ball" viewBox="0 0 32 32" aria-hidden="true">
-          <circle cx="16" cy="16" r="13" fill="#F6E85B" stroke="#C9A227" stroke-width="1.2"/>
+          <circle cx="16" cy="16" r="13" fill="#F6E85B" stroke="#B39A1E" stroke-width="1.2"/>
           <path d="M9 6.5c3 3 3 16 0 19M23 6.5c-3 3-3 16 0 19" fill="none" stroke="#C0453B" stroke-width="1.4" stroke-dasharray="2 1.6"/>
         </svg></div>
         <div class="option-title">Softball</div>

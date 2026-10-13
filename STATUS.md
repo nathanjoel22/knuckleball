@@ -15,6 +15,27 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-13 · D2 Stage A (colors) · **staging**
+- **Branch / cache:** `d2-broadcast-rebrand` · `kb-shell-v228`. No database change. `send-session-report` deployed to **staging only** (new pitch palettes).
+- **Built:**
+  - `css/tokens.css` takes the Broadcast values for both sports (D1's names), plus the target's new names (`--brand-*`, `--on-accent`, `--on-danger`, `--flash-fg`, `--focus`, `--duration-*`, `--ease-*`, `--t-*`, `--s-*`, `--radius-segment`, `--ring-*`, `--shadow-segment/pop`, `--cut`, `--dock-pill`) and fixed per-sport colors (`--bb-*` / `--sb-*`) for the account chips and the "Which sport?" cards.
+  - Softball's own button and chooser colors are gone (they follow `--accent` / `--brand-bg`); one gold (`--accent-game` = `--accent`).
+  - The dark sign-in pages take the new brand colors until Stage C (decision 1).
+  - Pitch palettes changed in the tracker, `helpers.ts` and `--pitch-N` together. `.githooks/pre-push` now checks all three on every push (decision 8; tested pass and reject).
+  - Theme literals → tokens: warning tints, the dock, the notice backdrop and shadow, field pick/shade tints, the Live Game panel labels, the account chips, the medal stars, the relative-accuracy tag (`--brand-mid`), info notes, badges; report.html's top-bar rule and footer.
+  - The throws tag and the "logged by coach" tag use `--accent-ink` (decision 3).
+- **Deviations:**
+  - **`readableTextOn()` was restored, not deleted (decision 7 reversed).** The preconditions report said it had no callers, but the filled `.pitch-chip` labels (pitcher header, profile) have always had fixed ink text. It now picks ink or white per color with each sport's real ink, and both chip builders call it.
+  - Dark sign-in values I chose (the target has no dark scope): card-2 `#113726` / `#1A426E`, error red `#FF7A6E` (6.1:1 on the card; the light red is 2.7:1 there), softball faint text `#9FB2C6` (5.8:1).
+  - The one-time notices' backdrop is now `--scrim` (the sport's dark), not Oct 2's navy, per the approved mapping. CLAUDE.md line updated.
+- **Acceptance:**
+  - **Grep:** no old theme hex in any app page outside the field art.
+  - **Left by rule:** privacy.html / terms.html (need Joel's written approval), the report code (Stage D) and docs/.
+  - **Palette check:** passes.
+  - **Screenshots:** 114 app screens (38 states × 390 / 820 / 1180) + 14 pages × 2 sports × 3 widths.
+  - **Contrast pairs:** see plans/d2-stage-a.md.
+- **Open items (escalation):** with the target softball palette, three filled chip labels fall short of 4.5:1 whichever label color is used: slot 6 `#8E6CFF` 4.2, slot 7 `#D2553F` 4.1, slot 8 `#7D8794` 4.3 (10 px bold). Today's softball chips are worse (1.5–3.3). Needs Joel's call. Also open: Joel's phone/iPad walk-through, both sports.
+
 ## 2026-10-13 · D1 Stage 1 (design tokens) · **production**
 - **Branch / cache:** `d1-design-standardization` (stacked on `live-game-oct12`) · `kb-shell-v227`. No database change.
 - **Built:**

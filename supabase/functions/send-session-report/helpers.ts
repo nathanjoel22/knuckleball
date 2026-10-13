@@ -4,13 +4,14 @@
 // nothing here hardcodes 5 except the DEFAULT.
 // ============================================================================
 
-export const TYPE_PALETTE_HEX = ['#E8A83D', '#6FA287', '#C17A45', '#C0453B', '#7C9CBF', '#B98CCB', '#D4C15B', '#4FA8A8']
+export const TYPE_PALETTE_HEX = ['#FFB81C', '#22B573', '#FF6B35', '#E63946', '#3D8BFF', '#B15CFF', '#F2E14C', '#00B8C4']
 // S1 (Track S): each sport's 8 pitch colors, by position in the pitcher's
 // own list -- must match SPORTS[sport].palette in bullpen-tracker.html, in
-// order. TYPE_PALETTE_HEX above stays the baseball list.
+// order. TYPE_PALETTE_HEX above stays the baseball list. D2 (Oct 13 2026): the
+// Broadcast palettes; css/tokens.css --pitch-1..8 hold the same lists (pre-push checks all three).
 export const SPORT_PALETTE_HEX: Record<string, string[]> = {
   baseball: TYPE_PALETTE_HEX,
-  softball: ['#E27BA2', '#7FB8E0', '#6C5B7B', '#F6B26B', '#4FA3A5', '#9B8ADB', '#B36B5E', '#8C8C8C']
+  softball: ['#FF4F9A', '#2F9BFF', '#7A3FB8', '#FF9F1C', '#00A99D', '#8E6CFF', '#D2553F', '#7D8794']
 }
 export type Sport = 'baseball' | 'softball'
 export function asSport(v: unknown): Sport { return v === 'softball' ? 'softball' : 'baseball' }

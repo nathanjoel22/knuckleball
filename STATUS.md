@@ -248,4 +248,7 @@ Rebuilt from git history on Oct 10, 2026, so each entry is shorter than a live o
 - **2026-08-14 – 08-24 · foundation** (no packets): the original pages and Supabase backend uploaded through GitHub, then the CNAME (knuckleballonline.com), README and CLAUDE.md (`a30b738`).
 
 ## Standing open items (not tied to one release)
+- **D1 (design standardization), not started (Oct 13):** spec `plans/d1-design-standardization-2.md` is on GitHub, but its references aren't yet: `docs/design/DESIGN.md`, `css-variables.css`, `design-tokens.json`, `tailwind-v4.css` (then `AUDIT.md`), and `docs/type-sheet-reference.html`.
+  - Joel's decisions: the staging work (`live-game-oct12`) stays on staging for his review before production. **Sign-in pages: option (b), move the 11 sign-in/sign-up pages to the light app look in Stage 3** (an explicit exception to "colors stay").
+  - Preconditions report first, once the references land.
 - **H1 grace path:** close no earlier than **Oct 19, 2026**. Drop the 6 grace policies, seal the remaining sessions, and show Joel any leftovers first.

@@ -749,6 +749,7 @@
     border:1px solid var(--border-strong); border-radius:8px; background:var(--card-bg);
   }
   .velo-strip::-webkit-scrollbar{ display:none; }
+  @media (hover:hover) and (pointer:fine){ .velo-strip{ cursor:grab; } }   /* a mouse can drag it (Oct 13) */
   .velo-strip{ --velo-visible:7; }
   @media (max-width:500px){ .velo-strip{ --velo-visible:5; } }   /* phones: 5 cells so each stays >= 44px wide */
   .velo-cell{
@@ -1724,9 +1725,13 @@
   .gg-velo{ margin:1px; min-width:0; display:flex; align-items:stretch; background:#fff; border:1.5px solid var(--gg-border); border-radius:9px; padding:2px; }
   .gg-velo .game-velo{ flex:1; min-width:0; background:none; padding:0; }
   .gg-velo .velo-strip-wrap{ position:relative; gap:0; height:100%; }
-  .gg-velo .velo-strip-wrap::after{
-    /* the center window sits over the middle fifth of the STRIP, between the 22px arrows */
-    content:''; position:absolute; top:0; bottom:0; left:calc(22px + (100% - 44px) * 0.4); width:calc((100% - 44px) * 0.2); pointer-events:none;
+  /* the center window: exactly the middle square of the speeds -- placed on the strip's own box (Joel, Oct 13: it
+     used to be worked out from the whole bar and ran a few px past the square's right edge) */
+  .velo-strip-box{ position:relative; flex:1; min-width:0; display:flex; }
+  .velo-strip-box > .velo-strip{ flex:1; }
+  .gg-velo .velo-strip-box::after{
+    content:''; position:absolute; top:0; bottom:0; pointer-events:none; box-sizing:border-box;
+    left:calc(1px + (100% - 2px) * 0.4); width:calc((100% - 2px) * 0.2);   /* inside the strip's 1px border, five squares across */
     border:2px solid var(--gg-gold); border-radius:8px;
   }
   .gg-velo .velo-strip{ --velo-visible:5; }
@@ -4998,7 +5003,7 @@ function renderGameVeloStrip(){
   return `<div class="game-velo">
     <div class="velo-strip-wrap${t ? '' : ' disabled'}">
       <button class="btn btn-icon velo-arrow" ${t ? '' : 'disabled'} onclick="gameVeloArrow(-1)" aria-label="Slower">&lt;</button>
-      <div class="velo-strip" id="velo-strip" data-key="${stripKey}" data-center="${center}">${cells}</div>
+      <div class="velo-strip-box"><div class="velo-strip" id="velo-strip" data-key="${stripKey}" data-center="${center}">${cells}</div></div>
       <button class="btn btn-icon velo-arrow" ${t ? '' : 'disabled'} onclick="gameVeloArrow(1)" aria-label="Faster">&gt;</button>
     </div>
     <div class="velo-help">${help}</div>
@@ -8150,6 +8155,42 @@ function ggBig(big, cap, short){
   const cls = String(big).length >= 4 ? 'gg-big gg-big-long' : 'gg-big';   // BUNT etc. fit their box
   return `<span class="${cls}">${escHtml(big)}</span>${ggCap(cap, short)}`;
 }
+// Joel, Oct 13: on a laptop the mouse drags the speeds too (a finger already swipes them). The strip follows the
+// mouse, then settles on the nearest square; in a Live Game that settle picks the speed, as a swipe does. A drag
+// is never also a click on a speed.
+let veloDrag = null, veloDragAt = 0;
+document.addEventListener('pointerdown', e => {
+  if(e.pointerType !== 'mouse' || e.button !== 0) return;
+  const strip = e.target && e.target.closest ? e.target.closest('.velo-strip') : null;
+  if(!strip || strip.closest('.disabled')) return;
+  veloDrag = { strip, x0: e.clientX, left0: strip.scrollLeft, moved: false, id: e.pointerId };
+});
+document.addEventListener('pointermove', e => {
+  const d = veloDrag;
+  if(!d || e.pointerId !== d.id) return;
+  const dx = e.clientX - d.x0;
+  if(!d.moved){ if(Math.abs(dx) < 4) return; d.moved = true; d.strip.style.scrollSnapType = 'none'; d.strip.style.cursor = 'grabbing'; }
+  d.strip.scrollLeft = d.left0 - dx;
+  e.preventDefault();
+});
+document.addEventListener('pointerup', e => {
+  const d = veloDrag;
+  if(!d || e.pointerId !== d.id) return;
+  veloDrag = null;
+  if(!d.moved) return;
+  veloDragAt = Date.now();
+  const st = d.strip, cw = st.clientWidth / veloVisible();
+  st.style.cursor = '';
+  const goal = Math.round(st.scrollLeft / cw) * cw;
+  try{ st.scrollTo({ left: goal, behavior: 'smooth' }); }catch(err){ st.scrollLeft = goal; }   // settle on a square
+  setTimeout(() => {
+    if(Math.abs(st.scrollLeft - goal) > 1) st.scrollLeft = goal;   // backstop: always end exactly on a square
+    st.style.scrollSnapType = '';
+  }, 400);
+});
+document.addEventListener('click', e => {
+  if(Date.now() - veloDragAt < 350 && e.target && e.target.closest && e.target.closest('.velo-strip')){ e.stopPropagation(); e.preventDefault(); }
+}, true);
 // Slide-to-select. Only a real touch/drag/wheel counts -- the strip's own
 // centering on each render also fires scroll events, and those must never
 // pick a speed ("nothing is selected until the charter swipes or taps").

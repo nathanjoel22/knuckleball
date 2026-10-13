@@ -15,6 +15,15 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-13 · no packet (velocity bar: window alignment, mouse drag) · **staging**
+- **Branch / cache:** `live-game-oct12` · `kb-shell-v226`. No database change.
+- **Fixed:** the Live Game in-chart velocity bar's center window (gold; softball pink) ran a few px past the right edge of its square. It was positioned from the whole bar; now it sits on the strip's own box, exactly one square inside the strip's border. Checked zoomed at 390 px.
+- **Built:**
+  - A mouse can drag every velocity strip (bullpen and Live Game): grab cursor; the strip follows, then settles on the nearest square (smooth, with a backstop that always ends on a square).
+  - In a Live Game that settle picks the speed, like a swipe. A drag is never also a click on a speed.
+  - Finger swiping on phones and iPads was already native scrolling and is unchanged.
+- **Open items:** Joel's check on laptop (drag) and phone (alignment).
+
 ## 2026-10-13 · no packet (a dragged runner holds his new base) · **staging**
 - **Branch / cache:** `live-game-oct12` · `kb-shell-v225`. No database change.
 - **Built:** a runner dropped on a new base (or home) stays locked there, outlined and gently pulsing, with his old base shown empty, until "Safe or out?" (and, between pitches, "Why?") is answered:

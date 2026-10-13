@@ -638,6 +638,24 @@
   /* the start questions (Joel, Oct 12) */
   .start-q{ display:flex; flex-direction:column; gap:20px; width:100%; max-width:420px; margin:0 auto; padding:24px 16px 32px; box-sizing:border-box; }
   .start-q-input{ width:100%; box-sizing:border-box; }
+  /* Intent's question mark: tap to open, hover (mouse) to peek */
+  .intent-q{ display:flex; align-items:center; gap:8px; }
+  .info-wrap{ position:relative; display:inline-flex; }
+  .info-q{ width:28px; min-width:28px; min-height:28px; height:28px; border-radius:50%; font-size:14px; font-weight:800; }
+  .info-q::after{ content:''; position:absolute; inset:-8px; }   /* a 44px tap area */
+  .info-tip{ display:none; position:absolute; left:50%; bottom:calc(100% + 8px); transform:translateX(-50%); z-index:20; width:max-content; max-width:220px;
+    padding:8px 10px; border-radius:10px; background:var(--field-dark); color:#fff; font-size:12px; font-weight:600; line-height:1.3; box-shadow:0 4px 12px rgba(0,0,0,.25); }
+  .info-note{ margin:0; padding:8px 10px; border-radius:10px; background:var(--field-dark); color:#fff; font-size:12px; font-weight:600; }   /* tapped: in the flow, covers nothing */
+  @media (hover:hover){ .info-wrap:hover .info-tip{ display:block; } }
+  /* Intent (Oct 12): where the pitch went -- a translucent dark box with the ball on it */
+  .zone-cell-ball{ background:rgba(var(--ink-rgb), .42) !important; }
+  .zone-cell-ball.ball-flash{ animation:ballFlash .65s ease-out; }
+  @keyframes ballFlash{ 0%{ background:rgba(var(--ink-rgb), .82); } 100%{ background:rgba(var(--ink-rgb), .42); } }
+  .zone-ball{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+  .zone-ball .g5-ball{ width:46%; height:46%; filter:drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
+  html[data-sport="softball"] .zone-ball .g5-ball circle{ fill:#F3E04B; }
+  .g5-intent-hint{ flex:1; align-self:center; font-size:14px; font-weight:600; color:var(--ink-faint); }
+  @media (prefers-reduced-motion: reduce){ .zone-cell-ball.ball-flash{ animation:none; } }
   .start-q-title{ margin:0; text-align:center; }
   .start-q-item{ display:flex; flex-direction:column; gap:8px; }
   .start-q-label{ font-size:16px; font-weight:600; color:var(--field-dark); }
@@ -5867,11 +5885,13 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
         const num = zoneNumberFor(row, perspectiveCol(col, chartingPerspective), batterSide);
         const isTarget = pendingTarget && pendingTarget.row === row && pendingTarget.col === col;
         const isFlash = flashCell && flashCell.row === row && flashCell.col === col;
+        const ballHere = !isBullpenTap && state.gameBallCell && state.gameBallCell.row === row && state.gameBallCell.col === col;   // Intent (Oct 12)
         const isGlow = glowCells && glowCells.has(row+'-'+col);
         let cls = 'zone-cell' + (inZone ? ' in-zone' : '') + ' clickable';
         let inner = num !== null ? `<span class="zone-number">${num}</span>` : '';
         if(isGlow) inner += `<span class="rel-glow-overlay"></span>`;
         if(isTarget){ cls += ' zone-cell-target'; inner += `<span class="target-dot"><span class="target-dot-core"></span></span>`; }
+        if(ballHere){ cls += ' zone-cell-ball' + (state.gameBallFlash ? ' ball-flash' : ''); inner += `<span class="zone-ball">${G5_BALL_SVG}</span>`; }
         if(isFlash){
           cls += flashCell.strike ? ' zone-cell-flash flash-strike' : ' zone-cell-flash flash-ball';
           inner += `<span class="flash-letter">${flashCell.strike ? 'K' : 'B'}</span>`;
@@ -6164,7 +6184,7 @@ window.chooseSessionKind = async function(kind){
   // Joel, Oct 12: then the start questions -- radar gun today, relative accuracy (bullpen), opponent (Live Game).
   // Defaults come from the profile; the answers belong to this session only.
   const pq = currentPitcher();
-  state.activeSession.startQ = { radar: !!(pq && pq.usesRadarGun), rel: !!(pq && pq.relativeAccuracy) };
+  state.activeSession.startQ = { radar: !!(pq && pq.usesRadarGun), rel: !!(pq && pq.relativeAccuracy), intent: false, intentHelp: false };
   if(kind === 'game') loadOpponents();   // the saved list, refreshed in the background when online
   await storSet(draftKey(), state.activeSession);
   render();
@@ -6181,6 +6201,7 @@ window.startSessionNow = async function(){
   if(!q) return;
   s.usesRadarGun = !!q.radar; s.radarAsked = true;
   if(s.kind === 'bullpen') s.relAccuracyToday = !!q.rel;
+  if(s.kind === 'game') s.intent = !!q.intent;   // Joel, Oct 12: Live Game intent (target, then where it went)
   if(s.kind === 'game'){
     const el = document.getElementById('start-opponent');
     const name = String((el && el.value) || s.opponent || '').trim().slice(0, 60);
@@ -6226,6 +6247,12 @@ function renderStartQuestions(p){
     <div class="start-q-item"><div class="start-q-label">Will you be using a radar gun today?</div>${yn('radar', q.radar)}</div>
     ${game ? '' : `<div class="start-q-item"><div class="start-q-label">Would you like to use relative accuracy?</div>${yn('rel', q.rel)}
       <p class="start-q-note">${q.rel ? `Scores against the accuracy zones set in ${who} profile.` : 'Accuracy counts a pitch only when it lands on the target.'}</p></div>`}
+    ${game ? `<div class="start-q-item"><div class="start-q-label intent-q">Turn on Intent?
+        <span class="info-wrap"><button type="button" class="btn btn-icon btn-sm info-q" aria-label="What is Intent?" aria-expanded="${q.intentHelp ? 'true' : 'false'}" onclick="setStartQ('intentHelp', ${q.intentHelp ? 'false' : 'true'})">?</button>
+        <span class="info-tip" role="tooltip">For use with Pitchcom, Game Day Watches, GoRout, etc...</span></span></div>
+      ${q.intentHelp ? '<p class="info-note">For use with Pitchcom, Game Day Watches, GoRout, etc...</p>' : ''}
+      ${yn('intent', q.intent)}
+      <p class="start-q-note">${q.intent ? 'Tap where the catcher calls the pitch, then where it went.' : 'Tap where each pitch went, as usual.'}</p></div>` : ''}
     ${game ? `<div class="start-q-item"><label class="start-q-label" for="start-opponent">Opponent (optional)</label>
       <input id="start-opponent" class="text-input start-q-input" list="opponent-list" maxlength="60" autocomplete="off" placeholder="Type or pick a team" value="${escHtml(s.opponent || '')}" oninput="onGameOpponentInput(this.value)">${opponentDatalist()}</div>` : ''}
     <div class="start-q-actions">
@@ -6258,6 +6285,24 @@ window.handleGameZoneTap = async function(row, col){
   if(sportCfg().hasDelivery && !state.activeSession.delivery){ state.hint = 'Set or windup first'; render(); return; }
   if(tiebreakPending(state.activeSession)){ state.hint = 'Answer the extra-inning question first'; render(); return; }
   state.hint = '';
+  // Joel, Oct 12: with Intent on, the first tap is where the pitch was called (the target), like a bullpen; the
+  // second is where it went -- that box flashes dark with a ball on it, then what happened is asked as usual.
+  const si = state.activeSession;
+  let target = null;
+  if(si.intent){
+    const asking = si.g5 && G5_CHART_STEPS[si.g5.step];
+    if(!si.gameTarget && !asking){
+      si.gameTarget = { row, col };
+      await storSet(draftKey(), si);
+      render();
+      return;
+    }
+    target = si.gameTarget || (si.gamePendingPitch && si.gamePendingPitch.target) || null;   // a re-tap keeps the target
+    si.gameTarget = null;
+    const key = Date.now();
+    state.gameBallFlash = key;
+    setTimeout(() => { if(state.gameBallFlash === key){ state.gameBallFlash = null; render(); } }, 650);
+  }
   // A re-tap (whether idle or mid-result-menu) starts this pitch's capture
   // over -- simplest correction path for a mis-tapped location, same
   // "just tap again" precedent as a bullpen's tap 1 always overwriting a
@@ -6266,7 +6311,7 @@ window.handleGameZoneTap = async function(row, col){
   // not only on an already-pushed one -- see gameVeloTarget/recordGameVelo.
   // A fresh tap always starts this field at null, same "re-tapping starts
   // capture over" precedent as row/col.
-  state.activeSession.gamePendingPitch = { row, col, velo: null, timeToPlate: takeTimeToPlate() };   // U11 (7)
+  state.activeSession.gamePendingPitch = { row, col, velo: null, timeToPlate: takeTimeToPlate(), target };   // U11 (7); target: Intent (Oct 12)
   // G1b-r3: the dot is remembered for the whole play (drawn above the
   // in-grid boxes), and survives a resume -- cleared only by Next Pitch or
   // by Back cancelling this location.
@@ -6280,6 +6325,13 @@ window.handleGameZoneTap = async function(row, col){
   // G5 (Joel, Oct 12): what happened is asked under the chart; the chart stays up.
   state.activeSession.g5 = { step: 'what', addOuts: 0 };
   await storSet(draftKey(), state.activeSession);
+  render();
+};
+window.resetGameTarget = async function(){
+  const s = state.activeSession;
+  if(!s || !s.gameTarget) return;
+  s.gameTarget = null;
+  await storSet(draftKey(), s);
   render();
 };
 window.resetGamePendingPitch = async function(){
@@ -6720,7 +6772,8 @@ window.recordGameResult = async function(result, extra){
     // gamePendingPitch, if anything -- null otherwise, same as before.
     type: state.selectedType, velo: pending.velo,
     timeToPlate: (pending.timeToPlate === undefined) ? null : pending.timeToPlate,   // U11 (7)
-    targetRow: null, targetCol: null,
+    // Joel, Oct 12 (Intent): the called spot, normalized to the catcher frame like the actual one; null without Intent
+    targetRow: pending.target ? pending.target.row : null, targetCol: pending.target ? perspectiveCol(pending.target.col, chartingPerspective) : null,
     actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
     accuracyMode: null, inAccuracyZone: null, accuracyZoneCells: null,
     batterSide,
@@ -6786,6 +6839,7 @@ window.recordGameResult = async function(result, extra){
 // pitches already used before events existed.
 // G5: New batter / New inning drop a play in progress (nothing of it was saved yet).
 function g5Cancel(s){
+  s.gameTarget = null;
   g5FlipOut();
   s.g5 = null; s.gamePendingPitch = null; s.gameDot = null; s.gameVeloIdx = null;
   state.veloTargetIdx = null;
@@ -7675,7 +7729,7 @@ window.commitFieldPlay = async function(){
     // this play was being walked through (gamePendingPitch.velo).
     type: state.selectedType, velo: pending.velo,
     timeToPlate: (pending.timeToPlate === undefined) ? null : pending.timeToPlate,   // U11 (7)
-    targetRow: null, targetCol: null,
+    targetRow: pending.target ? pending.target.row : null, targetCol: pending.target ? perspectiveCol(pending.target.col, chartingPerspective) : null,   // Intent (Oct 12)
     actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
     accuracyMode: null, inAccuracyZone: null, accuracyZoneCells: null,
     batterSide, ts: Date.now(),
@@ -8333,6 +8387,7 @@ window.g5AddCount = async function(kind){
   const face = onField ? g5FieldFace() : null;
   const ab = s.atBatIndex, inning = s.inning;
   if(g && g.walkEvent) return;   // already answering a walk's runners question
+  if(!g) s.gameTarget = null;   // Intent: a + Strike / + Ball between taps drops the called spot
   await commitNoPitchEvent(kind === 'ball' ? 'auto_ball' : 'auto_strike', null, true);
   const ended = !(s.atBatIndex === ab && s.inning === inning);
   if(kind === 'ball' && ended){
@@ -8731,6 +8786,9 @@ function g5ResultRow(step){
 // Under the square chart: what happened (Oct 12), or the extra-inning question.
 function g5BelowChart(step){
   if(step === 'what' || step === 'foul') return g5ResultRow(step);
+  const sb = state.activeSession;
+  if(sb && sb.intent && sb.gameTarget) return `<div class="g5-results"><span class="g5-intent-hint">Now tap where the pitch went</span><button type="button" class="btn btn-tertiary btn-sm g5-res-back" onclick="resetGameTarget()">‹ Reset target</button></div>`;
+  if(sb && sb.intent && !step && (sb.gameVeloIdx === null || sb.gameVeloIdx === undefined) && isPhoneWidth()) return `<div class="g5-results"><span class="g5-intent-hint">Tap where the pitch is called</span></div>`;
   if(step === 'tiebreak'){
     return `<div class="g5-below"><div class="g5-q">Extra inning — start with a runner on 2B?</div>
       ${segTray([{ label: 'Yes', onclick: 'gridTiebreak(true)' }, { label: 'No', onclick: 'gridTiebreak(false)' }], { label: 'Start with a runner on 2B?', cls: 'g5-qbtns' })}</div>`;
@@ -8739,7 +8797,10 @@ function g5BelowChart(step){
 }
 function g5Surface(pitches, chartingPerspective, currentBatterSide){
   // Joel, Oct 12: while what happened is asked under the chart, the tapped spot stays marked on it
-  const sa = state.activeSession, mark = (sa && sa.g5 && G5_CHART_STEPS[sa.g5.step]) ? sa.gameDot : null;
+  const sa = state.activeSession, asking = !!(sa && sa.g5 && G5_CHART_STEPS[sa.g5.step]);
+  // Intent (Oct 12): the called spot gets the bullpen's target dot; where it went gets the dark box with the ball
+  const mark = (sa && sa.intent) ? (sa.gameTarget || (asking && sa.gamePendingPitch && sa.gamePendingPitch.target) || null) : (asking ? sa.gameDot : null);
+  state.gameBallCell = (sa && sa.intent && asking) ? sa.gameDot : null;
   let chart = renderZoneGrid(pitches, true, state.flashCell, mark, chartingPerspective, currentBatterSide, 'handleGameZoneTap');
   if(g5OnDiamond()){
     // Joel's iPad photo, Oct 8: Safari kept the field's buttons on their own 3D layer after the flip, drawn a
@@ -8793,7 +8854,8 @@ function renderGameSessionView(p){
   // G5: after a location tap the chart flips over to the field chart (g5Surface); under the
   // square chart sit the extra-inning question or velocity + Next pitch (g5BelowChart).
   const g5Now = g5Step();
-  const zoneCaption = (s.g5 && g5Now) ? (g5NeedsBatter(s.g5) ? 'Put the batter on base (tap a base, or drag from home)' : g5Caption(g5Now)) : `Tap where the pitch landed`;
+  const zoneCaption = (s.g5 && g5Now) ? (g5NeedsBatter(s.g5) ? 'Put the batter on base (tap a base, or drag from home)' : g5Caption(g5Now))
+    : s.intent ? (s.gameTarget ? 'Now tap where the pitch went' : 'Tap where the pitch is called') : `Tap where the pitch landed`;
   const g5Below = g5OnDiamond() ? '' : g5BelowChart(g5Now);
 
   if(phoneSessionMode(p)){

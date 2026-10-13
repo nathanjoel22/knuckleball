@@ -1493,7 +1493,8 @@
   .g5-qbtns{ width:100%; }
   /* Velocity in the chart (Joel, Oct 6): the bar over row 4, Reset + Next pitch over row 5 --
      placed from the grid's own track math (3px padding, 3px gaps, five equal cells). */
-  .g5-velo-row, .g5-next-row{ position:absolute; left:3px; right:3px; z-index:4; height:calc((100% - 18px) / 5); display:flex; gap:3px; }
+  .g5-velo-row, .g5-next-row{ position:absolute; left:3px; right:3px; z-index:6; height:calc((100% - 18px) / 5); display:flex; gap:3px;
+    background:var(--brand-bg); box-shadow:0 0 0 3px var(--brand-bg); border-radius:var(--radius-cell); isolation:isolate; -webkit-transform:translateZ(0); transform:translateZ(0); }   /* Joel, Oct 13: a solid dark backing -- the chart's lines never show through or across these buttons */
   .g5-velo-row{ top:calc(3px + 3 * ((100% - 18px) / 5 + 3px)); }
   .g5-next-row{ top:calc(3px + 4 * ((100% - 18px) / 5 + 3px)); }
   /* the bar reuses the in-grid bar's look (.gg-velo: five speeds, small arrows, gold center window) */

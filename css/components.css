@@ -231,3 +231,4 @@ body.landing .foot a{ color:inherit; text-decoration:underline; }
   body.landing .option-card{ padding:10px 14px; }
 }
 .next-pitch{ white-space:nowrap; }   /* D1/D2: the one Next Pitch component (variants: .g5-nextpitch under the field, .g5-act-next in the field actions) */
+body.signin .card > .btn-primary{ box-shadow:0 0 0 3px var(--brand-bg); }   /* Joel, Oct 13: a dark plate behind the sign-in pages' main button */

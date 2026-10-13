@@ -16,7 +16,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 ---
 
 ## 2026-10-13 · D2 Stage C (components and pages) · **staging**
-- **Branch / cache:** `d2-broadcast-rebrand` · `kb-shell-v231`. No database or function change.
+- **Branch / cache:** `d2-broadcast-rebrand` · `kb-shell-v232` (v232: Joel's review fixes -- a solid dark backing behind the chart's Reset / Next pitch and velocity rows so the grid lines never show across them, and a dark plate behind the sign-in pages' main button). No database or function change.
 - **Built:**
   - `css/components.css` (slanted tag, badge, banner, flat card, the sign-in and landing looks).
   - All 10 sign-in pages plus index in the light look: a dark angled header with wordmark, tagline, slanted tag and a 44px title whose last word is gold / pink. No page CSS left.

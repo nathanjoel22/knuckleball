@@ -15,6 +15,21 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-13 · D2 Stage D (new session reports) · **staging**
+- **Branch:** `d2-broadcast-rebrand` (no page or cache change; `send-session-report` deployed to **staging only**).
+- **Built:**
+  - New reports carry their own colors and fonts (`--kr-*` variables per sport, in the file), so a later site change can't restyle a sent report. The softball hex swap is retired.
+  - Brand band with the wordmark, slanted sport tag and the name in Big Shoulders caps; Big Shoulders headings and tile numbers; Archivo text; the D2 colors; chart text in Archivo with readable axis labels.
+  - CLAUDE.md: the S1 byte-identical line and landmine 4 updated.
+- **Checks:**
+  - Four real staging sessions (pen and game, both sports) rendered through the real builders and report.html's path, with print previews.
+  - Three stored staging reports render pixel-identical below the viewer bar, before vs after.
+  - Each report's pitch colors are its sport's. Evidence: `plans/d2-stage-d.md`.
+- **Open items:**
+  - Joel generates a new pen and game report on staging (both sports) and opens an old link.
+  - The production deploy of `send-session-report` is Joel's.
+  - The whole D2 branch still to ship to production (pages v232 + this function).
+
 ## 2026-10-13 · D2 Stage C (components and pages) · **staging**
 - **Branch / cache:** `d2-broadcast-rebrand` · `kb-shell-v232` (v232: Joel's review fixes -- a solid dark backing behind the chart's Reset / Next pitch and velocity rows so the grid lines never show across them, and a dark plate behind the sign-in pages' main button). No database or function change.
 - **Built:**

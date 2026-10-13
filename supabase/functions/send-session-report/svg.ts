@@ -2,7 +2,7 @@
 // Inline SVG drawing -- no charting library, no external requests. Every
 // function returns a plain string of SVG markup. Grid size is a parameter.
 // ============================================================================
-import { isStrikeCell, zoneNumber, colorForType, escapeHtml, viewCol } from './helpers.ts'
+import { isStrikeCell, zoneNumber, colorForType, escapeHtml, viewCol, RESULT_COLOR } from './helpers.ts'
 
 export interface Pt { row: number; col: number; type: string }
 
@@ -31,8 +31,8 @@ function drawDots(pitches: DotPt[], cell: number): string {
     const angle = idx * 137.508 * (Math.PI / 180)
     const radius = idx === 0 ? 0 : Math.min(cell * 0.32, 2.5 + idx * 1.8)
     const x = (cx + radius * Math.cos(angle)).toFixed(1), y = (cy + radius * Math.sin(angle)).toFixed(1)
-    halos += `<circle cx="${x}" cy="${y}" r="${r * 2}" fill="${p.color}"/>`
-    dots += `<circle class="kb-dot" cx="${x}" cy="${y}" r="${r}" fill="${p.color}" stroke="#FFFFFF" stroke-width="0.8"/>`
+    halos += `<circle cx="${x}" cy="${y}" r="${r * 2}" style="fill:${p.color}"/>`
+    dots += `<circle class="kb-dot" cx="${x}" cy="${y}" r="${r}" style="fill:${p.color}" stroke="#FFFFFF" stroke-width="0.8"/>`
   }
   return `<g opacity="0.28">${halos}</g>${dots}`
 }
@@ -57,10 +57,10 @@ export function drawGrid(opts: {
     for (let col = 0; col < gridSize; col++) {
       const x = col * cell, y = row * cell
       const inZone = isStrikeCell(row, col, gridSize)
-      cells += `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" fill="${inZone ? '#E8F3EC' : '#FFFFFF'}" stroke="#CFE6D7" stroke-width="1"/>`
+      cells += `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" style="fill:${inZone ? 'var(--kr-surface)' : 'var(--kr-card)'};stroke:var(--kr-line)" stroke-width="1"/>`
       if (batterSide) {
         const num = zoneNumber(row, viewCol(col, gridSize), batterSide, gridSize)   // label from the STORED column (Amendment 16)
-        if (num !== null) cells += `<text x="${x + 4}" y="${y + 11}" font-size="8" fill="#7C8C82" font-family="Georgia, serif">${num}</text>`
+        if (num !== null) cells += `<text x="${x + 4}" y="${y + 11}" font-size="8" style="fill:var(--kr-axis);font-family:var(--kr-sans)">${num}</text>`
       }
     }
   }
@@ -68,7 +68,7 @@ export function drawGrid(opts: {
   const dots = drawDots(pitches.map(p => ({ row: p.row, col: viewCol(p.col, gridSize), color: colorForType(p.type, allTypes) })), cell)
 
   return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Pitch location grid">` +
-    `<rect x="0" y="0" width="${size}" height="${size}" fill="#FFFFFF" stroke="#CFE6D7"/>` + cells + dots + `</svg>`
+    `<rect x="0" y="0" width="${size}" height="${size}" style="fill:var(--kr-card);stroke:var(--kr-line)"/>` + cells + dots + `</svg>`
 }
 
 // U11 (4): one small location grid per pitch type -- report view (Amendment 16),
@@ -114,10 +114,7 @@ export function drawLegend(types: string[]): string {
 // mixed-side rule as drawGrid.
 export const RESULT_CATEGORIES = ['ball', 'called_strike', 'swinging_strike', 'foul', 'in_play', 'other'] as const
 export type ResultCategory = typeof RESULT_CATEGORIES[number]
-const RESULT_COLORS: Record<ResultCategory, string> = {
-  ball: '#7C9CBF', called_strike: '#C0453B', swinging_strike: '#E8A83D',
-  foul: '#D4C15B', in_play: '#6FA287', other: '#B7C2B4'
-}
+const RESULT_COLORS: Record<ResultCategory, string> = RESULT_COLOR   // D2: helpers.ts
 export const RESULT_LABELS: Record<ResultCategory, string> = {
   ball: 'Ball', called_strike: 'Called strike', swinging_strike: 'Swing and miss',
   foul: 'Foul', in_play: 'In play', other: 'Other (HBP/interference/etc.)'
@@ -160,10 +157,10 @@ export function drawGridByResult(opts: {
     for (let col = 0; col < gridSize; col++) {
       const x = col * cell, y = row * cell
       const inZone = isStrikeCell(row, col, gridSize)
-      cells += `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" fill="${inZone ? '#E8F3EC' : '#FFFFFF'}" stroke="#CFE6D7" stroke-width="1"/>`
+      cells += `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" style="fill:${inZone ? 'var(--kr-surface)' : 'var(--kr-card)'};stroke:var(--kr-line)" stroke-width="1"/>`
       if (batterSide) {
         const num = zoneNumber(row, viewCol(col, gridSize), batterSide, gridSize)   // label from the STORED column (Amendment 16)
-        if (num !== null) cells += `<text x="${x + 4}" y="${y + 11}" font-size="8" fill="#7C8C82" font-family="Georgia, serif">${num}</text>`
+        if (num !== null) cells += `<text x="${x + 4}" y="${y + 11}" font-size="8" style="fill:var(--kr-axis);font-family:var(--kr-sans)">${num}</text>`
       }
     }
   }
@@ -171,7 +168,7 @@ export function drawGridByResult(opts: {
   const dots = drawDots(pitches.map(p => ({ row: p.row, col: viewCol(p.col, gridSize), color: RESULT_COLORS[p.category] })), cell)
 
   return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Pitch location by result">` +
-    `<rect x="0" y="0" width="${size}" height="${size}" fill="#FFFFFF" stroke="#CFE6D7"/>` + cells + dots + `</svg>`
+    `<rect x="0" y="0" width="${size}" height="${size}" style="fill:var(--kr-card);stroke:var(--kr-line)"/>` + cells + dots + `</svg>`
 }
 
 export function drawResultLegend(categoriesPresent: ResultCategory[]): string {
@@ -201,13 +198,13 @@ export function drawLineChart(opts: {
   for (let i = 0; i < gridN; i++) {
     const frac = gridN > 1 ? i / (gridN - 1) : 0
     const y = padT + plotH - frac * plotH
-    grid += `<line x1="${padL}" y1="${y}" x2="${padL + plotW}" y2="${y}" stroke="#E5E5E0" stroke-width="1"/>`
-    grid += `<text x="${padL - 6}" y="${y + 3}" font-size="8" fill="#7C8C82" text-anchor="end" font-family="Georgia, serif">${escapeHtml(opts.yAxisLabels[i])}</text>`
+    grid += `<line x1="${padL}" y1="${y}" x2="${padL + plotW}" y2="${y}" style="stroke:var(--kr-grid)" stroke-width="1"/>`
+    grid += `<text x="${padL - 6}" y="${y + 3}" font-size="8" text-anchor="end" style="fill:var(--kr-axis);font-family:var(--kr-sans)">${escapeHtml(opts.yAxisLabels[i])}</text>`
   }
   let xTicks = ''
   opts.xLabels.forEach((label, i) => {
     const x = padL + i * stepX
-    xTicks += `<text x="${x}" y="${h - 4}" font-size="8" fill="#7C8C82" text-anchor="middle" font-family="Georgia, serif">${escapeHtml(label)}</text>`
+    xTicks += `<text x="${x}" y="${h - 4}" font-size="8" text-anchor="middle" style="fill:var(--kr-axis);font-family:var(--kr-sans)">${escapeHtml(label)}</text>`
   })
 
   let lines = ''
@@ -218,13 +215,13 @@ export function drawLineChart(opts: {
       pts.push({ x: padL + i * stepX, y: padT + plotH - v * plotH })
     })
     for (let i = 0; i < pts.length - 1; i++) {
-      lines += `<line x1="${pts[i].x.toFixed(1)}" y1="${pts[i].y.toFixed(1)}" x2="${pts[i + 1].x.toFixed(1)}" y2="${pts[i + 1].y.toFixed(1)}" stroke="${s.color}" stroke-width="2" fill="none"/>`
+      lines += `<line x1="${pts[i].x.toFixed(1)}" y1="${pts[i].y.toFixed(1)}" x2="${pts[i + 1].x.toFixed(1)}" y2="${pts[i + 1].y.toFixed(1)}" style="stroke:${s.color}" stroke-width="2" fill="none"/>`
     }
-    for (const pt of pts) lines += `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="2.6" fill="${s.color}"/>`
+    for (const pt of pts) lines += `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="2.6" style="fill:${s.color}"/>`
   }
 
   return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="Trend chart">` +
-    `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" stroke="#CFE6D7"/>` +
-    `<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#CFE6D7"/>` +
+    `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" style="stroke:var(--kr-line)"/>` +
+    `<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" style="stroke:var(--kr-line)"/>` +
     grid + xTicks + lines + `</svg>`
 }

@@ -192,7 +192,7 @@ export function renderBaseStates(pitches: GamePitch[], allTypes: string[]): stri
 
 export const DIAMOND_CSS = `
   .kb-fig{ margin:0; display:flex; flex-direction:column; align-items:center; gap:4px; }
-  .kb-fig figcaption{ font-size:12px; font-weight:700; color:#2E4A40; }
-  .kb-n{ font-weight:400; color:#527065; }
-  .kb-mix{ font-size:11px; color:#527065; max-width:120px; text-align:center; }
+  .kb-fig figcaption{ font-size:12px; font-weight:700; color:var(--kr-ink-dim); }
+  .kb-n{ font-weight:400; color:var(--kr-ink-faint); }
+  .kb-mix{ font-size:11px; color:var(--kr-ink-faint); max-width:120px; text-align:center; }
 `

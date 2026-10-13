@@ -5,7 +5,7 @@
 // trusted. Nothing here reads a database -- it operates purely on the payload
 // object it's given.
 // ============================================================================
-import { escapeHtml, safeNum, colorForType, TYPE_PALETTE_HEX, isStrikeCell, timesToHomeLine, themedCss, asSport, type Sport, VIEW_NAME, REPORT_VIEW, viewNote } from './helpers.ts'
+import { escapeHtml, safeNum, colorForType, TYPE_PALETTE_HEX, isStrikeCell, timesToHomeLine, reportVars, asSport, type Sport, VIEW_NAME, REPORT_VIEW, viewNote } from './helpers.ts'
 import { drawGrid, drawLegend, drawLineChart, drawTypeGrids } from './svg.ts'
 import {
   computeSummary, computeCommandDetail, computePerSideBlock, computeExcludedNullSide,
@@ -52,7 +52,8 @@ function renderHeader(p: ReportPayload): string {
   const perspectiveNote = viewNote(p.chartingPerspective)   // Amendment 16
   return `
   <header class="report-header">
-    <div class="brand-mark">KNUCKLEBALL<span class="brand-dot">.</span></div>
+    <div class="brand-mark">KNUCKLEBALL</div>
+    <span class="sport-tag">${asSport(p.sport) === 'softball' ? 'Softball' : 'Baseball'} · Bullpen</span>
     <h1>${escapeHtml(p.pitcherName)}${numBit}</h1>
     <p class="header-meta">${dateStr}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''} · ${p.pitches.length} pitch${p.pitches.length === 1 ? '' : 'es'}${batterBit} · charted by ${chartedBy}</p>
     ${perspectiveNote}
@@ -275,8 +276,8 @@ function renderTrends(p: ReportPayload): string {
 
   const pctChart = drawLineChart({
     series: [
-      { label: 'Strike %', color: '#E8A83D', points: strikeSeries.map(v => v === null ? null : v / 100) },
-      { label: 'Command %', color: '#6FA287', points: commandSeries.map(v => v === null ? null : v / 100) }
+      { label: 'Strike %', color: 'var(--kr-accent)', points: strikeSeries.map(v => v === null ? null : v / 100) },
+      { label: 'Command %', color: '#22B573', points: commandSeries.map(v => v === null ? null : v / 100) }
     ],
     xLabels, yAxisLabels: ['0%', '50%', '100%']
   })
@@ -286,12 +287,12 @@ function renderTrends(p: ReportPayload): string {
   const vHi = anyVelo ? Math.ceil(Math.max(...veloValues) / 5) * 5 : 1
   const vRange = Math.max(1, vHi - vLo)
   const veloChart = anyVelo ? drawLineChart({
-    series: [{ label: 'Avg velocity', color: '#C17A45', points: veloSeries.map(v => v === null ? null : (v - vLo) / vRange) }],
+    series: [{ label: 'Avg velocity', color: '#FF6B35', points: veloSeries.map(v => v === null ? null : (v - vLo) / vRange) }],
     xLabels, yAxisLabels: [String(vLo), String(Math.round((vLo + vHi) / 2)), String(vHi)]
   }) : ''
   const maxCount = Math.max(1, ...pitchCountSeries.filter((v): v is number => v !== null))
   const countChart = drawLineChart({
-    series: [{ label: 'Pitch count', color: '#7C9CBF', points: pitchCountSeries.map(v => v === null ? null : v / maxCount) }],
+    series: [{ label: 'Pitch count', color: '#3D8BFF', points: pitchCountSeries.map(v => v === null ? null : v / maxCount) }],
     xLabels, yAxisLabels: ['0', String(Math.round(maxCount / 2)), String(maxCount)]
   })
 
@@ -324,23 +325,27 @@ export const CSS = `
   :root{ color-scheme: light; }
   *{ box-sizing:border-box; }
   svg{ max-width:100%; height:auto; display:block; } /* trend/drift charts are drawn at a fixed 560px viewBox width -- without this they blow out the page on a phone instead of scaling down */
-  body{ margin:0; background:#F7FAF8; color:#0F241B; font-family:Georgia,'Times New Roman',serif; font-size:15px; line-height:1.5; }
+  /* D2 Stage D (Oct 13 2026): colors and fonts are this report's own --kr-* variables (helpers.ts reportVars) */
+  body{ margin:0; background:var(--kr-bg); color:var(--kr-ink); font-family:var(--kr-sans); font-size:15px; line-height:1.5; }
   .page{ max-width:820px; margin:0 auto; padding:24px 20px 48px; }
-  h1,h2,h3{ font-family:Georgia,'Times New Roman',serif; font-weight:700; margin:0 0 6px; }
-  h1{ font-size:28px; }
-  h2{ font-size:19px; margin-top:0; border-bottom:2px solid #CFE6D7; padding-bottom:6px; }
-  h3{ font-size:14px; color:#2E4A40; }
-  .report-header{ background:#0F241B; color:#F1ECDD; padding:20px; border-radius:10px; margin-bottom:20px; }
-  .brand-mark{ color:#E8A83D; font-weight:700; letter-spacing:0.06em; font-size:13px; }
-  .brand-mark.small{ font-size:11px; }
-  .brand-dot{ color:#E8A83D; }
-  .header-num{ font-size:0.6em; color:#B7C2B4; font-weight:400; }
-  .header-meta{ margin:6px 0 0; color:#B7C2B4; font-size:13px; }
-  .header-note{ margin:8px 0 0; color:#E8A83D; font-size:12.5px; }
+  h1,h2{ font-family:var(--kr-display); font-weight:800; text-transform:uppercase; letter-spacing:0.01em; line-height:1; margin:0 0 6px; }
+  h3{ font-family:var(--kr-sans); font-weight:800; margin:0 0 6px; }
+  h1{ font-size:44px; }
+  h2{ font-size:24px; margin-top:0; border-bottom:2px solid var(--kr-line); padding-bottom:6px; }
+  h3{ font-size:14px; color:var(--kr-ink-dim); }
+  .report-header{ background:var(--kr-brand); color:var(--kr-on-dark); padding:22px 20px; border-radius:12px; margin-bottom:20px; display:flex; flex-direction:column; gap:10px; }
+  .report-header h1{ margin:2px 0 0; color:var(--kr-on-dark); }
+  .brand-mark{ font-family:var(--kr-wordmark); font-weight:400; color:var(--kr-on-dark); letter-spacing:0.02em; font-size:22px; line-height:1; }
+  .brand-mark.small{ font-family:var(--kr-sans); font-weight:700; font-size:11px; color:var(--kr-ink-dim); letter-spacing:0.04em; }
+  .sport-tag{ position:relative; z-index:0; align-self:flex-start; padding:5px 12px; color:var(--kr-on-accent); font-family:var(--kr-sans); font-size:12px; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; line-height:1; }
+  .sport-tag::before{ content:''; position:absolute; inset:0; z-index:-1; background:var(--kr-accent); transform:skewX(-14deg); }
+  .header-num{ font-size:0.7em; color:var(--kr-on-dark-dim); font-weight:700; }
+  .header-meta{ margin:0; color:var(--kr-on-dark-dim); font-size:13px; }
+  .header-note{ margin:0; color:var(--kr-accent-on-dark); font-size:12px; }   /* gold 10:1 on green; softball's lighter pink 5.2:1 on navy */
   .tiles{ display:flex; flex-wrap:wrap; gap:14px; margin:20px 0 28px; }
-  .tile{ background:#FFFFFF; border:1px solid #CFE6D7; border-radius:8px; padding:12px 16px; min-width:110px; flex:1; text-align:center; }
-  .tile-val{ font-size:26px; font-weight:700; }
-  .tile-lbl{ font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:#527065; margin-top:2px; }
+  .tile{ background:var(--kr-card); border:1px solid var(--kr-line); border-radius:12px; padding:12px 16px; min-width:110px; flex:1; text-align:center; }
+  .tile-val{ font-family:var(--kr-display); font-size:32px; font-weight:700; line-height:1.05; font-variant-numeric:tabular-nums; }
+  .tile-lbl{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--kr-ink-faint); margin-top:4px; }
   .section{ margin:28px 0; }
   .grid-row{ display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; }
   /* U11 (4): per-type grids -- wrap to fit: 2-3 across on a phone, more on
@@ -349,28 +354,29 @@ export const CSS = `
   .type-grid{ min-width:0; }
   .type-grid h3{ display:flex; align-items:center; gap:6px; margin:0 0 6px; font-size:13px; }
   .type-grid svg{ width:100%; max-width:170px; height:auto; }
-  .type-grid-stats{ margin:4px 0 0; font-size:11.5px; color:#5B6B61; }
+  .type-grid-stats{ margin:4px 0 0; font-size:11.5px; color:var(--kr-ink-faint); }
   .legend{ display:flex; flex-direction:column; gap:6px; padding-top:8px; }
   .legend-item{ display:flex; align-items:center; gap:6px; font-size:13px; }
   .legend-dot{ width:9px; height:9px; border-radius:2px; display:inline-block; }
   .dot{ width:8px; height:8px; border-radius:2px; display:inline-block; margin-right:6px; }
-  .caption{ font-size:12px; color:#527065; margin:8px 0 0; }
+  .caption{ font-size:12px; color:var(--kr-ink-faint); margin:8px 0 0; }
   .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:10px; }
-  .data-table{ width:100%; border-collapse:collapse; font-size:13px; }
+  .data-table{ width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }
   .data-table.wide{ min-width:560px; } /* command detail: 8 columns incl. free-text miss tendency -- needs room to scroll to, not to be crushed illegible */
-  .data-table th{ text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:0.05em; color:#527065; border-bottom:1px solid #CFE6D7; padding:5px 8px 5px 0; }
-  .data-table td{ padding:6px 8px 6px 0; border-bottom:1px solid #E8F3EC; vertical-align:top; }
-  .data-table td.miss{ font-size:12px; color:#2E4A40; }
-  .side-block{ margin-top:16px; padding-top:12px; border-top:1px solid #CFE6D7; }
-  .side-stats{ font-size:13px; color:#2E4A40; }
+  .data-table th{ text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--kr-ink-faint); border-bottom:1px solid var(--kr-line); padding:5px 8px 5px 0; }
+  .data-table td{ padding:6px 8px 6px 0; border-bottom:1px solid var(--kr-hair); vertical-align:top; }
+  .data-table td.miss{ font-size:12px; color:var(--kr-ink-dim); }
+  .side-block{ margin-top:16px; padding-top:12px; border-top:1px solid var(--kr-line); }
+  .side-stats{ font-size:13px; color:var(--kr-ink-dim); }
   .side-lists{ display:flex; gap:24px; flex-wrap:wrap; }
   .side-lists ul{ margin:4px 0 0; padding-left:18px; font-size:13px; }
   .drift{ margin-top:14px; }
   .trend-grid{ display:flex; flex-direction:column; gap:18px; }
-  .report-footer{ margin-top:36px; padding-top:16px; border-top:1px solid #CFE6D7; font-size:11.5px; color:#527065; }
-  .report-footer a{ color:#2E4A40; }
+  .report-footer{ margin-top:36px; padding-top:16px; border-top:1px solid var(--kr-line); font-size:11.5px; color:var(--kr-ink-faint); }
+  .report-footer a{ color:var(--kr-link); }
   @media (max-width:600px){
     .page{ padding:16px 12px 32px; }
+    h1{ font-size:32px; }
     .tiles{ gap:10px; }
     .tile{ min-width:90px; padding:10px 12px; }
     .grid-row{ gap:14px; }
@@ -378,24 +384,24 @@ export const CSS = `
   }
   @media print{
     body{ background:#FFFFFF; }
-    .report-header{ background:#0F241B !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .report-header, .sport-tag::before{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     .section{ page-break-inside:avoid; }
     /* Location dots (svg.ts drawDots): a dark outline so every dot still
        reads on a black-and-white printout, where pale pitch-type colors and
        the translucent halos wash out. CSS beats the SVG stroke attribute. */
-    .kb-dot{ stroke:#1E2A24; }
+    .kb-dot{ stroke:var(--kr-print); }
   }
 `
 
 export function buildReportHtml(p: ReportPayload): string {
   const title = `Bullpen Report — ${p.pitcherName}`
-  // S2: the softball swap covers the whole page -- CSS and the drawn charts.
-  return themedCss(`<!doctype html>
+  // D2: this report's own colors and fonts (--kr-*) for its sport -- no hex swap, no site stylesheet.
+  return (`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
-<style>${CSS}</style>
+<style>${reportVars(asSport(p.sport))}${CSS}</style>
 </head>
 <body>
 <div class="page">
@@ -411,5 +417,5 @@ ${renderTrends(p)}
 ${renderFooter(p)}
 </div>
 </body>
-</html>`, asSport(p.sport))
+</html>`)
 }

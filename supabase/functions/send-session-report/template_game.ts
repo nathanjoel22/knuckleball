@@ -6,7 +6,7 @@
 // game-only stylesheet addition below, so the two reports read as one
 // product (content spec: "Same theme and typography as the pen report").
 // ============================================================================
-import { escapeHtml, safeNum, colorForType, timesToHomeLine, asSport, themedCss, type Sport, VIEW_NAME, REPORT_VIEW, viewNote } from './helpers.ts'
+import { escapeHtml, safeNum, colorForType, timesToHomeLine, asSport, reportVars, type Sport, VIEW_NAME, REPORT_VIEW, viewNote } from './helpers.ts'
 import { ZONE_NAMES } from './helpers.ts'
 import { drawGrid, drawLegend, drawLineChart, drawGridByResult, drawResultLegend, resultCategoryOf, drawTypeGrids } from './svg.ts'
 import { CSS as PEN_CSS } from './template.ts'
@@ -87,7 +87,8 @@ function renderHeader(p: GameReportPayload): string {
   const ipNote = s.outs_source === 'derived' ? ' (outs from pitches)' : ''
   return `
   <header class="report-header">
-    <div class="brand-mark">KNUCKLEBALL<span class="brand-dot">.</span></div>
+    <div class="brand-mark">KNUCKLEBALL</div>
+    <span class="sport-tag">${asSport(p.sport) === 'softball' ? 'Softball' : 'Baseball'} · Live Game</span>
     <h1>${escapeHtml(p.pitcherName)}${numBit}</h1>
     <p class="header-meta">${dateStr}${oppBit}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''} · Live Game</p>
     <p class="header-meta">${fmtIP(s.outs_recorded)} IP${ipNote} · ${s.outs_recorded} outs recorded · ${s.batters_faced} batters faced · ${s.pitches} pitches · charted by ${chartedBy}</p>
@@ -375,8 +376,8 @@ function renderGameTrends(p: GameReportPayload): string {
 
   const pctChart = drawLineChart({
     series: [
-      { label: 'Strike %', color: '#E8A83D', points: strikeSeries.map(v => v === null ? null : v / 100) },
-      { label: 'First-pitch strike %', color: '#6FA287', points: fpsSeries.map(v => v === null ? null : v / 100) }
+      { label: 'Strike %', color: 'var(--kr-accent)', points: strikeSeries.map(v => v === null ? null : v / 100) },
+      { label: 'First-pitch strike %', color: '#22B573', points: fpsSeries.map(v => v === null ? null : v / 100) }
     ],
     xLabels, yAxisLabels: ['0%', '50%', '100%']
   })
@@ -386,12 +387,12 @@ function renderGameTrends(p: GameReportPayload): string {
   const vHi = anyVelo ? Math.ceil(Math.max(...veloValues) / 5) * 5 : 1
   const vRange = Math.max(1, vHi - vLo)
   const veloChart = anyVelo ? drawLineChart({
-    series: [{ label: 'Avg velocity', color: '#C17A45', points: veloSeries.map(v => v === null ? null : (v - vLo) / vRange) }],
+    series: [{ label: 'Avg velocity', color: '#FF6B35', points: veloSeries.map(v => v === null ? null : (v - vLo) / vRange) }],
     xLabels, yAxisLabels: [String(vLo), String(Math.round((vLo + vHi) / 2)), String(vHi)]
   }) : ''
   const maxCount = Math.max(1, ...pitchSeries.filter((v): v is number => v !== null))
   const countChart = drawLineChart({
-    series: [{ label: 'Pitch count', color: '#7C9CBF', points: pitchSeries.map(v => v === null ? null : v / maxCount) }],
+    series: [{ label: 'Pitch count', color: '#3D8BFF', points: pitchSeries.map(v => v === null ? null : v / maxCount) }],
     xLabels, yAxisLabels: ['0', String(Math.round(maxCount / 2)), String(maxCount)]
   })
   const kbbhRows = trend.map(h => `<tr><td>${escapeHtml(h.dateLabel)}</td><td>${h.k}</td><td>${h.bb}</td><td>${h.h}</td></tr>`).join('')
@@ -511,20 +512,20 @@ function renderFooter(p: GameReportPayload): string {
 
 const GAME_CSS = `
   .ab-inning{ margin:14px 0; }
-  .ab-row{ font-size:13px; padding:4px 0; border-bottom:1px solid #E8F3EC; }
-  .ab-num{ font-weight:700; color:#2E4A40; margin-right:6px; }
-  .ab-ending{ float:right; font-weight:700; color:#0F241B; }
+  .ab-row{ font-size:13px; padding:4px 0; border-bottom:1px solid var(--kr-hair); }
+  .ab-num{ font-weight:700; color:var(--kr-ink-dim); margin-right:6px; }
+  .ab-ending{ float:right; font-weight:700; color:var(--kr-ink); }
 `
 
 export function buildGameReportHtml(p: GameReportPayload): string {
   const title = `Game Report — ${p.pitcherName}${p.opponent ? ' vs ' + p.opponent : ''}`
-  // S2: the softball swap covers the whole page -- CSS and the drawn charts.
-  return themedCss(`<!doctype html>
+  // D2: this report's own colors and fonts (--kr-*) for its sport -- no hex swap, no site stylesheet.
+  return (`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
-<style>${PEN_CSS}${GAME_CSS}${DIAMOND_CSS}${CONNECT_CSS}</style>
+<style>${reportVars(asSport(p.sport))}${PEN_CSS}${GAME_CSS}${DIAMOND_CSS}${CONNECT_CSS}</style>
 </head>
 <body>
 <div class="page">
@@ -549,5 +550,5 @@ ${renderOtherEvents(p)}${renderAtBatLog(p)}
 ${renderFooter(p)}
 </div>
 </body>
-</html>`, asSport(p.sport))
+</html>`)
 }

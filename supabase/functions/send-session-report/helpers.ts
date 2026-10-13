@@ -20,26 +20,37 @@ export function asSport(v: unknown): Sport { return v === 'softball' ? 'softball
 // that pass reads it -- no other request can interleave.
 let activePalette: string[] = TYPE_PALETTE_HEX
 export function useSportPalette(sport: Sport): void { activePalette = SPORT_PALETTE_HEX[sport] ?? TYPE_PALETTE_HEX }
-// S1: the softball report theme = the baseball CSS with its THEME colors
-// swapped (docs/softball-theme-reference.html). S2: applied to the whole
-// page, so the drawn charts (grids, axes) turn too. A baseball report is the
-// untouched original text, byte for byte. No target here is also a source,
-// so applying it twice changes nothing.
-const SOFTBALL_THEME_SWAP: [string, string][] = [
-  ['#0F241B', '#234B6E'],   // dark anchor
-  ['#E8F3EC', '#EAF4FB'],   // panel
-  ['#CFE6D7', '#BFDCEF'],   // border
-  ['#2E4A40', '#3A5A78'],   // secondary text
-  ['#527065', '#5F7A91'],   // tertiary text
-  ['#5B6B61', '#5F7A91'],
-  ['#F7FAF8', '#F7FAFD'],   // page
-  ['#B7C2B4', '#BCCBD8'],   // light text on the dark header
-  ['#E8A83D', '#F2A7C3'],   // accent (header; S2: also the swinging-strike dot in charts)
-  ['#7C8C82', '#7A8EA0']    // S2: chart axis / zone-number text
-]
-export function themedCss(css: string, sport: Sport): string {
-  if (sport !== 'softball') return css
-  return SOFTBALL_THEME_SWAP.reduce((out, [from, to]) => out.split(from).join(to), css)
+// D2 Stage D (Oct 13 2026): a NEW report carries its own colors and fonts as CSS variables
+// (--kr-*), one :root block for its sport -- written into the report file itself, so a stored
+// report never depends on the site's css/tokens.css and a later token change can't restyle a
+// report someone already has the link to. Values = css/tokens.css (D2). The --kr- prefix keeps them
+// apart from report.html's own tokens (the report is drawn inside that page). Replaces S1's
+// softball hex swap; reports sent before D2 keep their own CSS and are never touched.
+const REPORT_VARS: Record<Sport, Record<string, string>> = {
+  baseball: {
+    bg: '#F3F5F2', card: '#FFFFFF', surface: '#E8EDE9', line: '#D5DDD7', hair: '#E8EDE9',
+    ink: '#07140F', 'ink-dim': '#26342D', 'ink-faint': '#56645C', axis: '#56645C', grid: '#E6EAE7',
+    brand: '#061A12', 'on-dark': '#FFFFFF', 'on-dark-dim': '#C2CEC6', 'on-dark-faint': '#86978C',
+    accent: '#FFB81C', 'accent-on-dark': '#FFB81C', 'on-accent': '#07140F', 'accent-ink': '#8A5A00', link: '#16593D', print: '#07140F'
+  },
+  softball: {
+    bg: '#F4F7FB', card: '#FFFFFF', surface: '#E6F1FA', line: '#CFE0EE', hair: '#E6F1FA',
+    ink: '#0B2540', 'ink-dim': '#2C4560', 'ink-faint': '#5A6E84', axis: '#5A6E84', grid: '#E3EAF2',
+    brand: '#0B2540', 'on-dark': '#FFFFFF', 'on-dark-dim': '#C5D3E2', 'on-dark-faint': '#8A9BB0',
+    accent: '#FF4F9A', 'accent-on-dark': '#FF79B3', 'on-accent': '#0B2540', 'accent-ink': '#B0175A', link: '#1F5C99', print: '#0B2540'
+  }
+}
+const REPORT_FONTS =
+  " --kr-sans:'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;" +
+  " --kr-display:'Big Shoulders Display', 'Archivo', 'Arial Narrow', sans-serif;" +
+  " --kr-wordmark:'Black Ops One', 'Big Shoulders Display', 'Arial Black', sans-serif;"
+export function reportVars(sport: Sport): string {
+  const v = REPORT_VARS[sport] ?? REPORT_VARS.baseball
+  return ':root{' + Object.entries(v).map(([k, val]) => ` --kr-${k}:${val};`).join('') + REPORT_FONTS + ' }'
+}
+// Result colors (game charts) -- data colors from the D2 pitch palette; swing-and-miss wears the sport's accent.
+export const RESULT_COLOR = {
+  ball: '#3D8BFF', called_strike: '#E63946', swinging_strike: 'var(--kr-accent)', foul: '#F2E14C', in_play: '#22B573', other: '#A7B0AA'
 }
 
 // Lockstep with is_default_velo_reading() in

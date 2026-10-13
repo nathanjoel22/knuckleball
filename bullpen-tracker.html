@@ -654,7 +654,7 @@
   .zone-ball{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
   .zone-ball .g5-ball{ width:46%; height:46%; filter:drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
   html[data-sport="softball"] .zone-ball .g5-ball circle{ fill:#F3E04B; }
-  .g5-intent-hint{ flex:1; align-self:center; font-size:14px; font-weight:600; color:var(--ink-faint); }
+  .g5-intent-hint{ flex:1; align-self:center; font-size:16px; font-weight:800; color:var(--field-dark); }   /* as bold as the prompt (Oct 13) */
   @media (prefers-reduced-motion: reduce){ .zone-cell-ball.ball-flash{ animation:none; } }
   .start-q-title{ margin:0; text-align:center; }
   .start-q-item{ display:flex; flex-direction:column; gap:8px; }
@@ -883,7 +883,11 @@
   .zone-cell.in-zone{ background:var(--surface); border-color:var(--border-strong); }
   .zone-cell.clickable{ cursor:pointer; }
   .zone-cell.clickable:hover{ outline:2px solid var(--amber); outline-offset:-2px; }
-  .zone-caption{ font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.1em; }
+  /* Joel, Oct 13: the prompt ("Tap where you're aiming", "What happened?", "Now tap where the pitch went"...) has to
+     catch the eye at once -- big, heavy, dark, on a tinted pill in the sport's accent, centered under the chart */
+  .zone-caption{ display:block; width:fit-content; max-width:100%; box-sizing:border-box; margin:8px auto 0; padding:6px 14px;
+    border-radius:10px; background:rgba(var(--amber-rgb), .26); color:var(--field-dark);
+    font-size:16px; font-weight:800; line-height:1.25; text-align:center; letter-spacing:0; text-transform:none; }
 
   /* G1b-r2: the field picture is gone entirely (GameChanger's patent
      filings) -- every .field-* rule that drew or positioned it (.field-wrap,
@@ -1614,7 +1618,7 @@
   .g5-cell.g5-sel{ box-shadow:inset 0 0 0 3px var(--gg-gold); }
   .g5-drag-token{ position:fixed; left:0; top:0; z-index:200; width:36px; height:36px; border-radius:50%; pointer-events:none;
     background:#fff; box-shadow:0 6px 16px rgba(0,0,0,.35), inset 0 0 0 4px var(--btn-accent); }
-  .g5-q{ font-weight:700; font-size:14px; }
+  .g5-q{ font-weight:800; font-size:16px; color:var(--field-dark); }   /* the runner and extra-inning questions, as bold as the prompt */
   .g5-qbtns{ width:100%; }
   /* Velocity in the chart (Joel, Oct 6): the bar over row 4, Reset + Next pitch over row 5 --
      placed from the grid's own track math (3px padding, 3px gaps, five equal cells). */

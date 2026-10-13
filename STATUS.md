@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-13 · no packet (bold charting prompts) · **staging**
+- **Branch / cache:** `live-game-oct12` · `kb-shell-v224`. No database change.
+- **Built:** the charting prompt under the chart ("Tap where you're aiming", "Now tap where it actually landed", "What happened?", the field-step questions) is now 16 px, heavy, dark text on a pill tinted in the sport's accent, centered (was 10 px pale capitals). The same applies to the accuracy-zone editor's caption. The runner and extra-inning questions and the phone Intent hints are 16 px heavy too.
+- **Deviations / choices:** the phone Live Game still has no caption line under the chart (Joel, Oct 13: fine without it).
+- **Open items:** Joel's check.
+
 ## 2026-10-12 · no packet (outs show the moment they're called) · **staging**
 - **Branch / cache:** `live-game-oct12` · `kb-shell-v223`. No database change.
 - **Built:** the Live Game status line ("1 OUT", and the iPad/laptop Outs box) counts an out as soon as it's called, never more than three:

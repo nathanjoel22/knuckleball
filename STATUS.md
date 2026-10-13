@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-13 · no packet (iPad-portrait perspective squeeze) · **staging**
+- **Branch / cache:** `d2-broadcast-rebrand` · `kb-shell-v233`. No database or function change.
+- **Fixed:** on iPad portrait (501–860 px) the "Behind the catcher / Behind the pitcher" tray now stacks its two choices, as on iPad landscape and laptop. Side by side, they ran into each other in their narrow column (open since D2 Stage B). Checked at 600 and 820 px, bullpen and Live Game, both sports. CSS only; phones and laptops unchanged.
+- **Open items:** Joel's check on an iPad in portrait; ships with the next production push.
+
 ## 2026-10-13 · D2 (Broadcast · Big Shoulders rebrand, Stages A–D; with D1 Stage 1 already live) · **production**
 - **Branch / cache:** `d2-broadcast-rebrand` fast-forwarded to `main` · `kb-shell-v232` (production was v227). No database change.
 - **Edge Function:** `send-session-report` deployed to production (new reports in the D2 look, with their own `--kr-*` colors and fonts; new pitch palettes).

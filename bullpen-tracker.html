@@ -595,6 +595,13 @@
   .wide-left .tray[data-tray="persp"]{ flex-direction:column; }
   .wide-left .tray[data-tray="persp"] .seg{ min-height:44px; }
   .wide-left .tray[data-tray="persp"] .seg::before{ top:0; bottom:0; }
+  /* Joel, Oct 13: iPad portrait (501-860px) -- the two long perspective choices stack too, as on
+     iPad landscape / laptop; side by side they ran into each other in their narrow column. */
+  @media (min-width:501px) and (max-width:860px){
+    .tray[data-tray="persp"]{ flex-direction:column; }
+    .tray[data-tray="persp"] .seg{ min-height:44px; }
+    .tray[data-tray="persp"] .seg::before{ top:0; bottom:0; }
+  }
   /* .pitch-count-badge shares this block's shape/border/sizing so the pitch-count
      badge (below) and the pitch-type chips stay visually consistent -- see its own
      comment for the one thing it overrides (a fixed width instead of a minimum). */

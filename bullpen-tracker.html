@@ -82,7 +82,7 @@
   /* Joel, Oct 12: never wrap "0 OUT 0-0" -- each item stays on one line, and the bar tightens on narrower phones */
   .ph-status .ph-item, .ph-status .ph-inn{ white-space:nowrap; }
   @media (max-width:389px){ .ph-status{ gap:8px; padding:0 10px; } }
-  @media (max-width:359px){ .ph-status{ gap:6px; padding:0 8px; } .ph-status .ph-item{ font-size:14px; } .ph-status .deliv-one{ width:64px; padding:0 4px; } }
+  @media (max-width:359px){ .ph-status{ gap:5px; padding:0 6px; } .ph-status .ph-item{ font-size:14px; } .ph-status .deliv-one{ width:60px; padding:0 4px; } }   /* D2 (Oct 13): room to spare at 320 px (it was 7 px over before Stage B) */
   .ph-count{ display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%;
     background:var(--on-dark); color:var(--ink); font-size:16px; }
   .ph-lbl{ font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:var(--on-dark-dim); margin-left:-6px; }
@@ -123,7 +123,7 @@
   .ph-actions{ display:flex; gap:8px; }
   .ph-act{ flex:1; }
   .velo-slim{ display:flex; align-items:center; gap:6px; min-height:52px; padding:4px 8px; background:var(--surface); border-radius:10px; }
-  .velo-slim-lbl{ flex:none; max-width:56px; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-faint); line-height:1.2; }
+  .velo-slim-lbl{ flex:none; max-width:56px; font-size:10px; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--ink-faint); line-height:1.2; font-weight:700; font-stretch:90%;}
   .velo-slim-strip{ flex:1; min-width:0; }
   .velo-slim .velo-help{ display:none; }
   .velo-slim .velo-strip{ --velo-visible:3; }
@@ -153,7 +153,7 @@
   body{
     background:var(--bg);
     color:var(--ink);
-    font-family:'IBM Plex Sans', sans-serif;
+    font-family:var(--font-sans);
     min-height:100vh;
   }
   ::selection{ background:var(--accent); color:var(--ink); }
@@ -167,8 +167,8 @@
     *{ transition:none !important; animation:none !important; }
   }
 
-  .display{ font-family:'Teko', sans-serif; font-weight:600; letter-spacing:0.01em; }
-  .mono{ font-family:'IBM Plex Mono', monospace; }
+  .display{ font-family:var(--font-display); font-weight:800; letter-spacing:var(--tr-display); text-transform:uppercase; }   /* D2: Teko 600 -> Big Shoulders 800, caps */
+  .mono{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-weight:700; }   /* D2: Plex Mono -> Archivo 700, tabular figures */
 
   #app{ display:flex; min-height:100vh; max-width:1320px; margin:0 auto; }
 
@@ -193,7 +193,7 @@
   }
   .brand{ display:flex; align-items:baseline; gap:8px; }
   /* Joel, Oct 8: the wordmark is KNUCKLEBALL in Black Ops One -- no diamond, no period */
-  .brand-word{ font-family:'Black Ops One', 'Teko', sans-serif !important; font-weight:400 !important; letter-spacing:0.02em; white-space:nowrap; }
+  .brand-word{ font-family:var(--font-wordmark) !important; font-weight:400 !important; letter-spacing:0.02em; white-space:nowrap; }
   .brand-mark{
     width:10px; height:10px; border-radius:2px; background:var(--accent);
     transform:rotate(45deg); flex-shrink:0; margin-bottom:3px;
@@ -202,21 +202,19 @@
   .brand h1.brand-word{ font-size:24px; }   /* Black Ops One runs wide: KNUCKLEBALL fits the sidebar's brand block */
   .boot-screen .brand h1.brand-word{ font-size:24px; }
   .brand span{ color:var(--accent); }
-  .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:0.14em; color:var(--on-dark-faint); }
+  .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label); color:var(--on-dark-faint); font-weight:700; font-stretch:90%;}
 
   .role-badge{
-    align-self:flex-start; font-size:10px; text-transform:uppercase; letter-spacing:0.1em;
+    align-self:flex-start; font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label);
     color:var(--accent-bright); background:rgba(var(--accent-rgb),0.12);
-    border:1px solid rgba(var(--accent-rgb),0.3); padding:3px 9px; border-radius:20px; margin-top:2px;
-  }
+    border:1px solid rgba(var(--accent-rgb),0.3); padding:3px 9px; border-radius:20px; margin-top:2px; font-weight:700; font-stretch:90%;}
 
   /* Offline indicator + instant boot screen (P1-13) */
   .offline-pill{
     align-self:flex-start; display:inline-flex; align-items:center; gap:6px; margin-top:6px;
-    font-size:10px; text-transform:uppercase; letter-spacing:0.09em;
+    font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label);
     color:var(--accent-bright); background:rgba(var(--accent-rgb),0.12);
-    border:1px solid rgba(var(--accent-rgb),0.3); padding:3px 9px; border-radius:20px;
-  }
+    border:1px solid rgba(var(--accent-rgb),0.3); padding:3px 9px; border-radius:20px; font-weight:700; font-stretch:90%;}
   .offline-pill::before{
     content:''; width:6px; height:6px; border-radius:50%; background:var(--accent-bright); flex-shrink:0;
   }
@@ -246,9 +244,8 @@
   }
 
   .roster-label{
-    font-size:10px; text-transform:uppercase; letter-spacing:0.12em;
-    color:var(--ink-faint); margin:4px 0 -4px;
-  }
+    font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label);
+    color:var(--ink-faint); margin:4px 0 -4px; font-weight:700; font-stretch:90%;}
   .roster-toggle-btn{ display:flex; width:100%; justify-content:space-between; gap:8px; padding:0 14px; margin:0; }
   .roster-toggle-btn .roster-label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
   .roster-chevron{
@@ -279,7 +276,7 @@
   .roster-item-name{ font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .throws-tag{ margin-left:7px; font-size:10px; font-weight:700; letter-spacing:.05em; color:var(--accent-ink); vertical-align:1px; }
   .roster-item-types{ font-size:10px; color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .roster-item-num{ font-family:'Teko',sans-serif; font-size:20px; color:var(--ink-faint); flex-shrink:0; }
+  .roster-item-num{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:20px; color:var(--ink-faint); flex-shrink:0; }
   /* U10 (3) revised: the roster red dot -- sits in the item's left padding,
      so names never shift when a dot comes or goes. */
   /* Joel, Sept 30: more room between the dot and the name -- every item
@@ -317,7 +314,7 @@
   .invite-link-text{
     flex:1; min-width:0; background:var(--bg); border:1px solid var(--border-strong);
     border-radius:5px; color:var(--ink-dim); padding:7px 9px; font-size:12px;
-    font-family:'IBM Plex Mono',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     user-select:all; -webkit-user-select:all;
   }
   .invite-link-copy-btn{ flex-shrink:0; }
@@ -329,10 +326,9 @@
 
   /* R0: verification badge + remove control on a coach's roster items. */
   .verify-badge{
-    font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;
+    font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:var(--tr-label);
     padding:2px 6px; border-radius:20px; background:var(--warning-tint); color:var(--warning);
-    margin-left:6px; flex-shrink:0;
-  }
+    margin-left:6px; flex-shrink:0; font-stretch:90%;}
   /* U9 follow-up: was inline inside .roster-item-name, sharing its
      white-space:nowrap/ellipsis -- a long name + throws-tag could clip the
      badge mid-pill right where it ran into the uniform number (Joel:
@@ -370,7 +366,7 @@
     background:var(--card); border:1px solid var(--border-strong);
     border-radius:8px; padding:16px; display:flex; flex-direction:column; gap:10px;
   }
-  .field-label{ font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-faint); }
+  .field-label{ font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label); color:var(--ink-faint); font-weight:700; font-stretch:90%;}
   .text-input{
     background:var(--card); border:1px solid var(--border-strong); border-radius:5px;
     color:var(--ink); padding:8px 10px; font-size:14px; width:100%;
@@ -392,12 +388,12 @@
   .empty-state .display{ font-size:44px; color:var(--ink-dim); }
 
   .pitcher-header{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
-  .pitcher-header h2{ font-family:'Teko',sans-serif; font-size:44px; font-weight:600; margin:0; line-height:1; }
+  .pitcher-header h2{ font-family:var(--font-display); font-size:44px; font-weight:800; text-transform:uppercase; letter-spacing:var(--tr-display); margin:0; line-height:1; }
   .pitcher-header-actions{ display:flex; gap:10px; align-items:flex-end; }
   .uniform-field{ display:flex; flex-direction:column; gap:4px; }
   .uniform-field input{ width:72px; padding:6px 8px; text-align:center; }
   .uniform-locked{ display:flex; gap:8px; align-items:center; }
-  .uniform-locked-num{ font-family:'Teko',sans-serif; font-size:24px; line-height:1; min-width:36px; text-align:center; color:var(--ink); }
+  .uniform-locked-num{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:24px; line-height:1; min-width:36px; text-align:center; color:var(--ink); }
   .uniform-msg{ font-size:12px; color:var(--ink-faint); max-width:260px; }
   .pitcher-sub{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
   /* U10 (8): player header -- photo (or initials), name, "#12". */
@@ -612,7 +608,7 @@
      chips and the grid below (not centered under its own label -- Joel, Sept 22:
      that read as inset/indented against everything else in this column). */
   .pitch-counter{ display:flex; flex-direction:row; align-items:center; gap:10px; flex-shrink:0; }
-  .pitch-counter-num{ font-family:'Teko',sans-serif; font-size:24px; line-height:1; color:var(--ink); }
+  .pitch-counter-num{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:24px; line-height:1; color:var(--ink); }
   .pitch-count-badge{
     width:44px; height:44px; padding:0;
     background:var(--surface); /* same green as the 3x3 strike-zone cells, see .zone-cell.in-zone */
@@ -637,7 +633,7 @@
   .velo-cell{
     flex:0 0 calc(100% / var(--velo-visible, 7)); scroll-snap-align:center; min-height:48px;
     background:transparent; border:0; border-right:1px solid var(--border-strong);
-    color:var(--ink-dim); font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:600; padding:0;
+    color:var(--ink-dim); font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:16px; font-weight:700; padding:0;
   }
   .velo-cell:last-child{ border-right:0; }
   .velo-cell.typical{ box-shadow:inset 0 0 0 2px var(--accent); color:var(--ink); font-weight:700; }
@@ -809,7 +805,7 @@
      beneath, legible at 320px (chip-row wraps the row across two lines
      there rather than shrinking anything). '+' (More) stays a real text
      glyph, in the bullpen's own B/K font (.flash-letter's family/weight,
-     Teko 700). */
+     Big Shoulders 800). */
   .scorebook-row{ gap:6px; }
   .scorebook-btn{
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
@@ -824,12 +820,11 @@
     mask-size:contain; mask-repeat:no-repeat; mask-position:center;
   }
   .scorebook-btn-glyph{
-    display:block; font-family:'Teko',sans-serif; font-size:24px; font-weight:700; line-height:1;
+    display:block; font-family:var(--font-display); font-size:24px; font-weight:800; line-height:1;
   }
   .scorebook-btn-caption{
-    font-size:10px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase;
-    color:var(--ink-dim); opacity:0.75; line-height:1.1;
-  }
+    font-size:10px; font-weight:700; letter-spacing:var(--tr-label); text-transform:uppercase;
+    color:var(--ink-dim); opacity:0.75; line-height:1.1; font-stretch:90%;}
 
   /* G1b-r addendum (layout, unchanged by G1b-r2): perspective + delivery
      share one row -- each keeps its own label+chip-row block
@@ -884,10 +879,9 @@
   .game-panel-header .stat-lbl{ color:var(--on-dark-dim); }
   .game-panel-handle{ color:var(--on-dark-dim); font-size:12px; letter-spacing:0.08em; flex:0 0 auto; }
   .game-panel-undo{
-    flex:0 0 auto; font-size:10px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase;
+    flex:0 0 auto; font-size:10px; font-weight:700; letter-spacing:var(--tr-label); text-transform:uppercase;
     color:var(--surface); background:transparent; border:1.5px solid rgba(255,255,255,0.4);
-    border-radius:14px; padding:4px 10px; cursor:pointer;
-  }
+    border-radius:14px; padding:4px 10px; cursor:pointer; font-stretch:90%;}
   .gridwrap{ position:relative; }
   .game-panel-body{
     position:absolute; inset:0; z-index:2; overflow-y:auto; box-sizing:border-box;
@@ -949,13 +943,12 @@
      and an uppercase small-caps label above each cell matching .lbl. */
   .scorebook-cells-wrap{ display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; }
   .scorebook-cell-label{
-    font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-faint);
-    text-align:center; margin-bottom:2px;
-  }
+    font-size:10px; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--ink-faint);
+    text-align:center; margin-bottom:2px; font-weight:700; font-stretch:90%;}
   .scorebook-cell{ background:var(--card); border:1.5px solid var(--ink); border-radius:4px; padding:0; box-sizing:border-box; }
   .scorebook-cell.small{ opacity:0.85; }
   .scorebook-cell svg{ display:block; }
-  .scorebook-cell-code{ font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700; }
+  .scorebook-cell-code{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:10px; font-weight:700; }
   .scorebook-cell-code.strong{ fill:var(--ink); }
   .scorebook-cell-code.muted{ fill:var(--ink-faint); font-weight:600; }
   .scorebook-cell-diamond{ fill:none; stroke:var(--ink); stroke-width:1.5; }
@@ -966,7 +959,7 @@
   .scorebook-cell-scored.committed{ fill:var(--ink); }
   .scorebook-cell-scored.pending{ fill:var(--accent-game); }
   .scorebook-cell-out-circle{ fill:var(--card); stroke:var(--ink); stroke-width:1.8; }
-  .scorebook-cell-out-num{ font-family:'IBM Plex Sans',sans-serif; font-size:14px; font-weight:700; fill:var(--ink); text-anchor:middle; }
+  .scorebook-cell-out-num{ font-family:var(--font-sans); font-size:14px; font-weight:700; fill:var(--ink); text-anchor:middle; }
 
   /* Sized to match the strike zone (the inner 3x3 of cells, rows/cols 1-3 --
      see isStrikeCell), not the full 5x5 grid: 3 cells + 2 internal 3px gaps
@@ -1055,19 +1048,19 @@
   }
   .flash-letter{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    font-family:'Teko',sans-serif; font-size:24px; font-weight:700; color:var(--flash-fg);
+    font-family:var(--font-display); font-size:24px; font-weight:800; color:var(--flash-fg);
     animation:letterFade 1.4s ease forwards;
   }
   @keyframes letterFade{ 0%{ opacity:1; } 55%{ opacity:1; } 100%{ opacity:0; } }
 
   .zone-number{
-    position:absolute; top:3px; left:5px; font-family:'IBM Plex Mono',monospace;
+    position:absolute; top:3px; left:5px; font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-weight:700;
     font-size:10px; color:rgba(var(--ink-rgb),0.35); pointer-events:none; line-height:1;
   }
   .zone-number-heat{ color:rgba(var(--ink-rgb),0.55); font-weight:600; }
   .zone-count{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600; color:var(--ink);
+    font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:12px; font-weight:700; color:var(--ink);
   }
   .zone-cell-target{ outline:2px solid var(--accent); outline-offset:-2px; background:rgba(var(--accent-rgb),0.16); }
   .target-dot{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
@@ -1086,8 +1079,8 @@
   .log-panel{ min-width:230px; flex:1; display:flex; flex-direction:column; gap:16px; }
   .stat-readout{ display:flex; gap:18px; flex-wrap:wrap; }
   .stat-box{ display:flex; flex-direction:column; }
-  .stat-num{ font-family:'Teko',sans-serif; font-size:32px; line-height:1; color:var(--ink); }
-  .stat-lbl{ font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-faint); }
+  .stat-num{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:32px; line-height:1; color:var(--ink); }
+  .stat-lbl{ font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label); color:var(--ink-faint); font-weight:700; font-stretch:90%;}
   .pitch-log{ display:flex; flex-direction:column; gap:5px; max-height:220px; overflow-y:auto; }
   .pitch-log-row{
     display:flex; align-items:center; justify-content:space-between; font-size:12px;
@@ -1116,10 +1109,9 @@
   .session-card-head:hover{ background:var(--surface); }
   .session-date{ font-weight:600; font-size:14px; }
   .coach-logged-tag{
-    font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em;
+    font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:var(--tr-label);
     color:var(--accent-ink); background:rgba(var(--accent-rgb),0.12); border:1px solid rgba(var(--accent-rgb),0.3);
-    padding:2px 7px; border-radius:20px; margin-left:6px; vertical-align:middle;
-  }
+    padding:2px 7px; border-radius:20px; margin-left:6px; vertical-align:middle; font-stretch:90%;}
   .pending-tag{ color:var(--warning); background:var(--warning-tint); border-color:var(--warning-line); }
   /* U11 (3): a tag is one unit -- never split across lines. On phones
      "Logged by coach" drops to its own short line under the date instead
@@ -1130,21 +1122,20 @@
   }
   .session-meta{ display:flex; gap:16px; flex-wrap:wrap; }
   .meta-item{ display:flex; flex-direction:column; align-items:flex-end; }
-  .meta-num{ font-family:'Teko',sans-serif; font-size:24px; color:var(--ink); line-height:1; }
-  .meta-lbl{ font-size:10px; text-transform:uppercase; color:var(--ink-faint); letter-spacing:0.08em; }
+  .meta-num{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:24px; color:var(--ink); line-height:1; }
+  .meta-lbl{ font-size:10px; text-transform:uppercase; color:var(--ink-faint); letter-spacing:var(--tr-label); font-weight:700; font-stretch:90%;}
   .session-card-body{ padding:16px 20px 20px; display:flex; gap:24px; flex-wrap:wrap; }
   .breakdown-table{ width:100%; border-collapse:collapse; font-size:12px; margin-top:14px; }
-  .breakdown-table th{ text-align:left; color:var(--ink-faint); font-weight:600; font-size:10px; text-transform:uppercase; letter-spacing:0.06em; padding:4px 8px 6px 0; border-bottom:1px solid var(--border); }
+  .breakdown-table th{ text-align:left; color:var(--ink-faint); font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label); padding:4px 8px 6px 0; border-bottom:1px solid var(--border); font-stretch:90%;}
   .breakdown-table td{ padding:6px 8px 6px 0; border-bottom:1px solid var(--border); }
 
   /* Deleted-session tombstone + delete control (P1-15) */
   .session-card-deleted{ opacity:0.72; }
   .session-card-deleted .session-card-head:hover{ background:transparent; }
   .deleted-tag{
-    font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em;
+    font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:var(--tr-label);
     color:var(--ink-faint); background:rgba(var(--ink-rgb),0.04);
-    border:1px solid var(--border-strong); padding:2px 7px; border-radius:20px; margin-left:6px; vertical-align:middle;
-  }
+    border:1px solid var(--border-strong); padding:2px 7px; border-radius:20px; margin-left:6px; vertical-align:middle; font-stretch:90%;}
   .deleted-meta{ font-size:12px; color:var(--ink-faint); }
   .deleted-summary-row{ text-align:center; padding:12px 0 4px; }
   .delete-zone{ margin-top:16px; padding-top:4px; }
@@ -1193,7 +1184,7 @@
   .acct-btn{ gap:6px; padding:0 10px 0 4px; }
   .acct-avatar{ width:28px; height:28px; border-radius:50%; background:var(--surface); border:1px solid var(--surface-border); display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--ink); flex:0 0 auto; }
   .acct-caret{ font-size:10px; color:var(--ink-faint); }
-  .acct-chip{ font-size:10px; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; padding:2px 7px; border-radius:999px; }
+  .acct-chip{ font-size:10px; font-weight:700; letter-spacing:var(--tr-label); text-transform:uppercase; padding:2px 7px; border-radius:999px; font-stretch:90%;}
   .acct-chip-baseball{ background:var(--bb-surface); color:var(--bb-brand); border:1px solid var(--bb-surface-border); }
   .acct-chip-softball{ background:var(--sb-surface); color:var(--sb-brand); border:1px solid var(--sb-surface-border); }
   .acct-chip-none{ background:var(--surface); color:var(--ink-dim); }
@@ -1203,7 +1194,7 @@
   .acct-who{ display:flex; flex-direction:column; gap:3px; min-width:0; flex:1; }
   .acct-name{ font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .acct-meta{ font-size:12px; color:var(--ink-faint); display:flex; align-items:center; gap:6px; }
-  .acct-badge{ font-size:10px; font-weight:700; text-transform:uppercase; background:var(--accent); color:var(--ink); border-radius:999px; padding:1px 6px; }
+  .acct-badge{ font-size:10px; font-weight:700; text-transform:uppercase; background:var(--accent); color:var(--ink); border-radius:999px; padding:1px 6px letter-spacing:var(--tr-label); font-stretch:90%;}
   .acct-check{ color:var(--ink); font-weight:800; }
   .acct-add{ margin-top:4px; width:100%; }
   .acct-msg{ font-size:12px; color:var(--warning); margin:4px 8px; }
@@ -1233,7 +1224,7 @@
   /* PROFILE (U7) */
   .profile-page{ display:flex; flex-direction:column; gap:22px; max-width:560px; }
   .profile-section{ display:flex; flex-direction:column; gap:12px; }
-  .profile-section h3{ margin:0; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-faint); font-weight:600; }
+  .profile-section h3{ margin:0; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-faint); font-weight:800; font-stretch:85%;}
   .profile-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .profile-note{ margin:0; font-size:12px; color:var(--ink-faint); }
   .profile-msg{ margin:0; font-size:12px; color:var(--warning); }
@@ -1246,17 +1237,17 @@
   .lb-sub{ margin:0; font-size:12px; color:var(--ink-faint); }
   .lb-asof{ margin:0; font-size:12px; color:var(--warning); }
   .lb-section{ display:flex; flex-direction:column; gap:2px; }
-  .lb-title{ margin:0 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-faint); font-weight:600; }
+  .lb-title{ margin:0 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-faint); font-weight:800; font-stretch:85%;}
   .lb-empty{ margin:0; font-size:12px; color:var(--ink-faint); }
   .lb-row{ display:grid; grid-template-columns:22px 22px minmax(0,1fr) auto; column-gap:8px; align-items:center; padding:8px 8px; border-radius:6px; }
   .lb-row.me{ background:var(--surface-border); box-shadow:inset 0 0 0 1px var(--accent); }
   .lb-row.unq{ opacity:0.5; }
-  .lb-rank{ font-family:'Teko',sans-serif; font-size:20px; color:var(--ink-faint); text-align:right; }
+  .lb-rank{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:20px; color:var(--ink-faint); text-align:right; }
   .lb-star{ width:20px; height:20px; display:block; }
   .lb-star-gap{ display:block; width:20px; height:20px; }
   .lb-name{ font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
-  .lb-num{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); font-weight:500; }
-  .lb-val{ font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:600; color:var(--ink); text-align:right; }
+  .lb-num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:12px; color:var(--ink-faint); font-weight:700; }
+  .lb-val{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:16px; font-weight:700; color:var(--ink); text-align:right; }
   .lb-val-btn{ min-height:0; padding:2px 8px; }
   .lb-unq-note{ font-size:12px; color:var(--ink-faint); font-weight:500; }
   .lb-n{ grid-column:3 / 5; font-size:10px; color:var(--ink-faint); }
@@ -1459,7 +1450,7 @@
   .ph-layout .g5-act{ flex:1 1 0; min-width:0; padding:0 4px; }
   .ph-layout .g5-act-gap{ display:none; }
   .ph-addcount{ margin-top:-7px; }
-  .g5-act-cap{ font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.06em; line-height:1.2; }
+  .g5-act-cap{ font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:var(--tr-label); line-height:1.2; font-weight:700; font-stretch:90%;}
   /* Joel, Oct 7: phones -- about 5px between the field and its buttons, and between those and Undo / New batter / New inning */
   .ph-layout .g5-card{ margin-bottom:0 !important; }
   .ph-layout .zone-wrap.g5-on{ gap:5px; }
@@ -1552,7 +1543,7 @@
   .gg-btn.on .gg-cap{ color:var(--gg-on-cap); }
   .gg-btn:disabled{ opacity:0.35; cursor:not-allowed; box-shadow:none; }
   .gg-ic{ width:40px; height:30px; max-width:80%; display:block; background:currentColor; mask-size:contain; -webkit-mask-size:contain; mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat; mask-position:center; -webkit-mask-position:center; }
-  .gg-cap{ max-width:100%; padding:0 3px; box-sizing:border-box; font-size:10px; letter-spacing:0.02em; text-transform:uppercase; color:var(--gg-muted); text-align:center; line-height:1.15; }
+  .gg-cap{ max-width:100%; padding:0 3px; box-sizing:border-box; font-size:10px; letter-spacing:0.02em; text-transform:uppercase; color:var(--gg-muted); text-align:center; line-height:1.15; font-weight:700; font-stretch:85%; }   /* D2: a caption in a fixed field box -- tighter than a label (Oct 13) */
   /* Narrow phones: captions break only BETWEEN words (never mid-word), and
      the text steps down so two short lines fit inside a ~45px box. */
   .cap-short{ display:none; }
@@ -1580,7 +1571,7 @@
   .gg-book-ask{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; text-align:center; padding:6px; }
   .gg-book-ask > span{ position:static; }
   .gg-ask{ font-size:14px !important; font-weight:800 !important; line-height:1.2; color:var(--gg-ink); }
-  .gg-ask-sub{ font-size:10px !important; font-weight:600 !important; color:var(--gg-muted); text-transform:uppercase; letter-spacing:0.04em; }
+  .gg-ask-sub{ font-size:10px !important; font-weight:700 !important; color:var(--gg-muted); text-transform:uppercase; letter-spacing:var(--tr-label); font-stretch:90%;}
   .gg-book-tr{ right:7px; top:5px; color:var(--gg-muted); }
   .gg-book-play{ left:50%; top:20px; transform:translateX(-50%); background:var(--accent-game); color:var(--ink); border-radius:8px; padding:1px 6px; font-size:10px !important; white-space:nowrap; max-width:92%; overflow:hidden; text-overflow:ellipsis; }
   .gg-book-bl{ left:7px; right:7px; bottom:5px; color:var(--gg-muted); font-weight:600 !important; font-size:10px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -1596,7 +1587,7 @@
     background:#fff; border:1.5px solid var(--gg-border); border-radius:9px; padding:4px;
   }
   .gg-velo-read{ font-size:32px; font-weight:800; color:var(--gg-ink); line-height:1; }
-  .gg-velo-unit{ font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--gg-muted); text-align:center; }
+  .gg-velo-unit{ font-size:10px; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--gg-muted); text-align:center; font-weight:700; font-stretch:90%;}
   .gg-noread{ font:inherit; font-size:10px; font-weight:700; color:var(--gg-muted); background:#fff; border:1px solid var(--gg-border); border-radius:8px; padding:4px 10px; cursor:pointer; min-height:28px; white-space:nowrap; }
   /* Row 4: the slider. Full grid width, 5 speeds across, center-snapped; the
      fixed frame marks the center window -- whatever settles in it is picked. */

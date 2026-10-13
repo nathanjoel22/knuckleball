@@ -15,6 +15,19 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-13 · D2 Stage B (fonts and type) · **staging**
+- **Branch / cache:** `d2-broadcast-rebrand` · `kb-shell-v230`. No database or function change.
+- **Built:**
+  - Big Shoulders Display (headings, names, big numbers) and Archivo (everything else) self-hosted and precached. Teko, IBM Plex Sans and IBM Plex Mono removed (fonts on a device: 412 KB → 241 KB).
+  - The spec's face mapping on every page, report.html's shell included.
+  - Exactly the nine sizes on every page.
+  - Uppercase labels: Archivo 700, 0.1em, 90% width.
+  - The 320 px Live Game status bar has room to spare.
+- **Deviations:** the field captions keep tight spacing (they sit in fixed boxes). The legal pages' band wordmark is Big Shoulders caps until Stage C gives it Black Ops One. Evidence: `plans/d2-stage-b.md`.
+- **Open items:**
+  - Joel's phone and iPad walk-through (both sports), with an airplane-mode open after one online load.
+  - An existing iPad-portrait squeeze in the bullpen perspective tray (it was cut off before; now the two labels touch).
+
 ## 2026-10-13 · D2 Stage A (colors) · **staging**
 - **Branch / cache:** `d2-broadcast-rebrand` · `kb-shell-v229`. No database change. `send-session-report` deployed to **staging only** (new pitch palettes).
 - **Built:**

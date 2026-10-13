@@ -2,7 +2,21 @@
 
 Spec: `plans/d2-broadcast-rebrand.md` (GitHub main). Read against branch `d1-design-standardization` (D1 Stage 1, v227), which isn't merged yet. **No code changed.** Every number below comes from a grep or from Chrome (true 320 / 375 px viewports, both sports, 38 app screens each).
 
-## Summary: what Joel needs to decide
+## Joel's answers (Oct 13, 2026)
+
+**All eight decided as proposed:**
+1. Sign-in pages take the new brand colors on the dark look in Stage A, then turn light in Stage C.
+2. `--focus-ring` → `--focus`; `--motion-*` → `--duration-*` / `--ease-*` (Stage A).
+3. The throws tag and "logged by coach" tag use `--accent-ink`.
+4. The pitch tray keeps today's count (not 3½).
+5. The 320 px Live Game status bar gets fixed in Stage B.
+6. Reports use the variable block, each report self-contained.
+7. `readableTextOn()` is deleted.
+8. The palette check goes into `.githooks/pre-push`.
+
+**Not taken:** the optional ink ring on pitch dots (offered, not proposed).
+
+## Summary: what Joel was asked
 
 1. **Sign-in pages between Stage A and Stage C.** The target file has no dark scope, but the 11 sign-in pages stay dark until Stage C. *Proposed:* in Stage A they take the new brand colors on the dark look (page `--brand-bg`, card `--brand-bg-2`, gold accent), then turn light in Stage C.
 2. **Two token names I got wrong in D1 Stage 1.** D1's text says the focus ring is `--focus` and motion is `--duration-*` / `--ease-*`. I shipped `--focus-ring` and `--motion-fast` / `--motion-spring`. *Proposed:* rename them to D1's names in Stage A. Nothing uses them yet.

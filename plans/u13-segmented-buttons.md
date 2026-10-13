@@ -31,9 +31,29 @@ Claude Code proposed: fold the 46 styles into about 8, add a real danger style, 
 
 Type: the app's existing self-hosted body font, 15px on standalone buttons, 13–14px in segments. No new font.
 
-**The eight roles:** tray/segment (pick-one), primary, secondary, tertiary, icon, danger, nav (tabs, dock, Roster bar — a tray on a dark or light surface), charting target (grid cells, field boxes, bases, scorebook — **not restyled**, see §4). Every one of the 46 styles must land in one of these or be escalated.
+**The eight roles:** tray/segment (pick-one), primary, secondary, tertiary, icon, danger, nav (page tabs and the Roster bar are plain trays; **the bottom menu tray is the one draggable tray**, next section), charting target (grid cells, field boxes, bases, scorebook — **not restyled**, see §4). Every one of the 46 styles must land in one of these or be escalated.
 
 **Minimum height 44px everywhere**, including the standard `btn`, page tabs, the account button, Sign out, the Roster bar, and Windup and ⏱ in the Live Game status bar. Where a bar can't grow (the phone status bar), the control gets a 44px hit area with padding/`::before` while its visible box stays.
+
+## The bottom menu tray: sliding, draggable (Joel, Oct 10)
+
+Joel sent a screen recording of the GameChanger app's bottom tab bar (Apple's iOS 26 "Liquid Glass" tab bar) and wants that behavior **on the bottom menu tray only** (the coach dock / bottom navigation on phones). Every other tray in the app is a plain tap-to-select tray with the 150 ms slide from "The style" above; no drag anywhere else.
+
+What the recording shows, and what to build:
+
+| Gesture | Behavior |
+|---|---|
+| **Tap** a tab | the raised segment slides to it with a spring (~300 ms, slight overshoot, settles); icon fills with the accent, label goes bold; the page switches |
+| **Press and hold** on the segment (≥150 ms, no movement) | the segment lifts: scale 1.06, deeper shadow; it is now "picked up" |
+| **Drag** while held | the segment follows the finger continuously along the tray (not tab to tab); the tab under its center previews as selected (icon fills, label bolds); it stops at the tray's ends |
+| **Release** | the segment springs to the nearest tab and settles; that tab becomes the selection; the page switches once, on release |
+| **Quick tap** (<150 ms) | selects immediately; the hold/drag never starts, so taps stay fast |
+| Keyboard | arrow keys move the segment with the same spring; Enter/Space selects |
+| Reduced motion | no spring, no lift; the segment jumps |
+
+Look: a translucent white segment (`rgba(255,255,255,.85)`, `backdrop-filter: blur(12px)`) over the tray, shadow `0 2px 8px rgba(0,0,0,.18)`, accent underline as in "The style". **Not built:** Apple's lens magnification and rainbow refraction edge; the web can't do them reliably and faking them reads as a knockoff.
+
+Implementation notes: pointer events on the tray (`pointerdown` → hold timer → `pointermove` with `setPointerCapture` → `pointerup`); the segment is one absolutely positioned element moved with `transform: translateX()`; the spring is a CSS transition with `cubic-bezier(.34,1.56,.64,1)` (or a short JS spring); `touch-action: none` on the tray only so vertical page scroll elsewhere is untouched; the tray keeps `role="tablist"` / `aria-selected`.
 
 ## What becomes what
 
@@ -88,8 +108,12 @@ BUILD:
     secondary, tertiary, icon, destructive, disabled; pressed, focus-visible,
     dark-surface variants; reduced-motion handling. Exact values in the spec.
   - One small shared helper for trays: selection, aria-pressed (or radiogroup
-    semantics), arrow-key movement, sliding indicator. Existing handlers keep
-    their behavior; only markup/classes change.
+    semantics), arrow-key movement, 150 ms sliding indicator. Existing handlers
+    keep their behavior; only markup/classes change.
+  - The bottom menu tray ONLY: the spring + press-hold-drag behavior in spec
+    "The bottom menu tray" (hold ≥150 ms to pick up; follows the finger; snaps
+    to nearest on release; quick taps select at once; reduced motion = jump).
+    No other tray is draggable.
   - One danger class replacing every inline red; 44px minimum on every
      control (spec); remove the 31 inline button styles.
   - Apply to every control in the inventory. Pitch strip: scrollable tray,
@@ -100,8 +124,9 @@ BUILD:
     removed).
   - CACHE_VERSION bumped.
 
-OUT OF SCOPE: any color change — baseball stays green/gold, softball keeps
-  its current theme (Joel, Oct 9); layout changes
+OUT OF SCOPE: drag behavior on any tray other than the bottom menu tray;
+  Apple's lens/refraction effect; any color change — baseball stays green/gold,
+  softball keeps its current theme (Joel, Oct 9); layout changes
   beyond what a control's new shape needs; behavior changes of any control;
   grid/diamond/scorebook visuals; new fonts.
 
@@ -117,6 +142,11 @@ ACCEPTANCE (both sports):
      before/after on the same tap script).
   4. Trays: one selected at a time, keyboard arrows move it, screen reader
      announces the selected option; reduced motion = no slide.
+  4b. Bottom menu tray on a real iPhone (video): tap springs and settles; a
+     hold lifts the segment; a drag carries it continuously with the tab under
+     it previewing; release snaps to the nearest tab and the page switches
+     once; a quick tap switches with no lift; the page never scrolls while
+     dragging the tray; no other tray in the app responds to a drag.
   5. Pitch strip: selected chip's underline is its type color; scrolling and
      ‹ › arrows still work; five/four chips visible as r5 specifies.
   6. Set/Windup, ⏱ and the batter pill keep their exact states and auto-set

@@ -15,8 +15,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-10-12 · no packet (Live Game Intent) · **staging (app only; migration NOT applied yet)**
-- **Branch / cache:** `live-game-oct12` · `kb-shell-v222`. **Database:** `supabase/migrations/20261012000000_live_game_intent.sql` (rollback `supabase/rollback/20261012000000_live_game_intent_down.sql`) is written but not applied anywhere; it waits for Joel's OK, staging first. Until it's applied, an Intent game can't sync: it stays queued, nothing is lost.
+## 2026-10-12 · no packet (Live Game Intent) · **staging**
+- **Branch / cache:** `live-game-oct12` · `kb-shell-v222`. **Database:** `supabase/migrations/20261012000000_live_game_intent.sql` (rollback `supabase/rollback/20261012000000_live_game_intent_down.sql`) was **applied to staging on Oct 12 (Joel's OK)**: the dry run listed only this migration, and the rule read back from staging allows a game target (both fields or neither). Production still has the old rule (read back, untouched).
 - **Built:**
   - The Live Game start screen asks "Turn on Intent?" (default No). Its **?** shows "For use with Pitchcom, Game Day Watches, GoRout, etc..." on mouse hover, or as a line under the question when tapped.
   - With Intent on, tap 1 marks the called spot (the bullpen's target dot). Tap 2 marks where it went: that box flashes a translucent dark color with a ball on it (yellow for softball), and K / backwards K / B / F / IP appear under the chart; everything after is unchanged.
@@ -25,7 +25,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - With Intent off, nothing changes (no target saved).
 - **Why the migration:** G1's `pitches_target_matches_kind` forbade any target on a game pitch. The new rule lets a game pitch have both target fields or neither (strictly looser; no data touched).
 - **Checked:** the leaderboard function counts bullpens only, and the game report doesn't score accuracy, so Intent targets don't leak into any accuracy number.
-- **Open items:** Joel's OK to apply the migration on staging, then his phone/iPad check, then production with the rest (fresh backup first). Not built yet: using the called spot anywhere (e.g. game accuracy / miss distance in reports).
+- **Open items:** Joel's phone/iPad check (chart an Intent game; confirm it syncs and the pitches carry the called spot). Then production with the rest of the branch: fresh backup first, then the migration, then the app. Not built yet: using the called spot anywhere (e.g. game accuracy / miss distance in reports).
 
 ## 2026-10-12 · no packet (roster tap scrolls to the top) · **staging**
 - **Branch / cache:** `live-game-oct12` · `kb-shell-v221`. No database change. The live site is still v195.

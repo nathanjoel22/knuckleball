@@ -15,6 +15,16 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-12 · no packet (outs show the moment they're called) · **staging**
+- **Branch / cache:** `live-game-oct12` · `kb-shell-v223`. No database change.
+- **Built:** the Live Game status line ("1 OUT", and the iPad/laptop Outs box) counts an out as soon as it's called, never more than three:
+  - a runner dragged or tapped and called Out (on the runners question after a play, and between pitches before "why");
+  - the batter's O;
+  - + Out.
+
+  Before, the count moved only when Next saved the play. Display only: what's saved, and when, is unchanged.
+- **Open items:** Joel's check on phone.
+
 ## 2026-10-12 · no packet (Live Game Intent) · **staging**
 - **Branch / cache:** `live-game-oct12` · `kb-shell-v222`. **Database:** `supabase/migrations/20261012000000_live_game_intent.sql` (rollback `supabase/rollback/20261012000000_live_game_intent_down.sql`) was **applied to staging on Oct 12 (Joel's OK)**: the dry run listed only this migration, and the rule read back from staging allows a game target (both fields or neither). Production still has the old rule (read back, untouched).
 - **Built:**

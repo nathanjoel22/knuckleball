@@ -15,6 +15,16 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-13 · no packet (a dragged runner holds his new base) · **staging**
+- **Branch / cache:** `live-game-oct12` · `kb-shell-v225`. No database change.
+- **Built:** a runner dropped on a new base (or home) stays locked there, outlined and gently pulsing, with his old base shown empty, until "Safe or out?" (and, between pitches, "Why?") is answered:
+  - **Safe:** fills that base.
+  - **Out:** removes him.
+  - **Cancel:** puts him back.
+
+  This covers the runners question after a play (the batter dragged from home too) and moves between pitches. The status-bar diamond keeps the official bases until it's answered.
+- **Open items:** Joel's check on phone and iPad.
+
 ## 2026-10-13 · no packet (bold charting prompts) · **staging**
 - **Branch / cache:** `live-game-oct12` · `kb-shell-v224`. No database change.
 - **Built:** the charting prompt under the chart ("Tap where you're aiming", "Now tap where it actually landed", "What happened?", the field-step questions) is now 16 px, heavy, dark text on a pill tinted in the sport's accent, centered (was 10 px pale capitals). The same applies to the accuracy-zone editor's caption. The runner and extra-inning questions and the phone Intent hints are 16 px heavy too.

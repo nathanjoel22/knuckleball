@@ -1616,6 +1616,11 @@
   .g5-cell.g5-dragging{ opacity:.45; }
   .g5-cell.g5-over, .g5-cell.g5-target{ box-shadow:inset 0 0 0 3px #fff; background:rgba(255,255,255,.28) !important; }
   .g5-cell.g5-sel{ box-shadow:inset 0 0 0 3px var(--gg-gold); }
+  .g5-cell.g5-held{ box-shadow:inset 0 0 0 3px #fff; background:rgba(255,255,255,.22) !important; }
+  .g5-cell.g5-held .g5-in{ display:flex; align-items:center; justify-content:center; width:100%; height:100%; }
+  .g5-runner.g5-pending{ width:30px; height:30px; animation:heldPulse 1.2s ease-in-out infinite; }
+  @keyframes heldPulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.08); } }
+  @media (prefers-reduced-motion: reduce){ .g5-runner.g5-pending{ animation:none; } }
   .g5-drag-token{ position:fixed; left:0; top:0; z-index:200; width:36px; height:36px; border-radius:50%; pointer-events:none;
     background:#fff; box-shadow:0 6px 16px rgba(0,0,0,.35), inset 0 0 0 4px var(--btn-accent); }
   .g5-q{ font-weight:800; font-size:16px; color:var(--field-dark); }   /* the runner and extra-inning questions, as bold as the prompt */
@@ -8503,7 +8508,7 @@ window.g5NextPitch = async function(){
 function g5FieldSvg(){
   const soft = currentSport() === 'softball';
   const g = state.activeSession && state.activeSession.g5;
-  const occ = (g && g.step === 'bases') ? (g.bases || 0) : runnersBitmask(state.activeSession ? state.activeSession.runners : {});   // 'runners': the bases as they stand
+  const occ = (g && (g.step === 'bases' || g.step === 'runners')) ? g5ShownBases(g, state.activeSession) : runnersBitmask(state.activeSession ? state.activeSession.runners : {});   // a waiting move shows its runner off his old base
   const base = (x, y, bit) => `<rect x="${x - 11}" y="${y - 11}" width="22" height="22" rx="2" transform="rotate(45 ${x} ${y})" class="g5-base${occ & bit ? ' on' : ''}"/>`;
   // Joel, Oct 8 (both sports, from his ballpark photo): mower stripes parallel to each foul line, meeting in a V at
   // center field -- fair grass light #8CBA5A / #6FA548, foul ground the darker #60963C / #548A35 -- and a crosshatch
@@ -8555,17 +8560,20 @@ function g5CellInner(step, box){
     const clip = G5_FAIR_GROUND[box];
     return btn(`<span class="g5-shade"${clip ? ` style="clip-path:${clip};-webkit-clip-path:${clip};"` : ''}></span>`, `g5Where(${box})`, 'g5-foulpick');
   }
+  if((step === 'runners' || step === 'bases') && g.move && box === g5MoveTargetBox(g)){
+    return { inner: '<span class="g5-runner g5-pending" aria-hidden="true"></span>', onclick: null, cls: 'g5-held' };   // locked here until answered
+  }
   if(step === 'runners'){
-    const occ = runnersBitmask(s.runners), bit = G5_BASE_BOX[box];
+    const occ = g5ShownBases(g, s), bit = G5_BASE_BOX[box];
     if(bit && (occ & bit)) return btn(`<span class="g5-runner" aria-hidden="true"></span><span class="g5-baselbl">${G5_BASE_LABEL[bit]}</span>`, `g5RunnerTap(${box})`, 'g5-pick on g5-drag' + (g.sel === box ? ' g5-sel' : ''));
     if(g.sel && (bit || box === G5_HOME_BOX)) return btn(box === G5_HOME_BOX ? '<span class="g5-baselbl">Home</span>' : '', `g5RunnerTap(${box})`, 'g5-pick g5-target');
     return null;
   }
-  if(step === 'bases' && box === G5_HOME_BOX && g5BatterCanDrag(g)) return { inner: '<span class="g5-runner g5-batter" aria-hidden="true"></span>', onclick: null, cls: 'g5-drag g5-home' };
+  if(step === 'bases' && box === G5_HOME_BOX && g5BatterCanDrag(g) && !(g.move && g.move.from === 'batter')) return { inner: '<span class="g5-runner g5-batter" aria-hidden="true"></span>', onclick: null, cls: 'g5-drag g5-home' };
   if(step === 'bases'){
     if(g.box === box && !g.walk) return { inner: G5_BALL_SVG, onclick: null, cls: 'g5-marked' };
     if(G5_BASE_BOX[box]){
-      const bit = G5_BASE_BOX[box], on = !!((g.bases || 0) & bit);
+      const bit = G5_BASE_BOX[box], on = !!(g5ShownBases(g, s) & bit);
       return btn(on ? `<span class="g5-baselbl">${G5_BASE_LABEL[bit]}</span>` : '', `g5Base(${box})`, 'g5-pick' + (on ? ' on g5-drag' : ''));
     }
     if(box === G5_NEXT_BOX && !ggRadarOn() && !g5NeedsBatter(g)) return btn('<span class="g5-np">Next pitch</span>', 'g5Next()', 'g5-choice g5-nextbox');
@@ -8633,6 +8641,19 @@ const G5_WHY = {
 // Joel, Oct 12: on a hit (or an error -- the batter reaches either way) the field can't turn back over until the
 // batter has been put on a base: tapped onto one, or dragged from home and called safe.
 function g5NeedsBatter(g){ return !!g && g.step === 'bases' && (g.entry === 'H' || g.entry === 'E') && !g.foulOut && !g.hr && !g.batterPlaced; }
+// Joel, Oct 13: while a dragged runner waits for "safe or out?" (and "why?"), he stays locked on the base he was
+// dropped on and his old base shows empty; Safe fills that base, Out takes him off.
+const G5_BASE_BIT = { 1: 1, 2: 2, 3: 4 };
+function g5ShownBases(g, s){
+  let occ = g.step === 'bases' ? (g.bases || 0) : runnersBitmask(s.runners);
+  if(g.move && typeof g.move.from === 'number') occ &= ~G5_BASE_BIT[g.move.from];
+  return occ;
+}
+function g5MoveTargetBox(g){
+  if(!g.move) return null;
+  const to = g.move.to;
+  return to === 'home' ? G5_HOME_BOX : to === 1 ? 23 : to === 2 ? 25 : to === 3 ? 17 : null;
+}
 function g5BatterCanDrag(g){ return g.step === 'bases' && !g.walk && !g.walkEvent && !g.foulOut && !g.batterPlaced; }
 function g5BaseName(b){ return b === 'home' ? 'home' : b === 'batter' ? 'the batter' : ['', '1B', '2B', '3B'][b]; }
 window.g5OpenRunners = async function(){

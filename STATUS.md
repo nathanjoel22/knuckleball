@@ -16,7 +16,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 ---
 
 ## 2026-10-13 · D2 Stage A (colors) · **staging**
-- **Branch / cache:** `d2-broadcast-rebrand` · `kb-shell-v228`. No database change. `send-session-report` deployed to **staging only** (new pitch palettes).
+- **Branch / cache:** `d2-broadcast-rebrand` · `kb-shell-v229`. No database change. `send-session-report` deployed to **staging only** (new pitch palettes).
 - **Built:**
   - `css/tokens.css` takes the Broadcast values for both sports (D1's names), plus the target's new names (`--brand-*`, `--on-accent`, `--on-danger`, `--flash-fg`, `--focus`, `--duration-*`, `--ease-*`, `--t-*`, `--s-*`, `--radius-segment`, `--ring-*`, `--shadow-segment/pop`, `--cut`, `--dock-pill`) and fixed per-sport colors (`--bb-*` / `--sb-*`) for the account chips and the "Which sport?" cards.
   - Softball's own button and chooser colors are gone (they follow `--accent` / `--brand-bg`); one gold (`--accent-game` = `--accent`).
@@ -34,7 +34,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - **Palette check:** passes.
   - **Screenshots:** 114 app screens (38 states × 390 / 820 / 1180) + 14 pages × 2 sports × 3 widths.
   - **Contrast pairs:** see plans/d2-stage-a.md.
-- **Open items (escalation):** with the target softball palette, three filled chip labels fall short of 4.5:1 whichever label color is used: slot 6 `#8E6CFF` 4.2, slot 7 `#D2553F` 4.1, slot 8 `#7D8794` 4.3 (10 px bold). Today's softball chips are worse (1.5–3.3). Needs Joel's call. Also open: Joel's phone/iPad walk-through, both sports.
+- **Joel's follow-ups (Oct 13):**
+  - **(b)** Softball pitch slots 6–8 darkened just enough for white chip labels: `#8E6CFF`→`#7A53FF`, `#D2553F`→`#CD4730`, `#7D8794`→`#6C7684` (4.6:1). All 16 chip labels now pass AA. Changed in the tracker, `helpers.ts` and tokens; the palette check passes; staging function redeployed.
+  - **privacy.html / terms.html** moved onto the tokens (colors only, wording unchanged), with Joel's approval. Their wordmark and fonts follow in Stages B/C.
+- **Open items:** Joel's phone/iPad walk-through, both sports.
 
 ## 2026-10-13 · D1 Stage 1 (design tokens) · **production**
 - **Branch / cache:** `d1-design-standardization` (stacked on `live-game-oct12`) · `kb-shell-v227`. No database change.

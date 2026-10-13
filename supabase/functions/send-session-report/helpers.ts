@@ -11,7 +11,7 @@ export const TYPE_PALETTE_HEX = ['#FFB81C', '#22B573', '#FF6B35', '#E63946', '#3
 // Broadcast palettes; css/tokens.css --pitch-1..8 hold the same lists (pre-push checks all three).
 export const SPORT_PALETTE_HEX: Record<string, string[]> = {
   baseball: TYPE_PALETTE_HEX,
-  softball: ['#FF4F9A', '#2F9BFF', '#7A3FB8', '#FF9F1C', '#00A99D', '#8E6CFF', '#D2553F', '#7D8794']
+  softball: ['#FF4F9A', '#2F9BFF', '#7A3FB8', '#FF9F1C', '#00A99D', '#7A53FF', '#CD4730', '#6C7684']
 }
 export type Sport = 'baseball' | 'softball'
 export function asSport(v: unknown): Sport { return v === 'softball' ? 'softball' : 'baseball' }

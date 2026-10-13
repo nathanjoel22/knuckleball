@@ -9,14 +9,11 @@
 <link rel="stylesheet" href="css/tokens.css">   <!-- D1: the design tokens, every page (Oct 13 2026) -->
 <style>
   @import url('vendor/fonts/fonts.css');
-  .page{
-    --ink:#0F241B; --ink-dim:#2E4A40; --ink-faint:#527065; --bg:#F7FAF8; --card:#FFFFFF;
-    --surface-border:#CFE6D7; --accent:#E8A83D; --brand-bg:#0F241B; --on-dark:#F1ECDD;
-    min-height:100vh; background:var(--bg); color:var(--ink);
-  }
+  /* Colors: css/tokens.css (baseball); the #softball view takes the fixed --sb-* colors (D2, Oct 13 2026). */
+  .page{ min-height:100vh; background:var(--bg); color:var(--ink); }
   #softball:target{
-    --ink:#234B6E; --ink-dim:#3A5A78; --ink-faint:#5F7A91; --bg:#F7FAFD;
-    --surface-border:#BFDCEF; --accent:#F2A7C3; --brand-bg:#234B6E; --on-dark:#EAF4FB;
+    --ink:var(--sb-brand); --ink-dim:var(--sb-ink-dim); --ink-faint:var(--sb-ink-faint); --bg:var(--sb-bg);
+    --surface-border:var(--sb-surface-border); --accent:var(--sb-accent); --brand-bg:var(--sb-brand);
   }
   *{ box-sizing:border-box; }
   html,body{ margin:0; padding:0; }

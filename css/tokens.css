@@ -110,6 +110,7 @@
   --bb-accent:        #FFB81C;  --bb-surface: #E8EDE9;  --bb-surface-border: #D5DDD7;  --bb-on-dark-dim: #C2CEC6;
   --sb-brand:         #0B2540;  --sb-brand-2: #12345A;  --sb-brand-3: #1A426E;
   --sb-accent:        #FF4F9A;  --sb-surface: #E6F1FA;  --sb-surface-border: #CFE0EE;  --sb-on-dark-dim: #C5D3E2;
+  --sb-bg:            #F4F7FB;  --sb-ink-dim: #2C4560;  --sb-ink-faint: #5A6E84;   /* the legal pages' #softball view (no script) */
 
   /* ---- Pitch types by slot (= SPORTS.baseball.palette = TYPE_PALETTE_HEX) ---- */
   --pitch-1: #FFB81C; --pitch-2: #22B573; --pitch-3: #FF6B35; --pitch-4: #E63946;
@@ -185,7 +186,7 @@ html[data-sport="softball"]{
   --scrim:            rgba(6,23,42,0.60);
   --dock-bg:          rgba(11,37,64,0.82);
   --pitch-1: #FF4F9A; --pitch-2: #2F9BFF; --pitch-3: #7A3FB8; --pitch-4: #FF9F1C;
-  --pitch-5: #00A99D; --pitch-6: #8E6CFF; --pitch-7: #D2553F; --pitch-8: #7D8794;
+  --pitch-5: #00A99D; --pitch-6: #7A53FF; --pitch-7: #CD4730; --pitch-8: #6C7684;   /* 6-8 darkened from the target (Joel, Oct 13: white chip labels 4.6:1) */
 }
 
 /* ---------- The sign-in pages' dark look, until D2 Stage C (Joel, Oct 13: the new brand

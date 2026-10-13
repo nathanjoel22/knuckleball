@@ -7,7 +7,6 @@ Spec: `plans/d2-broadcast-rebrand.md` Stage A, with Joel's answers in `plans/d2-
 **1. Grep.** No old theme hex (`#0F241B #E8A83D #F5C365 #C9A227 #234B6E #F2A7C3 #E27BA2`) is left in any app page outside the Live Game field art (`.gg-field --gg-*`, `bullpen-tracker.html` 148 and 1525).
 
 These are left by rule:
-- `privacy.html` / `terms.html`: their own blocks; changing them needs Joel's written approval.
 - `send-session-report` templates: Stage D restyles the reports.
 - `docs/` reference files.
 
@@ -67,11 +66,13 @@ Dark sign-in look (temporary until Stage C; the target has no dark scope, so the
 | Sport | Result |
 |---|---|
 | Baseball | all 8 pass, the lowest slot 4 at 4.5 |
-| Softball | slots 1–5 pass (slot 3 with white text, 6.5) |
+| Softball | all 8 pass after Joel's option (b): slots 3 and 6–8 with white text, the lowest 4.6 |
 
 **Escalation: three softball chips fail.** With the target softball palette, slot 6 `#8E6CFF` (4.2), slot 7 `#D2553F` (4.1, white) and slot 8 `#7D8794` (4.3) are under 4.5:1 for their 10 px bold labels, whichever label color is used. Today's softball chips are 1.5–3.3, so this is better than now but still short of AA.
 
-Options for Joel:
+**Resolved (Joel, Oct 13): option (b).** `#8E6CFF`→`#7A53FF`, `#D2553F`→`#CD4730`, `#7D8794`→`#6C7684` (5–7 points darker, same hue). White labels 4.66 / 4.63 / 4.60; as marks on white 4.7 / 4.6 / 4.6. The options were:
+
+
 - **(a)** Accept these three for now.
 - **(b)** Darken those three softball colors slightly. That changes Jordan's palette, in all three places.
 - **(c)** Make filled chips white with a colored dot, as U13 did for the trays.

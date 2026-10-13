@@ -1,0 +1,148 @@
+/* ==========================================================================
+   Knuckleball: Tailwind v4 theme, target (Broadcast · Big Shoulders, 2026-10-13)
+   Generated from css-variables.css by tools/gen.py. Reference only: the site
+   has no build step and its CLAUDE.md requires Nate's approval to add one.
+   Use for prototypes, design tools and AI agents.
+   ========================================================================== */
+@import "tailwindcss";
+
+@theme {
+  --color-*: initial;
+  --color-bg: #F3F5F2;
+  --color-card: #FFFFFF;
+  --color-card-2: #F8FAF8;
+  --color-surface: #E8EDE9;
+  --color-surface-border: #D5DDD7;
+  --color-border: rgba(7,20,15,0.10);
+  --color-border-strong: rgba(7,20,15,0.24);
+  --color-ink: #07140F;
+  --color-ink-dim: #26342D;
+  --color-ink-faint: #56645C;
+  --color-brand-bg: #061A12;
+  --color-brand-bg-deep: #030D09;
+  --color-brand-bg-2: #0A2A1D;
+  --color-brand-line: rgba(255,255,255,0.10);
+  --color-brand-mid: #16593D;
+  --color-brand-soft: #7FC9A1;
+  --color-on-dark: #FFFFFF;
+  --color-on-dark-dim: #C2CEC6;
+  --color-on-dark-faint: #86978C;
+  --color-accent: #FFB81C;
+  --color-accent-bright: #FFC94F;
+  --color-accent-ink: #8A5A00;
+  --color-on-accent: var(--color-ink);
+  --color-accent-game: var(--color-accent);
+  --color-btn-ink: var(--color-ink);
+  --color-btn-soft: var(--color-surface);
+  --color-btn-primary: var(--color-accent);
+  --color-btn-on-primary: var(--color-on-accent);
+  --color-btn-primary-hover: var(--color-accent-bright);
+  --color-btn-accent: var(--color-ink);
+  --color-btn-danger: var(--color-danger);
+  --color-btn-disabled-bg: #F1F3F2;
+  --color-btn-disabled-fg: #A7B0AA;
+  --color-chooser: var(--color-brand-bg);
+  --color-chooser-hover: var(--color-brand-bg-2);
+  --color-chooser-active: var(--color-brand-bg-deep);
+  --color-danger: #C42B21;
+  --color-danger-bg: #C42B21;
+  --color-on-danger: #FFFFFF;
+  --color-warning: #9A5B00;
+  --color-warning-line: #C77700;
+  --color-warning-tint: rgba(255,184,28,0.16);
+  --color-success: #1E7F4A;
+  --color-strike: #188A4E;
+  --color-ball: #E0443A;
+  --color-flash-fg: #FFFFFF;
+  --color-rank-1: var(--color-accent);
+  --color-rank-2: #7C8B85;
+  --color-rank-3: #A8621F;
+  --color-scrim: rgba(3,13,9,0.60);
+  --color-dock-bg: rgba(6,26,18,0.82);
+  --color-dock-fg: rgba(255,255,255,0.80);
+  --color-dock-pill: rgba(255,255,255,0.16);
+  --color-pitch-1: #FFB81C;
+  --color-pitch-2: #22B573;
+  --color-pitch-3: #FF6B35;
+  --color-pitch-4: #E63946;
+  --color-pitch-5: #3D8BFF;
+  --color-pitch-6: #B15CFF;
+  --color-pitch-7: #F2E14C;
+  --color-pitch-8: #00B8C4;
+  --font-display: 'Big Shoulders Display', 'Archivo', 'Arial Narrow', sans-serif;
+  --font-sans: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-sans);
+  --font-wordmark: 'Black Ops One', 'Big Shoulders Display', sans-serif;
+  --text-64: 64px;
+  --text-44: 44px;
+  --text-32: 32px;
+  --text-24: 24px;
+  --text-20: 20px;
+  --text-16: 16px;
+  --text-14: 14px;
+  --text-12: 12px;
+  --text-10: 10px;
+  --radius-cell: 4px;
+  --radius-segment: 9px;
+  --radius-control: 12px;
+  --radius-dock: 18px;
+  --radius-pill: 999px;
+  --radius-circle: 50%;
+  --shadow-segment: 0 1px 3px rgba(0,0,0,0.18);
+  --shadow-pop: 0 10px 26px rgba(7,20,15,0.22);
+  --shadow-modal: 0 8px 32px rgba(7,20,15,0.35);
+  --spacing: 4px;
+  --breakpoint-sm: 361px;
+  --breakpoint-md: 501px;
+  --breakpoint-lg: 861px;
+  --container-app: 1320px;
+}
+
+/* Softball: same utilities, different values */
+@layer base {
+  html[data-sport="softball"] {
+    --color-bg: #F4F7FB;
+    --color-card-2: #F8FAFD;
+    --color-surface: #E6F1FA;
+    --color-surface-border: #CFE0EE;
+    --color-border: rgba(11,37,64,0.10);
+    --color-border-strong: rgba(11,37,64,0.24);
+    --color-ink: #0B2540;
+    --color-ink-dim: #2C4560;
+    --color-ink-faint: #5A6E84;
+    --color-brand-bg: #0B2540;
+    --color-brand-bg-deep: #06172A;
+    --color-brand-bg-2: #12345A;
+    --color-brand-mid: #1F5C99;
+    --color-brand-soft: #8EC3EE;
+    --color-on-dark-dim: #C5D3E2;
+    --color-on-dark-faint: #8A9BB0;
+    --color-accent: #FF4F9A;
+    --color-accent-bright: #FF79B3;
+    --color-accent-ink: #B0175A;
+    --color-on-accent: var(--color-ink);
+    --color-scrim: rgba(6,23,42,0.60);
+    --color-dock-bg: rgba(11,37,64,0.82);
+    --color-pitch-1: #FF4F9A;
+    --color-pitch-2: #2F9BFF;
+    --color-pitch-3: #7A3FB8;
+    --color-pitch-4: #FF9F1C;
+    --color-pitch-5: #00A99D;
+    --color-pitch-6: #8E6CFF;
+    --color-pitch-7: #D2553F;
+    --color-pitch-8: #7D8794;
+  }
+}
+
+@layer components {
+  .tray        { @apply inline-flex min-h-11 rounded-control bg-surface p-[3px]; }
+  .seg         { @apply min-h-[38px] flex-1 rounded-segment px-2.5 text-[14px] font-semibold text-ink; }
+  .seg-on      { @apply bg-white shadow-segment; box-shadow: var(--shadow-segment), inset 0 -3px 0 var(--color-btn-accent); }
+  .btn-primary { @apply min-h-11 rounded-control bg-accent px-4 font-sans text-[16px] font-semibold text-on-accent hover:bg-accent-bright; }
+  .btn-secondary { @apply min-h-11 rounded-control bg-surface px-4 text-[16px] font-semibold text-ink; }
+  .btn-danger  { @apply min-h-11 rounded-control bg-surface px-4 text-[16px] font-semibold text-danger; }
+  .card        { @apply rounded-control border border-border bg-card p-5; }
+  .display     { @apply font-display font-extrabold uppercase leading-none tracking-[0.01em]; }
+  .num         { @apply font-display font-bold leading-none tabular-nums; }
+  .label       { @apply font-sans text-10 font-bold uppercase tracking-[0.1em] text-ink-faint; }
+}

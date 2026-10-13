@@ -15,6 +15,22 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-13 · live-game-oct12 (Oct 9–13 staging work) · **production**
+- **Branch / cache:** `live-game-oct12` merged to `main` · `kb-shell-v226` (production was v195).
+- **Database:** migration `20261012000000_live_game_intent` applied to production after a fresh backup (`~/knuckleball-backups/2026-10-13-1405-*`). It loosens `pitches_target_matches_kind` so a game pitch may carry a target (Intent); no rows touched. Rollback: `supabase/rollback/20261012000000_live_game_intent_down.sql`.
+- **Edge Function:** `send-session-report` deployed to production (game reports list stolen bases, caught stealing, pickoffs, wild pitches, passed balls and other runner moves under "Other events").
+- **What shipped:** every staging entry below from Oct 9 to Oct 13 on this branch:
+  - U13 buttons and the draggable bottom menu;
+  - the leaderboard hidden for both sports;
+  - Live Game: big K / backwards K / B / F / IP letters under the chart; the chart flips only on In Play / Foul Out / runner questions; runner moves between pitches (drag or tap, Safe/Out, Why); a dragged runner held until answered; outs shown at once; Next blocked until the batter is placed on a hit or error; the softball ponytail;
+  - start questions (radar gun, relative accuracy, opponent quick-picks, Intent);
+  - the Home screen with Joel's tile drawings;
+  - bold charting prompts;
+  - the velocity bar alignment and mouse drag.
+
+  Reviewed by Joel on staging (phone and iPad) before shipping.
+- **Open items:** Joel's check on production after two reloads (phone and iPad); P1-01 offline checks; U13 4b (iPhone video of the bottom menu).
+
 ## 2026-10-13 · no packet (velocity bar: window alignment, mouse drag) · **staging**
 - **Branch / cache:** `live-game-oct12` · `kb-shell-v226`. No database change.
 - **Fixed:** the Live Game in-chart velocity bar's center window (gold; softball pink) ran a few px past the right edge of its square. It was positioned from the whole bar; now it sits on the strip's own box, exactly one square inside the strip's border. Checked zoomed at 390 px.

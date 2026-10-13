@@ -1,148 +1,184 @@
 /* ==========================================================================
-   Knuckleball: Tailwind v4 theme, target (Broadcast · Big Shoulders, 2026-10-13)
-   Generated from css-variables.css by tools/gen.py. Reference only: the site
-   has no build step and its CLAUDE.md requires Nate's approval to add one.
-   Use for prototypes, design tools and AI agents.
+   Knuckleball: Tailwind v4 theme, as built
+   Source: knuckleballonline.com, main @ cf346b0 (2026-10-09)
+
+   A reference export. The site is plain HTML/CSS with no build step, and its
+   CLAUDE.md forbids adding one (npm, a framework, a bundler) without Nate's
+   approval. Use this for prototypes, design tools and AI agents. It is not an
+   install instruction.
+
+   Names here are the Tailwind convention (color-*, font-*, text-*, radius-*,
+   shadow-*), mapped to the site's own variables in the comments.
    ========================================================================== */
 @import "tailwindcss";
 
 @theme {
+  /* Reset Tailwind's default palette so only Knuckleball colors exist */
   --color-*: initial;
-  --color-bg: #F3F5F2;
-  --color-card: #FFFFFF;
-  --color-card-2: #F8FAF8;
-  --color-surface: #E8EDE9;
-  --color-surface-border: #D5DDD7;
-  --color-border: rgba(7,20,15,0.10);
-  --color-border-strong: rgba(7,20,15,0.24);
-  --color-ink: #07140F;
-  --color-ink-dim: #26342D;
-  --color-ink-faint: #56645C;
-  --color-brand-bg: #061A12;
-  --color-brand-bg-deep: #030D09;
-  --color-brand-bg-2: #0A2A1D;
-  --color-brand-line: rgba(255,255,255,0.10);
-  --color-brand-mid: #16593D;
-  --color-brand-soft: #7FC9A1;
-  --color-on-dark: #FFFFFF;
-  --color-on-dark-dim: #C2CEC6;
-  --color-on-dark-faint: #86978C;
-  --color-accent: #FFB81C;
-  --color-accent-bright: #FFC94F;
-  --color-accent-ink: #8A5A00;
-  --color-on-accent: var(--color-ink);
-  --color-accent-game: var(--color-accent);
-  --color-btn-ink: var(--color-ink);
-  --color-btn-soft: var(--color-surface);
-  --color-btn-primary: var(--color-accent);
-  --color-btn-on-primary: var(--color-on-accent);
-  --color-btn-primary-hover: var(--color-accent-bright);
-  --color-btn-accent: var(--color-ink);
-  --color-btn-danger: var(--color-danger);
-  --color-btn-disabled-bg: #F1F3F2;
-  --color-btn-disabled-fg: #A7B0AA;
-  --color-chooser: var(--color-brand-bg);
-  --color-chooser-hover: var(--color-brand-bg-2);
-  --color-chooser-active: var(--color-brand-bg-deep);
-  --color-danger: #C42B21;
-  --color-danger-bg: #C42B21;
-  --color-on-danger: #FFFFFF;
-  --color-warning: #9A5B00;
-  --color-warning-line: #C77700;
-  --color-warning-tint: rgba(255,184,28,0.16);
-  --color-success: #1E7F4A;
-  --color-strike: #188A4E;
-  --color-ball: #E0443A;
-  --color-flash-fg: #FFFFFF;
-  --color-rank-1: var(--color-accent);
-  --color-rank-2: #7C8B85;
-  --color-rank-3: #A8621F;
-  --color-scrim: rgba(3,13,9,0.60);
-  --color-dock-bg: rgba(6,26,18,0.82);
-  --color-dock-fg: rgba(255,255,255,0.80);
-  --color-dock-pill: rgba(255,255,255,0.16);
-  --color-pitch-1: #FFB81C;
-  --color-pitch-2: #22B573;
-  --color-pitch-3: #FF6B35;
-  --color-pitch-4: #E63946;
-  --color-pitch-5: #3D8BFF;
-  --color-pitch-6: #B15CFF;
-  --color-pitch-7: #F2E14C;
-  --color-pitch-8: #00B8C4;
-  --font-display: 'Big Shoulders Display', 'Archivo', 'Arial Narrow', sans-serif;
-  --font-sans: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: var(--font-sans);
-  --font-wordmark: 'Black Ops One', 'Big Shoulders Display', sans-serif;
-  --text-64: 64px;
-  --text-44: 44px;
-  --text-32: 32px;
-  --text-24: 24px;
-  --text-20: 20px;
-  --text-16: 16px;
-  --text-14: 14px;
-  --text-12: 12px;
-  --text-10: 10px;
-  --radius-cell: 4px;
-  --radius-segment: 9px;
-  --radius-control: 12px;
-  --radius-dock: 18px;
-  --radius-pill: 999px;
-  --radius-circle: 50%;
-  --shadow-segment: 0 1px 3px rgba(0,0,0,0.18);
-  --shadow-pop: 0 10px 26px rgba(7,20,15,0.22);
-  --shadow-modal: 0 8px 32px rgba(7,20,15,0.35);
+
+  /* Surfaces */
+  --color-page:          #F7FAF8;   /* --page-bg */
+  --color-card:          #FFFFFF;   /* --card-bg */
+  --color-surface:       #E8F3EC;   /* --surface */
+  --color-surface-line:  #CFE6D7;   /* --surface-border */
+  --color-line:          rgb(15 36 27 / 0.10);   /* --border */
+  --color-line-strong:   rgb(15 36 27 / 0.22);   /* --border-strong */
+  --color-game-panel:    #F7F5EF;   /* --game-panel-bg */
+  --color-game-line:     #9DBBA9;   /* --game-chip-border */
+
+  /* Ink */
+  --color-ink:           #0F241B;   /* --field-dark */
+  --color-ink-dim:       #2E4A40;   /* --ink-dim */
+  --color-ink-faint:     #527065;   /* --ink-faint */
+
+  /* Dark brand surfaces (brand strip, sign-in pages) */
+  --color-field:         #0F241B;   /* --field-dark */
+  --color-field-panel:   #183527;   /* --field-panel */
+  --color-field-panel-2: #1F4230;   /* --field-panel-2 */
+  --color-chalk:         #F1ECDD;   /* --chalk */
+  --color-chalk-dim:     #B7C2B4;   /* --chalk-dim */
+  --color-chalk-faint:   #7C8C82;   /* --chalk-faint */
+  --color-line-on-dark:  rgb(241 236 221 / 0.16);   /* --border-on-dark */
+
+  /* Accent and actions */
+  --color-amber:         #E8A83D;   /* --amber */
+  --color-amber-bright:  #F5C365;   /* --amber-bright */
+  --color-game-gold:     #C9A227;   /* --game-gold */
+  --color-kind:          #3D7A57;   /* --kind-btn */
+  --color-kind-hover:    #2E6345;
+  --color-kind-active:   #245036;
+
+  /* Status */
+  --color-red:           #C0453B;   /* --red */
+  --color-red-solid:     #A83A31;   /* --red-bg */
+  --color-clay:          #96551F;   /* --clay */
+  --color-clay-dim:      #8A5732;   /* --clay-dim */
+  --color-success:       #6FA287;   /* literal today */
+  --color-strike:        #2E8B57;   /* literal today */
+  --color-silver:        #7C8B85;
+  --color-bronze:        #A8621F;
+
+  /* Pitch types by slot (baseball; softball overrides below) */
+  --color-pitch-1: #E8A83D; --color-pitch-2: #6FA287; --color-pitch-3: #C17A45; --color-pitch-4: #C0453B;
+  --color-pitch-5: #7C9CBF; --color-pitch-6: #B98CCB; --color-pitch-7: #D4C15B; --color-pitch-8: #4FA8A8;
+
+  /* Field art */
+  --color-field-fence:   #B9D1C4;
+  --color-field-grass:   #C7DCBD;
+  --color-field-infield: #B4C8AC;
+  --color-field-dirt:    #C9A97C;
+  --color-field-mound:   #B8956A;
+
+  /* Fonts */
+  --font-display:  "Teko", sans-serif;
+  --font-sans:     "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono:     "IBM Plex Mono", monospace;
+  --font-wordmark: "Black Ops One", "Teko", sans-serif;
+  --font-report:   Georgia, "Times New Roman", serif;   /* session report only */
+
+  /* Type scale: the sizes the site uses most, named by role */
+  --text-label:      10px;   --text-label--letter-spacing: 0.1em;
+  --text-ui:         12px;   --text-ui--line-height: 1.2;
+  --text-body-sm:    13px;   --text-body-sm--line-height: 1.5;
+  --text-body:       14px;   --text-body--line-height: 1.45;
+  --text-body-lg:    16px;   --text-body-lg--line-height: 1.2;
+  --text-stat-sm:    20px;   --text-stat-sm--line-height: 1;
+  --text-stat:       24px;   --text-stat--line-height: 1;
+  --text-stat-lg:    32px;   --text-stat-lg--line-height: 1;
+  --text-display-md: 38px;   --text-display-md--line-height: 1;
+  --text-display-lg: 44px;   --text-display-lg--line-height: 1;
+  --text-display-xl: 64px;   --text-display-xl--line-height: 1;
+
+  --font-weight-regular: 400;
+  --font-weight-medium:  500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:    700;
+  --font-weight-black:   800;
+
+  --tracking-display: 0.01em;
+  --tracking-button:  0.02em;
+  --tracking-meta:    0.06em;
+  --tracking-label:   0.1em;
+  --tracking-tagline: 0.16em;
+
+  /* Spacing: Tailwind multiplies this; p-2 = 8px, p-3.5 = 14px, p-5.5 = 22px */
   --spacing: 4px;
+
+  /* Radius */
+  --radius-dot:     2px;
+  --radius-cell:    3px;
+  --radius-input:   5px;
+  --radius-control: 6px;
+  --radius-tile:    8px;
+  --radius-card:    10px;
+  --radius-menu:    12px;
+  --radius-modal:   14px;
+  --radius-dock:    18px;
+  --radius-badge:   20px;
+  --radius-chip:    22px;
+
+  /* Shadows */
+  --shadow-card:    0 1px 3px rgb(15 36 27 / 0.06);
+  --shadow-raised:  0 2px 6px rgb(15 36 27 / 0.15);
+  --shadow-popover: 0 10px 26px rgb(15 36 27 / 0.22);
+  --shadow-panel:   0 10px 26px rgb(15 36 27 / 0.28);
+  --shadow-modal:   0 8px 32px rgb(15 36 27 / 0.35);
+  --shadow-dock:    0 6px 24px rgb(0 0 0 / 0.22);
+  --shadow-notice:  0 18px 50px rgb(10 20 40 / 0.45);
+
+  /* Breakpoints the site uses (Tailwind is min-width; the site mostly writes max-width) */
   --breakpoint-sm: 361px;
   --breakpoint-md: 501px;
   --breakpoint-lg: 861px;
   --container-app: 1320px;
-}
 
-/* Softball: same utilities, different values */
-@layer base {
-  html[data-sport="softball"] {
-    --color-bg: #F4F7FB;
-    --color-card-2: #F8FAFD;
-    --color-surface: #E6F1FA;
-    --color-surface-border: #CFE0EE;
-    --color-border: rgba(11,37,64,0.10);
-    --color-border-strong: rgba(11,37,64,0.24);
-    --color-ink: #0B2540;
-    --color-ink-dim: #2C4560;
-    --color-ink-faint: #5A6E84;
-    --color-brand-bg: #0B2540;
-    --color-brand-bg-deep: #06172A;
-    --color-brand-bg-2: #12345A;
-    --color-brand-mid: #1F5C99;
-    --color-brand-soft: #8EC3EE;
-    --color-on-dark-dim: #C5D3E2;
-    --color-on-dark-faint: #8A9BB0;
-    --color-accent: #FF4F9A;
-    --color-accent-bright: #FF79B3;
-    --color-accent-ink: #B0175A;
-    --color-on-accent: var(--color-ink);
-    --color-scrim: rgba(6,23,42,0.60);
-    --color-dock-bg: rgba(11,37,64,0.82);
-    --color-pitch-1: #FF4F9A;
-    --color-pitch-2: #2F9BFF;
-    --color-pitch-3: #7A3FB8;
-    --color-pitch-4: #FF9F1C;
-    --color-pitch-5: #00A99D;
-    --color-pitch-6: #8E6CFF;
-    --color-pitch-7: #D2553F;
-    --color-pitch-8: #7D8794;
+  /* Motion */
+  --ease-dock: cubic-bezier(.3,.7,.3,1);
+  --animate-target-pulse: targetPulse 1.1s ease-in-out infinite;
+  @keyframes targetPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%      { transform: scale(1.15); opacity: 0.75; }
   }
 }
 
+/* Softball: same utilities, different values. Set data-sport="softball" on <html>. */
+@layer base {
+  html[data-sport="softball"] {
+    --color-page:          #F7FAFD;
+    --color-surface:       #EAF4FB;
+    --color-surface-line:  #BFDCEF;
+    --color-line:          rgb(35 75 110 / 0.10);
+    --color-line-strong:   rgb(35 75 110 / 0.22);
+    --color-game-panel:    #F4F8FC;
+    --color-game-line:     #9FC3DD;
+    --color-ink:           #234B6E;
+    --color-ink-dim:       #3A5A78;
+    --color-ink-faint:     #5F7A91;
+    --color-field:         #234B6E;
+    --color-field-panel:   #2B5A82;
+    --color-field-panel-2: #336896;
+    --color-chalk-dim:     #BCCBD8;
+    --color-chalk-faint:   #8094A6;
+    --color-amber:         #F2A7C3;
+    --color-amber-bright:  #F7C3D7;
+    --color-game-gold:     #E98DB0;
+    --color-kind:          #E27BA2;
+    --color-kind-hover:    #D4688F;
+    --color-kind-active:   #C2567D;
+    --color-pitch-1: #E27BA2; --color-pitch-2: #7FB8E0; --color-pitch-3: #6C5B7B; --color-pitch-4: #F6B26B;
+    --color-pitch-5: #4FA3A5; --color-pitch-6: #9B8ADB; --color-pitch-7: #B36B5E; --color-pitch-8: #8C8C8C;
+    --color-field-fence:   #BFDCEF;
+    --color-field-grass:   #CFE4F5;
+    --color-field-infield: #BCD7EC;
+  }
+}
+
+/* Components as utility recipes (how today's classes translate) */
 @layer components {
-  .tray        { @apply inline-flex min-h-11 rounded-control bg-surface p-[3px]; }
-  .seg         { @apply min-h-[38px] flex-1 rounded-segment px-2.5 text-[14px] font-semibold text-ink; }
-  .seg-on      { @apply bg-white shadow-segment; box-shadow: var(--shadow-segment), inset 0 -3px 0 var(--color-btn-accent); }
-  .btn-primary { @apply min-h-11 rounded-control bg-accent px-4 font-sans text-[16px] font-semibold text-on-accent hover:bg-accent-bright; }
-  .btn-secondary { @apply min-h-11 rounded-control bg-surface px-4 text-[16px] font-semibold text-ink; }
-  .btn-danger  { @apply min-h-11 rounded-control bg-surface px-4 text-[16px] font-semibold text-danger; }
-  .card        { @apply rounded-control border border-border bg-card p-5; }
-  .display     { @apply font-display font-extrabold uppercase leading-none tracking-[0.01em]; }
-  .num         { @apply font-display font-bold leading-none tabular-nums; }
-  .label       { @apply font-sans text-10 font-bold uppercase tracking-[0.1em] text-ink-faint; }
+  .btn-primary { @apply rounded-control bg-amber px-3.5 py-[9px] font-sans text-ui font-semibold text-ink hover:bg-amber-bright disabled:opacity-50; }
+  .btn-ghost   { @apply rounded-control border border-line-strong bg-transparent px-3.5 py-[9px] text-ui font-semibold text-ink-dim hover:border-ink-dim hover:text-ink; }
+  .type-chip   { @apply inline-flex min-h-11 min-w-11 items-center justify-center rounded-chip border-[1.5px] border-line-strong px-4 py-2.5 text-body font-semibold text-ink-dim; }
+  .panel       { @apply rounded-card border border-line bg-card p-5.5 shadow-card; }
+  .stat-num    { @apply font-display text-stat-lg text-ink; }
+  .field-label { @apply text-label uppercase tracking-label text-ink-faint; }
 }

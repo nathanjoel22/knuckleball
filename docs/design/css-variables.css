@@ -1,212 +1,252 @@
 /* ==========================================================================
-   Knuckleball tokens: target, Broadcast · Big Shoulders (decided 2026-10-13)
+   Knuckleball: CSS custom properties, as built
+   Source: knuckleballonline.com, main @ cf346b0 (2026-10-09)
 
-   This file is loadable as-is. It is the proposed css/tokens.css for packet
-   D2: the names are D1's (plans/d1-design-standardization.md, rename map),
-   the values are the Broadcast · Big Shoulders direction Jordan and Nate
-   chose on Oct 13. One name, one job, everywhere. Sport is a scope:
-   html[data-sport="softball"] redefines the same names.
+   This file gathers every custom property the live site defines, using the
+   names the code already uses. Values that are hard-coded today (no variable
+   yet) appear with a proposed name and the comment "literal today".
 
-   There is no dark sign-in scope: the sign-in pages use the light look with
-   a dark angled header (D1 option b, Oct 13).
+   Today these live in 15 separate <style> blocks, one per page. The app
+   (bullpen-tracker.html) is the reference set. The 11 sign-in pages copy an
+   older dark set (see AUTH below). privacy.html and terms.html use a third
+   set of names (see LEGAL below).
 
-   Contrast (WCAG 2.1) is noted for every text pairing. AA = 4.5:1 for text,
-   3:1 for large text (24px+, or 19px bold) and for icons and lines.
+   This is a reference, not a stylesheet to load as-is: the APP and AUTH
+   blocks reuse the same names with different values, as the site does.
    ========================================================================== */
 
-:root{
-  /* ---------- Surfaces ---------- */
-  --bg:             #F3F5F2;   /* page background */
-  --card:           #FFFFFF;   /* cards, panels, grid cells, inputs */
-  --card-2:         #F8FAF8;   /* nested wells, zebra rows */
-  --surface:        #E8EDE9;   /* soft fill: trays, secondary buttons, sidebar, strike zone, wells */
-  --surface-border: #D5DDD7;   /* rules, selected rows */
-  --border:         rgba(7,20,15,0.10);   /* card and divider hairlines */
-  --border-strong:  rgba(7,20,15,0.24);   /* inputs, chart frames */
+/* ---------- APP: bullpen-tracker.html, report.html (light theme) ---------- */
+:root {
+  /* Surfaces, light to dark */
+  --page-bg:          #F7FAF8;   /* page background */
+  --card-bg:          #FFFFFF;   /* cards, grid cells, inputs */
+  --surface:          #E8F3EC;   /* sidebar, strike-zone cells, hover rows */
+  --surface-border:   #CFE6D7;   /* grid frame, selected rows */
 
-  /* ---------- Ink (text on light) ---------- */
-  --ink:            #07140F;   /* primary text: 17.2:1 on --bg */
-  --ink-dim:        #26342D;   /* secondary text: 13.0:1 on white */
-  --ink-faint:      #56645C;   /* labels, captions: 6.2:1 on white, 5.3:1 on --surface */
-  --ink-rgb:        7,20,15;
+  /* Ink */
+  --field-dark:       #0F241B;   /* brand strip background AND primary text */
+  --ink-dim:          #2E4A40;   /* secondary text, 9.7:1 on white */
+  --ink-faint:        #527065;   /* labels and meta, 5.4:1 on white */
+  --ink-rgb:          15,36,27;  /* for rgba(var(--ink-rgb), a) tints and shadows */
 
-  /* ---------- Brand (the dark field green) ---------- */
-  --brand-bg:       #061A12;   /* brand strip, status bars, sign-in header, dark bands */
-  --brand-bg-deep:  #030D09;   /* scoreboard cells, footer, deepest band */
-  --brand-bg-2:     #0A2A1D;   /* raised areas on dark */
-  --brand-line:     rgba(255,255,255,0.10);  /* hairlines on dark */
-  --brand-mid:      #16593D;   /* focus ring, links on light: 8.3:1 on white */
-  --brand-soft:     #7FC9A1;   /* avatars, secondary chart marks */
+  /* Text on the dark brand strip */
+  --chalk:            #F1ECDD;
+  --chalk-dim:        #B7C2B4;
+  --chalk-faint:      #7C8C82;
+  --border-on-dark:   rgba(241,236,221,0.16);
 
-  /* ---------- Text on dark ---------- */
-  --on-dark:        #FFFFFF;
-  --on-dark-dim:    #C2CEC6;   /* 11.1:1 on --brand-bg */
-  --on-dark-faint:  #86978C;   /* 5.9:1 on --brand-bg */
+  /* Lines */
+  --border:           rgba(15,36,27,0.10);
+  --border-strong:    rgba(15,36,27,0.22);
 
-  /* ---------- Accent (gold) ---------- */
-  --accent:         #FFB81C;   /* primary action, selection, section tags. A fill: 1.8:1 as text on white, never text on light */
-  --accent-bright:  #FFC94F;   /* hover on primary */
-  --accent-rgb:     255,184,28;
-  --accent-ink:     #8A5A00;   /* accent-colored text on light: 5.9:1 on white */
-  --on-accent:      var(--ink);   /* text on gold: 10.9:1 */
-  --accent-game:    var(--accent);  /* Live Game gold: one gold now (U13 unified Next pitch) */
+  /* Accent */
+  --amber:            #E8A83D;
+  --amber-bright:     #F5C365;
+  --amber-rgb:        232,168,61;
+  --accent-text:      var(--amber);
 
-  /* ---------- Buttons (U13 buttons.css reads these) ---------- */
-  --btn-ink:          var(--ink);
-  --btn-soft:         var(--surface);
-  --btn-primary:      var(--accent);
-  --btn-on-primary:   var(--on-accent);
-  --btn-primary-hover:var(--accent-bright);
-  --btn-accent:       var(--ink);   /* the selected segment's underline: the sport's dark ink (Joel, Oct 9, E) */
-  --btn-danger:       var(--danger);
-  --btn-disabled-bg:  #F1F3F2;
-  --btn-disabled-fg:  #A7B0AA;
-  --chooser:          var(--brand-bg);     /* Bullpen / Live Game (a tray in D1 Stage 3) */
-  --chooser-hover:    var(--brand-bg-2);
-  --chooser-active:   var(--brand-bg-deep);
+  /* Actions */
+  --primary-bg:       var(--amber);
+  --primary-fg:       var(--field-dark);
+  --primary-bg-hover: var(--amber-bright);
+  --kind-btn:         #3D7A57;   /* Bullpen / Live Game chooser */
+  --kind-btn-hover:   #2E6345;
+  --kind-btn-active:  #245036;
 
-  /* ---------- Status ---------- */
-  --danger:         #C42B21;   /* danger text: 4.8:1 on --surface (U13 danger = red text on soft fill) */
-  --danger-bg:      #C42B21;   /* solid destructive fill, white text 5.7:1 */
-  --on-danger:      #FFFFFF;
-  --warning:        #9A5B00;   /* warning text: 5.4:1 on white */
-  --warning-line:   #C77700;
-  --warning-tint:   rgba(255,184,28,0.16);
-  --success:        #1E7F4A;   /* Sent, Saved: 5.0:1 on white */
-  --strike:         #188A4E;   /* strike flash; white letter 4.4:1 (large text) */
-  --ball:           #E0443A;   /* ball flash; white letter 4.2:1 (large text) */
-  --flash-fg:       #FFFFFF;
-  --rank-1:         var(--accent);
-  --rank-2:         #7C8B85;   /* 3.6:1, a medal mark, not text */
-  --rank-3:         #A8621F;
+  /* Status */
+  --red:              #C0453B;   /* error text, alert dots */
+  --red-bg:           #A83A31;   /* solid destructive buttons */
+  --clay:             #96551F;   /* warnings and hints (sign-in pages: #C17A45) */
+  --clay-dim:         #8A5732;   /* warning banner borders */
+  --success:          #6FA287;   /* literal today: "Sent", "Saved" */
+  --strike:           #2E8B57;   /* literal today: strike flash (.flash-strike) */
+  --ball:             #C0453B;   /* literal today: ball flash (.flash-ball) */
 
-  /* ---------- Overlays ---------- */
-  --scrim:          rgba(3,13,9,0.60);
-  --dock-bg:        rgba(6,26,18,0.82);   /* coach dock, 14px blur */
-  --dock-fg:        rgba(255,255,255,0.80);
-  --dock-pill:      rgba(255,255,255,0.16);
+  /* Leaderboard */
+  --gold:             var(--amber);
+  --silver:           #7C8B85;
+  --bronze:           #A8621F;
 
-  /* ---------- Pitch types by slot (data colors; must equal SPORTS[sport].palette
-     in bullpen-tracker.html and SPORT_PALETTE_HEX in send-session-report/helpers.ts) ---------- */
-  --pitch-1: #FFB81C; --pitch-2: #22B573; --pitch-3: #FF6B35; --pitch-4: #E63946;
-  --pitch-5: #3D8BFF; --pitch-6: #B15CFF; --pitch-7: #F2E14C; --pitch-8: #00B8C4;
+  /* Live Game */
+  --game-chip-border: #9DBBA9;
+  --game-gold:        #C9A227;
+  --game-panel-bg:    #F7F5EF;
 
-  /* ---------- Fonts (self-hosted in vendor/fonts; nothing from other hosts) ---------- */
-  --font-display:  'Big Shoulders Display', 'Archivo', 'Arial Narrow', sans-serif;  /* headings, names, big numbers, flash letters, uniform numbers */
-  --font-sans:     'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;  /* text, labels, buttons */
-  --font-mono:     var(--font-sans);   /* D1 name kept: aligned digits now use Archivo with tabular figures (class .tnum) */
-  --font-wordmark: 'Black Ops One', 'Big Shoulders Display', sans-serif;  /* KNUCKLEBALL only */
+  /* Coach dock (literal today) */
+  --dock-bg:          rgba(15,36,27,0.72);
+  --dock-fg:          rgba(242,235,221,0.86);
+  --dock-pill:        rgba(255,255,255,0.18);
 
-  /* ---------- Type scale (D1's nine steps) ---------- */
-  --t-64: 64px;  /* index "Which sport?" only */
-  --t-44: 44px;  --t-32: 32px;  --t-24: 24px;  --t-20: 20px;
-  --t-16: 16px;  --t-14: 14px;  --t-12: 12px;  --t-10: 10px;
-  --lh-tight: 1;     /* display and numbers */
-  --lh-ui:    1.2;   /* buttons, labels, one-line UI */
-  --lh-body:  1.5;   /* running text */
-  --tr-display: 0.01em;  /* Big Shoulders, uppercase */
-  --tr-label:   0.1em;   /* uppercase labels */
-  --tr-tag:     0.14em;  /* slanted section tags */
+  /* Overlays (literal today) */
+  --scrim:            rgba(15,36,27,0.55);   /* .modal-overlay */
+  --scrim-notice:     rgba(20,38,66,0.62);   /* .attest-backdrop */
+  --warn-tint:        rgba(193,122,69,0.12); /* banners: verify, draft, outbox */
 
-  /* ---------- Radius (D1's five) ---------- */
-  --radius-cell:    4px;    /* grid, field and scorebook cells */
-  --radius-segment: 9px;    /* a segment inside a tray */
-  --radius-control: 12px;   /* buttons, trays, inputs, cards, menus, sheets' top corners */
-  --radius-dock:    18px;   /* coach dock */
-  --radius-pill:    999px;  /* badges */
-  --radius-circle:  50%;    /* avatars, dots */
-  --cut:            28px;   /* height of the angled edge under the sign-in header and dark bands */
+  /* Typography (literal today: families are written out in each rule) */
+  --font-display:     'Teko', sans-serif;
+  --font-sans:        'IBM Plex Sans', sans-serif;
+  --font-mono:        'IBM Plex Mono', monospace;
+  --font-wordmark:    'Black Ops One', 'Teko', sans-serif;
+  --font-report:      Georgia, 'Times New Roman', serif;   /* session report only */
+  --font-system:      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; /* report.html bar */
 
-  /* ---------- Shadows (three + two rings; cards are flat) ---------- */
-  --shadow-segment: 0 1px 3px rgba(0,0,0,0.18);           /* selected segment (U13) */
-  --shadow-pop:     0 10px 26px rgba(var(--ink-rgb),0.22); /* menus, Live Game panel */
-  --shadow-modal:   0 8px 32px rgba(var(--ink-rgb),0.35);  /* modal, one-time notices */
-  --ring-select:    inset 0 -3px 0 var(--btn-accent);      /* selected segment underline */
-  --ring-target:    inset 0 0 0 2px var(--accent);         /* target cell, typical velocity */
-  --focus:          2px solid var(--brand-mid);            /* keyboard focus, offset 2px (gold fails 3:1 on white) */
+  /* Type sizes in use, most used first (literal today) */
+  --text-10: 10px;   --text-11: 11px;   --text-11-5: 11.5px; --text-12: 12px;
+  --text-12-5: 12.5px; --text-13: 13px; --text-13-5: 13.5px; --text-14: 14px;
+  --text-15: 15px;   --text-15-5: 15.5px; --text-16: 16px;   --text-18: 18px;
+  --text-19: 19px;   --text-20: 20px;   --text-22: 22px;     --text-24: 24px;
+  --text-26: 26px;   --text-28: 28px;   --text-30: 30px;     --text-32: 32px;
+  --text-34: 34px;   --text-36: 36px;   --text-38: 38px;     --text-40: 40px;
+  --text-42: 42px;   --text-44: 44px;   --text-64: 64px;
 
-  /* ---------- Spacing (4px base, ten steps) ---------- */
-  --s-2: 2px;  --s-4: 4px;  --s-8: 8px;  --s-12: 12px; --s-16: 16px;
-  --s-20: 20px; --s-24: 24px; --s-32: 32px; --s-48: 48px; --s-64: 64px;
+  /* Radius in use (literal today) */
+  --radius-dot:     2px;
+  --radius-cell:    3px;    /* also 4px on Live Game and scorebook cells */
+  --radius-input:   5px;
+  --radius-control: 6px;    /* sign-in .btn-primary uses 7px */
+  --radius-tile:    8px;    /* Live Game field buttons use 9px */
+  --radius-card:    10px;
+  --radius-menu:    12px;
+  --radius-modal:   14px;
+  --radius-dock:    18px;
+  --radius-badge:   20px;
+  --radius-chip:    22px;
+  --radius-pill:    999px;
+  --radius-circle:  50%;
 
-  /* ---------- Motion ---------- */
-  --duration-fast:  150ms;
-  --duration-base:  220ms;
-  --duration-slow:  250ms;
-  --duration-flip:  325ms;
-  --duration-flash: 1400ms;
-  --ease-dock:      cubic-bezier(.3,.7,.3,1);
-  --ease-spring:    cubic-bezier(.2,.9,.3,1.2);
+  /* Shadows in use (literal today) */
+  --shadow-card:    0 1px 3px rgba(var(--ink-rgb),0.06);
+  --shadow-raised:  0 2px 6px rgba(var(--ink-rgb),0.15);
+  --shadow-popover: 0 10px 26px rgba(var(--ink-rgb),0.22);
+  --shadow-panel:   0 10px 26px rgba(var(--ink-rgb),0.28);
+  --shadow-modal:   0 8px 32px rgba(var(--ink-rgb),0.35);
+  --shadow-dock:    0 6px 24px rgba(0,0,0,0.22);
+  --shadow-notice:  0 18px 50px rgba(10,20,40,0.45);
+  --focus-ring:     2px solid var(--amber-bright);   /* outline, offset 2px */
 
-  /* ---------- Layout ---------- */
-  --tap-min:   44px;
-  --app-max:   1320px;
-  --sidebar-w: 280px;
-  /* Breakpoints (media queries can't read variables; use these numbers):
-     small phone <=360 · phone <=500 · iPad portrait 501-860 · wide >=861 */
+  /* Layout (literal today) */
+  --app-max:        1320px;
+  --sidebar-w:      280px;
+  --tap-min:        44px;
+  --bp-small-phone: 360px;
+  --bp-phone:       500px;
+  --bp-tablet:      860px;
 }
 
-@media (prefers-reduced-motion: reduce){
-  :root{ --duration-fast:0ms; --duration-base:0ms; --duration-slow:0ms; --duration-flip:0ms; }
+/* ---------- Charting-grid component variables (scoped, as built) ---------- */
+.zone-grid   { --kb-pill-h: 48px; --kb-pill-clear: 18px; }   /* phones only */
+.kb-batter   { --kb-batter-h: 112%; --kb-batter-gap: 6px; }
+.velo-strip  { --velo-visible: 7; }                           /* 5 on phones, 3 in the slim strip */
+.ph-layout   { --chip: calc((min(100vw - 28px, 320px) - 18px) / 5); }
+.wide-right .g5-cell { --g5c: calc((var(--zg, 278px) - 18px) / 5); }  /* --zg, --kbh, --kbo set by sizeWideGrid() in JS */
+.zone-cell-flash { --flash-fg: #F1ECDD; }
+.zone-cell-flash.flash-strike { --flash-bg: #2E8B57; }
+.zone-cell-flash.flash-ball   { --flash-bg: #C0453B; }
+
+/* ---------- Live Game field art (scoped to .gg-field, as built) ---------- */
+.gg-field {
+  --gg-fence:   #B9D1C4;
+  --gg-grass:   #C7DCBD;
+  --gg-infield: #B4C8AC;
+  --gg-dirt:    #C9A97C;
+  --gg-mound:   #B8956A;
+  --gg-ink:     #17261D;
+  --gg-border:  #9DBBA9;
+  --gg-gold:    #C9A227;
+  --gg-muted:   #5B6B61;
+  --gg-on-fg:   #E8F3EC;
+  --gg-on-cap:  #CFE6D7;
+  --gg-line:    #0F241B;
+  /* SVG only (literal today): mower stripes fair #8CBA5A / #6FA548, foul #60963C / #548A35; base on #F4C430 */
 }
 
-/* ---------- Softball: same names, navy and rally pink ---------- */
-html[data-sport="softball"]{
-  --bg:             #F4F7FB;
-  --card-2:         #F8FAFD;
-  --surface:        #E6F1FA;
-  --surface-border: #CFE0EE;
-  --border:         rgba(11,37,64,0.10);
-  --border-strong:  rgba(11,37,64,0.24);
-
-  --ink:            #0B2540;   /* 14.5:1 on --bg */
-  --ink-dim:        #2C4560;   /* 9.9:1 on white */
-  --ink-faint:      #5A6E84;   /* 5.3:1 on white, 4.6:1 on --surface */
-  --ink-rgb:        11,37,64;
-
-  --brand-bg:       #0B2540;
-  --brand-bg-deep:  #06172A;
-  --brand-bg-2:     #12345A;
-  --brand-mid:      #1F5C99;
-  --brand-soft:     #8EC3EE;
-  --on-dark-dim:    #C5D3E2;
-  --on-dark-faint:  #8A9BB0;   /* 5.5:1 on --brand-bg */
-
-  --accent:         #FF4F9A;   /* rally pink: a fill, never text on light */
-  --accent-bright:  #FF79B3;
-  --accent-rgb:     255,79,154;
-  --accent-ink:     #B0175A;   /* pink text on light: 6.7:1 on white */
-  --on-accent:      var(--ink);   /* navy on pink 5.1:1 (white on pink is only 3.1:1) */
-
-  --scrim:          rgba(6,23,42,0.60);
-  --dock-bg:        rgba(11,37,64,0.82);
-
-  --pitch-1: #FF4F9A; --pitch-2: #2F9BFF; --pitch-3: #7A3FB8; --pitch-4: #FF9F1C;
-  --pitch-5: #00A99D; --pitch-6: #8E6CFF; --pitch-7: #D2553F; --pitch-8: #7D8794;
+/* ---------- Softball theme (app) ---------- */
+html[data-sport="softball"] {
+  --page-bg:          #F7FAFD;
+  --card-bg:          #FFFFFF;
+  --surface:          #EAF4FB;
+  --surface-border:   #BFDCEF;
+  --field-dark:       #234B6E;
+  --ink-dim:          #3A5A78;
+  --ink-faint:        #5F7A91;
+  --chalk-dim:        #BCCBD8;
+  --chalk-faint:      #8094A6;
+  --amber:            #F2A7C3;
+  --amber-bright:     #F7C3D7;
+  --amber-rgb:        242,167,195;
+  --ink-rgb:          35,75,110;
+  --border:           rgba(35,75,110,0.10);
+  --border-strong:    rgba(35,75,110,0.22);
+  --primary-bg:       #E27BA2;
+  --primary-fg:       #FFFFFF;
+  --primary-bg-hover: #D4688F;
+  --kind-btn:         #E27BA2;
+  --kind-btn-hover:   #D4688F;
+  --kind-btn-active:  #C2567D;
+  --accent-text:      var(--field-dark);   /* never pink text on light */
+  --game-chip-border: #9FC3DD;
+  --game-gold:        #E98DB0;
+  --game-panel-bg:    #F4F8FC;
+  --dock-bg:          rgba(35,75,110,0.74);   /* literal today */
+}
+html[data-sport="softball"] .gg-field {
+  --gg-fence: #BFDCEF; --gg-grass: #CFE4F5; --gg-infield: #BCD7EC; --gg-dirt: #C9A97C; --gg-mound: #B8956A;
+  --gg-ink: #1B3550; --gg-border: #9FC3DD; --gg-gold: #E98DB0; --gg-muted: #5F7A91;
+  --gg-on-fg: #EAF4FB; --gg-on-cap: #BFDCEF; --gg-line: #234B6E;
 }
 
-/* ---------- Font faces (Stage B adds the files) ---------- */
-/* Archivo: one variable file per subset, weight 100-900, width 62-125%.
-   Big Shoulders Display: variable, weight 100-900. Both SIL Open Font License. */
-@font-face{ font-family:'Archivo'; font-style:normal; font-weight:100 900; font-stretch:62% 125%; font-display:swap;
-  src:url('/vendor/fonts/Archivo-var-latin.woff2') format('woff2');
-  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
-@font-face{ font-family:'Archivo'; font-style:normal; font-weight:100 900; font-stretch:62% 125%; font-display:swap;
-  src:url('/vendor/fonts/Archivo-var-latin-ext.woff2') format('woff2');
-  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
-@font-face{ font-family:'Big Shoulders Display'; font-style:normal; font-weight:100 900; font-display:swap;
-  src:url('/vendor/fonts/BigShouldersDisplay-var-latin.woff2') format('woff2');
-  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
-@font-face{ font-family:'Big Shoulders Display'; font-style:normal; font-weight:100 900; font-display:swap;
-  src:url('/vendor/fonts/BigShouldersDisplay-var-latin-ext.woff2') format('woff2');
-  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
-/* Black Ops One stays in vendor/fonts/fonts.css as today. */
+/* ---------- Pitch-type palettes (JS arrays today, by slot 1-8) ----------
+   Must match send-session-report/helpers.ts exactly, in order. */
+:root {
+  --pitch-1: #E8A83D; --pitch-2: #6FA287; --pitch-3: #C17A45; --pitch-4: #C0453B;
+  --pitch-5: #7C9CBF; --pitch-6: #B98CCB; --pitch-7: #D4C15B; --pitch-8: #4FA8A8;
+}
+html[data-sport="softball"] {
+  --pitch-1: #E27BA2; --pitch-2: #7FB8E0; --pitch-3: #6C5B7B; --pitch-4: #F6B26B;
+  --pitch-5: #4FA3A5; --pitch-6: #9B8ADB; --pitch-7: #B36B5E; --pitch-8: #8C8C8C;
+}
 
-/* ---------- Base type rules every page shares ---------- */
-body{ font-family:var(--font-sans); font-size:var(--t-16); line-height:var(--lh-body); color:var(--ink); background:var(--bg); }
-.display{ font-family:var(--font-display); font-weight:800; line-height:var(--lh-tight); letter-spacing:var(--tr-display); text-transform:uppercase; }
-.num{ font-family:var(--font-display); font-weight:700; line-height:var(--lh-tight); font-variant-numeric:tabular-nums; }
-.tnum{ font-variant-numeric:tabular-nums; }
-.label{ font-family:var(--font-sans); font-size:var(--t-10); font-weight:700; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--ink-faint); }
-.wordmark{ font-family:var(--font-wordmark); font-weight:400; letter-spacing:0.02em; line-height:1; }
-:focus-visible{ outline:var(--focus); outline-offset:2px; }
+/* ---------- AUTH: the 11 sign-in and sign-up pages (dark theme) ----------
+   index, login, coach-signup, pitcher-signup, parent-signup, join, join-coach,
+   accept-invite, guardian-consent, reset-password, verify-email.
+   Same names as the app, different meanings: --border is light-on-dark here. */
+:root {
+  --field-dark:     #0F241B;   /* page background on these pages */
+  --field-panel:    #183527;   /* card */
+  --field-panel-2:  #1F4230;   /* hover, info boxes */
+  --chalk:          #F1ECDD;   /* body text */
+  --chalk-dim:      #B7C2B4;
+  --chalk-faint:    #7C8C82;
+  --clay:           #C17A45;   /* the pre-refresh value; the app moved to #96551F */
+  --amber:          #E8A83D;
+  --amber-bright:   #F5C365;
+  --amber-rgb:      232,168,61;  /* defined on 10 of the 11 pages */
+  --red:            #C0453B;     /* defined on 10 of the 11 pages */
+  --border:         rgba(241,236,221,0.12);
+  --border-strong:  rgba(241,236,221,0.22);
+  --glow-a:         rgba(232,168,61,0.08);   /* top-left radial glow */
+  --glow-b:         rgba(193,122,69,0.08);   /* bottom-right radial glow */
+}
+html[data-sport="softball"] {
+  --field-dark: #234B6E; --field-panel: #2B5A82; --field-panel-2: #336896;
+  --chalk-dim: #C4D3E0; --chalk-faint: #9FB5C9;
+  --amber: #F2A7C3; --amber-bright: #F7C3D7; --amber-rgb: 242,167,195;
+  --glow-a: rgba(242,167,195,0.10); --glow-b: rgba(127,184,224,0.10);
+}
+
+/* ---------- LEGAL: privacy.html, terms.html (a third naming scheme) ---------- */
+.page {
+  --ink: #0F241B; --ink-dim: #2E4A40; --ink-faint: #527065; --bg: #F7FAF8; --card: #FFFFFF;
+  --line: #CFE6D7; --accent: #E8A83D; --band: #0F241B; --band-ink: #F1ECDD;
+}
+#softball:target {
+  --ink: #234B6E; --ink-dim: #3A5A78; --ink-faint: #5F7A91; --bg: #F7FAFD;
+  --line: #BFDCEF; --accent: #F2A7C3; --band: #234B6E; --band-ink: #EAF4FB;
+}
+
+/* ---------- SESSION REPORT (send-session-report/template.ts) ----------
+   No variables: every color is a literal, and softball is produced by a
+   find-and-replace of hex strings (themedCss in helpers.ts). Values used:
+   page #F7FAF8, text #0F241B, header #0F241B / #F1ECDD / #B7C2B4,
+   accent #E8A83D, rules #CFE6D7 and #E8F3EC, labels #527065, secondary #2E4A40,
+   muted #5B6B61, print dot outline #1E2A24. */

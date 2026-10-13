@@ -1,625 +1,643 @@
 {
-  "$description": "Knuckleball design tokens, target: Broadcast · Big Shoulders (decided 2026-10-13). W3C Design Tokens (DTCG). Generated from css-variables.css by tools/gen.py; edit the CSS, then regenerate. Names follow packet D1. 'theme.softball' overrides the base set when html[data-sport=softball].",
+  "$description": "Knuckleball design tokens as built: knuckleballonline.com main @ cf346b0, 2026-10-09. W3C Design Tokens (DTCG) format. Values are current production values, not a proposal. 'uses' counts var() references (or literal occurrences when no variable exists).",
   "color": {
     "surface": {
-      "bg": {
-        "$value": "#F3F5F2",
+      "page": {
+        "$value": "#F7FAF8",
         "$type": "color",
-        "$description": "page background",
+        "$description": "Page background",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--bg"
+            "cssVar": "--page-bg",
+            "uses": 4
           }
         }
       },
       "card": {
         "$value": "#FFFFFF",
         "$type": "color",
-        "$description": "cards, panels, grid cells, inputs",
+        "$description": "Cards, grid cells, inputs",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--card"
+            "cssVar": "--card-bg",
+            "uses": 28
           }
         }
       },
-      "card-2": {
-        "$value": "#F8FAF8",
+      "panel": {
+        "$value": "#E8F3EC",
         "$type": "color",
-        "$description": "nested wells, zebra rows",
+        "$description": "Sidebar, strike-zone cells, hover rows",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--card-2"
+            "cssVar": "--surface",
+            "uses": 20
           }
         }
       },
-      "surface": {
-        "$value": "#E8EDE9",
+      "panel-line": {
+        "$value": "#CFE6D7",
         "$type": "color",
-        "$description": "soft fill: trays, secondary buttons, sidebar, strike zone, wells",
+        "$description": "Grid frame, selected rows, report rules",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--surface"
+            "cssVar": "--surface-border",
+            "uses": 11
           }
         }
       },
-      "surface-border": {
-        "$value": "#D5DDD7",
+      "game-panel": {
+        "$value": "#F7F5EF",
         "$type": "color",
-        "$description": "rules, selected rows",
+        "$description": "Live Game drop-down panel",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--surface-border"
+            "cssVar": "--game-panel-bg",
+            "uses": 1
+          }
+        }
+      }
+    },
+    "line": {
+      "default": {
+        "$value": "rgba(15,36,27,0.10)",
+        "$type": "color",
+        "$description": "Card and divider hairlines",
+        "$extensions": {
+          "com.knuckleball": {
+            "cssVar": "--border",
+            "uses": 16
           }
         }
       },
-      "border": {
-        "$value": "rgba(7,20,15,0.10)",
+      "strong": {
+        "$value": "rgba(15,36,27,0.22)",
         "$type": "color",
-        "$description": "card and divider hairlines",
+        "$description": "Inputs, chips, ghost buttons",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--border"
+            "cssVar": "--border-strong",
+            "uses": 63
           }
         }
       },
-      "border-strong": {
-        "$value": "rgba(7,20,15,0.24)",
+      "on-dark": {
+        "$value": "rgba(241,236,221,0.16)",
         "$type": "color",
-        "$description": "inputs, chart frames",
+        "$description": "Hairline on the dark brand strip",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--border-strong"
+            "cssVar": "--border-on-dark",
+            "uses": 3
+          }
+        }
+      },
+      "game": {
+        "$value": "#9DBBA9",
+        "$type": "color",
+        "$description": "Live Game chips and scorebook buttons",
+        "$extensions": {
+          "com.knuckleball": {
+            "cssVar": "--game-chip-border",
+            "uses": 2
           }
         }
       }
     },
     "ink": {
-      "ink": {
-        "$value": "#07140F",
+      "default": {
+        "$value": "#0F241B",
         "$type": "color",
-        "$description": "primary text: 17.2:1 on --bg",
+        "$description": "Primary text; also the brand strip fill",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--ink"
+            "cssVar": "--field-dark",
+            "uses": 125
           }
         }
       },
-      "ink-dim": {
-        "$value": "#26342D",
+      "dim": {
+        "$value": "#2E4A40",
         "$type": "color",
-        "$description": "secondary text: 13.0:1 on white",
+        "$description": "Secondary text, 9.7:1 on white",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--ink-dim"
+            "cssVar": "--ink-dim",
+            "uses": 35
           }
         }
       },
-      "ink-faint": {
-        "$value": "#56645C",
+      "faint": {
+        "$value": "#527065",
         "$type": "color",
-        "$description": "labels, captions: 6.2:1 on white, 5.3:1 on --surface",
+        "$description": "Labels and meta, 5.4:1 on white",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--ink-faint"
+            "cssVar": "--ink-faint",
+            "uses": 72
           }
         }
       }
     },
     "brand": {
-      "brand-bg": {
-        "$value": "#061A12",
+      "field": {
+        "$value": "#0F241B",
         "$type": "color",
-        "$description": "brand strip, status bars, sign-in header, dark bands",
+        "$description": "Brand strip, dark status bars, sign-in page background",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--brand-bg"
+            "cssVar": "--field-dark",
+            "uses": 125
           }
         }
       },
-      "brand-bg-deep": {
-        "$value": "#030D09",
+      "field-panel": {
+        "$value": "#183527",
         "$type": "color",
-        "$description": "scoreboard cells, footer, deepest band",
+        "$description": "Sign-in card",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--brand-bg-deep"
+            "cssVar": "--field-panel",
+            "uses": 11
           }
         }
       },
-      "brand-bg-2": {
-        "$value": "#0A2A1D",
+      "field-panel-2": {
+        "$value": "#1F4230",
         "$type": "color",
-        "$description": "raised areas on dark",
+        "$description": "Sign-in hover and info boxes",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--brand-bg-2"
+            "cssVar": "--field-panel-2",
+            "uses": 14
           }
         }
       },
-      "brand-line": {
-        "$value": "rgba(255,255,255,0.10)",
+      "chalk": {
+        "$value": "#F1ECDD",
         "$type": "color",
-        "$description": "hairlines on dark",
+        "$description": "Text on dark",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--brand-line"
+            "cssVar": "--chalk",
+            "uses": 81
           }
         }
       },
-      "brand-mid": {
-        "$value": "#16593D",
+      "chalk-dim": {
+        "$value": "#B7C2B4",
         "$type": "color",
-        "$description": "focus ring, links on light: 8.3:1 on white",
+        "$description": "Secondary text on dark",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--brand-mid"
+            "cssVar": "--chalk-dim",
+            "uses": 40
           }
         }
       },
-      "brand-soft": {
-        "$value": "#7FC9A1",
+      "chalk-faint": {
+        "$value": "#7C8C82",
         "$type": "color",
-        "$description": "avatars, secondary chart marks",
+        "$description": "Taglines, hints on dark",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--brand-soft"
-          }
-        }
-      },
-      "on-dark": {
-        "$value": "#FFFFFF",
-        "$type": "color",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--on-dark"
-          }
-        }
-      },
-      "on-dark-dim": {
-        "$value": "#C2CEC6",
-        "$type": "color",
-        "$description": "11.1:1 on --brand-bg",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--on-dark-dim"
-          }
-        }
-      },
-      "on-dark-faint": {
-        "$value": "#86978C",
-        "$type": "color",
-        "$description": "5.9:1 on --brand-bg",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--on-dark-faint"
+            "cssVar": "--chalk-faint",
+            "uses": 50
           }
         }
       }
     },
     "accent": {
-      "accent": {
-        "$value": "#FFB81C",
+      "default": {
+        "$value": "#E8A83D",
         "$type": "color",
-        "$description": "primary action, selection, section tags. A fill: 1.8:1 as text on white, never text on light",
+        "$description": "The single accent: primary fill, active tab, selection",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--accent"
+            "cssVar": "--amber",
+            "uses": 82
           }
         }
       },
-      "accent-bright": {
-        "$value": "#FFC94F",
+      "bright": {
+        "$value": "#F5C365",
         "$type": "color",
-        "$description": "hover on primary",
+        "$description": "Primary hover, focus outline",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--accent-bright"
+            "cssVar": "--amber-bright",
+            "uses": 28
           }
         }
       },
-      "accent-ink": {
-        "$value": "#8A5A00",
+      "game-gold": {
+        "$value": "#C9A227",
         "$type": "color",
-        "$description": "accent-colored text on light: 5.9:1 on white",
+        "$description": "Live Game Next Pitch, sequence badges",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--accent-ink"
-          }
-        }
-      },
-      "on-accent": {
-        "$value": "{color.ink.ink}",
-        "$type": "color",
-        "$description": "text on gold: 10.9:1",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--on-accent"
-          }
-        }
-      },
-      "accent-game": {
-        "$value": "{color.accent.accent}",
-        "$type": "color",
-        "$description": "Live Game gold: one gold now (U13 unified Next pitch)",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--accent-game"
+            "cssVar": "--game-gold",
+            "uses": 11
           }
         }
       }
     },
-    "button": {
-      "btn-ink": {
-        "$value": "{color.ink.ink}",
+    "action": {
+      "primary-bg": {
+        "$value": "{color.accent.default}",
         "$type": "color",
+        "$description": "Primary button fill",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--btn-ink"
+            "cssVar": "--primary-bg",
+            "uses": 1
           }
         }
       },
-      "btn-soft": {
-        "$value": "{color.surface.surface}",
+      "primary-fg": {
+        "$value": "{color.ink.default}",
         "$type": "color",
+        "$description": "Primary button text",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--btn-soft"
+            "cssVar": "--primary-fg",
+            "uses": 1
           }
         }
       },
-      "btn-primary": {
-        "$value": "{color.accent.accent}",
+      "primary-hover": {
+        "$value": "{color.accent.bright}",
         "$type": "color",
+        "$description": "Primary button hover",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--btn-primary"
+            "cssVar": "--primary-bg-hover",
+            "uses": 1
           }
         }
       },
-      "btn-on-primary": {
-        "$value": "{color.accent.on-accent}",
+      "kind": {
+        "$value": "#3D7A57",
         "$type": "color",
+        "$description": "Bullpen / Live Game chooser",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--btn-on-primary"
+            "cssVar": "--kind-btn",
+            "uses": 1
           }
         }
       },
-      "btn-primary-hover": {
-        "$value": "{color.accent.accent-bright}",
+      "kind-hover": {
+        "$value": "#2E6345",
         "$type": "color",
+        "$description": "Chooser hover",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--btn-primary-hover"
+            "cssVar": "--kind-btn-hover",
+            "uses": 1
           }
         }
       },
-      "btn-accent": {
-        "$value": "{color.ink.ink}",
+      "kind-active": {
+        "$value": "#245036",
         "$type": "color",
-        "$description": "the selected segment's underline: the sport's dark ink (Joel, Oct 9, E)",
+        "$description": "Chooser pressed",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--btn-accent"
-          }
-        }
-      },
-      "btn-danger": {
-        "$value": "{color.status.danger}",
-        "$type": "color",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--btn-danger"
-          }
-        }
-      },
-      "btn-disabled-bg": {
-        "$value": "#F1F3F2",
-        "$type": "color",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--btn-disabled-bg"
-          }
-        }
-      },
-      "btn-disabled-fg": {
-        "$value": "#A7B0AA",
-        "$type": "color",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--btn-disabled-fg"
-          }
-        }
-      },
-      "chooser": {
-        "$value": "{color.brand.brand-bg}",
-        "$type": "color",
-        "$description": "Bullpen / Live Game (a tray in D1 Stage 3)",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--chooser"
-          }
-        }
-      },
-      "chooser-hover": {
-        "$value": "{color.brand.brand-bg-2}",
-        "$type": "color",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--chooser-hover"
-          }
-        }
-      },
-      "chooser-active": {
-        "$value": "{color.brand.brand-bg-deep}",
-        "$type": "color",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--chooser-active"
+            "cssVar": "--kind-btn-active",
+            "uses": 1
           }
         }
       }
     },
     "status": {
-      "danger": {
-        "$value": "#C42B21",
+      "error": {
+        "$value": "#C0453B",
         "$type": "color",
-        "$description": "danger text: 4.8:1 on --surface (U13 danger = red text on soft fill)",
+        "$description": "Errors, destructive links, alert dots, ball flash",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--danger"
+            "cssVar": "--red",
+            "uses": 22
           }
         }
       },
-      "danger-bg": {
-        "$value": "#C42B21",
+      "danger-solid": {
+        "$value": "#A83A31",
         "$type": "color",
-        "$description": "solid destructive fill, white text 5.7:1",
+        "$description": "Solid destructive button fill",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--danger-bg"
-          }
-        }
-      },
-      "on-danger": {
-        "$value": "#FFFFFF",
-        "$type": "color",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--on-danger"
+            "cssVar": "--red-bg",
+            "uses": 12
           }
         }
       },
       "warning": {
-        "$value": "#9A5B00",
+        "$value": "#96551F",
         "$type": "color",
-        "$description": "warning text: 5.4:1 on white",
+        "$description": "Warnings, hints, offline notes (sign-in pages still #C17A45)",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--warning"
+            "cssVar": "--clay",
+            "uses": 16
           }
         }
       },
       "warning-line": {
-        "$value": "#C77700",
+        "$value": "#8A5732",
         "$type": "color",
+        "$description": "Warning banner borders",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--warning-line"
-          }
-        }
-      },
-      "warning-tint": {
-        "$value": "rgba(255,184,28,0.16)",
-        "$type": "color",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--warning-tint"
+            "cssVar": "--clay-dim",
+            "uses": 3
           }
         }
       },
       "success": {
-        "$value": "#1E7F4A",
+        "$value": "#6FA287",
         "$type": "color",
-        "$description": "Sent, Saved: 5.0:1 on white",
+        "$description": "Sent / Saved confirmations (literal today)",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--success"
+            "uses": 3
           }
         }
       },
       "strike": {
-        "$value": "#188A4E",
+        "$value": "#2E8B57",
         "$type": "color",
-        "$description": "strike flash; white letter 4.4:1 (large text)",
+        "$description": "Strike flash on the grid (literal today)",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--strike"
-          }
-        }
-      },
-      "ball": {
-        "$value": "#E0443A",
-        "$type": "color",
-        "$description": "ball flash; white letter 4.2:1 (large text)",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--ball"
-          }
-        }
-      },
-      "flash-fg": {
-        "$value": "#FFFFFF",
-        "$type": "color",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--flash-fg"
-          }
-        }
-      },
-      "rank-1": {
-        "$value": "{color.accent.accent}",
-        "$type": "color",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--rank-1"
-          }
-        }
-      },
-      "rank-2": {
-        "$value": "#7C8B85",
-        "$type": "color",
-        "$description": "3.6:1, a medal mark, not text",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--rank-2"
-          }
-        }
-      },
-      "rank-3": {
-        "$value": "#A8621F",
-        "$type": "color",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--rank-3"
+            "uses": 1
           }
         }
       }
     },
-    "overlay": {
-      "scrim": {
-        "$value": "rgba(3,13,9,0.60)",
+    "rank": {
+      "gold": {
+        "$value": "{color.accent.default}",
         "$type": "color",
+        "$description": "Leaderboard 1st",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--scrim"
+            "cssVar": "--gold"
           }
         }
       },
-      "dock-bg": {
-        "$value": "rgba(6,26,18,0.82)",
+      "silver": {
+        "$value": "#7C8B85",
         "$type": "color",
-        "$description": "coach dock, 14px blur",
+        "$description": "Leaderboard 2nd",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--dock-bg"
+            "cssVar": "--silver"
           }
         }
       },
-      "dock-fg": {
-        "$value": "rgba(255,255,255,0.80)",
+      "bronze": {
+        "$value": "#A8621F",
         "$type": "color",
+        "$description": "Leaderboard 3rd",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--dock-fg"
-          }
-        }
-      },
-      "dock-pill": {
-        "$value": "rgba(255,255,255,0.16)",
-        "$type": "color",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--dock-pill"
+            "cssVar": "--bronze"
           }
         }
       }
     },
     "pitch": {
-      "pitch-1": {
-        "$value": "#FFB81C",
+      "baseball": {
+        "1": {
+          "$value": "#E8A83D",
+          "$type": "color",
+          "$description": "Pitch-type slot 1 (baseball). Must match send-session-report/helpers.ts"
+        },
+        "2": {
+          "$value": "#6FA287",
+          "$type": "color",
+          "$description": "Pitch-type slot 2 (baseball). Must match send-session-report/helpers.ts"
+        },
+        "3": {
+          "$value": "#C17A45",
+          "$type": "color",
+          "$description": "Pitch-type slot 3 (baseball). Must match send-session-report/helpers.ts"
+        },
+        "4": {
+          "$value": "#C0453B",
+          "$type": "color",
+          "$description": "Pitch-type slot 4 (baseball). Must match send-session-report/helpers.ts"
+        },
+        "5": {
+          "$value": "#7C9CBF",
+          "$type": "color",
+          "$description": "Pitch-type slot 5 (baseball). Must match send-session-report/helpers.ts"
+        },
+        "6": {
+          "$value": "#B98CCB",
+          "$type": "color",
+          "$description": "Pitch-type slot 6 (baseball). Must match send-session-report/helpers.ts"
+        },
+        "7": {
+          "$value": "#D4C15B",
+          "$type": "color",
+          "$description": "Pitch-type slot 7 (baseball). Must match send-session-report/helpers.ts"
+        },
+        "8": {
+          "$value": "#4FA8A8",
+          "$type": "color",
+          "$description": "Pitch-type slot 8 (baseball). Must match send-session-report/helpers.ts"
+        }
+      },
+      "softball": {
+        "1": {
+          "$value": "#E27BA2",
+          "$type": "color",
+          "$description": "Pitch-type slot 1 (softball). Must match send-session-report/helpers.ts"
+        },
+        "2": {
+          "$value": "#7FB8E0",
+          "$type": "color",
+          "$description": "Pitch-type slot 2 (softball). Must match send-session-report/helpers.ts"
+        },
+        "3": {
+          "$value": "#6C5B7B",
+          "$type": "color",
+          "$description": "Pitch-type slot 3 (softball). Must match send-session-report/helpers.ts"
+        },
+        "4": {
+          "$value": "#F6B26B",
+          "$type": "color",
+          "$description": "Pitch-type slot 4 (softball). Must match send-session-report/helpers.ts"
+        },
+        "5": {
+          "$value": "#4FA3A5",
+          "$type": "color",
+          "$description": "Pitch-type slot 5 (softball). Must match send-session-report/helpers.ts"
+        },
+        "6": {
+          "$value": "#9B8ADB",
+          "$type": "color",
+          "$description": "Pitch-type slot 6 (softball). Must match send-session-report/helpers.ts"
+        },
+        "7": {
+          "$value": "#B36B5E",
+          "$type": "color",
+          "$description": "Pitch-type slot 7 (softball). Must match send-session-report/helpers.ts"
+        },
+        "8": {
+          "$value": "#8C8C8C",
+          "$type": "color",
+          "$description": "Pitch-type slot 8 (softball). Must match send-session-report/helpers.ts"
+        }
+      }
+    },
+    "field": {
+      "fence": {
+        "$value": "#B9D1C4",
         "$type": "color",
+        "$description": "Live Game field",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--pitch-1"
+            "cssVar": "--gg-fence"
           }
         }
       },
-      "pitch-2": {
-        "$value": "#22B573",
+      "grass": {
+        "$value": "#C7DCBD",
         "$type": "color",
+        "$description": "Live Game field",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--pitch-2"
+            "cssVar": "--gg-grass"
           }
         }
       },
-      "pitch-3": {
-        "$value": "#FF6B35",
+      "infield": {
+        "$value": "#B4C8AC",
         "$type": "color",
+        "$description": "Live Game field",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--pitch-3"
+            "cssVar": "--gg-infield"
           }
         }
       },
-      "pitch-4": {
-        "$value": "#E63946",
+      "dirt": {
+        "$value": "#C9A97C",
         "$type": "color",
+        "$description": "Live Game field",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--pitch-4"
+            "cssVar": "--gg-dirt"
           }
         }
       },
-      "pitch-5": {
-        "$value": "#3D8BFF",
+      "mound": {
+        "$value": "#B8956A",
         "$type": "color",
+        "$description": "Live Game field",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--pitch-5"
+            "cssVar": "--gg-mound"
           }
         }
       },
-      "pitch-6": {
-        "$value": "#B15CFF",
+      "ink": {
+        "$value": "#17261D",
         "$type": "color",
+        "$description": "Text on the field",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--pitch-6"
+            "cssVar": "--gg-ink"
           }
         }
       },
-      "pitch-7": {
-        "$value": "#F2E14C",
+      "muted": {
+        "$value": "#5B6B61",
         "$type": "color",
+        "$description": "Captions on the field",
         "$extensions": {
           "com.knuckleball": {
-            "cssVar": "--pitch-7"
+            "cssVar": "--gg-muted"
           }
         }
       },
-      "pitch-8": {
-        "$value": "#00B8C4",
+      "stripe-fair-a": {
+        "$value": "#8CBA5A",
         "$type": "color",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--pitch-8"
-          }
-        }
+        "$description": "Mower stripe, fair (SVG literal)"
+      },
+      "stripe-fair-b": {
+        "$value": "#6FA548",
+        "$type": "color",
+        "$description": "Mower stripe, fair (SVG literal)"
+      },
+      "stripe-foul-a": {
+        "$value": "#60963C",
+        "$type": "color",
+        "$description": "Mower stripe, foul (SVG literal)"
+      },
+      "stripe-foul-b": {
+        "$value": "#548A35",
+        "$type": "color",
+        "$description": "Mower stripe, foul (SVG literal)"
+      },
+      "base-on": {
+        "$value": "#F4C430",
+        "$type": "color",
+        "$description": "Occupied base (literal)"
       }
     }
   },
   "font": {
     "family": {
-      "font-display": {
+      "display": {
         "$value": [
-          "Big Shoulders Display",
-          "Archivo",
-          "Arial Narrow",
+          "Teko",
           "sans-serif"
         ],
         "$type": "fontFamily",
-        "$description": "headings, names, big numbers, flash letters, uniform numbers",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--font-display"
-          }
-        }
+        "$description": "Numbers and headings"
       },
-      "font-sans": {
+      "sans": {
         "$value": [
-          "Archivo",
+          "IBM Plex Sans",
+          "sans-serif"
+        ],
+        "$type": "fontFamily",
+        "$description": "UI and body"
+      },
+      "mono": {
+        "$value": [
+          "IBM Plex Mono",
+          "monospace"
+        ],
+        "$type": "fontFamily",
+        "$description": "Data values"
+      },
+      "wordmark": {
+        "$value": [
+          "Black Ops One",
+          "Teko",
+          "sans-serif"
+        ],
+        "$type": "fontFamily",
+        "$description": "KNUCKLEBALL wordmark only"
+      },
+      "report": {
+        "$value": [
+          "Georgia",
+          "Times New Roman",
+          "serif"
+        ],
+        "$type": "fontFamily",
+        "$description": "Session report only (off-system)"
+      },
+      "system": {
+        "$value": [
           "-apple-system",
           "BlinkMacSystemFont",
           "Segoe UI",
@@ -629,781 +647,829 @@
           "sans-serif"
         ],
         "$type": "fontFamily",
-        "$description": "text, labels, buttons",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--font-sans"
-          }
-        }
+        "$description": "report.html top bar only (off-system)"
+      }
+    },
+    "weight": {
+      "regular": {
+        "$value": 400,
+        "$type": "fontWeight"
       },
-      "font-mono": {
-        "$value": "{font.family.font-sans}",
-        "$type": "fontFamily",
-        "$description": "D1 name kept: aligned digits now use Archivo with tabular figures (class .tnum)",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--font-mono"
-          }
-        }
+      "medium": {
+        "$value": 500,
+        "$type": "fontWeight"
       },
-      "font-wordmark": {
-        "$value": [
-          "Black Ops One",
-          "Big Shoulders Display",
-          "sans-serif"
-        ],
-        "$type": "fontFamily",
-        "$description": "KNUCKLEBALL only",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--font-wordmark"
-          }
-        }
+      "semibold": {
+        "$value": 600,
+        "$type": "fontWeight"
+      },
+      "bold": {
+        "$value": 700,
+        "$type": "fontWeight"
+      },
+      "black": {
+        "$value": 800,
+        "$type": "fontWeight"
       }
     },
     "size": {
-      "t-64": {
-        "$value": "64px",
-        "$type": "dimension",
-        "$description": "index \"Which sport?\" only",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--t-64"
-          }
-        }
-      },
-      "t-44": {
-        "$value": "44px",
-        "$type": "dimension",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--t-44"
-          }
-        }
-      },
-      "t-32": {
-        "$value": "32px",
-        "$type": "dimension",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--t-32"
-          }
-        }
-      },
-      "t-24": {
-        "$value": "24px",
-        "$type": "dimension",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--t-24"
-          }
-        }
-      },
-      "t-20": {
-        "$value": "20px",
-        "$type": "dimension",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--t-20"
-          }
-        }
-      },
-      "t-16": {
-        "$value": "16px",
-        "$type": "dimension",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--t-16"
-          }
-        }
-      },
-      "t-14": {
-        "$value": "14px",
-        "$type": "dimension",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--t-14"
-          }
-        }
-      },
-      "t-12": {
-        "$value": "12px",
-        "$type": "dimension",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--t-12"
-          }
-        }
-      },
-      "t-10": {
+      "10": {
         "$value": "10px",
         "$type": "dimension",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--t-10"
-          }
-        }
+        "$description": "Labels, badges (60 rules)"
+      },
+      "11": {
+        "$value": "11px",
+        "$type": "dimension",
+        "$description": "Sign-in labels"
+      },
+      "11-5": {
+        "$value": "11.5px",
+        "$type": "dimension",
+        "$description": "Footers"
+      },
+      "12": {
+        "$value": "12px",
+        "$type": "dimension",
+        "$description": "UI default in the app (94 rules)"
+      },
+      "12-5": {
+        "$value": "12.5px",
+        "$type": "dimension",
+        "$description": "Error text"
+      },
+      "13": {
+        "$value": "13px",
+        "$type": "dimension",
+        "$description": "Sign-in body (63 rules)"
+      },
+      "13-5": {
+        "$value": "13.5px",
+        "$type": "dimension"
+      },
+      "14": {
+        "$value": "14px",
+        "$type": "dimension",
+        "$description": "Body (61 rules)"
+      },
+      "15": {
+        "$value": "15px",
+        "$type": "dimension"
+      },
+      "15-5": {
+        "$value": "15.5px",
+        "$type": "dimension"
+      },
+      "16": {
+        "$value": "16px",
+        "$type": "dimension",
+        "$description": "Phone controls"
+      },
+      "18": {
+        "$value": "18px",
+        "$type": "dimension"
+      },
+      "19": {
+        "$value": "19px",
+        "$type": "dimension",
+        "$description": "Report and policy h2"
+      },
+      "20": {
+        "$value": "20px",
+        "$type": "dimension",
+        "$description": "Small stat numbers"
+      },
+      "22": {
+        "$value": "22px",
+        "$type": "dimension",
+        "$description": "Sign-in wordmark"
+      },
+      "24": {
+        "$value": "24px",
+        "$type": "dimension",
+        "$description": "Stat numbers, wordmark in app"
+      },
+      "26": {
+        "$value": "26px",
+        "$type": "dimension"
+      },
+      "28": {
+        "$value": "28px",
+        "$type": "dimension",
+        "$description": "Report h1"
+      },
+      "30": {
+        "$value": "30px",
+        "$type": "dimension"
+      },
+      "32": {
+        "$value": "32px",
+        "$type": "dimension",
+        "$description": "Stat readouts"
+      },
+      "34": {
+        "$value": "34px",
+        "$type": "dimension",
+        "$description": "Sign-in titles"
+      },
+      "36": {
+        "$value": "36px",
+        "$type": "dimension"
+      },
+      "38": {
+        "$value": "38px",
+        "$type": "dimension",
+        "$description": "Sign-in titles"
+      },
+      "40": {
+        "$value": "40px",
+        "$type": "dimension",
+        "$description": "Policy h1"
+      },
+      "42": {
+        "$value": "42px",
+        "$type": "dimension"
+      },
+      "44": {
+        "$value": "44px",
+        "$type": "dimension",
+        "$description": "Pitcher name"
+      },
+      "64": {
+        "$value": "64px",
+        "$type": "dimension",
+        "$description": "Landing title"
       }
     },
     "lineHeight": {
-      "lh-tight": {
-        "$value": 1.0,
-        "$type": "number",
-        "$description": "display and numbers",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--lh-tight"
-          }
-        }
+      "none": {
+        "$value": 1,
+        "$type": "number"
       },
-      "lh-ui": {
+      "tight": {
         "$value": 1.2,
-        "$type": "number",
-        "$description": "buttons, labels, one-line UI",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--lh-ui"
-          }
-        }
+        "$type": "number"
       },
-      "lh-body": {
+      "body": {
+        "$value": 1.45,
+        "$type": "number"
+      },
+      "relaxed": {
         "$value": 1.5,
-        "$type": "number",
-        "$description": "running text",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--lh-body"
-          }
-        }
+        "$type": "number"
+      },
+      "long": {
+        "$value": 1.6,
+        "$type": "number"
       }
     },
     "letterSpacing": {
-      "tr-display": {
+      "display": {
         "$value": "0.01em",
-        "$type": "dimension",
-        "$description": "Big Shoulders, uppercase",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--tr-display"
-          }
-        }
+        "$type": "dimension"
       },
-      "tr-label": {
+      "button": {
+        "$value": "0.02em",
+        "$type": "dimension"
+      },
+      "meta": {
+        "$value": "0.06em",
+        "$type": "dimension"
+      },
+      "label": {
         "$value": "0.1em",
-        "$type": "dimension",
-        "$description": "uppercase labels",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--tr-label"
-          }
-        }
+        "$type": "dimension"
       },
-      "tr-tag": {
-        "$value": "0.14em",
-        "$type": "dimension",
-        "$description": "slanted section tags",
-        "$extensions": {
-          "com.knuckleball": {
-            "cssVar": "--tr-tag"
-          }
-        }
+      "tagline": {
+        "$value": "0.16em",
+        "$type": "dimension"
       }
+    }
+  },
+  "typography": {
+    "display-xl": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.display}",
+        "fontSize": "64px",
+        "fontWeight": 600,
+        "lineHeight": 1,
+        "letterSpacing": "0.01em"
+      },
+      "$description": "Landing title"
+    },
+    "display-lg": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.display}",
+        "fontSize": "44px",
+        "fontWeight": 600,
+        "lineHeight": 1,
+        "letterSpacing": "0"
+      },
+      "$description": "Pitcher name header"
+    },
+    "display-md": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.display}",
+        "fontSize": "38px",
+        "fontWeight": 600,
+        "lineHeight": 1,
+        "letterSpacing": "0.01em"
+      },
+      "$description": "Sign-in titles"
+    },
+    "stat-lg": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.display}",
+        "fontSize": "32px",
+        "fontWeight": 400,
+        "lineHeight": 1,
+        "letterSpacing": "0"
+      },
+      "$description": "Stat readouts"
+    },
+    "stat-md": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.display}",
+        "fontSize": "24px",
+        "fontWeight": 400,
+        "lineHeight": 1,
+        "letterSpacing": "0"
+      },
+      "$description": "Pitch counter, session meta"
+    },
+    "wordmark": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.wordmark}",
+        "fontSize": "24px",
+        "fontWeight": 400,
+        "lineHeight": 1,
+        "letterSpacing": "0.02em"
+      },
+      "$description": "KNUCKLEBALL"
+    },
+    "body-lg": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.sans}",
+        "fontSize": "16px",
+        "fontWeight": 700,
+        "lineHeight": 1.2,
+        "letterSpacing": "0"
+      },
+      "$description": "Phone session controls"
+    },
+    "body": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.sans}",
+        "fontSize": "14px",
+        "fontWeight": 400,
+        "lineHeight": 1.45,
+        "letterSpacing": "0"
+      },
+      "$description": "Body text, inputs"
+    },
+    "body-sm": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.sans}",
+        "fontSize": "13px",
+        "fontWeight": 400,
+        "lineHeight": 1.5,
+        "letterSpacing": "0"
+      },
+      "$description": "Sign-in body"
+    },
+    "ui": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.sans}",
+        "fontSize": "12px",
+        "fontWeight": 600,
+        "lineHeight": 1.2,
+        "letterSpacing": "0"
+      },
+      "$description": "Buttons, tabs, meta"
+    },
+    "label": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.sans}",
+        "fontSize": "10px",
+        "fontWeight": 600,
+        "lineHeight": 1.2,
+        "letterSpacing": "0.1em"
+      },
+      "$description": "Uppercase field and stat labels"
+    },
+    "data": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.mono}",
+        "fontSize": "16px",
+        "fontWeight": 600,
+        "lineHeight": 1,
+        "letterSpacing": "0"
+      },
+      "$description": "Velocity cells, leaderboard values"
+    },
+    "report-h1": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.family.report}",
+        "fontSize": "28px",
+        "fontWeight": 700,
+        "lineHeight": 1.5,
+        "letterSpacing": "0"
+      },
+      "$description": "Session report title"
+    }
+  },
+  "space": {
+    "2": {
+      "$value": "2px",
+      "$type": "dimension",
+      "$description": "35 uses"
+    },
+    "4": {
+      "$value": "4px",
+      "$type": "dimension",
+      "$description": "91 uses"
+    },
+    "6": {
+      "$value": "6px",
+      "$type": "dimension",
+      "$description": "109 uses"
+    },
+    "8": {
+      "$value": "8px",
+      "$type": "dimension",
+      "$description": "126 uses"
+    },
+    "10": {
+      "$value": "10px",
+      "$type": "dimension",
+      "$description": "79 uses"
+    },
+    "12": {
+      "$value": "12px",
+      "$type": "dimension",
+      "$description": "64 uses"
+    },
+    "14": {
+      "$value": "14px",
+      "$type": "dimension",
+      "$description": "70 uses"
+    },
+    "16": {
+      "$value": "16px",
+      "$type": "dimension",
+      "$description": "44 uses"
+    },
+    "18": {
+      "$value": "18px",
+      "$type": "dimension",
+      "$description": "20 uses"
+    },
+    "20": {
+      "$value": "20px",
+      "$type": "dimension",
+      "$description": "35 uses"
+    },
+    "24": {
+      "$value": "24px",
+      "$type": "dimension",
+      "$description": "26 uses"
+    },
+    "32": {
+      "$value": "32px",
+      "$type": "dimension",
+      "$description": "6 uses"
+    },
+    "40": {
+      "$value": "40px",
+      "$type": "dimension",
+      "$description": "3 uses"
     }
   },
   "radius": {
-    "radius-cell": {
-      "$value": "4px",
+    "dot": {
+      "$value": "2px",
       "$type": "dimension",
-      "$description": "grid, field and scorebook cells",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--radius-cell"
-        }
-      }
+      "$description": "Diamond and legend dots"
     },
-    "radius-segment": {
-      "$value": "9px",
+    "cell": {
+      "$value": "3px",
       "$type": "dimension",
-      "$description": "a segment inside a tray",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--radius-segment"
-        }
-      }
+      "$description": "Strike-zone cells (Live Game and scorebook: 4px)"
     },
-    "radius-control": {
+    "input": {
+      "$value": "5px",
+      "$type": "dimension",
+      "$description": "App text inputs"
+    },
+    "control": {
+      "$value": "6px",
+      "$type": "dimension",
+      "$description": "App buttons, selects, roster rows (sign-in button: 7px)"
+    },
+    "tile": {
+      "$value": "8px",
+      "$type": "dimension",
+      "$description": "Banners, info boxes, velocity strip (Live Game buttons: 9px)"
+    },
+    "card": {
+      "$value": "10px",
+      "$type": "dimension",
+      "$description": "Panels, session cards, brand strip"
+    },
+    "menu": {
       "$value": "12px",
       "$type": "dimension",
-      "$description": "buttons, trays, inputs, cards, menus, sheets' top corners",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--radius-control"
-        }
-      }
+      "$description": "Account menu, chooser buttons, dock items"
     },
-    "radius-dock": {
+    "modal": {
+      "$value": "14px",
+      "$type": "dimension",
+      "$description": "Sign-in card, sport cards, modal"
+    },
+    "sheet": {
+      "$value": "16px",
+      "$type": "dimension",
+      "$description": "Phone bottom sheet, top corners only"
+    },
+    "dock": {
       "$value": "18px",
       "$type": "dimension",
-      "$description": "coach dock",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--radius-dock"
-        }
-      }
+      "$description": "Coach dock"
     },
-    "radius-pill": {
+    "badge": {
+      "$value": "20px",
+      "$type": "dimension",
+      "$description": "Status badges"
+    },
+    "chip": {
+      "$value": "22px",
+      "$type": "dimension",
+      "$description": "Pitch-type chips, toggles"
+    },
+    "pill": {
       "$value": "999px",
       "$type": "dimension",
-      "$description": "badges",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--radius-pill"
-        }
-      }
+      "$description": "Account button, batter pill"
     },
-    "radius-circle": {
+    "circle": {
       "$value": "50%",
       "$type": "dimension",
-      "$description": "avatars, dots",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--radius-circle"
-        }
-      }
-    },
-    "cut": {
-      "$value": "28px",
-      "$type": "dimension",
-      "$description": "height of the angled edge under the sign-in header and dark bands",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--cut"
-        }
-      }
+      "$description": "Avatars, dots"
     }
   },
   "shadow": {
-    "shadow-segment": {
+    "card": {
+      "$type": "shadow",
       "$value": {
-        "color": "rgba(0,0,0,0.18)",
+        "color": "rgba(15,36,27,0.06)",
         "offsetX": "0px",
         "offsetY": "1px",
         "blur": "3px",
         "spread": "0px"
       },
-      "$type": "shadow",
-      "$description": "selected segment (U13)",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--shadow-segment"
-        }
-      }
+      "$description": "Panels, session cards"
     },
-    "shadow-pop": {
+    "raised": {
+      "$type": "shadow",
       "$value": {
-        "color": "rgba(7,20,15,0.22)",
+        "color": "rgba(15,36,27,0.15)",
+        "offsetX": "0px",
+        "offsetY": "2px",
+        "blur": "6px",
+        "spread": "0px"
+      },
+      "$description": "Chooser and Live Game buttons"
+    },
+    "popover": {
+      "$type": "shadow",
+      "$value": {
+        "color": "rgba(15,36,27,0.22)",
         "offsetX": "0px",
         "offsetY": "10px",
         "blur": "26px",
         "spread": "0px"
       },
-      "$type": "shadow",
-      "$description": "menus, Live Game panel",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--shadow-pop"
-        }
-      }
+      "$description": "Account menu"
     },
-    "shadow-modal": {
+    "panel": {
+      "$type": "shadow",
       "$value": {
-        "color": "rgba(7,20,15,0.35)",
+        "color": "rgba(15,36,27,0.28)",
+        "offsetX": "0px",
+        "offsetY": "10px",
+        "blur": "26px",
+        "spread": "0px"
+      },
+      "$description": "Live Game drop-down"
+    },
+    "modal": {
+      "$type": "shadow",
+      "$value": {
+        "color": "rgba(15,36,27,0.35)",
         "offsetX": "0px",
         "offsetY": "8px",
         "blur": "32px",
         "spread": "0px"
       },
+      "$description": "Profile modal"
+    },
+    "dock": {
       "$type": "shadow",
-      "$description": "modal, one-time notices",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--shadow-modal"
-        }
-      }
-    }
-  },
-  "space": {
-    "s-2": {
-      "$value": "2px",
-      "$type": "dimension",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--s-2"
-        }
-      }
+      "$value": {
+        "color": "rgba(0,0,0,0.22)",
+        "offsetX": "0px",
+        "offsetY": "6px",
+        "blur": "24px",
+        "spread": "0px"
+      },
+      "$description": "Coach dock"
     },
-    "s-4": {
-      "$value": "4px",
-      "$type": "dimension",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--s-4"
-        }
-      }
-    },
-    "s-8": {
-      "$value": "8px",
-      "$type": "dimension",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--s-8"
-        }
-      }
-    },
-    "s-12": {
-      "$value": "12px",
-      "$type": "dimension",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--s-12"
-        }
-      }
-    },
-    "s-16": {
-      "$value": "16px",
-      "$type": "dimension",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--s-16"
-        }
-      }
-    },
-    "s-20": {
-      "$value": "20px",
-      "$type": "dimension",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--s-20"
-        }
-      }
-    },
-    "s-24": {
-      "$value": "24px",
-      "$type": "dimension",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--s-24"
-        }
-      }
-    },
-    "s-32": {
-      "$value": "32px",
-      "$type": "dimension",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--s-32"
-        }
-      }
-    },
-    "s-48": {
-      "$value": "48px",
-      "$type": "dimension",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--s-48"
-        }
-      }
-    },
-    "s-64": {
-      "$value": "64px",
-      "$type": "dimension",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--s-64"
-        }
-      }
-    }
-  },
-  "duration": {
-    "duration-fast": {
-      "$value": "150ms",
-      "$type": "duration",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--duration-fast"
-        }
-      }
-    },
-    "duration-base": {
-      "$value": "220ms",
-      "$type": "duration",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--duration-base"
-        }
-      }
-    },
-    "duration-slow": {
-      "$value": "250ms",
-      "$type": "duration",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--duration-slow"
-        }
-      }
-    },
-    "duration-flip": {
-      "$value": "325ms",
-      "$type": "duration",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--duration-flip"
-        }
-      }
-    },
-    "duration-flash": {
-      "$value": "1400ms",
-      "$type": "duration",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--duration-flash"
-        }
-      }
+    "notice": {
+      "$type": "shadow",
+      "$value": {
+        "color": "rgba(10,20,40,0.45)",
+        "offsetX": "0px",
+        "offsetY": "18px",
+        "blur": "50px",
+        "spread": "0px"
+      },
+      "$description": "One-time notices"
     }
   },
   "size": {
     "tap-min": {
       "$value": "44px",
       "$type": "dimension",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--tap-min"
-        }
-      }
+      "$description": "Minimum tap target"
     },
     "app-max": {
       "$value": "1320px",
-      "$type": "dimension",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--app-max"
-        }
-      }
+      "$type": "dimension"
     },
-    "sidebar-w": {
+    "sidebar": {
       "$value": "280px",
+      "$type": "dimension"
+    },
+    "auth-card": {
+      "$value": "380px",
+      "$type": "dimension"
+    },
+    "grid-cell": {
+      "$value": "52px",
       "$type": "dimension",
-      "$extensions": {
-        "com.knuckleball": {
-          "cssVar": "--sidebar-w"
-        }
-      }
+      "$description": "Desktop strike-zone cell"
+    },
+    "grid-gap": {
+      "$value": "3px",
+      "$type": "dimension"
+    }
+  },
+  "breakpoint": {
+    "small-phone": {
+      "$value": "360px",
+      "$type": "dimension"
+    },
+    "phone": {
+      "$value": "500px",
+      "$type": "dimension"
+    },
+    "tablet": {
+      "$value": "860px",
+      "$type": "dimension"
+    },
+    "report": {
+      "$value": "600px",
+      "$type": "dimension"
+    },
+    "walkthrough": {
+      "$value": "700px",
+      "$type": "dimension"
+    }
+  },
+  "duration": {
+    "fast": {
+      "$value": "150ms",
+      "$type": "duration"
+    },
+    "base": {
+      "$value": "220ms",
+      "$type": "duration"
+    },
+    "slow": {
+      "$value": "250ms",
+      "$type": "duration"
+    },
+    "flip-half": {
+      "$value": "325ms",
+      "$type": "duration"
+    },
+    "flash": {
+      "$value": "1400ms",
+      "$type": "duration"
     }
   },
   "theme": {
+    "$description": "Overrides. Apply on top of the base set. 'softball' = html[data-sport=softball] in the app. 'auth' = the 11 dark sign-in pages.",
     "softball": {
       "color": {
         "surface": {
-          "bg": {
-            "$value": "#F4F7FB",
-            "$type": "color",
-            "$description": "page background",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--bg"
-              }
-            }
+          "page": {
+            "$value": "#F7FAFD",
+            "$type": "color"
           },
-          "card-2": {
-            "$value": "#F8FAFD",
-            "$type": "color",
-            "$description": "nested wells, zebra rows",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--card-2"
-              }
-            }
+          "panel": {
+            "$value": "#EAF4FB",
+            "$type": "color"
           },
-          "surface": {
-            "$value": "#E6F1FA",
-            "$type": "color",
-            "$description": "soft fill: trays, secondary buttons, sidebar, strike zone, wells",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--surface"
-              }
-            }
+          "panel-line": {
+            "$value": "#BFDCEF",
+            "$type": "color"
           },
-          "surface-border": {
-            "$value": "#CFE0EE",
-            "$type": "color",
-            "$description": "rules, selected rows",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--surface-border"
-              }
-            }
+          "game-panel": {
+            "$value": "#F4F8FC",
+            "$type": "color"
+          }
+        },
+        "line": {
+          "default": {
+            "$value": "rgba(35,75,110,0.10)",
+            "$type": "color"
           },
-          "border": {
-            "$value": "rgba(11,37,64,0.10)",
-            "$type": "color",
-            "$description": "card and divider hairlines",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--border"
-              }
-            }
+          "strong": {
+            "$value": "rgba(35,75,110,0.22)",
+            "$type": "color"
           },
-          "border-strong": {
-            "$value": "rgba(11,37,64,0.24)",
-            "$type": "color",
-            "$description": "inputs, chart frames",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--border-strong"
-              }
-            }
+          "game": {
+            "$value": "#9FC3DD",
+            "$type": "color"
           }
         },
         "ink": {
-          "ink": {
-            "$value": "#0B2540",
-            "$type": "color",
-            "$description": "primary text: 17.2:1 on --bg",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--ink"
-              }
-            }
+          "default": {
+            "$value": "#234B6E",
+            "$type": "color"
           },
-          "ink-dim": {
-            "$value": "#2C4560",
-            "$type": "color",
-            "$description": "secondary text: 13.0:1 on white",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--ink-dim"
-              }
-            }
+          "dim": {
+            "$value": "#3A5A78",
+            "$type": "color"
           },
-          "ink-faint": {
-            "$value": "#5A6E84",
-            "$type": "color",
-            "$description": "labels, captions: 6.2:1 on white, 5.3:1 on --surface",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--ink-faint"
-              }
-            }
+          "faint": {
+            "$value": "#5F7A91",
+            "$type": "color"
           }
         },
         "brand": {
-          "brand-bg": {
-            "$value": "#0B2540",
-            "$type": "color",
-            "$description": "brand strip, status bars, sign-in header, dark bands",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--brand-bg"
-              }
-            }
+          "field": {
+            "$value": "#234B6E",
+            "$type": "color"
           },
-          "brand-bg-deep": {
-            "$value": "#06172A",
-            "$type": "color",
-            "$description": "scoreboard cells, footer, deepest band",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--brand-bg-deep"
-              }
-            }
+          "field-panel": {
+            "$value": "#2B5A82",
+            "$type": "color"
           },
-          "brand-bg-2": {
-            "$value": "#12345A",
-            "$type": "color",
-            "$description": "raised areas on dark",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--brand-bg-2"
-              }
-            }
+          "field-panel-2": {
+            "$value": "#336896",
+            "$type": "color"
           },
-          "brand-mid": {
-            "$value": "#1F5C99",
+          "chalk-dim": {
+            "$value": "#BCCBD8",
             "$type": "color",
-            "$description": "focus ring, links on light: 8.3:1 on white",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--brand-mid"
-              }
-            }
+            "$description": "App; sign-in pages use #C4D3E0"
           },
-          "brand-soft": {
-            "$value": "#8EC3EE",
+          "chalk-faint": {
+            "$value": "#8094A6",
             "$type": "color",
-            "$description": "avatars, secondary chart marks",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--brand-soft"
-              }
-            }
-          },
-          "on-dark-dim": {
-            "$value": "#C5D3E2",
-            "$type": "color",
-            "$description": "11.1:1 on --brand-bg",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--on-dark-dim"
-              }
-            }
-          },
-          "on-dark-faint": {
-            "$value": "#8A9BB0",
-            "$type": "color",
-            "$description": "5.9:1 on --brand-bg",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--on-dark-faint"
-              }
-            }
+            "$description": "App; sign-in pages use #9FB5C9"
           }
         },
         "accent": {
-          "accent": {
-            "$value": "#FF4F9A",
+          "default": {
+            "$value": "#F2A7C3",
             "$type": "color",
-            "$description": "primary action, selection, section tags. A fill: 1.8:1 as text on white, never text on light",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--accent"
-              }
-            }
+            "$description": "Fill only, never text on light"
           },
-          "accent-bright": {
-            "$value": "#FF79B3",
-            "$type": "color",
-            "$description": "hover on primary",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--accent-bright"
-              }
-            }
+          "bright": {
+            "$value": "#F7C3D7",
+            "$type": "color"
           },
-          "accent-ink": {
-            "$value": "#B0175A",
-            "$type": "color",
-            "$description": "accent-colored text on light: 5.9:1 on white",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--accent-ink"
-              }
-            }
-          },
-          "on-accent": {
-            "$value": "{color.ink.ink}",
-            "$type": "color",
-            "$description": "text on gold: 10.9:1",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--on-accent"
-              }
-            }
+          "game-gold": {
+            "$value": "#E98DB0",
+            "$type": "color"
           }
         },
-        "overlay": {
-          "scrim": {
-            "$value": "rgba(6,23,42,0.60)",
-            "$type": "color",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--scrim"
-              }
-            }
+        "action": {
+          "primary-bg": {
+            "$value": "#E27BA2",
+            "$type": "color"
           },
-          "dock-bg": {
-            "$value": "rgba(11,37,64,0.82)",
-            "$type": "color",
-            "$description": "coach dock, 14px blur",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--dock-bg"
-              }
-            }
+          "primary-fg": {
+            "$value": "#FFFFFF",
+            "$type": "color"
+          },
+          "primary-hover": {
+            "$value": "#D4688F",
+            "$type": "color"
+          },
+          "kind": {
+            "$value": "#E27BA2",
+            "$type": "color"
+          },
+          "kind-hover": {
+            "$value": "#D4688F",
+            "$type": "color"
+          },
+          "kind-active": {
+            "$value": "#C2567D",
+            "$type": "color"
           }
         },
-        "pitch": {
-          "pitch-1": {
-            "$value": "#FF4F9A",
-            "$type": "color",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--pitch-1"
-              }
-            }
+        "field": {
+          "fence": {
+            "$value": "#BFDCEF",
+            "$type": "color"
           },
-          "pitch-2": {
-            "$value": "#2F9BFF",
-            "$type": "color",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--pitch-2"
-              }
-            }
+          "grass": {
+            "$value": "#CFE4F5",
+            "$type": "color"
           },
-          "pitch-3": {
-            "$value": "#7A3FB8",
-            "$type": "color",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--pitch-3"
-              }
-            }
+          "infield": {
+            "$value": "#BCD7EC",
+            "$type": "color"
           },
-          "pitch-4": {
-            "$value": "#FF9F1C",
+          "ink": {
+            "$value": "#1B3550",
+            "$type": "color"
+          }
+        }
+      }
+    },
+    "auth": {
+      "color": {
+        "surface": {
+          "page": {
+            "$value": "{color.brand.field}",
             "$type": "color",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--pitch-4"
-              }
-            }
+            "$description": "Dark page with radial glows"
           },
-          "pitch-5": {
-            "$value": "#00A99D",
-            "$type": "color",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--pitch-5"
-              }
-            }
+          "card": {
+            "$value": "{color.brand.field-panel}",
+            "$type": "color"
+          }
+        },
+        "line": {
+          "default": {
+            "$value": "rgba(241,236,221,0.12)",
+            "$type": "color"
           },
-          "pitch-6": {
-            "$value": "#8E6CFF",
-            "$type": "color",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--pitch-6"
-              }
-            }
+          "strong": {
+            "$value": "rgba(241,236,221,0.22)",
+            "$type": "color"
+          }
+        },
+        "ink": {
+          "default": {
+            "$value": "{color.brand.chalk}",
+            "$type": "color"
           },
-          "pitch-7": {
-            "$value": "#D2553F",
-            "$type": "color",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--pitch-7"
-              }
-            }
+          "dim": {
+            "$value": "{color.brand.chalk-dim}",
+            "$type": "color"
           },
-          "pitch-8": {
-            "$value": "#7D8794",
+          "faint": {
+            "$value": "{color.brand.chalk-faint}",
+            "$type": "color"
+          }
+        },
+        "status": {
+          "warning": {
+            "$value": "#C17A45",
             "$type": "color",
-            "$extensions": {
-              "com.knuckleball": {
-                "cssVar": "--pitch-8"
-              }
-            }
+            "$description": "Pre-refresh value, still on these pages"
+          }
+        },
+        "glow": {
+          "a": {
+            "$value": "rgba(232,168,61,0.08)",
+            "$type": "color",
+            "$description": "Top-left radial glow"
+          },
+          "b": {
+            "$value": "rgba(193,122,69,0.08)",
+            "$type": "color",
+            "$description": "Bottom-right radial glow"
           }
         }
       }

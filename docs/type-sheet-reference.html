@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- The Knuckleball Type Sheet (Oct 9, 2026; counted from main v194) -- the D1 type reference. Snapshot: the app has
+     since moved to the 8-step scale (v195). Published as a claude.ai artifact; this copy is the GitHub reference. -->
+<title>Knuckleball Type Sheet</title>
+<link rel="stylesheet" href="../vendor/fonts/fonts.css">   <!-- self-hosted: nothing loads from other sites -->
+<style>
+  /* Layout: one reading column, Knuckleball's own colors and faces -- the brand strip on top, then the
+     four app faces as specimen cards, the size inventory as tables with a live sample of each size, the
+     reports, and the proposed eight-step scale. */
+  :root{
+    --bg:#F7FAF8; --card:#FFFFFF; --surface:#E8F3EC; --line:#CFE6D7;
+    --ink:#0F241B; --ink-dim:#2E4A40; --ink-faint:#527065;
+    --brand-bg:#0F241B; --brand-fg:#F1ECDD; --brand-dim:#B7C2B4;
+    --amber:#E8A83D; --amber-ink:#7A520F; --bar:#CFE6D7; --bar-hot:#E8A83D;
+    --f-mark:'Black Ops One','Teko',Impact,sans-serif;
+    --f-display:'Teko','Arial Narrow',sans-serif;
+    --f-body:'IBM Plex Sans',-apple-system,'Segoe UI',sans-serif;
+    --f-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+    --f-report:Georgia,'Times New Roman',serif;
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --bg:#0D1813; --card:#14231C; --surface:#1A2D24; --line:#2A4236;
+    --ink:#E6F0EA; --ink-dim:#C2D4CA; --ink-faint:#93AA9E;
+    --brand-bg:#060E0A; --brand-fg:#F1ECDD; --brand-dim:#9FB0A4;
+    --amber:#E8A83D; --amber-ink:#F0C27A; --bar:#2F4C3E; --bar-hot:#E8A83D; color-scheme:dark;
+  } }
+  :root[data-theme="dark"]{
+    --bg:#0D1813; --card:#14231C; --surface:#1A2D24; --line:#2A4236;
+    --ink:#E6F0EA; --ink-dim:#C2D4CA; --ink-faint:#93AA9E;
+    --brand-bg:#060E0A; --brand-fg:#F1ECDD; --brand-dim:#9FB0A4;
+    --amber:#E8A83D; --amber-ink:#F0C27A; --bar:#2F4C3E; --bar-hot:#E8A83D; color-scheme:dark;
+  }
+  *{ box-sizing:border-box; }
+  body{ background:var(--bg); color:var(--ink); font:15px/1.55 var(--f-body); padding-inline:16px; padding-block:20px 48px; }
+  .wrap{ max-width:880px; margin:0 auto; display:flex; flex-direction:column; gap:36px; }
+  h1,h2,h3{ text-wrap:balance; margin:0; }
+  h2{ font:600 34px/1 var(--f-display); letter-spacing:0.01em; }
+  h3{ font:600 15px/1.3 var(--f-body); }
+  p{ margin:0; max-width:65ch; }
+  .lede{ color:var(--ink-dim); }
+  .eyebrow{ font:600 11px/1 var(--f-body); letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint); }
+  section{ display:flex; flex-direction:column; gap:14px; }
+
+  .brand{ background:var(--brand-bg); color:var(--brand-fg); border-radius:14px; padding:22px 22px 20px; display:flex; flex-direction:column; gap:8px; }
+  .brand .mark{ font:400 clamp(30px, 7vw, 46px)/1 var(--f-mark); letter-spacing:0.02em; }
+  .brand .tag{ font:500 11px/1 var(--f-body); letter-spacing:0.14em; text-transform:uppercase; color:var(--brand-dim); }
+  .brand p{ color:var(--brand-dim); font-size:14px; margin-top:6px; }
+
+  .faces{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; }
+  .face{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px; min-width:0; }
+  .face .spec{ color:var(--ink); line-height:1.05; overflow-wrap:anywhere; }
+  .face .where{ font-size:13.5px; color:var(--ink-dim); }
+  .face .meta{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{ font:600 11px/1 var(--f-body); letter-spacing:0.04em; padding:5px 8px; border-radius:999px; background:var(--surface); color:var(--ink-dim); }
+
+  .stats{ display:flex; flex-wrap:wrap; gap:10px; }
+  .stat{ background:var(--surface); border-radius:12px; padding:12px 16px; display:flex; flex-direction:column; gap:2px; min-width:140px; flex:1; }
+  .stat b{ font:600 40px/1 var(--f-display); }
+  .stat span{ font-size:13px; color:var(--ink-dim); }
+
+  .table-scroll{ overflow-x:auto; border:1px solid var(--line); border-radius:12px; background:var(--card); }
+  table{ border-collapse:collapse; width:100%; min-width:560px; }
+  th, td{ text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  tr:last-child td{ border-bottom:0; }
+  th{ font:600 11px/1.2 var(--f-body); letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-faint); background:var(--surface); }
+  td.px{ font:600 13px/1 var(--f-mono); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  td.n{ font-variant-numeric:tabular-nums; white-space:nowrap; width:1%; }
+  td.sample{ color:var(--ink); white-space:nowrap; line-height:1.2; }
+  td.barcell{ width:34%; }
+  .bar{ height:8px; border-radius:4px; background:var(--bar); }
+  .bar.hot{ background:var(--bar-hot); }
+  tr.group td{ background:var(--bg); font:600 12px/1 var(--f-body); letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-faint); padding-top:12px; }
+  .half{ font:600 10px/1 var(--f-body); color:var(--amber-ink); border:1px solid var(--amber); border-radius:999px; padding:2px 6px; margin-left:6px; letter-spacing:0.04em; }
+
+  .ladder{ display:flex; flex-direction:column; gap:0; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .rung{ display:grid; grid-template-columns:64px minmax(0,1fr); gap:12px; align-items:baseline; padding:10px 14px; border-bottom:1px solid var(--line); }
+  .rung:last-child{ border-bottom:0; }
+  .rung .px{ font:600 13px/1 var(--f-mono); color:var(--ink-faint); font-variant-numeric:tabular-nums; }
+  .rung .ex{ min-width:0; overflow-wrap:anywhere; line-height:1.15; }
+  .rung .ex small{ display:block; font:400 12px/1.4 var(--f-body); color:var(--ink-faint); margin-top:4px; letter-spacing:0; text-transform:none; }
+
+  .note{ background:var(--surface); border-radius:12px; padding:14px 16px; font-size:14px; color:var(--ink-dim); }
+  .foot{ font-size:12.5px; color:var(--ink-faint); }
+  code{ font:500 0.92em var(--f-mono); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="brand">
+    <div class="tag">Type sheet · Oct 9 2026 · v194</div>
+    <div class="mark">KNUCKLEBALL</div>
+    <p>Every font the app and the emailed reports use today, where each one goes, and every font size in the code, counted from <code>bullpen-tracker.html</code> and the report templates.</p>
+  </header>
+
+  <section>
+    <div class="eyebrow">The faces</div>
+    <h2>Four fonts in the app, one in the reports</h2>
+    <p class="lede">The four app fonts are stored on knuckleballonline.com under <code>vendor/fonts/</code>, so nothing loads from another site and they work with no signal. This page loads the same fonts from Google Fonts to show them.</p>
+    <div class="faces">
+      <div class="face">
+        <div class="spec" style="font:400 34px/1 var(--f-mark)">KNUCKLEBALL</div>
+        <h3>Black Ops One</h3>
+        <div class="where">The wordmark in the top-left corner only: the app, sign-in and sign-up pages, the landing page. Not on privacy or terms yet (needs your approval).</div>
+        <div class="meta"><span class="chip">1 weight</span><span class="chip">Chosen by Joel, Oct 8</span></div>
+      </div>
+      <div class="face">
+        <div class="spec" style="font:600 40px/0.95 var(--f-display)">Russ Pedigo #12</div>
+        <h3>Teko</h3>
+        <div class="where">Headings and big numbers: the pitcher's name, "What will we be charting today?", uniform numbers, History stats, the pitch counter, the K / B flash, leaderboard ranks.</div>
+        <div class="meta"><span class="chip">400 · 500 · 600 · 700</span><span class="chip">Since the visual refresh</span></div>
+      </div>
+      <div class="face">
+        <div class="spec" style="font:500 20px/1.3 var(--f-body)">End session &amp; save</div>
+        <h3>IBM Plex Sans</h3>
+        <div class="where">The default for everything else: buttons, labels, roster names, forms, hints, notes, the coach dock.</div>
+        <div class="meta"><span class="chip">400 · 500 · 600 · 700</span><span class="chip">Page default</span></div>
+      </div>
+      <div class="face">
+        <div class="spec" style="font:600 24px/1.2 var(--f-mono)">84 mph · 7 · 62%</div>
+        <h3>IBM Plex Mono</h3>
+        <div class="where">Small numbers that should line up: zone numbers on the grid, velocity, leaderboard values, scorebook codes.</div>
+        <div class="meta"><span class="chip">400 · 500 · 600</span><span class="chip">Fixed width</span></div>
+      </div>
+      <div class="face">
+        <div class="spec" style="font:700 26px/1.15 var(--f-report)">Bullpen report</div>
+        <h3>Georgia</h3>
+        <div class="where">The emailed HTML session reports and the labels on their charts. Built into every device, so a frozen report looks the same years later without loading font files.</div>
+        <div class="meta"><span class="chip">System font</span><span class="chip">Reports only</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">The sizes</div>
+    <h2>30 sizes in the app, 12 in the reports</h2>
+    <p class="lede">No fixed list of sizes was ever set. Each screen got the size that looked right when it was built, so many sit half a pixel apart. The bar shows how many places in the code use each size; 14px is the most common.</p>
+    <div class="stats">
+      <div class="stat"><b>30</b><span>sizes in the charting app</span></div>
+      <div class="stat"><b>7</b><span>of them are half-pixel steps</span></div>
+      <div class="stat"><b>12</b><span>sizes in the reports</span></div>
+      <div class="stat"><b>8</b><span>sizes in the proposed set</span></div>
+    </div>
+
+    <h3>Charting app · <code>bullpen-tracker.html</code></h3>
+    <div class="table-scroll"><table id="app-sizes">
+      <thead><tr><th>Size</th><th>Sample, in IBM Plex Sans</th><th>Uses</th><th>How often</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+
+    <h3>Emailed reports · <code>send-session-report</code> templates</h3>
+    <div class="table-scroll"><table id="report-sizes">
+      <thead><tr><th>Size</th><th>Sample, in Georgia</th><th>Uses</th><th>How often</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <p class="foot">Reports also use one relative size (0.6em) for small superscripts, not listed. Report pages are frozen once sent, so a change to their sizes would only reach new reports.</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">A proposal, not built</div>
+    <h2>Eight sizes instead of thirty</h2>
+    <p class="lede">Every current size would move to the nearest step below. Nothing has changed in the app; this would be built on a branch with before and after screenshots on phone, iPad and laptop for you to approve.</p>
+    <div class="ladder">
+      <div class="rung"><span class="px">44px</span><span class="ex" style="font:600 44px/1 var(--f-display)">Russ Pedigo<small>Pitcher's name in the header (today 42–44)</small></span></div>
+      <div class="rung"><span class="px">32px</span><span class="ex" style="font:600 32px/1 var(--f-display)">What will we be charting today?<small>Page headings, big stat numbers (today 30–38)</small></span></div>
+      <div class="rung"><span class="px">24px</span><span class="ex" style="font:600 24px/1 var(--f-display)">#12 · 62%<small>Uniform numbers, flash letters, wordmark (today 22–28)</small></span></div>
+      <div class="rung"><span class="px">20px</span><span class="ex" style="font:600 20px/1.2 var(--f-body)">Section titles<small>Card and section titles, roster numbers (today 17–20)</small></span></div>
+      <div class="rung"><span class="px">16px</span><span class="ex" style="font:500 16px/1.3 var(--f-body)">End session &amp; save<small>Main buttons and form fields (today 15–16; 16 also stops iPhone zooming into a field)</small></span></div>
+      <div class="rung"><span class="px">14px</span><span class="ex" style="font:400 14px/1.4 var(--f-body)">Russ Pedigo · FB · CB · SL<small>Body text, roster names, notes (today 13.5–14.5)</small></span></div>
+      <div class="rung"><span class="px">12px</span><span class="ex" style="font:400 12px/1.4 var(--f-body)">Hints, captions, small labels<small>Today 11.5–13</small></span></div>
+      <div class="rung"><span class="px">10px</span><span class="ex" style="font:600 10px/1.4 var(--f-mono)">ZONE NUMBERS · TINY TAGS<small>Today 8–11</small></span></div>
+    </div>
+    <div class="note">Before building it, I'd check the 8–9.5px uses one by one. They sit inside the 5×5 grid and the field boxes, where 10px might not fit.</div>
+  </section>
+
+  <p class="foot">Counted on Oct 9 2026 from the code on main (v194): every <code>font-size</code> written in px in <code>bullpen-tracker.html</code>, and in <code>template.ts</code> + <code>template_game.ts</code> for reports.</p>
+</div>
+
+<script>
+  var APP = [[8,2],[8.5,1],[9,3],[9.5,2],[10,18],[10.5,7],[11,17],[11.5,18],[12,22],[12.5,21],[13,21],[13.5,5],[14,27],[14.5,2],[15,13],[16,9],[17,2],[18,3],[20,5],[22,5],[24,3],[26,2],[28,4],[30,3],[32,2],[34,1],[36,1],[38,1],[42,1],[44,1]];
+  var REPORT = [[10.5,1],[11,2],[11.5,2],[12,3],[12.5,1],[13,8],[14,1],[15,1],[19,1],[26,1],[28,1]];
+  function band(px){ return px < 10 ? 'Tiny · 8–9.5px' : px < 14 ? 'Small labels · 10–13.5px' : px < 18 ? 'Body text · 14–17px' : 'Headings and big numbers · 18–44px'; }
+  function fill(id, rows, face, grouped){
+    var max = Math.max.apply(null, rows.map(function(r){ return r[1]; }));
+    var top = rows.filter(function(r){ return r[1] === max; })[0][0];
+    var html = '', last = '';
+    rows.forEach(function(r){
+      var px = r[0], n = r[1];
+      if(grouped && band(px) !== last){ last = band(px); html += '<tr class="group"><td colspan="4">' + last + '</td></tr>'; }
+      var half = px % 1 ? '<span class="half">half step</span>' : '';
+      var sample = px >= 22 ? 'Russ Pedigo 12' : 'Russ Pedigo · FB · CB · 84 mph';
+      var style = 'font-family:' + face + ';font-size:' + px + 'px;' + (px >= 22 && face.indexOf('Teko') > -1 ? 'font-weight:600;' : '');
+      html += '<tr><td class="px">' + px + 'px' + half + '</td><td class="sample" style="' + style + '">' + sample + '</td><td class="n">' + n + '</td>' +
+        '<td class="barcell"><div class="bar' + (px === top ? ' hot' : '') + '" style="width:' + Math.max(4, Math.round(100 * n / max)) + '%"></div></td></tr>';
+    });
+    document.querySelector('#' + id + ' tbody').innerHTML = html;
+  }
+  fill('app-sizes', APP, "'IBM Plex Sans', -apple-system, sans-serif", true);
+  fill('report-sizes', REPORT, "Georgia, 'Times New Roman', serif", false);
+</script>
+
+</body>
+</html>

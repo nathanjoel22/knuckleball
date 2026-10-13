@@ -15,6 +15,21 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-13 · D2 (Broadcast · Big Shoulders rebrand, Stages A–D; with D1 Stage 1 already live) · **production**
+- **Branch / cache:** `d2-broadcast-rebrand` fast-forwarded to `main` · `kb-shell-v232` (production was v227). No database change.
+- **Edge Function:** `send-session-report` deployed to production (new reports in the D2 look, with their own `--kr-*` colors and fonts; new pitch palettes).
+- **What shipped:** the staging entries below for D2 Stages A, B, C (with the v232 review fixes) and D. Reviewed by Joel on staging before shipping.
+  - New colors, both sports.
+  - Big Shoulders Display + Archivo, self-hosted.
+  - The light sign-in pages under a dark angled header.
+  - Flat cards, scoreboard status bars, a dark grid frame.
+  - New session reports.
+  - Privacy / Terms colors, fonts and wordmark (approved).
+- **Frozen reports:** untouched; `rerender-reports` was not run or redeployed.
+- **Open items:**
+  - Joel's check on production after two reloads (phone and iPad, both sports): sign-in, charting, a new report, an old report link.
+  - The iPad-portrait perspective tray squeeze.
+
 ## 2026-10-13 · D2 Stage D (new session reports) · **staging**
 - **Branch:** `d2-broadcast-rebrand` (no page or cache change; `send-session-report` deployed to **staging only**).
 - **Built:**

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,92 +21,72 @@
     document.documentElement.setAttribute('data-sport', window.KB_SPORT);
   })();
 </script>
+<link rel="stylesheet" href="css/tokens.css">   <!-- D1: the design tokens, every page (Oct 13 2026) -->
 <link rel="stylesheet" href="buttons.css">   <!-- U13: shared button shapes (Joel, Oct 9 2026) -->
 <style>
   @import url('vendor/fonts/fonts.css');
 
-  :root{
-    --field-dark:#0F241B; --field-panel:#183527; --field-panel-2:#1F4230;
-    --chalk:#F1ECDD; --chalk-dim:#B7C2B4; --chalk-faint:#7C8C82;
-    --clay:#C17A45; --amber:#E8A83D; --amber-bright:#F5C365; --red:#C0453B;
-    --border:rgba(241,236,221,0.12); --border-strong:rgba(241,236,221,0.22);
-    --glow-a:rgba(232,168,61,0.08);
-    --glow-b:rgba(193,122,69,0.08);
-    --amber-rgb:232,168,61;
-  }
   /* S1: softball (docs/softball-theme-reference.html). Only variables change. */
-  html[data-sport="softball"]{
-    --field-dark:#234B6E;
-    --field-panel:#2B5A82;
-    --field-panel-2:#336896;
-    --chalk-dim:#C4D3E0;
-    --chalk-faint:#9FB5C9;
-    --amber:#F2A7C3;
-    --amber-bright:#F7C3D7;
-    --amber-rgb:242,167,195;
-    --glow-a:rgba(242,167,195,0.10);
-    --glow-b:rgba(127,184,224,0.10);
-  }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;}
   body{
-    background:var(--field-dark);
+    background:var(--bg);
     background-image:
       radial-gradient(circle at 15% 0%, var(--glow-a), transparent 40%),
       radial-gradient(circle at 85% 100%, var(--glow-b), transparent 45%);
-    color:var(--chalk); font-family:'IBM Plex Sans', sans-serif;
+    color:var(--ink); font-family:'IBM Plex Sans', sans-serif;
     min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
   }
-  ::selection{ background:var(--amber); color:var(--field-dark); }
+  ::selection{ background:var(--accent); color:var(--brand-bg); }
   .display{ font-family:'Teko', sans-serif; font-weight:600; letter-spacing:0.01em; }
-  a{ color:var(--chalk-faint); text-decoration:none; font-size:13px; }
-  a:hover{ color:var(--chalk); }
+  a{ color:var(--ink-faint); text-decoration:none; font-size:13px; }
+  a:hover{ color:var(--ink); }
   button{ font-family:inherit; cursor:pointer; }
   input{ font-family:inherit; }
-  button:focus-visible, input:focus-visible, a:focus-visible{ outline:2px solid var(--amber-bright); outline-offset:3px; }
+  button:focus-visible, input:focus-visible, a:focus-visible{ outline:2px solid var(--accent-bright); outline-offset:3px; }
   @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
 
   .card{
-    width:100%; max-width:400px; background:var(--field-panel); border:1.5px solid var(--border-strong);
+    width:100%; max-width:400px; background:var(--card); border:1.5px solid var(--border-strong);
     border-radius:14px; padding:38px 34px; display:flex; flex-direction:column; gap:20px;
   }
   .brand-block{ display:flex; flex-direction:column; gap:4px; }
   .brand{ display:flex; align-items:baseline; gap:8px; }
   /* Joel, Oct 8: the wordmark is KNUCKLEBALL in Black Ops One -- no diamond, no period */
   .brand-word{ font-family:'Black Ops One', 'Teko', sans-serif !important; font-weight:400 !important; letter-spacing:0.02em; white-space:nowrap; }
-  .brand-mark{ width:10px; height:10px; border-radius:2px; background:var(--amber); transform:rotate(45deg); margin-bottom:3px; }
+  .brand-mark{ width:10px; height:10px; border-radius:2px; background:var(--accent); transform:rotate(45deg); margin-bottom:3px; }
   .brand h1{ font-size:22px; line-height:1; margin:0; letter-spacing:0.02em; }
-  .brand span{ color:var(--amber); }
-  .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:0.16em; color:var(--chalk-faint); }
+  .brand span{ color:var(--accent); }
+  .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:0.16em; color:var(--ink-faint); }
   h2.display{ font-size:34px; margin:0; line-height:1; }
-  p.sub{ font-size:13px; color:var(--chalk-dim); margin:0; }
+  p.sub{ font-size:13px; color:var(--ink-dim); margin:0; }
 
   .field{ display:flex; flex-direction:column; gap:6px; }
-  .field-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--chalk-faint); }
+  .field-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-faint); }
   .text-input{
-    background:var(--field-dark); border:1px solid var(--border-strong); border-radius:6px;
-    color:var(--chalk); padding:11px 12px; font-size:14px; width:100%;
+    background:var(--bg); border:1px solid var(--border-strong); border-radius:6px;
+    color:var(--ink); padding:11px 12px; font-size:14px; width:100%;
   }
-  .text-input::placeholder{ color:var(--chalk-faint); }
-  .text-input:focus{ border-color:var(--amber); }
+  .text-input::placeholder{ color:var(--ink-faint); }
+  .text-input:focus{ border-color:var(--accent); }
 
 
-  .error-msg{ font-size:12.5px; color:var(--red); min-height:16px; }
-  .info-msg{ font-size:13px; color:var(--chalk-dim); line-height:1.5; background:var(--field-panel-2); border:1px solid var(--border-strong); border-radius:8px; padding:14px; }
+  .error-msg{ font-size:12.5px; color:var(--danger); min-height:16px; }
+  .info-msg{ font-size:13px; color:var(--ink-dim); line-height:1.5; background:var(--card-2); border:1px solid var(--border-strong); border-radius:8px; padding:14px; }
 
   .foot-row{ display:flex; justify-content:space-between; align-items:center; }
   .step-hidden{ display:none; }
 
   /* P1-10: age question, guardian email, terms agreement */
   .age-options{ display:flex; flex-direction:column; gap:6px; margin-top:6px; }
-  .age-opt{ display:flex; align-items:center; gap:10px; font-size:14px; color:var(--chalk); cursor:pointer; min-height:34px; }
-  .age-opt input, .terms-check input{ width:18px; height:18px; accent-color:var(--amber); flex:0 0 auto; margin:0; }
-  .age-note{ font-size:12px; color:var(--chalk-dim); margin:6px 0 0; line-height:1.45; }
-  .age-stop{ font-size:13px; color:var(--chalk); background:var(--field-panel-2); border:1px solid var(--border-strong); border-radius:8px; padding:10px 12px; margin:0; line-height:1.45; }
-  .age-stop a{ color:var(--chalk); text-decoration:underline; font-size:13px; }   /* S4 B: under 13 -> parent account */
-  .terms-check{ display:flex; align-items:flex-start; gap:10px; font-size:13px; color:var(--chalk-dim); line-height:1.45; cursor:pointer; }
-  .terms-check a{ color:var(--chalk); text-decoration:underline; font-size:13px; }
-  .site-footer{ font-size:11.5px; color:var(--chalk-faint); text-align:center; margin-top:4px; }
+  .age-opt{ display:flex; align-items:center; gap:10px; font-size:14px; color:var(--ink); cursor:pointer; min-height:34px; }
+  .age-opt input, .terms-check input{ width:18px; height:18px; accent-color:var(--accent); flex:0 0 auto; margin:0; }
+  .age-note{ font-size:12px; color:var(--ink-dim); margin:6px 0 0; line-height:1.45; }
+  .age-stop{ font-size:13px; color:var(--ink); background:var(--card-2); border:1px solid var(--border-strong); border-radius:8px; padding:10px 12px; margin:0; line-height:1.45; }
+  .age-stop a{ color:var(--ink); text-decoration:underline; font-size:13px; }   /* S4 B: under 13 -> parent account */
+  .terms-check{ display:flex; align-items:flex-start; gap:10px; font-size:13px; color:var(--ink-dim); line-height:1.45; cursor:pointer; }
+  .terms-check a{ color:var(--ink); text-decoration:underline; font-size:13px; }
+  .site-footer{ font-size:11.5px; color:var(--ink-faint); text-align:center; margin-top:4px; }
   body{ flex-direction:column; gap:14px; }   /* P1-10: the footer sits under the card */
   /* A form taller than the screen starts at the top and scrolls -- centering
      pushed its top (logo, first fields) off-screen where it couldn't be reached. */
@@ -125,7 +105,7 @@
     <div>
       <h2 class="display">Create a pitcher account</h2>
       <p class="sub">Chart your bullpens and see your history. To join your team, ask your coach for the team's invite link.</p>
-      <p class="sub" style="margin-top:8px;">Parent or guardian setting up a child? <a href="parent-signup.html" class="parent-link" style="color:var(--chalk);text-decoration:underline;">Create a parent account</a></p>
+      <p class="sub" style="margin-top:8px;">Parent or guardian setting up a child? <a href="parent-signup.html" class="parent-link" style="color:var(--ink);text-decoration:underline;">Create a parent account</a></p>
     </div>
 
     <div class="field">

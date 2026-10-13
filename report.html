@@ -12,38 +12,24 @@
 <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'sha256-1d1xsDiJxO+8b1YP6MFOixOwKyyboaG+nLItY+cVybQ='; object-src 'none'; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bullpen Session Report — Knuckleball</title>
+<link rel="stylesheet" href="css/tokens.css">   <!-- D1: the design tokens, every page (Oct 13 2026) -->
 <link rel="stylesheet" href="buttons.css">   <!-- U13: shared button shapes (Joel, Oct 9 2026) -->
 <style>
-  :root{
-    /* Same token values as bullpen-tracker.html's light theme -- this page
-       is a small independent shell, not part of the charting app, but
-       should still look like the same product. */
-    --page-bg:        #F7FAF8;
-    --surface-border: #CFE6D7;
-    --field-dark:     #0F241B;
-    --ink-dim:        #2E4A40;
-    --ink-faint:      #527065;
-    --chalk:          #F1ECDD;
-    --chalk-dim:      #B7C2B4;
-    --amber:          #E8A83D;
-    --red:            #C0453B;
-    --border-on-dark: rgba(241,236,221,0.16);
-  }
   *{ box-sizing:border-box; }
   /* The report's own stylesheet is added after this one and styles body,
      h1-h3, svg, etc. -- so everything the shell draws uses kb- classes
      with its fonts set explicitly, and never relies on inherited body
      styles. The page scrolls normally (no inner scroller), which is what
      lets every browser's print, including iPhone Safari's, paginate it. */
-  body{ margin:0; background:var(--page-bg); }
+  body{ margin:0; background:var(--bg); }
   .kb-bar{
     position:sticky; top:0; z-index:10;
     display:flex; align-items:center; justify-content:space-between;
     padding:calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
-    background:var(--field-dark); border-bottom:1px solid var(--border-on-dark);
+    background:var(--brand-bg); border-bottom:1px solid var(--on-dark-line);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.2;
   }
-  .kb-mark{ color:var(--amber); font-weight:700; font-size:14px; letter-spacing:0.04em; }
+  .kb-mark{ color:var(--accent); font-weight:700; font-size:14px; letter-spacing:0.04em; }
   .kb-actions{ display:flex; gap:8px; }
   #kb-state{
     display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -51,9 +37,9 @@
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.4;
   }
   #kb-state.hidden{ display:none; }
-  #kb-state h1{ color:var(--field-dark); font-family:inherit; font-size:18px; margin:0 0 8px; border:0; padding:0; }
+  #kb-state h1{ color:var(--ink); font-family:inherit; font-size:18px; margin:0 0 8px; border:0; padding:0; }
   #kb-state p{ font-size:14px; color:var(--ink-faint); max-width:40ch; margin:0; }
-  #kb-state.is-error h1{ color:var(--red); }
+  #kb-state.is-error h1{ color:var(--danger); }
   /* S3: the live "Coaches notes" section (styled by the report's own h2 /
      .section / .caption rules, which carry the sport theme). */
   .kb-note{ margin:12px 0; break-inside:avoid; page-break-inside:avoid; }

@@ -6,18 +6,7 @@
 
    Tokens resolve against each page's existing variables. The app defines --primary-bg/--primary-fg,
    --surface and --red-bg; the sign-in pages don't, so they fall back to the gold they use today. */
-:root{
-  --btn-ink:        var(--field-dark);
-  --btn-soft:       var(--surface, rgba(255,255,255,0.10));
-  --btn-primary:    var(--primary-bg, var(--amber));
-  --btn-on-primary: var(--primary-fg, var(--field-dark));
-  --btn-accent:     var(--field-dark);   /* Joel, Oct 9 (E): the selected underline is each sport's dark ink */
-  --btn-danger:     var(--red-bg, #A83A31);   /* Joel, Oct 9 (F): the red today's danger buttons use */
-  --btn-disabled-bg:#F1F3F6;
-  --btn-disabled-fg:#ADB4C0;
-  --btn-h:44px;
-}
-
+/* Its tokens (--btn-*) live in css/tokens.css since D1 Stage 1 (Oct 13). */
 /* ---------- Standalone buttons ---------- */
 .btn{
   -webkit-appearance:none; appearance:none; box-sizing:border-box;

@@ -15,6 +15,22 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-13 · D1 Stage 1 (design tokens) · **staging**
+- **Branch / cache:** `d1-design-standardization` (stacked on `live-game-oct12`) · `kb-shell-v227`. No database change.
+- **Built:**
+  - New `css/tokens.css`: Jordan's `docs/design/css-variables.css` made loadable, with the spec's rename map. Every color is named by its job, not its color (`--amber` → `--accent`, `--field-dark` → `--ink` / `--brand-bg`, `--chalk` → `--on-dark`, `--red` → `--danger`, `--clay` → `--warning`, `--kind-btn` → `--chooser`, gold/silver/bronze → `--rank-1/2/3`, `--gg-gold` / `--game-gold` → `--accent-game`). It has four scopes: light, softball, the sign-in pages' dark look (`html[data-theme="dark"]`), and dark + softball. It also adds `--success`, `--strike`, `--ball` (were literals), `--pitch-1..8` and `--motion-fast` / `--motion-spring` (zero under reduced motion).
+  - All 15 pages and `report.html` load it. The pages' own color blocks and `buttons.css`'s token block are deleted. The 11 sign-in pages carry `data-theme="dark"`. `sw.js` precaches it.
+- **Acceptance:**
+  - **Pixels:** 170 before/after screenshots (114 app screens, both sports at 375/390/1180, plus 14 pages × 2 sports × 500/1180, with every hidden step shown). 153 are identical. The other 17 are explained:
+    - 14 animated screens differ just as much when the same code is shot twice;
+    - 1 is the text cursor blinking;
+    - 2 come from the test forcing softball onto the report viewer, which never has a sport (its real baseline is identical).
+  - **Old names:** none left outside the frozen-report code (grep).
+  - **Pitch colors:** `--pitch-N` equal `SPORTS[sport].palette` and `helpers.ts` in order, both sports.
+  - **Other checks:** report.html's CSP hash still matches; all 27 precached files exist; the privacy/terms wording is unchanged (only variable names).
+- **Deviations:** none in values. Radii, spacing and shadows are listed in tokens.css as Jordan's inventories but not yet used (per the spec, Stages 2/3). `--on-dark-line` replaces `--border-on-dark` in the report viewer only (one use).
+- **Open items:** Joel's offline check (P1-01 1–3) on a device; Stages 2 and 3 wait until after the coming big edits.
+
 ## 2026-10-13 · no packet (velocity bar: window alignment, mouse drag) · **staging**
 - **Branch / cache:** `live-game-oct12` · `kb-shell-v226`. No database change.
 - **Fixed:** the Live Game in-chart velocity bar's center window (gold; softball pink) ran a few px past the right edge of its square. It was positioned from the whole bar; now it sits on the strip's own box, exactly one square inside the strip's border. Checked zoomed at 390 px.

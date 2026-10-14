@@ -326,7 +326,7 @@ export const CSS = `
   *{ box-sizing:border-box; }
   svg{ max-width:100%; height:auto; display:block; } /* trend/drift charts are drawn at a fixed 560px viewBox width -- without this they blow out the page on a phone instead of scaling down */
   /* D2 Stage D (Oct 13 2026): colors and fonts are this report's own --kr-* variables (helpers.ts reportVars) */
-  body{ margin:0; background:var(--kr-bg); color:var(--kr-ink); font-family:var(--kr-sans); font-size:15px; line-height:1.5; }
+  body{ margin:0; background:var(--kr-bg); color:var(--kr-ink); font-family:var(--kr-sans); font-size:16px; line-height:1.5; }
   .page{ max-width:820px; margin:0 auto; padding:24px 20px 48px; }
   h1,h2{ font-family:var(--kr-display); font-weight:800; text-transform:uppercase; letter-spacing:0.01em; line-height:1; margin:0 0 6px; }
   h3{ font-family:var(--kr-sans); font-weight:800; margin:0 0 6px; }
@@ -335,12 +335,12 @@ export const CSS = `
   h3{ font-size:14px; color:var(--kr-ink-dim); }
   .report-header{ background:var(--kr-brand); color:var(--kr-on-dark); padding:22px 20px; border-radius:12px; margin-bottom:20px; display:flex; flex-direction:column; gap:10px; }
   .report-header h1{ margin:2px 0 0; color:var(--kr-on-dark); }
-  .brand-mark{ font-family:var(--kr-wordmark); font-weight:400; color:var(--kr-on-dark); letter-spacing:0.02em; font-size:22px; line-height:1; }
-  .brand-mark.small{ font-family:var(--kr-sans); font-weight:700; font-size:11px; color:var(--kr-ink-dim); letter-spacing:0.04em; }
+  .brand-mark{ font-family:var(--kr-wordmark); font-weight:400; color:var(--kr-on-dark); letter-spacing:0.02em; font-size:24px; line-height:1; }
+  .brand-mark.small{ font-family:var(--kr-sans); font-weight:700; font-size:10px; color:var(--kr-ink-dim); letter-spacing:0.04em; }
   .sport-tag{ position:relative; z-index:0; align-self:flex-start; padding:5px 12px; color:var(--kr-on-accent); font-family:var(--kr-sans); font-size:12px; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; line-height:1; }
   .sport-tag::before{ content:''; position:absolute; inset:0; z-index:-1; background:var(--kr-accent); transform:skewX(-14deg); }
   .header-num{ font-size:0.7em; color:var(--kr-on-dark-dim); font-weight:700; }
-  .header-meta{ margin:0; color:var(--kr-on-dark-dim); font-size:13px; }
+  .header-meta{ margin:0; color:var(--kr-on-dark-dim); font-size:12px; }
   .header-note{ margin:0; color:var(--kr-accent-on-dark); font-size:12px; }   /* gold 10:1 on green; softball's lighter pink 5.2:1 on navy */
   .tiles{ display:flex; flex-wrap:wrap; gap:14px; margin:20px 0 28px; }
   .tile{ background:var(--kr-card); border:1px solid var(--kr-line); border-radius:12px; padding:12px 16px; min-width:110px; flex:1; text-align:center; }
@@ -352,27 +352,27 @@ export const CSS = `
      wider screens, never a horizontal scroll. */
   .type-grids{ display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:14px 18px; }
   .type-grid{ min-width:0; }
-  .type-grid h3{ display:flex; align-items:center; gap:6px; margin:0 0 6px; font-size:13px; }
+  .type-grid h3{ display:flex; align-items:center; gap:6px; margin:0 0 6px; font-size:12px; }
   .type-grid svg{ width:100%; max-width:170px; height:auto; }
-  .type-grid-stats{ margin:4px 0 0; font-size:11.5px; color:var(--kr-ink-faint); }
+  .type-grid-stats{ margin:4px 0 0; font-size:12px; color:var(--kr-ink-faint); }
   .legend{ display:flex; flex-direction:column; gap:6px; padding-top:8px; }
-  .legend-item{ display:flex; align-items:center; gap:6px; font-size:13px; }
+  .legend-item{ display:flex; align-items:center; gap:6px; font-size:12px; }
   .legend-dot{ width:9px; height:9px; border-radius:2px; display:inline-block; }
   .dot{ width:8px; height:8px; border-radius:2px; display:inline-block; margin-right:6px; }
   .caption{ font-size:12px; color:var(--kr-ink-faint); margin:8px 0 0; }
   .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:10px; }
-  .data-table{ width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }
+  .data-table{ width:100%; border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums; }
   .data-table.wide{ min-width:560px; } /* command detail: 8 columns incl. free-text miss tendency -- needs room to scroll to, not to be crushed illegible */
   .data-table th{ text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--kr-ink-faint); border-bottom:1px solid var(--kr-line); padding:5px 8px 5px 0; }
   .data-table td{ padding:6px 8px 6px 0; border-bottom:1px solid var(--kr-hair); vertical-align:top; }
   .data-table td.miss{ font-size:12px; color:var(--kr-ink-dim); }
   .side-block{ margin-top:16px; padding-top:12px; border-top:1px solid var(--kr-line); }
-  .side-stats{ font-size:13px; color:var(--kr-ink-dim); }
+  .side-stats{ font-size:12px; color:var(--kr-ink-dim); }
   .side-lists{ display:flex; gap:24px; flex-wrap:wrap; }
-  .side-lists ul{ margin:4px 0 0; padding-left:18px; font-size:13px; }
+  .side-lists ul{ margin:4px 0 0; padding-left:18px; font-size:12px; }
   .drift{ margin-top:14px; }
   .trend-grid{ display:flex; flex-direction:column; gap:18px; }
-  .report-footer{ margin-top:36px; padding-top:16px; border-top:1px solid var(--kr-line); font-size:11.5px; color:var(--kr-ink-faint); }
+  .report-footer{ margin-top:36px; padding-top:16px; border-top:1px solid var(--kr-line); font-size:12px; color:var(--kr-ink-faint); }
   .report-footer a{ color:var(--kr-link); }
   @media (max-width:600px){
     .page{ padding:16px 12px 32px; }

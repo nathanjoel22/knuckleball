@@ -512,7 +512,7 @@ function renderFooter(p: GameReportPayload): string {
 
 const GAME_CSS = `
   .ab-inning{ margin:14px 0; }
-  .ab-row{ font-size:13px; padding:4px 0; border-bottom:1px solid var(--kr-hair); }
+  .ab-row{ font-size:12px; padding:4px 0; border-bottom:1px solid var(--kr-hair); }
   .ab-num{ font-weight:700; color:var(--kr-ink-dim); margin-right:6px; }
   .ab-ending{ float:right; font-weight:700; color:var(--kr-ink); }
 `

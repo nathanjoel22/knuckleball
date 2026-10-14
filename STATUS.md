@@ -15,6 +15,21 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-14 · D3 Stage D (report font sizes) · **staging**
+- **Branch:** `d3-design-cleanup` (no page change; `send-session-report` deployed to **staging only**).
+- **Built (new reports only):** the spec's 12 rules onto the nine steps.
+  - `body` 15 → 16.
+  - `.header-meta`, `.type-grid h3`, `.legend-item`, `.data-table`, `.side-stats`, `.side-lists ul`, `.ab-row` 13 → 12.
+  - `.type-grid-stats`, `.report-footer` 11.5 → 12.
+  - `.brand-mark.small`, `.kb-mix` 11 → 10.
+  - Not in the table, same role logic: the header wordmark 22 → 24 (the app's sign-in wordmark size).
+- **Checks:**
+  - Size census of the templates: 10 / 12 / 14 / 16 / 24 / 32 / 44 only. The charts' SVG-unit labels are unchanged (they scale with the drawing).
+  - Four real staging sessions rendered through the real builders, with phone and print previews (pen 4 pages, softball game 8).
+  - Three stored reports, pre-D2 viewer vs now: identical below the bar. The one pen-report difference is report.html's own footer line, as before.
+  - Frozen reports untouched; `rerender-reports` not run.
+- **Open items:** Joel generates a new pen and game report on staging. The production deploy of `send-session-report` and the D3 pages (v241) are Joel's.
+
 ## 2026-10-14 · D3 Stage C (shadows) · **staging**
 - **Branch / cache:** `d3-design-cleanup` · `kb-shell-v241`. No database or function change.
 - **Built:** every `box-shadow` reads tokens (30 rules).

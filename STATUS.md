@@ -15,6 +15,19 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-14 · hotfix (Live Game pitch saved with no type; show why a session won't sync) · **ready for production**
+- **Branch / cache:** `hotfix-pitch-type` (from main `67357ff`) · `kb-shell-v238`. No database or function change. Contains ONLY these two fixes; not the Live Game clock removal or D3.
+- **Bug (live since G1b):** a Live Game pitch took its type from the selection at the moment the play was recorded. A reload mid-play (iOS reloading a backgrounded page, or an app update) clears the selection, so the pitch saved with type null, and sync refused that session forever (`null value in column "type" of relation "pitches"`). Found on Joel's staging softball game (Oct 12).
+- **Fix:**
+  - The tap stores the type on the pending pitch (saved in the draft).
+  - Resume restores the selection.
+  - `recordGameResult`, `commitFieldPlay` and `g5Commit` use it and refuse with "Pick this pitch's type, then tap again" rather than save a pitch without one.
+- **Also:** the "pending sync" banner shows each refused session's date and the server's reason (it was recorded but never shown).
+- **Checked on production's own code:**
+  - Tap → reload/resume → ball: v233 saves type null; the hotfix saves "FB".
+  - An old draft with nothing selected: refused with the hint, play kept; picking a type saves it.
+- **Open items:** Joel ships it. Then merge it into `d3-design-cleanup`, which has the same fix (expect a one-line conflict at the pending-pitch line).
+
 ## 2026-10-13 · no packet (iPad-portrait perspective squeeze) · **production**
 - **Branch / cache:** `d2-broadcast-rebrand` · `kb-shell-v233`. No database or function change.
 - **Fixed:** on iPad portrait (501–860 px) the "Behind the catcher / Behind the pitcher" tray now stacks its two choices, as on iPad landscape and laptop. Side by side, they ran into each other in their narrow column (open since D2 Stage B). Checked at 600 and 820 px, bullpen and Live Game, both sports. CSS only; phones and laptops unchanged.

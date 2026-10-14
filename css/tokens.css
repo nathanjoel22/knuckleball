@@ -129,6 +129,7 @@
   /* ---- Radius, shadows, spacing (used from Stage C) ---- */
   --radius-cell:    4px;  --radius-segment: 9px;  --radius-control: 12px;
   --radius-dock:    18px; --radius-pill: 999px;   --radius-circle: 50%;
+  --radius-mark:    2px;   /* chart marks only (pitch-log dots, report legend) -- data, not restyled (D3) */
   --cut:            28px;
   --shadow-segment: 0 1px 3px rgba(0,0,0,0.18);
   --shadow-pop:     0 10px 26px rgba(var(--ink-rgb),0.22);

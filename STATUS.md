@@ -15,6 +15,28 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-14 · D3 Stage A (corners) · **staging**
+- **Branch / cache:** `d3-design-cleanup` (includes `live-game-no-clock`) · `kb-shell-v235`. No database or function change.
+- **Built:**
+  - Every `border-radius` reads a token. 76 rules:
+    - `--radius-control` 12: 29;
+    - `--radius-circle`: 15;
+    - `--radius-segment` 9: 10;
+    - `--radius-pill`: 12;
+    - `--radius-cell` 4: 7 (`.zone-grid`, `.g5-face` and `.g5-field` still share one);
+    - `--radius-dock` 18: the coach dock;
+    - the new `--radius-mark` 2px: chart marks.
+  - The phone sheet's top corners at 18px (Joel's choice 7).
+  - 29 dead rules deleted (the pre-G5 `.gg-*` grid and scorebook, `.brand-mark`, `.invite-btn`, `.game-panel-undo`, `.position-swipe-*`).
+- **Checks:**
+  - Grep: no literal `border-radius` outside `tokens.css` except 0.
+  - 170 before/after views (app 38 states × 2 sports × 390 / 820 / 1180; 14 pages × 2 sports × 820 / 1180): 68 identical, the rest differ only at corners. Three outliers were screenshot timing (re-shot: 36–337 px), and the Live Game field screens animate as always.
+  - The sheet and the menus were checked by eye.
+- **Deviations:**
+  - `.pitch-count-badge` stays a 12px scoreboard tile (D2 Stage C's later rule), not a circle.
+  - `.roster-dot-count` is a pill (an 18px count badge).
+- **Open items:** Joel's phone / iPad walk-through. Stage B (spacing) is next.
+
 ## 2026-10-14 · no packet (no clock in Live Games) · **staging**
 - **Branch / cache:** `live-game-no-clock` · `kb-shell-v234`. No database or function change.
 - **Built (Joel, Oct 14):** the ⏱ time-to-home clock is gone from Live Games: the phone status bar, the iPad / laptop bottom-left and the Live Game delivery tray. A game pitch never records a time.

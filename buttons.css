@@ -12,7 +12,7 @@
   -webkit-appearance:none; appearance:none; box-sizing:border-box;
   display:inline-flex; align-items:center; justify-content:center; gap:6px;
   min-height:var(--btn-h); padding:0 16px; margin:0;
-  border:0; border-radius:12px;
+  border:0; border-radius:var(--radius-control);
   background:var(--btn-soft); color:var(--btn-ink);
   font:inherit; font-size:16px; font-weight:600; line-height:1.2; letter-spacing:normal; text-transform:none;
   text-align:center; text-decoration:none; white-space:nowrap; cursor:pointer;
@@ -38,7 +38,7 @@
   position:relative; box-sizing:border-box;
   display:flex; align-items:stretch; gap:0;
   min-height:var(--btn-h); padding:3px; margin:0;
-  border-radius:12px; background:var(--btn-soft);
+  border-radius:var(--radius-control); background:var(--btn-soft);
 }
 .tray-grid{ display:grid; grid-template-columns:1fr 1fr; }          /* wide pitch types: two per row (r6) */
 .tray-scroll{ overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
@@ -48,7 +48,7 @@
   position:relative; z-index:1;
   flex:1 1 0; min-width:0; min-height:38px; padding:0 10px; margin:0;
   display:inline-flex; align-items:center; justify-content:center; gap:6px;
-  border:0; border-radius:9px; background:transparent; color:var(--btn-ink);
+  border:0; border-radius:var(--radius-segment); background:transparent; color:var(--btn-ink);
   font:inherit; font-size:14px; font-weight:600; line-height:1.15; letter-spacing:normal; text-transform:none;
   white-space:nowrap; cursor:pointer; -webkit-tap-highlight-color:transparent;
   transition:color .15s ease;
@@ -63,7 +63,7 @@
 /* The sliding indicator (placed by the page's script): the selected segment rises on it. */
 .tray-ind{
   position:absolute; z-index:0; left:3px; top:3px; width:0; height:0; pointer-events:none;
-  border-radius:9px; background:#fff;
+  border-radius:var(--radius-segment); background:#fff;
   box-shadow:0 1px 3px rgba(0,0,0,.18), inset 0 -3px 0 var(--seg-accent, var(--btn-accent));
   transition:left 150ms ease, top 150ms ease, width 150ms ease, height 150ms ease;
 }
@@ -76,7 +76,7 @@
 
 /* Pitch types: unselected segments show a dot in their type color; the selected one is underlined in it.
    The --type-color value comes from the page's generated palette classes (.ptc-0 ... ). */
-.seg .type-dot{ width:8px; height:8px; border-radius:50%; flex:none; background:var(--type-color, var(--btn-ink)); }
+.seg .type-dot{ width:8px; height:8px; border-radius:var(--radius-circle); flex:none; background:var(--type-color, var(--btn-ink)); }
 .seg[aria-pressed="true"] .type-dot{ display:none; }
 .seg[class*="ptc-"]{ --seg-accent:var(--type-color); }
 

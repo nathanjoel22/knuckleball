@@ -81,7 +81,6 @@ body.signin .brand-block{ display:flex; flex-direction:column; gap:6px; }
 body.signin .brand{ display:flex; align-items:baseline; gap:8px; }
 body.signin .brand h1{ margin:0; font-size:var(--t-24); line-height:1; color:var(--on-dark); }
 body.signin .brand-word{ font-family:var(--font-wordmark) !important; font-weight:400 !important; letter-spacing:0.02em; white-space:nowrap; }
-body.signin .brand-mark{ display:none; }
 body.signin .tagline{
   font-size:var(--t-10); font-weight:700; font-stretch:90%; letter-spacing:var(--tr-tag);
   text-transform:uppercase; color:var(--on-dark-faint);
@@ -169,7 +168,6 @@ body.landing .wrap{ width:100%; max-width:760px; display:flex; flex-direction:co
 body.landing .brand-block{ display:flex; flex-direction:column; align-items:center; gap:6px; }
 body.landing .brand{ display:flex; align-items:baseline; gap:8px; }
 body.landing .brand-word{ font-family:var(--font-wordmark) !important; font-weight:400 !important; letter-spacing:0.02em; white-space:nowrap; }
-body.landing .brand-mark{ display:none; }
 body.landing .brand h1{ font-size:var(--t-24); line-height:1; margin:0; color:var(--brand-bg); }
 body.landing .tagline{ font-size:var(--t-10); font-weight:700; font-stretch:90%; letter-spacing:var(--tr-tag); text-transform:uppercase; color:var(--ink-faint); }
 body.landing h2.display{ font-size:var(--t-64); line-height:0.95; margin:0; color:var(--brand-bg); font-weight:900; }
@@ -181,7 +179,7 @@ body.landing .option-card{
   transition:border-color var(--duration-fast) ease, transform var(--duration-fast) ease, background var(--duration-fast) ease;
 }
 body.landing .option-card:hover{ border-color:var(--brand-mid); background:var(--card-2); transform:translateY(-3px); }
-body.landing .option-icon{ width:56px; height:56px; border-radius:50%; background:var(--surface); display:flex; align-items:center; justify-content:center; }
+body.landing .option-icon{ width:56px; height:56px; border-radius:var(--radius-circle); background:var(--surface); display:flex; align-items:center; justify-content:center; }
 body.landing .option-icon svg{ width:26px; height:26px; color:var(--ink); }
 body.landing .option-icon svg.ball{ width:34px; height:34px; }
 body.landing .option-title{ font-family:var(--font-display); font-size:var(--t-32); font-weight:800; text-transform:uppercase; letter-spacing:var(--tr-display); }

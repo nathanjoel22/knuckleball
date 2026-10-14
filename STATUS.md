@@ -15,6 +15,15 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-14 · A1 preconditions report (no release)
+- **Branch:** `a1-account-deletion`. No code changed.
+- **Report:** `plans/a1-preconditions.md`, with 4 escalations for Joel:
+  1. Pitcher deletion vs tombstones (`sessions.pitcher_id` CASCADE).
+  2. A stub "former account" for coach-charted sessions (`logged_by` / notes / invites are NO ACTION).
+  3. Coach notes: delete, per Apple.
+  4. The privacy page has no backup sentence and no retention exists; the email-based deletion wording must change.
+- **T1:** moved to later (Joel).
+
 ## 2026-10-14 · no packet (staging report links) · **staging**
 - **Changed:** the staging `REPORT_SITE_ORIGIN` secret: `http://localhost:8080` → `http://192.168.1.15:8000`, the local staging site on Joel's home Wi-Fi. Verified by the secret's SHA-256 fingerprint before and after, and the staging `send-session-report` redeployed so it reads the new value.
 - **Effect:** staging report emails now link to an address a phone on that Wi-Fi can open while the local server runs. Before, they pointed to `localhost:8080`, which nothing serves.
@@ -510,7 +519,9 @@ Rebuilt from git history on Oct 10, 2026, so each entry is shorter than a live o
 - **2026-08-14 – 08-24 · foundation** (no packets): the original pages and Supabase backend uploaded through GitHub, then the CNAME (knuckleballonline.com), README and CLAUDE.md (`a30b738`).
 
 ## Standing open items (not tied to one release)
-- **D1 (design standardization), not started (Oct 13):** spec `plans/d1-design-standardization-2.md` is on GitHub, but its references aren't yet: `docs/design/DESIGN.md`, `css-variables.css`, `design-tokens.json`, `tailwind-v4.css` (then `AUDIT.md`), and `docs/type-sheet-reference.html`.
-  - Joel's decisions: the staging work (`live-game-oct12`) stays on staging for his review before production. **Sign-in pages: option (b), move the 11 sign-in/sign-up pages to the light app look in Stage 3** (an explicit exception to "colors stay").
-  - Preconditions report first, once the references land.
+- **Design (D1, D2, D3):** done, on production (v227, v232–v233, v241). Jordan's side: re-sync `docs/design/target/` and `design-tokens.json` to the shipped `css/tokens.css`.
+- **A1 account deletion and export:** preconditions report `plans/a1-preconditions.md` (Oct 14); waiting on Joel's decisions. Then the App Store wrapper (Dec–Jan).
+- **T1 team branding (logo upload, team colors):** moved to later (Joel, Oct 14). Not started; no spec on GitHub yet.
+- **NCAA softball illegal-pitch variant:** not built; needs a short spec of the rule.
+- **Cross-checks owed by Joel:** U13 4b (iPhone video of the bottom menu); the P1-01 offline checks; the Stage C dock-drag / tray-tap feel check.
 - **H1 grace path:** close no earlier than **Oct 19, 2026**. Drop the 6 grace policies, seal the remaining sessions, and show Joel any leftovers first.

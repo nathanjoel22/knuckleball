@@ -347,6 +347,8 @@
   .sign-out-btn{ margin-top:auto; }
   .phone-footer{ display:none; }   /* shown on phones only, see the max-width:500px block */
 
+  .outbox-why-list{ display:flex; flex-direction:column; gap:2px; margin-top:4px; }
+  .outbox-why{ display:block; font-size:12px; color:var(--warning); overflow-wrap:anywhere; }
   .outbox-badge{
     display:flex; align-items:center; justify-content:space-between; gap:8px;
     background:var(--warning-tint); border:1px solid var(--warning-line); border-radius:var(--radius-control);
@@ -9361,9 +9363,12 @@ function renderOutboxBadge(){
     </div>` : '';
   if(!state.outbox.length) return notice;
   const n = state.outbox.length;
+  // Joel, Oct 14: say WHY a session won't save -- the server's reason was recorded but never shown.
+  const why = state.outbox.filter(it => it.lastError).slice(0, 3).map(it =>
+    `<span class="outbox-why">${escHtml(new Date(it.startedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}: ${escHtml(String(it.lastError))}</span>`).join('');
   return `
     <div class="outbox-badge">
-      <span>${n} session${n === 1 ? '' : 's'} pending sync</span>
+      <span>${n} session${n === 1 ? '' : 's'} pending sync${why ? `<span class="outbox-why-list">${why}</span>` : ''}</span>
       <button class="btn btn-secondary" ${state.syncing ? 'disabled' : ''} onclick="triggerSync()">${state.syncing ? 'Syncing…' : 'Sync now'}</button>
     </div>` + notice;
 }

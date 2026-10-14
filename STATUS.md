@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-14 · no packet (show why a session won't sync) · **staging**
+- **Branch / cache:** `d3-design-cleanup` · `kb-shell-v236`. No database or function change.
+- **Built:** the "N sessions pending sync" banner now lists each refused session's date and the server's reason. It was recorded in the outbox (`lastError`) but only ever shown as "· retrying".
+- **Why now:** Joel's Oct 14 softball game for Clementine Pugh (Staging Softball Team) won't sync. Staging has no row for it, and the reason is only on his device.
+- **Open items:** Joel reloads twice, taps Sync now and reads the reason; then the actual fix.
+
 ## 2026-10-14 · D3 Stage A (corners) · **staging**
 - **Branch / cache:** `d3-design-cleanup` (includes `live-game-no-clock`) · `kb-shell-v235`. No database or function change.
 - **Built:**

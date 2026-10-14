@@ -15,6 +15,18 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-14 · A1 account deletion + data export · **production**
+- **Shipped by:** Joel ("ship it"); operator confirmed `Nathan <joelhauserman@gmail.com>`. **Branch:** `a1-account-deletion` merged to `main` (fast-forward, 12 commits incl. docs dd38dae). **Cache:** v242.
+- **Backup first:** `~/knuckleball-backups/2026-10-14-1528-{schema,data}.sql`.
+- **Database:** the four A1 migrations `20261014000000`–`0003`. Dry run listed exactly those. `rate_limit_take` on production differed from 0002 only by the two A1 kinds (diffed before applying). After: 34 policies, the daily job `a1-account-deletion` (09:17 UTC), limits 5 deletions / 3 exports a day, 0 scheduled, 0 nameless sessions.
+- **Functions:** `delete-account` and `export-account` deployed. **Secrets:** `A1_CRON_SECRET` (a new value, not staging's), plus the Vault values `a1_function_url` / `a1_anon_key` / `a1_cron_secret`. `REPORT_SITE_ORIGIN` still unset.
+- **Verified on production:** the job → function chain: 200, 0 due; execute without the secret → 403.
+- **Site:** policy pages Version 2026-10-14 (approved by Joel), Profile → Your data, the deletion screens.
+- **Open:**
+  - Joel's production phone check (Download my data; open Delete my account and back out);
+  - a before/after RLS matrix comparison (not run);
+  - offline phone checks.
+
 ## 2026-10-14 · A1 account deletion + data export · **staging**
 - **Branch:** `a1-account-deletion`. **Cache:** v242.
 - **Database (staging only):** migrations `20261014000000`–`0003`:

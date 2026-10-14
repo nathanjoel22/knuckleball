@@ -15,6 +15,23 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-14 · D3 (corners, spacing, shadows, report sizes) + no clock in Live Games · **production**
+- **Branch / cache:** `d3-design-cleanup` fast-forwarded to `main` · `kb-shell-v241` (production was v238). No database change.
+- **Edge Function:** `send-session-report` deployed to production (D3 Stage D font sizes; new reports only).
+- **What shipped:** the staging entries below.
+  - The Live Game clock removed (bullpens keep it).
+  - D3 Stage A: every corner on a radius token, 29 dead rules deleted, the phone sheet's 18px top corners.
+  - D3 Stage B: every spacing value on the eleven-step scale.
+  - D3 Stage C: every shadow on a token.
+  - D3 Stage D: new reports' font sizes on the nine steps.
+  - The v238 hotfix was already live.
+  - Reviewed by Joel on staging before shipping.
+- **Frozen reports:** untouched; `rerender-reports` not run or redeployed.
+- **Open items:**
+  - Joel's production check after two reloads (phone and iPad, both sports; a new report and an old link).
+  - The dock-drag / tray-tap feel check from Stage C.
+  - Jordan's side: re-sync `docs/design/target/` and `design-tokens.json` to the shipped `css/tokens.css`.
+
 ## 2026-10-14 · D3 Stage D (report font sizes) · **staging**
 - **Branch:** `d3-design-cleanup` (no page change; `send-session-report` deployed to **staging only**).
 - **Built (new reports only):** the spec's 12 rules onto the nine steps.

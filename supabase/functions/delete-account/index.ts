@@ -177,8 +177,11 @@ async function purgePlayer(admin: any, playerId: string) {
 
 async function purgeLogin(admin: any, accountId: string) {
   // Who to tell, read before anything is gone (Apple: confirm when deletion completes)
-  const { data: u } = await admin.auth.admin.getUserById(accountId)
-  const email = u && u.user ? u.user.email : null
+  // Load the login BEFORE purging anything: if Auth can't load it, the deleteUser below would fail too, after the
+  // purge, leaving a login with no profile that nothing retries. Skipped here, it stays due for tomorrow's run.
+  const { data: u, error: uErr } = await admin.auth.admin.getUserById(accountId)
+  if (uErr || !u || !u.user) throw new Error('login not loadable, left for the next run: ' + (uErr?.message || 'not found'))
+  const email = u.user.email || null
   const { data: prim } = await admin.from('profiles').select('age_attestation, guardian_email').eq('id', accountId).maybeSingle()
   const to = [email].filter(Boolean) as string[]
   if (prim && prim.age_attestation === 'minor_13_17' && prim.guardian_email) to.push(prim.guardian_email)
@@ -202,18 +205,15 @@ async function purgeLogin(admin: any, accountId: string) {
   }
   const files = await removeFiles(admin, reports, purged)
 
-  if (to.length) {
-    const limit = await takeRateLimit(accountId, 'account_deletion', to)
-    if (limit.ok) {
-      await sendEmail(to, 'Your Knuckleball account has been deleted', emailShell(
-        `<p>Your Knuckleball account has been deleted, as you asked: every profile on it, the sessions pitched on it and their reports.</p>` +
-        `<p style="color:#56645C;font-size:13px">Copies in our backups are removed within 7 days. Thanks for charting with us.</p>`))
-    }
-  }
+  const sendOk = to.length > 0 && (await takeRateLimit(accountId, 'account_deletion', to)).ok
   // the login's own rate-limit rows (including the one the completion email just logged) go last
   await admin.from('rate_limit_events').delete().eq('actor', accountId)
   const { error: delErr } = await admin.auth.admin.deleteUser(accountId)
   if (delErr) throw new Error('auth delete: ' + delErr.message)
+  // the completion confirmation (Apple), only once the login is really gone (its sending-limit slot was taken above)
+  if (sendOk) await sendEmail(to, 'Your Knuckleball account has been deleted', emailShell(
+    `<p>Your Knuckleball account has been deleted, as you asked: every profile on it, the sessions pitched on it and their reports.</p>` +
+    `<p style="color:#56645C;font-size:13px">Copies in our backups are removed within 7 days. Thanks for charting with us.</p>`))
   await admin.from('account_deletion_log').insert({ kind: 'login', profiles: nprof, tombstoned: tomb, pitches, notes, files })
   return { kind: 'login', ok: true }
 }

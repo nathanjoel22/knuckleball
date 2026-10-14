@@ -34,8 +34,15 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - execute without the secret → 403; an unsigned status call → 401;
   - the export's real code over staging rows: 43 sessions = the SQL count, 39/39 pitch columns, no secret columns, `unzip -t` clean;
   - policies 34; the RLS matrices run with A1 in place.
-- **Not yet run:** a real request → execute with a throwaway staging login (it sends real emails and deletes the login); a before/after RLS matrix comparison (running the rollback on staging, even rolled back, needs Joel's OK); phone checks.
-- **Waiting on Joel:** the privacy / terms wording (drafted, uncommitted; version 2026-10-14); installing the backup prune job (54 files older than 7 days would go on its first run).
+- **Joel's phone test:** request → scheduled screen → restore, "worked great". Staging Pitcher was left scheduled for Oct 21 and restored (Joel asked).
+- **End to end (Joel's OK):** a throwaway staging login (`joelhauserman+a1test@gmail.com`, one pen, 3 pitches, a note), due now, run by the real cron path:
+  - first try: the purge worked, but Auth couldn't load the hand-built login (NULL token columns, a fixture fault), so the login was left with no profile and nothing would retry it, and the completion email had already gone out;
+  - **fixed in `delete-account`:** the login is loaded before anything is purged (skipped and left due if it can't be), and the completion email goes only after the login is deleted;
+  - guard run: skipped, everything kept, still due;
+  - full run: `{"kind":"login","ok":true}`; login, profile, membership, pitches, note and rate-limit rows all gone; the pen is a nameless record (`deleted_account`, 3 pitches); the log has counts only; policies 34.
+- **Policy pages:** approved by Joel and committed (Version 2026-10-14, TERMS_VERSION on every sign-up page).
+- **Backups:** the prune job is installed and ran (54 files older than 7 days deleted; Oct 8 and Oct 13 kept); daily at 10:00, log `~/knuckleball-backups/prune.log`.
+- **Not run:** a before/after RLS matrix comparison (needs the A1 rollback run on staging, refused by the permission check); offline phone checks.
 - **Production:** nothing. Needs a backup, the four migrations, both functions, `A1_CRON_SECRET` and the three Vault secrets (Joel's), the policy pages.
 
 ## 2026-10-14 · A1 preconditions report (no release)

@@ -2,7 +2,20 @@
 
 Spec: `plans/d3-design-cleanup.md` (GitHub main `5be0c78`; production is `67357ff`, v233). Read against main; **no code changed.** Branch `d3-design-cleanup`.
 
-## Summary: what Joel needs to decide
+## Joel's answers (Oct 14, 2026)
+
+1. **Option 2** (eleven steps with `--s-6`): yes.
+2. **7px:** the clock was removed from Live Games instead (v234, `live-game-no-clock`). That frees the scoreboard, so **7 → 8 per the spec's table**.
+3. **Tray padding:** stays 3px (geometry).
+4. **Not-in-table spacing:** as proposed (60 → 64, 80 → 64, 44 → 48; the 1px pill paddings stay).
+5. **Shadows:** as proposed.
+   - Named tokens for the plates and the target-dot halo.
+   - The danger ring is gone with the Live Game clock. It stays only for the bullpen clock's "bad" state, as `--ring-danger`.
+   - The dock and dock-pill shadows fold.
+6. **`--ring-target-strong`** (3px) for the field's selected boxes: yes.
+7. **The phone sheet's top corners at `--radius-dock` (18):** yes.
+
+## Summary: what Joel was asked
 
 1. **Option 2, the eleven-step scale with `--s-6`?** Jordan chose it; it needs your confirmation. I recommend it: the phone screens keep their 6px gaps.
 2. **7px → 6, not the table's 8.** Under Option 2, 7 sits exactly between 6 and 8; the tie-down rule gives 6, while the spec's table (written for both options) says 8.

@@ -4390,6 +4390,8 @@ async function refreshDraftState(){
 }
 window.resumeDraft = function(){
   state.activeSession = state.pendingDraft;
+  // Oct 14: a Live Game resumed mid-play gets its pitch type back (it was cleared on load)
+  if(state.activeSession && state.activeSession.gamePendingPitch && state.activeSession.gamePendingPitch.type) state.selectedType = state.activeSession.gamePendingPitch.type;
   // Defensive: a draft persisted before U5/U2a/U9/G1 shipped won't carry
   // these fields. A pre-G1 draft has no `kind` at all -- it can only be a
   // bullpen (the chooser didn't exist yet), so default it rather than
@@ -6130,7 +6132,7 @@ window.handleGameZoneTap = async function(row, col){
   // not only on an already-pushed one -- see gameVeloTarget/recordGameVelo.
   // A fresh tap always starts this field at null, same "re-tapping starts
   // capture over" precedent as row/col.
-  state.activeSession.gamePendingPitch = { row, col, velo: null, timeToPlate: null, target };   // Joel, Oct 14: no clock in Live Games   // U11 (7); target: Intent (Oct 12)
+  state.activeSession.gamePendingPitch = { row, col, velo: null, timeToPlate: null, target, type: state.selectedType };   // Oct 14: the type rides on the pending pitch -- a reload mid-play cleared state.selectedType and the pitch saved with no type (refused by sync forever)   // Joel, Oct 14: no clock in Live Games   // U11 (7); target: Intent (Oct 12)
   // G1b-r3: the dot is remembered for the whole play (drawn above the
   // in-grid boxes), and survives a resume -- cleared only by Next Pitch or
   // by Back cancelling this location.
@@ -6562,10 +6564,17 @@ function applyGameResultProgression(result, extra){
   }
   return { batterTo, runnerAdvances, outsOnPlay, runsScored };
 }
+// Oct 14: a Live Game pitch's type -- the one it was tapped with (stored on the pending pitch, survives a
+// reload), else the current selection. Never null when a pitch is saved.
+function gamePitchType(){
+  const s = state.activeSession, pend = s && s.gamePendingPitch;
+  return (pend && pend.type) || state.selectedType || null;
+}
 window.recordGameResult = async function(result, extra){
   extra = extra || {};
   const pending = state.activeSession.gamePendingPitch;
   if(!pending) return;
+  if(!gamePitchType()){ state.hint = 'Pick this pitch\'s type, then tap again'; render(); return; }   // Oct 14: never save a pitch with no type
   const s = state.activeSession;
   const chartingPerspective = sessionPerspective(s);
   const batterSide = sessionBatterSide(s);
@@ -6589,7 +6598,7 @@ window.recordGameResult = async function(result, extra){
     // G1b-r addendum (velocity): carries over whatever was entered on the
     // pending pitch (gameVeloTarget's 'pending' case) while it was still
     // gamePendingPitch, if anything -- null otherwise, same as before.
-    type: state.selectedType, velo: pending.velo,
+    type: gamePitchType(), velo: pending.velo,
     timeToPlate: (pending.timeToPlate === undefined) ? null : pending.timeToPlate,   // U11 (7)
     // Joel, Oct 12 (Intent): the called spot, normalized to the catcher frame like the actual one; null without Intent
     targetRow: pending.target ? pending.target.row : null, targetCol: pending.target ? perspectiveCol(pending.target.col, chartingPerspective) : null,
@@ -7506,6 +7515,7 @@ window.commitFieldPlay = async function(){
   const fp = s.fieldPlay;
   const pending = s.gamePendingPitch;
   if(!fp || !pending || fieldPlayDisabledReason(fp)) return;
+  if(!gamePitchType()){ state.hint = 'Pick this pitch\'s type, then tap again'; render(); return; }   // Oct 14
 
   const key = fieldBatterResultKey(fp);
   const batterTo = BATTER_RESULT_TO_BASE[key];
@@ -7547,7 +7557,7 @@ window.commitFieldPlay = async function(){
     id: genUUID(), seq: s.nextSeq++, kind: 'game',
     // G1b-r addendum (velocity): carries over whatever was entered while
     // this play was being walked through (gamePendingPitch.velo).
-    type: state.selectedType, velo: pending.velo,
+    type: gamePitchType(), velo: pending.velo,
     timeToPlate: (pending.timeToPlate === undefined) ? null : pending.timeToPlate,   // U11 (7)
     targetRow: pending.target ? pending.target.row : null, targetCol: pending.target ? perspectiveCol(pending.target.col, chartingPerspective) : null,   // Intent (Oct 12)
     actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
@@ -8302,6 +8312,7 @@ window.g5Back = async function(){
 // other Live Game pitch (recordGameResult), then the roll back to the chart.
 async function g5Commit(result){
   const s = state.activeSession, g = s.g5;
+  if(!gamePitchType()){ state.hint = 'Pick this pitch\'s type, then tap again'; render(); return; }   // Oct 14: never save a pitch with no type
   const extra = { g5: true, addOuts: g.addOuts || 0 };
   if(result === 'in_play'){
     extra.inPlayOutcome = G5_OUTCOME[g.entry];

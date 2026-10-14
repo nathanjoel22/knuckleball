@@ -15,6 +15,22 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-14 · no packet (Live Game pitch saved with no type) · **staging**
+- **Branch / cache:** `d3-design-cleanup` · `kb-shell-v237`. No database or function change.
+- **The bug:** Joel's Oct 12 softball game for Clementine Pugh was refused by sync on every try: `null value in column "type" of relation "pitches"`. It's a bug since G1b, so production too.
+  - A Live Game pitch took its type from the *current* selection when the play was recorded, not from the tap.
+  - Reloading mid-play (a staging update, or iOS reloading a backgrounded page) and resuming the draft clears the selection. Finishing that play saved a pitch with no type.
+- **The fix:**
+  - The tap stores the type on the pending pitch, which is saved in the draft.
+  - Resume restores the selection from it.
+  - Both builders (`recordGameResult`, `commitFieldPlay`) and `g5Commit` use it, and refuse with "Pick this pitch's type, then tap again" rather than ever saving a pitch without one. `g5Commit` checks before it clears the field play.
+- **Checked on the real code:**
+  - Tap → reload/resume → ball: before, a pitch with type null; after, "FB".
+  - An old draft with nothing selected: refused with the hint, play kept; picking DROP and tapping again saves DROP.
+- **Open items:**
+  - The stuck Oct 12 session itself (Joel's call on how to repair it).
+  - Ship this fix to production soon (the bug is live there).
+
 ## 2026-10-14 · no packet (show why a session won't sync) · **staging**
 - **Branch / cache:** `d3-design-cleanup` · `kb-shell-v236`. No database or function change.
 - **Built:** the "N sessions pending sync" banner now lists each refused session's date and the server's reason. It was recorded in the outbox (`lastError`) but only ever shown as "· retrying".

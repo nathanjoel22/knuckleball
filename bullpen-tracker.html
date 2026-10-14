@@ -347,6 +347,23 @@
   .sign-out-btn{ margin-top:auto; }
   .phone-footer{ display:none; }   /* shown on phones only, see the max-width:500px block */
 
+  /* A1: Your data card, the delete screens, the scheduled-deletion screen (tokens only; U13 buttons) */
+  .a1-panel{ max-width:460px; gap:12px; }
+  .a1-title{ font-size:var(--t-32); margin:0; }
+  .a1-h{ margin:var(--s-8) 0 0; font-size:var(--t-10); font-weight:700; font-stretch:90%; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--ink-faint); }
+  .a1-list{ margin:var(--s-4) 0 0; padding-left:var(--s-20); font-size:var(--t-14); color:var(--ink-dim); line-height:1.45; }
+  .a1-list li{ margin:var(--s-2) 0; }
+  .a1-block ul{ margin:var(--s-6) 0; padding-left:var(--s-20); }
+  .a1-block a{ color:var(--brand-mid); font-weight:600; }
+  .a1-actions{ display:flex; gap:var(--s-8); justify-content:flex-end; flex-wrap:wrap; margin-top:var(--s-8); }
+  .btn-danger-solid:not(:disabled){ background:var(--danger-bg); color:var(--on-danger); }   /* the one destructive confirm */
+  .a1-screen{ position:fixed; inset:0; z-index:2100; overflow-y:auto; background:var(--bg); display:flex; flex-direction:column; align-items:center; }
+  .a1-head{ width:100%; background:var(--brand-bg); color:var(--on-dark); display:flex; flex-direction:column; gap:var(--s-16);
+    padding:var(--s-48) max(var(--s-24), calc(50vw - 196px)) calc(var(--cut) + var(--s-24));
+    clip-path:polygon(0 0, 100% 0, 100% calc(100% - var(--cut)), 0 100%); }
+  .a1-head .brand h1{ margin:0; font-size:var(--t-24); color:var(--on-dark); }
+  .a1-head-date{ margin:0; font-size:var(--t-44); color:var(--accent); line-height:1; }
+  .a1-body{ width:100%; max-width:440px; padding:var(--s-8) var(--s-24) var(--s-32); display:flex; flex-direction:column; gap:var(--s-12); color:var(--ink-dim); font-size:var(--t-16); }
   .outbox-why-list{ display:flex; flex-direction:column; gap:var(--s-2); margin-top:var(--s-4); }
   .outbox-why{ display:block; font-size:12px; color:var(--warning); overflow-wrap:anywhere; }
   .outbox-badge{
@@ -2428,6 +2445,7 @@ async function loadFullContextOnline(alreadyPainted){
   // one-time box -- decided HERE, on the online load only, so it can never
   // appear offline or stand between anyone and charting.
   state.attestNeeded = !(myAccountProfile() || {}).age_attestation;
+  await a1LoadStatus();   // A1: a login scheduled for deletion sees that first
 
   await confirmEmailChangeFromLink();   // Change Email: landing from its link
 
@@ -9359,6 +9377,190 @@ function renderOfflinePill(){
   return `<span class="offline-pill">Offline · saved on this device</span>`;
 }
 
+/* ---------- A1: Your data -- download it, delete the account (Joel, Oct 14 2026) ----------
+   plans/a1-account-deletion-export.md. Both actions need the network (nothing queues in the outbox). The server
+   checks everything again: the typed DELETE, the team-head block, who may delete whom. */
+function a1Url(fn){ return (typeof VERIFY_EMAIL_URL === 'undefined' || VERIFY_EMAIL_URL.indexOf('YOUR_') === 0) ? null : VERIFY_EMAIL_URL.replace('send-verification-email', fn); }
+const A1_ERRORS = {
+  confirmation_mismatch: 'Type DELETE in capitals to confirm.',
+  still_head: 'You are still the head coach of a team. Hand it off or archive it first.',
+  not_entitled: "This account can't delete that profile.",
+  not_authenticated: 'Sign in again, then try.'
+};
+async function a1Call(body){
+  const url = a1Url('delete-account');
+  if(!url) return { error: 'not configured' };
+  try{
+    const res = await netTimeout(fetch(url, { method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token },
+      body: JSON.stringify(body) }), 20000);
+    return await res.json();
+  }catch(e){ return { error: 'network' }; }
+}
+// The login's own schedule (the online load and every return to the app): a device still signed in
+// after "sign out everywhere" sees the scheduled screen at once.
+async function a1LoadStatus(){
+  if(!state.session || !isOnline()) return;
+  try{
+    const { data } = await supabaseClient.rpc('account_deletion_status', { p_profile: null });
+    state.a1Pending = (data && data.due_at) ? { due: data.due_at } : null;
+    // a parent's player that's scheduled (the dates aren't client-readable columns; this function returns them)
+    const me = state.profile;
+    if(me && me.managed_by && me.id !== state.session.user.id){
+      const { data: pd } = await supabaseClient.rpc('account_deletion_status', { p_profile: me.id });
+      state.a1PlayerDue = (pd && pd.due_at) || null;
+    } else state.a1PlayerDue = null;
+  }catch(e){ /* best effort: the server refuses the account's data anyway once it's gone */ }
+}
+document.addEventListener('visibilitychange', async () => {
+  if(document.visibilityState !== 'visible' || !state.session || !isOnline()) return;
+  const before = state.a1Pending && state.a1Pending.due;
+  await a1LoadStatus();
+  if((state.a1Pending && state.a1Pending.due) !== before) render();
+});
+const a1Date = iso => new Date(iso).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+
+window.a1Download = async function(){
+  if(!isOnline()){ state.a1Msg = 'Connect to the internet to download your data.'; render(); return; }
+  const url = a1Url('export-account');
+  if(!url){ state.a1Msg = "Downloads aren't set up here."; render(); return; }
+  state.a1Busy = 'export'; state.a1Msg = null; render();
+  try{
+    const res = await netTimeout(fetch(url, { method: 'POST', headers: { 'Authorization': 'Bearer ' + state.session.access_token } }), 60000);
+    if(!res.ok){ const out = await res.json().catch(() => ({})); throw new Error(out.error || 'Download failed'); }
+    const blob = await res.blob();
+    const name = ((res.headers.get('content-disposition') || '').match(/filename="([^"]+)"/) || [])[1] || 'knuckleball-data.zip';
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+    state.a1Msg = 'Your data is downloading (' + name + ').';
+  }catch(e){ state.a1Msg = e && e.message === 'network' ? "Couldn't reach Knuckleball. Try again." : String(e.message || e); }
+  state.a1Busy = null; render();
+};
+// profileId null = the whole login; a managed player's id = that player (the parent deletes the player)
+window.a1OpenDelete = async function(profileId){
+  if(!isOnline()){ state.a1Msg = 'Connect to the internet to delete an account.'; render(); return; }
+  state.a1 = { screen: 'explain', target: profileId || null, typed: '', busy: true, error: null, teams: [] };
+  render();
+  const out = await a1Call({ action: 'status', profile: profileId || null });
+  state.a1.busy = false;
+  if(out && out.error){ state.a1.error = A1_ERRORS[out.error] || "Couldn't check the account. Try again."; }
+  else state.a1.teams = (out && out.headed_teams) || [];
+  render();
+};
+window.a1Close = function(){ state.a1 = null; render(); };
+// the head-coach block's link: that team's settings (handoff to an assistant, archive) on the coach's Profile page
+window.a1GoToTeam = async function(teamId){ state.a1 = null; try{ await onTeamChange(teamId); }catch(e){} setView('profile'); };
+window.a1Continue = function(){ if(state.a1 && !state.a1.teams.length){ state.a1.screen = 'confirm'; state.a1.error = null; render(); } };
+window.a1Back = function(){ if(state.a1){ state.a1.screen = 'explain'; state.a1.error = null; render(); } };
+window.a1Typed = function(v){
+  if(!state.a1) return;
+  state.a1.typed = v;
+  const b = document.getElementById('a1-confirm-btn');
+  if(b) b.disabled = (v !== 'DELETE') || state.a1.busy;
+};
+window.a1Confirm = async function(){
+  const a = state.a1; if(!a || a.typed !== 'DELETE' || a.busy) return;
+  if(!isOnline()){ a.error = 'Connect to the internet to delete an account.'; render(); return; }
+  a.busy = true; a.error = null; render();
+  const out = await a1Call({ action: 'request', confirm: a.typed, profile: a.target });
+  a.busy = false;
+  if(!out || out.error){
+    a.error = (out && out.error === 'network') ? "Couldn't reach Knuckleball. Nothing was changed." : (A1_ERRORS[out && out.error] || (out && out.error) || 'Something went wrong.');
+    if(out && out.error === 'still_head'){ a.teams = out.teams || []; a.screen = 'explain'; }
+    render(); return;
+  }
+  state.a1 = null;
+  if(a.target){ state.a1Msg = 'This player will be deleted on ' + a1Date(out.due_at) + '. You can restore them until then.'; state.a1PlayerDue = out.due_at; render(); return; }
+  state.a1Pending = { due: out.due_at, justRequested: true };
+  render();
+};
+window.a1Restore = async function(profileId){
+  if(!isOnline()){ state.a1Msg = 'Connect to the internet to restore it.'; render(); return; }
+  state.a1Busy = 'restore'; render();
+  const out = await a1Call({ action: 'cancel', profile: profileId || null });
+  state.a1Busy = null;
+  if(!out || out.error){ state.a1Msg = (out && out.error === 'network') ? "Couldn't reach Knuckleball. Try again." : 'Could not restore. Sign in again and try.'; render(); return; }
+  if(profileId){ state.a1PlayerDue = null; state.a1Msg = 'Restored. This player will not be deleted.'; }
+  else { state.a1Pending = null; state.a1Msg = 'Your account is restored.'; }
+  render();
+};
+window.a1KeepScheduled = async function(){ state.a1Pending = null; await signOut(); };
+
+function renderDataSection(){
+  const me = state.profile || {};
+  const isPlayer = !!me.managed_by && me.id !== (state.session && state.session.user.id);
+  const msg = state.a1Msg ? `<p class="profile-note a1-msg">${escHtml(state.a1Msg)}</p>` : '';
+  const offline = !isOnline() ? '<p class="profile-note">Downloading or deleting needs an internet connection.</p>' : '';
+  const due = isPlayer && state.a1PlayerDue;
+  return `<div class="profile-section a1-card"><h3>Your data</h3>
+    <p class="profile-note">${isPlayer
+      ? 'Download everything Knuckleball holds about this player, or delete this player and their sessions.'
+      : 'Download a copy of everything Knuckleball holds about your account, or delete the account.'}</p>
+    <div class="profile-row">
+      <button class="btn btn-secondary" ${state.a1Busy === 'export' ? 'disabled' : ''} onclick="a1Download()">${state.a1Busy === 'export' ? 'Preparing…' : 'Download my data'}</button>
+      ${due ? `<button class="btn btn-secondary" onclick="a1Restore('${me.id}')">Restore this player</button>`
+            : `<button class="btn btn-danger" onclick="a1OpenDelete(${isPlayer ? `'${me.id}'` : 'null'})">${isPlayer ? 'Delete this player' : 'Delete my account'}</button>`}
+    </div>
+    ${due ? `<p class="profile-note">This player will be deleted on ${escHtml(a1Date(due))}.</p>` : ''}
+    ${offline}${msg}</div>`;
+}
+
+function renderA1Delete(){
+  const a = state.a1, player = !!a.target;
+  const who = player ? 'this player' : 'your account';
+  const err = a.error ? `<p class="error-msg">${escHtml(a.error)}</p>` : '';
+  if(a.screen === 'confirm'){
+    return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="Confirm deletion"><div class="who-card attest-card a1-panel">
+      <h2 class="display a1-title">${player ? 'Delete this player' : 'Delete your account'}</h2>
+      <p class="profile-note">Type <strong>DELETE</strong> to confirm. ${player ? 'The player is' : 'Your account is'} deleted for good in 7 days unless restored.</p>
+      <input class="text-input" id="a1-typed" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Type DELETE to confirm" value="${escHtml(a.typed)}" oninput="a1Typed(this.value)">
+      ${err}
+      <div class="a1-actions">
+        <button class="btn btn-secondary" onclick="a1Back()">Back</button>
+        <button class="btn btn-danger btn-danger-solid" id="a1-confirm-btn" ${a.typed === 'DELETE' && !a.busy ? '' : 'disabled'} onclick="a1Confirm()">${a.busy ? 'Deleting…' : (player ? 'Delete this player' : 'Delete my account')}</button>
+      </div></div></div>`;
+  }
+  const heads = a.teams.length ? `<div class="banner a1-block"><strong>First, hand off or archive the teams you lead.</strong>
+      <ul>${a.teams.map(t => `<li>${escHtml(t.name)}${t.archived ? ' (archived)' : ''} — <a href="#" onclick="a1GoToTeam('${t.id}'); return false;">hand off${t.has_sessions ? ' or archive' : ', archive or delete'}</a></li>`).join('')}</ul>
+      <p class="profile-note">An assistant can take over as head coach; a team with sessions can be archived.</p></div>` : '';
+  return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="Delete ${who}"><div class="who-card attest-card a1-panel">
+    <h2 class="display a1-title">${player ? 'Delete this player' : 'Delete your account'}</h2>
+    ${a.busy ? '<p class="profile-note">Checking…</p>' : ''}
+    <p class="a1-h">What goes</p>
+    <ul class="a1-list">
+      <li>${player ? 'The player\'s profile' : 'Your login and every profile on it' + ' (including players you added)'}</li>
+      <li>Every session ${player ? 'they' : 'you'} pitched: pitches, notes and reports. Each leaves only a record that it happened (date, pitch count, "deleted account") that can't be opened.</li>
+      ${player ? '' : '<li>Notes you wrote, your team memberships, report contacts and consent records</li>'}
+    </ul>
+    <p class="a1-h">What stays</p>
+    <ul class="a1-list">
+      ${player ? '<li>Your parent account and your other players</li>' : '<li>Sessions you charted for other pitchers — they belong to those pitchers ("Former coach")</li><li>The teams you were on</li>'}
+      <li>Backup copies, removed within 7 days of the deletion</li>
+    </ul>
+    <p class="profile-note">Nothing is deleted for 7 days. ${player ? 'You can restore the player from their profile until then.' : 'Sign in before then to restore your account.'}</p>
+    ${heads}${err}
+    <div class="a1-actions">
+      <button class="btn btn-secondary" onclick="a1Close()">Back</button>
+      <button class="btn btn-danger" ${a.teams.length || a.busy ? 'disabled' : ''} onclick="a1Continue()">Continue</button>
+    </div></div></div>`;
+}
+
+function renderA1Scheduled(){
+  const due = state.a1Pending.due;
+  return `<div class="a1-screen" role="dialog" aria-modal="true" aria-label="Account scheduled for deletion">
+    <header class="a1-head">
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+      <span class="slant-tag">Account scheduled for deletion</span>
+      <p class="a1-head-date display">${escHtml(a1Date(due))}</p>
+    </header>
+    <div class="a1-body">
+      <p>${state.a1Pending.justRequested ? 'Done. ' : ''}This account and everything on it will be deleted for good on <strong>${escHtml(a1Date(due))}</strong>. A confirmation email is on its way.</p>
+      ${state.a1Msg ? `<p class="error-msg">${escHtml(state.a1Msg)}</p>` : ''}
+      <button class="btn btn-primary btn-block" ${state.a1Busy === 'restore' ? 'disabled' : ''} onclick="a1Restore()">${state.a1Busy === 'restore' ? 'Restoring…' : 'Restore my account'}</button>
+      <button class="btn btn-tertiary btn-block" onclick="a1KeepScheduled()">Keep it scheduled</button>
+    </div></div>`;
+}
+
 /* ---------- RENDER: OUTBOX BADGE (P1-01) ---------- */
 window.dismissSyncNotice = function(){ state.syncNotice = null; render(); };
 function renderOutboxBadge(){
@@ -10489,7 +10691,7 @@ window.setTeamLevel = async function(teamId, level){
 function renderProfileView(){
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
   if(isCoach()){
-    return `<div class="profile-page">${msg}${renderNameSection(mapProfile(state.profile), true)}${renderEmailSection()}${renderPasswordSection()}${renderCoachTeamAdmin()}</div>`;
+    return `<div class="profile-page">${msg}${renderNameSection(mapProfile(state.profile), true)}${renderEmailSection()}${renderPasswordSection()}${renderCoachTeamAdmin()}${renderDataSection()}</div>`;
   }
   const p = currentPitcher();
   const uniformRows = state.teams.map(t => uniformRowHtml(t.id, state.profile.id, 'Uniform # · ' + t.name)).join('')
@@ -10505,6 +10707,7 @@ function renderProfileView(){
     ${renderNameSection(p, true)}
     ${renderEmailSection()}
     ${renderPasswordSection()}
+    ${renderDataSection()}
   </div>`;
 }
 // Coach editing a rostered pitcher (U9 adds name to what was already here:
@@ -11012,6 +11215,8 @@ function render(){
   // dead-center over the app, shaded navy and blurred. One at a time (the age
   // box first); the app underneath is drawn without any of them.
   const overlay = state.overlayUnderlay ? null
+    : (state.a1Pending && state.session) ? renderA1Scheduled
+    : (state.a1 && state.a1.screen && state.session) ? renderA1Delete
     : (state.attestNeeded && state.session) ? renderAttestScreen
     : (state.whoPicker && state.whoPicker.length > 1) ? renderWhoPicker
     : null;

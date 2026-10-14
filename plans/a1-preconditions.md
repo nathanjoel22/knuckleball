@@ -2,7 +2,16 @@
 
 Spec: `plans/a1-account-deletion-export.md` (GitHub main `2e3b28e`). Every fact here was read from **production** (read-only queries) and the repo. **No code changed.** Branch `a1-account-deletion`.
 
-## Summary: what Joel needs to decide (four escalations, the spec's own triggers)
+## Joel's answers (Oct 14, 2026)
+
+1. **Tombstones:** a tombstone is only a record that the session happened. The date, the pitch count and "Deleted account" stay in the recording team's history, and it **can never be opened again**.
+   - Its pitches, events, notes and report file all go.
+   - Because `sessions.pitcher_id` CASCADEs, the row survives only by re-pointing it to the nameless "former account" stub before the profile is deleted.
+2. **A coach deletes their account:** the sessions they charted **stay with the pitcher who threw them**, on that pitcher's account. "Charted by" shows "Former coach" (via the stub).
+3. **Notes the deleted person wrote:** deleted.
+4. **Backups:** a **one-week retention**. Backup dumps older than 7 days are deleted for good. With the 7-day grace, a deleted account is gone from the app after 7 days and from backups within 14.
+
+## Summary: what Joel was asked (four escalations, the spec's own triggers)
 
 1. **Tombstones vs the pitcher's deletion contradict each other, and the database decides it today.**
    - The spec's two positions:

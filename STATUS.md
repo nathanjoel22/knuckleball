@@ -15,6 +15,25 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-14 · D3 Stage C (shadows) · **staging**
+- **Branch / cache:** `d3-design-cleanup` · `kb-shell-v241`. No database or function change.
+- **Built:** every `box-shadow` reads tokens (30 rules).
+  - The spec's five tokens: `--shadow-segment / -pop / -modal`, `--ring-select / -target`.
+  - Its three additions: `--shadow-lift`, `--ring-focus`, `--press`.
+  - Named per the preconditions: `--ring-target-strong` (the field's measured 3px selected box), `--ring-drop`, `--ring-pulse`, `--ring-plate` (the v232 dark plates), `--ring-danger` (the bullpen clock), `--ring-halo` (the target dot), `--ring-select-4` (the runner token).
+  - `--ring-under` is the underline's geometry, so a pitch-type segment adds its own color at the point of use. A token can't follow a per-element `--seg-accent`, because tokens resolve once at the page root.
+- **Folded (small visible changes, as decided):**
+  - the info bubble, the coach dock and the account menu → `--shadow-pop`;
+  - the dock pill at rest, the runner token and the locked tray → `--shadow-segment`;
+  - the dragged runner → `--shadow-lift`;
+  - the hidden leaderboard's "me" row 1px → 2px.
+- **Checks:**
+  - Grep: no literal box-shadow outside `tokens.css`.
+  - 114 app states × before / after: 100 identical. The rest were timing (re-shot: identical) or the Live Game field's animation.
+  - The runner token compared by eye: the same.
+  - The dock pill lifted and the pressed button: identical values.
+- **Open items:** the spec's video of the dock drag and a tray tap is Joel's check on his phone. Stage D (report font sizes) is next.
+
 ## 2026-10-14 · D3 Stage B (spacing) · **staging**
 - **Branch / cache:** `d3-design-cleanup` · `kb-shell-v240`. No database or function change.
 - **Built:**

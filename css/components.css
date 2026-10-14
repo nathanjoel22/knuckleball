@@ -106,7 +106,7 @@ body.signin .text-input{
   border:1.5px solid var(--border-strong); border-radius:var(--radius-control);
 }
 body.signin .text-input::placeholder{ color:var(--ink-faint); }
-body.signin .text-input:focus{ outline:none; border-color:var(--brand-mid); box-shadow:0 0 0 3px var(--brand-mid-ring); }
+body.signin .text-input:focus{ outline:none; border-color:var(--brand-mid); box-shadow:var(--ring-focus); }
 body.signin p.sub{ font-size:var(--t-14); color:var(--ink-dim); margin:0; }
 body.signin .error-msg{ font-size:var(--t-12); color:var(--danger); min-height:16px; }
 body.signin .info-msg{
@@ -229,4 +229,4 @@ body.landing .foot a{ color:inherit; text-decoration:underline; }
   body.landing .option-card{ padding:var(--s-8) var(--s-12); }
 }
 .next-pitch{ white-space:nowrap; }   /* D1/D2: the one Next Pitch component (variants: .g5-nextpitch under the field, .g5-act-next in the field actions) */
-body.signin .card > .btn-primary{ box-shadow:0 0 0 3px var(--brand-bg); }   /* Joel, Oct 13: a dark plate behind the sign-in pages' main button */
+body.signin .card > .btn-primary{ box-shadow:var(--ring-plate); }   /* Joel, Oct 13: a dark plate behind the sign-in pages' main button */

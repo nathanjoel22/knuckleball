@@ -137,6 +137,19 @@
   --ring-select:    inset 0 -3px 0 var(--btn-accent);
   --ring-target:    inset 0 0 0 2px var(--accent);
   --focus:          2px solid var(--brand-mid);
+  /* D3 Stage C (Oct 14): every box-shadow reads one of these. Colors that vary per element (a pitch
+     type's underline) add their color at the point of use to the geometry-only --ring-under. */
+  --shadow-lift:    0 10px 22px rgba(0,0,0,0.30);              /* a lifted / dragged thing: the dock pill, a dragged runner */
+  --press:          inset 0 0 0 999px rgba(0,0,0,0.04);        /* U13 pressed */
+  --ring-focus:     0 0 0 3px var(--brand-mid-ring);           /* input focus halo */
+  --ring-select-4:  inset 0 0 0 4px var(--btn-accent);         /* the runner token's ring (Live Game field) */
+  --ring-target-strong: inset 0 0 0 3px var(--accent-game);    /* the field's selected box (measured 3px) */
+  --ring-drop:      inset 0 0 0 3px var(--on-dark);            /* the field's drop target / held box */
+  --ring-pulse:     inset 0 0 0 3px rgba(var(--accent-rgb),0.55);   /* the field choices' flash */
+  --ring-plate:     0 0 0 3px var(--brand-bg);                 /* the dark plate behind a button (v232) */
+  --ring-danger:    inset 0 0 0 2px var(--danger);             /* the bullpen clock's out-of-range time */
+  --ring-halo:      0 0 0 4px rgba(var(--accent-rgb),0.28);    /* the target dot's glow */
+  --ring-under:     inset 0 -3px 0;                            /* geometry of --ring-select, for a per-element color */
   --s-2: 2px;  --s-4: 4px;  --s-6: 6px;  --s-8: 8px;   /* --s-6: D3 Option 2 (Jordan / Joel, Oct 13-14) */  --s-12: 12px; --s-16: 16px;
   --s-20: 20px; --s-24: 24px; --s-32: 32px; --s-48: 48px; --s-64: 64px;
 

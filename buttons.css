@@ -27,11 +27,11 @@
 .btn-sm{ font-size:14px; padding:0 var(--s-12); }          /* size variant: dense rows */
 .btn-block{ display:flex; width:100%; }             /* size variant: full width */
 /* A single button that shows a state (Set/Windup, the batter pill): the selected look. */
-.btn.is-selected{ background:#fff; color:var(--btn-ink); box-shadow:0 1px 3px rgba(0,0,0,.18), inset 0 -3px 0 var(--btn-accent); }
+.btn.is-selected{ background:#fff; color:var(--btn-ink); box-shadow:var(--shadow-segment), var(--ring-select); }
 
 /* Pressed: the fill 4% darker (an inset overlay, so the text keeps its color), a hair smaller. */
-.btn:active:not(:disabled){ box-shadow:inset 0 0 0 999px rgba(0,0,0,.04); transform:scale(.98); }
-.btn.is-selected:active:not(:disabled){ box-shadow:0 1px 3px rgba(0,0,0,.18), inset 0 -3px 0 var(--btn-accent), inset 0 0 0 999px rgba(0,0,0,.04); }
+.btn:active:not(:disabled){ box-shadow:var(--press); transform:scale(.98); }
+.btn.is-selected:active:not(:disabled){ box-shadow:var(--shadow-segment), var(--ring-select), var(--press); }
 
 /* ---------- Trays: 2-5 mutually exclusive choices ---------- */
 .tray{
@@ -56,21 +56,21 @@
 .seg::before{ content:''; position:absolute; left:0; right:0; top:-3px; bottom:-3px; }
 .tray-grid .seg{ min-height:44px; }               /* rows touch, so the segment itself is 44 tall */
 .tray-grid .seg::before{ top:0; bottom:0; }
-.seg[aria-pressed="true"]{ background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.18), inset 0 -3px 0 var(--seg-accent, var(--btn-accent)); }
+.seg[aria-pressed="true"]{ background:#fff; box-shadow:var(--shadow-segment), var(--ring-under) var(--seg-accent, var(--btn-accent)); }
 .seg:active:not(:disabled){ background-color:rgba(0,0,0,.04); }
 .seg[aria-pressed="true"]:active:not(:disabled){ background-color:#fff; }
 /* The sliding indicator (placed by the page's script): the selected segment rises on it. */
 .tray-ind{
   position:absolute; z-index:0; left:3px; top:3px; width:0; height:0; pointer-events:none;
   border-radius:var(--radius-segment); background:#fff;
-  box-shadow:0 1px 3px rgba(0,0,0,.18), inset 0 -3px 0 var(--seg-accent, var(--btn-accent));
+  box-shadow:var(--shadow-segment), var(--ring-under) var(--seg-accent, var(--btn-accent));
   transition:left 150ms ease, top 150ms ease, width 150ms ease, height 150ms ease;
 }
 .tray.has-ind .seg[aria-pressed="true"]{ background:transparent; box-shadow:none; }
 .tray:not(.has-ind) .tray-ind{ display:none; }
 /* A locked tray (e.g. the charting perspective after the first pitch) reads as locked: dimmed, the choice flattened. */
 .tray-locked{ opacity:.55; }
-.tray-locked .tray-ind, .tray-locked .seg[aria-pressed="true"]{ box-shadow:0 1px 2px rgba(0,0,0,.10); }
+.tray-locked .tray-ind, .tray-locked .seg[aria-pressed="true"]{ box-shadow:var(--shadow-segment); }
 .tray-locked .seg:disabled{ color:var(--btn-ink); }
 
 /* Pitch types: unselected segments show a dot in their type color; the selected one is underlined in it.

@@ -15,6 +15,13 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-14 · no packet (staging report links) · **staging**
+- **Changed:** the staging `REPORT_SITE_ORIGIN` secret: `http://localhost:8080` → `http://192.168.1.15:8000`, the local staging site on Joel's home Wi-Fi. Verified by the secret's SHA-256 fingerprint before and after, and the staging `send-session-report` redeployed so it reads the new value.
+- **Effect:** staging report emails now link to an address a phone on that Wi-Fi can open while the local server runs. Before, they pointed to `localhost:8080`, which nothing serves.
+- **Production:** untouched. It has no `REPORT_SITE_ORIGIN` (confirmed), so its links stay https://knuckleballonline.com.
+- **Docs:** CLAUDE.md and the comments in `send-session-report/index.ts` updated (code unchanged).
+- **Open items:** if the Mac's Wi-Fi address changes, update this secret too.
+
 ## 2026-10-14 · D3 (corners, spacing, shadows, report sizes) + no clock in Live Games · **production**
 - **Branch / cache:** `d3-design-cleanup` fast-forwarded to `main` · `kb-shell-v241` (production was v238). No database change.
 - **Edge Function:** `send-session-report` deployed to production (D3 Stage D font sizes; new reports only).

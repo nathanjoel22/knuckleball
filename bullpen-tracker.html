@@ -6192,7 +6192,7 @@ window.handleGameZoneTap = async function(row, col){
   // not only on an already-pushed one -- see gameVeloTarget/recordGameVelo.
   // A fresh tap always starts this field at null, same "re-tapping starts
   // capture over" precedent as row/col.
-  state.activeSession.gamePendingPitch = { row, col, velo: null, timeToPlate: takeTimeToPlate(), target };   // U11 (7); target: Intent (Oct 12)
+  state.activeSession.gamePendingPitch = { row, col, velo: null, timeToPlate: null, target };   // Joel, Oct 14: no clock in Live Games   // U11 (7); target: Intent (Oct 12)
   // G1b-r3: the dot is remembered for the whole play (drawn above the
   // in-grid boxes), and survives a resume -- cleared only by Next Pitch or
   // by Back cancelling this location.
@@ -7166,7 +7166,8 @@ function renderDeliveryToggle(noTime){
   const opts = [{ key: 'windup', label: 'Windup' }, { key: 'set', label: 'Set' }];
   const tray = segTray(opts.map(o => ({ label: o.label, selected: s.delivery === o.key, onclick: `setGameDelivery('${o.key}')` })), { key: 'deliv', label: 'Delivery' });
   const label = 'Delivery' + (!s.delivery ? ' — pick one before the next pitch' : '');
-  return `<div><div class="field-label" style="margin-bottom:8px;">${label}</div><div class="deliv-tray-row">${tray}${noTime ? '' : renderTimeToPlateBtn()}</div></div>`;
+  const clock = !noTime && s.kind !== 'game';   // Joel, Oct 14: the clock is for bullpens only -- removed from Live Games
+  return `<div><div class="field-label" style="margin-bottom:8px;">${label}</div><div class="deliv-tray-row">${tray}${clock ? renderTimeToPlateBtn() : ''}</div></div>`;
 }
 // G1b-r decisions 2/3/10, updated by G1b-r2: six buttons now, not seven --
 // H and O fold into one In Play icon button (opens the walkthrough, which
@@ -8915,7 +8916,7 @@ function renderGameSessionView(p){
               </div>${g5Below}
             </div>
           </div>
-          <div class="wide-bl">${sportCfg().hasTimeToPlate ? renderTimeToPlateBtn() : ''}</div>
+          <div class="wide-bl"></div>   <!-- Joel, Oct 14: no clock in Live Games (it sat here) -->
           <div class="wide-br">
             <button class="btn btn-secondary" onclick="undoLastGameAction()">Undo last action</button>
             <button class="btn btn-secondary" onclick="gameNewBatter()">New batter</button>
@@ -9157,10 +9158,10 @@ function renderPhoneDeliveryRow(p, deliveryInStatus){
   const withDelivery = sportCfg().hasDelivery && !deliveryInStatus;
   return `<div class="deliv-row">${withDelivery ? renderDeliveryOne() + renderTimeToPlateBtn(true) : ''}${renderPitchStrip(p)}</div>`;
 }
-// Joel, Oct 8 (Live Game, phones): Set/Windup and ⏱ ride on the right of the status bar; the pitch-type row
-// gets the full width.
+// Joel, Oct 8 (Live Game, phones): Set/Windup rides on the right of the status bar; the pitch-type row
+// gets the full width. Joel, Oct 14: no clock in Live Games.
 function renderStatusDelivery(){
-  return sportCfg().hasDelivery ? `<span class="ph-status-deliv">${renderDeliveryOne()}${renderTimeToPlateBtn(true)}</span>` : '';
+  return sportCfg().hasDelivery ? `<span class="ph-status-deliv">${renderDeliveryOne()}</span>` : '';
 }
 // The hint overlays the top edge of the grid instead of taking a row.
 function renderPhoneHint(){

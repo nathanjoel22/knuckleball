@@ -10,8 +10,8 @@
 /* ---------- Standalone buttons ---------- */
 .btn{
   -webkit-appearance:none; appearance:none; box-sizing:border-box;
-  display:inline-flex; align-items:center; justify-content:center; gap:6px;
-  min-height:var(--btn-h); padding:0 16px; margin:0;
+  display:inline-flex; align-items:center; justify-content:center; gap:var(--s-6);
+  min-height:var(--btn-h); padding:0 var(--s-16); margin:0;
   border:0; border-radius:var(--radius-control);
   background:var(--btn-soft); color:var(--btn-ink);
   font:inherit; font-size:16px; font-weight:600; line-height:1.2; letter-spacing:normal; text-transform:none;
@@ -24,7 +24,7 @@
 .btn-tertiary{ background:transparent; color:var(--btn-ink); }
 .btn-icon{ width:var(--btn-h); min-width:var(--btn-h); padding:0; flex:none; background:var(--btn-soft); font-size:20px; }
 .btn-danger{ background:var(--btn-soft); color:var(--btn-danger); }
-.btn-sm{ font-size:14px; padding:0 12px; }          /* size variant: dense rows */
+.btn-sm{ font-size:14px; padding:0 var(--s-12); }          /* size variant: dense rows */
 .btn-block{ display:flex; width:100%; }             /* size variant: full width */
 /* A single button that shows a state (Set/Windup, the batter pill): the selected look. */
 .btn.is-selected{ background:#fff; color:var(--btn-ink); box-shadow:0 1px 3px rgba(0,0,0,.18), inset 0 -3px 0 var(--btn-accent); }
@@ -38,16 +38,15 @@
   position:relative; box-sizing:border-box;
   display:flex; align-items:stretch; gap:0;
   min-height:var(--btn-h); padding:3px; margin:0;
-  border-radius:var(--radius-control); background:var(--btn-soft);
-}
+  border-radius:var(--radius-control); background:var(--btn-soft); /* geometry: 44 = 38 + 3 + 3 (U13) */ }
 .tray-grid{ display:grid; grid-template-columns:1fr 1fr; }          /* wide pitch types: two per row (r6) */
 .tray-scroll{ overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
 .tray-scroll::-webkit-scrollbar{ display:none; }
 .seg{
   -webkit-appearance:none; appearance:none; box-sizing:border-box;
   position:relative; z-index:1;
-  flex:1 1 0; min-width:0; min-height:38px; padding:0 10px; margin:0;
-  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  flex:1 1 0; min-width:0; min-height:38px; padding:0 var(--s-8); margin:0;
+  display:inline-flex; align-items:center; justify-content:center; gap:var(--s-6);
   border:0; border-radius:var(--radius-segment); background:transparent; color:var(--btn-ink);
   font:inherit; font-size:14px; font-weight:600; line-height:1.15; letter-spacing:normal; text-transform:none;
   white-space:nowrap; cursor:pointer; -webkit-tap-highlight-color:transparent;

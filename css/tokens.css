@@ -137,7 +137,7 @@
   --ring-select:    inset 0 -3px 0 var(--btn-accent);
   --ring-target:    inset 0 0 0 2px var(--accent);
   --focus:          2px solid var(--brand-mid);
-  --s-2: 2px;  --s-4: 4px;  --s-8: 8px;  --s-12: 12px; --s-16: 16px;
+  --s-2: 2px;  --s-4: 4px;  --s-6: 6px;  --s-8: 8px;   /* --s-6: D3 Option 2 (Jordan / Joel, Oct 13-14) */  --s-12: 12px; --s-16: 16px;
   --s-20: 20px; --s-24: 24px; --s-32: 32px; --s-48: 48px; --s-64: 64px;
 
   /* ---- Motion ---- */

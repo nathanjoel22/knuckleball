@@ -56,64 +56,64 @@
      stays its own separate, hard-coded array, unchanged by this refresh. */
   /* ---------- G1b-r5: phone session layout (docs/game- and pen-phone-layout-reference.html) ----------
      All of these classes are only rendered at phone width (phoneSessionMode). */
-  .ph-main{ padding:0 8px 16px !important; gap:8px !important; }
+  .ph-main{ padding:0 var(--s-8) var(--s-16) !important; gap:var(--s-8) !important; }
   .sess-head{
-    display:flex; align-items:center; gap:8px; min-height:44px; padding:0 6px 0 4px;
-    background:var(--brand-bg); color:var(--on-dark); border-radius:var(--radius-control); margin:8px 0 0;
+    display:flex; align-items:center; gap:var(--s-8); min-height:44px; padding:0 var(--s-6) 0 var(--s-4);
+    background:var(--brand-bg); color:var(--on-dark); border-radius:var(--radius-control); margin:var(--s-8) 0 0;
   }
-  .sess-back{ display:flex; justify-content:flex-start; gap:4px; padding:0 6px; max-width:32%; min-width:0; }
+  .sess-back{ display:flex; justify-content:flex-start; gap:var(--s-4); padding:0 var(--s-6); max-width:32%; min-width:0; }
   .sess-team{ font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .sess-who{ display:flex; align-items:center; gap:8px; min-width:0; flex:1; }
+  .sess-who{ display:flex; align-items:center; gap:var(--s-8); min-width:0; flex:1; }
   .sess-who .headshot{ width:28px; height:28px; font-size:10px; flex:none; }
   .sess-name{ font-weight:700; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:2.5em; }
   .sess-num{ font-size:14px; color:var(--on-dark-dim); flex:none; }
   .sess-offline{ flex:none; width:9px; height:9px; border-radius:var(--radius-circle); background:var(--accent-bright); }   /* offline: a dot, so the name keeps its room */
   .sess-more{ font-size:24px; }
-  .dots9{ display:grid; grid-template-columns:repeat(3, 4px); gap:3px; }
+  .dots9{ display:grid; grid-template-columns:repeat(3, 4px); gap:3px; /* geometry: the 9-dot icon */ }
   .dots9 i{ width:4px; height:4px; border-radius:var(--radius-circle); background:var(--on-dark); }
-  .ph-layout .controls-panel.ph-controls{ padding:6px; gap:8px; border:0; box-shadow:none; background:transparent; }
-  .ph-layout{ gap:12px !important; }
+  .ph-layout .controls-panel.ph-controls{ padding:var(--s-6); gap:var(--s-8); border:0; box-shadow:none; background:transparent; }
+  .ph-layout{ gap:var(--s-12) !important; }
   /* D2 Stage C: the scoreboard -- Big Shoulders numbers over small caps labels, cells split by a hairline */
   .ph-status{
-    display:flex; align-items:center; gap:10px; min-height:52px; padding:0 12px;
+    display:flex; align-items:center; gap:var(--s-8); min-height:52px; padding:0 var(--s-12);
     background:var(--brand-bg-deep); color:var(--on-dark); border-radius:var(--radius-control); font-weight:700; font-size:16px;
   }
-  .sb-cell{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:4px 10px 4px 0; border-right:1px solid var(--brand-line); white-space:nowrap; }
+  .sb-cell{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--s-2); padding:var(--s-4) var(--s-8) var(--s-4) 0; border-right:1px solid var(--brand-line); white-space:nowrap; }
   .sb-cell + .sb-cell{ padding-left:0; }
   .sb-num{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:var(--t-24); line-height:1; color:var(--on-dark); }
   .sb-lbl{ font-size:var(--t-10); font-weight:700; font-stretch:90%; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--on-dark-faint); line-height:1; }
   .sb-lbl .lbl-short{ display:none; }
   /* most phones (390 and under): the short label and tighter spacing keep the Live Game bar on one line with Windup and the clock */
-  @media (max-width:399px){ .sb-lbl{ letter-spacing:0.05em; } .sb-lbl .lbl-long{ display:none; } .sb-lbl .lbl-short{ display:inline; } .ph-status{ gap:7px; padding:0 10px; } .sb-cell{ padding-right:7px; } }
-  .ph-status .ph-diamond{ margin-left:2px; display:flex; align-items:center; }
+  @media (max-width:399px){ .sb-lbl{ letter-spacing:0.05em; } .sb-lbl .lbl-long{ display:none; } .sb-lbl .lbl-short{ display:inline; } .ph-status{ gap:var(--s-8); padding:0 var(--s-8); } .sb-cell{ padding-right:var(--s-8); } }
+  .ph-status .ph-diamond{ margin-left:var(--s-2); display:flex; align-items:center; }
   .ph-status .ph-diamond .runner-diamond-btn{ min-height:40px; }
   /* Joel, Oct 12: never wrap "0 OUT 0-0" -- each item stays on one line, and the bar tightens on narrower phones */
   .ph-status .ph-item, .ph-status .ph-inn{ white-space:nowrap; }
-  @media (max-width:389px){ .ph-status{ gap:7px; padding:0 10px; } .sb-cell{ padding-right:7px; } }
-  @media (max-width:359px){ .ph-status{ gap:5px; padding:0 6px; } .sb-cell{ padding-right:5px; } .sb-num{ font-size:var(--t-20); } .ph-status .deliv-one{ width:60px; padding:0 4px; } }   /* D2 (Oct 13): room to spare at 320 px (it was 7 px over before Stage B) */
+  @media (max-width:389px){ .ph-status{ gap:var(--s-8); padding:0 var(--s-8); } .sb-cell{ padding-right:var(--s-8); } }
+  @media (max-width:359px){ .ph-status{ gap:var(--s-4); padding:0 var(--s-6); } .sb-cell{ padding-right:var(--s-4); } .sb-num{ font-size:var(--t-20); } .ph-status .deliv-one{ width:60px; padding:0 var(--s-4); } }   /* D2 (Oct 13): room to spare at 320 px (it was 7 px over before Stage B) */
   .ph-persp{ margin-left:auto; font-size:var(--t-12); font-weight:800; font-stretch:85%; letter-spacing:var(--tr-label); text-transform:uppercase; text-align:right; color:var(--on-dark); }
   .ph-persp.locked{ color:var(--on-dark-dim); }
   /* one grid square on a phone: the grid is min(screen - 28px, 320px) wide,
      3px padding each side and 3px gaps, five across */
   .ph-layout{ --chip:calc((min(100vw - 28px, 320px) - 18px) / 5); }
-  .deliv-row{ display:flex; align-items:center; gap:4px; min-height:44px; }
+  .deliv-row{ display:flex; align-items:center; gap:var(--s-4); min-height:44px; }
   /* Joel, Oct 1: Set and Windup are the same width */
-  .deliv-one{ flex:none; width:78px; padding:0 10px; font-weight:700; }
+  .deliv-one{ flex:none; width:78px; padding:0 var(--s-8); font-weight:700; }
   .ttp-btn.ttp-compact{ flex:none; font-size:16px; }
   /* Joel, Oct 8: in the Live Game status bar (phones) */
-  .ph-status-deliv{ margin-left:auto; display:flex; align-items:center; gap:6px; }
-  .ph-status .deliv-one{ width:76px; height:34px; min-height:34px; padding:0 8px; font-size:14px; }
+  .ph-status-deliv{ margin-left:auto; display:flex; align-items:center; gap:var(--s-6); }
+  .ph-status .deliv-one{ width:76px; height:34px; min-height:34px; padding:0 var(--s-8); font-size:14px; }
   .ph-status .ttp-btn.ttp-compact{ width:40px; min-width:40px; height:34px; min-height:34px; }
-  @media (max-width:359px){ .ph-status{ gap:4px; padding:0 6px; } .sb-cell{ padding-right:4px; } .sb-lbl{ letter-spacing:0.02em; } .ph-status-deliv{ gap:4px; } .ph-status .deliv-one{ width:60px; padding:0 4px; } }   /* after the rules above, so the smallest phones win */
-  .pstrip-wrap{ flex:1; min-width:0; display:flex; align-items:center; gap:2px; }
+  @media (max-width:359px){ .ph-status{ gap:var(--s-4); padding:0 var(--s-6); } .sb-cell{ padding-right:var(--s-4); } .sb-lbl{ letter-spacing:0.02em; } .ph-status-deliv{ gap:var(--s-4); } .ph-status .deliv-one{ width:60px; padding:0 var(--s-4); } }   /* after the rules above, so the smallest phones win */
+  .pstrip-wrap{ flex:1; min-width:0; display:flex; align-items:center; gap:var(--s-2); }
   .pstrip-arrow{ flex:none; width:20px; min-width:0; padding:0; font-size:24px; font-weight:800; }
   .pstrip-arrow:disabled{ background:transparent; }
   .pstrip{ flex:1; min-width:0; scroll-snap-type:x mandatory; }
   /* Joel, Oct 1: pitch squares are the size of a 5x5 grid square, rounded,
      abbreviations in capitals */
-  .pstrip-chip{ flex:0 0 var(--chip); width:var(--chip); padding:0 2px; scroll-snap-align:start; text-transform:uppercase; font-weight:700; }
+  .pstrip-chip{ flex:0 0 var(--chip); width:var(--chip); padding:0 var(--s-2); scroll-snap-align:start; text-transform:uppercase; font-weight:700; }
 /* inside the square, so the strip's edge never clips it */
-  .ph-grid-wrap{ position:relative; margin-top:6px; }
+  .ph-grid-wrap{ position:relative; margin-top:var(--s-6); }
   /* Joel, Oct 1: a bigger grid on phones (340px, was 320) -- as big as it
      can get with everything through the velocity strip still under 700px;
      the pitch and velocity squares keep their size (--chip). */
@@ -121,29 +121,29 @@
   .ph-layout .home-plate-wrap{ width:calc(0.6 * min(100%, 340px) - 4.8px); }
   .ph-hint{ position:absolute; top:-2px; left:0; right:0; z-index:5; text-align:center; font-size:12px; font-weight:600;
     color:var(--warning); pointer-events:none; }
-  .ph-layout .zone-caption{ margin-top:-2px; }
+  .ph-layout .zone-caption{ margin-top:calc(-1 * var(--s-2)); }
   .pb-zone .zone-grid{ margin-bottom:0 !important; }
   .pb-zone .kb-batter{ display:none !important; }
   .pb-pill-row{ display:flex; justify-content:center; }
-  .pb-pill{ min-width:160px; padding:0 24px; font-weight:700; }
-  .ph-actions{ display:flex; gap:8px; }
+  .pb-pill{ min-width:160px; padding:0 var(--s-24); font-weight:700; }
+  .ph-actions{ display:flex; gap:var(--s-8); }
   .ph-act{ flex:1; }
-  .velo-slim{ display:flex; align-items:center; gap:6px; min-height:52px; padding:4px 8px; background:var(--surface); border-radius:var(--radius-control); }
+  .velo-slim{ display:flex; align-items:center; gap:var(--s-6); min-height:52px; padding:var(--s-4) var(--s-8); background:var(--surface); border-radius:var(--radius-control); }
   .velo-slim-lbl{ flex:none; max-width:56px; font-size:10px; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--ink-faint); line-height:1.2; font-weight:700; font-stretch:90%;}
   .velo-slim-strip{ flex:1; min-width:0; }
   .velo-slim .velo-help{ display:none; }
   .velo-slim .velo-strip{ --velo-visible:3; }
   .velo-slim .velo-arrow{ flex:0 0 22px; width:22px; min-width:0; min-height:var(--chip); background:transparent; }
   .velo-slim .velo-cell{ min-height:var(--chip); border-radius:var(--radius-segment); }
-  .velo-slim-reset{ flex:none; padding:0 6px; }
-  .ph-statline{ font-size:12px; font-weight:700; margin-bottom:6px; }
+  .velo-slim-reset{ flex:none; padding:0 var(--s-6); }
+  .ph-statline{ font-size:12px; font-weight:700; margin-bottom:var(--s-6); }
   .sheet-overlay{ align-items:flex-end; padding:0; }
   .sess-sheet{ width:100%; max-width:520px; background:var(--card); border-radius:var(--radius-dock) var(--radius-dock) 0 0; padding:18px 16px calc(16px + env(safe-area-inset-bottom, 0px));
-    display:flex; flex-direction:column; gap:12px; max-height:85vh; overflow:auto; }
+    display:flex; flex-direction:column; gap:var(--s-12); max-height:85vh; overflow:auto; }
   .sess-sheet-title{ font-weight:800; font-size:16px; }
   /* Joel, Oct 1: End session & save, Discard and Close are the same size */
   .sess-sheet .btn{ width:100%; min-height:48px; margin:0; font-size:16px; text-align:center; }
-  .sess-sheet .delete-row{ display:flex; flex-direction:column; gap:12px; }
+  .sess-sheet .delete-row{ display:flex; flex-direction:column; gap:var(--s-12); }
   /* ---------- S1: the softball theme (docs/softball-theme-reference.html) ----------
      Only theme variables change; pitch colors, strike/ball colors and the
      plate overlay are identical in both sports. Pink is an accent like
@@ -153,7 +153,7 @@
     --gg-ink:#1B3550; --gg-border:#9FC3DD; --gg-muted:#5F7A91;
     --gg-on-fg:#EAF4FB; --gg-on-cap:#BFDCEF; --gg-line:#234B6E;
   }
-  .zone-note{ font-size:12px; color:var(--ink-faint); text-align:center; margin-top:-4px; }
+  .zone-note{ font-size:12px; color:var(--ink-faint); text-align:center; margin-top:calc(-1 * var(--s-4)); }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -183,8 +183,8 @@
     width:280px; flex-shrink:0;
     background:var(--surface);
     border-right:1px solid var(--border);
-    padding:20px; /* was 22px 18px -- see .brand-block below, which now carries its own inset padding */
-    display:flex; flex-direction:column; gap:18px;
+    padding:var(--s-20); /* was 22px 18px -- see .brand-block below, which now carries its own inset padding */
+    display:flex; flex-direction:column; gap:var(--s-16);
   }
   /* The dark "top bar" role: an inset strip at the top of the (now light-green)
      sidebar panel, carrying the brand mark, tagline and role/offline pills --
@@ -193,11 +193,11 @@
      default text color is now dark ink, which would otherwise make the bare
      "Knuckleball" wordmark invisible against this strip. */
   .brand-block{
-    display:flex; flex-direction:column; gap:4px;
+    display:flex; flex-direction:column; gap:var(--s-4);
     background:var(--brand-bg); color:var(--on-dark);
-    border-radius:var(--radius-control); padding:16px 18px;
+    border-radius:var(--radius-control); padding:var(--s-16) var(--s-16);
   }
-  .brand{ display:flex; align-items:baseline; gap:8px; }
+  .brand{ display:flex; align-items:baseline; gap:var(--s-8); }
   /* Joel, Oct 8: the wordmark is KNUCKLEBALL in Black Ops One -- no diamond, no period */
   .brand-word{ font-family:var(--font-wordmark) !important; font-weight:400 !important; letter-spacing:0.02em; white-space:nowrap; }
   .brand h1{ font-size:32px; line-height:1; margin:0; letter-spacing:0.02em; }
@@ -206,35 +206,35 @@
   .brand span{ color:var(--accent); }
   .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-tag); color:var(--on-dark-faint); font-weight:700; font-stretch:90%;}
 
-  .role-badge{ margin-top:6px; }   /* D2: the role badge is a .slant-tag (css/components.css) */
+  .role-badge{ margin-top:var(--s-6); }   /* D2: the role badge is a .slant-tag (css/components.css) */
 
   /* Offline indicator + instant boot screen (P1-13) */
   .offline-pill{
-    align-self:flex-start; display:inline-flex; align-items:center; gap:6px; margin-top:6px;
+    align-self:flex-start; display:inline-flex; align-items:center; gap:var(--s-6); margin-top:var(--s-6);
     font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label);
     color:var(--accent-bright); background:rgba(var(--accent-rgb),0.12);
-    border:1px solid rgba(var(--accent-rgb),0.3); padding:3px 9px; border-radius:var(--radius-pill); font-weight:700; font-stretch:90%;}
+    border:1px solid rgba(var(--accent-rgb),0.3); padding:var(--s-2) var(--s-8); border-radius:var(--radius-pill); font-weight:700; font-stretch:90%;}
   .offline-pill::before{
     content:''; width:6px; height:6px; border-radius:var(--radius-circle); background:var(--accent-bright); flex-shrink:0;
   }
   .boot-screen{
     min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:14px; text-align:center; padding:40px 24px;
+    gap:var(--s-12); text-align:center; padding:var(--s-32) var(--s-24);
   }
   .boot-screen .brand h1{ font-size:32px; }
   .boot-msg{ font-size:12px; color:var(--ink-faint); margin:0; line-height:1.5; }
   .boot-msg.boot-offline{ color:var(--warning); font-weight:600; }
 
-  .team-select-wrap{ display:flex; flex-direction:column; gap:5px; }
+  .team-select-wrap{ display:flex; flex-direction:column; gap:var(--s-4); }
   .team-select{
     background:var(--card); border:1px solid var(--border-strong); border-radius:var(--radius-control);
-    color:var(--ink); padding:9px 10px; font-size:14px; width:100%;
+    color:var(--ink); padding:var(--s-8) var(--s-8); font-size:14px; width:100%;
   }
   /* U10 (9): coach's team line. Above phone width the Profile button here is
      hidden (.show-phone) and the row holds only the team selector, laid out
      exactly as before; on phones it's the coach's Profile control, and the
      one in the pitcher header is hidden instead (.hide-phone). */
-  .team-line{ display:flex; align-items:flex-end; gap:10px; }
+  .team-line{ display:flex; align-items:flex-end; gap:var(--s-8); }
   .team-line .team-select-wrap{ flex:1 1 auto; min-width:0; }
   .show-phone{ display:none !important; }
   @media (max-width:500px){
@@ -244,15 +244,15 @@
 
   .roster-label{
     font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label);
-    color:var(--ink-faint); margin:4px 0 -4px; font-weight:700; font-stretch:90%;}
-  .roster-toggle-btn{ display:flex; width:100%; justify-content:space-between; gap:8px; padding:0 14px; margin:0; }
+    color:var(--ink-faint); margin:var(--s-4) 0 calc(-1 * var(--s-4)); font-weight:700; font-stretch:90%;}
+  .roster-toggle-btn{ display:flex; width:100%; justify-content:space-between; gap:var(--s-8); padding:0 var(--s-12); margin:0; }
   .roster-toggle-btn .roster-label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
   .roster-chevron{
     flex-shrink:0; color:var(--ink-faint); font-size:10px; line-height:1;
     transition:transform 200ms ease; transform:rotate(0deg);
   }
   .roster-chevron.open{ transform:rotate(180deg); }
-  .persp-rollup{ justify-content:flex-start; gap:8px; padding:0 14px; }
+  .persp-rollup{ justify-content:flex-start; gap:var(--s-8); padding:0 var(--s-12); }
   .persp-current{ margin-left:auto; font-size:12px; font-weight:700; color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
   /* Collapse animation: overflow-hidden max-height + opacity, ~200ms, so the list
      visibly rolls up/down rather than just vanishing. max-height's open value only
@@ -261,66 +261,66 @@
     max-height:2000px; opacity:1; overflow:hidden;
     transition:max-height 200ms ease, opacity 150ms ease, margin-top 200ms ease;
   }
-  .roster-collapse.collapsed{ max-height:0; opacity:0; margin-top:-6px; }
-  .roster-list{ display:flex; flex-direction:column; gap:6px; overflow-y:auto; }
+  .roster-collapse.collapsed{ max-height:0; opacity:0; margin-top:calc(-1 * var(--s-6)); }
+  .roster-list{ display:flex; flex-direction:column; gap:var(--s-6); overflow-y:auto; }
   .roster-item{
-    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    display:flex; align-items:center; justify-content:space-between; gap:var(--s-8);
     background:transparent; border:1px solid transparent; border-radius:var(--radius-segment);
-    padding:12px 12px; text-align:left; color:var(--ink); cursor:pointer; width:100%;
+    padding:var(--s-12) var(--s-12); text-align:left; color:var(--ink); cursor:pointer; width:100%;
   }
   .roster-item:hover{ background:var(--surface-border); }
   .roster-item.active{ background:var(--surface-border); border-color:var(--surface-border); }
   .roster-item.active .roster-item-num{ color:var(--ink); font-weight:700; }
-  .roster-item-main{ display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
+  .roster-item-main{ display:flex; flex-direction:column; gap:var(--s-2); min-width:0; flex:1; }
   .roster-item-name{ font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .throws-tag{ margin-left:7px; font-size:10px; font-weight:700; letter-spacing:.05em; color:var(--accent-ink); vertical-align:1px; }
+  .throws-tag{ margin-left:var(--s-8); font-size:10px; font-weight:700; letter-spacing:.05em; color:var(--accent-ink); vertical-align:1px; }
   .roster-item-types{ font-size:10px; color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .roster-item-num{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:20px; color:var(--ink-faint); flex-shrink:0; }
   /* U10 (3) revised: the roster red dot -- sits in the item's left padding,
      so names never shift when a dot comes or goes. */
   /* Joel, Sept 30: more room between the dot and the name -- every item
      gets the wider left padding, dot or not, so names stay lined up. */
-  .roster-item{ position:relative; padding-left:22px; }
+  .roster-item{ position:relative; padding-left:var(--s-20); }
   .roster-dot{
-    position:absolute; left:6px; top:50%; margin-top:-4px;
+    position:absolute; left:6px; top:50%; margin-top:calc(-1 * var(--s-4));
     width:8px; height:8px; border-radius:var(--radius-circle); background:var(--danger);
   }
   .roster-dot-count{
     display:inline-flex; align-items:center; justify-content:center; flex:none;
-    min-width:18px; height:18px; padding:0 5px; margin-left:6px; border-radius:var(--radius-pill);
+    min-width:18px; height:18px; padding:0 var(--s-4); margin-left:var(--s-6); border-radius:var(--radius-pill);
     background:var(--danger); color:var(--on-danger); font-size:10px; font-weight:700; letter-spacing:0; line-height:1;
   }
   .tab-dot, .session-dot{
     display:inline-block; width:8px; height:8px; border-radius:var(--radius-circle); background:var(--danger);
     vertical-align:1px;
   }
-  .tab-dot{ margin-left:6px; }
-  .session-dot{ margin-right:7px; }
+  .tab-dot{ margin-left:var(--s-6); }
+  .session-dot{ margin-right:var(--s-8); }
 
   /* R0: invite LINK panel, replacing the old email-invite box. */
   .invite-link-panel{
     background:var(--card); border:1px solid var(--border-strong);
-    border-radius:var(--radius-control); padding:14px; display:flex; flex-direction:column; gap:8px;
+    border-radius:var(--radius-control); padding:var(--s-12); display:flex; flex-direction:column; gap:var(--s-8);
   }
-  .invite-link-row{ display:flex; gap:6px; }
+  .invite-link-row{ display:flex; gap:var(--s-6); }
   .invite-link-text{
     flex:1; min-width:0; background:var(--bg); border:1px solid var(--border-strong);
-    border-radius:var(--radius-segment); color:var(--ink-dim); padding:7px 9px; font-size:12px;
+    border-radius:var(--radius-segment); color:var(--ink-dim); padding:var(--s-8) var(--s-8); font-size:12px;
     font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     user-select:all; -webkit-user-select:all;
   }
   .invite-link-copy-btn{ flex-shrink:0; }
-  .invite-regen-row{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .invite-regen-row{ display:flex; justify-content:space-between; align-items:center; gap:var(--s-8); }
   .invite-regen-warn{
     font-size:12px; color:var(--ink-dim); line-height:1.5; margin:0;
   }
-  .invite-regen-confirm-row{ display:flex; gap:8px; margin-top:6px; }
+  .invite-regen-confirm-row{ display:flex; gap:var(--s-8); margin-top:var(--s-6); }
 
   /* R0: verification badge + remove control on a coach's roster items. */
   .verify-badge{
     font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:var(--tr-label);
-    padding:2px 6px; border-radius:var(--radius-pill); background:var(--warning-tint); color:var(--warning);
-    margin-left:6px; flex-shrink:0; font-stretch:90%;}
+    padding:var(--s-2) var(--s-6); border-radius:var(--radius-pill); background:var(--warning-tint); color:var(--warning);
+    margin-left:var(--s-6); flex-shrink:0; font-stretch:90%;}
   /* U9 follow-up: was inline inside .roster-item-name, sharing its
      white-space:nowrap/ellipsis -- a long name + throws-tag could clip the
      badge mid-pill right where it ran into the uniform number (Joel:
@@ -333,41 +333,41 @@
      email isn't confirmed. Persistent, never a blocking modal (Joel's own
      requirement -- they can look around). */
   .verify-banner{
-    display:flex; flex-wrap:wrap; align-items:center; gap:10px;
+    display:flex; flex-wrap:wrap; align-items:center; gap:var(--s-8);
     background:var(--warning-tint); border:1px solid var(--warning-line); border-radius:var(--radius-control);
-    padding:12px 16px; margin-bottom:16px;
+    padding:var(--s-12) var(--s-16); margin-bottom:var(--s-16);
   }
   .verify-banner p{ margin:0; font-size:12px; color:var(--ink-dim); flex:1; min-width:220px; }
-  .verify-banner-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+  .verify-banner-actions{ display:flex; gap:var(--s-8); flex-wrap:wrap; }
   .change-email-form{
     background:var(--card); border:1px solid var(--border-strong);
-    border-radius:var(--radius-control); padding:16px; display:flex; flex-direction:column; gap:10px; margin-bottom:16px;
+    border-radius:var(--radius-control); padding:var(--s-16); display:flex; flex-direction:column; gap:var(--s-8); margin-bottom:var(--s-16);
   }
 
   .sign-out-btn{ margin-top:auto; }
   .phone-footer{ display:none; }   /* shown on phones only, see the max-width:500px block */
 
-  .outbox-why-list{ display:flex; flex-direction:column; gap:2px; margin-top:4px; }
+  .outbox-why-list{ display:flex; flex-direction:column; gap:var(--s-2); margin-top:var(--s-4); }
   .outbox-why{ display:block; font-size:12px; color:var(--warning); overflow-wrap:anywhere; }
   .outbox-badge{
-    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    display:flex; align-items:center; justify-content:space-between; gap:var(--s-8);
     background:var(--warning-tint); border:1px solid var(--warning-line); border-radius:var(--radius-control);
-    padding:8px 10px; font-size:12px; color:var(--ink-dim);
+    padding:var(--s-8) var(--s-8); font-size:12px; color:var(--ink-dim);
   }
   .outbox-badge .btn{ flex-shrink:0; }
 
   .invite-form{
     background:var(--card); border:1px solid var(--border-strong);
-    border-radius:var(--radius-control); padding:16px; display:flex; flex-direction:column; gap:10px;
+    border-radius:var(--radius-control); padding:var(--s-16); display:flex; flex-direction:column; gap:var(--s-8);
   }
   .field-label{ font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label); color:var(--ink-faint); font-weight:700; font-stretch:90%;}
   .text-input{
     background:var(--card); border:1.5px solid var(--border-strong); border-radius:var(--radius-control);
-    color:var(--ink); padding:9px 12px; min-height:var(--tap-min); font-size:16px; width:100%;
+    color:var(--ink); padding:var(--s-8) var(--s-12); min-height:var(--tap-min); font-size:16px; width:100%;
   }
   .text-input:focus{ outline:none; border-color:var(--brand-mid); box-shadow:0 0 0 3px var(--brand-mid-ring); }
   .text-input::placeholder{ color:var(--ink-faint); }
-  .form-row-buttons{ display:flex; gap:8px; margin-top:2px; }
+  .form-row-buttons{ display:flex; gap:var(--s-8); margin-top:var(--s-2); }
   .invite-status{ font-size:12px; margin:0; }
   .invite-status-sending{ color:var(--ink-faint); }
   .invite-status-sent{ color:var(--success); }
@@ -375,32 +375,32 @@
   .invite-status-info{ color:var(--warning); }
 
   /* MAIN */
-  .main{ flex:1; min-width:0; padding:32px 40px; display:flex; flex-direction:column; gap:24px; }
+  .main{ flex:1; min-width:0; padding:var(--s-32) var(--s-32); display:flex; flex-direction:column; gap:var(--s-24); }
   .empty-state{
     flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    text-align:center; gap:10px; color:var(--ink-faint); padding:60px 20px;
+    text-align:center; gap:var(--s-8); color:var(--ink-faint); padding:var(--s-64) var(--s-20);
   }
   .empty-state .display{ font-size:44px; color:var(--ink-dim); }
 
-  .pitcher-header{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .pitcher-header{ display:flex; align-items:flex-start; justify-content:space-between; gap:var(--s-16); flex-wrap:wrap; }
   .pitcher-header h2{ font-family:var(--font-display); font-size:44px; font-weight:800; text-transform:uppercase; letter-spacing:var(--tr-display); margin:0; line-height:1; }
-  .pitcher-header-actions{ display:flex; gap:10px; align-items:flex-end; }
-  .uniform-field{ display:flex; flex-direction:column; gap:4px; }
-  .uniform-field input{ width:72px; padding:6px 8px; text-align:center; }
-  .uniform-locked{ display:flex; gap:8px; align-items:center; }
+  .pitcher-header-actions{ display:flex; gap:var(--s-8); align-items:flex-end; }
+  .uniform-field{ display:flex; flex-direction:column; gap:var(--s-4); }
+  .uniform-field input{ width:72px; padding:var(--s-6) var(--s-8); text-align:center; }
+  .uniform-locked{ display:flex; gap:var(--s-8); align-items:center; }
   .uniform-locked-num{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:24px; line-height:1; min-width:36px; text-align:center; color:var(--ink); }
   .uniform-msg{ font-size:12px; color:var(--ink-faint); max-width:260px; }
-  .pitcher-sub{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .pitcher-sub{ display:flex; gap:var(--s-6); flex-wrap:wrap; margin-top:var(--s-8); }
   /* U10 (8): player header -- photo (or initials), name, "#12". */
-  .pitcher-ident{ display:flex; align-items:center; gap:14px; min-width:0; }
+  .pitcher-ident{ display:flex; align-items:center; gap:var(--s-12); min-width:0; }
   /* "Take photo" only where there's a camera to open (touch devices); on a
      laptop the capture hint is ignored and it would just repeat Upload. */
   .touch-only{ display:none; }
-  .headshot-setup-row{ display:flex; align-items:flex-start; gap:14px; }
+  .headshot-setup-row{ display:flex; align-items:flex-start; gap:var(--s-12); }
   .headshot-setup-row .profile-row{ margin-top:0 !important; }
   @media (pointer:coarse){ .touch-only{ display:inline-block; } }
   .pitcher-ident-text{ min-width:0; }
-  .pitcher-num{ margin-left:10px; color:var(--ink-faint); font-weight:500; }
+  .pitcher-num{ margin-left:var(--s-8); color:var(--ink-faint); font-weight:500; }
   .headshot{
     flex:none; width:64px; height:64px; border-radius:var(--radius-circle); object-fit:cover;
     background:var(--surface); border:1px solid var(--border);
@@ -413,8 +413,8 @@
      (ellipsis if long), chips hidden -- no taller than ~56px, so the
      charting area loses as little room as possible. */
   @media (max-width:500px){
-    .pitcher-header{ flex-wrap:nowrap; align-items:center; gap:10px; }
-    .pitcher-header .pitcher-ident{ flex:1 1 auto; gap:10px; }
+    .pitcher-header{ flex-wrap:nowrap; align-items:center; gap:var(--s-8); }
+    .pitcher-header .pitcher-ident{ flex:1 1 auto; gap:var(--s-8); }
     .pitcher-header .headshot{ width:40px; height:40px; }
     .pitcher-header .headshot-initials{ font-size:16px; }
     .pitcher-header h2{ font-size:24px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -422,7 +422,7 @@
     .pitcher-header-actions{ flex:none; }
   }
   .pitch-chip{
-    font-size:10px; font-weight:600; padding:4px 9px; border-radius:var(--radius-pill); letter-spacing:0.02em;
+    font-size:10px; font-weight:600; padding:var(--s-4) var(--s-8); border-radius:var(--radius-pill); letter-spacing:0.02em;
     border:1px solid var(--border-strong); color:var(--ink);
   }
   /* gap:4px is the ONLY inter-tab spacing (the .tab-btn margin-right below was a redundant
@@ -435,7 +435,7 @@
      currently always resolves to 0 and only the 8px floor applies; kept as forward-compatible
      groundwork per the request. */
   .tabs{ margin:0 env(safe-area-inset-right, 0px) 0 0; }
-  .tab-btn{ padding:0 6px; text-transform:uppercase; letter-spacing:0.02em; }
+  .tab-btn{ padding:0 var(--s-6); text-transform:uppercase; letter-spacing:0.02em; }
   /* U9: "Player Profile" is the longest tab label this app has ever had,
      and it now shares the row with the corner control -- confirmed
      overflowing at 375px with the full label (measured: 429px of content
@@ -456,7 +456,7 @@
      shrink both panels to their own content width once direction is
      column) means they always stack full-width, matching what iPhone
      already did by accident of running out of room. */
-  .session-grid-layout{ display:flex; flex-direction:column; gap:32px; }
+  .session-grid-layout{ display:flex; flex-direction:column; gap:var(--s-32); }
   /* G1: the Bullpen/Live Game chooser. "Bigger than Gmail's Compose
      button" (Joel) -- 64px+ tall tap targets, full width stacked on
      phone, side by side on iPad (matches the existing >=861px breakpoint
@@ -465,22 +465,22 @@
      "Bullpen" and "Live Game" (Beta tag removed, Joel, Oct 1) --
      never make the two read as different sizes; align-items/justify-
      content center the pair under the question in both layouts. */
-  .kind-chooser{ display:flex; flex-direction:column; align-items:center; padding:48px 16px; }
-  .kind-chooser-buttons{ display:flex; flex-direction:column; align-items:center; gap:16px; width:100%; }
-  .home-tiles{ display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:10px; width:100%; max-width:340px; margin:4px 0 24px; }
+  .kind-chooser{ display:flex; flex-direction:column; align-items:center; padding:var(--s-48) var(--s-16); }
+  .kind-chooser-buttons{ display:flex; flex-direction:column; align-items:center; gap:var(--s-16); width:100%; }
+  .home-tiles{ display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:var(--s-8); width:100%; max-width:340px; margin:var(--s-4) 0 var(--s-24); }
   /* Joel, Oct 12 (his laptop mock-up): on iPad and laptop the tiles fill the whole area beside the roster --
      Charting and History split the top row, Armcare / Mental Game / Profile split the next into thirds */
   @media (min-width:501px){
-    .home-tiles{ max-width:none; gap:16px; }
+    .home-tiles{ max-width:none; gap:var(--s-16); }
     .home-big{ aspect-ratio:5 / 3; min-height:0; }
     .home-small{ aspect-ratio:8 / 7; min-height:0; }
     .home-tiles .home-big .home-ic svg, .home-tiles .home-big .home-ic .ic-img{ width:64px; height:64px; }
     .home-tiles .home-big .home-lbl{ font-size:32px; }
     .home-tiles .home-small .home-ic svg, .home-tiles .home-small .home-ic .ic-img{ width:48px; height:48px; }
     .home-tiles .home-small .home-lbl{ font-size:24px; }
-    .home-tile{ gap:10px; }
+    .home-tile{ gap:var(--s-8); }
   }
-  .home-tile{ flex-direction:column; justify-content:center; gap:6px; min-height:88px; padding:10px 6px; white-space:normal; text-align:center; min-width:0; }
+  .home-tile{ flex-direction:column; justify-content:center; gap:var(--s-6); min-height:88px; padding:var(--s-8) var(--s-6); white-space:normal; text-align:center; min-width:0; }
   .home-big{ grid-column:span 3; min-height:128px; }    /* half the row; about twice a small tile's area */
   .home-small{ grid-column:span 2; }                   /* a third of the row */
   .home-big .home-ic svg, .home-big .home-ic .ic-img{ width:44px; height:44px; }
@@ -509,16 +509,16 @@
   .kind-tray{ width:100%; max-width:420px; }
   .kind-tray .seg{ min-height:72px; font-size:24px; font-weight:700; }   /* Joel, Oct 12: bigger (scale sizes: 24px type) */
   /* the start questions (Joel, Oct 12) */
-  .start-q{ display:flex; flex-direction:column; gap:20px; width:100%; max-width:420px; margin:0 auto; padding:24px 16px 32px; box-sizing:border-box; }
+  .start-q{ display:flex; flex-direction:column; gap:var(--s-20); width:100%; max-width:420px; margin:0 auto; padding:var(--s-24) var(--s-16) var(--s-32); box-sizing:border-box; }
   .start-q-input{ width:100%; box-sizing:border-box; }
   /* Intent's question mark: tap to open, hover (mouse) to peek */
-  .intent-q{ display:flex; align-items:center; gap:8px; }
+  .intent-q{ display:flex; align-items:center; gap:var(--s-8); }
   .info-wrap{ position:relative; display:inline-flex; }
   .info-q{ width:28px; min-width:28px; min-height:28px; height:28px; border-radius:var(--radius-circle); font-size:14px; font-weight:800; }
   .info-q::after{ content:''; position:absolute; inset:-8px; }   /* a 44px tap area */
   .info-tip{ display:none; position:absolute; left:50%; bottom:calc(100% + 8px); transform:translateX(-50%); z-index:20; width:max-content; max-width:220px;
-    padding:8px 10px; border-radius:var(--radius-control); background:var(--brand-bg); color:var(--on-dark); font-size:12px; font-weight:600; line-height:1.3; box-shadow:0 4px 12px rgba(0,0,0,.25); }
-  .info-note{ margin:0; padding:8px 10px; border-radius:var(--radius-control); background:var(--brand-bg); color:var(--on-dark); font-size:12px; font-weight:600; }   /* tapped: in the flow, covers nothing */
+    padding:var(--s-8) var(--s-8); border-radius:var(--radius-control); background:var(--brand-bg); color:var(--on-dark); font-size:12px; font-weight:600; line-height:1.3; box-shadow:0 4px 12px rgba(0,0,0,.25); }
+  .info-note{ margin:0; padding:var(--s-8) var(--s-8); border-radius:var(--radius-control); background:var(--brand-bg); color:var(--on-dark); font-size:12px; font-weight:600; }   /* tapped: in the flow, covers nothing */
   @media (hover:hover){ .info-wrap:hover .info-tip{ display:block; } }
   /* Intent (Oct 12): where the pitch went -- a translucent dark box with the ball on it */
   .zone-cell-ball{ background:rgba(var(--ink-rgb), .42) !important; }
@@ -530,12 +530,12 @@
   .g5-intent-hint{ flex:1; align-self:center; font-size:16px; font-weight:800; color:var(--ink); }   /* as bold as the prompt (Oct 13) */
   @media (prefers-reduced-motion: reduce){ .zone-cell-ball.ball-flash{ animation:none; } }
   .start-q-title{ margin:0; text-align:center; }
-  .start-q-item{ display:flex; flex-direction:column; gap:8px; }
+  .start-q-item{ display:flex; flex-direction:column; gap:var(--s-8); }
   .start-q-label{ font-size:16px; font-weight:600; color:var(--ink); }
   .start-q-note{ margin:0; font-size:12px; color:var(--ink-faint); }
   .start-yn{ max-width:240px; }
   .start-q-input{ font-size:16px; min-height:44px; }
-  .start-q-actions{ display:flex; gap:10px; margin-top:4px; }
+  .start-q-actions{ display:flex; gap:var(--s-8); margin-top:var(--s-4); }
   .start-q-actions .start-q-go{ flex:1; }
   @media (min-width:861px){ .kind-chooser-buttons{ flex-direction:row; justify-content:center; } }
   /* U10 (1): back to the chooser. Above phone width it's a plain
@@ -555,33 +555,33 @@
   .modal-overlay{
     position:fixed; inset:0; background:rgba(var(--ink-rgb),0.55);
     display:flex; align-items:center; justify-content:center;
-    padding:24px 16px; z-index:1000;
+    padding:var(--s-24) var(--s-16); z-index:1000;
     padding-top:calc(24px + env(safe-area-inset-top, 0px));
     padding-bottom:calc(24px + env(safe-area-inset-bottom, 0px));
   }
   .modal-panel{
     position:relative; background:var(--card); border-radius:var(--radius-control);
     max-width:560px; width:100%; max-height:100%; overflow-y:auto;
-    padding:32px 24px 24px; box-shadow:0 8px 32px rgba(var(--ink-rgb),0.35);
+    padding:var(--s-32) var(--s-24) var(--s-24); box-shadow:0 8px 32px rgba(var(--ink-rgb),0.35);
   }
   .modal-close-x{ position:absolute; top:8px; right:8px; }
-  .controls-panel{ display:flex; flex-direction:column; gap:18px; min-width:260px; flex:1; }
-  .chip-row{ display:flex; flex-wrap:wrap; gap:10px; }
+  .controls-panel{ display:flex; flex-direction:column; gap:var(--s-16); min-width:260px; flex:1; }
+  .chip-row{ display:flex; flex-wrap:wrap; gap:var(--s-8); }
   /* U13 layout helpers: spacing that used to sit inline on buttons, and where trays go */
-  .mt-6{ margin-top:6px; } .mt-10{ margin-top:10px; } .mt-12{ margin-top:12px; }
+  .mt-6{ margin-top:var(--s-6); } .mt-10{ margin-top:var(--s-8); } .mt-12{ margin-top:var(--s-12); }
   .roster-name-btn{ all:unset; flex:1; min-width:0; min-height:44px; align-self:stretch; display:flex; align-items:center; cursor:pointer; }
   .roster-name-btn:focus-visible{ outline:3px solid var(--btn-accent); outline-offset:2px; border-radius:var(--radius-control); }
-  .tray-gap{ margin-top:8px; }
+  .tray-gap{ margin-top:var(--s-8); }
   /* a soft button on the soft green sidebar would vanish: there, buttons sit on white */
   .sidebar{ --btn-soft:var(--card); }
   /* page tabs size to their labels; smaller type on phones */
   .tabs .seg{ flex:1 1 auto; }
-  @media (max-width:500px){ .tabs .seg{ font-size:12px; padding:0 6px; letter-spacing:0; } }
+  @media (max-width:500px){ .tabs .seg{ font-size:12px; padding:0 var(--s-6); letter-spacing:0; } }
   .tray-fit{ display:inline-flex; min-width:220px; }
   .history-tray{ flex:1 1 260px; max-width:420px; }
-  .deliv-tray-row{ display:flex; align-items:center; gap:10px; }
+  .deliv-tray-row{ display:flex; align-items:center; gap:var(--s-8); }
   .deliv-tray-row .tray{ flex:1 1 auto; max-width:260px; }
-  .chip-x{ min-height:0; padding:0 0 0 4px; color:inherit; font-size:12px; }
+  .chip-x{ min-height:0; padding:0 0 0 var(--s-4); color:inherit; font-size:12px; }
   /* the iPad/laptop left column is narrow: the perspective's two long choices stack */
   .wide-left .tray[data-tray="persp"]{ flex-direction:column; }
   .wide-left .tray[data-tray="persp"] .seg{ min-height:44px; }
@@ -598,29 +598,29 @@
      comment for the one thing it overrides (a fixed width instead of a minimum). */
   .pitch-count-badge{
     display:inline-flex; align-items:center; justify-content:center;
-    min-height:44px; min-width:44px; padding:10px 16px; border-radius:var(--radius-circle); font-size:14px; font-weight:600;
+    min-height:44px; min-width:44px; padding:var(--s-8) var(--s-16); border-radius:var(--radius-circle); font-size:14px; font-weight:600;
     border:1.5px solid var(--border-strong); background:transparent; color:var(--ink-dim);
   }
   /* Used to hold this pitch counter beside a "Relative accuracy" dropdown
      (removed in U7 -- relative accuracy now lives in Profile); kept as the
      wrapper since renderSessionView still nests .pitch-counter inside it. */
-  .accuracy-count-row{ display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
+  .accuracy-count-row{ display:flex; align-items:flex-end; justify-content:space-between; gap:var(--s-12); }
   /* Row, not stacked: the badge sits left of the label, flush with the pitch-type
      chips and the grid below (not centered under its own label -- Joel, Sept 22:
      that read as inset/indented against everything else in this column). */
-  .pitch-counter{ display:flex; flex-direction:row; align-items:center; gap:10px; flex-shrink:0; }
+  .pitch-counter{ display:flex; flex-direction:row; align-items:center; gap:var(--s-8); flex-shrink:0; }
   .pitch-counter-num{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:24px; line-height:1; color:var(--on-dark); }
   .pitch-count-badge{
     width:44px; height:44px; padding:0; border:0; border-radius:var(--radius-control);
     background:var(--brand-bg-deep); color:var(--on-dark);   /* D2 Stage C: a scoreboard tile */
   }
-  .add-type-inline{ display:flex; gap:6px; align-items:center; }
-  .add-type-inline input, .add-type-inline select{ flex:1; padding:6px 8px; font-size:12px; }
-  .add-type-inline button{ background:none; border:1px solid var(--border-strong); color:var(--ink-dim); border-radius:var(--radius-control); padding:6px 10px; font-size:12px; }
+  .add-type-inline{ display:flex; gap:var(--s-6); align-items:center; }
+  .add-type-inline input, .add-type-inline select{ flex:1; padding:var(--s-6) var(--s-8); font-size:12px; }
+  .add-type-inline button{ background:none; border:1px solid var(--border-strong); color:var(--ink-dim); border-radius:var(--radius-control); padding:var(--s-6) var(--s-8); font-size:12px; }
   .add-type-inline button:hover{ color:var(--ink); border-color:var(--ink); }
 
   /* U6 velocity strip: 7 whole-mph values visible (5 on phones), scrolls across 40-105 with snap. */
-  .velo-strip-wrap{ display:flex; align-items:stretch; gap:6px; }
+  .velo-strip-wrap{ display:flex; align-items:stretch; gap:6px; /* geometry: the velocity strip's cell math */ }
   .velo-strip-wrap.disabled{ opacity:0.4; }
   .velo-strip{
     flex:1; min-width:0; display:flex; overflow-x:auto; overflow-y:hidden;
@@ -641,16 +641,16 @@
   .velo-cell.selected{ background:var(--accent); color:var(--ink); box-shadow:none; }
   .velo-cell:disabled{ cursor:not-allowed; }
   .velo-arrow{ flex:0 0 44px; align-self:stretch; height:auto; }
-  .velo-help{ margin-top:6px; font-size:12px; color:var(--ink-faint); }
+  .velo-help{ margin-top:var(--s-6); font-size:12px; color:var(--ink-faint); }
   /* G1b-r2a: game-only wrapper (see renderGameVeloStrip) -- reference's own
      .velo/.velo .strip b.on: a light-green well and a dark (not amber)
      selected cell. Scoped so bullpen's own velo strip is untouched. */
-  .game-velo{ background:var(--surface); border-radius:var(--radius-control); padding:8px 10px; }
+  .game-velo{ background:var(--surface); border-radius:var(--radius-control); padding:var(--s-8) var(--s-8); }
   .game-velo .velo-cell.selected{ background:var(--brand-bg); color:var(--surface); }
 
   .hint-msg{ font-size:12px; color:var(--warning); min-height:16px; }
 
-  .zone-wrap{ display:flex; flex-direction:column; align-items:center; gap:10px; width:100%; }
+  .zone-wrap{ display:flex; flex-direction:column; align-items:center; gap:10px; width:100%; /* geometry: the batter / home-plate gutters */ }
   /* CHANGE 2 fix: reserve gutters for the batter silhouette so it never
      overlaps a sibling -- in row #app layout (>860px), that sibling is the
      pitcher-list sidebar sitting immediately left of .main. .zone-grid is a
@@ -691,7 +691,7 @@
      SAME 860px breakpoint .zone-grid's own rule already keys off, not a
      new one. */
   @media (min-width:861px){
-    .zone-wrap{ max-width:508px; padding:0 115px; align-self:center; }
+    .zone-wrap{ max-width:508px; padding:0 115px; align-self:center; /* geometry: the batter / home-plate gutters */ }
   }
   /* U2a batter silhouette (Joel's traced source, Sept 9 2026 -- rules are
      in batter-silhouette.html's own history/comments, binding). position:
@@ -719,8 +719,7 @@
        shrink or bury it. */
     position:absolute; left:50%; top:calc(100% + 4px); transform:translateX(-50%);
     white-space:nowrap; font-size:14px; font-weight:800; letter-spacing:.02em; line-height:1;
-    padding:5px 9px; border-radius:var(--radius-pill); background:var(--brand-bg); color:var(--on-dark); pointer-events:none;
-  }
+    padding:5px 9px; border-radius:var(--radius-pill); background:var(--brand-bg); color:var(--on-dark); pointer-events:none; /* geometry: the batter / home-plate gutters */ }
   @media (max-width:500px){
     /* Phones: no room for the figure beside the grid, and the figure never
        carried the state anyway -- drop it entirely. The pill becomes the
@@ -748,14 +747,12 @@
     .kb-batter__label{
       position:static; transform:none; display:flex; align-items:center; justify-content:center;
       min-height:var(--kb-pill-h); min-width:140px; padding:0 22px;
-      font-size:16px; font-weight:800; border-radius:var(--radius-pill); pointer-events:auto;
-    }
+      font-size:16px; font-weight:800; border-radius:var(--radius-pill); pointer-events:auto; /* geometry: the batter / home-plate gutters */ }
   }
   .zone-grid{
     display:grid; grid-template-columns:repeat(5, 52px); grid-template-rows:repeat(5, 52px);
     gap:3px; background:var(--brand-bg); padding:3px; border-radius:var(--radius-cell);   /* D2 Stage C: the dark frame */
-    position:relative; /* containing block for .home-plate-overlay (U5) */
-  }
+    position:relative; /* containing block for .home-plate-overlay (U5) */ /* geometry: the charting grid's cell math */ }
   .zone-cell{
     background:var(--card); border-radius:var(--radius-cell); position:relative; border:1px solid transparent;
     transition:background-color 0.3s ease;
@@ -765,7 +762,7 @@
   .zone-cell.clickable:hover{ outline:2px solid var(--accent); outline-offset:-2px; }
   /* Joel, Oct 13: the prompt ("Tap where you're aiming", "What happened?", "Now tap where the pitch went"...) has to
      catch the eye at once -- big, heavy, dark, on a tinted pill in the sport's accent, centered under the chart */
-  .zone-caption{ display:block; width:fit-content; max-width:100%; box-sizing:border-box; margin:8px auto 0; padding:6px 14px;
+  .zone-caption{ display:block; width:fit-content; max-width:100%; box-sizing:border-box; margin:var(--s-8) auto 0; padding:var(--s-6) var(--s-12);
     border-radius:var(--radius-pill); background:rgba(var(--accent-rgb), .26); color:var(--ink);
     font-size:16px; font-weight:800; line-height:1.25; text-align:center; letter-spacing:0; text-transform:none; }
 
@@ -779,10 +776,10 @@
      itself stays, in JS, purely as the bb_x/bb_y anchor lookup G1b-r's
      decision 5 still uses). */
   .walkthrough-summary{
-    font-size:12px; color:var(--ink-dim); line-height:1.5; margin:10px 0 0;
-    display:flex; align-items:center; justify-content:center; gap:10px; text-align:center; flex-wrap:wrap;
+    font-size:12px; color:var(--ink-dim); line-height:1.5; margin:var(--s-8) 0 0;
+    display:flex; align-items:center; justify-content:center; gap:var(--s-8); text-align:center; flex-wrap:wrap;
   }
-  .walkthrough-disabled-reason{ font-size:12px; color:var(--warning); margin:6px 0 0; text-align:center; }
+  .walkthrough-disabled-reason{ font-size:12px; color:var(--warning); margin:var(--s-6) 0 0; text-align:center; }
   /* G1b-r2e retired Fix -- "What happened to the runners?" is always shown
      inline now, so there's nothing left for a separate reveal control to
      do. .fix-link is gone with it (was the reference's own pill button). */
@@ -794,7 +791,7 @@
     border:none; background:transparent; cursor:pointer;
   }
   .runner-diamond-btn:disabled{ cursor:not-allowed; opacity:0.55; }
-  .adjust-runners-panel{ margin-top:4px; padding:14px; }
+  .adjust-runners-panel{ margin-top:var(--s-4); padding:var(--s-12); }
   /* G1b-r2a: re-matched to docs/game-screen-reference.html's own .g2/.gc --
      border var(--game-chip-border) (was --border-strong, a translucent dark
      rather than the reference's solid sage), tighter padding, and a smaller
@@ -807,10 +804,10 @@
      there rather than shrinking anything). '+' (More) stays a real text
      glyph, in the bullpen's own B/K font (.flash-letter's family/weight,
      Big Shoulders 800). */
-  .scorebook-row{ gap:6px; }
+  .scorebook-row{ gap:var(--s-6); }
   .scorebook-btn{
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
-    flex:1; min-width:56px; min-height:44px; padding:6px 4px 5px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--s-2);
+    flex:1; min-width:56px; min-height:44px; padding:var(--s-6) var(--s-4) var(--s-4);
     color:var(--ink); background:var(--card); border:1.5px solid var(--game-chip-border);
     border-radius:var(--radius-control); cursor:pointer;
   }
@@ -832,7 +829,7 @@
      (renderPerspectiveToggle/renderDeliveryToggle, both UNCHANGED), this
      just lays the two blocks out side by side with room to wrap on a
      narrow phone. Game mode only. */
-  .perspective-delivery-row{ display:flex; flex-wrap:wrap; gap:20px; }
+  .perspective-delivery-row{ display:flex; flex-wrap:wrap; gap:var(--s-20); }
   .perspective-delivery-row > div{ flex:1; min-width:180px; }
   /* U11 (7): the stopwatch sits with Windup / Set. Disabled (greyed) unless Set. */
   .ttp-btn:not(.ttp-compact){ min-width:84px; }
@@ -856,10 +853,10 @@
   /* G1b-r2: scorebook cells sit beside the walkthrough on iPad/desktop
      (>=700px) and above it on phone (this block's own mobile-first default,
      column, cells row then walkthrough) -- acceptance 28's own layout. */
-  .walkthrough-layout{ display:flex; flex-direction:column; gap:14px; }
+  .walkthrough-layout{ display:flex; flex-direction:column; gap:var(--s-12); }
   .walkthrough-rows{ min-width:0; }
   @media (min-width:700px){
-    .walkthrough-layout{ flex-direction:row; align-items:flex-start; gap:20px; }
+    .walkthrough-layout{ flex-direction:row; align-items:flex-start; gap:var(--s-20); }
     .walkthrough-layout .scorebook-cells-wrap{ flex:0 0 auto; }
     .walkthrough-rows{ flex:1; }
   }
@@ -873,9 +870,9 @@
      regardless of how tall the actual content is. */
   .game-panel-header{
     position:relative; background:var(--brand-bg); border-radius:var(--radius-control);
-    padding:8px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:var(--s-8) var(--s-12); display:flex; align-items:center; justify-content:space-between; gap:var(--s-8);
   }
-  .game-panel-header .stat-readout{ gap:14px; }
+  .game-panel-header .stat-readout{ gap:var(--s-12); }
   .game-panel-header .stat-num{ color:var(--surface); }
   .game-panel-header .stat-lbl{ color:var(--on-dark-dim); }
   .game-panel-handle{ color:var(--on-dark-dim); font-size:12px; letter-spacing:0.08em; flex:0 0 auto; }
@@ -883,7 +880,7 @@
   .game-panel-body{
     position:absolute; inset:0; z-index:2; overflow-y:auto; box-sizing:border-box;
     background:var(--game-panel-bg); border-radius:var(--radius-control); box-shadow:0 10px 26px rgba(var(--ink-rgb),0.28);
-    border:1px solid var(--surface-border); padding:12px;
+    border:1px solid var(--surface-border); padding:var(--s-12);
     clip-path:inset(0 0 100% 0); pointer-events:none;
     transition:clip-path 220ms ease;
   }
@@ -899,7 +896,7 @@
      partially cut off at the right edge at 320px so the row reads as
      scrollable rather than as "that's all of them." */
   .position-swipe-row{
-    display:flex; gap:8px; overflow-x:auto; overflow-y:hidden; padding-bottom:4px;
+    display:flex; gap:var(--s-8); overflow-x:auto; overflow-y:hidden; padding-bottom:var(--s-4);
     scroll-snap-type:x proximity; scrollbar-width:none; -webkit-overflow-scrolling:touch;
   }
   .position-swipe-row::-webkit-scrollbar{ display:none; }
@@ -919,10 +916,10 @@
      ink-colored 1.5px border (was --border, much lighter), small cells
      dimmed to 85% opacity (a secondary reading next to the batter's own),
      and an uppercase small-caps label above each cell matching .lbl. */
-  .scorebook-cells-wrap{ display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; }
+  .scorebook-cells-wrap{ display:flex; flex-wrap:wrap; gap:var(--s-8); align-items:flex-end; }
   .scorebook-cell-label{
     font-size:10px; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--ink-faint);
-    text-align:center; margin-bottom:2px; font-weight:700; font-stretch:90%;}
+    text-align:center; margin-bottom:var(--s-2); font-weight:700; font-stretch:90%;}
   .scorebook-cell{ background:var(--card); border:1.5px solid var(--ink); border-radius:var(--radius-cell); padding:0; box-sizing:border-box; }
   .scorebook-cell.small{ opacity:0.85; }
   .scorebook-cell svg{ display:block; }
@@ -964,11 +961,11 @@
   .coach-dock{ position:fixed; left:10px; right:10px; bottom:calc(10px + env(safe-area-inset-bottom, 0px)); z-index:60;
     display:flex; gap:0; padding:6px 8px; border-radius:var(--radius-dock); overflow:hidden;
     background:var(--dock-bg); -webkit-backdrop-filter:blur(14px) saturate(140%); backdrop-filter:blur(14px) saturate(140%);
-    box-shadow:0 6px 24px rgba(0,0,0,0.22); transition:transform 260ms ease, opacity 260ms ease; }
+    box-shadow:0 6px 24px rgba(0,0,0,0.22); transition:transform 260ms ease, opacity 260ms ease; /* geometry: the coach dock's measured layout */ }
   .coach-dock.dock-hidden{ transform:translateY(calc(100% + 24px)); opacity:0; pointer-events:none; }
   .dock-btn{ flex:1; min-width:0; min-height:50px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
     background:none; border:0; border-radius:var(--radius-control); color:var(--dock-fg); font:inherit; font-size:10px; font-weight:700; letter-spacing:0.02em; cursor:pointer;
-    -webkit-tap-highlight-color:transparent; }
+    -webkit-tap-highlight-color:transparent; /* geometry: the coach dock's measured layout */ }
   .dock-btn svg{ width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .dock-btn{ position:relative; z-index:1; transition:color 160ms ease; }
   .dock-btn{ font-weight:600; }
@@ -986,12 +983,12 @@
   @media (prefers-reduced-motion: reduce){ .coach-dock, .dock-pill, .dock-btn{ transition:none; } }
   #app.has-dock .main{ padding-bottom:calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
   #app.has-dock .phone-footer{ margin-bottom:calc(84px + env(safe-area-inset-bottom, 0px)); }
-  .persp-plate-wrap{ width:calc(60% - 4px); margin:2px auto 0; }
-  .hp-wrap{ width:100%; max-width:320px; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .persp-plate-wrap{ width:calc(60% - 4px); margin:var(--s-2) auto 0; }
+  .hp-wrap{ width:100%; max-width:320px; display:flex; flex-direction:column; align-items:center; gap:var(--s-6); }
   .hp-plot{ display:block; width:100%; height:auto; }
   .hp-wrap .persp-plate-wrap{ width:58%; margin-top:0; }
-  .hp-legend{ display:flex; flex-wrap:wrap; gap:6px 12px; justify-content:center; font-size:12px; }
-  .hp-key{ display:inline-flex; align-items:center; gap:5px; }
+  .hp-legend{ display:flex; flex-wrap:wrap; gap:var(--s-6) var(--s-12); justify-content:center; font-size:12px; }
+  .hp-key{ display:inline-flex; align-items:center; gap:var(--s-4); }
   .hp-dot{ width:10px; height:10px; border-radius:var(--radius-circle); display:inline-block; }
   .hp-caption{ text-transform:none; letter-spacing:0; font-size:12px; line-height:1.4; text-align:center; }
   .persp-plate{ display:block; width:100%; height:auto; overflow:visible; }
@@ -1054,58 +1051,58 @@
   }
   @keyframes relGlowPulse{ 0%,100%{ opacity:0.16; } 50%{ opacity:0.5; } }
 
-  .log-panel{ min-width:230px; flex:1; display:flex; flex-direction:column; gap:16px; }
-  .stat-readout{ display:flex; gap:18px; flex-wrap:wrap; }
+  .log-panel{ min-width:230px; flex:1; display:flex; flex-direction:column; gap:var(--s-16); }
+  .stat-readout{ display:flex; gap:var(--s-16); flex-wrap:wrap; }
   .stat-box{ display:flex; flex-direction:column; }
   .stat-num{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:32px; line-height:1; color:var(--ink); }
   .stat-lbl{ font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label); color:var(--ink-faint); font-weight:700; font-stretch:90%;}
-  .pitch-log{ display:flex; flex-direction:column; gap:5px; max-height:220px; overflow-y:auto; }
+  .pitch-log{ display:flex; flex-direction:column; gap:var(--s-4); max-height:220px; overflow-y:auto; }
   .pitch-log-row{
     display:flex; align-items:center; justify-content:space-between; font-size:12px;
-    padding:7px 10px; background:var(--surface); border-radius:var(--radius-segment);
+    padding:var(--s-8) var(--s-8); background:var(--surface); border-radius:var(--radius-segment);
   }
   .pitch-log-row .mono{ color:var(--ink-dim); }
-  .plr-dot{ width:8px; height:8px; border-radius:var(--radius-mark); display:inline-block; margin-right:7px; transform:rotate(45deg); }
-  .pitch-row-actions{ display:flex; gap:9px; flex-shrink:0; }
-  .row-x-btn{ min-height:0; padding:0 4px; line-height:1; }
-  .pitch-log-row.editing{ flex-direction:column; align-items:stretch; gap:8px; }
-  .edit-row-fields{ display:flex; gap:8px; }
-  .edit-mini{ background:var(--card); border:1px solid var(--border-strong); border-radius:var(--radius-segment); color:var(--ink); padding:5px 7px; font-size:12px; }
+  .plr-dot{ width:8px; height:8px; border-radius:var(--radius-mark); display:inline-block; margin-right:var(--s-8); transform:rotate(45deg); }
+  .pitch-row-actions{ display:flex; gap:var(--s-8); flex-shrink:0; }
+  .row-x-btn{ min-height:0; padding:0 var(--s-4); line-height:1; }
+  .pitch-log-row.editing{ flex-direction:column; align-items:stretch; gap:var(--s-8); }
+  .edit-row-fields{ display:flex; gap:var(--s-8); }
+  .edit-mini{ background:var(--card); border:1px solid var(--border-strong); border-radius:var(--radius-segment); color:var(--ink); padding:var(--s-4) var(--s-8); font-size:12px; }
   .edit-mini.edit-velo{ width:74px; }
-  .edit-row-actions{ display:flex; gap:12px; }
+  .edit-row-actions{ display:flex; gap:var(--s-12); }
   .end-session-btn{ align-self:flex-start; }
 
   .draft-banner{
-    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
-    background:var(--warning-tint); border:1px solid var(--warning-line); border-radius:var(--radius-control); padding:12px 16px;
+    display:flex; align-items:center; justify-content:space-between; gap:var(--s-12); flex-wrap:wrap;
+    background:var(--warning-tint); border:1px solid var(--warning-line); border-radius:var(--radius-control); padding:var(--s-12) var(--s-16);
   }
   .draft-banner p{ margin:0; font-size:12px; color:var(--ink-dim); }
 
   /* HISTORY */
   .session-card{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-control); overflow:hidden; }
-  .session-card-head{ display:flex; align-items:center; justify-content:space-between; padding:16px 20px; gap:14px; flex-wrap:wrap; cursor:pointer; }
+  .session-card-head{ display:flex; align-items:center; justify-content:space-between; padding:var(--s-16) var(--s-20); gap:var(--s-12); flex-wrap:wrap; cursor:pointer; }
   .session-card-head:hover{ background:var(--surface); }
   .session-date{ font-weight:600; font-size:14px; }
   .coach-logged-tag{
     font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:var(--tr-label);
     color:var(--accent-ink); background:rgba(var(--accent-rgb),0.12); border:1px solid rgba(var(--accent-rgb),0.3);
-    padding:2px 7px; border-radius:var(--radius-pill); margin-left:6px; vertical-align:middle; font-stretch:90%;}
+    padding:var(--s-2) var(--s-8); border-radius:var(--radius-pill); margin-left:var(--s-6); vertical-align:middle; font-stretch:90%;}
   .pending-tag{ color:var(--warning); background:var(--warning-tint); border-color:var(--warning-line); }
   /* U11 (3): a tag is one unit -- never split across lines. On phones
      "Logged by coach" drops to its own short line under the date instead
      of wrapping mid-phrase beside it. */
   .coach-logged-tag{ white-space:nowrap; }
   @media (max-width:500px){
-    .session-date .logged-by-tag{ display:table; margin:4px 0 0; }
+    .session-date .logged-by-tag{ display:table; margin:var(--s-4) 0 0; }
   }
-  .session-meta{ display:flex; gap:16px; flex-wrap:wrap; }
+  .session-meta{ display:flex; gap:var(--s-16); flex-wrap:wrap; }
   .meta-item{ display:flex; flex-direction:column; align-items:flex-end; }
   .meta-num{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:24px; color:var(--ink); line-height:1; }
   .meta-lbl{ font-size:10px; text-transform:uppercase; color:var(--ink-faint); letter-spacing:var(--tr-label); font-weight:700; font-stretch:90%;}
-  .session-card-body{ padding:16px 20px 20px; display:flex; gap:24px; flex-wrap:wrap; }
-  .breakdown-table{ width:100%; border-collapse:collapse; font-size:12px; margin-top:14px; }
-  .breakdown-table th{ text-align:left; color:var(--ink-faint); font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label); padding:4px 8px 6px 0; border-bottom:1px solid var(--border); font-stretch:90%;}
-  .breakdown-table td{ padding:6px 8px 6px 0; border-bottom:1px solid var(--border); }
+  .session-card-body{ padding:var(--s-16) var(--s-20) var(--s-20); display:flex; gap:var(--s-24); flex-wrap:wrap; }
+  .breakdown-table{ width:100%; border-collapse:collapse; font-size:12px; margin-top:var(--s-12); }
+  .breakdown-table th{ text-align:left; color:var(--ink-faint); font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-label); padding:var(--s-4) var(--s-8) var(--s-6) 0; border-bottom:1px solid var(--border); font-stretch:90%;}
+  .breakdown-table td{ padding:var(--s-6) var(--s-8) var(--s-6) 0; border-bottom:1px solid var(--border); }
 
   /* Deleted-session tombstone + delete control (P1-15) */
   .session-card-deleted{ opacity:0.72; }
@@ -1113,111 +1110,111 @@
   .deleted-tag{
     font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:var(--tr-label);
     color:var(--ink-faint); background:rgba(var(--ink-rgb),0.04);
-    border:1px solid var(--border-strong); padding:2px 7px; border-radius:var(--radius-pill); margin-left:6px; vertical-align:middle; font-stretch:90%;}
+    border:1px solid var(--border-strong); padding:var(--s-2) var(--s-8); border-radius:var(--radius-pill); margin-left:var(--s-6); vertical-align:middle; font-stretch:90%;}
   .deleted-meta{ font-size:12px; color:var(--ink-faint); }
-  .deleted-summary-row{ text-align:center; padding:12px 0 4px; }
-  .delete-zone{ margin-top:16px; padding-top:4px; }
-  .delete-warn{ margin:0 0 8px; font-size:12px; color:var(--ink-dim); line-height:1.5; }
-  .delete-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .deleted-summary-row{ text-align:center; padding:var(--s-12) 0 var(--s-4); }
+  .delete-zone{ margin-top:var(--s-16); padding-top:var(--s-4); }
+  .delete-warn{ margin:0 0 var(--s-8); font-size:12px; color:var(--ink-dim); line-height:1.5; }
+  .delete-row{ display:flex; gap:var(--s-8); align-items:center; flex-wrap:wrap; }
 
-  .empty-hist{ text-align:center; color:var(--ink-faint); padding:40px 20px; font-size:14px; }
+  .empty-hist{ text-align:center; color:var(--ink-faint); padding:var(--s-32) var(--s-20); font-size:14px; }
 
   .contacts-panel{
-    display:flex; gap:14px; flex-wrap:wrap; background:var(--card); border:1px solid var(--border);
-    border-radius:var(--radius-control); padding:18px; margin-top:-8px;
+    display:flex; gap:var(--s-12); flex-wrap:wrap; background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius-control); padding:var(--s-16); margin-top:calc(-1 * var(--s-8));
   }
   .contacts-panel .field{ flex:1; min-width:200px; }
-  .contacts-save-row{ flex-basis:100%; display:flex; align-items:center; gap:12px; margin-top:2px; }
+  .contacts-save-row{ flex-basis:100%; display:flex; align-items:center; gap:var(--s-12); margin-top:var(--s-2); }
   .contacts-saved-msg{ font-size:12px; color:var(--success); font-weight:600; }
 
   /* R4: other-team chip, workload line, pitcher team filter */
-  .team-chip{ font-size:10px; font-weight:600; padding:1px 7px; border-radius:var(--radius-pill); background:rgba(var(--ink-rgb),0.07); color:var(--ink-dim); margin-left:6px; white-space:nowrap; }
-  .workload-line{ display:block; font-size:10px; color:var(--ink-faint); margin-top:2px; line-height:1.35; }
-  .workload-banner{ font-size:12px; color:var(--ink-dim); margin:0 0 10px; line-height:1.45; }
-  .history-team-select{ max-width:200px; padding:6px 8px; font-size:12px; margin-left:auto; }
+  .team-chip{ font-size:10px; font-weight:600; padding:1px var(--s-8); border-radius:var(--radius-pill); background:rgba(var(--ink-rgb),0.07); color:var(--ink-dim); margin-left:var(--s-6); white-space:nowrap; }
+  .workload-line{ display:block; font-size:10px; color:var(--ink-faint); margin-top:var(--s-2); line-height:1.35; }
+  .workload-banner{ font-size:12px; color:var(--ink-dim); margin:0 0 var(--s-8); line-height:1.45; }
+  .history-team-select{ max-width:200px; padding:var(--s-6) var(--s-8); font-size:12px; margin-left:auto; }
   /* P1-09: archived team banner + danger zone */
-  .archived-banner{ margin-bottom:12px; }
-  .team-danger-confirm{ display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+  .archived-banner{ margin-bottom:var(--s-12); }
+  .team-danger-confirm{ display:flex; flex-direction:column; gap:var(--s-8); margin-top:var(--s-8); }
   /* S4 B2/B9: Add a player, Parent account badge */
   .parent-badge{ background:rgba(127,140,130,0.18); color:var(--ink-dim); }
-  .ap-choices{ display:flex; gap:16px; flex-wrap:wrap; margin-top:6px; }
+  .ap-choices{ display:flex; gap:var(--s-16); flex-wrap:wrap; margin-top:var(--s-6); }
   /* P1-10: the one-time age box */
-  .attest-card{ gap:12px; }
+  .attest-card{ gap:var(--s-12); }
   /* Joel, Oct 2: a translucent shade over the app, box dead center (D2: the sport's --scrim). */
   .attest-backdrop{ position:fixed; inset:0; z-index:2000; display:flex; align-items:center; justify-content:center;
-    padding:16px; background:var(--scrim); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); overflow-y:auto; }
+    padding:var(--s-16); background:var(--scrim); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); overflow-y:auto; }
   .attest-backdrop .attest-card{ margin:auto; box-shadow:var(--shadow-modal); }
-  .attest-options{ display:flex; flex-direction:column; gap:4px; }
-  .attest-opt{ display:flex; align-items:center; gap:10px; font-size:16px; min-height:40px; cursor:pointer; }
+  .attest-options{ display:flex; flex-direction:column; gap:var(--s-4); }
+  .attest-opt{ display:flex; align-items:center; gap:var(--s-8); font-size:16px; min-height:40px; cursor:pointer; }
   .attest-opt input, .attest-check input{ width:20px; height:20px; accent-color:var(--ink); margin:0; flex:0 0 auto; }
-  .attest-check{ display:flex; gap:10px; align-items:flex-start; font-size:14px; color:var(--ink-dim); line-height:1.45; cursor:pointer; }
+  .attest-check{ display:flex; gap:var(--s-8); align-items:flex-start; font-size:14px; color:var(--ink-dim); line-height:1.45; cursor:pointer; }
   .attest-check a{ color:var(--ink); }
-  .attest-stop{ font-size:14px; background:var(--surface); border:1px solid var(--surface-border); border-radius:var(--radius-control); padding:10px 12px; margin:0; }
-  .policy-foot{ font-size:12px; color:var(--ink-faint); text-align:center; padding:14px 0 6px; }
+  .attest-stop{ font-size:14px; background:var(--surface); border:1px solid var(--surface-border); border-radius:var(--radius-control); padding:var(--s-8) var(--s-12); margin:0; }
+  .policy-foot{ font-size:12px; color:var(--ink-faint); text-align:center; padding:var(--s-12) 0 var(--s-6); }
   .policy-foot a{ color:var(--ink-faint); }
   /* S4: account menu (profiles + Add a sport), Who's charting? */
-  .acct-row{ display:flex; justify-content:flex-end; margin:-6px 0 6px; position:relative; z-index:20; }
+  .acct-row{ display:flex; justify-content:flex-end; margin:calc(-1 * var(--s-6)) 0 var(--s-6); position:relative; z-index:20; }
   .acct-row.acct-inline{ margin:0; align-self:center; }   /* Joel, Oct 7: in the pitcher header's row on iPad / laptop */
   .acct-wrap{ position:relative; }
-  .acct-btn{ gap:6px; padding:0 10px 0 4px; }
+  .acct-btn{ gap:var(--s-6); padding:0 var(--s-8) 0 var(--s-4); }
   .acct-avatar{ width:28px; height:28px; border-radius:var(--radius-circle); background:var(--surface); border:1px solid var(--surface-border); display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--ink); flex:0 0 auto; }
   .acct-caret{ font-size:10px; color:var(--ink-faint); }
-  .acct-chip{ font-size:10px; font-weight:700; letter-spacing:var(--tr-label); text-transform:uppercase; padding:2px 7px; border-radius:var(--radius-pill); font-stretch:90%;}
+  .acct-chip{ font-size:10px; font-weight:700; letter-spacing:var(--tr-label); text-transform:uppercase; padding:var(--s-2) var(--s-8); border-radius:var(--radius-pill); font-stretch:90%;}
   .acct-chip-baseball{ background:var(--bb-surface); color:var(--bb-brand); border:1px solid var(--bb-surface-border); }
   .acct-chip-softball{ background:var(--sb-surface); color:var(--sb-brand); border:1px solid var(--sb-surface-border); }
   .acct-chip-none{ background:var(--surface); color:var(--ink-dim); }
-  .acct-menu{ position:absolute; right:0; top:calc(100% + 6px); width:min(300px, calc(100vw - 32px)); background:var(--card); border:1px solid var(--border-strong); border-radius:var(--radius-control); box-shadow:0 10px 26px rgba(var(--ink-rgb),0.22); padding:8px; display:flex; flex-direction:column; gap:4px; }
-  .acct-email{ font-size:12px; color:var(--ink-faint); padding:4px 8px 8px; border-bottom:1px solid var(--border); margin-bottom:4px; overflow-wrap:anywhere; }
-  .acct-item{ justify-content:flex-start; gap:10px; width:100%; text-align:left; padding:8px; min-height:48px; font-weight:400; }
-  .acct-who{ display:flex; flex-direction:column; gap:3px; min-width:0; flex:1; }
+  .acct-menu{ position:absolute; right:0; top:calc(100% + 6px); width:min(300px, calc(100vw - 32px)); background:var(--card); border:1px solid var(--border-strong); border-radius:var(--radius-control); box-shadow:0 10px 26px rgba(var(--ink-rgb),0.22); padding:var(--s-8); display:flex; flex-direction:column; gap:var(--s-4); }
+  .acct-email{ font-size:12px; color:var(--ink-faint); padding:var(--s-4) var(--s-8) var(--s-8); border-bottom:1px solid var(--border); margin-bottom:var(--s-4); overflow-wrap:anywhere; }
+  .acct-item{ justify-content:flex-start; gap:var(--s-8); width:100%; text-align:left; padding:var(--s-8); min-height:48px; font-weight:400; }
+  .acct-who{ display:flex; flex-direction:column; gap:var(--s-2); min-width:0; flex:1; }
   .acct-name{ font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .acct-meta{ font-size:12px; color:var(--ink-faint); display:flex; align-items:center; gap:6px; }
-  .acct-badge{ font-size:10px; font-weight:700; text-transform:uppercase; background:var(--accent); color:var(--ink); border-radius:var(--radius-pill); padding:1px 6px letter-spacing:var(--tr-label); font-stretch:90%;}
+  .acct-meta{ font-size:12px; color:var(--ink-faint); display:flex; align-items:center; gap:var(--s-6); }
+  .acct-badge{ font-size:10px; font-weight:700; text-transform:uppercase; background:var(--accent); color:var(--ink); border-radius:var(--radius-pill); padding:1px var(--s-6) letter-spacing:var(--tr-label); font-stretch:90%;}
   .acct-check{ color:var(--ink); font-weight:800; }
-  .acct-add{ margin-top:4px; width:100%; }
-  .acct-msg{ font-size:12px; color:var(--warning); margin:4px 8px; }
-  .who-card{ width:min(380px, 100%); background:var(--card); border:1px solid var(--border); border-radius:var(--radius-control); padding:22px; display:flex; flex-direction:column; gap:6px; }
+  .acct-add{ margin-top:var(--s-4); width:100%; }
+  .acct-msg{ font-size:12px; color:var(--warning); margin:var(--s-4) var(--s-8); }
+  .who-card{ width:min(380px, 100%); background:var(--card); border:1px solid var(--border); border-radius:var(--radius-control); padding:var(--s-20); display:flex; flex-direction:column; gap:var(--s-6); }
   /* S3: coaches notes in History */
-  .notes-block{ display:flex; flex-direction:column; gap:10px; margin:14px 0 4px; padding:12px 14px; border:1px solid var(--surface-border); border-radius:var(--radius-control); background:var(--surface); }
-  .note-item{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-segment); padding:9px 11px; }
-  .note-meta{ font-size:12px; color:var(--ink-faint); display:flex; align-items:center; gap:6px; }
+  .notes-block{ display:flex; flex-direction:column; gap:var(--s-8); margin:var(--s-12) 0 var(--s-4); padding:var(--s-12) var(--s-12); border:1px solid var(--surface-border); border-radius:var(--radius-control); background:var(--surface); }
+  .note-item{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-segment); padding:var(--s-8) var(--s-12); }
+  .note-meta{ font-size:12px; color:var(--ink-faint); display:flex; align-items:center; gap:var(--s-6); }
   .note-meta strong{ color:var(--ink); }
-  .note-body{ font-size:14px; color:var(--ink); line-height:1.45; margin-top:4px; overflow-wrap:anywhere; }
+  .note-body{ font-size:14px; color:var(--ink); line-height:1.45; margin-top:var(--s-4); overflow-wrap:anywhere; }
   .note-del{ margin-left:auto; }
   .note-input{ width:100%; resize:vertical; font-family:inherit; min-height:72px; font-size:16px; line-height:1.4; }
-  .note-add-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:6px; }
+  .note-add-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--s-8); margin-top:var(--s-6); }
   .note-count{ font-size:12px; color:var(--ink-faint); }
   .note-hint{ font-size:12px; color:var(--ink-faint); margin:0; }
   .report-panel{
-    margin-top:16px; padding-top:14px; border-top:1px solid var(--border);
-    display:flex; flex-direction:column; gap:8px; align-items:flex-start;
+    margin-top:var(--s-16); padding-top:var(--s-12); border-top:1px solid var(--border);
+    display:flex; flex-direction:column; gap:var(--s-8); align-items:flex-start;
   }
   .report-recipients{ margin:0; font-size:12px; color:var(--ink-faint); }
-  .report-actions{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .report-actions{ display:flex; gap:var(--s-8); flex-wrap:wrap; align-items:center; }
   .report-status{ margin:0; font-size:12px; }
   .report-status-sending{ color:var(--ink-faint); }
   .report-status-sent{ color:var(--success); }
   .report-status-error{ color:var(--danger); }
 
   /* PROFILE (U7) */
-  .profile-page{ display:flex; flex-direction:column; gap:22px; max-width:560px; }
-  .profile-section{ display:flex; flex-direction:column; gap:12px; }
+  .profile-page{ display:flex; flex-direction:column; gap:var(--s-20); max-width:560px; }
+  .profile-section{ display:flex; flex-direction:column; gap:var(--s-12); }
   .profile-section h3{ margin:0; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-faint); font-weight:800; font-stretch:85%;}
-  .profile-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .profile-row{ display:flex; gap:var(--s-8); align-items:center; flex-wrap:wrap; }
   .profile-note{ margin:0; font-size:12px; color:var(--ink-faint); }
   .profile-msg{ margin:0; font-size:12px; color:var(--warning); }
-  .mix-prompt{ margin:8px 0 0; font-size:12px; color:var(--warning); }
+  .mix-prompt{ margin:var(--s-8) 0 0; font-size:12px; color:var(--warning); }
   /* LEADERBOARD (U8) */
-  .lb-page{ display:flex; flex-direction:column; gap:18px; max-width:640px; }
-  .lb-controls{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .lb-page{ display:flex; flex-direction:column; gap:var(--s-16); max-width:640px; }
+  .lb-controls{ display:flex; gap:var(--s-8); align-items:center; flex-wrap:wrap; }
   .lb-team-select{ max-width:100%; }
   .lb-toggle{ width:100%; max-width:440px; }
   .lb-sub{ margin:0; font-size:12px; color:var(--ink-faint); }
   .lb-asof{ margin:0; font-size:12px; color:var(--warning); }
-  .lb-section{ display:flex; flex-direction:column; gap:2px; }
-  .lb-title{ margin:0 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-faint); font-weight:800; font-stretch:85%;}
+  .lb-section{ display:flex; flex-direction:column; gap:var(--s-2); }
+  .lb-title{ margin:0 0 var(--s-6); font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-faint); font-weight:800; font-stretch:85%;}
   .lb-empty{ margin:0; font-size:12px; color:var(--ink-faint); }
-  .lb-row{ display:grid; grid-template-columns:22px 22px minmax(0,1fr) auto; column-gap:8px; align-items:center; padding:8px 8px; border-radius:var(--radius-segment); }
+  .lb-row{ display:grid; grid-template-columns:22px 22px minmax(0,1fr) auto; column-gap:var(--s-8); align-items:center; padding:var(--s-8) var(--s-8); border-radius:var(--radius-segment); }
   .lb-row.me{ background:var(--surface-border); box-shadow:inset 0 0 0 1px var(--accent); }
   .lb-row.unq{ opacity:0.5; }
   .lb-rank{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:20px; color:var(--ink-faint); text-align:right; }
@@ -1226,16 +1223,16 @@
   .lb-name{ font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
   .lb-num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:12px; color:var(--ink-faint); font-weight:700; }
   .lb-val{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:16px; font-weight:700; color:var(--ink); text-align:right; }
-  .lb-val-btn{ min-height:0; padding:2px 8px; }
+  .lb-val-btn{ min-height:0; padding:var(--s-2) var(--s-8); }
   .lb-unq-note{ font-size:12px; color:var(--ink-faint); font-weight:500; }
   .lb-n{ grid-column:3 / 5; font-size:10px; color:var(--ink-faint); }
-  .lb-exclude-panel{ grid-column:1 / -1; display:flex; flex-direction:column; gap:8px; margin-top:6px; padding:10px; border:1px solid var(--border-strong); border-radius:var(--radius-control); font-size:12px; }
-  .lb-exclude-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+  .lb-exclude-panel{ grid-column:1 / -1; display:flex; flex-direction:column; gap:var(--s-8); margin-top:var(--s-6); padding:var(--s-8); border:1px solid var(--border-strong); border-radius:var(--radius-control); font-size:12px; }
+  .lb-exclude-actions{ display:flex; gap:var(--s-8); flex-wrap:wrap; }
   .lb-exclude-note{ font-size:12px; color:var(--ink-faint); }
   .lb-undo{ grid-column:auto; }
-  .edit-error{ margin:4px 0 0; font-size:12px; color:var(--warning); }
-  .zone-row{ display:flex; flex-direction:column; gap:6px; padding:8px 0; border-top:1px solid var(--border); }
-  .zone-paint{ display:flex; flex-direction:column; gap:12px; align-items:flex-start; }
+  .edit-error{ margin:var(--s-4) 0 0; font-size:12px; color:var(--warning); }
+  .zone-row{ display:flex; flex-direction:column; gap:var(--s-6); padding:var(--s-8) 0; border-top:1px solid var(--border); }
+  .zone-paint{ display:flex; flex-direction:column; gap:var(--s-12); align-items:flex-start; }
   .zone-cell.zone-painted{ background:rgba(var(--accent-rgb),0.5); box-shadow:inset 0 0 0 2px var(--accent); }
 
   @media (max-width: 860px){
@@ -1249,12 +1246,12 @@
        Below 860px (iPad portrait and every phone), give the more spacious values back
        to keep the grid/strip exactly as reachable as before; the wider gains still apply
        above 860px, where there's plenty of headroom. */
-    .session-grid-layout{ gap:26px; }
-    .controls-panel{ gap:14px; }
-    .panel{ padding:18px; }
-    .sidebar{ gap:16px; }
-    .brand-block{ padding:12px 18px; }
-    .main{ padding:20px 16px; }
+    .session-grid-layout{ gap:var(--s-24); }
+    .controls-panel{ gap:var(--s-12); }
+    .panel{ padding:var(--s-16); }
+    .sidebar{ gap:var(--s-16); }
+    .brand-block{ padding:var(--s-12) var(--s-16); }
+    .main{ padding:var(--s-20) var(--s-16); }
     /* Fixed-length (15vw) tracks previously demanded ~75vw of width while the
        grid's own box was capped at max-width:320px -- on iPad portrait that
        mismatch (~576px of track vs a 320px box) overflowed the grid past its
@@ -1282,8 +1279,8 @@
      badge still full width), and the page spacing tightens slightly. Phones
      (<=500px) and >=861px get none of this. */
   @media (min-width:501px) and (max-width:860px){
-    .sidebar{ flex-direction:row; flex-wrap:wrap; align-items:center; gap:10px 16px; padding:12px 16px; }
-    .brand-block{ flex-direction:row; align-items:center; gap:10px; padding:8px 14px; }
+    .sidebar{ flex-direction:row; flex-wrap:wrap; align-items:center; gap:var(--s-8) var(--s-16); padding:var(--s-12) var(--s-16); }
+    .brand-block{ flex-direction:row; align-items:center; gap:var(--s-8); padding:var(--s-8) var(--s-12); }
     .brand h1{ font-size:24px; }
     .brand h1.brand-word{ font-size:20px; }
     .tagline{ display:none; }
@@ -1293,12 +1290,12 @@
     .roster-toggle-btn{ flex:1 1 200px; }
     .roster-collapse, .outbox-badge{ flex:1 1 100%; }
     .sign-out-btn{ margin-top:0; margin-left:auto; }
-    .main{ padding:14px 16px; gap:14px; }
+    .main{ padding:var(--s-12) var(--s-16); gap:var(--s-12); }
     .pitcher-header h2{ font-size:32px; }
-    .pitcher-sub{ margin-top:6px; }
-    .controls-panel{ gap:10px; }
-    .panel{ padding:14px; }
-    .session-grid-layout{ gap:18px; }
+    .pitcher-sub{ margin-top:var(--s-6); }
+    .controls-panel{ gap:var(--s-8); }
+    .panel{ padding:var(--s-12); }
+    .session-grid-layout{ gap:var(--s-16); }
   }
 
   /* G1b-r6 (Joel, Oct 1): iPad and laptop session layout -- pen and Live
@@ -1308,37 +1305,37 @@
      grid for the silhouette's head); the fallbacks are the old desktop
      values. Phones never render .wide-cols. */
   @media (min-width:861px){
-    .wide-cols{ display:flex; align-items:flex-start; gap:20px; }
-    .wide-left{ flex:0 0 auto; width:max-content; max-width:220px; display:flex; flex-direction:column; gap:14px; }
-    .wide-right{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:14px; }
-    .wide-right .zone-wrap{ max-width:none; padding:var(--kbo, 0px) 0 22px; align-self:stretch; }
+    .wide-cols{ display:flex; align-items:flex-start; gap:var(--s-20); }
+    .wide-left{ flex:0 0 auto; width:max-content; max-width:220px; display:flex; flex-direction:column; gap:var(--s-12); }
+    .wide-right{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:var(--s-12); }
+    .wide-right .zone-wrap{ max-width:none; padding:var(--kbo, 0px) 0 22px; align-self:stretch; /* geometry: the batter / home-plate gutters */ }
     .wide-right .zone-grid{
       grid-template-columns:repeat(5, minmax(0, 1fr)); grid-template-rows:repeat(5, minmax(0, 1fr));
       width:var(--zg, 278px); height:var(--zg, 278px); max-width:none; aspect-ratio:auto;
     }
     .wide-right .kb-batter{ --kb-batter-h:var(--kbh, 112%); }
     .wide-right .home-plate-wrap{ width:calc(0.6 * var(--zg, 278px) - 4.8px); }
-    .wide-game{ display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:20px; row-gap:16px; }
+    .wide-game{ display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:var(--s-20); row-gap:var(--s-16); }
     .wide-game .wide-left{ max-width:180px; }
     .wide-bl{ grid-column:1; display:flex; align-items:center; }
-    .wide-br{ grid-column:2; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
+    .wide-br{ grid-column:2; display:flex; flex-wrap:wrap; justify-content:center; gap:var(--s-8); }
 /* never more than two pitch types across */
     .wide-hint{ color:var(--warning); text-transform:none; letter-spacing:0; font-size:12px; font-weight:600; }
     /* Joel, Oct 1: pen pitch counter to the right of the perspective chips
        (label above both, "Pitch count" on two lines under the badge). */
-    .persp-count{ display:grid; grid-template-columns:minmax(0, 1fr) auto; column-gap:8px; }
+    .persp-count{ display:grid; grid-template-columns:minmax(0, 1fr) auto; column-gap:var(--s-8); }
     .persp-count > div:first-child{ display:contents; }
     .persp-count > div:first-child > .field-label{ grid-column:1 / -1; }
     .persp-count .tray{ grid-column:1; grid-row:2; }
     .persp-count > div:first-child > p{ grid-column:1 / -1; }
-    .persp-count .wide-count{ grid-column:2; grid-row:2; align-self:start; flex-direction:column; gap:5px; }
+    .persp-count .wide-count{ grid-column:2; grid-row:2; align-self:start; flex-direction:column; gap:var(--s-4); }
     .persp-count .wide-count .field-label{ width:48px; text-align:center; line-height:1.3; }
   }
 
   @media (max-width:500px){
     /* Coach on a phone: invite link + Sign out live at the bottom of the page, not the top. */
     .hide-phone{ display:none !important; }
-    .phone-footer{ display:flex; flex-direction:column; gap:14px; padding:4px 16px 28px; }
+    .phone-footer{ display:flex; flex-direction:column; gap:var(--s-12); padding:var(--s-4) var(--s-16) var(--s-24); }
     /* RESERVED BAND for the phone pitch-pill (see .kb-batter's media block
        above). .zone-grid IS the real "grid wrapper" the silhouette is
        positioned against (already position:relative, see its comment) --
@@ -1368,8 +1365,7 @@
        see them at all. */
     .zone-grid{
       --kb-pill-h:48px; --kb-pill-clear:18px;
-      margin-bottom:calc(var(--kb-pill-clear) + var(--kb-pill-h) + 8px);
-    }
+      margin-bottom:calc(var(--kb-pill-clear) + var(--kb-pill-h) + 8px); /* geometry: the charting grid's cell math */ }
   }
   /* ---------- G5: the field chart (plans/g5-live-game-diamond.md; Joel, Oct 7) ----------
      The field is the back of the pitch chart: the same square (.zone-grid sizing in every layout), the same
@@ -1377,7 +1373,7 @@
   .g5-card{ position:relative; background:transparent !important; overflow:visible; }
   .g5-face{ position:absolute; inset:0; border-radius:var(--radius-cell); }
   .g5-back{ display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); grid-template-rows:repeat(5, minmax(0, 1fr));
-    gap:3px; padding:3px; background:rgba(255,255,255,0.35); }
+    gap:3px; padding:3px; background:rgba(255,255,255,0.35); /* geometry: the Live Game field overlay math */ }
   .g5-card.g5-flat{ background:rgba(255,255,255,0.35) !important; }
   .g5-front > .zone-grid{ position:absolute !important; inset:0; width:100% !important; height:100% !important; max-width:none !important; margin:0 !important; }
   /* Joel's iPad (Oct 8): Safari drew the field's buttons too big under a 3D flip, so the flip is flat -- the face
@@ -1392,7 +1388,7 @@
   .g5-cell{ position:relative; z-index:1; display:flex; align-items:center; justify-content:center; min-width:0; min-height:0;
     border:1px solid rgba(255,255,255,0.55); border-radius:var(--radius-cell); background:transparent; padding:0; font:inherit; color:var(--gg-ink); }
   button.g5-cell{ cursor:pointer; -webkit-tap-highlight-color:transparent; -webkit-appearance:none; appearance:none; box-sizing:border-box; margin:0; overflow:hidden; width:100%; height:100%; }
-  .g5-in{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; pointer-events:none; }
+  .g5-in{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; pointer-events:none; /* geometry: the Live Game field overlay math */ }
   .g5-choice{ background:#fff !important; border:0 !important; box-shadow:inset 0 0 0 2px var(--accent-game); animation:g5flash 1.1s ease-in-out infinite; }
   .g5-choice .gg-ic{ width:30px; height:22px; color:var(--gg-ink); }
   .g5-choice .gg-cap{ font-size:10px; color:var(--gg-ink); }
@@ -1406,7 +1402,7 @@
   .g5-foulpick .g5-in{ position:absolute; inset:0; }
   .g5-shade{ position:absolute; inset:0; border-radius:var(--radius-cell); background:rgba(var(--ink-rgb),0.42); animation:g5shade 1.1s ease-in-out infinite; }
   @keyframes g5shade{ 50%{ opacity:0.55; } }
-  .g5-word{ font-weight:800; font-size:12px; line-height:1.1; text-align:center; color:var(--gg-ink); padding:0 2px; }
+  .g5-word{ font-weight:800; font-size:12px; line-height:1.1; text-align:center; color:var(--gg-ink); padding:0 2px; /* geometry: the Live Game field overlay math */ }
   .g5-baselbl{ font-weight:800; font-size:14px; color:var(--ink); }
   .g5-marked{ background:rgba(255,255,255,0.25); }
   .g5-ball{ width:24px; height:24px; display:block; }
@@ -1421,19 +1417,19 @@
   .wide-right .g5-baselbl{ font-size:calc(var(--g5c) * 0.22); }
   .wide-right .g5-nextbox .g5-np{ font-size:calc(var(--g5c) * 0.15); }
   .wide-right .g5-ball{ width:calc(var(--g5c) * 0.36); height:calc(var(--g5c) * 0.36); }
-  .g5-actions{ display:flex; gap:8px; align-items:center; width:100%; max-width:340px; margin:0 auto; }
+  .g5-actions{ display:flex; gap:8px; align-items:center; width:100%; max-width:340px; margin:0 auto; /* geometry: the Live Game field overlay math */ }
   .wide-right .g5-actions{ max-width:var(--zg, 340px); }
   .g5-act-gap{ flex:1; min-width:0; text-align:center; }
-  .ph-layout .g5-actions{ gap:5px; }
-  .ph-layout .g5-act{ flex:1 1 0; min-width:0; padding:0 4px; }
+  .ph-layout .g5-actions{ gap:5px; /* geometry: the Live Game field overlay math */ }
+  .ph-layout .g5-act{ flex:1 1 0; min-width:0; padding:0 4px; /* geometry: the Live Game field overlay math */ }
   .ph-layout .g5-act-gap{ display:none; }
-  .ph-addcount{ margin-top:-7px; }
+  .ph-addcount{ margin-top:calc(-1 * var(--s-8)); }
   .g5-act-cap{ font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:var(--tr-label); line-height:1.2; font-weight:700; font-stretch:90%;}
   /* Joel, Oct 7: phones -- about 5px between the field and its buttons, and between those and Undo / New batter / New inning */
   .ph-layout .g5-card{ margin-bottom:0 !important; }
-  .ph-layout .zone-wrap.g5-on{ gap:5px; }
-  .ph-layout .ph-actions.g5-on{ margin-top:-3px; }
-  .g5-act{ padding:0 14px; }
+  .ph-layout .zone-wrap.g5-on{ gap:5px; /* geometry: the Live Game field overlay math */ }
+  .ph-layout .ph-actions.g5-on{ margin-top:-3px; /* geometry: the Live Game field overlay math */ }
+  .g5-act{ padding:0 14px; /* geometry: the Live Game field overlay math */ }
   /* Joel, Oct 8 (iPad): the flash glows INSIDE the box, so a box on the field's edge never spills past the grid */
   @keyframes g5flash{ 50%{ box-shadow:inset 0 0 0 3px rgba(var(--accent-rgb),0.55); } }
   @keyframes g5tint{ 50%{ background:rgba(var(--ink-rgb),0.24); } }
@@ -1442,17 +1438,17 @@
     .g5-flip-in .g5-back, .g5-flip-out .g5-front{ transform:none !important; }
     .g5-flip-in .g5-front, .g5-flip-in .g5-back, .g5-flip-out .g5-front, .g5-flip-out .g5-back, .g5-choice, .g5-pick, .g5-shade, .g5-zone-shade{ animation:none !important; }
   }
-  .g5-below{ margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+  .g5-below{ margin-top:10px; display:flex; flex-direction:column; gap:8px; /* geometry: the Live Game field overlay math */ }
   /* Joel, Oct 12: what happened, under the chart -- letters with a small word; a backwards K for looking */
-  .g5-results{ display:flex; gap:6px; margin-top:8px; }
-  .g5-res{ flex:1 1 0; min-width:0; flex-direction:column; gap:1px; padding:0 2px; min-height:52px; }
+  .g5-results{ display:flex; gap:6px; margin-top:8px; /* geometry: the Live Game field overlay math */ }
+  .g5-res{ flex:1 1 0; min-width:0; flex-direction:column; gap:1px; padding:0 2px; min-height:52px; /* geometry: the Live Game field overlay math */ }
   .g5-res-l{ font-size:32px; font-weight:800; line-height:1; }
   .g5-kback{ display:inline-block; transform:scaleX(-1); }
   .g5-res-wide{ font-size:16px; }
-  .g5-res-back{ flex:0 0 auto; padding:0 8px; }
+  .g5-res-back{ flex:0 0 auto; padding:0 8px; /* geometry: the Live Game field overlay math */ }
   /* runners on the field: tap or drag, then Safe / Out (and why, between pitches) */
-  .g5-move{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
-  .g5-move-btns{ display:flex; gap:6px; flex-wrap:wrap; }
+  .g5-move{ display:flex; flex-direction:column; gap:6px; margin-top:8px; /* geometry: the Live Game field overlay math */ }
+  .g5-move-btns{ display:flex; gap:6px; flex-wrap:wrap; /* geometry: the Live Game field overlay math */ }
   .g5-move-btns .g5-act{ flex:1 1 0; }
   .g5-why .g5-act{ flex:1 1 30%; white-space:normal; line-height:1.15; text-align:center; }
   @media (max-width:500px){ .g5-why .g5-act{ flex-basis:40%; } }   /* Joel, Oct 12: two to a row on phones, so "Caught stealing" fits */
@@ -1476,7 +1472,7 @@
   /* Velocity in the chart (Joel, Oct 6): the bar over row 4, Reset + Next pitch over row 5 --
      placed from the grid's own track math (3px padding, 3px gaps, five equal cells). */
   .g5-velo-row, .g5-next-row{ position:absolute; left:3px; right:3px; z-index:6; height:calc((100% - 18px) / 5); display:flex; gap:3px;
-    background:var(--brand-bg); box-shadow:0 0 0 3px var(--brand-bg); border-radius:var(--radius-cell); isolation:isolate; -webkit-transform:translateZ(0); transform:translateZ(0); }   /* Joel, Oct 13: a solid dark backing -- the chart's lines never show through or across these buttons */
+    background:var(--brand-bg); box-shadow:0 0 0 3px var(--brand-bg); border-radius:var(--radius-cell); isolation:isolate; -webkit-transform:translateZ(0); transform:translateZ(0); /* geometry: the Live Game field overlay math */ }   /* Joel, Oct 13: a solid dark backing -- the chart's lines never show through or across these buttons */
   .g5-velo-row{ top:calc(3px + 3 * ((100% - 18px) / 5 + 3px)); }
   .g5-next-row{ top:calc(3px + 4 * ((100% - 18px) / 5 + 3px)); }
   /* the bar reuses the in-grid bar's look (.gg-velo: five speeds, small arrows, gold center window) */
@@ -1486,7 +1482,7 @@
   .g5-velo-row .velo-strip-wrap{ flex:1; min-width:0; background:var(--card); border-radius:var(--radius-control); }
   .g5-velo-row .velo-cell{ min-height:0; height:100%; }
   .g5-reset, .g5-nextpitch{ height:100%; }
-  .g5-reset{ flex:0 0 calc((100% - 12px) / 5); padding:0 4px; }
+  .g5-reset{ flex:0 0 calc((100% - 12px) / 5); padding:0 4px; /* geometry: the Live Game field overlay math */ }
   .g5-nextpitch{ flex:1; }
   /* ---------- G1b-r3: in-grid play entry (docs/game-grid-reference.html) ---------- */
   .gg-field{
@@ -1500,12 +1496,11 @@
      so every box sits exactly on its cells at every width. */
   .gg-overlay{
     position:absolute; inset:3px; display:grid; gap:3px;
-    grid-template-columns:repeat(5, minmax(0, 1fr)); grid-template-rows:repeat(5, minmax(0, 1fr));
-  }
+    grid-template-columns:repeat(5, minmax(0, 1fr)); grid-template-rows:repeat(5, minmax(0, 1fr)); /* geometry: the Live Game field overlay math */ }
   .gg-overlay{ z-index:2; pointer-events:none; }
   .gg-overlay > *{ pointer-events:auto; }
   .gg-ic{ width:40px; height:30px; max-width:80%; display:block; background:currentColor; mask-size:contain; -webkit-mask-size:contain; mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat; mask-position:center; -webkit-mask-position:center; }
-  .gg-cap{ max-width:100%; padding:0 3px; box-sizing:border-box; font-size:10px; letter-spacing:0.02em; text-transform:uppercase; color:var(--gg-muted); text-align:center; line-height:1.15; font-weight:700; font-stretch:85%; }   /* D2: a caption in a fixed field box -- tighter than a label (Oct 13) */
+  .gg-cap{ max-width:100%; padding:0 3px; box-sizing:border-box; font-size:10px; letter-spacing:0.02em; text-transform:uppercase; color:var(--gg-muted); text-align:center; line-height:1.15; font-weight:700; font-stretch:85%; /* geometry: the Live Game field overlay math */ }   /* D2: a caption in a fixed field box -- tighter than a label (Oct 13) */
   /* Narrow phones: captions break only BETWEEN words (never mid-word), and
      the text steps down so two short lines fit inside a ~45px box. */
   .cap-short{ display:none; }
@@ -1514,14 +1509,14 @@
     .cap-short{ display:inline; }
     .gg-big{ font-size:16px; }
     .gg-big-long{ font-size:12px; }
-    .gg-cap{ font-size:10px; letter-spacing:0; padding:0 2px; }
+    .gg-cap{ font-size:10px; letter-spacing:0; padding:0 2px; /* geometry: the Live Game field overlay math */ }
   }
   .gg-big{ font-size:20px; font-weight:800; line-height:1; }
   .gg-big-long{ font-size:16px; letter-spacing:-0.01em; }   /* BUNT: fits inside its box */
   .gg-cap-only{ font-size:10px; font-weight:700; color:var(--gg-ink); line-height:1.2; }
   .gg-done{ font-size:16px; font-weight:800; }
   .gg-book-tl{ left:7px; top:5px; }
-  .gg-book-ask{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; text-align:center; padding:6px; }
+  .gg-book-ask{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; text-align:center; padding:6px; /* geometry: the Live Game field overlay math */ }
   .gg-book-ask > span{ position:static; }
   .gg-ask{ font-size:14px !important; font-weight:800 !important; line-height:1.2; color:var(--gg-ink); }
   .gg-ask-sub{ font-size:10px !important; font-weight:700 !important; color:var(--gg-muted); text-transform:uppercase; letter-spacing:var(--tr-label); font-stretch:90%;}
@@ -1532,7 +1527,7 @@
   .gg-velo-unit{ font-size:10px; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--gg-muted); text-align:center; font-weight:700; font-stretch:90%;}
   /* Row 4: the slider. Full grid width, 5 speeds across, center-snapped; the
      fixed frame marks the center window -- whatever settles in it is picked. */
-  .gg-velo{ margin:1px; min-width:0; display:flex; align-items:stretch; background:#fff; border:1.5px solid var(--gg-border); border-radius:var(--radius-segment); padding:2px; }
+  .gg-velo{ margin:1px; min-width:0; display:flex; align-items:stretch; background:#fff; border:1.5px solid var(--gg-border); border-radius:var(--radius-segment); padding:2px; /* geometry: the Live Game field overlay math */ }
   .gg-velo .game-velo{ flex:1; min-width:0; background:none; padding:0; }
   .gg-velo .velo-strip-wrap{ position:relative; gap:0; height:100%; }
   /* the center window: exactly the middle square of the speeds -- placed on the strip's own box (Joel, Oct 13: it
@@ -1978,13 +1973,13 @@ function renderAttestScreen(){
   const terms = `<a href="${policyHref('terms.html')}" target="_blank" rel="noopener">Terms</a> and <a href="${policyHref('privacy.html')}" target="_blank" rel="noopener">Privacy Policy</a>`;
   const body = coach ? `
       <label class="attest-check"><input type="checkbox" id="attest-terms" ${state.attestTerms ? 'checked' : ''} onchange="state.attestTerms = this.checked"> <span>I am 18 or older and I agree to the ${terms}.</span></label>` : `
-      <div><div class="field-label" style="margin-bottom:6px;">How old are you?</div>
+      <div><div class="field-label" style="margin-bottom:var(--s-6);">How old are you?</div>
         <div class="attest-options">
           ${[['adult', '18 or older'], ['minor_13_17', '13–17'], ['under_13', 'Under 13']].map(([v, l]) => `<label class="attest-opt"><input type="radio" name="attest-age" value="${v}" ${state.attestChoice === v ? 'checked' : ''} onchange="onAttestChoice(this.value)"> ${l}</label>`).join('')}
         </div></div>
-      ${state.attestChoice === 'minor_13_17' ? `<div><div class="field-label" style="margin-bottom:6px;">Parent or guardian email</div>
+      ${state.attestChoice === 'minor_13_17' ? `<div><div class="field-label" style="margin-bottom:var(--s-6);">Parent or guardian email</div>
         <input class="text-input" id="attest-guardian" type="email" placeholder="Not your own email" value="${escHtml(state.attestGuardian || '')}" oninput="state.attestGuardian = this.value">
-        <p class="note-hint" style="margin-top:6px;">We'll email them a link to approve your account. Until they do, you can chart, but you can't view or send reports.</p></div>` : ''}
+        <p class="note-hint" style="margin-top:var(--s-6);">We'll email them a link to approve your account. Until they do, you can chart, but you can't view or send reports.</p></div>` : ''}
       ${state.attestChoice === 'under_13' ? `<p class="attest-stop">Players under 13 need a parent or guardian to create their profile. Ask them to sign up and choose "Add a player". Contact <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a> about this account.</p>` : ''}
       <label class="attest-check"><input type="checkbox" id="attest-terms" ${state.attestTerms ? 'checked' : ''} onchange="state.attestTerms = this.checked"> <span>I agree to the ${terms}.</span></label>`;
   return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="One quick question"><div class="who-card attest-card">
@@ -2054,14 +2049,14 @@ function renderGuardianBanner(){
   const st = state.guardianStatus;
   return `<div class="verify-banner">
     <p><strong>Waiting for a parent or guardian to approve your account.</strong> You can chart as usual; reports unlock once they approve.${st && st.guardian_email ? ` We sent the link to ${escHtml(st.guardian_email)}.` : ''}</p>
-    ${state.guardianEditOpen ? `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    ${state.guardianEditOpen ? `<div style="display:flex;gap:var(--s-8);flex-wrap:wrap;align-items:center;">
         <input class="text-input" style="max-width:260px;" type="email" placeholder="Parent or guardian email" value="${escHtml(state.guardianDraft || '')}" oninput="state.guardianDraft = this.value">
         <button class="btn btn-primary" ${state.guardianBusy ? 'disabled' : ''} onclick="changeGuardianEmail()">Save &amp; send</button>
         <button class="btn btn-secondary" onclick="closeGuardianEdit()">Cancel</button></div>`
-      : `<div style="display:flex;gap:8px;flex-wrap:wrap;">
+      : `<div style="display:flex;gap:var(--s-8);flex-wrap:wrap;">
         <button class="btn btn-secondary" ${state.guardianBusy || !isOnline() ? 'disabled' : ''} onclick="resendGuardian()">${state.guardianBusy ? 'Sending…' : 'Resend'}</button>
         <button class="btn btn-secondary" ${!isOnline() ? 'disabled' : ''} onclick="openGuardianEdit()">Change guardian email</button></div>`}
-    ${state.guardianMsg ? `<p class="report-status" style="margin:6px 0 0;">${escHtml(state.guardianMsg)}</p>` : ''}
+    ${state.guardianMsg ? `<p class="report-status" style="margin:var(--s-6) 0 0;">${escHtml(state.guardianMsg)}</p>` : ''}
   </div>`;
 }
 window.openGuardianEdit = function(){ state.guardianEditOpen = true; state.guardianDraft = ''; state.guardianMsg = ''; render(); };
@@ -2871,14 +2866,14 @@ function renderSetupHeadshot(p){
 function renderHeadshotButtons(p){
   const has = !!p.headshotUpdatedAt;
   const busy = state.headshotBusy;
-  return `<div class="profile-row" style="margin-top:12px;">
+  return `<div class="profile-row" style="margin-top:var(--s-12);">
         <button class="btn btn-secondary" ${busy ? 'disabled' : ''} onclick="pickHeadshot('library')">${busy ? 'Saving…' : has ? 'Upload new photo' : 'Upload photo'}</button>
         <button class="btn btn-secondary touch-only" ${busy ? 'disabled' : ''} onclick="pickHeadshot('camera')">Take photo</button>
         ${has ? `<button class="btn btn-secondary" ${busy ? 'disabled' : ''} onclick="removeHeadshot()">Remove photo</button>` : ''}
       </div>
       <input type="file" id="headshot-input" accept="image/*" style="display:none" onchange="onHeadshotPicked(this)">
       <input type="file" id="headshot-camera" accept="image/*" capture="user" style="display:none" onchange="onHeadshotPicked(this)">
-      <p class="profile-note" style="margin:8px 0 0;">Only your coaches can see your photo.</p>
+      <p class="profile-note" style="margin:var(--s-8) 0 0;">Only your coaches can see your photo.</p>
       ${state.headshotMsg ? `<p class="profile-msg">${escHtml(state.headshotMsg)}</p>` : ''}`;
 }
 
@@ -3220,7 +3215,7 @@ function renderAddPlayerScreen(){
         <p style="color:var(--ink-dim);font-size:14px;margin:0;">Set up your child's profile. They don't need an email or a login: you chart for them from this account${email ? `, and their reports come to <strong>${escHtml(email)}</strong>` : ''}.</p>
         <div class="invite-form" style="width:100%;text-align:left;">
           <div><span class="field-label">Player's name</span>
-            <input id="ap-name" class="text-input" style="margin-top:5px;" value="${escHtml(f.name)}" placeholder="First and last name" oninput="state.addPlayer.name = this.value"></div>
+            <input id="ap-name" class="text-input" style="margin-top:var(--s-4);" value="${escHtml(f.name)}" placeholder="First and last name" oninput="state.addPlayer.name = this.value"></div>
           <div><span class="field-label">Sport</span>
             <div class="ap-choices">${radio('ap-sport', 'baseball', 'Baseball', f.sport === 'baseball')}${radio('ap-sport', 'softball', 'Softball', f.sport === 'softball')}</div></div>
           <div><span class="field-label">Throws</span>
@@ -3280,7 +3275,7 @@ window.submitAddPlayer = async function(){
 function renderWhoPicker(){
   const pool = (state.whoPicker || []).map(id => (state.myProfiles || []).find(p => p.id === id)).filter(Boolean);
   return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="Who's charting?"><div class="who-card attest-card">
-    <div class="display" style="font-size:24px;margin-bottom:2px;">Who's charting?</div>
+    <div class="display" style="font-size:24px;margin-bottom:var(--s-2);">Who's charting?</div>
     ${pool.map(p => `<button type="button" class="btn btn-tertiary acct-item" onclick="switchProfile('${p.id}')">
       <span class="acct-avatar">${escHtml(initialsOf(p.full_name))}</span>
       <span class="acct-who"><span class="acct-name">${escHtml(p.full_name)}</span><span class="acct-meta">${profileChip(p)} ${ROLE_NAME[p.role] || ''}</span></span>
@@ -3291,7 +3286,7 @@ function renderAddSportBanner(){
   const sp = state.addSportBanner;
   if(!sp || sportsToAdd().indexOf(sp) < 0) return '';
   return `<div class="verify-banner acct-banner"><p>You came in on the <strong>${SPORT_NAME[sp]}</strong> side. This login doesn't have a ${sp} profile yet.</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <div style="display:flex;gap:var(--s-8);flex-wrap:wrap;">
       <button class="btn btn-primary" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')">Add ${sp}</button>
       <button class="btn btn-secondary" onclick="dismissAddSport()">Not now</button>
     </div></div>`;
@@ -4494,7 +4489,7 @@ function renderBatterModeToggle(){
   const current = isNoBatter(s) ? 'none' : sessionBatterSide(s);
   const opts = [['none', 'None'], ['R', 'RHB'], ['L', 'LHB']];
   const tray = segTray(opts.map(([k, l]) => ({ label: l, selected: current === k, onclick: `setBatterMode('${k}')` })), { key: 'batter', label: 'Batter' });
-  return `<div><div class="field-label" style="margin-bottom:8px;">Batter</div>${tray}</div>`;
+  return `<div><div class="field-label" style="margin-bottom:var(--s-8);">Batter</div>${tray}</div>`;
 }
 
 /* ---------- U11 (7): TIME TO HOME (stopwatch) ----------
@@ -5361,7 +5356,7 @@ function renderSessionNotes(s){
     return `<div class="note-item">
       <div class="note-meta"><strong>${escHtml(n.authorName)}</strong> · ${escHtml(when)}${mine && !armed ? ` <button type="button" class="btn btn-icon btn-danger note-del" ${isOnline() ? '' : 'disabled'} onclick="armDeleteNote('${n.id}')" aria-label="Delete this note">🗑</button>` : ''}</div>
       <div class="note-body">${escHtml(n.body).replace(/\n/g, '<br>')}</div>
-      ${armed ? `<div class="delete-row" style="margin-top:6px;"><span class="delete-warn" style="margin:0;">Delete this note? The pitcher won't see it anymore.</span>
+      ${armed ? `<div class="delete-row" style="margin-top:var(--s-6);"><span class="delete-warn" style="margin:0;">Delete this note? The pitcher won't see it anymore.</span>
         <button class="btn btn-danger" onclick="deleteSessionNote('${s.id}','${n.id}')">Delete</button>
         <button class="btn btn-secondary" onclick="armDeleteNote(null)">Keep</button></div>` : ''}
     </div>`;
@@ -5847,7 +5842,7 @@ function renderPerspectiveToggle(forceFull){
     { key: 'behind_pitcher', label: 'Behind the pitcher' }
   ];
   const chips = segTray(opts.map(o => ({ label: o.label, selected: current === o.key, disabled: locked, onclick: `selectPerspective('${o.key}')` })), { key: 'persp', label: 'Charting perspective' + (locked ? ', locked after the first pitch' : ''), cls: locked ? 'tray-locked' : '' });
-  const lockedNote = locked ? `<p style="color:var(--ink-faint);font-size:12px;margin:6px 0 0;">Locked after the first pitch.</p>` : '';
+  const lockedNote = locked ? `<p style="color:var(--ink-faint);font-size:12px;margin:var(--s-6) 0 0;">Locked after the first pitch.</p>` : '';
   // Joel, Oct 1: on phones it's a drop-down -- open at the start of a
   // session, rolled up to one line once a perspective is picked (and always
   // once the first pitch locks it). Tap the line to open it again.
@@ -5861,7 +5856,7 @@ function renderPerspectiveToggle(forceFull){
       </button>`;
     return rolled ? `<div>${head}</div>` : `<div>${head}<div class="tray-gap">${chips}</div></div>`;
   }
-  return `<div><div class="field-label" style="margin-bottom:8px;">Charting perspective</div>${chips}${lockedNote}</div>`;
+  return `<div><div class="field-label" style="margin-bottom:var(--s-8);">Charting perspective</div>${chips}${lockedNote}</div>`;
 }
 
 // U2a (D8): box "1" is always the inside column. Asking zoneNumberFor
@@ -5902,7 +5897,7 @@ function renderBatterSilhouette(batterSide, onScreenLeft, onclickJs = 'toggleBat
 // mixing them corrupts both, hence asking up front rather than inferring.
 function renderSessionKindChooser(){
   return `<div class="kind-chooser">
-    <h2 class="display" style="margin:0 0 20px;text-align:center;">What will we be charting today?</h2>
+    <h2 class="display" style="margin:0 0 var(--s-20);text-align:center;">What will we be charting today?</h2>
     <div class="kind-chooser-buttons">
       ${segTray([{ label: 'Bullpen', onclick: "chooseSessionKind('bullpen')" }].concat(sportCfg().hasLiveGame ? [{ label: 'Live Game', onclick: "chooseSessionKind('game')" }] : []), { label: 'What will we be charting today?', cls: 'kind-tray' })}
     </div>
@@ -6979,7 +6974,7 @@ function renderAdjustRunnersFlow(){
   if(ar.step === 'runner'){
     const occupied = [1, 2, 3].filter(b => s.runners[b]);
     return `<div class="panel adjust-runners-panel">
-      <div class="field-label" style="margin-bottom:8px;">Adjust runners — which runner?</div>
+      <div class="field-label" style="margin-bottom:var(--s-8);">Adjust runners — which runner?</div>
       <div class="chip-row">
         ${occupied.map(b => `<button class="btn btn-secondary btn-sm" onclick="chooseAdjustRunner(${b})">Runner on ${baseName(b)}</button>`).join('')}
         <button class="btn btn-secondary" onclick="cancelAdjustRunners()">Cancel</button>
@@ -6989,7 +6984,7 @@ function renderAdjustRunnersFlow(){
   if(ar.step === 'destination'){
     const opts = [['1', '1st'], ['2', '2nd'], ['3', '3rd'], ['home', 'Home'], ['out', 'Out']].filter(([k]) => k !== String(ar.runner));
     return `<div class="panel adjust-runners-panel">
-      <div class="field-label" style="margin-bottom:8px;">Runner on ${baseName(ar.runner)} — where did he go?</div>
+      <div class="field-label" style="margin-bottom:var(--s-8);">Runner on ${baseName(ar.runner)} — where did he go?</div>
       <div class="chip-row">
         ${opts.map(([k, l]) => `<button class="btn btn-secondary btn-sm" onclick="chooseAdjustDestination('${k}')">${l}</button>`).join('')}
         <button class="btn btn-secondary" onclick="cancelAdjustRunners()">Cancel</button>
@@ -6999,7 +6994,7 @@ function renderAdjustRunnersFlow(){
   if(ar.step === 'reason'){
     const reason = adjustRunnersDisabledReason(ar, s);
     return `<div class="panel adjust-runners-panel">
-      <div class="field-label" style="margin-bottom:8px;">Why?</div>
+      <div class="field-label" style="margin-bottom:var(--s-8);">Why?</div>
       ${reason
         ? `<p class="walkthrough-disabled-reason">${escHtml(reason)}</p>`
         : `<div class="chip-row">${ADJUST_REASONS.map(([k, l]) => `<button class="btn btn-secondary btn-sm" onclick="commitAdjustEvent('${k}')">${l}</button>`).join('')}</div>`}
@@ -7114,7 +7109,7 @@ function renderDeliveryToggle(noTime){
   const tray = segTray(opts.map(o => ({ label: o.label, selected: s.delivery === o.key, onclick: `setGameDelivery('${o.key}')` })), { key: 'deliv', label: 'Delivery' });
   const label = 'Delivery' + (!s.delivery ? ' — pick one before the next pitch' : '');
   const clock = !noTime && s.kind !== 'game';   // Joel, Oct 14: the clock is for bullpens only -- removed from Live Games
-  return `<div><div class="field-label" style="margin-bottom:8px;">${label}</div><div class="deliv-tray-row">${tray}${clock ? renderTimeToPlateBtn() : ''}</div></div>`;
+  return `<div><div class="field-label" style="margin-bottom:var(--s-8);">${label}</div><div class="deliv-tray-row">${tray}${clock ? renderTimeToPlateBtn() : ''}</div></div>`;
 }
 // G1b-r decisions 2/3/10, updated by G1b-r2: six buttons now, not seven --
 // H and O fold into one In Play icon button (opens the walkthrough, which
@@ -7931,7 +7926,7 @@ function renderRunnerFixPanel(fp){
   const destOptions = [['1', '1st'], ['2', '2nd'], ['3', '3rd'], ['home', '⌂ Home'], ['out', '✕ Out']];
   const editingKeyArg = typeof fp.editing === 'string' ? `'${fp.editing}'` : fp.editing;
   const editingPicker = fp.editing !== null ? `
-    <div class="chip-row" style="margin-top:4px;">
+    <div class="chip-row" style="margin-top:var(--s-4);">
       ${destOptions.map(([k, l]) => `<button class="btn btn-secondary btn-sm" onclick="setFieldEnding(${editingKeyArg},'${k}')">${l}</button>`).join('')}
     </div>` : '';
   // The "at which base" follow-up (Decision: doubled off/FC/DP/TP are
@@ -7940,16 +7935,16 @@ function renderRunnerFixPanel(fp){
   // behind where he started.
   const OUT_AT_BASE_LABEL = { 1: '1st', 2: '2nd', 3: '3rd', 4: 'Home' };
   const outAtPicker = (typeof fp.pendingOutFor === 'number') ? `
-    <div class="chip-row" style="margin-top:4px;">
+    <div class="chip-row" style="margin-top:var(--s-4);">
       ${Array.from({ length: 4 - fp.pendingOutFor + 1 }, (_, i) => fp.pendingOutFor + i).map(b =>
         `<button class="btn btn-secondary btn-sm" onclick="setFieldOutAtBase(${fp.pendingOutFor},${b})">${OUT_AT_BASE_LABEL[b]}</button>`
       ).join('')}
     </div>` : '';
 
-  return `<div class="field-label" style="margin-bottom:4px;">What happened to the runners?</div>
+  return `<div class="field-label" style="margin-bottom:var(--s-4);">What happened to the runners?</div>
     <div class="chip-row">${runnerChips}</div>
     ${editingPicker}
-    ${outAtPicker ? `<div class="field-label" style="margin:4px 0 4px;">At which base?</div>${outAtPicker}` : ''}
+    ${outAtPicker ? `<div class="field-label" style="margin:var(--s-4) 0 var(--s-4);">At which base?</div>${outAtPicker}` : ''}
     <p class="walkthrough-summary">${escHtml(fieldPlaySummary(fp))}</p>`;
 }
 
@@ -8797,7 +8792,7 @@ function renderGameSessionView(p){
           ${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}
         </div>
         <div>
-          <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
+          <div class="field-label" style="margin-bottom:var(--s-8);">Pitch type</div>
           ${pitchTypeTray(p, false)}
           ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
             ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
@@ -8822,15 +8817,15 @@ function renderGameSessionView(p){
         </div>
         <div class="field-label">Recent pitches</div>
         <div class="pitch-log">${logRows}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;flex-wrap:wrap;gap:var(--s-8);">
           <button class="btn btn-secondary" onclick="undoLastGameAction()">Undo last action</button>
           <button class="btn btn-secondary" onclick="gameNewBatter()">New batter</button>
           <button class="btn btn-secondary" onclick="gameNewInning()">New inning</button>
           <button class="btn btn-secondary" onclick="g5AddCount('strike')">+ Strike</button>
           <button class="btn btn-secondary" onclick="g5AddCount('ball')">+ Ball</button>
         </div>
-        <div style="margin:12px 0 8px;">
-          <div class="field-label" style="margin-bottom:4px;">Opponent (optional)</div>
+        <div style="margin:var(--s-12) 0 var(--s-8);">
+          <div class="field-label" style="margin-bottom:var(--s-4);">Opponent (optional)</div>
           <input class="text-input" placeholder="e.g. Eastern" maxlength="60"
             value="${escHtml(s.opponent || '')}" list="opponent-list" autocomplete="off" oninput="onGameOpponentInput(this.value)">${opponentDatalist()}
         </div>
@@ -8848,7 +8843,7 @@ function renderGameSessionView(p){
           <div class="wide-left">
             ${renderPerspectiveToggle()}
             <div>
-              <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
+              <div class="field-label" style="margin-bottom:var(--s-8);">Pitch type</div>
               ${pitchTypeTray(p, true)}
               ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
                 ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
@@ -8885,8 +8880,8 @@ function renderGameSessionView(p){
         </div>
         <div class="field-label">Recent pitches</div>
         <div class="pitch-log">${logRows}</div>
-        <div style="margin:12px 0 8px;">
-          <div class="field-label" style="margin-bottom:4px;">Opponent (optional)</div>
+        <div style="margin:var(--s-12) 0 var(--s-8);">
+          <div class="field-label" style="margin-bottom:var(--s-4);">Opponent (optional)</div>
           <input class="text-input" placeholder="e.g. Eastern" maxlength="60"
             value="${escHtml(s.opponent || '')}" list="opponent-list" autocomplete="off" oninput="onGameOpponentInput(this.value)">${opponentDatalist()}
         </div>
@@ -8977,7 +8972,7 @@ function renderSessionSheet(){
     <div class="sess-sheet" role="dialog" aria-label="Session options">
       <div class="sess-sheet-title">${game ? 'Live Game' : 'Bullpen'} · ${what}</div>
       ${renderPerspectiveToggle(true)}
-      ${game ? `<div><div class="field-label" style="margin-bottom:4px;">Opponent (optional)</div>
+      ${game ? `<div><div class="field-label" style="margin-bottom:var(--s-4);">Opponent (optional)</div>
         <input class="text-input" placeholder="e.g. Eastern" maxlength="60" value="${escHtml(s.opponent || '')}" list="opponent-list" autocomplete="off" oninput="onGameOpponentInput(this.value)">${opponentDatalist()}</div>` : ''}
       <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="closeSessionSheet();endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
       ${state.sessionDiscardArmed ? `
@@ -9158,7 +9153,7 @@ function renderSessionView(){
     return `
       <div class="draft-banner">
         <p><strong>Unfinished session found</strong> — ${state.pendingDraft.pitches.length} pitch(es) logged. Resume where you left off, or discard and start fresh.</p>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:var(--s-8);">
           <button class="btn btn-primary" onclick="resumeDraft()">Resume session</button>
           <button class="btn btn-secondary" onclick="discardDraft()">Discard</button>
         </div>
@@ -9264,7 +9259,7 @@ function renderSessionView(){
       <div class="panel controls-panel">
         <div class="perspective-delivery-row bullpen-setup-row">${renderPerspectiveToggle()}${renderBatterModeToggle()}${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}</div>
         <div>
-          <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
+          <div class="field-label" style="margin-bottom:var(--s-8);">Pitch type</div>
           ${pitchTypeTray(p, false)}
           ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
             ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
@@ -9285,7 +9280,7 @@ function renderSessionView(){
           </div>
         </div>
         ${sessionUsesRadarGun(state.activeSession) ? `<div>
-          <div class="field-label" style="margin-bottom:8px;">Velocity</div>
+          <div class="field-label" style="margin-bottom:var(--s-8);">Velocity</div>
           ${renderVeloStrip()}
         </div>` : ''}
       </div>
@@ -9317,7 +9312,7 @@ function renderSessionView(){
               </div>
             </div>
             <div>
-              <div class="field-label" style="margin-bottom:8px;">Pitch type</div>
+              <div class="field-label" style="margin-bottom:var(--s-8);">Pitch type</div>
               ${pitchTypeTray(p, true)}
               ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
                 ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
@@ -9333,7 +9328,7 @@ function renderSessionView(){
               <div class="zone-caption">${renderWideCaption(zoneCaption)}</div>${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
             </div>
             ${sessionUsesRadarGun(state.activeSession) ? `<div>
-              <div class="field-label" style="margin-bottom:8px;">Velocity</div>
+              <div class="field-label" style="margin-bottom:var(--s-8);">Velocity</div>
               ${renderVeloStrip()}
             </div>` : ''}
           </div>
@@ -9397,16 +9392,16 @@ function renderAccountSetupScreen(){
     blurb = 'Your account is set up, but it has no team yet. Name your team or program to finish.';
     fields = `
       <div><span class="field-label">Team / program name</span>
-        <input id="setup-team" class="text-input" style="margin-top:5px;" value="${attr(state.setupTeam)}" placeholder="e.g. Cairn University Baseball"></div>`;
+        <input id="setup-team" class="text-input" style="margin-top:var(--s-4);" value="${attr(state.setupTeam)}" placeholder="e.g. Cairn University Baseball"></div>`;
     buttons = `<button class="btn btn-primary" ${busy} onclick="submitAccountSetup('coach')">${state.setupBusy ? 'Creating…' : 'Create team'}</button>`;
   } else {
     title = 'Finish setting up your account';
     blurb = 'We couldn’t tell whether this account is a coach or a pitcher. Pick one and add your name to continue.';
     fields = `
       <div><span class="field-label">Your name</span>
-        <input id="setup-name" class="text-input" style="margin-top:5px;" value="${attr(state.setupName)}" placeholder="Full name"></div>
+        <input id="setup-name" class="text-input" style="margin-top:var(--s-4);" value="${attr(state.setupName)}" placeholder="Full name"></div>
       <div><span class="field-label">Team / program name <span style="text-transform:none;letter-spacing:0;">(coaches only)</span></span>
-        <input id="setup-team" class="text-input" style="margin-top:5px;" value="${attr(state.setupTeam)}" placeholder="e.g. Cairn University Baseball"></div>`;
+        <input id="setup-team" class="text-input" style="margin-top:var(--s-4);" value="${attr(state.setupTeam)}" placeholder="e.g. Cairn University Baseball"></div>`;
     buttons = `
       <button class="btn btn-primary" ${busy} onclick="submitAccountSetup('coach')">${state.setupBusy ? 'Setting up…' : 'I’m a coach'}</button>
       <button class="btn btn-secondary" ${busy} onclick="submitAccountSetup('pitcher')">I’m a pitcher</button>`;
@@ -9439,7 +9434,7 @@ function renderHistoryFilter(){
   const teamIds = Object.keys(state.sessionTeamNames || {});
   const teamSel = (!isCoach() && teamIds.length > 1) ? `<select class="text-input history-team-select" onchange="setHistoryTeam(this.value)">
       <option value="all">All teams</option>${teamIds.map(id => `<option value="${escHtml(id)}" ${state.historyTeam === id ? 'selected' : ''}>${escHtml(state.sessionTeamNames[id])}</option>`).join('')}</select>` : '';
-  return `${workloadBanner()}<div class="chip-row" style="margin-bottom:16px;">${chips}${teamSel}</div>`;
+  return `${workloadBanner()}<div class="chip-row" style="margin-bottom:var(--s-16);">${chips}${teamSel}</div>`;
 }
 // R6: a pitcher can always delete their own sessions, unchanged; a coach
 // needs to be the ACTIVE team's head (Joel: assistants cannot delete team
@@ -9537,7 +9532,7 @@ function renderHistoryView(){
         <div class="delete-zone"><button class="btn btn-danger btn-sm" disabled title="Deleting requires a connection">Connect to delete</button></div>` : (state.deletingSessionId === s.id ? `
         <div class="delete-zone">
           <p class="delete-warn">This permanently removes the ${stats.total} pitch${stats.total === 1 ? '' : 'es'} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
-          ${state.deleteError ? `<p class="report-status report-status-error" style="margin:0 0 8px;">${state.deleteError}</p>` : ''}
+          ${state.deleteError ? `<p class="report-status report-status-error" style="margin:0 0 var(--s-8);">${state.deleteError}</p>` : ''}
           <div class="delete-row">
             <input id="delete-confirm-input" class="text-input" style="max-width:150px;" placeholder="Type DELETE"
               value="${String(state.deleteConfirmText).replace(/"/g,'&quot;')}" oninput="onDeleteConfirmInput(this.value)">
@@ -9670,7 +9665,7 @@ function renderHistoryView(){
       <div class="delete-zone"><button class="btn btn-danger btn-sm" disabled title="Deleting requires a connection">Connect to delete</button></div>` : (state.deletingSessionId === s.id ? `
       <div class="delete-zone">
         <p class="delete-warn">This permanently removes the ${stats.total} pitch${stats.total === 1 ? '' : 'es'} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
-        ${state.deleteError ? `<p class="report-status report-status-error" style="margin:0 0 8px;">${state.deleteError}</p>` : ''}
+        ${state.deleteError ? `<p class="report-status report-status-error" style="margin:0 0 var(--s-8);">${state.deleteError}</p>` : ''}
         <div class="delete-row">
           <input id="delete-confirm-input" class="text-input" style="max-width:150px;" placeholder="Type DELETE"
             value="${String(state.deleteConfirmText).replace(/"/g,'&quot;')}" oninput="onDeleteConfirmInput(this.value)">
@@ -9839,7 +9834,7 @@ function renderRelAccuracySection(p){
     }).join('') || '<p class="profile-note">Add pitches to your pitch mix first, then paint their zones.</p>';
   }
   return `<div class="profile-section"><h3>Relative accuracy</h3>
-    <label class="profile-row" style="gap:10px;font-size:14px;">
+    <label class="profile-row" style="gap:var(--s-8);font-size:14px;">
       <input type="checkbox" ${on ? 'checked' : ''} onchange="setRelativeAccuracy(this.checked)"> ${on ? 'On' : 'Off'}
     </label>
     <p class="profile-note">Off: a pitch is accurate only if it lands on the exact target cell. On: paint the zone that counts for each pitch, separately against right- and left-handed hitters.</p>
@@ -10103,7 +10098,7 @@ function renderEmailSection(){
     ? '<span class="profile-note">verified</span>'
     : '<span class="profile-note" style="color:var(--warning);">unverified</span>';
   const resendRow = state.myVerification.emailConfirmed ? '' : `
-    <div class="profile-row" style="margin-top:2px;">
+    <div class="profile-row" style="margin-top:var(--s-2);">
       <button class="btn btn-secondary" ${state.verifyResendStatus === 'sending' ? 'disabled' : ''} onclick="resendVerification()">${state.verifyResendStatus === 'sending' ? 'Sending…' : 'Resend verification email'}</button>
       ${state.verifyResendStatus === 'sent' ? '<span class="contacts-saved-msg">Check your inbox.</span>' : ''}
       ${state.verifyResendStatus === 'error' ? `<span class="error-msg">${escHtml(state.verifyResendMsg || 'Could not resend — try again in a moment.')}</span>` : ''}
@@ -10120,8 +10115,8 @@ function renderEmailSection(){
     </div>` : '';
   const n = state.emailChangeNotice;
   const notice = !n ? '' : n.ok
-    ? `<p class="contacts-saved-msg" style="margin:0 0 6px;">Your email is now ${escHtml(n.email)}, and it's verified.</p>`
-    : `<p class="error-msg" style="margin:0 0 6px;">${n.error === 'still_pending' ? 'Your email change is still waiting on a confirmation. Check both inboxes.' : n.error === 'no_pending_change' ? 'That confirmation link was already used or replaced by a newer one.' : "We couldn't confirm your new email. Use Resend verification email below."}</p>`;
+    ? `<p class="contacts-saved-msg" style="margin:0 0 var(--s-6);">Your email is now ${escHtml(n.email)}, and it's verified.</p>`
+    : `<p class="error-msg" style="margin:0 0 var(--s-6);">${n.error === 'still_pending' ? 'Your email change is still waiting on a confirmation. Check both inboxes.' : n.error === 'no_pending_change' ? 'That confirmation link was already used or replaced by a newer one.' : "We couldn't confirm your new email. Use Resend verification email below."}</p>`;
   return `<div class="profile-section"><h3>Email</h3>${notice}
     <div class="profile-row"><span style="font-size:14px;">${escHtml(email)}</span>${badge}
       <button class="btn btn-secondary" onclick="toggleChangeEmail()">${state.changeEmailOpen ? 'Cancel' : 'Change email'}</button></div>
@@ -10216,7 +10211,7 @@ window.submitNameChange = async function(self){
 function renderRadarGunSection(p, self){
   const on = p.usesRadarGun === true;
   return `<div class="profile-section"><h3>Radar gun</h3>
-    <p class="profile-note" style="margin:0 0 8px;">Will ${self ? 'you' : escHtml(p.name)} be using a radar gun while charting?</p>
+    <p class="profile-note" style="margin:0 0 var(--s-8);">Will ${self ? 'you' : escHtml(p.name)} be using a radar gun while charting?</p>
     <div class="profile-row">
       ${segTray([{ label: 'Yes', selected: on, onclick: `setUsesRadarGun(true, ${self})` }, { label: 'No', selected: !on, onclick: `setUsesRadarGun(false, ${self})` }], { key: 'radar', label: 'Radar gun', cls: 'tray-fit' })}
     </div></div>`;
@@ -10387,7 +10382,7 @@ function renderCoachTeamAdmin(){
   const linksSection = (head && state.teamInviteLinks) ? `
     <div class="profile-section">
       <h3>Invite links</h3>
-      <div class="field-label" style="margin-bottom:6px;">Pitcher invite link</div>
+      <div class="field-label" style="margin-bottom:var(--s-6);">Pitcher invite link</div>
       <div class="invite-link-panel">
         <div class="invite-link-row">
           <span class="invite-link-text">${inviteLinkFor()}</span>
@@ -10404,7 +10399,7 @@ function renderCoachTeamAdmin(){
             <button class="btn btn-secondary" ${state.regenerateBusy?'disabled':''} onclick="cancelRegenerateInvite()">Cancel</button>
           </div>` : ''}
       </div>
-      <div class="field-label" style="margin:14px 0 6px;">Coach invite link</div>
+      <div class="field-label" style="margin:var(--s-12) 0 var(--s-6);">Coach invite link</div>
       <div class="invite-link-panel">
         <div class="invite-link-row">
           <span class="invite-link-text">${coachInviteLinkFor()}</span>
@@ -10565,8 +10560,8 @@ function renderSetupView(){
     || '<p class="profile-note">Join a team to set a uniform number.</p>';
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
   return `<div class="profile-page setup-page">
-    <h2 class="display" style="margin:0 0 2px;">Welcome, ${escHtml(p.name)}</h2>
-    <p class="profile-note" style="margin:0 0 12px;">A few quick things so charting works well for you. Skip it and come back anytime from Profile.</p>
+    <h2 class="display" style="margin:0 0 var(--s-2);">Welcome, ${escHtml(p.name)}</h2>
+    <p class="profile-note" style="margin:0 0 var(--s-12);">A few quick things so charting works well for you. Skip it and come back anytime from Profile.</p>
     ${msg}
     ${renderSetupHeadshot(p)}
     <div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>
@@ -10574,12 +10569,12 @@ function renderSetupView(){
     ${renderPitchMixSection(p)}
     ${renderRelAccuracySection(p)}
     <div class="profile-section"><h3>Radar gun</h3>
-      <p class="profile-note" style="margin:0 0 8px;">Will you be using a radar gun while charting?</p>
+      <p class="profile-note" style="margin:0 0 var(--s-8);">Will you be using a radar gun while charting?</p>
       <div class="profile-row">
         ${segTray([{ label: 'Yes', selected: !!p.usesRadarGun, onclick: 'setSetupRadar(true)' }, { label: 'No', selected: !p.usesRadarGun, onclick: 'setSetupRadar(false)' }], { key: 'setupradar', label: 'Radar gun', cls: 'tray-fit' })}
       </div>
     </div>
-    <div class="profile-row" style="margin-top:8px;">
+    <div class="profile-row" style="margin-top:var(--s-8);">
       <button class="btn btn-primary" onclick="dismissSetup()">Save Profile</button>
       <button class="btn btn-secondary" onclick="dismissSetup()">Set Up Later</button>
     </div>
@@ -10612,18 +10607,18 @@ function renderCoachWelcome(){
        </div></div>`
     : `<p class="profile-note">${isOnline() ? 'Loading your link…' : 'Connect to the internet to get your link.'}</p>`;
   return `<div class="profile-page setup-page">
-    <h2 class="display" style="margin:0 0 2px;">Welcome, ${escHtml(state.profile.full_name || 'Coach')}</h2>
-    <p class="profile-note" style="margin:0 0 12px;">${team ? escHtml(team.name) + ' is set up. ' : ''}Here's how to get your pitchers in.</p>
+    <h2 class="display" style="margin:0 0 var(--s-2);">Welcome, ${escHtml(state.profile.full_name || 'Coach')}</h2>
+    <p class="profile-note" style="margin:0 0 var(--s-12);">${team ? escHtml(team.name) + ' is set up. ' : ''}Here's how to get your pitchers in.</p>
     <div class="profile-section"><h3>Step 1 · Invite your pitchers</h3>
-      <p class="profile-note" style="margin:0 0 8px;">Send this link to your pitchers — text, email or the team group chat. Each pitcher who opens it creates an account and joins your team.</p>
+      <p class="profile-note" style="margin:0 0 var(--s-8);">Send this link to your pitchers — text, email or the team group chat. Each pitcher who opens it creates an account and joins your team.</p>
       ${linkRow(inviteLinkFor(), 'copyInviteLink', state.inviteCopyStatus)}
     </div>
     <div class="profile-section"><h3>Assistant coaches</h3>
-      <p class="profile-note" style="margin:0 0 8px;">Send this one to your assistants instead. It adds them to your coaching staff.</p>
+      <p class="profile-note" style="margin:0 0 var(--s-8);">Send this one to your assistants instead. It adds them to your coaching staff.</p>
       ${linkRow(coachInviteLinkFor(), 'copyCoachInviteLink', state.coachInviteCopyStatus)}
     </div>
     <p class="profile-note">Both links are always on your Profile, under Invite links.</p>
-    <div class="profile-row" style="margin-top:8px;">
+    <div class="profile-row" style="margin-top:var(--s-8);">
       <button class="btn btn-primary" onclick="dismissSetup()">Done</button>
       <button class="btn btn-secondary" onclick="dismissSetup()">Set Up Later</button>
     </div>
@@ -11081,8 +11076,8 @@ function render(){
           ${canRemovePitcher ? `<button class="btn btn-icon btn-danger btn-sm roster-item-remove" title="Remove ${escHtml(p.name)} from this team" onclick="event.stopPropagation();armRemoveRosterPitcher('${p.id}')">✕</button>` : ''}
         </div>
         ${(canRemovePitcher && state.removeArmedPitcherId === p.id) ? `
-          <div class="invite-regen-warn" style="padding:0 4px 8px;">Removes ${escHtml(p.name)} from this team's roster and emails them to let them know. Their sessions and stats aren't deleted -- only this team's view of them.</div>
-          <div class="invite-regen-confirm-row" style="padding:0 4px 8px;">
+          <div class="invite-regen-warn" style="padding:0 var(--s-4) var(--s-8);">Removes ${escHtml(p.name)} from this team's roster and emails them to let them know. Their sessions and stats aren't deleted -- only this team's view of them.</div>
+          <div class="invite-regen-confirm-row" style="padding:0 var(--s-4) var(--s-8);">
             <button class="btn btn-danger" ${state.removeBusy ? 'disabled' : ''} onclick="confirmRemoveRosterPitcher('${p.id}')">${state.removeBusy ? 'Removing…' : 'Remove now'}</button>
             <button class="btn btn-secondary" ${state.removeBusy ? 'disabled' : ''} onclick="cancelRemoveRosterPitcher()">Cancel</button>
           </div>` : ''}
@@ -11175,7 +11170,7 @@ function render(){
           <span class="field-label">${state.profile && state.profile.managed_by ? 'Parent email (reports go here)' : 'Your email'}</span>
           <input class="text-input" value="${escHtml(myEmail)}${state.myVerification.emailConfirmed ? '' : ' (unverified)'}" disabled style="opacity:0.7;">
         </div>
-        <p style="flex-basis:100%;margin:-4px 0 0;font-size:12px;color:var(--ink-faint);">Coach email is who the report is also cc'd to — edit or clear it as needed. Your own email always follows your account (change it above if it's wrong).</p>
+        <p style="flex-basis:100%;margin:calc(-1 * var(--s-4)) 0 0;font-size:12px;color:var(--ink-faint);">Coach email is who the report is also cc'd to — edit or clear it as needed. Your own email always follows your account (change it above if it's wrong).</p>
         <div class="contacts-save-row">
           <button class="btn btn-primary" onclick="saveContactEmails()">Save</button>
           ${state.contactsSavedAt ? '<span class="contacts-saved-msg">Saved</span>' : ''}

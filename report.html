@@ -31,21 +31,21 @@
     font-family:var(--font-sans); line-height:1.2;
   }
   .kb-mark{ color:var(--accent); font-weight:700; font-size:14px; letter-spacing:0.04em; }
-  .kb-actions{ display:flex; gap:8px; }
+  .kb-actions{ display:flex; gap:var(--s-8); }
   #kb-state{
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    text-align:center; padding:80px 24px; color:var(--ink-dim);
+    text-align:center; padding:var(--s-64) var(--s-24); color:var(--ink-dim);
     font-family:var(--font-sans); line-height:1.4;
   }
   #kb-state.hidden{ display:none; }
-  #kb-state h1{ color:var(--ink); font-family:inherit; font-size:20px; margin:0 0 8px; border:0; padding:0; }
+  #kb-state h1{ color:var(--ink); font-family:inherit; font-size:20px; margin:0 0 var(--s-8); border:0; padding:0; }
   #kb-state p{ font-size:14px; color:var(--ink-faint); max-width:40ch; margin:0; }
   #kb-state.is-error h1{ color:var(--danger); }
   /* S3: the live "Coaches notes" section (styled by the report's own h2 /
      .section / .caption rules, which carry the sport theme). */
-  .kb-note{ margin:12px 0; break-inside:avoid; page-break-inside:avoid; }
+  .kb-note{ margin:var(--s-12) 0; break-inside:avoid; page-break-inside:avoid; }
   .kb-note .caption{ margin:0; }
-  .kb-note-body{ margin:4px 0 0; font-size:14px; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .kb-note-body{ margin:var(--s-4) 0 0; font-size:14px; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
 </style>
 <!-- U10 (7) print rules, now for this page itself (the report is part of
      it). Breaks fall between sections; a section taller than a page may
@@ -269,6 +269,6 @@ document.getElementById('btn-print').addEventListener('click', printReport);
 
 init();
 </script>
-<p style="font:12px var(--font-sans);color:var(--ink-faint);text-align:center;margin:0 0 24px;">Knuckleball LLC 2026 &middot; <a href="privacy.html" style="color:inherit;">Privacy</a> &middot; <a href="terms.html" style="color:inherit;">Terms</a></p>
+<p style="font:12px var(--font-sans);color:var(--ink-faint);text-align:center;margin:0 0 var(--s-24);">Knuckleball LLC 2026 &middot; <a href="privacy.html" style="color:inherit;">Privacy</a> &middot; <a href="terms.html" style="color:inherit;">Terms</a></p>
 </body>
 </html>

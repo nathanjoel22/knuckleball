@@ -15,6 +15,24 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-14 · D3 Stage B (spacing) · **staging**
+- **Branch / cache:** `d3-design-cleanup` · `kb-shell-v240`. No database or function change.
+- **Built:**
+  - `--s-6` added (Option 2: 2 · 4 · 6 · 8 · 12 · 16 · 20 · 24 · 32 · 48 · 64).
+  - Every padding / margin / gap literal reads `var(--s-N)` in CSS and inline styles: 572 values. 398 were already on the scale; 174 moved to the nearest step (7 → 8 per the table; ties round down; 60 → 64, 80 → 64, 44 → 48). Negative values use `calc(-1 * var(--s-N))`.
+  - Pages: the tracker, `buttons.css`, `components.css`, report.html, privacy / terms (spacing only, no wording) and the sign-in pages.
+- **Kept literal, with a `/* geometry: … */` comment:**
+  - 42 values in the charting grid, the Live Game field overlays, the batter / home-plate gutters, the velocity strip, the coach dock, the 9-dot icon and the U13 tray's 3px;
+  - 9 inside `calc()` / `env()`;
+  - three 1px pill paddings.
+- **Checks:**
+  - Census: zero off-scale spacing outside the exempt list.
+  - The phone grid's top and the velocity strip's bottom at 375 / 390, both sports: identical to precondition 4 (bullpen 184 / 690 baseball, 184 / 710 softball; Live Game 184 / 455). 0px movement.
+  - Before / after at 320 / 375 / 820 / 1180, both sports, 236 views (app + pages): no new sideways scroll, nothing newly cut off. The three "more lines" flags are baseline artifacts (a roster name, a History date line and the pitch log are each still on one line by eye).
+  - The report.html CSP hash still matches; all 32 precached files exist.
+- **Deviation:** the tracker was converted in one pass, not four. The measurements and the full check were run on the result, which shows no movement, so the passes weren't needed to localize anything.
+- **Open items:** Joel's phone / iPad walk-through. Stage C (shadows) is next.
+
 ## 2026-10-14 · no packet (Live Game pitch saved with no type) · **staging**
 - **Branch / cache:** `d3-design-cleanup` · `kb-shell-v237`. No database or function change.
 - **The bug:** Joel's Oct 12 softball game for Clementine Pugh was refused by sync on every try: `null value in column "type" of relation "pitches"`. It's a bug since G1b, so production too.

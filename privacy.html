@@ -18,18 +18,18 @@
   *{ box-sizing:border-box; }
   html,body{ margin:0; padding:0; }
   body{ font-family:var(--font-sans); line-height:1.6; }
-  .band{ background:var(--brand-bg); color:var(--on-dark); padding:18px 20px; }
+  .band{ background:var(--brand-bg); color:var(--on-dark); padding:var(--s-16) var(--s-20); }
   .band .brand{ font-family:var(--font-wordmark); font-size:24px; font-weight:400; letter-spacing:0.02em; white-space:nowrap; }   /* the KNUCKLEBALL wordmark (Joel, Oct 13: approved for privacy/terms) */
-  main{ max-width:760px; margin:0 auto; padding:24px 20px 48px; }
-  h1{ font-family:var(--font-display); font-weight:800; text-transform:uppercase; letter-spacing:var(--tr-display); font-size:44px; line-height:1.05; margin:8px 0 4px; }
-  h2{ font-size:20px; margin:30px 0 8px; border-bottom:2px solid var(--surface-border); padding-bottom:4px; }
-  h3{ font-size:16px; margin:18px 0 4px; }
+  main{ max-width:760px; margin:0 auto; padding:var(--s-24) var(--s-20) var(--s-48); }
+  h1{ font-family:var(--font-display); font-weight:800; text-transform:uppercase; letter-spacing:var(--tr-display); font-size:44px; line-height:1.05; margin:var(--s-8) 0 var(--s-4); }
+  h2{ font-size:20px; margin:var(--s-32) 0 var(--s-8); border-bottom:2px solid var(--surface-border); padding-bottom:var(--s-4); }
+  h3{ font-size:16px; margin:var(--s-16) 0 var(--s-4); }
   p, li{ font-size:16px; color:var(--ink-dim); }
-  ul{ padding-left:20px; }
+  ul{ padding-left:var(--s-20); }
   .meta{ font-size:14px; color:var(--ink-faint); margin:0; }
-  .note{ background:var(--card); border:1px solid var(--surface-border); border-radius:var(--radius-control); padding:12px 14px; }
+  .note{ background:var(--card); border:1px solid var(--surface-border); border-radius:var(--radius-control); padding:var(--s-12) var(--s-12); }
   a{ color:var(--ink); }
-  footer{ max-width:760px; margin:0 auto; padding:0 20px 32px; font-size:12px; color:var(--ink-faint); }
+  footer{ max-width:760px; margin:0 auto; padding:0 var(--s-20) var(--s-32); font-size:12px; color:var(--ink-faint); }
 </style>
 </head>
 <body>

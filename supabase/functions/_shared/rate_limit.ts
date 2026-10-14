@@ -9,7 +9,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-export type RateKind = 'report_email' | 'report_generate' | 'verify_email' | 'guardian_email' | 'removal_notice' | 'email_change'
+export type RateKind = 'report_email' | 'report_generate' | 'verify_email' | 'guardian_email' | 'removal_notice' | 'email_change' | 'account_deletion' | 'account_export'
 
 export type RateResult = { ok: true } | { ok: false; status: number; body: Record<string, unknown> }
 
@@ -18,7 +18,7 @@ export async function takeRateLimit(actorId: string, kind: RateKind, recipients:
     auth: { autoRefreshToken: false, persistSession: false }
   })
   const quota = Number(Deno.env.get('RESEND_DAILY_QUOTA') || '100')
-  const cap = kind === 'report_generate' ? null : Math.max(0, Math.floor(quota * 0.9))
+  const cap = (kind === 'report_generate' || kind === 'account_export') ? null : Math.max(0, Math.floor(quota * 0.9))   // A1: an export isn't an email
   const { data, error } = await admin.rpc('rate_limit_take', {
     p_actor: actorId, p_kind: kind, p_recipients: recipients, p_global_cap: cap
   })

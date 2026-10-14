@@ -15,6 +15,15 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-14 · no packet (no clock in Live Games) · **staging**
+- **Branch / cache:** `live-game-no-clock` · `kb-shell-v234`. No database or function change.
+- **Built (Joel, Oct 14):** the ⏱ time-to-home clock is gone from Live Games: the phone status bar, the iPad / laptop bottom-left and the Live Game delivery tray. A game pitch never records a time.
+- **Kept:** bullpens keep the clock (baseball; softball never had one). Reports keep their time-to-home lines. The `pitches.time_to_plate` column and every time already recorded are untouched. To bring the clock back to games, revert this commit.
+- **Checked:** the clock is on all 12 baseball bullpen screens (390 / 820 / 1180, with the sheet open and closed) and on no Live Game screen in either sport. The phone status bar and the laptop action row look right.
+- **Open items:**
+  - Joel's check on phone and iPad.
+  - D3 Stage B's 7px decision can be revisited, since the Live Game scoreboard now has room.
+
 ## 2026-10-13 · no packet (iPad-portrait perspective squeeze) · **production**
 - **Branch / cache:** `d2-broadcast-rebrand` · `kb-shell-v233`. No database or function change.
 - **Fixed:** on iPad portrait (501–860 px) the "Behind the catcher / Behind the pitcher" tray now stacks its two choices, as on iPad landscape and laptop. Side by side, they ran into each other in their narrow column (open since D2 Stage B). Checked at 600 and 820 px, bullpen and Live Game, both sports. CSS only; phones and laptops unchanged.

@@ -59,11 +59,11 @@ storage.
 
 - **Phones (≤500px, `isPhoneWidth`, `phoneSessionMode`)**: one session header (‹ team · photo · name · #num · offline dot · 9-dot sheet with perspective / opponent / End session & save / Discard), Set-Windup as one flip button, swipeable grid-square pitch chips in their own colors, grid capped at 340px.
 - **iPad portrait (501–860px)**: the stacked layout, deliberately unchanged (Joel chose "option B").
-- **iPad landscape / laptop (>860px, `isWideSession`)**: two columns for pen and Live Game — left: perspective, pitch types (never more than two per row), delivery (pen: + batter, pitch counter beside the perspective chips); right: the grid, sized by `sizeWideGrid()` to fit the viewport (cap 560, min 44px cells, batter silhouette 80% of grid height with room on both sides so the grid never moves). Live Game: ⏱ bottom-left, Undo / New batter / New inning centered under the grid. Hints show on the grid's caption line. Rotating across 860px re-renders.
+- **iPad landscape / laptop (>860px, `isWideSession`)**: two columns for pen and Live Game — left: perspective, pitch types (never more than two per row), delivery (pen: + batter, pitch counter beside the perspective chips); right: the grid, sized by `sizeWideGrid()` to fit the viewport (cap 560, min 44px cells, batter silhouette 80% of grid height with room on both sides so the grid never moves). Live Game: Undo / New batter / New inning centered under the grid (no clock in Live Games since Oct 14, Joel; bullpens keep it). Hints show on the grid's caption line. Rotating across 860px re-renders.
 - Discard session sits beside End session & save on every non-phone width (same confirm and `discardActiveSession` as the phone sheet).
 - Pitch labels display in capitals everywhere; stored names are unchanged.
 - Live Game state: Set/Windup defaults from the bases and velocity "Reset" are live. G1b-r3's in-grid entry (scorebook, More, ADV, DP, fielders, in-grid velocity) was replaced by G5 below.
-- Live Game phones: Set/Windup and ⏱ sit in the status bar; the pitch-type row is full width (Oct 8). iPad / laptop: the account button sits in the pitcher header's row (Oct 7).
+- Live Game phones: Set/Windup sits in the status bar (the ⏱ clock was removed from Live Games Oct 14, Joel -- bullpens keep it; reports still show time to home); the pitch-type row is full width (Oct 8). iPad / laptop: the account button sits in the pitcher header's row (Oct 7).
 
 ## Live Game on the field (G5, Joel, Oct 6–8 2026; evidence `plans/g5-evidence.md`)
 

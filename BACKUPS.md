@@ -43,6 +43,28 @@ supabase db dump --linked --data-only -s public -f ~/knuckleball-backups/${DATE}
   — that folder contains real user data (names, emails, session/pitch data) and must not be
   pushed anywhere.
 
+## Kept 7 days (A1, Joel, Oct 14 2026)
+
+The privacy policy promises that a deleted account leaves our backups within 7 days, so dumps are
+**kept 7 days, then deleted** -- here and in any second copy (an external drive or cloud copy must be
+pruned the same way, or not kept). Take a fresh dump before every production schema change as always;
+the newest week is what a restore would use.
+
+`scripts/prune-backups.sh` deletes `~/knuckleball-backups/*.sql` older than 7 days (top level, `.sql`
+only -- folders and other files are never touched). Run it with no argument to see what it would delete;
+`--delete` deletes. A daily job runs it at 10:00 (or at the next wake):
+
+```bash
+# see what it would delete, changing nothing
+scripts/prune-backups.sh
+# install the daily job (once)
+cp scripts/com.knuckleball.prune-backups.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.knuckleball.prune-backups.plist
+# what it has deleted
+cat ~/knuckleball-backups/prune.log
+# turn it off
+launchctl unload ~/Library/LaunchAgents/com.knuckleball.prune-backups.plist && rm ~/Library/LaunchAgents/com.knuckleball.prune-backups.plist
+```
+
 ## Where dumps live
 
 `~/knuckleball-backups/` on this machine, named `<date>-schema.sql` and `<date>-data.sql`.

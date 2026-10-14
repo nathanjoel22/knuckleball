@@ -15,6 +15,29 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-14 · A1 account deletion + data export · **staging**
+- **Branch:** `a1-account-deletion`. **Cache:** v242.
+- **Database (staging only):** migrations `20261014000000`–`0003`:
+  - the deletion mark on profiles;
+  - request / cancel / status (DELETE checked by the server; team heads refused);
+  - `a1_purge_profile` (service role only);
+  - tombstones with no pitcher (`deleted_account`), coach-charted sessions kept with `logged_by` NULL;
+  - the H1 lock's one exception (clear to NULL by the server's own function only);
+  - a counts-only audit log; two sending limits (5 deletions, 3 exports a day);
+  - pg_cron + pg_net, a daily job at 09:17 UTC, its address / key / secret in Vault.
+- **Functions (staging only):** `delete-account` (status / request / cancel / execute) and `export-account` (ZIP, own writer, no dependency). Secret `A1_CRON_SECRET` set on staging.
+- **App:** Profile → Your data (Download my data / Delete my account; a parent's player: Delete / Restore this player); the two delete screens; the head-coach block; the scheduled-deletion screen on every online load and return; "Logged by former coach"; offline refuses with a message.
+- **Docs:** CLAUDE.md (A1 section, functions, secret), BACKUPS.md (7-day retention + the prune job), the rollback covers all four migrations.
+- **Proven on staging:**
+  - 21/21 SQL checks (rolled back): the pitcher purge → 32 tombstones, no names, 0 pitches; the coach purge → 10/10 charted sessions kept; the player purge → the parent stays;
+  - the cron → function chain: 200, 0 due;
+  - execute without the secret → 403; an unsigned status call → 401;
+  - the export's real code over staging rows: 43 sessions = the SQL count, 39/39 pitch columns, no secret columns, `unzip -t` clean;
+  - policies 34; the RLS matrices run with A1 in place.
+- **Not yet run:** a real request → execute with a throwaway staging login (it sends real emails and deletes the login); a before/after RLS matrix comparison (running the rollback on staging, even rolled back, needs Joel's OK); phone checks.
+- **Waiting on Joel:** the privacy / terms wording (drafted, uncommitted; version 2026-10-14); installing the backup prune job (54 files older than 7 days would go on its first run).
+- **Production:** nothing. Needs a backup, the four migrations, both functions, `A1_CRON_SECRET` and the three Vault secrets (Joel's), the policy pages.
+
 ## 2026-10-14 · A1 preconditions report (no release)
 - **Branch:** `a1-account-deletion`. No code changed.
 - **Report:** `plans/a1-preconditions.md`, with 4 escalations for Joel:

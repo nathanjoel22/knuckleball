@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- A1: runs scripts/prune-backups.sh --delete every day at 10:00 (and at the next wake if the Mac was asleep).
+     Install:   cp scripts/com.knuckleball.prune-backups.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.knuckleball.prune-backups.plist
+     Remove:    launchctl unload ~/Library/LaunchAgents/com.knuckleball.prune-backups.plist && rm ~/Library/LaunchAgents/com.knuckleball.prune-backups.plist
+     Log:       ~/knuckleball-backups/prune.log -->
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.knuckleball.prune-backups</string>
+  <key>ProgramArguments</key><array>
+    <string>/bin/bash</string><string>/Users/user/knuckleball-repo/scripts/prune-backups.sh</string><string>--delete</string>
+  </array>
+  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
+  <key>StandardOutPath</key><string>/Users/user/knuckleball-backups/prune.log</string>
+  <key>StandardErrorPath</key><string>/Users/user/knuckleball-backups/prune.log</string>
+</dict></plist>

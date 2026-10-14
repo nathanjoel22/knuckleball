@@ -1,6 +1,12 @@
 -- Down for 20261014000000_a1_account_deletion. Executed purges are NOT reversible (tombstoned sessions keep a NULL
 -- pitcher and can't regain NOT NULL while they exist -- this down leaves pitcher_id / logged_by nullable if any such
 -- rows remain, and says so).
+-- Undoes 20261014000003_a1_schedule.sql (the daily job; the extensions and the three vault secrets stay --
+-- harmless when unused; remove the secrets with: delete from vault.secrets where name like 'a1_%';)
+do $$ begin perform cron.unschedule('a1-account-deletion'); exception when others then null; end $$;
+drop function if exists public.a1_run_scheduled();
+-- 20261014000002_a1_rate_kinds.sql: rate_limit_take's two extra kinds (account_deletion, account_export) are
+-- harmless when nothing calls them; to remove them, re-run rate_limit_take from 20261003010000_h1_rate_limits.sql.
 drop function if exists public.a1_due_deletions();
 drop function if exists public.a1_purge_profile(uuid);
 drop function if exists public.cancel_account_deletion(uuid);

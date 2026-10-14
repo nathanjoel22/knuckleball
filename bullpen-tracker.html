@@ -5530,6 +5530,7 @@ async function loadSessionsForCurrentSelection(){
     date: new Date(s.started_at).getTime(),
     endedAt: s.ended_at ? new Date(s.ended_at).getTime() : null,   // U10 (3): History's "new since you last looked" rows
     loggedByCoach: s.logged_by !== s.pitcher_id,
+    loggedByFormer: !s.logged_by,   // A1: the coach who charted it deleted their account
     deletedAt: s.deleted_at ? new Date(s.deleted_at).getTime() : null,
     deletedBy: s.deleted_by || null,
     deletedByRole: s.deleted_by_role || null,
@@ -9746,7 +9747,7 @@ function renderHistoryView(){
       return `
         <div class="session-card">
           <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
-            <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ' <span class="coach-logged-tag logged-by-tag">Logged by coach</span>' : ''}${pendingTag}</div>
+            <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${pendingTag}</div>
             <div class="session-meta">
               <div class="meta-item"><span class="meta-num mono">${stats.innings}</span><span class="meta-lbl">Innings</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
@@ -9880,7 +9881,7 @@ function renderHistoryView(){
     return `
       <div class="session-card">
         <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
-          <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${teamChipHtml(s)}${s.loggedByCoach ? ' <span class="coach-logged-tag logged-by-tag">Logged by coach</span>' : ''}${pendingTag}</div>
+          <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${teamChipHtml(s)}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${pendingTag}</div>
           <div class="session-meta">
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
             <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>

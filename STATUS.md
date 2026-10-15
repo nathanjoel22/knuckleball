@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-15 · P2-05 installable app · **production**
+- **Shipped by:** Joel ("ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `p2-05-pwa-install` → `main` (also carries `docs-u14-reset`). **Cache:** v247. No database or function change (dry run: up to date).
+- **Live:** the manifest and iOS tags on all 15 pages; the KB icon, 5 icons and 40 splash images precached; safe areas; the "new version" bar; the install banner **off** (`KB_INSTALL_BANNER = false`).
+- **Open (Joel):** iPhone and iPad (Add to Home Screen, icon and name, splash, an airplane-mode cold launch, chart and save a pen, notch / home bar clear, View report opens in a sheet with Done), both iPad orientations, Android (Chrome → Install app). The update bar shows on the next release. His logo later; the banner goes on when he says.
+
 ## 2026-10-15 · P2-05 installable app · **staging (local)**
 - **Branch:** `p2-05-pwa-install`. **Cache:** v246. No database change. Preconditions and Joel's answers: `plans/p2-05-preconditions.md`.
 - **Built:**

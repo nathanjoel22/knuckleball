@@ -10062,7 +10062,7 @@ window.zonePaintSide = function(side){
   zp.side = side;
   zp.cells = (zoneCellsFor(zp.pitcherId, zp.type, side) || []).slice();
   state.zoneMsg = '';
-  render();
+  refreshZonePainter();
 };
 window.zonePaintFlipSide = function(){
   const zp = state.zonePaint;
@@ -10076,8 +10076,21 @@ window.paintZoneCell = function(row, col){
   if(i >= 0) zp.cells.splice(i, 1);
   else if(zp.cells.length >= RA_MAX_CELLS) return;   // U14: four per pitch type per side; the fifth tap does nothing
   else zp.cells.push(k);
-  render();
+  refreshZonePainter();
 };
+// Joel, Oct 15: a tap in the painter redrew the whole page and threw the phone back to the top. Only the painter
+// itself changes on a tap, so only it is redrawn and the page stays where it was; Save / Clear (which also change the
+// "n of 4 cells" line) redraw the page but put the scroll position back.
+function renderKeepScroll(){
+  const y = window.scrollY || window.pageYOffset || 0;
+  render();
+  try{ window.scrollTo(0, y); }catch(e){}
+}
+function refreshZonePainter(){
+  const el = document.querySelector('.zone-paint');
+  if(el){ el.outerHTML = renderZonePainter(); return; }
+  renderKeepScroll();
+}
 window.cancelZonePaint = function(){ state.zonePaint = null; state.zoneMsg = ''; render(); };
 function setLocalZone(pitcherId, type, side, cells){
   const byType = (state.zones[pitcherId] = state.zones[pitcherId] || {});
@@ -10087,28 +10100,28 @@ function setLocalZone(pitcherId, type, side, cells){
 window.saveZonePaint = async function(){
   const zp = state.zonePaint;
   if(!zp) return;
-  if(!zp.cells.length){ state.zoneMsg = 'Tap at least one cell, or use Clear to remove these cells.'; render(); return; }
-  if(zp.cells.length > RA_MAX_CELLS){ state.zoneMsg = `Mark at most ${RA_MAX_CELLS} cells — tap a marked cell to remove it.`; render(); return; }
+  if(!zp.cells.length){ state.zoneMsg = 'Tap at least one cell, or use Clear to remove these cells.'; renderKeepScroll(); return; }
+  if(zp.cells.length > RA_MAX_CELLS){ state.zoneMsg = `Mark at most ${RA_MAX_CELLS} cells — tap a marked cell to remove it.`; renderKeepScroll(); return; }
   const { error } = await supabaseClient.from('accuracy_zones').upsert(
     { pitcher_id: zp.pitcherId, pitch_type: zp.type, batter_side: zp.side, cells: zp.cells },
     { onConflict: 'pitcher_id,pitch_type,batter_side' });
-  if(error){ state.zoneMsg = 'Could not save. Check your connection and try again.'; render(); return; }
+  if(error){ state.zoneMsg = 'Could not save. Check your connection and try again.'; renderKeepScroll(); return; }
   setLocalZone(zp.pitcherId, zp.type, zp.side, zp.cells.slice());
   state.zoneMsg = 'Saved.';
   await saveLastKnownContext();   // charting reads zones offline from this snapshot
-  render();
+  renderKeepScroll();
 };
 window.clearZonePaint = async function(){
   const zp = state.zonePaint;
   if(!zp) return;
   const { error } = await supabaseClient.from('accuracy_zones').delete()
     .eq('pitcher_id', zp.pitcherId).eq('pitch_type', zp.type).eq('batter_side', zp.side);
-  if(error){ state.zoneMsg = 'Could not clear. Check your connection and try again.'; render(); return; }
+  if(error){ state.zoneMsg = 'Could not clear. Check your connection and try again.'; renderKeepScroll(); return; }
   setLocalZone(zp.pitcherId, zp.type, zp.side, null);
   zp.cells = [];
   state.zoneMsg = 'Cleared.';
   await saveLastKnownContext();
-  render();
+  renderKeepScroll();
 };
 function renderZonePainter(){
   const zp = state.zonePaint;

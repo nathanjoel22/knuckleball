@@ -24,7 +24,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - 34 policies before and after; 2 new columns, 3 new checks.
 - **Function:** `send-session-report` deployed; `REPORT_SITE_ORIGIN` still unset.
 - **Before the reset:** pitches 2,161, checksum `1fa9c386…`.
-- **Open:** the production reset. Its list goes to Joel first; it runs only on his OK (it clears every painted zone).
+- **Reset (production, Joel's OK):** list saved first (`plans/u14-evidence/reset-list-production-2026-10-15.md`: 11 pitchers, 33 zones). After the run: 0 zones, 0 switches on; pitches 2,161, checksum `1fa9c386…` unchanged; 208 zone-scored pitches keep their results. Joel tells the 7 pitchers who had zones to mark their new cells.
 
 ## 2026-10-15 · U14 relative accuracy v2 · **staging**
 - **Branch:** `u14-relative-accuracy`. **Cache:** v244. Spec `plans/u14-relative-accuracy-v2.md`; preconditions and Joel's answers in `plans/u14-preconditions.md`.

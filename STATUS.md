@@ -66,8 +66,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Site:** policy pages Version 2026-10-14 (approved by Joel), Profile → Your data, the deletion screens.
 - **Open:**
   - ~~Joel's production phone check~~ — done Oct 14: Download my data and the Delete my account screens work on his phone;
-  - a before/after RLS matrix comparison (not run);
-  - offline phone checks.
+  - ~~a before/after RLS matrix comparison~~ — skipped (Joel, Oct 14): A1 changed no policies or grants, and its functions were tested directly;
+  - ~~offline phone checks~~ — passed (Joel, Oct 14).
 
 ## 2026-10-14 · A1 account deletion + data export · **staging**
 - **Branch:** `a1-account-deletion`. **Cache:** v242.

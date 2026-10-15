@@ -104,3 +104,20 @@ Both forms are filled from this one table, and every line maps to a sentence on 
 3. **Google's deletion web link:** a small public page on the site (`delete-account.html`: how to delete in the app or on the web, plus the support email). It's a site change, so the page comes to Joel before it's made.
 
 **Still blocking the build (Joel's):** create the private `knuckleball-app` repo; install Xcode and Android Studio on this Mac; the Apple Developer (Knuckleball LLC, D-U-N-S) and Google Play enrolments.
+
+## Precondition 2 — the proof (Oct 15, 2026): PASSED on both platforms
+
+Shell: `knuckleball-app` c5bd7d6 (Capacitor 8.5.3, `server.url` https://knuckleballonline.com/bullpen-tracker.html,
+iOS `WKAppBoundDomains` + `limitsNavigationsToAppBoundDomains`, Swift Package Manager). Signed out, so the app lands on
+the sign-in page; that's expected.
+
+- **Android** (emulator, Android 17 / API 37, the app's WebView over its DevTools socket):
+  - online: the site's worker controls the page, cache `kb-shell-v247`;
+  - **airplane mode on** (ping fails), the app force-stopped and reopened: a fresh page load (16 s old, type "navigate") **served by the worker, 0 bytes from the network**.
+- **iOS** (simulator, iPhone 18 Pro, iOS 27, Xcode 27.0):
+  - online: WebKit's log shows the site's worker installed and activated inside WKWebView (App-Bound Domain);
+  - **knuckleballonline.com blocked on the Mac** (`/etc/hosts`, Joel; curl 000), the app terminated and relaunched: the sign-in page opened, every request answered by the worker. Block removed afterwards (0 lines left, site 200 again).
+- **Found for the build:**
+  - iOS draws the page under the status bar inside the app (the page isn't in "standalone" display mode, so P2-05's inset doesn't apply). Fix in the shell config (content inset / status bar), not the site.
+  - Android needs JDK 21 (Homebrew `openjdk@21`, Joel OK'd); Android Studio's JDK 25 is too new for Gradle 8.14.
+- So the packet's escalation ("the service worker doesn't run inside the web view") **did not trigger**; the live-site design stands.

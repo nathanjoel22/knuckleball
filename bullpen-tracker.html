@@ -273,6 +273,7 @@
   .roster-item.active .roster-item-num{ color:var(--ink); font-weight:700; }
   .roster-item-main{ display:flex; flex-direction:column; gap:var(--s-2); min-width:0; flex:1; }
   .roster-item-name{ font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .closing-tag{ display:block; width:fit-content; margin-top:var(--s-2); padding:1px var(--s-6); border-radius:var(--radius-pill); background:var(--warning-tint); color:var(--warning); font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; }   /* A1 */
   .throws-tag{ margin-left:var(--s-8); font-size:10px; font-weight:700; letter-spacing:.05em; color:var(--accent-ink); vertical-align:1px; }
   .roster-item-types{ font-size:10px; color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .roster-item-num{ font-family:var(--font-display); font-weight:700; font-variant-numeric:tabular-nums; font-size:20px; color:var(--ink-faint); flex-shrink:0; }
@@ -3105,6 +3106,7 @@ async function fetchRosterFor(teamId){
   const { data: verRows } = await supabaseClient.rpc('get_roster_verification', { p_team_id: teamId });
   const ver = {}; (verRows || []).forEach(v => { ver[v.pitcher_id] = v; });
   roster.forEach(p => { const v = ver[p.id]; p.accountEmail = v ? v.email : null; p.emailConfirmed = v ? v.email_confirmed : false; p.guardianPending = !!(v && v.guardian_pending); p.ageAnswered = !!(v && v.age_answered); p.managed = !!(v && v.managed); });
+  await applyRosterClosing(roster, teamId);
   roster.sort((a, b) => {
     const an = a.uniformNumber, bn = b.uniformNumber;
     if(an !== null && bn !== null && an !== bn) return an - bn;
@@ -3457,8 +3459,18 @@ async function loadRosterForTeam(teamId){
     p.managed = !!(v && v.managed);                     // S4 B9
     p.ageAnswered = !!(v && v.age_answered);
   });
+  await applyRosterClosing(state.roster, teamId);
 }
 
+// A1 (Joel, Oct 14): a pitcher in his 7-day deletion grace shows "Account closing <date>" on the roster.
+// Best effort and online only: a failure just leaves the tag off.
+async function applyRosterClosing(roster, teamId){
+  try{
+    const { data } = await supabaseClient.rpc('get_roster_closing', { p_team_id: teamId });
+    const by = {}; (data || []).forEach(r => { by[r.pitcher_id] = r.closing_on; });
+    roster.forEach(p => { p.closingOn = by[p.id] || null; });
+  }catch(e){ /* keep whatever was known */ }
+}
 // R6: the coach Profile tab's team-admin section, for the ACTIVE team.
 // teamCoachesList (the read-only-for-assistants coaches list) is fetched
 // for any coach; teamInviteLinks (both tokens) only for the head --
@@ -11273,7 +11285,7 @@ function render(){
           ${hasRosterDot(p.id) ? '<span class="roster-dot" aria-label="New session"></span>' : ''}
           <button type="button" class="roster-name-btn" onclick="selectPitcher('${p.id}')">
             <div class="roster-item-main">
-              <span class="roster-item-name">${escHtml(p.name)}${p.throws ? `<span class="throws-tag">${p.throws}HP</span>` : ''}</span>
+              <span class="roster-item-name">${escHtml(p.name)}${p.throws ? `<span class="throws-tag">${p.throws}HP</span>` : ''}</span>${p.closingOn ? `<span class="closing-tag">Account closing ${escHtml(new Date(p.closingOn).toLocaleDateString(undefined, { month:'short', day:'numeric' }))}</span>` : ''}
               <span class="roster-item-types">${p.pitchTypes.map(pitchLabel).join(' · ') || 'No pitches set yet'}</span>${workloadRosterLine(p.id)}
               ${p.emailConfirmed ? '' : '<span class="verify-badge roster-verify-badge">Unverified</span>'}${p.guardianPending ? '<span class="verify-badge roster-verify-badge">Guardian pending</span>' : ''}${p.managed ? '<span class="verify-badge roster-verify-badge parent-badge">Parent account</span>' : ''}
             </div>

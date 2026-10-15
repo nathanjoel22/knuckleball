@@ -15,6 +15,13 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-14 · A1 follow-up: "Account closing" roster tag · **staging**
+- **Branch:** `a1-closing-tag`. **Cache:** v243.
+- **Why:** Joel deleted a test pitcher on production and his coach still saw him on the roster -- correct during the 7-day grace, but nothing said so.
+- **Database (staging only):** migration `20261015000000_a1_roster_closing`: `get_roster_closing(team)` returns the closing date only to coaches of that team (a managed player closes with its parent login's date too). Test `supabase/tests/a1_roster_closing.sql` (rolled back): head coach 1 with the right date; another team's coach 0; the pitcher 0; anon refused.
+- **App:** "Account closing <date>" under the pitcher's name on the roster, the same style as Unverified; online only, best effort.
+- **Also:** the STATUS-only commit 3e84121 on `docs-a1-phone-check` had swept in the staging config (`git commit -a`); fixed by a follow-up commit on that branch (it now differs from main by the STATUS line only). Main and the live site were never affected.
+
 ## 2026-10-14 · A1 account deletion + data export · **production**
 - **Shipped by:** Joel ("ship it"); operator confirmed `Nathan <joelhauserman@gmail.com>`. **Branch:** `a1-account-deletion` merged to `main` (fast-forward, 12 commits incl. docs dd38dae). **Cache:** v242.
 - **Backup first:** `~/knuckleball-backups/2026-10-14-1528-{schema,data}.sql`.

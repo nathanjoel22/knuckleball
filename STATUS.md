@@ -34,8 +34,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Bug found and fixed:** the insets on `body` lost to the pages' own `body { padding:0 }` (tracker, policy pages); they moved to `:root`.
 - **Not run (needs HTTPS):** the iPhone / iPad / Android installs. They're Joel's checks on production right after it ships (his call, Oct 15).
 - **Privacy / terms:** the head tags and the installed-only "‹ Back to Knuckleball" link, approved by Joel (Oct 15); no policy wording changed.
-- **Waiting on Joel:**
-  - the real logo (replace `assets/app-icon.svg`, re-run the script, turn the banner on).
+- **Icon (v247, Joel):** "KB" from the KNUCKLEBALL wordmark (Black Ops One, white on brand green) stands in until his logo; every icon and splash image re-rendered (0 size mismatches).
+- **Waiting on Joel:** his logo later (replace `assets/app-icon.svg`, re-run the script); whether the install banner goes on with KB.
 
 ## 2026-10-15 · U14 relative accuracy v2 · **production**
 - **Shipped by:** Joel ("ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `u14-relative-accuracy` → `main` (also carries `docs-a1-offline`). **Cache:** v245.

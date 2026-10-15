@@ -1,9 +1,8 @@
-<!-- P2-05: the app icon's ONE source (placeholder until Joel's logo, Oct 15 2026). Every icon size and every iOS
-     splash image is rendered from this by scripts/splash.js -- replace this file, re-run the script, bump
-     CACHE_VERSION. Square, full bleed (no transparency: iOS fills it black); the art stays inside the middle 80%
-     so the Android "maskable" crop never cuts it. Colors: --brand-bg #061A12, --accent #FFB81C. -->
+<!-- P2-05: the app icon's ONE source -- "KB" from the KNUCKLEBALL wordmark (Black Ops One, white on --brand-bg), Joel
+     Oct 15 2026, standing in until his logo. Every icon size and every iOS splash image is rendered from this by
+     scripts/splash.js -- replace this file, re-run the script, bump CACHE_VERSION. Square, full bleed (no transparency:
+     iOS fills it black); the letters stay inside the middle 80% so the Android "maskable" crop never cuts them. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <rect width="1024" height="1024" fill="#061A12"/>
-  <polygon points="250,700 820,700 774,780 204,780" fill="#FFB81C"/>
-  <text x="512" y="640" text-anchor="middle" font-family="Black Ops One" font-size="560" fill="#FFFFFF">K</text>
+  <text x="512" y="660" text-anchor="middle" font-family="Black Ops One" font-size="430" letter-spacing="8" fill="#FFFFFF">KB</text>
 </svg>

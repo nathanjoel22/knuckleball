@@ -96,3 +96,11 @@ Both forms are filled from this one table, and every line maps to a sentence on 
    - the demo reviewer account (production data: a throwaway coach login and team).
 
    Each comes to you before it's made.
+
+## Joel's answers (Oct 15, 2026)
+
+1. **Live site first** (packet decision 2): load `https://knuckleballonline.com`, prove offline on the simulator first; bundling the site's files stays the fallback if iOS won't run the service worker or Apple rejects on 4.2.
+2. **Bundle id:** `com.knuckleballonline.app` (permanent once in a store).
+3. **Google's deletion web link:** a small public page on the site (`delete-account.html`: how to delete in the app or on the web, plus the support email). It's a site change, so the page comes to Joel before it's made.
+
+**Still blocking the build (Joel's):** create the private `knuckleball-app` repo; install Xcode and Android Studio on this Mac; the Apple Developer (Knuckleball LLC, D-U-N-S) and Google Play enrolments.

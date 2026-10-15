@@ -2,7 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- P2-05: installable app (manifest, icons, iOS home-screen tags); css/standalone.css handles safe areas -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#061A12">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Knuckleball">
+<link rel="stylesheet" href="css/standalone.css">
 <title>Terms of Use · Knuckleball</title>
 <!-- P1-10: static, zero JavaScript. Themed by the link's #softball / #baseball
      (CSS :target), since a page with no script can't read ?sport=. -->
@@ -36,6 +46,7 @@
 <div class="page" id="softball"><div id="baseball">
   <div class="band"><span class="brand">KNUCKLEBALL</span></div>
   <main>
+    <a class="standalone-back" href="bullpen-tracker.html">&lsaquo; Back to Knuckleball</a>   <!-- P2-05: shown only in the installed app -->
     <h1>Terms of Use</h1>
     <p class="meta">Knuckleball LLC &middot; Effective October 14, 2026 &middot; Version 2026-10-14</p>
 

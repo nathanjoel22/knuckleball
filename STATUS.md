@@ -33,8 +33,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - standalone screenshots with emulated insets at 390, 375 and iPad 820, both sports.
 - **Bug found and fixed:** the insets on `body` lost to the pages' own `body { padding:0 }` (tracker, policy pages); they moved to `:root`.
 - **Not run (needs HTTPS):** the iPhone / iPad / Android installs. They're Joel's checks on production right after it ships (his call, Oct 15).
+- **Privacy / terms:** the head tags and the installed-only "‹ Back to Knuckleball" link, approved by Joel (Oct 15); no policy wording changed.
 - **Waiting on Joel:**
-  - his OK for privacy.html and terms.html (head tags plus a "‹ Back to Knuckleball" link shown only in the installed app);
   - the real logo (replace `assets/app-icon.svg`, re-run the script, turn the banner on).
 
 ## 2026-10-15 · U14 relative accuracy v2 · **production**

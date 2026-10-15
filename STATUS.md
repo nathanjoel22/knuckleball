@@ -15,6 +15,28 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-15 · P2-05 installable app · **staging (local)**
+- **Branch:** `p2-05-pwa-install`. **Cache:** v246. No database change. Preconditions and Joel's answers: `plans/p2-05-preconditions.md`.
+- **Built:**
+  - the manifest and iOS tags on all 15 pages (`viewport-fit=cover` everywhere);
+  - the placeholder icon (`assets/app-icon.svg`, a K on brand green) and `scripts/splash.js` → 5 icons + 40 splash images, all exactly sized, all precached (sw.js: 79 files);
+  - `css/standalone.css` (safe areas; a brand strip under the status bar);
+  - the install banner (Android Install button; iOS how-to, only with an empty outbox), **switched off** until the logo lands;
+  - the "new version · Reload" bar (never while charting), with an update check on every return to the app;
+  - no pull-to-refresh while charting; installed-only Back links on report, privacy and terms.
+- **Proven on this Mac** (Chrome over its DevTools protocol, `http://localhost:8000`):
+  - installability errors none, manifest errors none;
+  - the worker controls the page; cache `kb-shell-v246` holds 80 entries (40 splash, the manifest);
+  - offline, a fresh launch of `start_url` opens (signed out → the cached sign-in page);
+  - a version bump while open installs the new worker, deletes the old cache and fires the takeover once → the update bar;
+  - the banner and update-bar rules (10 cases) in the real code;
+  - standalone screenshots with emulated insets at 390, 375 and iPad 820, both sports.
+- **Bug found and fixed:** the insets on `body` lost to the pages' own `body { padding:0 }` (tracker, policy pages); they moved to `:root`.
+- **Not run (needs HTTPS):** the iPhone / iPad / Android installs. They're Joel's checks on production right after it ships (his call, Oct 15).
+- **Waiting on Joel:**
+  - his OK for privacy.html and terms.html (head tags plus a "‹ Back to Knuckleball" link shown only in the installed app);
+  - the real logo (replace `assets/app-icon.svg`, re-run the script, turn the banner on).
+
 ## 2026-10-15 · U14 relative accuracy v2 · **production**
 - **Shipped by:** Joel ("ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `u14-relative-accuracy` → `main` (also carries `docs-a1-offline`). **Cache:** v245.
 - **Backup first:** `~/knuckleball-backups/2026-10-14-2311-{schema,data}.sql`.

@@ -1,0 +1,30 @@
+/* P2-05 (Oct 15 2026): the installed app (home screen, display-mode standalone) has no browser chrome, and every page
+   sets viewport-fit=cover so the iPhone's safe areas are reported. In a browser without a notch env() is 0 and none
+   of this changes anything.
+   - Left / right insets (an iPhone on its side, the notch) keep content clear -- in the browser too, since
+     viewport-fit=cover lets a landscape page reach under the notch there as well.
+   - Installed, the status bar is "black-translucent": the page draws under it, so a strip in the sport's brand color
+     sits behind it and the page starts below it. The bottom inset is each screen's own (the coach dock and the sheets
+     already add it). */
+/* On :root, not body: several pages set body padding themselves (the tracker and the policy pages reset it to 0, the
+   landing page uses its own), so the insets go on the html element and add to whatever the page does. :root also
+   outranks those pages' plain "html, body { padding:0 }". */
+:root{
+  padding-left:env(safe-area-inset-left, 0px);
+  padding-right:env(safe-area-inset-right, 0px);
+}
+@media (display-mode: standalone){
+  :root{ padding-top:env(safe-area-inset-top, 0px); }
+  body::before{
+    content:''; position:fixed; z-index:2147483000; top:0; left:0; right:0;
+    height:env(safe-area-inset-top, 0px); background:var(--brand-bg, #061A12);   /* the sport's brand color behind the status bar */
+    pointer-events:none;
+  }
+}
+
+/* "Back to Knuckleball" on the pages an installed app can open in its own window (privacy, terms) -- a browser has its
+   own Back, so the link only shows installed. */
+.standalone-back{ display:none; }
+@media (display-mode: standalone){
+  .standalone-back{ display:inline-block; margin:0 0 16px; font-weight:700; color:var(--brand-mid, #16593D); text-decoration:none; }
+}

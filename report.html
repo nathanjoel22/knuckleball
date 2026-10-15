@@ -11,12 +11,24 @@
      even if the sanitizer below ever missed something. -->
 <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'sha256-1d1xsDiJxO+8b1YP6MFOixOwKyyboaG+nLItY+cVybQ='; object-src 'none'; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- P2-05: installable app (manifest, icons, iOS home-screen tags); css/standalone.css handles safe areas -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#061A12">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Knuckleball">
+<!-- report.html adds its own top inset in its header (below), so it skips css/standalone.css -->
 <title>Bullpen Session Report — Knuckleball</title>
 <link rel="stylesheet" href="vendor/fonts/fonts.css">   <!-- D2: Archivo for the shell (kb- classes only; a stored report keeps its own fonts) -->
 <link rel="stylesheet" href="css/tokens.css">   <!-- D1: the design tokens, every page (Oct 13 2026) -->
 <link rel="stylesheet" href="buttons.css">   <!-- U13: shared button shapes (Joel, Oct 9 2026) -->
 <style>
   *{ box-sizing:border-box; }
+  .kb-back{ display:none; }   /* P2-05: the installed app has no browser Back */
+  @media (display-mode: standalone){ .kb-back{ display:inline-flex; } }
   /* The report's own stylesheet is added after this one and styles body,
      h1-h3, svg, etc. -- so everything the shell draws uses kb- classes
      with its fonts set explicitly, and never relies on inherited body
@@ -65,6 +77,7 @@
   <div class="kb-bar">
     <div class="kb-mark">KNUCKLEBALL</div>
     <div class="kb-actions">
+      <a class="btn btn-secondary btn-sm on-dark kb-btn kb-back" href="bullpen-tracker.html">&lsaquo; Back</a>   <!-- P2-05: installed app only (a plain link: this page's CSP allows no inline script) -->
       <button class="btn btn-secondary btn-sm on-dark kb-btn" id="btn-download" disabled>Download</button>
       <button class="btn btn-secondary btn-sm on-dark kb-btn" id="btn-print" disabled>Print</button>
     </div>

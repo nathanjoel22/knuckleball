@@ -15,7 +15,7 @@
 // stale-while-revalidate fetch handler below is the offline/secondary
 // path -- it is not what ships a code change. This bump is a required
 // step in DEPLOY.md ("Frontend: deploy to production").
-const CACHE_VERSION = 'kb-shell-v245';
+const CACHE_VERSION = 'kb-shell-v246';
 
 const PRECACHE_URLS = [
   '/',
@@ -52,7 +52,51 @@ const PRECACHE_URLS = [
   '/vendor/fonts/Archivo-var-latin.woff2',
   '/vendor/fonts/Archivo-var-latin-ext.woff2',
   '/vendor/fonts/BigShouldersDisplay-var-latin.woff2',
-  '/vendor/fonts/BigShouldersDisplay-var-latin-ext.woff2'
+  '/vendor/fonts/BigShouldersDisplay-var-latin-ext.woff2',
+  // P2-05 (Oct 15): the installed app -- its manifest, icons, the safe-area rules and the iOS splash images
+  '/manifest.webmanifest',
+  '/css/standalone.css',
+  '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png', '/icons/favicon-32.png',
+  '/splash/splash-1125x2436.png',
+  '/splash/splash-1170x2532.png',
+  '/splash/splash-1179x2556.png',
+  '/splash/splash-1206x2622.png',
+  '/splash/splash-1242x2208.png',
+  '/splash/splash-1242x2688.png',
+  '/splash/splash-1260x2736.png',
+  '/splash/splash-1284x2778.png',
+  '/splash/splash-1290x2796.png',
+  '/splash/splash-1320x2868.png',
+  '/splash/splash-1334x750.png',
+  '/splash/splash-1488x2266.png',
+  '/splash/splash-1536x2048.png',
+  '/splash/splash-1620x2160.png',
+  '/splash/splash-1640x2360.png',
+  '/splash/splash-1668x2388.png',
+  '/splash/splash-1668x2420.png',
+  '/splash/splash-1792x828.png',
+  '/splash/splash-2048x1536.png',
+  '/splash/splash-2048x2732.png',
+  '/splash/splash-2064x2752.png',
+  '/splash/splash-2160x1620.png',
+  '/splash/splash-2208x1242.png',
+  '/splash/splash-2266x1488.png',
+  '/splash/splash-2360x1640.png',
+  '/splash/splash-2388x1668.png',
+  '/splash/splash-2420x1668.png',
+  '/splash/splash-2436x1125.png',
+  '/splash/splash-2532x1170.png',
+  '/splash/splash-2556x1179.png',
+  '/splash/splash-2622x1206.png',
+  '/splash/splash-2688x1242.png',
+  '/splash/splash-2732x2048.png',
+  '/splash/splash-2736x1260.png',
+  '/splash/splash-2752x2064.png',
+  '/splash/splash-2778x1284.png',
+  '/splash/splash-2796x1290.png',
+  '/splash/splash-2868x1320.png',
+  '/splash/splash-750x1334.png',
+  '/splash/splash-828x1792.png'
 ];
 
 self.addEventListener('install', (event) => {

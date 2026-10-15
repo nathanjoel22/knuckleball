@@ -1,0 +1,17 @@
+{
+  "id": "/bullpen-tracker.html",
+  "name": "Knuckleball",
+  "short_name": "Knuckleball",
+  "description": "Pitch charting for baseball and softball: bullpens and live games, online or off.",
+  "start_url": "/bullpen-tracker.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#061A12",
+  "background_color": "#F3F5F2",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

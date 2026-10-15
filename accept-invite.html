@@ -13,6 +13,26 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Knuckleball">
 <link rel="stylesheet" href="css/standalone.css">
+<script>
+  // W1 (Oct 15 2026): inside the Knuckleball iOS / Android app (Capacitor), same-site pages that aren't the app itself
+  // -- privacy, terms, reports, the account-deletion page -- open in the phone's own browser sheet (Done / close button),
+  // so the app never navigates away from itself. In a browser, or a home-screen install, this does nothing.
+  (function(){
+    var cap = window.Capacitor;
+    if(!cap || !cap.isNativePlatform || !cap.isNativePlatform()) return;
+    document.documentElement.classList.add('kb-native');
+    document.addEventListener('click', function(e){
+      var a = e.target && e.target.closest && e.target.closest('a[href]');
+      if(!a) return;
+      var u; try{ u = new URL(a.getAttribute('href'), location.href); }catch(x){ return; }
+      if(u.origin !== location.origin || !/\/(report|privacy|terms|delete-account)\.html$/.test(u.pathname)) return;
+      var B = cap.Plugins && cap.Plugins.Browser;
+      if(!B || !B.open) return;
+      e.preventDefault();
+      B.open({ url: u.href });
+    }, true);
+  })();
+</script>
 <title>Accept invite · Knuckleball</title>
 <script src="vendor/supabase.js"></script>
 <script>

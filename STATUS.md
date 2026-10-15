@@ -15,6 +15,18 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-15 · W1 site batch · **staging (local), branch only**
+- **Branch:** `w1-site-changes`. **Cache:** v248. Not shipped.
+- **Changes:**
+  - `css/standalone.css`: the top inset and the brand strip apply wherever the system reports an inset, so inside the iOS / Android apps too (a browser tab reports 0);
+  - an in-app link handler on 13 pages: inside the app, privacy / terms / reports / the deletion page open in the phone's browser sheet (does nothing in a browser);
+  - a **Share** button beside "View report", in the app only;
+  - new public page `delete-account.html` (Google Play's deletion link; wording mirrors privacy.html, **awaiting Joel's approval**), precached.
+- **Proven (app shells against local staging):**
+  - iPhone simulator and Android emulator: the page starts below the status bar on the brand strip;
+  - Android: the page detects the app, Browser and Share are reachable, a tap on Privacy opens Chrome and the app stays on its page.
+- **Not tested on iOS:** the link tap (the simulator can't be tapped from the command line); it uses the same code path, so it's Joel's TestFlight check.
+
 ## 2026-10-15 · P2-05 installable app · **production**
 - **Shipped by:** Joel ("ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `p2-05-pwa-install` → `main` (also carries `docs-u14-reset`). **Cache:** v247. No database or function change (dry run: up to date).
 - **Live:** the manifest and iOS tags on all 15 pages; the KB icon, 5 icons and 40 splash images precached; safe areas; the "new version" bar; the install banner **off** (`KB_INSTALL_BANNER = false`).

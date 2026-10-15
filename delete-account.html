@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- P2-05: installable app (manifest, icons, iOS home-screen tags); css/standalone.css handles safe areas -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#061A12">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Knuckleball">
+<link rel="stylesheet" href="css/standalone.css">
+<script>
+  // W1 (Oct 15 2026): inside the Knuckleball iOS / Android app (Capacitor), same-site pages that aren't the app itself
+  // -- privacy, terms, reports, the account-deletion page -- open in the phone's own browser sheet (Done / close button),
+  // so the app never navigates away from itself. In a browser, or a home-screen install, this does nothing.
+  (function(){
+    var cap = window.Capacitor;
+    if(!cap || !cap.isNativePlatform || !cap.isNativePlatform()) return;
+    document.documentElement.classList.add('kb-native');
+    document.addEventListener('click', function(e){
+      var a = e.target && e.target.closest && e.target.closest('a[href]');
+      if(!a) return;
+      var u; try{ u = new URL(a.getAttribute('href'), location.href); }catch(x){ return; }
+      if(u.origin !== location.origin || !/\/(report|privacy|terms|delete-account)\.html$/.test(u.pathname)) return;
+      var B = cap.Plugins && cap.Plugins.Browser;
+      if(!B || !B.open) return;
+      e.preventDefault();
+      B.open({ url: u.href });
+    }, true);
+  })();
+</script>
+<title>Delete your account · Knuckleball</title>
+<script>
+  // S1: theme before first paint. A ?sport= on the URL wins (every link to
+  // sign-in / signup carries one) and is remembered; otherwise this device's
+  // remembered choice. Join pages re-theme from the team's sport.
+  (function(){
+    var sp = null;
+    try{
+      var q = new URLSearchParams(location.search).get('sport');
+      if(q === 'baseball' || q === 'softball'){ sp = q; localStorage.setItem('kb:sport', q); }
+      else sp = localStorage.getItem('kb:sport');
+    }catch(e){}
+    window.KB_SPORT_KNOWN = (sp === 'baseball' || sp === 'softball');
+    window.KB_SPORT = sp === 'softball' ? 'softball' : 'baseball';
+    document.documentElement.setAttribute('data-sport', window.KB_SPORT);
+  })();
+</script>
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<link rel="stylesheet" href="css/tokens.css">   <!-- D1: the design tokens, every page (Oct 13 2026) -->
+<link rel="stylesheet" href="buttons.css">   <!-- U13: shared button shapes -->
+<link rel="stylesheet" href="css/components.css">   <!-- D2 Stage C: the shared sign-in look (Oct 13 2026) -->
+</head>
+<!-- W1 (Oct 15 2026): the public page Google Play's Data safety form links to -- how to delete a Knuckleball account,
+     reachable without the app. The steps and what is deleted match privacy.html ("Keeping and deleting data"). -->
+<body class="signin">
+  <div class="card">
+    <header class="signin-head"><div class="brand-block">
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <h2 class="display">Delete your <span class="last">account</span></h2></header>
+    <div class="info-msg">
+      <p><strong>In the Knuckleball app or on knuckleballonline.com:</strong> sign in, open <strong>Profile &rarr; Your data &rarr; Delete my account</strong>, and type DELETE to confirm.</p>
+      <p>Nothing is deleted for 7 days. Sign in before then and choose <strong>Restore my account</strong> to keep it. We email you when the deletion is scheduled and again when it's done.</p>
+      <p>After 7 days we delete your login and every profile on it, including players you added; the sessions you pitched, with their pitches, notes and reports (each leaves only a dated record of how many pitches were thrown, which can't be opened); the notes you wrote; and your team memberships, report contacts and consent records. Sessions you charted for other pitchers stay with those pitchers. Copies in our backups are removed within 7 days of a deletion.</p>
+      <p>A head coach hands off or archives their teams first. A parent can delete a player they added from that player's profile.</p>
+      <p><strong>Can't sign in?</strong> Email <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a> from your account's email address and we'll delete it within 30 days.</p>
+    </div>
+    <a href="login.html">&rarr; Sign in to Knuckleball</a>
+  </div>
+  <p class="site-footer">Knuckleball LLC 2026 &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></p>
+</body>
+</html>

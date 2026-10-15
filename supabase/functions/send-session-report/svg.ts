@@ -2,7 +2,7 @@
 // Inline SVG drawing -- no charting library, no external requests. Every
 // function returns a plain string of SVG markup. Grid size is a parameter.
 // ============================================================================
-import { isStrikeCell, zoneNumber, colorForType, escapeHtml, viewCol, RESULT_COLOR } from './helpers.ts'
+import { isStrikeCell, zoneNumber, colorForType, escapeHtml, viewCol, RESULT_COLOR, hitColors } from './helpers.ts'
 
 export interface Pt { row: number; col: number; type: string }
 
@@ -224,4 +224,71 @@ export function drawLineChart(opts: {
     `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" style="stroke:var(--kr-line)"/>` +
     `<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" style="stroke:var(--kr-line)"/>` +
     grid + xTicks + lines + `</svg>`
+}
+
+// U14 (Joel, Oct 15): where one pitch type's pitches landed against one batter side, by how they scored:
+// exact hits dark, relative-accuracy hits soft, misses as faint hollow rings (so the three counts add to the pitch
+// count). Pitcher's view (Amendment 16), D8 numbers from the STORED column. A sibling of drawGrid, which stays as is.
+export type HitKind = 'exact' | 'ra' | 'miss'
+export function drawHitGrid(opts: { size?: number; gridSize?: number; batterSide: 'R' | 'L' | null; pts: { row: number; col: number; kind: HitKind }[] }): string {
+  const size = opts.size ?? 150
+  const gridSize = opts.gridSize ?? 5
+  const cell = size / gridSize
+  const hc = hitColors()
+  let cells = ''
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      const x = col * cell, y = row * cell
+      const inZone = isStrikeCell(row, col, gridSize)
+      cells += `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" style="fill:${inZone ? 'var(--kr-surface)' : 'var(--kr-card)'};stroke:var(--kr-line)" stroke-width="1"/>`
+      const num = opts.batterSide ? zoneNumber(row, viewCol(col, gridSize), opts.batterSide, gridSize) : null   // no side: no numbers
+      if (num !== null) cells += `<text x="${x + 4}" y="${y + 11}" font-size="8" style="fill:var(--kr-axis);font-family:var(--kr-sans)">${num}</text>`
+    }
+  }
+  const r = +Math.max(2.75, Math.min(4.5, cell * 0.1125)).toFixed(2)
+  const seen: Record<string, number> = {}
+  let marks = ''
+  // misses first, so a hit in the same cell sits on top
+  const ordered = [...opts.pts.filter(p => p.kind === 'miss'), ...opts.pts.filter(p => p.kind !== 'miss')]
+  for (const p of ordered) {
+    const vc = viewCol(p.col, gridSize)
+    const key = p.row + '-' + vc
+    const idx = seen[key] || 0
+    seen[key] = idx + 1
+    const cx = vc * cell + cell / 2, cy = p.row * cell + cell / 2
+    const angle = idx * 137.508 * (Math.PI / 180)
+    const radius = idx === 0 ? 0 : Math.min(cell * 0.32, 2.5 + idx * 1.8)
+    const x = (cx + radius * Math.cos(angle)).toFixed(1), y = (cy + radius * Math.sin(angle)).toFixed(1)
+    marks += p.kind === 'miss'
+      ? `<circle cx="${x}" cy="${y}" r="${r}" style="fill:none;stroke:var(--kr-ink-faint)" stroke-width="1" opacity="0.5"/>`
+      : `<circle class="kb-dot" cx="${x}" cy="${y}" r="${r}" style="fill:${p.kind === 'exact' ? hc.exact : hc.ra}" stroke="#FFFFFF" stroke-width="0.8"/>`
+  }
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Where this pitch landed: exact and relative-accuracy hits">` +
+    `<rect x="0" y="0" width="${size}" height="${size}" style="fill:var(--kr-card);stroke:var(--kr-line)"/>` + cells + marks + `</svg>`
+}
+
+// U14: per pitch type, one hit grid, headline "H hits of N — E exact, R RA" (RA off: exact only, no RA count)
+export function drawHitTypeGrids(opts: { gridSize?: number; batterSide: 'R' | 'L' | null; allTypes: string[]; raOn: boolean;
+  pitches: { type: string; row: number; col: number; kind: HitKind }[] }): string {
+  const hc = hitColors()
+  const grids = opts.allTypes.map(type => {
+    const pts = opts.pitches.filter(p => p.type === type)
+    if (!pts.length) return ''
+    const e = pts.filter(p => p.kind === 'exact').length, ra = pts.filter(p => p.kind === 'ra').length
+    const head = opts.raOn ? `${e + ra} hit${e + ra === 1 ? '' : 's'} of ${pts.length} — ${e} exact, ${ra} RA`
+      : `${e} hit${e === 1 ? '' : 's'} of ${pts.length}`
+    return `<div class="type-grid">
+      <h3><span class="legend-dot" style="background:${colorForType(type, opts.allTypes)}"></span>${escapeHtml(type)}</h3>
+      ${drawHitGrid({ gridSize: opts.gridSize, batterSide: opts.batterSide, pts })}
+      <p class="type-grid-stats">${head}</p>
+    </div>`
+  }).join('')
+  if (!grids) return ''
+  const legend = opts.raOn
+    ? `<div class="legend" style="display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 10px"><span class="legend-item"><span class="legend-dot" style="background:${hc.exact}"></span>Exact</span>` +
+      `<span class="legend-item"><span class="legend-dot" style="background:${hc.ra}"></span>RA</span>` +
+      `<span class="legend-item"><span class="legend-dot" style="background:none;box-shadow:inset 0 0 0 1px var(--kr-ink-faint);opacity:0.6"></span>Miss</span></div>`
+    : ''
+  // inline styles only: the report stylesheet stays byte-identical for every report without U14 pitches
+  return `<div style="margin-top:14px">${legend}<div class="type-grids">${grids}</div></div>`
 }

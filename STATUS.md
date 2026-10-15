@@ -15,6 +15,33 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-15 · U14 relative accuracy v2 · **staging**
+- **Branch:** `u14-relative-accuracy`. **Cache:** v244. Spec `plans/u14-relative-accuracy-v2.md`; preconditions and Joel's answers in `plans/u14-preconditions.md`.
+- **Database (staging only):** migration `20261015010000_u14_relative_accuracy_v2`:
+  - `sessions.ra_on`;
+  - `pitches.accuracy_hit_kind` (exact / ra / miss; an RA hit must carry its cells);
+  - at most 4 cells per zone (new and changed rows);
+  - the H1 lock covers `ra_on`; `sync_session` carries both new columns;
+  - the leaderboard counts exact + RA.
+
+  Policies 34 before and after.
+- **Reset (staging):** list saved (`plans/u14-evidence/reset-list-staging-2026-10-15.md`, 3 pitchers), then run: 0 zones, 0 switches on, pitches unchanged (367 rows, checksum `fe95b043…` before and after).
+- **App:**
+  - "Turn on Relative Accuracy?" on the start screen (bullpen; Live Game only with Intent), defaulting to the last answer; an RA on / off pill while charting;
+  - the marked cells light up on tap 1 (Live Game too);
+  - a one-time note when a pitch type has no cells for that side;
+  - tap 2 stores the hit kind; the editor rescores on a type change;
+  - one accuracy number on the counter, History and trends;
+  - Profile: the switch is gone; the painter always shows, stops at 4, "n of 4".
+- **Report (staging):** per-type exact / RA grids inside each batter-side block (pens and Intent games, plus "No batter" for side-less pens); an Accuracy tile and one Accuracy % column for U14 pens; Bullpen to game counts exact + RA; `ra_on` is read from the session row.
+- **Proven:**
+  - SQL checks, rolled back (`supabase/tests/u14_acceptance.sql`): 4 cells saved, 5 refused on insert and on update, `sync_session` stores `ra_on` and exact / ra / miss, an RA hit without cells is refused, an unknown kind is refused, a saved `ra_on` can't change, the leaderboard counts RA hits (76% → 75% over 85, i.e. 64/85).
+  - The real app code (Node sim): start question default No → Yes stored and remembered; exact / ra / miss / target-is-marked → exact; no-cells hint; the editor rescores Fastball → Slider as ra; counter 80%; queued offline, synced with `ra_on` and all hit kinds. The same payload in staging's `sync_session` (rolled back): 4 of 5 = 80%.
+  - Old sessions: the stats of all 69 staging sessions are identical before and after; four old reports (pen and game, both sports, one zone-scored) are byte-identical before and after.
+  - U14 reports (sessions marked U14 in a copy of the staging data) reconcile: pen 15 exact + 8 RA + 3 miss = 26; Intent game 3 + 5 + 6 = 14; RA-off pen 7 of 19, exact only, no legend.
+  - Screens at 390 / 820 / 1180, both sports.
+- **Not yet run:** Joel's verification (an RA-on pen and an RA-on Intent half-inning on staging, with 4 cells marked for a slider vs RHB; read the report); the reset on production (needs a fresh list right before it).
+
 ## 2026-10-14 · A1 follow-up: "Account closing" roster tag · **production**
 - **Shipped by:** Joel ("ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `a1-closing-tag` → `main`. **Cache:** v243.
 - **Backup first:** `~/knuckleball-backups/2026-10-14-2157-{schema,data}.sql`.

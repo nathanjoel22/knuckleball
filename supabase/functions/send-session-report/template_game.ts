@@ -8,7 +8,7 @@
 // ============================================================================
 import { escapeHtml, safeNum, colorForType, timesToHomeLine, asSport, reportVars, type Sport, VIEW_NAME, REPORT_VIEW, viewNote } from './helpers.ts'
 import { ZONE_NAMES } from './helpers.ts'
-import { drawGrid, drawLegend, drawLineChart, drawGridByResult, drawResultLegend, resultCategoryOf, drawTypeGrids } from './svg.ts'
+import { drawGrid, drawLegend, drawLineChart, drawGridByResult, drawResultLegend, resultCategoryOf, drawTypeGrids, drawHitTypeGrids } from './svg.ts'
 import { CSS as PEN_CSS } from './template.ts'
 import {
   type GamePitch, computeGameByType, computeGameByInning, computeGameByCount,
@@ -57,6 +57,7 @@ export interface GameReportPayload {
   gameTrend: GameHistoryEntry[]
   summary: GameSummary
   events?: GameEvent[]   // G3: no-pitch events, read server-side under the caller's RLS
+  raOn?: boolean   // U14: the session's answer to "Turn on Relative Accuracy?" (session row)
 }
 
 function fmtVelo(v: number | null): string { return v === null ? '—' : String(Math.round(v)) + ' mph' }
@@ -276,13 +277,19 @@ function renderPerSide(p: GameReportPayload): string {
       .sort((a, c) => Number(a[0]) - Number(c[0]))
       .map(([num, count]) => `<li>${num} (${escapeHtml(ZONE_NAMES[Number(num)] ?? String(num))}): ${count}</li>`)
       .join('')
+    // U14: an Intent game's pitches carry a hit kind -- one accuracy number and the exact / RA grids per pitch type
+    const scored = b.pitches.filter(x => !!x.accuracyHitKind)
+    const accLine = scored.length
+      ? ` · ${Math.round(100 * scored.filter(x => x.accuracyHitKind === 'exact' || x.accuracyHitKind === 'ra').length / scored.length)}% accurate` : ''
+    const hitGrids = scored.length ? drawHitTypeGrids({ gridSize: p.gridSize, batterSide: b.side, allTypes, raOn: !!p.raOn,
+      pitches: scored.map(x => ({ type: x.type, row: x.actualRow, col: x.actualCol, kind: x.accuracyHitKind as 'exact' | 'ra' | 'miss' })) }) : ''
     return `
     <div class="side-block">
       <h3>${label}</h3>
-      <p class="side-stats">${b.total} pitches · ${b.battersFaced} BF · ${b.strikePct ?? '—'}% strikes · ${b.inZonePct}% in-zone · ${b.whiffPct ?? '—'}% whiff · ${b.k}/${b.bb}/${b.h} K/BB/H</p>
+      <p class="side-stats">${b.total} pitches · ${b.battersFaced} BF · ${b.strikePct ?? '—'}% strikes · ${b.inZonePct}% in-zone · ${b.whiffPct ?? '—'}% whiff · ${b.k}/${b.bb}/${b.h} K/BB/H${accLine}</p>
       <div class="grid-row">${grid}${drawLegend(allTypes)}
         <div class="side-lists"><div><strong>Location (by zone)</strong><ul>${zoneList || '<li>No pitches landed in the strike zone.</li>'}</ul></div></div>
-      </div>
+      </div>${hitGrids}
     </div>`
   }
   const excludedNote = excluded

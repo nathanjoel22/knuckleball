@@ -19,7 +19,13 @@ export function asSport(v: unknown): Sport { return v === 'softball' ? 'softball
 // set once (index.ts, right before rendering) and every colorForType call in
 // that pass reads it -- no other request can interleave.
 let activePalette: string[] = TYPE_PALETTE_HEX
-export function useSportPalette(sport: Sport): void { activePalette = SPORT_PALETTE_HEX[sport] ?? TYPE_PALETTE_HEX }
+// U14: the exact / RA hit colors (css/tokens.css --brand-mid / --brand-soft). Exact reads --kr-link, which already
+// holds --brand-mid's value in both sports; the soft one is written here as a value, not a new --kr- variable, so the
+// :root block of every other report stays byte-identical.
+const HIT_SOFT: Record<Sport, string> = { baseball: '#7FC9A1', softball: '#8EC3EE' }
+let activeHitSoft = HIT_SOFT.baseball
+export function hitColors(): { exact: string; ra: string } { return { exact: 'var(--kr-link)', ra: activeHitSoft } }
+export function useSportPalette(sport: Sport): void { activePalette = SPORT_PALETTE_HEX[sport] ?? TYPE_PALETTE_HEX; activeHitSoft = HIT_SOFT[sport] ?? HIT_SOFT.baseball }
 // D2 Stage D (Oct 13 2026): a NEW report carries its own colors and fonts as CSS variables
 // (--kr-*), one :root block for its sport -- written into the report file itself, so a stored
 // report never depends on the site's css/tokens.css and a later token change can't restyle a

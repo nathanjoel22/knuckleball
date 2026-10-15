@@ -48,6 +48,16 @@ re-render (team `7e1648c1-0582-44e9-984d-a9735a88e4da`, dated 2026-10-06) is the
 Stored coordinates stay catcher-frame, always — this protocol changes nothing about
 storage.
 
+## Relative accuracy v2 (U14, Joel, Oct 15 2026; `plans/u14-relative-accuracy-v2.md`, decisions in `plans/u14-preconditions.md`)
+
+- **Asked at the start of every session:** "Turn on Relative Accuracy?" Yes / No on the start screen. A bullpen always asks; a Live Game asks only with **Intent** on, because without a called spot there is nothing to score. Stored as `sessions.ra_on` through `sync_session`, locked once saved (H1 lock). It's shown read-only as the RA on / off pill while charting.
+- **Default answer:** the pitcher's last answer. It's remembered on the device (`kb:raLast:<pitcher>`) and on `profiles.relative_accuracy_enabled`, which is now that remembered answer, not a Profile switch. The pitcher or his head coach writes it, best effort when online. First time = No.
+- **Marked cells:** up to **4** per pitch type per batter side, in Profile's painter (`RA_MAX_CELLS`, "n of 4"); the database refuses more (`accuracy_zones_four_cells`, NOT VALID: applies to new and changed rows).
+- **Scoring, at tap 2, never recomputed:** `pitches.accuracy_hit_kind` = `exact` (landed the target cell) / `ra` (landed a marked cell for that type and side, with the cells copied onto the pitch) / `miss` (`scoreU14`, `gameHitScore`). A pitch with no batter uses the vs-RHB cells. The in-session editor rescores when the type changes. **One accuracy number** = (exact + ra) / pitches (`isHit`), everywhere: the live counter, History, trends, Bullpen to game, reports and the leaderboard ("we count whatever you call accurate as accurate").
+- **Old sessions never change:** a pitch without a hit kind keeps the U7 `in_accuracy_zone` / exact path. Old reports were byte-compared before and after.
+- **Reports:** a U14 session gets per-pitch-type exact / RA grids inside each batter-side block (exact `--brand-mid` via `--kr-link`, RA `--brand-soft`, misses as hollow rings; legend only with RA on; headline "H hits of N — E exact, R RA"). Pens charted with no batter get a "No batter" block. Intent games get them too. These use inline styles only, so the report stylesheet is unchanged.
+- **Reset (Joel's instruction):** `supabase/scripts/u14_reset_list.sql`, then `u14_reset_run.sql`. It clears every zone and switch and proves the pitches unchanged by checksum. The lists are in `plans/u14-evidence/`; cleared zones are not restored.
+
 ## Sports: baseball and softball (Track S — S1 + S2, Joel, Oct 1 2026)
 
 - Every profile, team and session has a `sport` ('baseball' | 'softball'), derived by SECURITY DEFINER triggers (`20261001000000_s1_sport.sql`). Cross-sport team joins are refused; a team's or session's sport never changes; a profile's sport can't change once it has a team or sessions. Sign-in checks the account's sport and role; every login/sign-up link carries `?sport=`. The landing page always opens on "Which sport?".
@@ -84,7 +94,7 @@ Built far past the uploaded spec `plans/g5-live-game-diamond.md` -- where they d
 
 ## What this is
 
-Knuckleball (knuckleballonline.com) is a bullpen and live-game tracking app for baseball and softball pitching coaches and pitchers: two-tap pitch charting on a 5×5 zone grid (target vs. actual; `GRID_SIZE = 5` -- the U2 7×7 grid was specified but never shipped), pitch types, velocity, heat maps, accuracy percentages (including a "relative accuracy" mode), trend charts, and an emailed link to a frozen HTML session report. Charting typically happens on an **iPhone/iPad, often with no wifi** — never assume network availability in the tracker flow.
+Knuckleball (knuckleballonline.com) is a bullpen and live-game tracking app for baseball and softball pitching coaches and pitchers: two-tap pitch charting on a 5×5 zone grid (target vs. actual; `GRID_SIZE = 5` -- the U2 7×7 grid was specified but never shipped), pitch types, velocity, heat maps, one accuracy percentage (exact + relative-accuracy hits, U14), trend charts, and an emailed link to a frozen HTML session report. Charting typically happens on an **iPhone/iPad, often with no wifi** — never assume network availability in the tracker flow.
 
 **Operator context that changes how you work:** the owner (Joel) is a solo, part-time developer, newer to the terminal, on a Mac. Prefer copy-paste one-liners, explain what commands do, and never assume a CI system, a second environment, or another human reviewer exists unless DEPLOY.md says so. Current scale: 1–3 teams. Bias every decision toward simple and operable over scalable.
 

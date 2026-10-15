@@ -17,7 +17,8 @@ import { asSport, useSportPalette } from './helpers.ts'
 const U6_CUTOFF_TS = 1789965601000   // the app's U6_CUTOFF_TS: a 65 mph reading before it is the old default, not a real speed
 const PITCH_COLS = 'session_id, type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, in_accuracy_zone, ' +
   'accuracy_zone_cells, batter_side, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, ' +
-  'balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field'
+  'balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, ' +
+  'accuracy_hit_kind'
 
 type Row = Record<string, unknown>
 // deno-lint-ignore no-explicit-any
@@ -33,6 +34,7 @@ export function pitchFromRow(p: Row): AppPitch {
     accuracyMode: p.accuracy_mode || null,
     inAccuracyZone: (p.in_accuracy_zone === true || p.in_accuracy_zone === false) ? p.in_accuracy_zone : null,
     accuracyZoneCells: p.accuracy_zone_cells || null,
+    accuracyHitKind: p.accuracy_hit_kind || null,   // U14
     batterSide: p.batter_side || null,
     ts: new Date(String(p.ts)).getTime(),
     result: p.result || null,
@@ -49,7 +51,8 @@ export function pitchFromRow(p: Row): AppPitch {
 }
 const isDefaultVelo = (pt: AppPitch) => pt.velo === 65 && pt.ts < U6_CUTOFF_TS
 const isStrikeCell = (r: number, c: number) => r >= 1 && r <= 3 && c >= 1 && c <= 3
-const isAccurate = (p: AppPitch) => p.targetRow === p.actualRow && p.targetCol === p.actualCol
+const isAccurate = (p: AppPitch) => p.accuracyHitKind ? (p.accuracyHitKind === 'exact' || p.accuracyHitKind === 'ra')   // U14: one number
+  : p.targetRow === p.actualRow && p.targetCol === p.actualCol
 // The app formats with the viewer's locale; the server uses en-US in the app's home time zone.
 const dateLabel = (ms: number) => new Intl.DateTimeFormat('en-US', { month: 'numeric', day: 'numeric', timeZone: 'America/New_York' }).format(new Date(ms))
 
@@ -114,7 +117,7 @@ export interface RenderedReport { html: string; kind: string; sport: string; pay
 // Everything read with `db` (the rerender job passes the admin client; it is operator-gated).
 export async function renderReportFromRows(db: SupabaseClient, sessionId: string): Promise<RenderedReport> {
   const { data: s, error: sErr } = await db.from('sessions')
-    .select('id, pitcher_id, team_id, logged_by, started_at, charting_perspective, kind, opponent, sport, deleted_at')
+    .select('id, pitcher_id, team_id, logged_by, started_at, charting_perspective, kind, opponent, sport, deleted_at, ra_on')
     .eq('id', sessionId).maybeSingle()
   if (sErr || !s) throw new Error('session not found: ' + (sErr?.message || sessionId))
   if (s.deleted_at) throw new Error('session is deleted')
@@ -139,7 +142,7 @@ export async function renderReportFromRows(db: SupabaseClient, sessionId: string
   const date = new Date(String(s.started_at)).getTime()
   const pitches = (bySession[s.id] ?? []).map(pt => isDefaultVelo(pt) ? { ...pt, velo: null } : pt)
   const common = {
-    sport: asSport(s.sport), sessionId: s.id, pitcherId: s.pitcher_id,
+    sport: asSport(s.sport), raOn: s.ra_on === true, sessionId: s.id, pitcherId: s.pitcher_id,
     pitcherName: String(prof?.full_name ?? ''),
     uniformNumber: (member?.uniform_number ?? null) as number | null,
     date,

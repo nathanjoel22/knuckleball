@@ -136,6 +136,9 @@
   .velo-slim .velo-arrow{ flex:0 0 22px; width:22px; min-width:0; min-height:var(--chip); background:transparent; }
   .velo-slim .velo-cell{ min-height:var(--chip); border-radius:var(--radius-segment); }
   .velo-slim-reset{ flex:none; padding:0 var(--s-6); }
+  .ra-pill{ display:inline-block; vertical-align:middle; padding:2px var(--s-8); border-radius:var(--radius-pill); border:1px solid var(--border-strong); color:var(--ink-faint); font-family:var(--font-sans); font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap; align-self:center; }   /* U14 */
+  .ra-pill.on{ background:var(--brand-mid); border-color:var(--brand-mid); color:var(--on-dark); }
+  .wide-left > .ra-pill{ align-self:flex-start; }
   .ph-statline{ font-size:12px; font-weight:700; margin-bottom:var(--s-6); }
   .sheet-overlay{ align-items:flex-end; padding:0; }
   .sess-sheet{ width:100%; max-width:520px; background:var(--card); border-radius:var(--radius-dock) var(--radius-dock) 0 0; padding:18px 16px calc(16px + env(safe-area-inset-bottom, 0px));
@@ -3391,10 +3394,52 @@ function adoptDraftPitcher(){
 // Joel, Oct 12: "use relative accuracy today?" -- No turns it off for this pen; Yes scores against the zones painted
 // in the pitcher's profile. Unanswered (a draft from before this) follows the profile's switch, as before.
 function sessionRelAccuracy(s, p){
+  if(s && (s.raOn === true || s.raOn === false)) return s.raOn;   // U14: the session's own answer
   if(s && s.relAccuracyToday === false) return false;
   if(s && s.relAccuracyToday === true) return true;
   return !!(p && p.relativeAccuracy);
 }
+// U14 (Joel, Oct 15): relative accuracy v2. A session started after U14 carries raOn (true/false); its pitches are
+// scored once, here, into accuracyHitKind: 'exact' (landed the target cell), 'ra' (landed one of the pitcher's marked
+// cells for this pitch type and batter side) or 'miss'. Exact and RA both count as accurate -- one number. All cells
+// are catcher frame. A session from before U14 (raOn undefined) keeps the U7 zone path untouched.
+const RA_MAX_CELLS = 4;
+function isU14Session(s){ return !!s && (s.raOn === true || s.raOn === false); }
+function scoreU14(s, pitcherId, type, side, tRow, tCol, aRow, aCol){
+  const cells = s.raOn ? zoneCellsFor(pitcherId, type, side || 'R') : null;
+  const kind = (tRow === aRow && tCol === aCol) ? 'exact'
+    : (cells && cells.includes(aRow + '-' + aCol)) ? 'ra' : 'miss';
+  return { kind, cells: cells ? cells.slice() : null };
+}
+// U14: a Live Game pitch is scored only with Intent (the called spot is its target); without one it has no accuracy.
+function gameHitScore(s, pending, persp, side){
+  if(!isU14Session(s) || !pending || !pending.target) return { accuracyZoneCells: null, accuracyHitKind: null };
+  const sc = scoreU14(s, state.currentPitcherId, gamePitchType(), side, pending.target.row, perspectiveCol(pending.target.col, persp),
+    pending.row, perspectiveCol(pending.col, persp));
+  return { accuracyZoneCells: sc.cells, accuracyHitKind: sc.kind };
+}
+// U14: "a pitch type with no cells marked for that side is exact-only for that pitch, and the screen says so once" --
+// once per session for each pitch type and side, on the hint line.
+// U14: the session's answer, read-only once charting starts (the question comes before the first pitch)
+function raPill(){
+  const s = state.activeSession;
+  if(!isU14Session(s) || (s.kind === 'game' && !s.intent)) return '';
+  return `<span class="ra-pill${s.raOn ? ' on' : ''}" title="Relative Accuracy, chosen at the start of this session">RA ${s.raOn ? 'on' : 'off'}</span>`;
+}
+function raCheckCells(type){
+  const s = state.activeSession, side = sessionBatterSide(s);
+  if(sessionRelAccuracy(s, currentPitcher())) raNoCellsHint(s, type, side, zoneCellsFor(state.currentPitcherId, type, side));
+}
+function raNoCellsHint(s, type, side, cells){
+  if(!type || !isU14Session(s) || !s.raOn || cells) return;
+  const key = type + '|' + (side || 'R');
+  s.raHinted = s.raHinted || [];
+  if(s.raHinted.includes(key)) return;
+  s.raHinted.push(key);
+  state.hint = `No Relative Accuracy cells marked for ${pitchLabel(type)} vs ${side === 'L' ? 'LHB' : 'RHB'} — this pitch counts exact only.`;
+}
+// the one accuracy predicate: a stored U14 hit kind when there is one, the exact-cell rule otherwise
+function isHit(p){ return p.accuracyHitKind ? (p.accuracyHitKind === 'exact' || p.accuracyHitKind === 'ra') : isAccurate(p); }
 function zoneCellsFor(pitcherId, type, side){
   const z = state.zones[pitcherId];
   const c = z && z[type] && z[type][side];
@@ -4852,6 +4897,7 @@ window.handleZoneTap = async function(row, col){
     // stands, and the strip stays off until this pitch's tap 2.
     state.pendingTarget = { row, col };
     state.veloTargetIdx = null;
+    raCheckCells(state.selectedType);   // U14
     render();
     return;
   }
@@ -4872,9 +4918,12 @@ window.handleZoneTap = async function(row, col){
   // of the cells) so repainting a zone later never changes a saved session. Zones are in
   // catcher frame, and the tapped column is normalized to it here, like every coordinate.
   const chartPitcher = currentPitcher();
-  const zoneCells = sessionRelAccuracy(state.activeSession, chartPitcher)
+  const u14 = isU14Session(state.activeSession);
+  const u14Score = u14 ? scoreU14(state.activeSession, state.currentPitcherId, state.selectedType, batterSide,
+    target.row, perspectiveCol(target.col, chartingPerspective), row, perspectiveCol(col, chartingPerspective)) : null;
+  const zoneCells = u14 ? u14Score.cells : sessionRelAccuracy(state.activeSession, chartPitcher)
     ? zoneCellsFor(state.currentPitcherId, state.selectedType, batterSide) : null;
-  const inAccuracyZone = zoneCells ? zoneCells.includes(row + '-' + perspectiveCol(col, chartingPerspective)) : null;
+  const inAccuracyZone = (!u14 && zoneCells) ? zoneCells.includes(row + '-' + perspectiveCol(col, chartingPerspective)) : null;
   // U9: this is the actual freeze point for the radar-gun setting -- right
   // before the FIRST pitch of the pen lands, while sessionUsesRadarGun()
   // still reads live (pitches.length is still 0 here). From this line on,
@@ -4894,6 +4943,7 @@ window.handleZoneTap = async function(row, col){
     accuracyMode: null,   // U7B: the old per-session modes are retired for new pitches; zone result below
     inAccuracyZone,
     accuracyZoneCells: zoneCells ? zoneCells.slice() : null,
+    accuracyHitKind: u14Score ? u14Score.kind : null,   // U14
     // U11 (5): no hitter standing in -> no side on the pitch (zone scoring
     // above still used the RHB zones via batterSide).
     batterSide: isNoBatter(state.activeSession) ? null : batterSide,
@@ -4947,7 +4997,14 @@ window.saveEditDraftRow = async function(realIdx){
   if(!pitch){ state.editDraftRow = null; render(); return; }
   const typeEl = document.getElementById('edit-draft-type');
   const veloEl = document.getElementById('edit-draft-velo');
-  if(typeEl && typeEl.value) pitch.type = typeEl.value;
+  if(typeEl && typeEl.value && typeEl.value !== pitch.type){
+    pitch.type = typeEl.value;
+    // U14: the marked cells belong to a pitch type, so a new type is scored again (still before saving)
+    if(pitch.accuracyHitKind && pitch.targetRow !== null && pitch.targetRow !== undefined){
+      const sc = scoreU14(state.activeSession, state.currentPitcherId, pitch.type, pitch.batterSide, pitch.targetRow, pitch.targetCol, pitch.actualRow, pitch.actualCol);
+      pitch.accuracyHitKind = sc.kind; pitch.accuracyZoneCells = sc.cells;
+    }
+  }
   if(veloEl){
     const raw = veloEl.value.trim();
     if(raw === '' || !Number.isFinite(Number(raw))){
@@ -5018,6 +5075,7 @@ window.endSession = async function(){
     opponent: (state.activeSession.kind === 'game' && state.activeSession.opponent) ? state.activeSession.opponent : null,
     gameFinalInning: state.activeSession.kind === 'game' ? state.activeSession.inning : null,
     gameOutsRecorded: state.activeSession.kind === 'game' ? ((state.activeSession.inning - 1) * 3 + state.activeSession.outs) : null,
+    raOn: state.activeSession.raOn === true,   // U14
     queuedAt: Date.now(),
     lastError: null,
     lastAttemptAt: null
@@ -5160,6 +5218,7 @@ function pendingSessionsForCurrentSelection(){
       // same defensive fallback as the synced-row mapper in
       // loadSessionsForCurrentSelection.
       kind: item.kind || 'bullpen',
+      raOn: item.raOn === true,   // U14
       pending: true,
       lastError: item.lastError
     }));
@@ -5245,7 +5304,8 @@ async function syncOutbox(){
       // first-ever sync actually carries them.
       opponent: (item.opponent === undefined) ? null : item.opponent,
       game_final_inning: (item.gameFinalInning === undefined) ? null : item.gameFinalInning,
-      game_outs_recorded: (item.gameOutsRecorded === undefined) ? null : item.gameOutsRecorded
+      game_outs_recorded: (item.gameOutsRecorded === undefined) ? null : item.gameOutsRecorded,
+      ra_on: item.raOn === true   // U14: the start question's answer (false for anything queued before U14)
     };
     const pitchRows = item.pitches.map(p => ({
       id: p.id,
@@ -5255,6 +5315,7 @@ async function syncOutbox(){
       accuracy_mode: p.accuracyMode || null,
       in_accuracy_zone: (p.inAccuracyZone === true || p.inAccuracyZone === false) ? p.inAccuracyZone : null,
       accuracy_zone_cells: p.accuracyZoneCells || null,
+      accuracy_hit_kind: p.accuracyHitKind || null,   // U14
       // U2a: per-pitch, not per-session (see the migration's comment) --
       // null for a pitch queued before this shipped, same defensive
       // fallback pattern as charting_perspective above.
@@ -5528,7 +5589,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field), session_notes(id, author_id, author_name, body, created_at)')
+    .select('id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, accuracy_hit_kind, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field), session_notes(id, author_id, author_name, body, created_at)')
     .eq('pitcher_id', pitcherId)
     .order('started_at', { ascending: false });   // R4: every team -- RLS decides what this viewer sees
   if(error){ console.error(error); state.sessions = []; state.deletedSessions = []; return; }
@@ -5560,6 +5621,7 @@ async function loadSessionsForCurrentSelection(){
     // G1: defensive fallback for a row that predates this column --
     // every such row is, definitionally, a bullpen.
     kind: s.kind || 'bullpen',
+    raOn: s.ra_on === true,   // U14 (false for every session from before it)
     // G2 approach (b): null for every bullpen and for a game saved without
     // one -- History/the report both render "Game · <date>" in that case.
     opponent: s.opponent || null,
@@ -5571,6 +5633,7 @@ async function loadSessionsForCurrentSelection(){
       accuracyMode: p.accuracy_mode || null,
       inAccuracyZone: (p.in_accuracy_zone === true || p.in_accuracy_zone === false) ? p.in_accuracy_zone : null,
       accuracyZoneCells: p.accuracy_zone_cells || null,
+      accuracyHitKind: p.accuracy_hit_kind || null,   // U14
       // U2a: NULL on legacy pitches, on purpose (no default, no backfill --
       // see the migration). isRelativelyAccurate falls back to 'R' itself
       // when this is absent, so legacy sessions keep reporting exactly as
@@ -5643,8 +5706,10 @@ function avgTimeToPlateMeta(pitches){
 function sessionStats(pitches){
   const total = pitches.length;
   const strikes = pitches.filter(p => isStrikeCell(p.actualRow, p.actualCol)).length;
-  const accurate = pitches.filter(isAccurate).length;
+  const accurate = pitches.filter(isHit).length;   // U14: exact + RA for U14 pitches; the exact cell for older ones
   const relativeAccurate = pitches.filter(isRelativelyAccurate).length;
+  const exactHits = pitches.filter(p => p.accuracyHitKind === 'exact').length;
+  const raHits = pitches.filter(p => p.accuracyHitKind === 'ra').length;
   const usesRelativeMode = pitches.some(p => p.accuracyMode);
   // U7B: relative accuracy (zone-based) reads the STORED result (never recomputed from today's zones), and only
   // over pitches that had a zone -- so the denominator is shown alongside the percentage.
@@ -5663,7 +5728,7 @@ function sessionStats(pitches){
     byType[p.type].count++;
     if(p.velo !== null && p.velo !== undefined && !isDefaultVeloReading(p)) byType[p.type].velos.push(p.velo);
     if(isStrikeCell(p.actualRow, p.actualCol)) byType[p.type].strikes++;
-    if(isAccurate(p)) byType[p.type].accurate++;
+    if(isHit(p)) byType[p.type].accurate++;
     if(isRelativelyAccurate(p)) byType[p.type].relativeAccurate++;
   });
   Object.values(byType).forEach(t => {
@@ -5681,7 +5746,7 @@ function sessionStats(pitches){
     total, strikes, strikePct: total ? Math.round((strikes/total)*100) : 0,
     accurate, accuracyPct: total ? Math.round((accurate/total)*100) : 0,
     relativeAccurate, relativeAccuracyPct: total ? Math.round((relativeAccurate/total)*100) : 0,
-    usesRelativeMode,
+    usesRelativeMode, exactHits, raHits,
     hasZone: zoneTotal > 0, zoneTotal, zoneHits, zoneAccuracyPct: zoneTotal ? Math.round((zoneHits / zoneTotal) * 100) : null,
     hasVelo, avgVelo, minVelo, maxVelo, byType
   };
@@ -5715,8 +5780,12 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
     // U7B: on tap 1, light the pitcher's zone for (this pitch type, current batter side).
     // Zones are stored in catcher frame; the grid is drawn in the charter's screen frame.
     const gp = currentPitcher();
-    const zoneNow = (isBullpenTap && pendingTarget && state.selectedType && sessionRelAccuracy(state.activeSession, gp))
-      ? zoneCellsFor(state.currentPitcherId, state.selectedType, batterSide) : null;
+    // U14: a Live Game with Intent lights them too, between the called spot and where it went
+    const sa = state.activeSession;
+    const gameAim = !isBullpenTap && !!(sa && sa.kind === 'game' && sa.intent && sa.gameTarget);
+    const litType = isBullpenTap ? state.selectedType : (gameAim ? gamePitchType() : null);
+    const zoneNow = ((isBullpenTap && pendingTarget) || gameAim) && litType && sessionRelAccuracy(sa, gp)
+      ? zoneCellsFor(state.currentPitcherId, litType, batterSide) : null;
     const glowCells = zoneNow
       ? new Set(zoneNow.map(k => { const [zr, zc] = k.split('-').map(Number); return zr + '-' + perspectiveCol(zc, chartingPerspective); }))
       : null;
@@ -6031,7 +6100,7 @@ window.chooseSessionKind = async function(kind){
   // Joel, Oct 12: then the start questions -- radar gun today, relative accuracy (bullpen), opponent (Live Game).
   // Defaults come from the profile; the answers belong to this session only.
   const pq = currentPitcher();
-  state.activeSession.startQ = { radar: !!(pq && pq.usesRadarGun), rel: !!(pq && pq.relativeAccuracy), intent: false, intentHelp: false };
+  state.activeSession.startQ = { radar: !!(pq && pq.usesRadarGun), rel: raLastAnswer(pq), intent: false, intentHelp: false };
   if(kind === 'game') loadOpponents();   // the saved list, refreshed in the background when online
   await storSet(draftKey(), state.activeSession);
   render();
@@ -6043,11 +6112,36 @@ window.setStartQ = async function(k, v){
   await storSet(draftKey(), state.activeSession);
   render();
 };
+// U14: the start question defaults to this pitcher's last answer -- this device's memory first (works offline, and for
+// an assistant, who can't write the profile), else the profile's remembered answer; first time = No.
+function raLastKey(id){ return 'kb:raLast:' + id; }
+function raLastAnswer(p){
+  if(!p) return false;
+  try{ const v = localStorage.getItem(raLastKey(p.id)); if(v === '1' || v === '0') return v === '1'; }catch(e){}
+  return !!p.relativeAccuracy;
+}
+function rememberRaAnswer(p, on){
+  if(!p) return;
+  try{ localStorage.setItem(raLastKey(p.id), on ? '1' : '0'); }catch(e){}
+  if(!!p.relativeAccuracy === on || !isOnline() || !state.session) return;
+  // best effort: the profile copy follows the pitcher to other devices (the pitcher, or his head coach)
+  (async () => {
+    try{
+      let error;
+      if(isMine(p.id)) ({ error } = await supabaseClient.from('profiles').update({ relative_accuracy_enabled: on }).eq('id', p.id));
+      else if(isCoach()) ({ error } = await supabaseClient.rpc('coach_set_relative_accuracy', { p_pitcher_id: p.id, p_enabled: on }));
+      if(!error){ p.relativeAccuracy = on; if(state.profile && state.profile.id === p.id) state.profile.relative_accuracy_enabled = on; saveLastKnownContext(); }
+    }catch(e){}
+  })();
+}
 window.startSessionNow = async function(){
   const s = state.activeSession, q = s && s.startQ;
   if(!q) return;
   s.usesRadarGun = !!q.radar; s.radarAsked = true;
   if(s.kind === 'bullpen') s.relAccuracyToday = !!q.rel;
+  // U14: the answer is the session's own (stored as sessions.ra_on); a Live Game asks only with Intent on
+  s.raOn = s.kind === 'game' ? !!(q.intent && q.rel) : !!q.rel;
+  if(s.kind === 'bullpen' || q.intent) rememberRaAnswer(currentPitcher(), !!q.rel);
   if(s.kind === 'game') s.intent = !!q.intent;   // Joel, Oct 12: Live Game intent (target, then where it went)
   if(s.kind === 'game'){
     const el = document.getElementById('start-opponent');
@@ -6085,6 +6179,12 @@ async function loadOpponents(){
 function opponentDatalist(){
   return `<datalist id="opponent-list">${savedOpponents().map(n => `<option value="${escHtml(n)}"></option>`).join('')}</datalist>`;
 }
+// U14: "Turn on Relative Accuracy?" -- a Live Game shows it only with Intent on (no called spot, nothing to score)
+function raStartQuestion(q, who){
+  const yn = segTray([{ label: 'Yes', selected: !!q.rel, onclick: "setStartQ('rel', true)" }, { label: 'No', selected: !q.rel, onclick: "setStartQ('rel', false)" }], { key: 'sq-rel', label: 'rel', cls: 'start-yn' });
+  return `<div class="start-q-item"><div class="start-q-label">Turn on Relative Accuracy?</div>${yn}
+      <p class="start-q-note">${q.rel ? `A pitch that lands on the target, or on one of the cells marked in ${who} profile for that pitch, counts as accurate.` : 'A pitch counts as accurate only when it lands on the target.'}</p></div>`;
+}
 function renderStartQuestions(p){
   const s = state.activeSession, q = s.startQ, game = s.kind === 'game';
   const yn = (k, v) => segTray([{ label: 'Yes', selected: !!v, onclick: `setStartQ('${k}', true)` }, { label: 'No', selected: !v, onclick: `setStartQ('${k}', false)` }], { key: 'sq-' + k, label: k, cls: 'start-yn' });
@@ -6092,14 +6192,14 @@ function renderStartQuestions(p){
   return `<div class="start-q">
     <h2 class="display start-q-title">${game ? 'Live Game' : 'Bullpen'}</h2>
     <div class="start-q-item"><div class="start-q-label">Will you be using a radar gun today?</div>${yn('radar', q.radar)}</div>
-    ${game ? '' : `<div class="start-q-item"><div class="start-q-label">Would you like to use relative accuracy?</div>${yn('rel', q.rel)}
-      <p class="start-q-note">${q.rel ? `Scores against the accuracy zones set in ${who} profile.` : 'Accuracy counts a pitch only when it lands on the target.'}</p></div>`}
+    ${game ? '' : raStartQuestion(q, who)}
     ${game ? `<div class="start-q-item"><div class="start-q-label intent-q">Turn on Intent?
         <span class="info-wrap"><button type="button" class="btn btn-icon btn-sm info-q" aria-label="What is Intent?" aria-expanded="${q.intentHelp ? 'true' : 'false'}" onclick="setStartQ('intentHelp', ${q.intentHelp ? 'false' : 'true'})">?</button>
         <span class="info-tip" role="tooltip">For use with Pitchcom, Game Day Watches, GoRout, etc...</span></span></div>
       ${q.intentHelp ? '<p class="info-note">For use with Pitchcom, Game Day Watches, GoRout, etc...</p>' : ''}
       ${yn('intent', q.intent)}
-      <p class="start-q-note">${q.intent ? 'Tap where the catcher calls the pitch, then where it went.' : 'Tap where each pitch went, as usual.'}</p></div>` : ''}
+      <p class="start-q-note">${q.intent ? 'Tap where the catcher calls the pitch, then where it went.' : 'Tap where each pitch went, as usual.'}</p></div>
+      ${q.intent ? raStartQuestion(q, who) : ''}` : ''}
     ${game ? `<div class="start-q-item"><label class="start-q-label" for="start-opponent">Opponent (optional)</label>
       <input id="start-opponent" class="text-input start-q-input" list="opponent-list" maxlength="60" autocomplete="off" placeholder="Type or pick a team" value="${escHtml(s.opponent || '')}" oninput="onGameOpponentInput(this.value)">${opponentDatalist()}</div>` : ''}
     <div class="start-q-actions">
@@ -6140,6 +6240,7 @@ window.handleGameZoneTap = async function(row, col){
     const asking = si.g5 && G5_CHART_STEPS[si.g5.step];
     if(!si.gameTarget && !asking){
       si.gameTarget = { row, col };
+      raCheckCells(gamePitchType());   // U14
       await storSet(draftKey(), si);
       render();
       return;
@@ -6629,7 +6730,7 @@ window.recordGameResult = async function(result, extra){
     // Joel, Oct 12 (Intent): the called spot, normalized to the catcher frame like the actual one; null without Intent
     targetRow: pending.target ? pending.target.row : null, targetCol: pending.target ? perspectiveCol(pending.target.col, chartingPerspective) : null,
     actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
-    accuracyMode: null, inAccuracyZone: null, accuracyZoneCells: null,
+    accuracyMode: null, inAccuracyZone: null, ...gameHitScore(s, pending, chartingPerspective, batterSide),
     batterSide,
     ts: Date.now(),
     result,
@@ -7587,7 +7688,7 @@ window.commitFieldPlay = async function(){
     timeToPlate: (pending.timeToPlate === undefined) ? null : pending.timeToPlate,   // U11 (7)
     targetRow: pending.target ? pending.target.row : null, targetCol: pending.target ? perspectiveCol(pending.target.col, chartingPerspective) : null,   // Intent (Oct 12)
     actualRow: pending.row, actualCol: perspectiveCol(pending.col, chartingPerspective),
-    accuracyMode: null, inAccuracyZone: null, accuracyZoneCells: null,
+    accuracyMode: null, inAccuracyZone: null, ...gameHitScore(s, pending, chartingPerspective, batterSide),
     batterSide, ts: Date.now(),
     result: 'in_play', inPlayOutcome, hitType,
     fielder: primaryPos || null, fielders: fp.positionSeq.length > 1 ? fp.positionSeq.slice(1).join('-') : null,
@@ -8801,7 +8902,7 @@ function renderGameSessionView(p){
         ${g5OnDiamond() ? '' : `<div class="ph-actions ph-addcount"><button type="button" class="btn btn-secondary btn-sm ph-act" onclick="g5AddCount('strike')">+ Strike</button><button type="button" class="btn btn-secondary btn-sm ph-act" onclick="g5AddCount('ball')">+ Ball</button></div>`}
       </div>
       <div class="panel log-panel">
-        <div class="ph-statline mono">Pitches ${stats.total} · Strike% ${stats.strikePct} · K ${stats.k} · BB ${stats.bb} · H ${stats.h}</div>
+        <div class="ph-statline mono">Pitches ${stats.total} · Strike% ${stats.strikePct} · K ${stats.k} · BB ${stats.bb} · H ${stats.h} ${raPill()}</div>
         <div class="field-label">Recent pitches</div>
         <div class="pitch-log">${logRows}</div>
         <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
@@ -8821,6 +8922,7 @@ function renderGameSessionView(p){
         <div class="perspective-delivery-row">
           ${renderPerspectiveToggle()}
           ${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}
+          ${raPill()}
         </div>
         <div>
           <div class="field-label" style="margin-bottom:var(--s-8);">Pitch type</div>
@@ -8891,7 +8993,7 @@ function renderGameSessionView(p){
               </div>${g5Below}
             </div>
           </div>
-          <div class="wide-bl"></div>   <!-- Joel, Oct 14: no clock in Live Games (it sat here) -->
+          <div class="wide-bl">${raPill()}</div>   <!-- Joel, Oct 14: no clock in Live Games (it sat here); U14: the RA pill -->
           <div class="wide-br">
             <button class="btn btn-secondary" onclick="undoLastGameAction()">Undo last action</button>
             <button class="btn btn-secondary" onclick="gameNewBatter()">New batter</button>
@@ -9222,7 +9324,7 @@ function renderSessionView(){
       </div>`;
     }
     const strike = isStrikeCell(pt.actualRow, pt.actualCol);
-    const accurate = isAccurate(pt);
+    const accurate = pt.accuracyHitKind ? pt.accuracyHitKind === 'exact' : isAccurate(pt);
     const relAccurate = isRelativelyAccurate(pt);
     const veloText = (pt.velo !== null && pt.velo !== undefined) ? `${pt.velo} mph · ` : '— · ';
     // D8: pt.targetCol/actualCol are ALREADY catcher-frame (stored), so no
@@ -9237,7 +9339,8 @@ function renderSessionView(){
     const targetNum = zoneNumberFor(pt.targetRow, pt.targetCol, pt.batterSide || 'R');
     const actualNum = zoneNumberFor(pt.actualRow, pt.actualCol, pt.batterSide || 'R');
     const modeTag = pt.accuracyMode ? ` <span style="color:var(--brand-mid);">[${ACCURACY_MODE_LABELS[pt.accuracyMode]}${relAccurate ? ' ✓' : ''}]</span>`
-      : (pt.inAccuracyZone === true || pt.inAccuracyZone === false) ? ` <span style="color:var(--brand-mid);">[Relative${pt.inAccuracyZone ? ' ✓' : ''}]</span>` : '';
+      : (pt.inAccuracyZone === true || pt.inAccuracyZone === false) ? ` <span style="color:var(--brand-mid);">[Relative${pt.inAccuracyZone ? ' ✓' : ''}]</span>`
+      : pt.accuracyHitKind === 'ra' ? ' <span style="color:var(--brand-mid);">RA ✓</span>' : '';
     const locText = `${targetNum ? 'aimed '+targetNum : 'aimed ball'} → ${actualNum ? 'landed '+actualNum : 'landed ball'}${accurate ? ' ✓' : ''}${modeTag}`;
     return `<div class="pitch-log-row">
       <span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pitchLabel(pt.type)}</span> · ${veloText}${strike ? 'Strike' : 'Ball'} · <span style="color:var(--ink-faint);">${locText}</span></span>
@@ -9275,7 +9378,7 @@ function renderSessionView(){
         ${sessionUsesRadarGun(state.activeSession) ? renderVeloSlim() : ''}
       </div>
       <div class="panel log-panel">
-        <div class="ph-statline mono">${stats.total} pitches · Strike% ${stats.strikePct} · Acc ${stats.accuracyPct}%${stats.hasVelo ? ` · ${stats.avgVelo} avg` : ''}</div>
+        <div class="ph-statline mono">${stats.total} pitches · Strike% ${stats.strikePct} · Acc ${stats.accuracyPct}%${stats.hasVelo ? ` · ${stats.avgVelo} avg` : ''} ${raPill()}</div>
         <div class="field-label">Recent pitches</div>
         <div class="pitch-log">${logRows}</div>
         <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
@@ -9302,6 +9405,7 @@ function renderSessionView(){
             <span class="pitch-counter-num pitch-count-badge mono">${stats.total}</span>
             <span class="field-label">Pitch count</span>
           </div>
+          ${raPill()}
         </div>
         <div class="hint-msg">${state.hint}</div>
         <div>
@@ -9342,6 +9446,7 @@ function renderSessionView(){
                 <span class="field-label">Pitch count</span>
               </div>
             </div>
+            ${raPill()}
             <div>
               <div class="field-label" style="margin-bottom:var(--s-8);">Pitch type</div>
               ${pitchTypeTray(p, true)}
@@ -9968,7 +10073,9 @@ window.paintZoneCell = function(row, col){
   if(!zp) return;
   const k = row + '-' + col;
   const i = zp.cells.indexOf(k);
-  if(i >= 0) zp.cells.splice(i, 1); else zp.cells.push(k);
+  if(i >= 0) zp.cells.splice(i, 1);
+  else if(zp.cells.length >= RA_MAX_CELLS) return;   // U14: four per pitch type per side; the fifth tap does nothing
+  else zp.cells.push(k);
   render();
 };
 window.cancelZonePaint = function(){ state.zonePaint = null; state.zoneMsg = ''; render(); };
@@ -9980,7 +10087,8 @@ function setLocalZone(pitcherId, type, side, cells){
 window.saveZonePaint = async function(){
   const zp = state.zonePaint;
   if(!zp) return;
-  if(!zp.cells.length){ state.zoneMsg = 'Tap at least one cell, or use Clear to remove this zone.'; render(); return; }
+  if(!zp.cells.length){ state.zoneMsg = 'Tap at least one cell, or use Clear to remove these cells.'; render(); return; }
+  if(zp.cells.length > RA_MAX_CELLS){ state.zoneMsg = `Mark at most ${RA_MAX_CELLS} cells — tap a marked cell to remove it.`; render(); return; }
   const { error } = await supabaseClient.from('accuracy_zones').upsert(
     { pitcher_id: zp.pitcherId, pitch_type: zp.type, batter_side: zp.side, cells: zp.cells },
     { onConflict: 'pitcher_id,pitch_type,batter_side' });
@@ -10023,9 +10131,9 @@ function renderZonePainter(){
     <div class="profile-row">
       ${segTray([{ label: 'vs RHB', selected: zp.side === 'R', onclick: "zonePaintSide('R')" }, { label: 'vs LHB', selected: zp.side === 'L', onclick: "zonePaintSide('L')" }], { key: 'zside', label: 'Batter side', cls: 'tray-fit' })}
     </div>
-    <div class="zone-wrap">${grid}<div class="zone-caption">${REPORT_VIEW_NAME} · tap the cells that count as accurate</div></div>
+    <div class="zone-wrap">${grid}<div class="zone-caption">${REPORT_VIEW_NAME} · tap up to ${RA_MAX_CELLS} cells that also count as accurate · <strong class="ra-count">${zp.cells.length} of ${RA_MAX_CELLS}</strong></div></div>
     <div class="profile-row">
-      <button class="btn btn-primary" onclick="saveZonePaint()">Save zone</button>
+      <button class="btn btn-primary" onclick="saveZonePaint()">Save cells</button>
       <button class="btn btn-secondary" onclick="clearZonePaint()" ${saved ? '' : 'disabled'}>Clear</button>
       <button class="btn btn-secondary" onclick="cancelZonePaint()">Close</button>
     </div>
@@ -10033,26 +10141,23 @@ function renderZonePainter(){
   </div>`;
 }
 function renderRelAccuracySection(p){
-  const on = !!p.relativeAccuracy;
+  // U14: no switch here any more -- each session asks "Turn on Relative Accuracy?" at the start; this marks the cells
   let zones = '';
-  if(on){
+  {
     zones = (p.pitchTypes || []).map(t => {
       const r = zoneCellsFor(p.id, t, 'R'), l = zoneCellsFor(p.id, t, 'L');
-      const stat = (label, c) => `${label}: ${c ? c.length + ' cell' + (c.length === 1 ? '' : 's') : 'Not set (exact accuracy will be used)'}`;
+      const stat = (label, c) => `${label}: ${c ? c.length + ' of ' + RA_MAX_CELLS + ' cells' : 'none marked (exact only)'}`;
       const open = state.zonePaint && state.zonePaint.pitcherId === p.id && state.zonePaint.type === t;
       return `<div class="zone-row">
         <div class="profile-row"><strong>${pitchLabel(t)}</strong>
-          <button class="btn btn-secondary" onclick="${open ? 'cancelZonePaint()' : `openZonePaint(${escHtml(JSON.stringify(t))})`}">${open ? 'Close' : 'Edit zones'}</button></div>
+          <button class="btn btn-secondary" onclick="${open ? 'cancelZonePaint()' : `openZonePaint(${escHtml(JSON.stringify(t))})`}">${open ? 'Close' : 'Mark cells'}</button></div>
         <p class="profile-note">${stat('vs RHB', r)} · ${stat('vs LHB', l)}</p>
         ${open ? renderZonePainter() : ''}
       </div>`;
-    }).join('') || '<p class="profile-note">Add pitches to your pitch mix first, then paint their zones.</p>';
+    }).join('') || '<p class="profile-note">Add pitches to your pitch mix first, then mark their cells.</p>';
   }
   return `<div class="profile-section"><h3>Relative accuracy</h3>
-    <label class="profile-row" style="gap:var(--s-8);font-size:14px;">
-      <input type="checkbox" ${on ? 'checked' : ''} onchange="setRelativeAccuracy(this.checked)"> ${on ? 'On' : 'Off'}
-    </label>
-    <p class="profile-note">Off: a pitch is accurate only if it lands on the exact target cell. On: paint the zone that counts for each pitch, separately against right- and left-handed hitters.</p>
+    <p class="profile-note">Mark up to ${RA_MAX_CELLS} more cells per pitch, against right- and left-handed hitters, that count as accurate besides the target. Each session asks at the start whether to use them.</p>
     ${zones}
   </div>`;
 }
@@ -10987,6 +11092,7 @@ function buildReportPayload(session, p){
     teamName: team ? team.name : '',
     chartingPerspective: session.chartingPerspective,
     loggedByCoach: session.loggedByCoach,
+    raOn: session.raOn === true,   // U14: the legend shows only when RA was on
     pitchTypes: p.pitchTypes,
     pitches: pitchesForReport,
     history
@@ -11023,7 +11129,7 @@ function buildRecentPensForGame(gameDateMs, tid){
         t.zoneTotal++;
         if(p.inAccuracyZone) t.zoneHits++;
       }
-      if(isAccurate(p)) t.exact++;
+      if(isHit(p)) t.exact++;   // U14: exact + RA counts as accurate
     });
   });
   const totalPitches = Object.values(pooled).reduce((sum, t) => sum + t.count, 0);
@@ -11070,7 +11176,8 @@ function buildRecentPenPitchesForGame(gameDateMs, tid){
   pens.forEach(s => s.pitches.forEach(p => out.push({
     type: p.type, actualRow: p.actualRow, actualCol: p.actualCol,
     targetRow: (p.targetRow === undefined) ? null : p.targetRow, targetCol: (p.targetCol === undefined) ? null : p.targetCol,
-    inAccuracyZone: (p.inAccuracyZone === true || p.inAccuracyZone === false) ? p.inAccuracyZone : null
+    inAccuracyZone: (p.inAccuracyZone === true || p.inAccuracyZone === false) ? p.inAccuracyZone : null,
+    accuracyHitKind: p.accuracyHitKind || null   // U14
   })));
   return out.length ? out : undefined;
 }
@@ -11123,6 +11230,7 @@ async function buildGameReportPayload(session, p){
     opponent: session.opponent || null,
     chartingPerspective: session.chartingPerspective,
     loggedByCoach: session.loggedByCoach,
+    raOn: session.raOn === true,   // U14: the legend shows only when RA was on
     pitchTypes: p.pitchTypes,
     pitches: pitchesForReport,
     recentPens: buildRecentPensForGame(session.date, tid),

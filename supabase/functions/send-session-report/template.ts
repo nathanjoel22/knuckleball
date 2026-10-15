@@ -6,9 +6,9 @@
 // object it's given.
 // ============================================================================
 import { escapeHtml, safeNum, colorForType, TYPE_PALETTE_HEX, isStrikeCell, timesToHomeLine, reportVars, asSport, type Sport, VIEW_NAME, REPORT_VIEW, viewNote } from './helpers.ts'
-import { drawGrid, drawLegend, drawLineChart, drawTypeGrids } from './svg.ts'
+import { drawGrid, drawLegend, drawLineChart, drawTypeGrids, drawHitTypeGrids } from './svg.ts'
 import {
-  computeSummary, computeCommandDetail, computePerSideBlock, computeExcludedNullSide,
+  computeSummary, computeCommandDetail, computePerSideBlock, computeExcludedNullSide, isU14, isHit,
   computeVelocityDepth, computeWorkload, computeTrends, type Pitch, type HistoryEntry
 } from './compute.ts'
 
@@ -27,6 +27,7 @@ export interface ReportPayload {
   gridSize?: number
   pitches: Pitch[]
   history: HistoryEntry[]
+  raOn?: boolean   // U14: the session's answer to "Turn on Relative Accuracy?" (session row)
 }
 
 // S1 (Joel, Oct 1): the footer link goes to THIS sport's sign-in page.
@@ -66,7 +67,7 @@ function renderSummary(p: ReportPayload): string {
   const tiles = [
     tile(String(s.total), 'Total pitches'),
     s.strikePct !== null ? tile(s.strikePct + '%', 'Strike %') : '',
-    s.commandPct !== null ? tile(s.commandPct + '%', s.commandLabel === 'zone' ? 'Command % (zone)' : 'Command % (exact hit)') : ''
+    s.commandPct !== null ? tile(s.commandPct + '%', s.commandLabel === 'accuracy' ? 'Accuracy' : s.commandLabel === 'zone' ? 'Command % (zone)' : 'Command % (exact hit)') : ''
   ]
   if (s.hasVelo) {
     tiles.push(tile(fmtVelo(s.peakVelo), 'Peak velocity'))
@@ -116,6 +117,7 @@ function renderCommandDetail(p: ReportPayload): string {
   const allTypes = p.pitchTypes.length ? p.pitchTypes : Array.from(new Set(p.pitches.map(x => x.type)))
   const rows = computeCommandDetail(p.pitches, allTypes, p.gridSize)
   if (!rows.length) return ''
+  const u14 = isU14(p.pitches)   // U14: one Accuracy % column in place of Zone % and Exact %
   const body = rows.map(r => {
     const count = r.thin ? ` (${r.count})` : ''
     const zoneCell = r.hasZone ? `${r.zoneAccuracyPct}%` : '—'
@@ -126,7 +128,7 @@ function renderCommandDetail(p: ReportPayload): string {
     return `<tr>
       <td><span class="dot" style="background:${colorForType(r.type, allTypes)}"></span>${escapeHtml(r.type)}</td>
       <td>${r.count}${count}</td><td>${r.usagePct}%</td><td>${r.strikePct}%</td>
-      <td>${zoneCell}</td><td>${r.exactHitPct}%</td><td>${veloCell}</td>
+      ${u14 ? `<td>${r.accuracyPct}%</td>` : `<td>${zoneCell}</td><td>${r.exactHitPct}%</td>`}<td>${veloCell}</td>
       <td class="miss">${miss}</td>
     </tr>`
   }).join('')
@@ -134,7 +136,7 @@ function renderCommandDetail(p: ReportPayload): string {
   <section class="section">
     <h2>Command detail</h2>
     <div class="table-scroll"><table class="data-table wide">
-      <thead><tr><th>Type</th><th>Count</th><th>Usage</th><th>Strike %</th><th>Zone %</th><th>Exact %</th><th>Velocity</th><th>Miss tendency</th></tr></thead>
+      <thead><tr><th>Type</th><th>Count</th><th>Usage</th><th>Strike %</th>${u14 ? '<th>Accuracy %</th>' : '<th>Zone %</th><th>Exact %</th>'}<th>Velocity</th><th>Miss tendency</th></tr></thead>
       <tbody>${body}</tbody>
     </table></div>
     <p class="caption">Miss tendency is direction on this same ${VIEW_NAME} grid (up/down/left/right), not "arm side" or "inside" -- those depend on batter side.</p>
@@ -142,7 +144,7 @@ function renderCommandDetail(p: ReportPayload): string {
 }
 
 // ---------- 5. vs RHB / vs LHB blocks ----------
-function renderSideBlock(block: NonNullable<ReturnType<typeof computePerSideBlock>>, allTypes: string[], gridSize?: number): string {
+function renderSideBlock(block: NonNullable<ReturnType<typeof computePerSideBlock>>, allTypes: string[], gridSize?: number, raOn?: boolean): string {
   const label = block.side === 'R' ? 'vs Right-Handed Batters' : 'vs Left-Handed Batters'
   const grid = drawGrid({
     gridSize, batterSide: block.side,
@@ -164,13 +166,15 @@ function renderSideBlock(block: NonNullable<ReturnType<typeof computePerSideBloc
   return `
   <div class="side-block">
     <h3>${label}</h3>
-    <p class="side-stats">${block.total} pitches · ${block.strikePct}% strikes · ${block.commandPct}% command (${block.commandLabel === 'zone' ? 'zone' : 'exact hit'})</p>
+    <p class="side-stats">${block.total} pitches · ${block.strikePct}% strikes · ${block.commandLabel === 'accuracy' ? `${block.commandPct}% accurate` : `${block.commandPct}% command (${block.commandLabel === 'zone' ? 'zone' : 'exact hit'})`}</p>
     <div class="grid-row">${grid}
       <div class="side-lists">
         <div><strong>Pitch mix</strong><ul>${usage}</ul></div>
         <div><strong>Location (by zone)</strong><ul>${zoneList || '<li>No pitches landed in the strike zone.</li>'}</ul></div>
       </div>
-    </div>
+    </div>${block.u14 ? `
+    ${drawHitTypeGrids({ gridSize, batterSide: block.side, allTypes, raOn: !!raOn,
+      pitches: block.pitches.map(x => ({ type: x.type, row: x.actualRow, col: x.actualCol, kind: x.accuracyHitKind || 'miss' })) })}` : ''}
   </div>`
 }
 import { ZONE_NAMES as _ZN } from './helpers.ts'
@@ -181,6 +185,21 @@ function renderPerSideBlocks(p: ReportPayload): string {
   const r = computePerSideBlock(p.pitches, 'R', allTypes, p.gridSize)
   const l = computePerSideBlock(p.pitches, 'L', allTypes, p.gridSize)
   const excluded = computeExcludedNullSide(p.pitches)
+  // U14: a pen charted with no batter standing in has no side -- its exact / RA grids get their own block
+  // (scored with the vs-RHB cells, as the app does). Only for U14 sessions; every other report is unchanged.
+  const noSide = isU14(p.pitches) ? p.pitches.filter(x => !x.batterSide) : []
+  const noSideBlock = noSide.length ? `
+    <div class="side-block">
+      <h3>No batter</h3>
+      <p class="side-stats">${noSide.length} pitch${noSide.length === 1 ? '' : 'es'} · ${Math.round(100 * noSide.filter(isHit).length / noSide.length)}% accurate · scored with the vs RHB cells</p>
+      ${drawHitTypeGrids({ gridSize: p.gridSize, batterSide: null, allTypes, raOn: !!p.raOn,
+        pitches: noSide.map(x => ({ type: x.type, row: x.actualRow, col: x.actualCol, kind: x.accuracyHitKind || 'miss' })) })}
+    </div>` : ''
+  if (!r && !l && noSideBlock) return `
+  <section class="section">
+    <h2>Accuracy by pitch type</h2>
+    ${noSideBlock}
+  </section>`
   if (!r && !l) {
     return excluded
       ? `<section class="section"><h2>By batter side</h2><p class="caption">No pitch in this pen recorded which side was hitting, so no per-side breakdown is available.</p></section>`
@@ -193,8 +212,8 @@ function renderPerSideBlocks(p: ReportPayload): string {
   <section class="section">
     <h2>By batter side</h2>
     ${excludedNote}
-    ${r ? renderSideBlock(r, allTypes, p.gridSize) : ''}
-    ${l ? renderSideBlock(l, allTypes, p.gridSize) : ''}
+    ${r ? renderSideBlock(r, allTypes, p.gridSize, p.raOn) : ''}
+    ${l ? renderSideBlock(l, allTypes, p.gridSize, p.raOn) : ''}${noSideBlock}
   </section>`
 }
 

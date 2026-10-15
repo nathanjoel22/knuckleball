@@ -92,3 +92,16 @@ The reset list (pitcher, team, switch, zones painted, most cells in one zone):
    - Nothing else reads it except `coach_set_relative_accuracy`, which stays as the coach's write path.
 6. **The painter today only appears when the switch is on** (10035–10050). With the switch gone, the painter always shows, with the "n of 4" counter.
 7. **Today's start question is bullpen-only and stored only on the device.** U14 adds `sessions.ra_on` through `sync_session` (no blocker) and the read-only pill on the charting screen (new).
+
+## Joel's answers (Oct 15, 2026)
+
+1. **Leaderboard:** relative accuracy is part of overall accuracy from now on -- "we count whatever you call accurate as accurate", the leaderboard included. (It has been hidden since Oct 10, `hasLeaderboard: false`; its formula changes anyway.)
+2. **Live Game:** agreed -- the RA question only with Intent on.
+3. **Game report:** agreed -- exact / RA grids for Intent games.
+4. **Pen report:** agreed -- U14 sessions always get the per-type grids (exact only with RA off).
+5. **Last answer:** agreed -- `profiles.relative_accuracy_enabled` stays as the remembered answer, off Profile's screen.
+
+## Corrections found while building
+
+- Item 2 / escalation 4: the pen and game reports DO already have per-type grids (U11, "Location by pitch type"), but with both batter sides mixed and every pitch in its type color. U14's exact / RA grids are new, inside each batter-side block, and the U11 section is unchanged.
+- Most staging bullpen pitches (189 of 285) have no batter side (charted with no batter). A U14 pen like that gets its exact / RA grids in a "No batter" block, scored with the vs-RHB cells as the app does.

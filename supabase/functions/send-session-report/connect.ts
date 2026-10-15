@@ -17,6 +17,7 @@ export interface PenPitch {
   actualRow: number; actualCol: number
   targetRow: number | null; targetCol: number | null
   inAccuracyZone: boolean | null
+  accuracyHitKind?: 'exact' | 'ra' | 'miss' | null   // U14
 }
 
 const STRIKE_RESULTS = new Set(['strike_looking', 'strike_swinging', 'foul', 'foul_tip', 'in_play', 'sac_bunt', 'sac_fly', 'dropped_third'])
@@ -63,7 +64,9 @@ function locationName(row: number, col: number, gridSize: number): string {
   if (gridSize !== 5) return `Row ${row + 1}, column ${viewCol(col, gridSize) + 1}`
   return `${ROW_NAME[row]} · ${COL_NAME[viewCol(col, gridSize)]}`
 }
-const penCommand = (p: PenPitch) => (p.inAccuracyZone === true || p.inAccuracyZone === false)
+const penCommand = (p: PenPitch) => p.accuracyHitKind   // U14: exact + RA is accurate (one number)
+  ? (p.accuracyHitKind === 'exact' || p.accuracyHitKind === 'ra')
+  : (p.inAccuracyZone === true || p.inAccuracyZone === false)
   ? p.inAccuracyZone
   : (p.targetRow !== null && p.targetCol !== null ? (p.targetRow === p.actualRow && p.targetCol === p.actualCol) : null)
 const pct = (n: number, d: number) => d ? Math.round(100 * n / d) + '%' : '—'

@@ -32,6 +32,7 @@ export interface GamePitch {
   strikesBefore: number
   atBatIndex: number | null
   timeToPlate?: number | null   // U11 (7)
+  accuracyHitKind?: 'exact' | 'ra' | 'miss' | null   // U14: Intent games only (the called spot is the target)
   // G5: the field box (1-25) of a ball in play, how it was hit, and the bases before / after.
   sprayBox?: number | null
   sprayField?: 'IF' | 'OF' | null   // Joel, Oct 8: infield or outfield, when the charter chose

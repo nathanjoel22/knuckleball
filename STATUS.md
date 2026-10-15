@@ -41,7 +41,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - U14 reports (sessions marked U14 in a copy of the staging data) reconcile: pen 15 exact + 8 RA + 3 miss = 26; Intent game 3 + 5 + 6 = 14; RA-off pen 7 of 19, exact only, no legend.
   - Screens at 390 / 820 / 1180, both sports.
 - **Fix (v245, Joel's phone test):** tapping a cell in the painter threw the page back to the top (every tap redrew the whole page). A tap now redraws only the painter; Save / Clear keep the scroll position. Checked with the real code: counter 2 → 3 → 4 of 4, a fifth tap ignored, no full-page redraws.
-- **Not yet run:** Joel's verification (an RA-on pen and an RA-on Intent half-inning on staging, with 4 cells marked for a slider vs RHB; read the report); the reset on production (needs a fresh list right before it).
+- **Joel's verification (Oct 15):** passed -- an RA-on bullpen and a Live Game charted on staging, and their reports viewed ("everything worked well").
+- **Not yet run:** the reset on production (a fresh list right before it).
 
 ## 2026-10-14 · A1 follow-up: "Account closing" roster tag · **production**
 - **Shipped by:** Joel ("ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `a1-closing-tag` → `main`. **Cache:** v243.

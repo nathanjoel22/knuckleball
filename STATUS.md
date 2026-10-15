@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-14 · A1 follow-up: "Account closing" roster tag · **production**
+- **Shipped by:** Joel ("ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `a1-closing-tag` → `main`. **Cache:** v243.
+- **Backup first:** `~/knuckleball-backups/2026-10-14-2157-{schema,data}.sql`.
+- **Database:** `20261015000000_a1_roster_closing` (dry run listed only it). Verified on production: Cy Young's head coach sees 1 closing pitcher, due 2026-10-22 01:46 UTC; 34 policies.
+- **Also carried:** the STATUS line from `docs-a1-phone-check` (Joel's A1 phone check). That branch is superseded and needn't be merged.
+
 ## 2026-10-14 · A1 follow-up: "Account closing" roster tag · **staging**
 - **Branch:** `a1-closing-tag`. **Cache:** v243.
 - **Why:** Joel deleted a test pitcher on production and his coach still saw him on the roster -- correct during the 7-day grace, but nothing said so.
@@ -30,7 +36,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Verified on production:** the job → function chain: 200, 0 due; execute without the secret → 403.
 - **Site:** policy pages Version 2026-10-14 (approved by Joel), Profile → Your data, the deletion screens.
 - **Open:**
-  - Joel's production phone check (Download my data; open Delete my account and back out);
+  - ~~Joel's production phone check~~ — done Oct 14: Download my data and the Delete my account screens work on his phone;
   - a before/after RLS matrix comparison (not run);
   - offline phone checks.
 

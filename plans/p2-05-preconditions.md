@@ -95,3 +95,10 @@ That's 20 sizes × 2 orientations = **40 PNGs**, and 40 `<link>` tags. They go o
 5. **The update message.** Proposal: when a new version has taken over, a quiet bar says "A new version is ready" with a **Reload** button. It never appears on the charting screen (it waits until the session is saved); drafts autosave, so a reload is safe.
 6. **`start_url`:** `/bullpen-tracker.html`, which sends a signed-out person to sign-in. Scope `/`, `id` `/bullpen-tracker.html`. The landing page stays out of the installed app's start.
 7. **The P1-01 checks 1–3 aren't written down in the repo** (P1-01 predates `plans/`). I'll use: (1) a cold launch with no signal opens the app; (2) a pen charted offline saves to the outbox; (3) back online, it syncs. Say if they were different.
+
+## Joel's answers (Oct 15, 2026)
+
+1. **Icon:** the logo comes later. Build now with a placeholder icon (a K on the brand green) from one source SVG; swapping the logo = replace the SVG, re-run `scripts/splash.js`, bump CACHE_VERSION. Because iOS keeps the icon it was installed with, the install banner ships **off** until the real logo is in (a flag), so nobody is invited to install the placeholder.
+2. **Testing:** agreed -- everything checkable on this Mac's Chrome at localhost; Joel's iPhone / iPad checks on production right after it ships.
+3. **Lighthouse:** Chrome DevTools' installability check replaces the retired Lighthouse PWA audit.
+4. **iOS storage:** agreed -- the iOS banner shows only with an empty outbox and says to sign in once while there's signal.

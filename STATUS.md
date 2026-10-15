@@ -15,6 +15,17 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-15 · U14 relative accuracy v2 · **production**
+- **Shipped by:** Joel ("ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `u14-relative-accuracy` → `main` (also carries `docs-a1-offline`). **Cache:** v245.
+- **Backup first:** `~/knuckleball-backups/2026-10-14-2311-{schema,data}.sql`.
+- **Database:**
+  - checked first: production's `sessions_h1_lock`, `sync_session` and `get_team_leaderboard` were identical to the copies the migration replaces;
+  - the dry run listed only `20261015010000_u14_relative_accuracy_v2`; applied;
+  - 34 policies before and after; 2 new columns, 3 new checks.
+- **Function:** `send-session-report` deployed; `REPORT_SITE_ORIGIN` still unset.
+- **Before the reset:** pitches 2,161, checksum `1fa9c386…`.
+- **Open:** the production reset. Its list goes to Joel first; it runs only on his OK (it clears every painted zone).
+
 ## 2026-10-15 · U14 relative accuracy v2 · **staging**
 - **Branch:** `u14-relative-accuracy`. **Cache:** v244. Spec `plans/u14-relative-accuracy-v2.md`; preconditions and Joel's answers in `plans/u14-preconditions.md`.
 - **Database (staging only):** migration `20261015010000_u14_relative_accuracy_v2`:

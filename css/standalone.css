@@ -13,13 +13,14 @@
   padding-left:env(safe-area-inset-left, 0px);
   padding-right:env(safe-area-inset-right, 0px);
 }
-@media (display-mode: standalone){
-  :root{ padding-top:env(safe-area-inset-top, 0px); }
-  body::before{
-    content:''; position:fixed; z-index:2147483000; top:0; left:0; right:0;
-    height:env(safe-area-inset-top, 0px); background:var(--brand-bg, #061A12);   /* the sport's brand color behind the status bar */
-    pointer-events:none;
-  }
+/* The top inset and the strip apply wherever the system reports one (W1, Oct 15 2026): installed from the home screen,
+   and inside the iOS / Android store apps, which draw the page under the status bar but aren't "standalone". A normal
+   browser tab reports 0 at the top, so there the padding and the strip are both 0px tall. */
+:root{ padding-top:env(safe-area-inset-top, 0px); }
+body::before{
+  content:''; position:fixed; z-index:2147483000; top:0; left:0; right:0;
+  height:env(safe-area-inset-top, 0px); background:var(--brand-bg, #061A12);   /* the sport's brand color behind the status bar */
+  pointer-events:none;
 }
 
 /* "Back to Knuckleball" on the pages an installed app can open in its own window (privacy, terms) -- a browser has its

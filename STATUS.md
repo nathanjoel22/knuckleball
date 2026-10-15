@@ -23,7 +23,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Verified on production:** the job → function chain: 200, 0 due; execute without the secret → 403.
 - **Site:** policy pages Version 2026-10-14 (approved by Joel), Profile → Your data, the deletion screens.
 - **Open:**
-  - Joel's production phone check (Download my data; open Delete my account and back out);
+  - ~~Joel's production phone check~~ — done Oct 14: Download my data and the Delete my account screens work on his phone;
   - a before/after RLS matrix comparison (not run);
   - offline phone checks.
 

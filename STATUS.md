@@ -38,7 +38,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Open:**
   - ~~Joel's production phone check~~ — done Oct 14: Download my data and the Delete my account screens work on his phone;
   - a before/after RLS matrix comparison (not run);
-  - offline phone checks.
+  - ~~offline phone checks~~ — passed (Joel, Oct 14).
 
 ## 2026-10-14 · A1 account deletion + data export · **staging**
 - **Branch:** `a1-account-deletion`. **Cache:** v242.

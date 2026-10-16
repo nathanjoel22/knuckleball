@@ -15,6 +15,15 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-15 · W1 site batch · **production**
+- **Shipped by:** Joel ("wording is good, ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `w1-site-changes` → `main` (also carries the W1 report `w1-preconditions`). **Cache:** v248. No database or function change.
+- **Live:**
+  - the status-bar inset inside the store apps;
+  - in-app links to privacy / terms / reports / deletion open in the phone's browser sheet;
+  - Share for reports in the apps;
+  - `delete-account.html`, the deletion wording approved by Joel, for Google Play's Data safety form: https://knuckleballonline.com/delete-account.html.
+- **Open:** the store apps themselves (Joel's Apple / Google enrolment, TestFlight); the iOS link tap is a TestFlight check.
+
 ## 2026-10-15 · W1 site batch · **staging (local), branch only**
 - **Branch:** `w1-site-changes`. **Cache:** v248. Not shipped.
 - **Changes:**

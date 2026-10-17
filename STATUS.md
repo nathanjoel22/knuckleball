@@ -15,6 +15,14 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-17 · Terms agreement box · **production**
+- **Shipped by:** Joel ("ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `terms-agree-notice` → `main`. **Cache:** v250.
+- **Backup first:** `~/knuckleball-backups/2026-10-17-1730-{schema,data}.sql` (34 policies).
+- **Database:** the dry run listed only `20261017000000_terms_agreement`; applied before the site push. After: 34 policies; `profiles.terms_agreed_at` (authenticated: SELECT only); `agree_to_terms` SECURITY DEFINER. 29 existing logins (age answered, older terms) will see the box; 0 on 2026-10-17 yet. `supabase/schema/schema.sql` regenerated (also picks up A1 / U14, not regenerated since Oct 8).
+- **Open:**
+  - who has agreed: `select count(*) from profiles where is_primary and terms_agreed_at is not null`;
+  - the Play / Apple data forms stay "Shared: No" until data is licensed.
+
 ## 2026-10-17 · Terms agreement box · **staging (database) + branch**
 - **Branch:** `terms-agree-notice`. **Cache:** v250. Not shipped.
 - **Database (staging):** migration `20261017000000_terms_agreement`:

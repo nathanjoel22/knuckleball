@@ -48,6 +48,143 @@ $$;
 ALTER FUNCTION "public"."_create_team_with_head"("p_coach_id" "uuid", "p_name" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."a1_due_deletions"() RETURNS TABLE("profile_id" "uuid", "account_id" "uuid", "is_player" boolean, "due_at" timestamp with time zone)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select p.id, p.account_id, p.managed_by is not null, p.deletion_due_at
+    from public.profiles p
+   where p.deletion_due_at is not null and p.deletion_due_at <= now()
+     and (p.id = p.account_id or p.managed_by is not null)
+   order by p.deletion_due_at;
+$$;
+
+
+ALTER FUNCTION "public"."a1_due_deletions"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."a1_headed_teams"("p_account" "uuid") RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(jsonb_agg(jsonb_build_object('id', t.id, 'name', t.name, 'archived', t.archived_at is not null,
+                                               'has_sessions', exists (select 1 from public.sessions s where s.team_id = t.id))
+                            order by t.name), '[]'::jsonb)
+    from public.teams t join public.profiles p on p.id = t.coach_id
+   where p.account_id = p_account;
+$$;
+
+
+ALTER FUNCTION "public"."a1_headed_teams"("p_account" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."a1_purge_profile"("p_profile" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_reports text[];
+  v_tombstoned int := 0;
+  v_pitches int := 0;
+  v_notes int := 0;
+  v_recharted int := 0;
+  s record;
+  n int;
+  v_child jsonb;
+  v_child_profiles int := 0;
+begin
+  if not exists (select 1 from public.profiles where id = p_profile) then
+    return jsonb_build_object('ok', true, 'status', 'already_gone');
+  end if;
+  if exists (select 1 from public.teams where coach_id = p_profile) then
+    return jsonb_build_object('error', 'still_head');
+  end if;
+  -- a parent's managed players first: deleting the parent's profile would otherwise CASCADE them (and their
+  -- sessions) without tombstones
+  for s in select id from public.profiles where managed_by = p_profile and id <> p_profile loop
+    v_child := public.a1_purge_profile(s.id);
+    if v_child ? 'error' then return v_child; end if;
+    v_child_profiles := v_child_profiles + 1 + coalesce((v_child->>'profiles')::int, 0);
+    v_tombstoned := v_tombstoned + coalesce((v_child->>'tombstoned')::int, 0);
+    v_pitches := v_pitches + coalesce((v_child->>'pitches')::int, 0);
+    v_notes := v_notes + coalesce((v_child->>'notes')::int, 0);
+    v_reports := coalesce(v_reports, '{}') || coalesce(array(select jsonb_array_elements_text(v_child->'reports')), '{}');
+  end loop;
+  -- the report files of every session this profile pitched (tombstoned or not)
+  v_reports := coalesce(v_reports, '{}') || coalesce((select array_agg(report_path) filter (where report_path is not null)
+                                                        from public.sessions where pitcher_id = p_profile), '{}');
+  -- his own sessions -> tombstones (a record only)
+  for s in select id, deleted_at from public.sessions where pitcher_id = p_profile loop
+    if s.deleted_at is null then
+      select count(*) into n from public.pitches where session_id = s.id;
+      v_pitches := v_pitches + n;
+      update public.sessions set deleted_at = now(), deleted_by = null, deleted_by_role = 'deleted_account',
+             deleted_by_name = null, pitch_count = n
+       where id = s.id;
+      v_tombstoned := v_tombstoned + 1;
+    else
+      update public.sessions set deleted_by = null, deleted_by_role = 'deleted_account', deleted_by_name = null
+       where id = s.id;
+    end if;
+    delete from public.game_events where session_id = s.id;
+    delete from public.pitches where session_id = s.id;
+    delete from public.session_notes where session_id = s.id;
+    delete from public.session_opened where session_id = s.id;
+  end loop;
+  update public.sessions set pitcher_id = null, report_path = null, report_generated_at = null
+   where pitcher_id = p_profile;
+  -- sessions he charted for other pitchers stay theirs; he becomes a former coach
+  update public.sessions set logged_by = null where logged_by = p_profile;
+  get diagnostics v_recharted = row_count;
+  -- a tombstone he wrote (deleting someone's session as head) loses his name
+  update public.sessions set deleted_by = null, deleted_by_role = 'deleted_account', deleted_by_name = null
+   where deleted_by = p_profile;
+  -- notes he wrote are deleted
+  delete from public.session_notes where author_id = p_profile;
+  get diagnostics v_notes = row_count;
+  delete from public.invites where invited_by = p_profile;
+  update public.team_coaches set invited_by = null where invited_by = p_profile;
+  -- memberships first: removing a pitcher_teams row makes G3's trigger log a departure that references this profile,
+  -- which would then block the profile delete (the CLAUDE.md "deleting a team with a rostered pitcher" landmine)
+  delete from public.pitcher_teams where pitcher_id = p_profile;
+  delete from public.pitcher_team_departures where pitcher_id = p_profile;
+  -- the profile itself; staff rows, red-dot state, accuracy zones and managed players cascade
+  delete from public.profiles where id = p_profile;
+  return jsonb_build_object('ok', true, 'reports', to_jsonb(coalesce(v_reports, '{}')), 'tombstoned', v_tombstoned,
+                            'pitches', v_pitches, 'notes', v_notes, 'recharted', v_recharted, 'profiles', v_child_profiles);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."a1_purge_profile"("p_profile" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."a1_run_scheduled"() RETURNS bigint
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_url text := (select decrypted_secret from vault.decrypted_secrets where name = 'a1_function_url');
+  v_anon text := (select decrypted_secret from vault.decrypted_secrets where name = 'a1_anon_key');
+  v_secret text := (select decrypted_secret from vault.decrypted_secrets where name = 'a1_cron_secret');
+begin
+  if v_url is null or v_anon is null or v_secret is null then
+    raise notice 'A1: the vault secrets a1_function_url / a1_anon_key / a1_cron_secret are not set; nothing ran';
+    return null;
+  end if;
+  return net.http_post(
+    url := v_url,
+    headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer ' || v_anon,
+                                  'x-a1-cron-secret', v_secret),
+    body := '{"action":"execute"}'::jsonb,
+    timeout_milliseconds := 60000);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."a1_run_scheduled"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."abandon_email_change"() RETURNS "void"
     LANGUAGE "sql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -59,6 +196,31 @@ $$;
 
 
 ALTER FUNCTION "public"."abandon_email_change"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."account_deletion_status"("p_profile" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_uid uuid := auth.uid();
+  v_target uuid;
+  r record;
+begin
+  if v_uid is null then return jsonb_build_object('error', 'not_authenticated'); end if;
+  v_target := coalesce(p_profile, v_uid);   -- default: the login (its primary profile)
+  select id, account_id, managed_by, deletion_requested_at, deletion_due_at into r
+    from public.profiles where id = v_target;
+  if not found or r.account_id <> v_uid then return jsonb_build_object('error', 'not_entitled'); end if;
+  return jsonb_build_object(
+    'profile', r.id, 'player', r.managed_by is not null,
+    'requested_at', r.deletion_requested_at, 'due_at', r.deletion_due_at,
+    'headed_teams', case when r.id = v_uid then public.a1_headed_teams(v_uid) else '[]'::jsonb end);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."account_deletion_status"("p_profile" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."accuracy_zones_stamp"() RETURNS "trigger"
@@ -159,6 +321,39 @@ $$;
 ALTER FUNCTION "public"."add_sport_profile"("p_sport" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."agree_to_terms"("p_terms_version" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  v_uid  uuid := auth.uid();
+  v_prim public.profiles%rowtype;
+begin
+  if v_uid is null then
+    return jsonb_build_object('ok', false, 'error', 'not_authenticated');
+  end if;
+  if p_terms_version is null or p_terms_version !~ '^\d{4}-\d{2}-\d{2}$' then
+    return jsonb_build_object('ok', false, 'error', 'invalid_version');
+  end if;
+  select * into v_prim from public.profiles where id = v_uid for update;
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'profile_missing');
+  end if;
+  if v_prim.terms_version = p_terms_version and v_prim.terms_agreed_at is not null then
+    return jsonb_build_object('ok', true, 'agreed_at', v_prim.terms_agreed_at, 'already', true);
+  end if;
+  update public.profiles
+     set terms_version = p_terms_version, terms_agreed_at = now()
+   where id = v_uid
+  returning * into v_prim;
+  return jsonb_build_object('ok', true, 'agreed_at', v_prim.terms_agreed_at, 'already', false);
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."agree_to_terms"("p_terms_version" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."archive_team"("p_team_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -237,6 +432,28 @@ $$;
 
 
 ALTER FUNCTION "public"."can_view_headshot"("p_object_name" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."cancel_account_deletion"("p_profile" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_uid uuid := auth.uid();
+  v_target uuid;
+  r record;
+begin
+  if v_uid is null then return jsonb_build_object('error', 'not_authenticated'); end if;
+  v_target := coalesce(p_profile, v_uid);
+  select id, account_id into r from public.profiles where id = v_target;
+  if not found or r.account_id <> v_uid then return jsonb_build_object('error', 'not_entitled'); end if;
+  update public.profiles set deletion_requested_at = null, deletion_due_at = null where id = r.id;
+  return jsonb_build_object('ok', true, 'status', 'restored');
+end;
+$$;
+
+
+ALTER FUNCTION "public"."cancel_account_deletion"("p_profile" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."claim_guardian_send"() RETURNS "jsonb"
@@ -844,6 +1061,23 @@ $_$;
 ALTER FUNCTION "public"."get_report_notes"("p_token" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_roster_closing"("p_team_id" "uuid") RETURNS TABLE("pitcher_id" "uuid", "closing_on" timestamp with time zone)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select pt.pitcher_id, coalesce(pr.deletion_due_at, acct.deletion_due_at)
+  from public.pitcher_teams pt
+  join public.profiles pr on pr.id = pt.pitcher_id
+  join public.profiles acct on acct.id = pr.account_id
+  where pt.team_id = p_team_id
+    and public.is_team_coach(p_team_id)
+    and coalesce(pr.deletion_due_at, acct.deletion_due_at) is not null;
+$$;
+
+
+ALTER FUNCTION "public"."get_roster_closing"("p_team_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_roster_latest"("p_team_id" "uuid") RETURNS TABLE("pitcher_id" "uuid", "latest_ended_at" timestamp with time zone)
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -970,7 +1204,10 @@ begin
   pit as (
     select s.pitcher_id, p.id as pitch_id, p.ts, p.velo,
            (p.actual_row between 1 and 3 and p.actual_col between 1 and 3) as is_strike,
-           (p.target_row = p.actual_row and p.target_col = p.actual_col)   as is_exact,
+           -- U14 (Joel, Oct 15): one accuracy number. A pitch with a stored hit kind counts exact AND relative-accuracy
+           -- hits; an older pitch keeps the exact-cell rule it always had.
+           (case when p.accuracy_hit_kind is not null then p.accuracy_hit_kind in ('exact', 'ra')
+                 else p.target_row = p.actual_row and p.target_col = p.actual_col end)   as is_exact,
            (p.velo is not null
               and not public.is_default_velo_reading(p.velo, p.ts)
               and not exists (select 1 from public.leaderboard_exclusions e
@@ -1756,7 +1993,7 @@ CREATE OR REPLACE FUNCTION "public"."rate_limit_take"("p_actor" "uuid", "p_kind"
 declare
   v_rcpts  text[] := coalesce((select array_agg(distinct lower(btrim(r))) from unnest(coalesce(p_recipients, '{}')) r
                                where btrim(coalesce(r, '')) <> ''), '{}');
-  v_email  boolean := p_kind <> 'report_generate';
+  v_email  boolean := p_kind not in ('report_generate', 'account_export');   -- A1: an export is a download, not an email
   v_cfg    public.rate_limit_config%rowtype;
   v_n      integer;
   v_oldest timestamptz;
@@ -1765,7 +2002,7 @@ declare
   v_keys   text[];
   v_k      text;
 begin
-  if p_kind not in ('report_email', 'report_generate', 'verify_email', 'guardian_email', 'removal_notice', 'email_change') then
+  if p_kind not in ('report_email', 'report_generate', 'verify_email', 'guardian_email', 'removal_notice', 'email_change', 'account_deletion', 'account_export') then
     raise exception 'unknown rate-limit kind: %', p_kind;
   end if;
   perform pg_advisory_xact_lock(hashtext('rate_limit:' || coalesce(p_actor::text, '-')));
@@ -1778,7 +2015,9 @@ begin
     when 'verify_email'    then array['verify_email_hour']
     when 'guardian_email'  then array['guardian_email_day']
     when 'removal_notice'  then array['removal_notice_day']
-    when 'email_change'    then array['email_change_day'] end;
+    when 'email_change'    then array['email_change_day']
+    when 'account_deletion' then array['account_deletion_day']   -- A1
+    when 'account_export'  then array['account_export_day'] end;   -- A1
   foreach v_k in array v_keys loop
     select * into v_cfg from public.rate_limit_config where key = v_k;
     continue when not found;
@@ -1981,6 +2220,44 @@ $$;
 
 
 ALTER FUNCTION "public"."rename_team"("p_team_id" "uuid", "p_name" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."request_account_deletion"("p_confirm" "text", "p_profile" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_uid uuid := auth.uid();
+  v_target uuid;
+  r record;
+  v_heads jsonb;
+begin
+  if v_uid is null then return jsonb_build_object('error', 'not_authenticated'); end if;
+  if p_confirm is distinct from 'DELETE' then return jsonb_build_object('error', 'confirmation_mismatch'); end if;
+  v_target := coalesce(p_profile, v_uid);
+  select id, account_id, managed_by, deletion_requested_at, deletion_due_at into r
+    from public.profiles where id = v_target for update;
+  if not found or r.account_id <> v_uid then return jsonb_build_object('error', 'not_entitled'); end if;
+  if r.id <> v_uid and r.managed_by is null then
+    return jsonb_build_object('error', 'not_entitled');   -- a non-primary profile that isn't a managed player: delete the login instead
+  end if;
+  if r.deletion_requested_at is not null then   -- a second request during the grace is a no-op
+    return jsonb_build_object('ok', true, 'status', 'already_scheduled', 'due_at', r.deletion_due_at);
+  end if;
+  if r.id = v_uid then
+    v_heads := public.a1_headed_teams(v_uid);
+    if jsonb_array_length(v_heads) > 0 then
+      return jsonb_build_object('error', 'still_head', 'teams', v_heads);
+    end if;
+  end if;
+  update public.profiles set deletion_requested_at = now(), deletion_due_at = now() + interval '7 days'
+   where id = r.id;
+  return jsonb_build_object('ok', true, 'status', 'scheduled', 'due_at', now() + interval '7 days', 'profile', r.id);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."request_account_deletion"("p_confirm" "text", "p_profile" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."resolve_coach_invite"("p_token" "text") RETURNS TABLE("team_id" "uuid", "team_name" "text", "team_sport" "text", "team_archived" boolean)
@@ -2286,6 +2563,10 @@ CREATE OR REPLACE FUNCTION "public"."sessions_h1_lock"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
     AS $$
+declare
+  v_api boolean := current_user in ('authenticated', 'anon', 'service_role');
+  v_pitcher uuid := new.pitcher_id;
+  v_logged  uuid := new.logged_by;
 begin
   if old.ended_at is null then
     return new;   -- a legacy unsaved row (none on production): finishes through the old path
@@ -2293,19 +2574,24 @@ begin
   if new.ended_at is distinct from old.ended_at then
     raise exception 'session_saved_locked' using detail = 'A saved session can''t be un-saved or re-timed.';
   end if;
-  if (new.id, new.pitcher_id, new.team_id, new.logged_by, new.started_at, new.created_at, new.kind, new.sport,
-      new.charting_perspective, new.opponent, new.game_final_inning, new.game_outs_recorded)
+  -- A1: the account-deletion function may clear these two (to NULL only).
+  if not v_api then
+    if new.pitcher_id is null then v_pitcher := old.pitcher_id; end if;
+    if new.logged_by  is null then v_logged  := old.logged_by;  end if;
+  end if;
+  if (new.id, v_pitcher, new.team_id, v_logged, new.started_at, new.created_at, new.kind, new.sport,
+      new.charting_perspective, new.opponent, new.game_final_inning, new.game_outs_recorded, new.ra_on)
      is distinct from
      (old.id, old.pitcher_id, old.team_id, old.logged_by, old.started_at, old.created_at, old.kind, old.sport,
-      old.charting_perspective, old.opponent, old.game_final_inning, old.game_outs_recorded) then
+      old.charting_perspective, old.opponent, old.game_final_inning, old.game_outs_recorded, old.ra_on) then
     raise exception 'session_saved_locked' using detail = 'Who and what a saved session belongs to can''t change.';
   end if;
   if old.sealed_at is not null and new.sealed_at is distinct from old.sealed_at then
     raise exception 'session_saved_locked' using detail = 'A sealed session stays sealed.';
   end if;
-  -- The tombstone is written only by the server's own functions (delete_session runs as its
-  -- owner). Any API caller -- the app, a crafted request, the service role -- is refused.
-  if current_user in ('authenticated', 'anon', 'service_role')
+  -- The tombstone is written only by the server's own functions (delete_session, a1_purge_profile run as owner).
+  -- Any API caller -- the app, a crafted request, the service role -- is refused.
+  if v_api
      and (new.deleted_at, new.deleted_by, new.deleted_by_role, new.deleted_by_name, new.pitch_count)
          is distinct from (old.deleted_at, old.deleted_by, old.deleted_by_role, old.deleted_by_name, old.pitch_count) then
     raise exception 'session_saved_locked' using detail = 'Only delete_session() can delete a session.';
@@ -2467,28 +2753,30 @@ begin
       return jsonb_build_object('ok', false, 'error', 'not_entitled');
     end if;
     insert into public.sessions (id, pitcher_id, team_id, logged_by, started_at, ended_at, charting_perspective,
-                                 kind, opponent, game_final_inning, game_outs_recorded)
+                                 kind, opponent, game_final_inning, game_outs_recorded, ra_on)
     values (v_id, v_pitcher, v_team, v_logged,
             (p_session ->> 'started_at')::timestamptz, (p_session ->> 'ended_at')::timestamptz,
             coalesce(nullif(p_session ->> 'charting_perspective', ''), 'behind_catcher'),
             coalesce(nullif(p_session ->> 'kind', ''), 'bullpen'),
             nullif(p_session ->> 'opponent', ''),
             (p_session ->> 'game_final_inning')::smallint,
-            (p_session ->> 'game_outs_recorded')::smallint);
+            (p_session ->> 'game_outs_recorded')::smallint,
+            coalesce((p_session ->> 'ra_on')::boolean, false));   -- U14
   end if;
 
   insert into public.pitches (id, session_id, type, velo, ts, target_row, target_col, actual_row, actual_col,
          accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, kind, result, in_play_outcome,
          hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, bb_type,
          bb_x, bb_y, fielders, runners_before, batter_to, runner_advances, outs_on_play, runs_scored, sacrifice,
-         bb_from_position, time_to_plate, spray_box, runners_after, spray_field)
+         bb_from_position, time_to_plate, spray_box, runners_after, spray_field, accuracy_hit_kind)
   select r.id, v_id, r.type, r.velo, coalesce(r.ts, now()), r.target_row, r.target_col,
          coalesce(r.actual_row, 0), coalesce(r.actual_col, 0),
          r.accuracy_mode, r.batter_side, r.in_accuracy_zone, r.accuracy_zone_cells,
          coalesce(r.kind, coalesce(nullif(p_session ->> 'kind', ''), 'bullpen')), r.result, r.in_play_outcome,
          r.hit_type, r.fielder, r.delivery, r.inning, r.outs_before, r.balls_before, r.strikes_before, r.at_bat_index,
          r.bb_type, r.bb_x, r.bb_y, r.fielders, r.runners_before, r.batter_to, r.runner_advances, r.outs_on_play,
-         r.runs_scored, r.sacrifice, r.bb_from_position, r.time_to_plate, r.spray_box, r.runners_after, r.spray_field
+         r.runs_scored, r.sacrifice, r.bb_from_position, r.time_to_plate, r.spray_box, r.runners_after, r.spray_field,
+         r.accuracy_hit_kind
     from jsonb_populate_recordset(null::public.pitches, coalesce(p_pitches, '[]'::jsonb)) r
    where r.id is not null
   on conflict (id) do nothing;
@@ -2580,6 +2868,33 @@ ALTER FUNCTION "public"."verify_email"("p_token" "text") OWNER TO "postgres";
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
+
+
+CREATE TABLE IF NOT EXISTS "public"."account_deletion_log" (
+    "id" bigint NOT NULL,
+    "ran_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "kind" "text" NOT NULL,
+    "profiles" integer DEFAULT 0 NOT NULL,
+    "tombstoned" integer DEFAULT 0 NOT NULL,
+    "pitches" integer DEFAULT 0 NOT NULL,
+    "notes" integer DEFAULT 0 NOT NULL,
+    "files" integer DEFAULT 0 NOT NULL,
+    CONSTRAINT "account_deletion_log_kind_check" CHECK (("kind" = ANY (ARRAY['login'::"text", 'player'::"text", 'export'::"text"])))
+);
+
+
+ALTER TABLE "public"."account_deletion_log" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."account_deletion_log" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."account_deletion_log_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."accuracy_zones" (
@@ -2732,6 +3047,8 @@ CREATE TABLE IF NOT EXISTS "public"."pitches" (
     "spray_box" smallint,
     "runners_after" smallint,
     "spray_field" "text",
+    "accuracy_hit_kind" "text",
+    CONSTRAINT "pitches_accuracy_hit_kind_check" CHECK ((("accuracy_hit_kind" IS NULL) OR ("accuracy_hit_kind" = ANY (ARRAY['exact'::"text", 'ra'::"text", 'miss'::"text"])))),
     CONSTRAINT "pitches_accuracy_mode_check" CHECK ((("accuracy_mode" IS NULL) OR ("accuracy_mode" = ANY (ARRAY['ring'::"text", 'nothingUp'::"text", 'nothingLow'::"text", 'nothingAway'::"text", 'nothingInside'::"text"])))),
     CONSTRAINT "pitches_batter_side_check" CHECK ((("batter_side" IS NULL) OR ("batter_side" = ANY (ARRAY['R'::"text", 'L'::"text"])))),
     CONSTRAINT "pitches_batter_to_check" CHECK ((("batter_to" IS NULL) OR (("batter_to" >= 0) AND ("batter_to" <= 4)))),
@@ -2745,6 +3062,7 @@ CREATE TABLE IF NOT EXISTS "public"."pitches" (
     CONSTRAINT "pitches_in_play_outcome_check" CHECK (("in_play_outcome" = ANY (ARRAY['hit'::"text", 'out'::"text", 'error'::"text", 'fc'::"text", 'reached'::"text"]))),
     CONSTRAINT "pitches_kind_check" CHECK (("kind" = ANY (ARRAY['bullpen'::"text", 'game'::"text"]))),
     CONSTRAINT "pitches_outs_on_play_check" CHECK ((("outs_on_play" IS NULL) OR (("outs_on_play" >= 0) AND ("outs_on_play" <= 3)))),
+    CONSTRAINT "pitches_ra_hit_has_cells" CHECK ((("accuracy_hit_kind" IS DISTINCT FROM 'ra'::"text") OR ("accuracy_zone_cells" IS NOT NULL))),
     CONSTRAINT "pitches_result_check" CHECK (("result" = ANY (ARRAY['ball'::"text", 'strike_looking'::"text", 'strike_swinging'::"text", 'foul'::"text", 'in_play'::"text", 'hbp'::"text", 'sac_bunt'::"text", 'sac_fly'::"text", 'dropped_third'::"text", 'interference'::"text", 'other'::"text", 'batter_interference'::"text", 'foul_tip'::"text"]))),
     CONSTRAINT "pitches_runner_advances_is_array" CHECK ((("runner_advances" IS NULL) OR ("jsonb_typeof"("runner_advances") = 'array'::"text"))),
     CONSTRAINT "pitches_runners_after_check" CHECK ((("runners_after" IS NULL) OR (("runners_after" >= 0) AND ("runners_after" <= 7)))),
@@ -2753,7 +3071,7 @@ CREATE TABLE IF NOT EXISTS "public"."pitches" (
     CONSTRAINT "pitches_sacrifice_check" CHECK ((("sacrifice" IS NULL) OR ("sacrifice" = ANY (ARRAY['SF'::"text", 'SAC'::"text"])))),
     CONSTRAINT "pitches_spray_box_check" CHECK ((("spray_box" IS NULL) OR (("spray_box" >= 1) AND ("spray_box" <= 25)))),
     CONSTRAINT "pitches_spray_field_check" CHECK ((("spray_field" IS NULL) OR ("spray_field" = ANY (ARRAY['IF'::"text", 'OF'::"text"])))),
-    CONSTRAINT "pitches_target_matches_kind" CHECK (((("kind" = 'bullpen'::"text") AND ("target_row" IS NOT NULL) AND ("target_col" IS NOT NULL)) OR (("kind" = 'game'::"text") AND ("target_row" IS NULL) AND ("target_col" IS NULL)))),
+    CONSTRAINT "pitches_target_matches_kind" CHECK (((("kind" = 'bullpen'::"text") AND ("target_row" IS NOT NULL) AND ("target_col" IS NOT NULL)) OR (("kind" = 'game'::"text") AND ((("target_row" IS NULL) AND ("target_col" IS NULL)) OR (("target_row" IS NOT NULL) AND ("target_col" IS NOT NULL)))))),
     CONSTRAINT "pitches_time_to_plate_check" CHECK ((("time_to_plate" IS NULL) OR (("time_to_plate" >= 0.80) AND ("time_to_plate" <= 3.00))))
 );
 
@@ -2861,6 +3179,9 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "email_change_from" "text",
     "email_change_requested_at" timestamp with time zone,
     "email_verify_sent_to" "text",
+    "deletion_requested_at" timestamp with time zone,
+    "deletion_due_at" timestamp with time zone,
+    "terms_agreed_at" timestamp with time zone,
     CONSTRAINT "profiles_age_attestation_check" CHECK (("age_attestation" = ANY (ARRAY['adult'::"text", 'minor_13_17'::"text"]))),
     CONSTRAINT "profiles_attested_via_check" CHECK (("attested_via" = ANY (ARRAY['signup'::"text", 'catchup'::"text"]))),
     CONSTRAINT "profiles_consent_via_check" CHECK (("consent_via" = ANY (ARRAY['guardian_email'::"text", 'parent_created'::"text"]))),
@@ -2953,6 +3274,18 @@ COMMENT ON COLUMN "public"."profiles"."email_verify_sent_to" IS 'The address the
 
 
 
+COMMENT ON COLUMN "public"."profiles"."deletion_requested_at" IS 'A1: when deletion was requested. On the primary profile it covers the whole login. Never client-readable.';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."deletion_due_at" IS 'A1: when the scheduled run purges it (requested + 7 days).';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."terms_agreed_at" IS 'Terms agreement (Oct 17 2026): when the login accepted terms_version in the app''s "I agree" box. Primary profile only.';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."rate_limit_config" (
     "key" "text" NOT NULL,
     "window_seconds" integer NOT NULL,
@@ -3038,12 +3371,12 @@ COMMENT ON TABLE "public"."session_opened" IS 'U10 (3): which sessions each view
 
 CREATE TABLE IF NOT EXISTS "public"."sessions" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "pitcher_id" "uuid" NOT NULL,
+    "pitcher_id" "uuid",
     "team_id" "uuid" NOT NULL,
     "started_at" timestamp with time zone NOT NULL,
     "ended_at" timestamp with time zone,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "logged_by" "uuid" NOT NULL,
+    "logged_by" "uuid",
     "deleted_at" timestamp with time zone,
     "deleted_by" "uuid",
     "deleted_by_role" "text",
@@ -3058,11 +3391,13 @@ CREATE TABLE IF NOT EXISTS "public"."sessions" (
     "game_outs_recorded" smallint,
     "sport" "text" NOT NULL,
     "sealed_at" timestamp with time zone,
+    "ra_on" boolean DEFAULT false NOT NULL,
     CONSTRAINT "sessions_charting_perspective_check" CHECK (("charting_perspective" = ANY (ARRAY['behind_catcher'::"text", 'behind_pitcher'::"text"]))),
-    CONSTRAINT "sessions_deletion_check" CHECK ((("deleted_at" IS NULL) OR (("deleted_by" IS NOT NULL) AND ("deleted_by_role" = ANY (ARRAY['pitcher'::"text", 'coach'::"text"])) AND ("pitch_count" IS NOT NULL) AND ("pitch_count" >= 0)))),
+    CONSTRAINT "sessions_deletion_check" CHECK ((("deleted_at" IS NULL) OR (("deleted_by" IS NOT NULL) AND ("deleted_by_role" = ANY (ARRAY['pitcher'::"text", 'coach'::"text"])) AND ("pitch_count" IS NOT NULL) AND ("pitch_count" >= 0)) OR (("deleted_by_role" = 'deleted_account'::"text") AND ("deleted_by_name" IS NULL) AND ("pitch_count" IS NOT NULL) AND ("pitch_count" >= 0)))),
     CONSTRAINT "sessions_game_fields_check" CHECK (((("kind" = 'bullpen'::"text") AND ("opponent" IS NULL) AND ("game_final_inning" IS NULL) AND ("game_outs_recorded" IS NULL)) OR ("kind" = 'game'::"text"))),
     CONSTRAINT "sessions_kind_check" CHECK (("kind" = ANY (ARRAY['bullpen'::"text", 'game'::"text"]))),
     CONSTRAINT "sessions_opponent_length" CHECK ((("opponent" IS NULL) OR ("char_length"("opponent") <= 60))),
+    CONSTRAINT "sessions_pitcher_unless_tombstone" CHECK ((("pitcher_id" IS NOT NULL) OR ("deleted_at" IS NOT NULL))),
     CONSTRAINT "sessions_sport_check" CHECK (("sport" = ANY (ARRAY['baseball'::"text", 'softball'::"text"])))
 );
 
@@ -3189,6 +3524,16 @@ COMMENT ON COLUMN "public"."teams"."level" IS 'G3: level of play, set by the hea
 
 
 COMMENT ON COLUMN "public"."teams"."archived_at" IS 'P1-09: set by archive_team(), cleared by restore_team(). Archived = hidden from lists, invite links off, no new sessions, history readable.';
+
+
+
+ALTER TABLE ONLY "public"."account_deletion_log"
+    ADD CONSTRAINT "account_deletion_log_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE "public"."accuracy_zones"
+    ADD CONSTRAINT "accuracy_zones_four_cells" CHECK ((("cardinality"("cells") >= 1) AND ("cardinality"("cells") <= 4))) NOT VALID;
 
 
 
@@ -3710,6 +4055,9 @@ CREATE POLICY "Viewers update own roster-seen rows" ON "public"."roster_seen" FO
 
 
 
+ALTER TABLE "public"."account_deletion_log" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."accuracy_zones" ENABLE ROW LEVEL SECURITY;
 
 
@@ -3770,9 +4118,35 @@ GRANT ALL ON FUNCTION "public"."_create_team_with_head"("p_coach_id" "uuid", "p_
 
 
 
+REVOKE ALL ON FUNCTION "public"."a1_due_deletions"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."a1_due_deletions"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."a1_headed_teams"("p_account" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."a1_headed_teams"("p_account" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."a1_purge_profile"("p_profile" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."a1_purge_profile"("p_profile" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."a1_run_scheduled"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."a1_run_scheduled"() TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."abandon_email_change"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."abandon_email_change"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."abandon_email_change"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."account_deletion_status"("p_profile" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."account_deletion_status"("p_profile" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."account_deletion_status"("p_profile" "uuid") TO "service_role";
 
 
 
@@ -3794,6 +4168,12 @@ GRANT ALL ON FUNCTION "public"."add_sport_profile"("p_sport" "text") TO "service
 
 
 
+REVOKE ALL ON FUNCTION "public"."agree_to_terms"("p_terms_version" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."agree_to_terms"("p_terms_version" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."agree_to_terms"("p_terms_version" "text") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."archive_team"("p_team_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."archive_team"("p_team_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."archive_team"("p_team_id" "uuid") TO "service_role";
@@ -3809,6 +4189,12 @@ GRANT ALL ON FUNCTION "public"."begin_email_change"("p_email" "text") TO "servic
 REVOKE ALL ON FUNCTION "public"."can_view_headshot"("p_object_name" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."can_view_headshot"("p_object_name" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."can_view_headshot"("p_object_name" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."cancel_account_deletion"("p_profile" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."cancel_account_deletion"("p_profile" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cancel_account_deletion"("p_profile" "uuid") TO "service_role";
 
 
 
@@ -3907,6 +4293,12 @@ REVOKE ALL ON FUNCTION "public"."get_report_notes"("p_token" "text") FROM PUBLIC
 GRANT ALL ON FUNCTION "public"."get_report_notes"("p_token" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_report_notes"("p_token" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_report_notes"("p_token" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_roster_closing"("p_team_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_roster_closing"("p_team_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_roster_closing"("p_team_id" "uuid") TO "service_role";
 
 
 
@@ -4162,6 +4554,12 @@ GRANT ALL ON FUNCTION "public"."rename_team"("p_team_id" "uuid", "p_name" "text"
 
 
 
+REVOKE ALL ON FUNCTION "public"."request_account_deletion"("p_confirm" "text", "p_profile" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."request_account_deletion"("p_confirm" "text", "p_profile" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."request_account_deletion"("p_confirm" "text", "p_profile" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."resolve_coach_invite"("p_token" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."resolve_coach_invite"("p_token" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."resolve_coach_invite"("p_token" "text") TO "authenticated";
@@ -4280,6 +4678,16 @@ REVOKE ALL ON FUNCTION "public"."verify_email"("p_token" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."verify_email"("p_token" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."verify_email"("p_token" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."verify_email"("p_token" "text") TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."account_deletion_log" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."account_deletion_log_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."account_deletion_log_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."account_deletion_log_id_seq" TO "service_role";
 
 
 
@@ -4420,6 +4828,10 @@ GRANT SELECT("guardian_consented_at") ON TABLE "public"."profiles" TO "authentic
 
 
 GRANT SELECT("consent_via") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("terms_agreed_at") ON TABLE "public"."profiles" TO "authenticated";
 
 
 

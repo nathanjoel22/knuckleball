@@ -68,7 +68,7 @@
   <main>
     <a class="standalone-back" href="bullpen-tracker.html">&lsaquo; Back to Knuckleball</a>   <!-- P2-05: shown only in the installed app -->
     <h1>Privacy Policy</h1>
-    <p class="meta">Knuckleball LLC &middot; Effective October 14, 2026 &middot; Version 2026-10-14</p>
+    <p class="meta">Knuckleball LLC &middot; Effective October 17, 2026 &middot; Version 2026-10-17</p>
 
     <p>Knuckleball is a pitch-charting app for baseball and softball pitchers and their coaches. It is run by
       Knuckleball LLC (&ldquo;we&rdquo;). This page explains what we store, who can see it, where it lives, and how
@@ -90,9 +90,33 @@
       <li><strong>You</strong> see everything in your own account, including any players you've added.</li>
       <li><strong>Your coaches</strong> &mdash; the head and assistant coaches of any team you're on &mdash; see your player details and the sessions you've charted since you joined their team &mdash; including sessions charted for your other teams &mdash; with their notes. Only the team a session was charted for can add notes to it, create or send its report, or delete it. If you leave a team, its coaches keep the sessions charted for that team while you were on it, but stop seeing anything else; coaches of an archived team stop seeing your new sessions too. For a player added by a parent, they also see that the player is on a parent account.</li>
       <li><strong>Teammates</strong> on a baseball team see the team leaderboard, which shows rankings (peak velocity, accuracy, strike percentage) and pitch counts &mdash; never anyone's sessions, pitch charts, or notes. Softball has no leaderboard.</li>
+      <li><strong>Teams, organizations and analytics partners that license Knuckleball data.</strong> We may license
+        charting data and the statistics built from it to other parties, as described in &ldquo;How we may use and
+        license charting data&rdquo; below.</li>
       <li><strong>Anyone with a report link.</strong> A session report lives at a long, random web address. Anyone who has that link can view the report, and the report page also shows that session's current coach notes. Reports go only to the addresses on your account, but a link can be forwarded &mdash; treat it like a shared document.</li>
     </ul>
-    <p>These limits are enforced by the database itself (see &ldquo;Data handling commitments&rdquo; below), not just by the app's screens.</p>
+    <p>Inside the app, these limits are enforced by the database itself (see &ldquo;Data handling commitments&rdquo; below), not just by the app's screens.</p>
+
+    <h2>How we may use and license charting data</h2>
+    <p>By using Knuckleball, players, parents and teams agree that Knuckleball LLC may use the charting data saved in
+      the app, and the statistics built from it, for its own purposes, including licensing or selling it to other
+      parties for a fee. We don't do this today, and we may never do it, but these terms keep that option open.</p>
+    <ul>
+      <li><strong>What may be shared:</strong> charting data and statistics (for example pitch types, locations,
+        velocity, strike percentage, accuracy, pitch counts, results, spray charts and trends), together with the
+        player's name, team, sport, level, jersey number and throwing hand, so that the numbers can be attributed to a
+        player.</li>
+      <li><strong>Who it may go to:</strong> teams, programs, organizations, scouts and analytics companies. If we offer
+        it, we'll offer it on the same terms to any team or organization willing to pay for it, not to one team and not
+        another.</li>
+      <li><strong>What we never sell or license:</strong> email addresses (yours, a guardian's, or report contacts),
+        passwords, age brackets, consent records, profile photos, and coach notes.</li>
+      <li><strong>Players added by a parent</strong> (including every player under 13): their data is never licensed
+        unless the parent separately agrees to it when we ask.</li>
+      <li><strong>When it applies:</strong> to charting data saved on or after October 17, 2026.</li>
+      <li><strong>Deleting:</strong> sessions and accounts you delete are left out of anything we license after the
+        deletion. Data already licensed before a deletion can't be recalled.</li>
+    </ul>
 
     <h2>Where it lives</h2>
     <ul>
@@ -143,20 +167,21 @@
     <p>For coaches and programs evaluating Knuckleball:</p>
     <h3>(a) Team-scoped access is enforced in the database</h3>
     <p>Who can read which rows is enforced by row-level security policies in the database, not only by the app's code.
-      For example, a session is readable by its pitcher and by the coaches of the team it was charted under, and by no
-      one else. Secret values such as invite links and approval codes can't be read directly at all; they're reachable
+      For example, inside the app a session is readable by its pitcher and by the coaches of the team it was charted
+      under, and by no other user. Secret values such as invite links and approval codes can't be read directly at all; they're reachable
       only through purpose-built server functions.</p>
-    <h3>(b) We don't sell or share your data</h3>
-    <p>Knuckleball does not sell, share, license, or disclose team or player data to third parties &mdash; not scouts,
-      not other programs, not data brokers. This is a commitment, not just a description of what we do today.</p>
+    <h3>(b) Licensing charting data</h3>
+    <p>Knuckleball LLC may license or sell charting data and the statistics built from it, as described in &ldquo;How we
+      may use and license charting data&rdquo; above. We never sell or license email addresses, passwords, age brackets,
+      consent records, profile photos, or coach notes.</p>
     <h3>(c) No tracking, advertising, or analytics code</h3>
     <p>None is included anywhere in the app or its pages; the only outside service our pages talk to is our Supabase database.</p>
     <h3>(d) Encryption</h3>
     <p>Data is stored with Supabase, which states that &ldquo;all customer data is encrypted at rest with AES-256 and in transit via TLS.&rdquo;</p>
     <h3>(e) Who at Knuckleball can access data</h3>
     <p>Knuckleball is run by a small team. As the operators of the service, we can technically access the data it stores,
-      as with any hosted service. We access it only for support, debugging, or safety &mdash; never to share it or for
-      any competitive purpose.</p>
+      as with any hosted service. We access it for support, debugging, safety, and the uses described in &ldquo;How
+      we may use and license charting data&rdquo; above.</p>
     <h3>(f) Export and deletion</h3>
     <p>In the app, from Profile &rarr; Your data: download a copy at any time, or delete an account with 7 days to
       restore it; backups are cleared within 7 days of a deletion. Or by email to

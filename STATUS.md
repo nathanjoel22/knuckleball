@@ -15,6 +15,15 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-17 · Data licensing policy change · **production**
+- **Shipped by:** Joel ("ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `policy-data-licensing` → `main`. **Cache:** v249. No database or function change.
+- **Policy / terms version 2026-10-17** (Joel approved the wording, Oct 17): Knuckleball LLC may use, license or sell charting data and the statistics built from it, attributed to the player (name, team, sport, level, jersey number, throwing hand), to teams, programs, organizations, scouts and analytics companies, on the same terms to any buyer. Never sold: email addresses, passwords, age brackets, consent records, profile photos, coach notes. Parent-added players (all under-13s) only with the parent's separate agreement (COPPA). Applies to data saved on or after Oct 17, 2026. Deleted data is left out of later licensing.
+- **Changed:** `privacy.html` (new section "How we may use and license charting data"; old commitment (b) "We don't sell or share your data" replaced; (a) and (e) reworded), `terms.html` (licence clause), `guardian-consent.html` (licensing sentence replaces "We don't sell or share it"), `TERMS_VERSION` 2026-10-17 in the 7 sign-up / attestation pages.
+- **Open:**
+  - the policy's "Changes" section promises account holders a notice (email or in-app) for a change that matters; not sent yet, needs Joel's go-ahead;
+  - Play / Apple Data safety stay "Shared: No" until data is actually licensed; flip them before the first sale;
+  - a lawyer's review before any sale; a parental opt-in flow is needed before any parent-added player's data could be licensed.
+
 ## 2026-10-15 · W1 site batch · **production**
 - **Shipped by:** Joel ("wording is good, ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `w1-site-changes` → `main` (also carries the W1 report `w1-preconditions`). **Cache:** v248. No database or function change.
 - **Live:**

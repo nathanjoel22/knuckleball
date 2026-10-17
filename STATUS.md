@@ -15,6 +15,19 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-17 · W1 store reviewer account · **production data**
+- **By:** Joel (asked for it; ran phase 2 and the verification update himself, Claude Code's auto mode blocks production writes). No code, database or cache change.
+- **Created through the app's own calls** (public sign-up, `ensure_account_setup`, `record_attestation`, `join_team_via_invite`, `set_uniform_number`, `sync_session`):
+  - coach `review@knuckleballonline.com` ("App Reviewer"), head of the baseball team **Knuckleball Review**;
+  - pitcher `review-pitcher@knuckleballonline.com` ("Sample Pitcher", #21, four pitch types);
+  - three sealed bullpens (90 pitches, Oct 8 / 12 / 15).
+  - Passwords: on Joel's Mac only, never in the repo.
+- **Deviation:** both logins were marked verified with a direct `update profiles set email_verified_at` (Joel, in the SQL editor), not through `verify_email`, because those two addresses don't forward anywhere. Test accounts only. Report-eligible afterwards (`is_pitcher_report_eligible` true).
+- **Open:**
+  - App access form in Play Console (and later App Store Connect) with these credentials;
+  - a Live Game charted by hand with the reviewer login;
+  - report emails to these addresses go nowhere unless Cloudflare routing is added.
+
 ## 2026-10-17 · Terms agreement box · **production**
 - **Shipped by:** Joel ("ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `terms-agree-notice` → `main`. **Cache:** v250.
 - **Backup first:** `~/knuckleball-backups/2026-10-17-1730-{schema,data}.sql` (34 policies).

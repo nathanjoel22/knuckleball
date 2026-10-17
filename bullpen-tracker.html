@@ -1274,6 +1274,9 @@
   .attest-opt input, .attest-check input{ width:20px; height:20px; accent-color:var(--ink); margin:0; flex:0 0 auto; }
   .attest-check{ display:flex; gap:var(--s-8); align-items:flex-start; font-size:14px; color:var(--ink-dim); line-height:1.45; cursor:pointer; }
   .attest-check a{ color:var(--ink); }
+  .terms-notice-list{ margin:0; padding-left:var(--s-20); display:flex; flex-direction:column; gap:var(--s-4); }
+  .terms-notice-foot a{ color:var(--ink); }
+  .terms-notice-list li{ font-size:14px; color:var(--ink-dim); line-height:1.45; }
   .attest-stop{ font-size:14px; background:var(--surface); border:1px solid var(--surface-border); border-radius:var(--radius-control); padding:var(--s-8) var(--s-12); margin:0; }
   .policy-foot{ font-size:12px; color:var(--ink-faint); text-align:center; padding:var(--s-12) 0 var(--s-6); }
   .policy-foot a{ color:var(--ink-faint); }
@@ -2168,6 +2171,52 @@ window.submitAttestation = async function(){
     state.attestBusy = false; state.attestError = "Couldn't save your answer. Check your connection and try again."; render();
   }
 };
+/* ---------- Terms agreement (Joel, Oct 17 2026) ----------
+   Terms / privacy 2026-10-17 let Knuckleball LLC license or sell charting data. A login that already answered the age
+   question but accepted an older version gets a one-time "I agree" box -- decided on the online load only (like the age
+   box), never over the charting screen. Tapping I agree is remembered on the device at once (kb:termsAgreed:<login>)
+   and sent to agree_to_terms() best effort, retried on later online loads, so the box never waits on the network. */
+function termsKey(uid){ return 'kb:termsAgreed:' + uid; }
+function termsAgreedHere(uid){ try{ return localStorage.getItem(termsKey(uid)) === TERMS_VERSION; }catch(e){ return false; } }
+function termsCheckOnLoad(uid){
+  const a = myAccountProfile() || {};
+  state.termsNeeded = false;
+  if(!a.age_attestation || a.terms_version === TERMS_VERSION) return;   // the age box records the new version itself
+  if(termsAgreedHere(uid)){ sendTermsAgreement(); return; }             // agreed on this device; the server missed it
+  state.termsNeeded = true;
+}
+async function sendTermsAgreement(){
+  if(!isOnline()) return;
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('agree_to_terms', { p_terms_version: TERMS_VERSION }), 10000);
+    if(error || !data || !data.ok) return;
+    const a = myAccountProfile();
+    if(a){ a.terms_version = TERMS_VERSION; a.terms_agreed_at = data.agreed_at; }
+    await saveLastKnownContext();
+  }catch(e){ /* retried on the next online load */ }
+}
+function renderTermsNotice(){
+  const links = `<a href="${policyHref('privacy.html')}" target="_blank" rel="noopener">Privacy Policy</a> and <a href="${policyHref('terms.html')}" target="_blank" rel="noopener">Terms</a>`;
+  return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="Updated Privacy Policy and Terms"><div class="who-card attest-card">
+    <div class="display" style="font-size:28px;line-height:1.05;">We've updated our Privacy Policy and Terms</div>
+    <p class="note-hint" style="font-size:14px;margin:0;">Starting October 17, 2026, Knuckleball LLC may license or sell charting data, and the stats built from it, to teams, organizations, scouts and analytics companies. The data is attributed to the player by name, team and jersey number. We don't do this today, but the new terms keep that option open.</p>
+    <ul class="terms-notice-list">
+      <li>It covers pitches charted on or after October 17, 2026. Nothing saved before then is included.</li>
+      <li>We never sell email addresses, passwords, ages, consent records, profile photos or coach notes.</li>
+      <li>Players added by a parent are never included unless the parent agrees.</li>
+      <li>Sessions and accounts you delete are left out.</li>
+    </ul>
+    <p class="note-hint terms-notice-foot" style="font-size:14px;margin:0;">Read the full ${links}. You can download or delete your data at any time in Profile &rarr; Your data.</p>
+    <button type="button" class="btn btn-primary" onclick="agreeToTerms()">I agree</button>
+    <button type="button" class="btn btn-secondary" onclick="signOut()">Sign out</button>
+  </div></div>`;
+}
+window.agreeToTerms = function(){
+  try{ localStorage.setItem(termsKey(state.session.user.id), TERMS_VERSION); }catch(e){}
+  state.termsNeeded = false;
+  render();
+  sendTermsAgreement();
+};
 // The 13-17 player's banner while approval is pending.
 function renderGuardianBanner(){
   if(!myGuardianPending()) return '';
@@ -2553,6 +2602,7 @@ async function loadFullContextOnline(alreadyPainted){
   // one-time box -- decided HERE, on the online load only, so it can never
   // appear offline or stand between anyone and charting.
   state.attestNeeded = !(myAccountProfile() || {}).age_attestation;
+  termsCheckOnLoad(session.user.id);   // Oct 17: "I agree" to terms 2026-10-17, same online-only rule
   await a1LoadStatus();   // A1: a login scheduled for deletion sees that first
 
   await confirmEmailChangeFromLink();   // Change Email: landing from its link
@@ -3109,7 +3159,7 @@ function activeTeams(){ return (state.teams || []).filter(t => !t.archived); }
 // profiles are always read with this explicit list, never select('*').
 // A NEW profiles column is unreadable until it's granted in a migration AND
 // added here (safe by default).
-const PROFILE_COLS = 'id, account_id, is_primary, managed_by, role, sport, full_name, pitch_types, created_at, contact_emails, email_verified_at, email_verify_token_sent_at, throws, relative_accuracy_enabled, uses_radar_gun, setup_dismissed_at, headshot_updated_at, age_attestation, attested_at, attested_via, terms_version, guardian_consent_sent_at, guardian_consented_at, consent_via';
+const PROFILE_COLS = 'id, account_id, is_primary, managed_by, role, sport, full_name, pitch_types, created_at, contact_emails, email_verified_at, email_verify_token_sent_at, throws, relative_accuracy_enabled, uses_radar_gun, setup_dismissed_at, headshot_updated_at, age_attestation, attested_at, attested_via, terms_version, terms_agreed_at, guardian_consent_sent_at, guardian_consented_at, consent_via';
 function lastKnownKey(userId){ return 'lastKnownContext:' + userId; }
 
 /* ---------- S4 STAGE A: ONE LOGIN, MANY PROFILES (Joel, Oct 2) ----------
@@ -11514,6 +11564,7 @@ function render(){
     : (state.a1Pending && state.session) ? renderA1Scheduled
     : (state.a1 && state.a1.screen && state.session) ? renderA1Delete
     : (state.attestNeeded && state.session) ? renderAttestScreen
+    : (state.termsNeeded && state.session && !onChartingScreen()) ? renderTermsNotice
     : (state.whoPicker && state.whoPicker.length > 1) ? renderWhoPicker
     : null;
   if(overlay){

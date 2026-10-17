@@ -15,6 +15,20 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-17 · Terms agreement box · **staging (database) + branch**
+- **Branch:** `terms-agree-notice`. **Cache:** v250. Not shipped.
+- **Database (staging):** migration `20261017000000_terms_agreement`:
+  - `profiles.terms_agreed_at` (clients read, never write);
+  - `agree_to_terms(version)` (SECURITY DEFINER, the caller's primary profile; idempotent, keeps the first time).
+  - Policies 34 before and after. Rollback: `supabase/rollback/20261017000000_terms_agreement_down.sql`.
+- **App:** existing logins that answered the age question but accepted an older terms version get a one-time box, "We've updated our Privacy Policy and Terms", with **I agree** / Sign out. Like the age box, it's decided on the online load only and never shown over the charting screen. I agree is remembered on the device at once (`kb:termsAgreed:<login>`) and sent to `agree_to_terms` best effort, then retried on later online loads, so nothing waits on the network. New sign-ups already record 2026-10-17 and never see it.
+- **Proven:**
+  - `supabase/tests/terms_agreement.sql` on staging, as a real login, rolled back: 7/7 (bad version refused; agree stores version and time; a second agree keeps the first time; a direct client write is refused; anon is refused). Nothing left behind.
+  - The real new functions in a stub harness: 9/9 (age unanswered → no box; current version → no box; old → box; agreed on the device → no box and resent; online / offline / network error / storage blocked).
+  - All tracker scripts pass `node --check`; the box drawn with the real stylesheets at 390 px, baseball and softball.
+- **Not run:** a live sign-in on the local staging site (no staging test login on hand).
+- **Shipping order matters:** the tracker now reads `terms_agreed_at`. Production must get the migration **before** the site push, or profile loads fail.
+
 ## 2026-10-17 · Data licensing policy change · **production**
 - **Shipped by:** Joel ("ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `policy-data-licensing` → `main`. **Cache:** v249. No database or function change.
 - **Policy / terms version 2026-10-17** (Joel approved the wording, Oct 17): Knuckleball LLC may use, license or sell charting data and the statistics built from it, attributed to the player (name, team, sport, level, jersey number, throwing hand), to teams, programs, organizations, scouts and analytics companies, on the same terms to any buyer. Never sold: email addresses, passwords, age brackets, consent records, profile photos, coach notes. Parent-added players (all under-13s) only with the parent's separate agreement (COPPA). Applies to data saved on or after Oct 17, 2026. Deleted data is left out of later licensing.

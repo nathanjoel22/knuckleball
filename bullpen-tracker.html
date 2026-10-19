@@ -7374,6 +7374,7 @@ function gameResultText(pt){
     const runnerOut = (pt.runnerAdvances || []).find(a => a.to === 0);
     return "Batter's interference" + (runnerOut ? ` (R${runnerOut.from} out)` : '');
   }
+  if(pt.result === 'foul' && pt.bbType === 'bunt' && pt.strikesBefore === 2) return 'Strike three foul (bunt)';   // Oct 19: "Strike Three Foul?"
   return GAME_RESULT_LABELS[pt.result] || pt.result;
 }
 // G1b-r decision 10: "each [no-pitch event] is its own line in the at-bat
@@ -9004,10 +9005,11 @@ function g5Card(face, flip, chartHtml){
   // box came out taller than wide there). The two-face card is only for the flip itself.
   // Joel, Oct 19 (phones): while O / E / H are asked, the field keeps the chart's band underneath and the prompt badge
   // sits in it where "Tap Pitch Result" is on the chart side, so O / E / H land exactly where K / B / F / IP were
-  const band = !!G5_BAND_STEPS[state.activeSession.g5.step] && isPhoneWidth();
+  const g5 = state.activeSession.g5;   // null during the flip back to the chart (the play is already saved)
+  const band = !!(g5 && G5_BAND_STEPS[g5.step]) && isPhoneWidth();
   if(!flip){
-    const badge = band ? `<div class="zone-caption ph-lg-prompt ph-lg-full">${g5PhoneCaption(state.activeSession.g5)}</div>` : '';
-    return `<div class="zone-grid g5-card g5-flat gg-field${band ? ' g5-band' : ''}" data-step="${state.activeSession.g5.step}">${g5FieldInner()}${badge}</div>`;
+    const badge = band ? `<div class="zone-caption ph-lg-prompt ph-lg-full">${g5PhoneCaption(g5)}</div>` : '';
+    return `<div class="zone-grid g5-card g5-flat gg-field${band ? ' g5-band' : ''}" data-step="${g5.step}">${g5FieldInner()}${badge}</div>`;
   }
   return `<div class="zone-grid g5-card${band ? ' g5-band' : ''} g5-flip-${flip}"><div class="g5-face g5-front">${chartHtml}</div>${face}</div>`;
 }

@@ -1588,6 +1588,10 @@
   .g5-res-l{ font-size:32px; font-weight:800; line-height:1; }
   .wide-right .g5-res-l{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.45); }
   .g5-res-count{ font-size:26px; letter-spacing:-0.02em; }
+  .g5-res.on{ box-shadow:var(--ring-select); background:var(--card); }
+  .g5-res-gap{ visibility:hidden; display:block; }
+  .g5-res-word{ font-size:19px; }
+  .wide-right .g5-res-word{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.27); }
   .wide-right .g5-res-count{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.36); }
   .g5-nav{ display:flex; gap:6px; /* geometry: the Live Game field overlay math */ }
   .g5-nav-btn{ flex:1 1 0; min-width:0; }
@@ -8393,10 +8397,9 @@ const G5_WHAT = { 12: ['ball', 'icon-ball.png', 'Ball'], 2: ['looking', 'icon-lo
   14: ['foul', 'icon-foul.png', 'Foul'], 13: ['inplay', 'batter-icon.png', 'In Play'] };
 const G5_RESULT = { ball: 'ball', looking: 'strike_looking', swing: 'strike_swinging', foul: 'foul' };
 // Joel, Oct 19: Foul is always a foul tip (no "Foul Tip or Foul Out?"). A caught foul is In Play -> Out, and its
-// location step offers FOUL (box 14): foul ground only -- the whole of boxes 1, 2, 16, 14, 13, 12, and the foul
+// location step offers FOUL (the row under the field): foul ground only -- the whole of boxes 1, 2, 16, 14, 13, 12, and the foul
 // side of the line in 3, 17, 23, 11 and 15 (15: all but the triangle from home up to its top corners). Shapes are
 // clip-path polygons in the box.
-const G5_FOUL_BOX = 14;
 const G5_FOUL_GROUND = { 1: '', 2: '', 16: '', 14: '', 13: '', 12: '',
   3: 'polygon(0 0, 0 100%, 100% 100%)', 17: 'polygon(0 0, 0 100%, 100% 100%)',
   23: 'polygon(100% 0, 100% 100%, 0 100%)', 11: 'polygon(100% 0, 100% 100%, 0 100%)',
@@ -8413,22 +8416,20 @@ const G5_FAIR_GROUND = { 4: '', 10: '', 18: '', 19: '', 20: '', 21: '', 22: '', 
   3: 'polygon(0 0, 100% 0, 100% 100%)', 17: 'polygon(0 0, 100% 0, 100% 100%)',
   23: 'polygon(0 0, 100% 0, 0 100%)', 11: 'polygon(0 0, 100% 0, 0 100%)',
   15: 'polygon(0 0, 100% 0, 50% 50%)' };
-// Joel, Oct 7: on a fly-ball or line-drive hit, box 13 offers "HR?" while the field flashes; it switches the flashing to the
-// area above the fence (the top row above the arc), where a tap records the home run.
-const G5_HR_BOX = 13;
+// Joel, Oct 7: on a fly-ball or line-drive hit, "HR?" (since Oct 19 in the row under the field) switches the flashing to
+// the area above the fence (the top row above the arc), where a tap records the home run.
 const G5_HR_CONTACT = { fly: 1, line: 1 };
-// Joel, Oct 8: a fly ball flashes only the outfield and a bunt only the infield, at once (no IF / OF to choose).
-// A ground ball, pop fly or line drive flashes nothing until IF or OF is chosen.
-const G5_AUTO_ZONE = { fly: 'OF', bunt: 'IF' };
-// Joel, Oct 8: on a ground ball, pop fly or line drive the location step offers IF (box 12) and OF (box 13).
-// IF flashes only the infield (the dirt and the grass inside it); OF only the fair outfield grass inside the
-// fence. A tap anywhere in a box that holds both records the side that was chosen (pitches.spray_field). HR?
-// moves to box 14 while IF / OF are showing.
+// Joel, Oct 8: a bunt flashes only the infield, at once (nothing to choose). Joel, Oct 19: a fly ball no longer flashes
+// the outfield on its own -- it offers FOUL / OF / HR first. A ground ball, pop fly or line drive flashes nothing until
+// IF or OF is chosen.
+const G5_AUTO_ZONE = { bunt: 'IF' };
+// Joel, Oct 8: on a ground ball, pop fly or line drive the location step offers IF and OF (since Oct 19 in the
+// row under the field, slots 2 / 3; FOUL or HR? in slot 4). IF flashes only the infield (the dirt and the grass
+// inside it); OF only the fair outfield grass inside the fence. A tap anywhere in a box that holds both records
+// the side that was chosen (pitches.spray_field).
 const G5_ZONE_CONTACT = { ground: 1, pop: 1, line: 1 };
-const G5_ZONE_BOX = { 12: 'IF', 13: 'OF' };
 const G5_IF_BOXES = { 15: 1, 17: 1, 18: 1, 22: 1, 23: 1, 24: 1, 25: 1 };
 const G5_OF_BOXES = { 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 18: 1, 19: 1, 20: 1, 21: 1, 22: 1, 25: 1 };
-function g5HrBox(g){ return G5_ZONE_CONTACT[g.bbType] ? 14 : G5_HR_BOX; }
 // An out on a pop up, line drive or fly ball may have been caught in foul ground (not a ground ball; a bunt gets
 // "Strike Three Foul?" instead, Oct 19).
 function g5FoulOk(g){ return g.entry === 'O' && !!g.bbType && g.bbType !== 'ground' && g.bbType !== 'bunt'; }
@@ -8540,11 +8541,11 @@ window.g5Zone = async function(zone){
   const g = state.activeSession.g5;
   if(!g || g.step !== 'where') return;
   if(zone === 'FOUL'){
-    if(!g5FoulOk(g) || g.zone === 'FOUL') return;
-    g.zone = 'FOUL';   // ‹ Back goes back to the fair-ground choice
+    if(!g5FoulOk(g)) return;
+    g.zone = g.zone === 'FOUL' ? (G5_AUTO_ZONE[g.bbType] || null) : 'FOUL';   // tap again (or ‹ Back) for fair ground
     return g5Save();
   }
-  if(!G5_ZONE_CONTACT[g.bbType] || (zone !== 'IF' && zone !== 'OF')) return;
+  if(!(G5_ZONE_CONTACT[g.bbType] || (g.bbType === 'fly' && zone === 'OF')) || (zone !== 'IF' && zone !== 'OF')) return;   // a fly ball: OF only
   g.zone = g.zone === zone ? null : zone;   // tap it again to go back to the whole field
   return g5Save();
 };
@@ -8563,6 +8564,7 @@ window.g5BuntStrikeThree = async function(){
 };
 window.g5HrAsk = async function(){
   const g = state.activeSession.g5;
+  if(g && g.step === 'hr'){ g.step = 'where'; return g5Save(); }   // HR? again: back to the field (Oct 19)
   if(!g || g.step !== 'where' || g.entry !== 'H' || !G5_HR_CONTACT[g.bbType]) return;
   g.step = 'hr';
   return g5Save();
@@ -8748,16 +8750,11 @@ function g5CellInner(step, box){
   const btn = (inner, onclick, cls) => ({ inner, onclick, cls });
   if(step === 'what' && G5_WHAT[box]){ const [code, icon, cap] = G5_WHAT[box]; return btn(ggIcon(icon, cap), `g5What('${code}')`, 'g5-choice'); }
   if(step === 'where' && g.zone === 'FOUL'){
-    // Oct 19: an out caught in foul ground -- only foul ground flashes (the IF / OF / FOUL buttons step aside)
+    // Oct 19: an out caught in foul ground -- only foul ground flashes
     if(G5_FOUL_GROUND[box] === undefined) return null;
     return btn('', `g5Where(${box})`, 'g5-foulpick');   // the shade is one shape on the field drawing (Oct 19)
   }
-  if(step === 'where' && box === G5_FOUL_BOX && g5FoulOk(g)) return btn('<span class="g5-word">FOUL</span>', `g5Zone('FOUL')`, 'g5-choice');
-  if(step === 'where' && box === g5HrBox(g) && g.entry === 'H' && G5_HR_CONTACT[g.bbType]) return btn('<span class="g5-word">HR?</span>', 'g5HrAsk()', 'g5-choice');
-  if(step === 'where' && G5_ZONE_CONTACT[g.bbType] && G5_ZONE_BOX[box]){
-    const z = G5_ZONE_BOX[box];
-    return btn(`<span class="g5-word">${z}</span>`, `g5Zone('${z}')`, 'g5-choice' + (g.zone === z ? ' g5-zone-on' : ''));
-  }
+  // Oct 19: IF / OF / FOUL / HR? are the cell-sized row under the field now (g5HoeRow), never on its boxes
   if(step === 'where' && g.zone){
     const set = g.zone === 'IF' ? G5_IF_BOXES : G5_OF_BOXES;
     return set[box] ? btn('', `g5Where(${box})`, 'g5-zonepick') : null;
@@ -8824,7 +8821,6 @@ function g5FieldInner(){
 function g5FieldActions(){
   const g = state.activeSession.g5;
   if(g.move) return g5MovePrompt(g);
-  if(G5_ROW_STEPS[g.step]) return '';   // Joel, Oct 19: O / E / H, then the contact row, and ‹ Back sit under the prompt (g5HoeRow); no + Out / + Strike / + Ball here
   if(g.step === 'runners'){
     return `<div class="g5-actions"><span class="g5-act-gap"></span><button type="button" class="btn btn-primary btn-sm g5-act" onclick="g5RunnersDone()">Done ›</button></div>`;
   }
@@ -9039,6 +9035,7 @@ function g5ResultRow(step){
 }
 // The field steps whose choices are the row under the field (Oct 19): hit / out / error, then type of contact.
 const G5_ROW_STEPS = { hoe: 1, how: 1 };
+const G5_PAD_STEPS = { hoe: 1, how: 1, where: 1, hr: 1 };   // the steps with the cell-sized row under the field
 // Phones: the steps whose prompt sits in the band under the field (Oct 19), in words that fit one line.
 const G5_BAND_STEPS = { hoe: 1, how: 1, where: 1, hr: 1 };
 function g5PhoneCaption(g){
@@ -9046,17 +9043,30 @@ function g5PhoneCaption(g){
   if(g.step === 'hr') return 'Where did it leave the park?';
   return g5Caption(g.step);
 }
+function g5LocationCells(g){
+  const cell = (col, label, aria, onclick, on, off) => `<button type="button" class="btn btn-secondary g5-res${on ? ' on' : ''}" style="grid-column:${col};" onclick="${onclick}" ${off ? 'disabled ' : ''}aria-pressed="${on ? 'true' : 'false'}" aria-label="${aria}"><span class="g5-res-l g5-res-count${label.length > 2 ? ' g5-res-word' : ''}" aria-hidden="true">${label}</span></button>`;
+  // fixed slots for every contact type: IF 2, OF 3, FOUL 4, HR 5 (Joel, Oct 19). A fly ball always shows FOUL / OF / HR,
+  // the one that can't apply greyed (HR unless a hit; FOUL unless an out); the others show only what applies.
+  let out = '';
+  const fly = g.bbType === 'fly', hrOk = g.entry === 'H' && !!G5_HR_CONTACT[g.bbType];
+  if(g.step === 'where' && G5_ZONE_CONTACT[g.bbType]) out += cell(2, 'IF', 'Infield', "g5Zone('IF')", g.zone === 'IF');
+  if(g.step === 'where' && (G5_ZONE_CONTACT[g.bbType] || fly)) out += cell(3, 'OF', 'Outfield', "g5Zone('OF')", g.zone === 'OF');
+  if(g.step === 'where' && (g5FoulOk(g) || fly)) out += cell(4, 'FOUL', 'Caught in foul ground', "g5Zone('FOUL')", g.zone === 'FOUL', !g5FoulOk(g));
+  if((g.step === 'where' || g.step === 'hr') && (hrOk || fly)) out += cell(5, 'HR', 'Home run', 'g5HrAsk()', g.step === 'hr', !hrOk);
+  // nothing to choose (a bunt, a fly ball out with no foul catch): keep the row's height so Back doesn't move
+  return out || '<span class="g5-res g5-res-gap" aria-hidden="true"></span>';
+}
 function g5HoeRow(){
   const s = state.activeSession, g = s.g5;
-  if(!g || !G5_ROW_STEPS[g.step]) return '';
+  if(!g || !G5_PAD_STEPS[g.step]) return '';
+  if(!G5_ROW_STEPS[g.step]) return `<div class="g5-pad" role="group" aria-label="${g5Caption(g.step)}">${g5LocationCells(g)}</div>`;
   const outBlocked = s.outs + 1 + (g.addOuts || 0) > 3;
   const cells = g.step === 'hoe'
     ? G5_HOE_BTNS.map(([e, word, col]) =>
       `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${col};" onclick="g5Entry('${e}')" ${e === 'O' && outBlocked ? 'disabled ' : ''}aria-label="${word}"><span class="g5-res-l" aria-hidden="true">${e}</span></button>`).join('')
     : G5_HOW_BTNS.map(([t, label, word]) =>
       `<button type="button" class="btn btn-secondary g5-res" onclick="g5How('${t}')" aria-label="${word}"><span class="g5-res-l g5-res-count" aria-hidden="true">${label}</span></button>`).join('');
-  return `<div class="g5-pad" role="group" aria-label="${g5Caption(g.step)}">${cells}</div>
-    <div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="gameBack()">‹ Back</button><span class="g5-nav-btn" aria-hidden="true"></span></div>`;
+  return `<div class="g5-pad" role="group" aria-label="${g5Caption(g.step)}">${cells}</div>`;
 }
 function g5NavRow(){
   const s = state.activeSession;
@@ -9150,7 +9160,7 @@ function renderGameSessionView(p){
   const g5Now = g5Step();
   const zoneCaption = (s.g5 && g5Now) ? (g5NeedsBatter(s.g5) ? 'Put the batter on base (tap a base, or drag from home)' : g5Caption(g5Now))
     : s.intent ? (s.gameTarget ? 'Now tap where the pitch went' : 'Tap where the pitch is called') : `Tap where the pitch landed`;
-  const g5Below = g5OnDiamond() ? (g5HoeRow() || g5FieldActions()) : g5BelowChart(g5Now);   // Oct 19: both sides put their buttons under the prompt
+  const g5Below = g5OnDiamond() ? g5HoeRow() + g5FieldActions() : g5BelowChart(g5Now);   // Oct 19: both sides put their buttons under the prompt
 
   if(phoneSessionMode(p)){
     return `

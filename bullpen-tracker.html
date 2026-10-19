@@ -1508,8 +1508,8 @@
      badge follows beside it, same height */
   .lg-phone .kb-batter, .lg-phone .kb-batter.is-left, .lg-phone .kb-batter.is-right{ left:3px; transform:none; }
   .lg-phone .kb-batter__label{ min-width:104px; padding:0 14px; }
-  .ph-lg-prompt{ position:absolute; left:115px; top:calc(100% + var(--kb-pill-clear) + 2px); min-height:var(--kb-pill-h); max-width:calc(100% - 118px);
-    margin:0; display:flex; align-items:center; white-space:nowrap; pointer-events:none; /* geometry: the batter / home-plate gutters */ }
+  .ph-lg-prompt{ position:absolute; left:115px; right:3px; width:auto; max-width:none; top:calc(100% + var(--kb-pill-clear) + 2px); min-height:var(--kb-pill-h);
+    margin:0; display:flex; align-items:center; justify-content:center; white-space:nowrap; pointer-events:none; /* geometry: the batter / home-plate gutters */ }   /* Joel: runs to IP's right edge */
   .g5-cf-caption{ position:absolute; left:50%; top:30%; transform:translate(-50%, -50%); margin:0; z-index:2; pointer-events:none; white-space:nowrap;
     background:linear-gradient(rgba(var(--accent-rgb), .26), rgba(var(--accent-rgb), .26)), var(--card); box-shadow:var(--shadow-segment); }   /* the same badge as on the panel, made solid over the grass */
 

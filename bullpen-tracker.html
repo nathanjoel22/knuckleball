@@ -8802,6 +8802,7 @@ function g5FieldInner(){
 function g5FieldActions(){
   const g = state.activeSession.g5;
   if(g.move) return g5MovePrompt(g);
+  if(g.step === 'hoe') return '';   // Joel, Oct 19: O / E / H and ‹ Back sit under the prompt (g5HoeRow); no + Out / + Strike / + Ball here
   if(g.step === 'runners'){
     return `<div class="g5-actions"><span class="g5-act-gap"></span><button type="button" class="btn btn-primary btn-sm g5-act" onclick="g5RunnersDone()">Done ›</button></div>`;
   }
@@ -9014,7 +9015,8 @@ function g5HoeRow(){
   if(!g || g.step !== 'hoe') return '';
   const outBlocked = s.outs + 1 + (g.addOuts || 0) > 3;
   return `<div class="g5-pad" role="group" aria-label="Hit, out or error?">${G5_HOE_BTNS.map(([e, word, col]) =>
-    `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${col};" onclick="g5Entry('${e}')" ${e === 'O' && outBlocked ? 'disabled ' : ''}aria-label="${word}"><span class="g5-res-l" aria-hidden="true">${e}</span></button>`).join('')}</div>`;
+    `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${col};" onclick="g5Entry('${e}')" ${e === 'O' && outBlocked ? 'disabled ' : ''}aria-label="${word}"><span class="g5-res-l" aria-hidden="true">${e}</span></button>`).join('')}</div>
+    <div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="gameBack()">‹ Back</button><span class="g5-nav-btn" aria-hidden="true"></span></div>`;
 }
 function g5NavRow(){
   const s = state.activeSession;
@@ -9050,7 +9052,7 @@ function g5Surface(pitches, chartingPerspective, currentBatterSide){
     // Joel's iPad photo, Oct 8: Safari kept the field's buttons on their own 3D layer after the flip, drawn a
     // little closer (bigger) under the perspective. Once the flip has played, draw the field again flat.
     if(state.g5Anim === 'in') setTimeout(() => { if(!state.g5Anim && g5OnDiamond()) render(); }, 375);
-    return g5Card(g5FieldFace(), state.g5Anim === 'in' ? 'in' : null, chart) + g5HoeRow() + g5FieldActions();
+    return g5Card(g5FieldFace(), state.g5Anim === 'in' ? 'in' : null, chart) + g5FieldActions();
   }
   if(g5Step() === 'velo') chart = chart.replace(/<\/div>$/, g5VeloRows() + '</div>');   // inside .zone-grid, over its last two rows
   if(state.g5Anim === 'out' && state.g5LastFace){
@@ -9100,7 +9102,7 @@ function renderGameSessionView(p){
   const g5Now = g5Step();
   const zoneCaption = (s.g5 && g5Now) ? (g5NeedsBatter(s.g5) ? 'Put the batter on base (tap a base, or drag from home)' : g5Caption(g5Now))
     : s.intent ? (s.gameTarget ? 'Now tap where the pitch went' : 'Tap where the pitch is called') : `Tap where the pitch landed`;
-  const g5Below = g5OnDiamond() ? '' : g5BelowChart(g5Now);
+  const g5Below = g5OnDiamond() ? g5HoeRow() : g5BelowChart(g5Now);   // Oct 19: both sides put their buttons under the prompt
 
   if(phoneSessionMode(p)){
     return `

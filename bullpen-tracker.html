@@ -1589,7 +1589,6 @@
   .wide-right .g5-res-l{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.45); }
   .g5-res-count{ font-size:26px; letter-spacing:-0.02em; }
   .g5-res.on{ box-shadow:var(--ring-select); background:var(--card); }
-  .g5-res-gap{ visibility:hidden; display:block; }
   .g5-res-word{ font-size:19px; }
   .wide-right .g5-res-word{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.27); }
   .wide-right .g5-res-count{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.36); }
@@ -8545,7 +8544,7 @@ window.g5Zone = async function(zone){
     g.zone = g.zone === 'FOUL' ? (G5_AUTO_ZONE[g.bbType] || null) : 'FOUL';   // tap again (or ‹ Back) for fair ground
     return g5Save();
   }
-  if(!(G5_ZONE_CONTACT[g.bbType] || (g.bbType === 'fly' && zone === 'OF') || (g.bbType === 'bunt' && zone === 'IF')) || (zone !== 'IF' && zone !== 'OF')) return;   // a fly ball: OF only; a bunt: IF only
+  if((zone !== 'IF' && zone !== 'OF') || (zone === 'IF' && g.bbType === 'fly') || (zone === 'OF' && g.bbType === 'bunt')) return;   // a fly ball: OF only; a bunt: IF only
   g.zone = g.zone === zone ? null : zone;   // tap it again to go back to the whole field
   return g5Save();
 };
@@ -9042,19 +9041,18 @@ function g5PhoneCaption(g){
 }
 function g5LocationCells(g){
   const cell = (col, label, aria, onclick, on, off) => `<button type="button" class="btn btn-secondary g5-res${on ? ' on' : ''}" style="grid-column:${col};" onclick="${onclick}" ${off ? 'disabled ' : ''}aria-pressed="${on ? 'true' : 'false'}" aria-label="${aria}"><span class="g5-res-l g5-res-count${label.length > 2 ? ' g5-res-word' : ''}" aria-hidden="true">${label}</span></button>`;
-  // fixed slots for every contact type: IF 2, OF 3, FOUL 4, HR 5 (Joel, Oct 19). A fly ball always shows FOUL / OF / HR and
-  // a bunt all four, the ones that can't apply greyed (a bunt: OF and HR always; FOUL unless an out or two strikes);
-  // the others show only what applies.
-  let out = '';
+  // Joel, Oct 19: every contact type shows all four in fixed slots -- IF 2, OF 3, FOUL 4, HR 5 -- the ones that can't
+  // apply greyed: IF not on a fly ball; OF not on a bunt; FOUL only on an out that isn't a ground ball, or a bunt on two
+  // strikes (the strikeout); HR only on a line-drive or fly-ball hit.
   const s = state.activeSession;
-  const fly = g.bbType === 'fly', bunt = g.bbType === 'bunt', hrOk = g.entry === 'H' && !!G5_HR_CONTACT[g.bbType];
-  const foulOk = g5FoulOk(g) || g5BuntK(g, s);
-  if(g.step === 'where' && (G5_ZONE_CONTACT[g.bbType] || bunt)) out += cell(2, 'IF', 'Infield', "g5Zone('IF')", g.zone === 'IF');
-  if(g.step === 'where' && (G5_ZONE_CONTACT[g.bbType] || fly || bunt)) out += cell(3, 'OF', 'Outfield', "g5Zone('OF')", g.zone === 'OF', bunt);
-  if(g.step === 'where' && (foulOk || fly || bunt)) out += cell(4, 'FOUL', bunt && g5BuntK(g, s) ? 'Foul bunt, strike three' : 'Caught in foul ground', "g5Zone('FOUL')", g.zone === 'FOUL', !foulOk);
-  if((g.step === 'where' || g.step === 'hr') && (hrOk || fly || bunt)) out += cell(5, 'HR', 'Home run', 'g5HrAsk()', g.step === 'hr', !hrOk || bunt);
-  // nothing to choose (a bunt, a fly ball out with no foul catch): keep the row's height so Back doesn't move
-  return out || '<span class="g5-res g5-res-gap" aria-hidden="true"></span>';
+  const bb = g.bbType, where = g.step === 'where';
+  const ifOk = where && bb !== 'fly', ofOk = where && bb !== 'bunt';
+  const foulOk = where && (g5FoulOk(g) || g5BuntK(g, s));
+  const hrOk = (where || g.step === 'hr') && g.entry === 'H' && !!G5_HR_CONTACT[bb];
+  return cell(2, 'IF', 'Infield', "g5Zone('IF')", g.zone === 'IF', !ifOk)
+    + cell(3, 'OF', 'Outfield', "g5Zone('OF')", g.zone === 'OF', !ofOk)
+    + cell(4, 'FOUL', g5BuntK(g, s) ? 'Foul bunt, strike three' : 'Caught in foul ground', "g5Zone('FOUL')", g.zone === 'FOUL', !foulOk)
+    + cell(5, 'HR', 'Home run', 'g5HrAsk()', g.step === 'hr', !hrOk);
 }
 function g5HoeRow(){
   const s = state.activeSession, g = s.g5;

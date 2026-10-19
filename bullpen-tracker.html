@@ -652,7 +652,6 @@
   .zone-ball{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
   .zone-ball .g5-ball{ width:46%; height:46%; filter:drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
   html[data-sport="softball"] .zone-ball .g5-ball circle{ fill:#F3E04B; }
-  .g5-intent-hint{ flex:1; align-self:center; font-size:16px; font-weight:800; color:var(--ink); }   /* as bold as the prompt (Oct 13) */
   @media (prefers-reduced-motion: reduce){ .zone-cell-ball.ball-flash{ animation:none; } }
   .start-q-title{ margin:0; text-align:center; }
   .start-q-item{ display:flex; flex-direction:column; gap:var(--s-8); }
@@ -1505,6 +1504,12 @@
   /* Joel, Oct 19: the field keeps its 25 boxes and rules, but the charter never sees the 5x5 -- no box outlines,
      and foul ground / over the fence flash as one shape drawn on the field (g5FieldSvg), not box by box */
   .gg-field .g5-cell{ border-color:transparent !important; }
+  /* Joel, Oct 19 (Live Game phones): the batter pill moves to the left of its band under the chart and the step
+     badge follows beside it, same height */
+  .lg-phone .kb-batter, .lg-phone .kb-batter.is-left, .lg-phone .kb-batter.is-right{ left:3px; transform:none; }
+  .lg-phone .kb-batter__label{ min-width:104px; padding:0 14px; }
+  .ph-lg-prompt{ position:absolute; left:115px; top:calc(100% + var(--kb-pill-clear) + 2px); min-height:var(--kb-pill-h); max-width:calc(100% - 118px);
+    margin:0; display:flex; align-items:center; white-space:nowrap; pointer-events:none; /* geometry: the batter / home-plate gutters */ }
   .g5-cf-caption{ position:absolute; left:50%; top:30%; transform:translate(-50%, -50%); margin:0; z-index:2; pointer-events:none; white-space:nowrap;
     background:linear-gradient(rgba(var(--accent-rgb), .26), rgba(var(--accent-rgb), .26)), var(--card); box-shadow:var(--shadow-segment); }   /* the same badge as on the panel, made solid over the grass */
 
@@ -9035,17 +9040,24 @@ function g5NavRow(){
       ${b('New batter', 'gameNewBatter()')}${b('New inning', 'gameNewInning()')}
     </div>` : ''}`;
 }
-// Under the square chart: the hint (Intent, phones), the extra-inning question, then the result buttons and Back / More.
+// Under the square chart: the extra-inning question, then the result buttons and Back / More.
 function g5BelowChart(step){
   const sb = state.activeSession;
   let top = '';
-  if(sb && sb.intent && sb.gameTarget) top = `<div class="g5-results"><span class="g5-intent-hint">Now tap where the pitch went</span></div>`;
-  else if(sb && sb.intent && !step && (sb.gameVeloIdx === null || sb.gameVeloIdx === undefined) && isPhoneWidth()) top = `<div class="g5-results"><span class="g5-intent-hint">Tap where the pitch is called</span></div>`;
   if(step === 'tiebreak'){
     top = `<div class="g5-below"><div class="g5-q">Extra inning — start with a runner on 2B?</div>
       ${segTray([{ label: 'Yes', onclick: 'gridTiebreak(true)' }, { label: 'No', onclick: 'gridTiebreak(false)' }], { label: 'Start with a runner on 2B?', cls: 'g5-qbtns' })}</div>`;
   }
   return top + g5ResultRow(step) + g5NavRow();
+}
+// Joel, Oct 19 (phones): the step badge sits beside the batter pill, under the chart, in short words --
+// Tap Pitch Intent (Intent on) -> Tap Pitch Outcome -> Tap Pitch Result (then K / B / F / IP).
+function phoneLgPrompt(s){
+  if(!s || s.kind !== 'game') return '';
+  const step = g5Step();
+  if(step === 'what') return 'Tap Pitch Result';
+  if(step) return '';   // velocity, the extra-inning question, the field
+  return (s.intent && !s.gameTarget) ? 'Tap Pitch Intent' : 'Tap Pitch Outcome';
 }
 function g5Surface(pitches, chartingPerspective, currentBatterSide){
   // Joel, Oct 12: while what happened is asked under the chart, the tapped spot stays marked on it
@@ -9061,6 +9073,7 @@ function g5Surface(pitches, chartingPerspective, currentBatterSide){
     return g5Card(g5FieldFace(), state.g5Anim === 'in' ? 'in' : null, chart) + g5FieldActions();
   }
   if(g5Step() === 'velo') chart = chart.replace(/<\/div>$/, g5VeloRows() + '</div>');   // inside .zone-grid, over its last two rows
+  if(isPhoneWidth()){ const ph = phoneLgPrompt(sa); if(ph) chart = chart.replace(/<\/div>$/, `<div class="zone-caption ph-lg-prompt">${ph}</div></div>`); }
   if(state.g5Anim === 'out' && state.g5LastFace){
     // the flip back: the field turns over to the chart; one plain draw follows once it has finished
     setTimeout(() => { if(!state.g5Anim && !g5OnDiamond()) render(); }, 375);
@@ -9122,7 +9135,7 @@ function renderGameSessionView(p){
         </div>
         ${renderPhoneDeliveryRow(p, true)}
         <div class="ph-grid-wrap">${renderPhoneHint()}
-          <div class="zone-wrap${g5OnDiamond() ? ' g5-on' : ''}">
+          <div class="zone-wrap lg-phone${g5OnDiamond() ? ' g5-on' : ''}">
             ${g5Surface(pitches, chartingPerspective, currentBatterSide)}
           </div>${g5Below}
         </div>

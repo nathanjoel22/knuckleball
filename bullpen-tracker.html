@@ -8419,10 +8419,9 @@ const G5_FAIR_GROUND = { 4: '', 10: '', 18: '', 19: '', 20: '', 21: '', 22: '', 
 // Joel, Oct 7: on a fly-ball or line-drive hit, "HR?" (since Oct 19 in the row under the field) switches the flashing to
 // the area above the fence (the top row above the arc), where a tap records the home run.
 const G5_HR_CONTACT = { fly: 1, line: 1 };
-// Joel, Oct 8: a bunt flashes only the infield, at once (nothing to choose). Joel, Oct 19: a fly ball no longer flashes
-// the outfield on its own -- it offers FOUL / OF / HR first. A ground ball, pop fly or line drive flashes nothing until
-// IF or OF is chosen.
-const G5_AUTO_ZONE = { bunt: 'IF' };
+// Joel, Oct 19: nothing flashes on its own any more -- every contact type picks from the row first (a fly ball FOUL /
+// OF / HR, a bunt IF / FOUL). Kept as the hook for an automatic side; empty now.
+const G5_AUTO_ZONE = {};
 // Joel, Oct 8: on a ground ball, pop fly or line drive the location step offers IF and OF (since Oct 19 in the
 // row under the field, slots 2 / 3; FOUL or HR? in slot 4). IF flashes only the infield (the dirt and the grass
 // inside it); OF only the fair outfield grass inside the fence. A tap anywhere in a box that holds both records
@@ -8430,9 +8429,9 @@ const G5_AUTO_ZONE = { bunt: 'IF' };
 const G5_ZONE_CONTACT = { ground: 1, pop: 1, line: 1 };
 const G5_IF_BOXES = { 15: 1, 17: 1, 18: 1, 22: 1, 23: 1, 24: 1, 25: 1 };
 const G5_OF_BOXES = { 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 18: 1, 19: 1, 20: 1, 21: 1, 22: 1, 25: 1 };
-// An out on a pop up, line drive or fly ball may have been caught in foul ground (not a ground ball; a bunt gets
-// "Strike Three Foul?" instead, Oct 19).
-function g5FoulOk(g){ return g.entry === 'O' && !!g.bbType && g.bbType !== 'ground' && g.bbType !== 'bunt'; }
+// An out on anything but a ground ball may have been caught in foul ground. A bunt's FOUL with two strikes is the
+// strikeout instead (g5BuntK, Oct 19).
+function g5FoulOk(g){ return g.entry === 'O' && !!g.bbType && g.bbType !== 'ground'; }
 const G5_OVER_FENCE = {
   5: 'polygon(0 0, 100% 0, 100% 67.5%, 87.5% 70.6%, 75% 74.0%, 62.5% 77.6%, 50% 81.5%, 37.5% 85.7%, 25% 90.2%, 12.5% 94.9%, 0% 100.0%)',
   6: 'polygon(0 0, 100% 0, 100% 51.9%, 87.5% 53.0%, 75% 54.3%, 62.5% 55.9%, 50% 57.7%, 37.5% 59.8%, 25% 62.1%, 12.5% 64.7%, 0% 67.5%)',
@@ -8541,17 +8540,17 @@ window.g5Zone = async function(zone){
   const g = state.activeSession.g5;
   if(!g || g.step !== 'where') return;
   if(zone === 'FOUL'){
+    if(g5BuntK(g, state.activeSession)) return g5BuntStrikeThree();   // Joel, Oct 19: a foul bunt on two strikes -- the batter is out
     if(!g5FoulOk(g)) return;
     g.zone = g.zone === 'FOUL' ? (G5_AUTO_ZONE[g.bbType] || null) : 'FOUL';   // tap again (or ‹ Back) for fair ground
     return g5Save();
   }
-  if(!(G5_ZONE_CONTACT[g.bbType] || (g.bbType === 'fly' && zone === 'OF')) || (zone !== 'IF' && zone !== 'OF')) return;   // a fly ball: OF only
+  if(!(G5_ZONE_CONTACT[g.bbType] || (g.bbType === 'fly' && zone === 'OF') || (g.bbType === 'bunt' && zone === 'IF')) || (zone !== 'IF' && zone !== 'OF')) return;   // a fly ball: OF only; a bunt: IF only
   g.zone = g.zone === zone ? null : zone;   // tap it again to go back to the whole field
   return g5Save();
 };
-// Joel, Oct 19: a bunt's location step offers "Strike Three Foul?" beside Back (two strikes only -- before that a
-// foul bunt is just F). It saves the existing two-strike foul bunt: result 'foul', bunt contact, strike three and the
-// out (applyGameResultProgression's foul case), no location.
+// Joel, Oct 19: a bunt's FOUL with two strikes saves the existing two-strike foul bunt at once: result 'foul', bunt
+// contact, strike three and the out (applyGameResultProgression's foul case), no location -- then velocity.
 function g5BuntK(g, s){ return g.step === 'where' && g.bbType === 'bunt' && s.strikes === 2; }
 window.g5BuntStrikeThree = async function(){
   const s = state.activeSession, g = s.g5;
@@ -8827,9 +8826,7 @@ function g5FieldActions(){
   // Joel, Oct 19: no + Out / + Strike / + Ball on the field -- ‹ Back (and Next on the bases question, radar on), laid out
   // like the chart side's Back / More. An out on the bases is a runner dragged and called Out.
   const blocked = g5NeedsBatter(g);
-  const s = state.activeSession;
   const next = (g.step === 'bases' && ggRadarOn()) ? `<button type="button" class="btn btn-primary btn-sm g5-nav-btn next-pitch" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>`
-    : g5BuntK(g, s) ? `<button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5BuntStrikeThree()">Strike Three Foul?</button>`
     : '<span class="g5-nav-btn" aria-hidden="true"></span>';
   return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button>${next}</div>`;
 }
@@ -9045,14 +9042,17 @@ function g5PhoneCaption(g){
 }
 function g5LocationCells(g){
   const cell = (col, label, aria, onclick, on, off) => `<button type="button" class="btn btn-secondary g5-res${on ? ' on' : ''}" style="grid-column:${col};" onclick="${onclick}" ${off ? 'disabled ' : ''}aria-pressed="${on ? 'true' : 'false'}" aria-label="${aria}"><span class="g5-res-l g5-res-count${label.length > 2 ? ' g5-res-word' : ''}" aria-hidden="true">${label}</span></button>`;
-  // fixed slots for every contact type: IF 2, OF 3, FOUL 4, HR 5 (Joel, Oct 19). A fly ball always shows FOUL / OF / HR,
-  // the one that can't apply greyed (HR unless a hit; FOUL unless an out); the others show only what applies.
+  // fixed slots for every contact type: IF 2, OF 3, FOUL 4, HR 5 (Joel, Oct 19). A fly ball always shows FOUL / OF / HR and
+  // a bunt all four, the ones that can't apply greyed (a bunt: OF and HR always; FOUL unless an out or two strikes);
+  // the others show only what applies.
   let out = '';
-  const fly = g.bbType === 'fly', hrOk = g.entry === 'H' && !!G5_HR_CONTACT[g.bbType];
-  if(g.step === 'where' && G5_ZONE_CONTACT[g.bbType]) out += cell(2, 'IF', 'Infield', "g5Zone('IF')", g.zone === 'IF');
-  if(g.step === 'where' && (G5_ZONE_CONTACT[g.bbType] || fly)) out += cell(3, 'OF', 'Outfield', "g5Zone('OF')", g.zone === 'OF');
-  if(g.step === 'where' && (g5FoulOk(g) || fly)) out += cell(4, 'FOUL', 'Caught in foul ground', "g5Zone('FOUL')", g.zone === 'FOUL', !g5FoulOk(g));
-  if((g.step === 'where' || g.step === 'hr') && (hrOk || fly)) out += cell(5, 'HR', 'Home run', 'g5HrAsk()', g.step === 'hr', !hrOk);
+  const s = state.activeSession;
+  const fly = g.bbType === 'fly', bunt = g.bbType === 'bunt', hrOk = g.entry === 'H' && !!G5_HR_CONTACT[g.bbType];
+  const foulOk = g5FoulOk(g) || g5BuntK(g, s);
+  if(g.step === 'where' && (G5_ZONE_CONTACT[g.bbType] || bunt)) out += cell(2, 'IF', 'Infield', "g5Zone('IF')", g.zone === 'IF');
+  if(g.step === 'where' && (G5_ZONE_CONTACT[g.bbType] || fly || bunt)) out += cell(3, 'OF', 'Outfield', "g5Zone('OF')", g.zone === 'OF', bunt);
+  if(g.step === 'where' && (foulOk || fly || bunt)) out += cell(4, 'FOUL', bunt && g5BuntK(g, s) ? 'Foul bunt, strike three' : 'Caught in foul ground', "g5Zone('FOUL')", g.zone === 'FOUL', !foulOk);
+  if((g.step === 'where' || g.step === 'hr') && (hrOk || fly || bunt)) out += cell(5, 'HR', 'Home run', 'g5HrAsk()', g.step === 'hr', !hrOk || bunt);
   // nothing to choose (a bunt, a fly ball out with no foul catch): keep the row's height so Back doesn't move
   return out || '<span class="g5-res g5-res-gap" aria-hidden="true"></span>';
 }
@@ -9504,9 +9504,10 @@ function renderPhoneDeliveryRow(p, deliveryInStatus){
 function renderStatusDelivery(){
   return sportCfg().hasDelivery ? `<span class="ph-status-deliv">${renderDeliveryOne()}</span>` : '';
 }
-// The hint overlays the top edge of the grid instead of taking a row.
+// Joel, Oct 19: phones show no hint line over the top of the chart (bullpen and Live Game) -- the small red
+// "Select a pitch type first" and the like are gone there. iPad / laptop keep theirs.
 function renderPhoneHint(){
-  return state.hint ? `<div class="ph-hint">${state.hint}</div>` : '';
+  return '';
 }
 // Pen: one pill under the grid cycles No batter -> vs RHB -> vs LHB.
 window.cycleBatterMode = function(){

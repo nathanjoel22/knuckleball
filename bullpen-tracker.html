@@ -8428,8 +8428,9 @@ const G5_ZONE_BOX = { 12: 'IF', 13: 'OF' };
 const G5_IF_BOXES = { 15: 1, 17: 1, 18: 1, 22: 1, 23: 1, 24: 1, 25: 1 };
 const G5_OF_BOXES = { 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 18: 1, 19: 1, 20: 1, 21: 1, 22: 1, 25: 1 };
 function g5HrBox(g){ return G5_ZONE_CONTACT[g.bbType] ? 14 : G5_HR_BOX; }
-// An out on anything but a ground ball may have been caught in foul ground.
-function g5FoulOk(g){ return g.entry === 'O' && !!g.bbType && g.bbType !== 'ground'; }
+// An out on a pop up, line drive or fly ball may have been caught in foul ground (not a ground ball; a bunt gets
+// "Strike Three Foul?" instead, Oct 19).
+function g5FoulOk(g){ return g.entry === 'O' && !!g.bbType && g.bbType !== 'ground' && g.bbType !== 'bunt'; }
 const G5_OVER_FENCE = {
   5: 'polygon(0 0, 100% 0, 100% 67.5%, 87.5% 70.6%, 75% 74.0%, 62.5% 77.6%, 50% 81.5%, 37.5% 85.7%, 25% 90.2%, 12.5% 94.9%, 0% 100.0%)',
   6: 'polygon(0 0, 100% 0, 100% 51.9%, 87.5% 53.0%, 75% 54.3%, 62.5% 55.9%, 50% 57.7%, 37.5% 59.8%, 25% 62.1%, 12.5% 64.7%, 0% 67.5%)',
@@ -8545,6 +8546,19 @@ window.g5Zone = async function(zone){
   if(!G5_ZONE_CONTACT[g.bbType] || (zone !== 'IF' && zone !== 'OF')) return;
   g.zone = g.zone === zone ? null : zone;   // tap it again to go back to the whole field
   return g5Save();
+};
+// Joel, Oct 19: a bunt's location step offers "Strike Three Foul?" beside Back (two strikes only -- before that a
+// foul bunt is just F). It saves the existing two-strike foul bunt: result 'foul', bunt contact, strike three and the
+// out (applyGameResultProgression's foul case), no location.
+function g5BuntK(g, s){ return g.step === 'where' && g.bbType === 'bunt' && s.strikes === 2; }
+window.g5BuntStrikeThree = async function(){
+  const s = state.activeSession, g = s.g5;
+  if(!g || !g5BuntK(g, s)) return;
+  if(!gamePitchType()){ state.hint = 'Pick this pitch\'s type, then tap again'; render(); return; }
+  const addOuts = g.addOuts || 0;
+  g5FlipOut();
+  s.g5 = null;
+  return recordGameResult('foul', { g5: true, addOuts, bunt: true, bbType: 'bunt' });
 };
 window.g5HrAsk = async function(){
   const g = state.activeSession.g5;
@@ -8816,7 +8830,10 @@ function g5FieldActions(){
   // Joel, Oct 19: no + Out / + Strike / + Ball on the field -- ‹ Back (and Next on the bases question, radar on), laid out
   // like the chart side's Back / More. An out on the bases is a runner dragged and called Out.
   const blocked = g5NeedsBatter(g);
-  const next = (g.step === 'bases' && ggRadarOn()) ? `<button type="button" class="btn btn-primary btn-sm g5-nav-btn next-pitch" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>` : '<span class="g5-nav-btn" aria-hidden="true"></span>';
+  const s = state.activeSession;
+  const next = (g.step === 'bases' && ggRadarOn()) ? `<button type="button" class="btn btn-primary btn-sm g5-nav-btn next-pitch" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>`
+    : g5BuntK(g, s) ? `<button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5BuntStrikeThree()">Strike Three Foul?</button>`
+    : '<span class="g5-nav-btn" aria-hidden="true"></span>';
   return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button>${next}</div>`;
 }
 /* ---------- Runners on the field (Joel, Oct 12) ----------
@@ -8987,9 +9004,9 @@ function g5Card(face, flip, chartHtml){
   // box came out taller than wide there). The two-face card is only for the flip itself.
   // Joel, Oct 19 (phones): while O / E / H are asked, the field keeps the chart's band underneath and the prompt badge
   // sits in it where "Tap Pitch Result" is on the chart side, so O / E / H land exactly where K / B / F / IP were
-  const band = !!G5_ROW_STEPS[state.activeSession.g5.step] && isPhoneWidth();
+  const band = !!G5_BAND_STEPS[state.activeSession.g5.step] && isPhoneWidth();
   if(!flip){
-    const badge = band ? `<div class="zone-caption ph-lg-prompt ph-lg-full">${g5Caption(state.activeSession.g5.step)}</div>` : '';
+    const badge = band ? `<div class="zone-caption ph-lg-prompt ph-lg-full">${g5PhoneCaption(state.activeSession.g5)}</div>` : '';
     return `<div class="zone-grid g5-card g5-flat gg-field${band ? ' g5-band' : ''}" data-step="${state.activeSession.g5.step}">${g5FieldInner()}${badge}</div>`;
   }
   return `<div class="zone-grid g5-card${band ? ' g5-band' : ''} g5-flip-${flip}"><div class="g5-face g5-front">${chartHtml}</div>${face}</div>`;
@@ -9020,6 +9037,13 @@ function g5ResultRow(step){
 }
 // The field steps whose choices are the row under the field (Oct 19): hit / out / error, then type of contact.
 const G5_ROW_STEPS = { hoe: 1, how: 1 };
+// Phones: the steps whose prompt sits in the band under the field (Oct 19), in words that fit one line.
+const G5_BAND_STEPS = { hoe: 1, how: 1, where: 1, hr: 1 };
+function g5PhoneCaption(g){
+  if(g.step === 'where' && g.zone === 'FOUL') return 'Where was it caught?';
+  if(g.step === 'hr') return 'Where did it leave the park?';
+  return g5Caption(g.step);
+}
 function g5HoeRow(){
   const s = state.activeSession, g = s.g5;
   if(!g || !G5_ROW_STEPS[g.step]) return '';
@@ -9073,7 +9097,7 @@ function g5Surface(pitches, chartingPerspective, currentBatterSide){
     // Joel's iPad photo, Oct 8: Safari kept the field's buttons on their own 3D layer after the flip, drawn a
     // little closer (bigger) under the perspective. Once the flip has played, draw the field again flat.
     if(state.g5Anim === 'in') setTimeout(() => { if(!state.g5Anim && g5OnDiamond()) render(); }, 375);
-    return g5Card(g5FieldFace(), state.g5Anim === 'in' ? 'in' : null, chart) + g5FieldActions();
+    return g5Card(g5FieldFace(), state.g5Anim === 'in' ? 'in' : null, chart);   // its buttons go under the prompt (g5Below, Oct 19)
   }
   if(g5Step() === 'velo') chart = chart.replace(/<\/div>$/, g5VeloRows() + '</div>');   // inside .zone-grid, over its last two rows
   if(isPhoneWidth()){ const ph = phoneLgPrompt(sa); if(ph) chart = chart.replace(/<\/div>$/, `<div class="zone-caption ph-lg-prompt">${ph}</div></div>`); }
@@ -9124,7 +9148,7 @@ function renderGameSessionView(p){
   const g5Now = g5Step();
   const zoneCaption = (s.g5 && g5Now) ? (g5NeedsBatter(s.g5) ? 'Put the batter on base (tap a base, or drag from home)' : g5Caption(g5Now))
     : s.intent ? (s.gameTarget ? 'Now tap where the pitch went' : 'Tap where the pitch is called') : `Tap where the pitch landed`;
-  const g5Below = g5OnDiamond() ? g5HoeRow() : g5BelowChart(g5Now);   // Oct 19: both sides put their buttons under the prompt
+  const g5Below = g5OnDiamond() ? (g5HoeRow() || g5FieldActions()) : g5BelowChart(g5Now);   // Oct 19: both sides put their buttons under the prompt
 
   if(phoneSessionMode(p)){
     return `

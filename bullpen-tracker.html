@@ -1446,7 +1446,6 @@
     .wide-game{ display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:var(--s-20); row-gap:var(--s-16); }
     .wide-game .wide-left{ max-width:180px; }
     .wide-bl{ grid-column:1; display:flex; align-items:center; }
-    .wide-br{ grid-column:2; display:flex; flex-wrap:wrap; justify-content:center; gap:var(--s-8); }
 /* never more than two pitch types across */
     .wide-hint{ color:var(--warning); text-transform:none; letter-spacing:0; font-size:12px; font-weight:600; }
     /* Joel, Oct 1: pen pitch counter to the right of the perspective chips
@@ -1551,7 +1550,6 @@
   .ph-layout .g5-actions{ gap:5px; /* geometry: the Live Game field overlay math */ }
   .ph-layout .g5-act{ flex:1 1 0; min-width:0; padding:0 4px; /* geometry: the Live Game field overlay math */ }
   .ph-layout .g5-act-gap{ display:none; }
-  .ph-addcount{ margin-top:calc(-1 * var(--s-8)); }
   .g5-act-cap{ font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:var(--tr-label); line-height:1.2; font-weight:700; font-stretch:90%;}
   /* Joel, Oct 7: phones -- about 5px between the field and its buttons, and between those and Undo / New batter / New inning */
   .ph-layout .g5-card{ margin-bottom:0 !important; }
@@ -1569,11 +1567,21 @@
   .g5-below{ margin-top:10px; display:flex; flex-direction:column; gap:8px; /* geometry: the Live Game field overlay math */ }
   /* Joel, Oct 12: what happened, under the chart -- letters with a small word; a backwards K for looking */
   .g5-results{ display:flex; gap:6px; margin-top:8px; /* geometry: the Live Game field overlay math */ }
-  .g5-res{ flex:1 1 0; min-width:0; flex-direction:column; gap:1px; padding:0 2px; min-height:52px; /* geometry: the Live Game field overlay math */ }
+  /* Joel, Oct 19: the result buttons are the chart's cells -- same columns, gap and frame padding as .zone-grid, as
+     wide as the chart on each layout (phones 340 max, iPad portrait 320 max, iPad landscape / laptop --zg) */
+  .g5-pad, .g5-nav, .g5-more{ width:100%; max-width:320px; margin:8px auto 0; padding:0 3px; box-sizing:border-box; /* geometry: the charting grid's cell math */ }
+  .ph-layout .g5-pad, .ph-layout .g5-nav, .ph-layout .g5-more{ max-width:340px; }
+  .wide-right .g5-pad, .wide-right .g5-nav, .wide-right .g5-more{ width:var(--zg, 278px); max-width:none; }
+  .g5-pad{ display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:3px; /* geometry: the charting grid's cell math */ }
+  .g5-res{ min-width:0; aspect-ratio:1/1; min-height:0; padding:0; border-radius:var(--radius-cell); /* geometry: the charting grid's cell math */ }
   .g5-res-l{ font-size:32px; font-weight:800; line-height:1; }
+  .wide-right .g5-res-l{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.45); }
+  .g5-nav{ display:flex; gap:6px; /* geometry: the Live Game field overlay math */ }
+  .g5-nav-btn{ flex:1 1 0; min-width:0; }
+  .g5-nav-btn.on{ box-shadow:var(--ring-select); }
+  .g5-more{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px; /* geometry: the Live Game field overlay math */ }
+  .g5-more-btn{ min-width:0; }
   .g5-kback{ display:inline-block; transform:scaleX(-1); }
-  .g5-res-wide{ font-size:16px; }
-  .g5-res-back{ flex:0 0 auto; padding:0 8px; /* geometry: the Live Game field overlay math */ }
   /* runners on the field: tap or drag, then Safe / Out (and why, between pitches) */
   .g5-move{ display:flex; flex-direction:column; gap:6px; margin-top:8px; /* geometry: the Live Game field overlay math */ }
   .g5-move-btns{ display:flex; gap:6px; flex-wrap:wrap; /* geometry: the Live Game field overlay math */ }
@@ -6965,9 +6973,14 @@ window.undoLastGameAction = async function(){
   }
   const lastPitch = s.pitches[s.pitches.length - 1];
   const lastEvent = s.events[s.events.length - 1];
-  if(!lastPitch && !lastEvent) return;
-  const undoingEvent = lastEvent && (!lastPitch || lastEvent.seq > lastPitch.seq);
-  if(undoingEvent){
+  const lastAct = (s.manualActs || [])[(s.manualActs || []).length - 1];
+  if(!lastPitch && !lastEvent && !lastAct) return;
+  // Oct 19: New batter, New inning and -Strike / -Ball are undoable too (draft-only, never sent)
+  if(lastAct && (!lastPitch || lastAct.seq > lastPitch.seq) && (!lastEvent || lastAct.seq > lastEvent.seq)){
+    const b = s.manualActs.pop().before;
+    s.inning = b.inning; s.outs = b.outs; s.balls = b.balls; s.strikes = b.strikes;
+    s.atBatIndex = b.atBatIndex; s.runners = runnersFromBitmask(b.runners); s.delivery = b.delivery;
+  } else if(lastEvent && (!lastPitch || lastEvent.seq > lastPitch.seq)){
     let undone = s.events.pop();
     // S2: an illegal pitch is two rows (balk, then its ball) -- one Undo takes both.
     if(undone.illegalPitchBall && s.events.length && s.events[s.events.length - 1].illegalPitch) undone = s.events.pop();
@@ -7009,9 +7022,42 @@ window.undoLastGameAction = async function(){
 // no more pitches thrown in it). gameBumpOuts() is REMOVED here (approach
 // f) -- a caught-stealing/pickoff out now has a truthful path through
 // Adjust Runners instead of a manual counter bump with no record of why.
+// Joel, Oct 19: Back undoes whatever was done last, so the count / batter / inning changes that write no pitch
+// or event keep their own "before" on the draft (s.manualActs, ordered by the same seq; never synced).
+function recordManualAct(s, kind){
+  if(!s.manualActs) s.manualActs = [];
+  s.manualActs.push({ seq: s.nextSeq++, kind, before: { inning: s.inning, outs: s.outs, balls: s.balls, strikes: s.strikes,
+    atBatIndex: s.atBatIndex, runners: runnersBitmask(s.runners), delivery: s.delivery } });
+}
+// -Strike / -Ball (Joel, Oct 19): take one off the count only; the pitches stay as charted.
+window.gameMinusCount = async function(kind){
+  const s = state.activeSession;
+  if(!s || s.kind !== 'game') return;
+  if(kind === 'strike' ? !s.strikes : !s.balls) return;
+  recordManualAct(s, kind === 'strike' ? 'minus_strike' : 'minus_ball');
+  if(kind === 'strike') s.strikes--; else s.balls--;
+  await storSet(draftKey(), s);
+  render();
+};
+// ‹ Back (Oct 19, replaces Undo): steps back within the pitch being entered; otherwise undoes the last action.
+function gameCanGoBack(s){
+  return !!(s.g5 || (s.intent && s.gameTarget) || s.pitches.length || (s.events || []).length || (s.manualActs || []).length
+    || (s.tiebreakNo || []).includes(s.inning));
+}
+window.gameBack = async function(){
+  const s = state.activeSession;
+  if(!s || s.kind !== 'game') return;
+  state.g5More = false;
+  if(s.g5) return g5Back();
+  if(s.intent && s.gameTarget) return resetGameTarget();
+  return undoLastGameAction();
+};
+window.g5MoreToggle = function(){ state.g5More = !state.g5More; render(); };
+window.g5MoreClose = function(){ state.g5More = false; };
 window.gameNewBatter = async function(){
   const s = state.activeSession;
   g5Cancel(s);
+  recordManualAct(s, 'new_batter');
   s.atBatIndex++;
   s.balls = 0;
   s.strikes = 0;
@@ -7022,6 +7068,7 @@ window.gameNewBatter = async function(){
 window.gameNewInning = async function(){
   const s = state.activeSession;
   g5Cancel(s);
+  recordManualAct(s, 'new_inning');
   s.inning++;
   s.outs = 0;
   s.balls = 0;
@@ -8331,10 +8378,11 @@ const G5_BOX = [[5, 6, 7, 8, 9], [4, 19, 20, 21, 10], [3, 18, 25, 22, 11], [2, 1
 const G5_WHAT = { 12: ['ball', 'icon-ball.png', 'Ball'], 2: ['looking', 'icon-looking.png', 'Looking'], 1: ['swing', 'icon-swinging.png', 'Swing'],
   14: ['foul', 'icon-foul.png', 'Foul'], 13: ['inplay', 'batter-icon.png', 'In Play'] };
 const G5_RESULT = { ball: 'ball', looking: 'strike_looking', swing: 'strike_swinging', foul: 'foul' };
-// Joel, Oct 7: Foul asks "Foul Tip or Foul Out?". Foul Tip records the foul; Foul Out asks where it was caught,
-// on foul ground only -- the whole of boxes 1, 2, 16, 14, 13, 12, and the foul side of the line in 3, 17, 23, 11
-// and 15 (15: all but the triangle from home up to its top corners). Shapes are clip-path polygons in the box.
-const G5_FOUL = { 13: ['tip', 'Foul Tip'], 12: ['out', 'Foul Out'] };   // Joel, Oct 7
+// Joel, Oct 19: Foul is always a foul tip (no "Foul Tip or Foul Out?"). A caught foul is In Play -> Out, and its
+// location step offers FOUL (box 14): foul ground only -- the whole of boxes 1, 2, 16, 14, 13, 12, and the foul
+// side of the line in 3, 17, 23, 11 and 15 (15: all but the triangle from home up to its top corners). Shapes are
+// clip-path polygons in the box.
+const G5_FOUL_BOX = 14;
 const G5_FOUL_GROUND = { 1: '', 2: '', 16: '', 14: '', 13: '', 12: '',
   3: 'polygon(0 0, 0 100%, 100% 100%)', 17: 'polygon(0 0, 0 100%, 100% 100%)',
   23: 'polygon(100% 0, 100% 100%, 0 100%)', 11: 'polygon(100% 0, 100% 100%, 0 100%)',
@@ -8367,6 +8415,8 @@ const G5_ZONE_BOX = { 12: 'IF', 13: 'OF' };
 const G5_IF_BOXES = { 15: 1, 17: 1, 18: 1, 22: 1, 23: 1, 24: 1, 25: 1 };
 const G5_OF_BOXES = { 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 18: 1, 19: 1, 20: 1, 21: 1, 22: 1, 25: 1 };
 function g5HrBox(g){ return G5_ZONE_CONTACT[g.bbType] ? 14 : G5_HR_BOX; }
+// An out on anything but a ground ball may have been caught in foul ground.
+function g5FoulOk(g){ return g.entry === 'O' && !!g.bbType && g.bbType !== 'ground'; }
 const G5_OVER_FENCE = {
   5: 'polygon(0 0, 100% 0, 100% 67.5%, 87.5% 70.6%, 75% 74.0%, 62.5% 77.6%, 50% 81.5%, 37.5% 85.7%, 25% 90.2%, 12.5% 94.9%, 0% 100.0%)',
   6: 'polygon(0 0, 100% 0, 100% 51.9%, 87.5% 53.0%, 75% 54.3%, 62.5% 55.9%, 50% 57.7%, 37.5% 59.8%, 25% 62.1%, 12.5% 64.7%, 0% 67.5%)',
@@ -8385,15 +8435,15 @@ const G5_NEXT_BOX = 24;   // Joel, Oct 7: "Next pitch" (radar off) on the mound 
 function g5Step(){
   const s = state.activeSession;
   if(!s || s.kind !== 'game') return null;
+  if(s.g5 && (s.g5.step === 'foul' || s.g5.step === 'foulout')) s.g5.step = 'what';   // a draft from before Oct 19's foul change
   if(s.g5) return s.g5.step;
   if(!s.gamePendingPitch && tiebreakPending(s)) return 'tiebreak';
   if(s.gameVeloIdx !== null && s.gameVeloIdx !== undefined && s.pitches[s.gameVeloIdx] && ggRadarOn()) return 'velo';
   return null;
 }
-// Joel, Oct 12: the first questions after a pitch (what happened; foul tip or foul out) are buttons under the
-// chart -- the chart stays up. Only In Play, a Foul Out's location, the runners question and a runner move flip
-// it over to the field.
-const G5_CHART_STEPS = { what: 1, foul: 1 };
+// Joel, Oct 12: the first question after a pitch (what happened) is buttons under the chart -- the chart stays
+// up. Only In Play, the runners question and a runner move flip it over to the field.
+const G5_CHART_STEPS = { what: 1 };
 function g5OnDiamond(){ const s = state.activeSession; return !!(s && s.kind === 'game' && s.g5 && !G5_CHART_STEPS[s.g5.step]); }
 function g5FlipIn(){ state.g5Anim = 'in'; }
 function g5FlipOut(){ if(g5OnDiamond()){ state.g5LastFace = g5FieldFace(); state.g5Anim = 'out'; } }
@@ -8423,8 +8473,8 @@ async function g5Save(){ await storSet(draftKey(), state.activeSession); render(
 window.g5What = async function(code){
   const s = state.activeSession, g = s.g5;
   if(!g || g.step !== 'what') return;
+  state.g5More = false;
   if(code === 'inplay'){ g.step = 'hoe'; g5FlipIn(); return g5Save(); }   // only In Play turns the chart over
-  if(code === 'foul'){ g.step = 'foul'; return g5Save(); }   // Foul Tip or Foul Out? (still under the chart)
   const result = G5_RESULT[code];
   if(!result) return;
   // Ball four: the runners question first (pre-filled with the forced advances), then save.
@@ -8434,26 +8484,6 @@ window.g5What = async function(code){
     return g5Save();
   }
   return g5Commit(result);
-};
-window.g5Foul = async function(kind){
-  const g = state.activeSession.g5;
-  if(!g || g.step !== 'foul') return;
-  if(kind === 'tip') return g5Commit('foul');
-  if(kind === 'out'){
-    if(state.activeSession.outs + 1 + (g.addOuts || 0) > 3) return;
-    g.step = 'foulout';
-    g5FlipIn();   // Joel, Oct 12: a foul out turns the chart over to pick where it was caught
-    return g5Save();
-  }
-};
-// A foul ball caught: an out on a ball in play, in the foul box where it was caught.
-window.g5FoulOut = async function(box){
-  const s = state.activeSession, g = s.g5;
-  if(!g || g.step !== 'foulout' || G5_FOUL_GROUND[box] === undefined) return;
-  g.entry = 'O'; g.bbType = null; g.box = box; g.foulOut = true;
-  if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');
-  g.step = 'bases'; g.bases = runnersBitmask(s.runners);
-  return g5Save();
 };
 window.g5Entry = async function(e){
   const g = state.activeSession.g5;
@@ -8472,6 +8502,14 @@ window.g5How = async function(t){
 window.g5Where = async function(box){
   const s = state.activeSession, g = s.g5;
   if(!g || g.step !== 'where' || !g.zone) return;   // every contact type picks its side first (fly / bunt: on their own)
+  if(g.zone === 'FOUL'){
+    // caught in foul ground (Oct 19): an out in play in that box, no IF / OF
+    if(!g5FoulOk(g) || G5_FOUL_GROUND[box] === undefined) return;
+    g.box = box; g.field = null; g.foulOut = true;
+    if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');
+    g.step = 'bases'; g.bases = runnersBitmask(s.runners);
+    return g5Save();
+  }
   if(!(g.zone === 'IF' ? G5_IF_BOXES : G5_OF_BOXES)[box]) return;
   g.box = box;
   // IF / OF: what was chosen; with neither chosen, a box that is all infield or all outfield says which on its own
@@ -8482,7 +8520,13 @@ window.g5Where = async function(box){
 };
 window.g5Zone = async function(zone){
   const g = state.activeSession.g5;
-  if(!g || g.step !== 'where' || !G5_ZONE_CONTACT[g.bbType] || (zone !== 'IF' && zone !== 'OF')) return;
+  if(!g || g.step !== 'where') return;
+  if(zone === 'FOUL'){
+    if(!g5FoulOk(g) || g.zone === 'FOUL') return;
+    g.zone = 'FOUL';   // ‹ Back goes back to the fair-ground choice
+    return g5Save();
+  }
+  if(!G5_ZONE_CONTACT[g.bbType] || (zone !== 'IF' && zone !== 'OF')) return;
   g.zone = g.zone === zone ? null : zone;   // tap it again to go back to the whole field
   return g5Save();
 };
@@ -8570,21 +8614,19 @@ window.g5Back = async function(){
       s.g5 = null; s.gamePendingPitch = null; s.gameDot = null;   // the location is cleared; the chart was up all along
       return g5Save();
     case 'hoe': g5FlipOut(); g.step = 'what'; break;
-    case 'foul': g.step = 'what'; break;
-    case 'foulout': g5FlipOut(); g.step = 'foul'; break;
     case 'runners':
       if(g.move){ g.move = null; break; }   // first back out of a half-made move
       g5FlipOut(); s.g5 = null; return g5Save();
     case 'how': g.entry = null; g.step = 'hoe'; break;
     case 'where':
+      if(g.zone === 'FOUL'){ g.zone = G5_AUTO_ZONE[g.bbType] || null; break; }   // back out of foul ground first
       if(g.zone && !G5_AUTO_ZONE[g.bbType]){ g.zone = null; break; }   // first back out of the IF / OF that was tapped
       g.zone = null; g.bbType = null; g.step = 'how'; break;
     case 'hr': g.step = 'where'; break;
     case 'bases':
       if(g.walkEvent){ return g5CloseWalkEvent(); }   // the walk stands; Back keeps the forced runners
       if(g.walk){ g5FlipOut(); g.walk = false; g.bases = null; g.step = 'what'; }
-      else if(g.foulOut){ g.foulOut = false; g.entry = null; g.box = null; g.bases = null; g.step = 'foulout'; }
-      else { g.box = null; g.field = null; g.bases = null; g.step = 'where'; }
+      else { g.box = null; g.field = null; g.foulOut = false; g.bases = null; g.step = 'where'; }   // a foul-ground out keeps FOUL chosen
       break;
   }
   return g5Save();
@@ -8674,11 +8716,13 @@ function g5CellInner(step, box){
   const s = state.activeSession, g = s.g5;
   const btn = (inner, onclick, cls) => ({ inner, onclick, cls });
   if(step === 'what' && G5_WHAT[box]){ const [code, icon, cap] = G5_WHAT[box]; return btn(ggIcon(icon, cap), `g5What('${code}')`, 'g5-choice'); }
-  if(step === 'foul' && G5_FOUL[box]){ const [k, label] = G5_FOUL[box]; return btn(`<span class="g5-word">${label}</span>`, `g5Foul('${k}')`, 'g5-choice'); }
-  if(step === 'foulout' && G5_FOUL_GROUND[box] !== undefined){
+  if(step === 'where' && g.zone === 'FOUL'){
+    // Oct 19: an out caught in foul ground -- only foul ground flashes (the IF / OF / FOUL buttons step aside)
+    if(G5_FOUL_GROUND[box] === undefined) return null;
     const clip = G5_FOUL_GROUND[box];
-    return btn(`<span class="g5-shade"${clip ? ` style="clip-path:${clip};-webkit-clip-path:${clip};"` : ''}></span>`, `g5FoulOut(${box})`, 'g5-foulpick');
+    return btn(`<span class="g5-shade"${clip ? ` style="clip-path:${clip};-webkit-clip-path:${clip};"` : ''}></span>`, `g5Where(${box})`, 'g5-foulpick');
   }
+  if(step === 'where' && box === G5_FOUL_BOX && g5FoulOk(g)) return btn('<span class="g5-word">FOUL</span>', `g5Zone('FOUL')`, 'g5-choice');
   if(step === 'hoe' && G5_HOE[box]){ const [e, cap] = G5_HOE[box]; return btn(ggBig(e, cap), `g5Entry('${e}')`, 'g5-choice'); }
   if(step === 'how' && G5_HOW[box]){ const [t, big, cap] = G5_HOW[box]; return btn(ggBig(big, cap), `g5How('${t}')`, 'g5-choice'); }
   if(step === 'where' && box === g5HrBox(g) && g.entry === 'H' && G5_HR_CONTACT[g.bbType]) return btn('<span class="g5-word">HR?</span>', 'g5HrAsk()', 'g5-choice');
@@ -8720,10 +8764,12 @@ function g5CellInner(step, box){
   return null;
 }
 // Phones: the question sits between + Add out and ‹ Back, so it gets a short form.
-const G5_SHORT_CAPTION = { what: 'What happened?', foul: 'Tip or out?', foulout: 'Where caught?', hoe: 'Hit, out or error?',
+const G5_SHORT_CAPTION = { what: 'What happened?', hoe: 'Hit, out or error?',
   how: 'Type of contact?', where: 'Where fielded?', hr: 'Where did it leave?', bases: 'Runners on base', runners: 'Move a runner' };
 function g5Caption(step){
-  return { what: 'What happened?', foul: 'Foul tip or foul out?', foulout: 'Select where the foul ball was caught',
+  const sg = state.activeSession && state.activeSession.g5;
+  if(step === 'where' && sg && sg.zone === 'FOUL') return 'Select where the foul ball was caught';
+  return { what: 'What happened?',
     hoe: 'In play — hit, out or error?', how: 'What type of contact?',
     where: 'Select Ball in Play Location', hr: 'Home run — where did it leave the park?', bases: 'Select current bases for baserunners',
     runners: 'Drag a runner to a base, or tap a runner then a base' }[step] || '';
@@ -8942,32 +8988,40 @@ function g5VeloRows(){
     <button type="button" class="btn btn-primary g5-nextpitch next-pitch" onclick="g5NextPitch()">Next pitch ›</button></div>`;
 }
 // Joel, Oct 12: what happened, as big letters (no words; screen readers still hear each word), under the chart: K swinging, a backwards K
-// looking (the scorebook's called third strike), B ball, F foul, IP in play. Foul then asks tip or out here too.
+// looking (the scorebook's called third strike), B ball, F foul (always a foul tip, Oct 19), IP in play.
 const G5_RESULT_BTNS = [['swing', 'K', 'Swing', false], ['looking', 'K', 'Looking', true], ['ball', 'B', 'Ball', false], ['foul', 'F', 'Foul', false], ['inplay', 'IP', 'In Play', false]];
+// Joel, Oct 19: the five buttons are the chart's own cell size -- a sixth row under the 5x5 -- always there, live
+// once a location is tapped. Under them: ‹ Back (undoes whatever was done last) and More (New batter, New inning,
+// + Strike, + Ball, - Strike, - Ball). There is no Undo button any more.
 function g5ResultRow(step){
-  const back = `<button type="button" class="btn btn-tertiary btn-sm g5-res-back" onclick="g5Back()" aria-label="Back: clear the location">‹ Back</button>`;
-  if(step === 'what'){
-    return `<div class="g5-results" role="group" aria-label="What happened?">${G5_RESULT_BTNS.map(([code, letter, word, mirror]) =>
-      `<button type="button" class="btn btn-secondary g5-res" onclick="g5What('${code}')" aria-label="${word === 'Swing' ? 'Strike swinging' : word === 'Looking' ? 'Strike looking' : word}"><span class="g5-res-l${mirror ? ' g5-kback' : ''}" aria-hidden="true">${letter}</span></button>`).join('')}${back}</div>`;
-  }
-  if(step === 'foul'){
-    return `<div class="g5-results" role="group" aria-label="Foul tip or foul out?">
-      <button type="button" class="btn btn-secondary g5-res g5-res-wide" onclick="g5Foul('tip')">Foul Tip</button>
-      <button type="button" class="btn btn-secondary g5-res g5-res-wide" onclick="g5Foul('out')">Foul Out</button>${back}</div>`;
-  }
-  return '';
+  const live = step === 'what';
+  return `<div class="g5-pad" role="group" aria-label="What happened?">${G5_RESULT_BTNS.map(([code, letter, word, mirror]) =>
+    `<button type="button" class="btn btn-secondary g5-res" onclick="g5What('${code}')" ${live ? '' : 'disabled '}aria-label="${word === 'Swing' ? 'Strike swinging' : word === 'Looking' ? 'Strike looking' : word}"><span class="g5-res-l${mirror ? ' g5-kback' : ''}" aria-hidden="true">${letter}</span></button>`).join('')}</div>`;
 }
-// Under the square chart: what happened (Oct 12), or the extra-inning question.
+function g5NavRow(){
+  const s = state.activeSession;
+  const more = state.g5More;
+  const b = (label, onclick, off) => `<button type="button" class="btn btn-secondary btn-sm g5-more-btn" onclick="g5MoreClose(); ${onclick}" ${off ? 'disabled' : ''}>${label}</button>`;
+  return `<div class="g5-nav">
+      <button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="gameBack()" ${gameCanGoBack(s) ? '' : 'disabled'}>‹ Back</button>
+      <button type="button" class="btn btn-secondary btn-sm g5-nav-btn${more ? ' on' : ''}" onclick="g5MoreToggle()" aria-expanded="${more ? 'true' : 'false'}">More ${more ? '▴' : '▾'}</button>
+    </div>${more ? `<div class="g5-more" role="group" aria-label="More">
+      ${b('New batter', 'gameNewBatter()')}${b('New inning', 'gameNewInning()')}
+      ${b('+ Strike', "g5AddCount('strike')", s.g5 && s.g5.walkEvent)}${b('+ Ball', "g5AddCount('ball')", s.g5 && s.g5.walkEvent)}
+      ${b('− Strike', "gameMinusCount('strike')", !s.strikes)}${b('− Ball', "gameMinusCount('ball')", !s.balls)}
+    </div>` : ''}`;
+}
+// Under the square chart: the hint (Intent, phones), the extra-inning question, then the result buttons and Back / More.
 function g5BelowChart(step){
-  if(step === 'what' || step === 'foul') return g5ResultRow(step);
   const sb = state.activeSession;
-  if(sb && sb.intent && sb.gameTarget) return `<div class="g5-results"><span class="g5-intent-hint">Now tap where the pitch went</span><button type="button" class="btn btn-tertiary btn-sm g5-res-back" onclick="resetGameTarget()">‹ Reset target</button></div>`;
-  if(sb && sb.intent && !step && (sb.gameVeloIdx === null || sb.gameVeloIdx === undefined) && isPhoneWidth()) return `<div class="g5-results"><span class="g5-intent-hint">Tap where the pitch is called</span></div>`;
+  let top = '';
+  if(sb && sb.intent && sb.gameTarget) top = `<div class="g5-results"><span class="g5-intent-hint">Now tap where the pitch went</span></div>`;
+  else if(sb && sb.intent && !step && (sb.gameVeloIdx === null || sb.gameVeloIdx === undefined) && isPhoneWidth()) top = `<div class="g5-results"><span class="g5-intent-hint">Tap where the pitch is called</span></div>`;
   if(step === 'tiebreak'){
-    return `<div class="g5-below"><div class="g5-q">Extra inning — start with a runner on 2B?</div>
+    top = `<div class="g5-below"><div class="g5-q">Extra inning — start with a runner on 2B?</div>
       ${segTray([{ label: 'Yes', onclick: 'gridTiebreak(true)' }, { label: 'No', onclick: 'gridTiebreak(false)' }], { label: 'Start with a runner on 2B?', cls: 'g5-qbtns' })}</div>`;
   }
-  return '';
+  return top + g5ResultRow(step) + g5NavRow();
 }
 function g5Surface(pitches, chartingPerspective, currentBatterSide){
   // Joel, Oct 12: while what happened is asked under the chart, the tapped spot stays marked on it
@@ -9048,12 +9102,6 @@ function renderGameSessionView(p){
             ${g5Surface(pitches, chartingPerspective, currentBatterSide)}
           </div>${g5Below}
         </div>
-        <div class="ph-actions${g5OnDiamond() ? ' g5-on' : ''}">
-          <button type="button" class="btn btn-secondary btn-sm ph-act" onclick="undoLastGameAction()">↶ Undo</button>
-          <button type="button" class="btn btn-secondary btn-sm ph-act" onclick="gameNewBatter()">New batter</button>
-          <button type="button" class="btn btn-secondary btn-sm ph-act" onclick="gameNewInning()">New inning</button>
-        </div>
-        ${g5OnDiamond() ? '' : `<div class="ph-actions ph-addcount"><button type="button" class="btn btn-secondary btn-sm ph-act" onclick="g5AddCount('strike')">+ Strike</button><button type="button" class="btn btn-secondary btn-sm ph-act" onclick="g5AddCount('ball')">+ Ball</button></div>`}
       </div>
       <div class="panel log-panel">
         <div class="ph-statline mono">Pitches ${stats.total} · Strike% ${stats.strikePct} · K ${stats.k} · BB ${stats.bb} · H ${stats.h} ${raPill()}</div>
@@ -9104,13 +9152,6 @@ function renderGameSessionView(p){
         </div>
         <div class="field-label">Recent pitches</div>
         <div class="pitch-log">${logRows}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:var(--s-8);">
-          <button class="btn btn-secondary" onclick="undoLastGameAction()">Undo last action</button>
-          <button class="btn btn-secondary" onclick="gameNewBatter()">New batter</button>
-          <button class="btn btn-secondary" onclick="gameNewInning()">New inning</button>
-          <button class="btn btn-secondary" onclick="g5AddCount('strike')">+ Strike</button>
-          <button class="btn btn-secondary" onclick="g5AddCount('ball')">+ Ball</button>
-        </div>
         <div style="margin:var(--s-12) 0 var(--s-8);">
           <div class="field-label" style="margin-bottom:var(--s-4);">Opponent (optional)</div>
           <input class="text-input" placeholder="e.g. Eastern" maxlength="60"
@@ -9148,13 +9189,6 @@ function renderGameSessionView(p){
             </div>
           </div>
           <div class="wide-bl">${raPill()}</div>   <!-- Joel, Oct 14: no clock in Live Games (it sat here); U14: the RA pill -->
-          <div class="wide-br">
-            <button class="btn btn-secondary" onclick="undoLastGameAction()">Undo last action</button>
-            <button class="btn btn-secondary" onclick="gameNewBatter()">New batter</button>
-            <button class="btn btn-secondary" onclick="gameNewInning()">New inning</button>
-            <button class="btn btn-secondary" onclick="g5AddCount('strike')">+ Strike</button>
-            <button class="btn btn-secondary" onclick="g5AddCount('ball')">+ Ball</button>
-          </div>
         </div>
       </div>
       <div class="panel log-panel">

@@ -15,6 +15,20 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-19 · Live Game: Back / More, Foul = foul tip · **branch (not shipped)**
+- **Branch:** `live-game-back-more`. **Cache:** v251. Asked for by Joel (no packet). Frontend only: no database change.
+- **Built:**
+  - **Foul:** always a foul tip. The "Foul Tip / Foul Out" question is gone.
+  - **Caught foul:** recorded as In Play → Out → contact. On any contact but a ground ball, a **FOUL** button (box 14) flashes foul ground only. It's saved as an out in play in that box with `spray_field` NULL, the same columns as the old Foul Out.
+  - **Result buttons:** the five buttons (K, backwards K, B, F, IP) are the chart's own cell size, a sixth row under the 5×5. They're always shown and become tappable once a location is tapped.
+  - **Back and More:** under the five buttons on every layout. Undo is removed everywhere.
+    - **‹ Back** steps back one tap within a pitch; otherwise it undoes the last action (pitch, event, + / − count, New batter, New inning).
+    - **More** holds New batter, New inning, + Strike, + Ball, − Strike and − Ball.
+  - **− Strike / − Ball:** change the count only; the pitches stay as charted (Joel's choice). New batter, New inning and the minus buttons keep their "before" in the draft (`s.manualActs`, ordered by `seq`, never synced), so Back can undo them.
+- **Not changed:** the field's own row (+ Out / + Strike / + Ball / Next / ‹ Back). Phones no longer show New batter / New inning under the field; Back out of the play first.
+- **Evidence:** headless Chrome on the real page, offline with a made-up login. Phone, iPad portrait and iPad landscape: the result buttons are the same width as the chart cells (64 / 60 / 66 px). The click-through checked foul, ball, More, − Strike, Back ×2, New batter + Back, + Ball / − Ball + Back ×2, and In Play → Out → Pop → FOUL → box 1 → Next (`in_play` / out / pop / box 1 / field null), then Back.
+- **Open:** Joel to try it on a phone; ship when approved.
+
 ## 2026-10-17 · W1 store reviewer account · **production data**
 - **By:** Joel (asked for it; ran phase 2 and the verification update himself, Claude Code's auto mode blocks production writes). No code, database or cache change.
 - **Created through the app's own calls** (public sign-up, `ensure_account_setup`, `record_attestation`, `join_team_via_invite`, `set_uniform_number`, `sync_session`):

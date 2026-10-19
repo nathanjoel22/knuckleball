@@ -8813,16 +8813,11 @@ function g5FieldActions(){
   if(g.step === 'runners'){
     return `<div class="g5-actions"><span class="g5-act-gap"></span><button type="button" class="btn btn-primary btn-sm g5-act" onclick="g5RunnersDone()">Done ›</button></div>`;
   }
-  const added = g.addOuts ? ` · ${g.addOuts}` : '';
+  // Joel, Oct 19: no + Out / + Strike / + Ball on the field -- ‹ Back (and Next on the bases question, radar on), laid out
+  // like the chart side's Back / More. An out on the bases is a runner dragged and called Out.
   const blocked = g5NeedsBatter(g);
-  const next = (g.step === 'bases' && ggRadarOn()) ? `<button type="button" class="btn btn-primary btn-sm g5-act g5-act-next next-pitch" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>` : '';
-  return `<div class="g5-actions">
-    <button type="button" class="btn btn-secondary btn-sm g5-act" onclick="g5AddOut()" ${g5ProjectedOuts(g) >= 3 ? 'disabled' : ''}>+ Out${added}</button>
-    <button type="button" class="btn btn-secondary btn-sm g5-act" onclick="g5AddCount('strike')">+ Strike</button>
-    <button type="button" class="btn btn-secondary btn-sm g5-act" onclick="g5AddCount('ball')">+ Ball</button>
-    <span class="g5-act-gap"></span>${next}
-    <button type="button" class="btn btn-secondary btn-sm g5-act" onclick="g5Back()">‹ Back</button>
-  </div>`;
+  const next = (g.step === 'bases' && ggRadarOn()) ? `<button type="button" class="btn btn-primary btn-sm g5-nav-btn next-pitch" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>` : '<span class="g5-nav-btn" aria-hidden="true"></span>';
+  return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button>${next}</div>`;
 }
 /* ---------- Runners on the field (Joel, Oct 12) ----------
    Drag a runner to another base or home -- as eager as the coach dock: it moves the moment the finger does --

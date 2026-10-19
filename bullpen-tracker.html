@@ -1510,8 +1510,8 @@
   .lg-phone .kb-batter__label{ min-width:104px; padding:0 14px; }
   .ph-lg-prompt{ position:absolute; left:115px; right:3px; width:auto; max-width:none; top:calc(100% + var(--kb-pill-clear) + 2px); min-height:var(--kb-pill-h);
     margin:0; display:flex; align-items:center; justify-content:center; white-space:nowrap; pointer-events:none; /* geometry: the batter / home-plate gutters */ }   /* Joel: runs to IP's right edge */
-  .g5-cf-caption{ position:absolute; left:50%; top:30%; transform:translate(-50%, -50%); margin:0; z-index:2; pointer-events:none; white-space:nowrap;
-    background:linear-gradient(rgba(var(--accent-rgb), .26), rgba(var(--accent-rgb), .26)), var(--card); box-shadow:var(--shadow-segment); }   /* the same badge as on the panel, made solid over the grass */
+  .ph-layout .g5-card.g5-band{ margin-bottom:calc(var(--kb-pill-clear) + var(--kb-pill-h) + 8px) !important; /* geometry: the charting grid's cell math */ }
+  .ph-lg-prompt.ph-lg-full{ left:3px; }   /* no batter pill on the field side: the badge spans K's left edge to IP's right */
 
   .g5-front > .zone-grid{ position:absolute !important; inset:0; width:100% !important; height:100% !important; max-width:none !important; margin:0 !important; }
   /* Joel's iPad (Oct 8): Safari drew the field's buttons too big under a 3D flip, so the flip is flat -- the face
@@ -8990,12 +8990,14 @@ function g5Card(face, flip, chartHtml){
   // At rest the field is built exactly like the chart -- its 25 boxes straight in the .zone-grid, the drawing
   // behind them -- so it is the chart's own square on every screen (Joel's iPad, Oct 8: a layer laid over the
   // box came out taller than wide there). The two-face card is only for the flip itself.
+  // Joel, Oct 19 (phones): while O / E / H are asked, the field keeps the chart's band underneath and the prompt badge
+  // sits in it where "Tap Pitch Result" is on the chart side, so O / E / H land exactly where K / B / F / IP were
+  const band = state.activeSession.g5.step === 'hoe' && isPhoneWidth();
   if(!flip){
-    // Joel, Oct 19: phones have no prompt line, so while O / E / H are asked the prompt badge sits in center field
-    const cf = (state.activeSession.g5.step === 'hoe' && isPhoneWidth()) ? `<div class="zone-caption g5-cf-caption">${g5Caption('hoe')}</div>` : '';
-    return `<div class="zone-grid g5-card g5-flat gg-field" data-step="${state.activeSession.g5.step}">${g5FieldInner()}${cf}</div>`;
+    const badge = band ? `<div class="zone-caption ph-lg-prompt ph-lg-full">${g5Caption('hoe')}</div>` : '';
+    return `<div class="zone-grid g5-card g5-flat gg-field${band ? ' g5-band' : ''}" data-step="${state.activeSession.g5.step}">${g5FieldInner()}${badge}</div>`;
   }
-  return `<div class="zone-grid g5-card g5-flip-${flip}"><div class="g5-face g5-front">${chartHtml}</div>${face}</div>`;
+  return `<div class="zone-grid g5-card${band ? ' g5-band' : ''} g5-flip-${flip}"><div class="g5-face g5-front">${chartHtml}</div>${face}</div>`;
 }
 // Joel, Oct 6: after the flip back, velocity sits IN the chart -- the bar on its second-to-last
 // row, Reset + Next pitch on the last row -- so nothing is added below the chart.

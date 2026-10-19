@@ -1502,6 +1502,10 @@
   .g5-back{ display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); grid-template-rows:repeat(5, minmax(0, 1fr));
     gap:3px; padding:3px; background:rgba(255,255,255,0.35); /* geometry: the Live Game field overlay math */ }
   .g5-card.g5-flat{ background:rgba(255,255,255,0.35) !important; }
+  /* Joel, Oct 19: the field keeps its 25 boxes and rules, but the charter never sees the 5x5 -- no box outlines,
+     and foul ground / over the fence flash as one shape drawn on the field (g5FieldSvg), not box by box */
+  .gg-field .g5-cell{ border-color:transparent !important; }
+
   .g5-front > .zone-grid{ position:absolute !important; inset:0; width:100% !important; height:100% !important; max-width:none !important; margin:0 !important; }
   /* Joel's iPad (Oct 8): Safari drew the field's buttons too big under a 3D flip, so the flip is flat -- the face
      going away narrows to a sliver, then the face coming in widens from it (~325 ms; Joel, Oct 10: faster than the first 650). No perspective, no backface. */
@@ -8426,7 +8430,9 @@ const G5_OVER_FENCE = {
   8: 'polygon(0 0, 100% 0, 100% 67.5%, 87.5% 64.7%, 75% 62.1%, 62.5% 59.8%, 50% 57.7%, 37.5% 55.9%, 25% 54.3%, 12.5% 53.0%, 0% 51.9%)',
   9: 'polygon(0 0, 100% 0, 100% 100.0%, 87.5% 94.9%, 75% 90.2%, 62.5% 85.7%, 50% 81.5%, 37.5% 77.6%, 25% 74.0%, 12.5% 70.6%, 0% 67.5%)',
 };
-const G5_HOE = { 13: ['H', 'Hit'], 12: ['O', 'Out'], 14: ['E', 'Error'] };   // Joel, Oct 7
+// Joel, Oct 19: O / E / H are no longer on the field's boxes -- they're the cell-sized row under the field
+// (where K / B / F / IP sit under the chart), in columns 2-4.
+const G5_HOE_BTNS = [['O', 'Out', 2], ['E', 'Error', 3], ['H', 'Hit', 4]];
 const G5_OUTCOME = { H: 'hit', O: 'out', E: 'error' };
 const G5_HOW = { 12: ['ground', 'GB', 'Ground'], 2: ['pop', 'Pop', 'Pop fly'], 14: ['line', 'LD', 'Line drive'], 13: ['fly', 'Fly', 'Fly ball'], 1: ['bunt', 'Bunt', ''] };   // Joel, Oct 7
 const G5_BASE_BOX = { 17: 4, 25: 2, 23: 1 };   // the bases screen's tap boxes -> runner bit (3rd=4, 2nd=2, 1st=1)
@@ -8708,7 +8714,7 @@ function g5FieldSvg(){
 ${soft ? '<circle cx="250" cy="350" r="16" fill="none" stroke="#fff" stroke-width="2.5"/>' : '<circle cx="250" cy="350" r="14" style="fill:var(--gg-mound)"/>'}
 <path d="M250,450 L0,200 M250,450 L500,200" stroke="#fff" stroke-width="4"/>
 ${base(342.2, 342.2, 1)}${base(250, 282, 2)}${base(157.8, 342.2, 4)}
-${g && g.step === 'where' && g.zone === 'IF' ? '<path class="g5-zone-shade" d="M250,450 L100,300 A250,250 0 0 1 400,300 Z"/>' : ''}${g && g.step === 'where' && g.zone === 'OF' ? '<path class="g5-zone-shade" fill-rule="evenodd" d="M250,450 L0,200 L0,100 A650,650 0 0 1 500,100 L500,200 Z M250,450 L100,300 A250,250 0 0 1 400,300 Z"/>' : ''}
+${g && g.step === 'where' && g.zone === 'FOUL' ? '<path class="g5-zone-shade" d="M0,200 L250,450 L500,200 L500,500 L0,500 Z"/>' : ''}${g && g.step === 'hr' ? '<path class="g5-zone-shade" d="M0,0 L500,0 L500,100 A650,650 0 0 0 0,100 Z"/>' : ''}${g && g.step === 'where' && g.zone === 'IF' ? '<path class="g5-zone-shade" d="M250,450 L100,300 A250,250 0 0 1 400,300 Z"/>' : ''}${g && g.step === 'where' && g.zone === 'OF' ? '<path class="g5-zone-shade" fill-rule="evenodd" d="M250,450 L0,200 L0,100 A650,650 0 0 1 500,100 L500,200 Z M250,450 L100,300 A250,250 0 0 1 400,300 Z"/>' : ''}
 <polygon points="237,438 263,438 263,451 250,464 237,451" fill="#fff" style="stroke:var(--gg-line)" stroke-width="1.5"/>
 </svg>`;
 }
@@ -8721,11 +8727,9 @@ function g5CellInner(step, box){
   if(step === 'where' && g.zone === 'FOUL'){
     // Oct 19: an out caught in foul ground -- only foul ground flashes (the IF / OF / FOUL buttons step aside)
     if(G5_FOUL_GROUND[box] === undefined) return null;
-    const clip = G5_FOUL_GROUND[box];
-    return btn(`<span class="g5-shade"${clip ? ` style="clip-path:${clip};-webkit-clip-path:${clip};"` : ''}></span>`, `g5Where(${box})`, 'g5-foulpick');
+    return btn('', `g5Where(${box})`, 'g5-foulpick');   // the shade is one shape on the field drawing (Oct 19)
   }
   if(step === 'where' && box === G5_FOUL_BOX && g5FoulOk(g)) return btn('<span class="g5-word">FOUL</span>', `g5Zone('FOUL')`, 'g5-choice');
-  if(step === 'hoe' && G5_HOE[box]){ const [e, cap] = G5_HOE[box]; return btn(ggBig(e, cap), `g5Entry('${e}')`, 'g5-choice'); }
   if(step === 'how' && G5_HOW[box]){ const [t, big, cap] = G5_HOW[box]; return btn(ggBig(big, cap), `g5How('${t}')`, 'g5-choice'); }
   if(step === 'where' && box === g5HrBox(g) && g.entry === 'H' && G5_HR_CONTACT[g.bbType]) return btn('<span class="g5-word">HR?</span>', 'g5HrAsk()', 'g5-choice');
   if(step === 'where' && G5_ZONE_CONTACT[g.bbType] && G5_ZONE_BOX[box]){
@@ -8737,8 +8741,7 @@ function g5CellInner(step, box){
     return set[box] ? btn('', `g5Where(${box})`, 'g5-zonepick') : null;
   }
   if(step === 'hr' && G5_OVER_FENCE[box]){
-    const clip = G5_OVER_FENCE[box];
-    return btn(`<span class="g5-shade" style="clip-path:${clip};-webkit-clip-path:${clip};"></span>`, `g5HR(${box})`, 'g5-foulpick');
+    return btn('', `g5HR(${box})`, 'g5-foulpick');   // the shade is one shape on the field drawing (Oct 19)
   }
   if(step === 'where' && !g.zone) return null;   // ground ball / pop / line drive: nothing flashes until IF or OF
   if(step === 'where' && G5_FAIR_GROUND[box] !== undefined){
@@ -9006,6 +9009,13 @@ function g5ResultRow(step){
   return `<div class="g5-pad" role="group" aria-label="What happened?">${G5_RESULT_BTNS.map(([code, letter, word, mirror]) =>
     `<button type="button" class="btn btn-secondary g5-res" onclick="g5What('${code}')" ${live ? '' : 'disabled '}aria-label="${word === 'Swing' ? 'Strike swinging' : word === 'Looking' ? 'Strike looking' : word}"><span class="g5-res-l${mirror ? ' g5-kback' : ''}" aria-hidden="true">${letter}</span></button>`).join('')}</div>`;
 }
+function g5HoeRow(){
+  const s = state.activeSession, g = s.g5;
+  if(!g || g.step !== 'hoe') return '';
+  const outBlocked = s.outs + 1 + (g.addOuts || 0) > 3;
+  return `<div class="g5-pad" role="group" aria-label="Hit, out or error?">${G5_HOE_BTNS.map(([e, word, col]) =>
+    `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${col};" onclick="g5Entry('${e}')" ${e === 'O' && outBlocked ? 'disabled ' : ''}aria-label="${word}"><span class="g5-res-l" aria-hidden="true">${e}</span></button>`).join('')}</div>`;
+}
 function g5NavRow(){
   const s = state.activeSession;
   const more = state.g5More;
@@ -9040,7 +9050,7 @@ function g5Surface(pitches, chartingPerspective, currentBatterSide){
     // Joel's iPad photo, Oct 8: Safari kept the field's buttons on their own 3D layer after the flip, drawn a
     // little closer (bigger) under the perspective. Once the flip has played, draw the field again flat.
     if(state.g5Anim === 'in') setTimeout(() => { if(!state.g5Anim && g5OnDiamond()) render(); }, 375);
-    return g5Card(g5FieldFace(), state.g5Anim === 'in' ? 'in' : null, chart) + g5FieldActions();
+    return g5Card(g5FieldFace(), state.g5Anim === 'in' ? 'in' : null, chart) + g5HoeRow() + g5FieldActions();
   }
   if(g5Step() === 'velo') chart = chart.replace(/<\/div>$/, g5VeloRows() + '</div>');   // inside .zone-grid, over its last two rows
   if(state.g5Anim === 'out' && state.g5LastFace){

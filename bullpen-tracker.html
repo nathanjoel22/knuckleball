@@ -8415,9 +8415,9 @@ const G5_FAIR_GROUND = { 4: '', 10: '', 18: '', 19: '', 20: '', 21: '', 22: '', 
   3: 'polygon(0 0, 100% 0, 100% 100%)', 17: 'polygon(0 0, 100% 0, 100% 100%)',
   23: 'polygon(0 0, 100% 0, 0 100%)', 11: 'polygon(0 0, 100% 0, 0 100%)',
   15: 'polygon(0 0, 100% 0, 50% 50%)' };
-// Joel, Oct 7: on a hit, "HR" (since Oct 19 in the row under the field) switches the flashing to the area above the
-// fence (the top row above the arc), where a tap records the home run. Joel, Oct 19: fly balls only (was fly + line).
-const G5_HR_CONTACT = { fly: 1 };
+// Joel, Oct 7: on a fly-ball or line-drive hit, "HR?" (since Oct 19 in the row under the field) switches the flashing to
+// the area above the fence (the top row above the arc), where a tap records the home run.
+const G5_HR_CONTACT = { fly: 1, line: 1 };
 // Joel, Oct 19: nothing flashes on its own any more -- every contact type picks from the row first (a fly ball FOUL /
 // OF / HR, a bunt IF / FOUL). Kept as the hook for an automatic side; empty now.
 const G5_AUTO_ZONE = {};
@@ -9043,7 +9043,7 @@ function g5LocationCells(g){
   const cell = (col, label, aria, onclick, on, off) => `<button type="button" class="btn btn-secondary g5-res${on ? ' on' : ''}" style="grid-column:${col};" onclick="${onclick}" ${off ? 'disabled ' : ''}aria-pressed="${on ? 'true' : 'false'}" aria-label="${aria}"><span class="g5-res-l g5-res-count${label.length > 2 ? ' g5-res-word' : ''}" aria-hidden="true">${label}</span></button>`;
   // Joel, Oct 19: every contact type shows all four in fixed slots -- IF 2, OF 3, FOUL 4, HR 5 -- the ones that can't
   // apply greyed: IF not on a fly ball; OF not on a bunt; FOUL only on an out that isn't a ground ball, or a bunt on two
-  // strikes (the strikeout); HR only on a fly-ball hit.
+  // strikes (the strikeout); HR only on a line-drive or fly-ball hit.
   const s = state.activeSession;
   const bb = g.bbType, where = g.step === 'where';
   const ifOk = where && bb !== 'fly', ofOk = where && bb !== 'bunt';

@@ -8441,7 +8441,8 @@ const G5_OVER_FENCE = {
 // (where K / B / F / IP sit under the chart), in columns 2-4.
 const G5_HOE_BTNS = [['O', 'Out', 2], ['E', 'Error', 3], ['H', 'Hit', 4]];
 const G5_OUTCOME = { H: 'hit', O: 'out', E: 'error' };
-const G5_HOW = { 12: ['ground', 'GB', 'Ground'], 2: ['pop', 'Pop', 'Pop fly'], 14: ['line', 'LD', 'Line drive'], 13: ['fly', 'Fly', 'Fly ball'], 1: ['bunt', 'Bunt', ''] };   // Joel, Oct 7
+// Joel, Oct 19: the contact choices are the cell-sized row under the field too, letters only, in this order.
+const G5_HOW_BTNS = [['bunt', 'Bu', 'Bunt'], ['pop', 'PU', 'Pop up'], ['ground', 'GB', 'Ground ball'], ['line', 'LD', 'Line drive'], ['fly', 'FB', 'Fly ball']];
 const G5_BASE_BOX = { 17: 4, 25: 2, 23: 1 };   // the bases screen's tap boxes -> runner bit (3rd=4, 2nd=2, 1st=1)
 const G5_BASE_LABEL = { 4: '3B', 2: '2B', 1: '1B' };
 const G5_NEXT_BOX = 24;   // Joel, Oct 7: "Next pitch" (radar off) on the mound box; 3B is in 17 now
@@ -8737,7 +8738,6 @@ function g5CellInner(step, box){
     return btn('', `g5Where(${box})`, 'g5-foulpick');   // the shade is one shape on the field drawing (Oct 19)
   }
   if(step === 'where' && box === G5_FOUL_BOX && g5FoulOk(g)) return btn('<span class="g5-word">FOUL</span>', `g5Zone('FOUL')`, 'g5-choice');
-  if(step === 'how' && G5_HOW[box]){ const [t, big, cap] = G5_HOW[box]; return btn(ggBig(big, cap), `g5How('${t}')`, 'g5-choice'); }
   if(step === 'where' && box === g5HrBox(g) && g.entry === 'H' && G5_HR_CONTACT[g.bbType]) return btn('<span class="g5-word">HR?</span>', 'g5HrAsk()', 'g5-choice');
   if(step === 'where' && G5_ZONE_CONTACT[g.bbType] && G5_ZONE_BOX[box]){
     const z = G5_ZONE_BOX[box];
@@ -8809,7 +8809,7 @@ function g5FieldInner(){
 function g5FieldActions(){
   const g = state.activeSession.g5;
   if(g.move) return g5MovePrompt(g);
-  if(g.step === 'hoe') return '';   // Joel, Oct 19: O / E / H and ‹ Back sit under the prompt (g5HoeRow); no + Out / + Strike / + Ball here
+  if(G5_ROW_STEPS[g.step]) return '';   // Joel, Oct 19: O / E / H, then the contact row, and ‹ Back sit under the prompt (g5HoeRow); no + Out / + Strike / + Ball here
   if(g.step === 'runners'){
     return `<div class="g5-actions"><span class="g5-act-gap"></span><button type="button" class="btn btn-primary btn-sm g5-act" onclick="g5RunnersDone()">Done ›</button></div>`;
   }
@@ -8992,9 +8992,9 @@ function g5Card(face, flip, chartHtml){
   // box came out taller than wide there). The two-face card is only for the flip itself.
   // Joel, Oct 19 (phones): while O / E / H are asked, the field keeps the chart's band underneath and the prompt badge
   // sits in it where "Tap Pitch Result" is on the chart side, so O / E / H land exactly where K / B / F / IP were
-  const band = state.activeSession.g5.step === 'hoe' && isPhoneWidth();
+  const band = !!G5_ROW_STEPS[state.activeSession.g5.step] && isPhoneWidth();
   if(!flip){
-    const badge = band ? `<div class="zone-caption ph-lg-prompt ph-lg-full">${g5Caption('hoe')}</div>` : '';
+    const badge = band ? `<div class="zone-caption ph-lg-prompt ph-lg-full">${g5Caption(state.activeSession.g5.step)}</div>` : '';
     return `<div class="zone-grid g5-card g5-flat gg-field${band ? ' g5-band' : ''}" data-step="${state.activeSession.g5.step}">${g5FieldInner()}${badge}</div>`;
   }
   return `<div class="zone-grid g5-card${band ? ' g5-band' : ''} g5-flip-${flip}"><div class="g5-face g5-front">${chartHtml}</div>${face}</div>`;
@@ -9023,12 +9023,18 @@ function g5ResultRow(step){
   return `<div class="g5-pad" role="group" aria-label="What happened?">${G5_RESULT_BTNS.map(([code, letter, word, mirror]) =>
     `<button type="button" class="btn btn-secondary g5-res" onclick="g5What('${code}')" ${live ? '' : 'disabled '}aria-label="${word === 'Swing' ? 'Strike swinging' : word === 'Looking' ? 'Strike looking' : word}"><span class="g5-res-l${mirror ? ' g5-kback' : ''}" aria-hidden="true">${letter}</span></button>`).join('')}</div>`;
 }
+// The field steps whose choices are the row under the field (Oct 19): hit / out / error, then type of contact.
+const G5_ROW_STEPS = { hoe: 1, how: 1 };
 function g5HoeRow(){
   const s = state.activeSession, g = s.g5;
-  if(!g || g.step !== 'hoe') return '';
+  if(!g || !G5_ROW_STEPS[g.step]) return '';
   const outBlocked = s.outs + 1 + (g.addOuts || 0) > 3;
-  return `<div class="g5-pad" role="group" aria-label="Hit, out or error?">${G5_HOE_BTNS.map(([e, word, col]) =>
-    `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${col};" onclick="g5Entry('${e}')" ${e === 'O' && outBlocked ? 'disabled ' : ''}aria-label="${word}"><span class="g5-res-l" aria-hidden="true">${e}</span></button>`).join('')}</div>
+  const cells = g.step === 'hoe'
+    ? G5_HOE_BTNS.map(([e, word, col]) =>
+      `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${col};" onclick="g5Entry('${e}')" ${e === 'O' && outBlocked ? 'disabled ' : ''}aria-label="${word}"><span class="g5-res-l" aria-hidden="true">${e}</span></button>`).join('')
+    : G5_HOW_BTNS.map(([t, label, word]) =>
+      `<button type="button" class="btn btn-secondary g5-res" onclick="g5How('${t}')" aria-label="${word}"><span class="g5-res-l g5-res-count" aria-hidden="true">${label}</span></button>`).join('');
+  return `<div class="g5-pad" role="group" aria-label="${g5Caption(g.step)}">${cells}</div>
     <div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="gameBack()">‹ Back</button><span class="g5-nav-btn" aria-hidden="true"></span></div>`;
 }
 function g5NavRow(){

@@ -1505,6 +1505,8 @@
   /* Joel, Oct 19: the field keeps its 25 boxes and rules, but the charter never sees the 5x5 -- no box outlines,
      and foul ground / over the fence flash as one shape drawn on the field (g5FieldSvg), not box by box */
   .gg-field .g5-cell{ border-color:transparent !important; }
+  .g5-cf-caption{ position:absolute; left:50%; top:30%; transform:translate(-50%, -50%); margin:0; z-index:2; pointer-events:none; white-space:nowrap;
+    background:linear-gradient(rgba(var(--accent-rgb), .26), rgba(var(--accent-rgb), .26)), var(--card); box-shadow:var(--shadow-segment); }   /* the same badge as on the panel, made solid over the grass */
 
   .g5-front > .zone-grid{ position:absolute !important; inset:0; width:100% !important; height:100% !important; max-width:none !important; margin:0 !important; }
   /* Joel's iPad (Oct 8): Safari drew the field's buttons too big under a 3D flip, so the flip is flat -- the face
@@ -8983,7 +8985,11 @@ function g5Card(face, flip, chartHtml){
   // At rest the field is built exactly like the chart -- its 25 boxes straight in the .zone-grid, the drawing
   // behind them -- so it is the chart's own square on every screen (Joel's iPad, Oct 8: a layer laid over the
   // box came out taller than wide there). The two-face card is only for the flip itself.
-  if(!flip) return `<div class="zone-grid g5-card g5-flat gg-field" data-step="${state.activeSession.g5.step}">${g5FieldInner()}</div>`;
+  if(!flip){
+    // Joel, Oct 19: phones have no prompt line, so while O / E / H are asked the prompt badge sits in center field
+    const cf = (state.activeSession.g5.step === 'hoe' && isPhoneWidth()) ? `<div class="zone-caption g5-cf-caption">${g5Caption('hoe')}</div>` : '';
+    return `<div class="zone-grid g5-card g5-flat gg-field" data-step="${state.activeSession.g5.step}">${g5FieldInner()}${cf}</div>`;
+  }
   return `<div class="zone-grid g5-card g5-flip-${flip}"><div class="g5-face g5-front">${chartHtml}</div>${face}</div>`;
 }
 // Joel, Oct 6: after the flip back, velocity sits IN the chart -- the bar on its second-to-last

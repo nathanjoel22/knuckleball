@@ -1544,7 +1544,6 @@
   .g5-baselbl{ font-weight:800; font-size:14px; color:var(--ink); }
   .g5-marked{ background:rgba(255,255,255,0.25); }
   .g5-ball{ width:24px; height:24px; display:block; }
-  .g5-nextbox .g5-np{ font-size:10px; font-weight:800; text-align:center; line-height:1.1; color:var(--gg-ink); }
   /* Joel, Oct 8: on iPad / laptop the field buttons' contents grow with the box (one box = (--zg - 18px) / 5) */
   .wide-right .g5-cell{ --g5c:calc((var(--zg, 278px) - 18px) / 5); }
   .wide-right .g5-choice .gg-ic{ width:calc(var(--g5c) * 0.52); height:calc(var(--g5c) * 0.38); max-width:none; }
@@ -1553,7 +1552,6 @@
   .wide-right .g5-choice .gg-big-long{ font-size:calc(var(--g5c) * 0.22); }
   .wide-right .g5-word{ font-size:calc(var(--g5c) * 0.19); }
   .wide-right .g5-baselbl{ font-size:calc(var(--g5c) * 0.22); }
-  .wide-right .g5-nextbox .g5-np{ font-size:calc(var(--g5c) * 0.15); }
   .wide-right .g5-ball{ width:calc(var(--g5c) * 0.36); height:calc(var(--g5c) * 0.36); }
   .g5-actions{ display:flex; gap:8px; align-items:center; width:100%; max-width:340px; margin:0 auto; /* geometry: the Live Game field overlay math */ }
   .wide-right .g5-actions{ max-width:var(--zg, 340px); }
@@ -8446,7 +8444,6 @@ const G5_OUTCOME = { H: 'hit', O: 'out', E: 'error' };
 const G5_HOW_BTNS = [['bunt', 'Bu', 'Bunt'], ['pop', 'PU', 'Pop up'], ['ground', 'GB', 'Ground ball'], ['line', 'LD', 'Line drive'], ['fly', 'FB', 'Fly ball']];
 const G5_BASE_BOX = { 17: 4, 25: 2, 23: 1 };   // the bases screen's tap boxes -> runner bit (3rd=4, 2nd=2, 1st=1)
 const G5_BASE_LABEL = { 4: '3B', 2: '2B', 1: '1B' };
-const G5_NEXT_BOX = 24;   // Joel, Oct 7: "Next pitch" (radar off) on the mound box; 3B is in 17 now
 
 
 function g5Step(){
@@ -8525,6 +8522,7 @@ window.g5Where = async function(box){
     g.box = box; g.field = null; g.foulOut = true;
     if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');
     g.step = 'bases'; g.bases = runnersBitmask(s.runners);
+    g5StartOutScreen(g);
     return g5Save();
   }
   if(!(g.zone === 'IF' ? G5_IF_BOXES : G5_OF_BOXES)[box]) return;
@@ -8533,6 +8531,7 @@ window.g5Where = async function(box){
   g.field = g.zone || (G5_IF_BOXES[box] && !G5_OF_BOXES[box] ? 'IF' : G5_OF_BOXES[box] && !G5_IF_BOXES[box] ? 'OF' : null);
   if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');   // the half-inning is over: no runners question
   g.step = 'bases'; g.bases = runnersBitmask(s.runners);     // the runners as they were; the charter adds the batter
+  g5StartOutScreen(g);
   return g5Save();
 };
 window.g5Zone = async function(zone){
@@ -8576,14 +8575,51 @@ window.g5HR = async function(box){
 };
 window.g5Base = async function(box){
   const g = state.activeSession.g5;
-  if(!g || g.step !== 'bases' || !G5_BASE_BOX[box]) return;
+  if(!g || g.step !== 'bases' || !G5_BASE_BOX[box] || g.entry === 'O') return;   // an out moves runners by drag / tap
   g.bases = (g.bases || 0) ^ G5_BASE_BOX[box];
   if(g.bases & G5_BASE_BOX[box]) g.batterPlaced = true;   // a base tapped on: the batter is placed (no token left at home)
+  return g5Save();
+};
+/* ---------- Outs and the runners (Joel, Oct 19) ----------
+   An out's location leads to the out screen (the ball, the runners, Back / Next). With nobody on, Next saves the play.
+   With runners on, Next asks "Tap or move runners who advanced or are out": drag a runner to a base or home, then
+   Advanced / Tagged up / On error / Thrown out; or tap a runner, then Doubled up / Tagged out. Next saves. Each move is
+   saved with the pitch in pitches.runner_advances as { from, to (0 out, 4 home), how } -- the G1b column live games had
+   left empty. Back undoes the last move, then returns to the out screen. Hits and errors keep their own runners screen. */
+const G5_OUT_SAFE = [['advanced', 'Advanced'], ['tagged_up', 'Tagged up'], ['on_error', 'On error']];
+const G5_OUT_HOW_LABEL = { advanced: 'Advanced', tagged_up: 'Tagged up', on_error: 'On error', thrown_out: 'Thrown out', doubled_up: 'Doubled up', tagged_out: 'Tagged out' };
+function g5StartOutScreen(g){ if(g.entry === 'O'){ g.outPhase = 'confirm'; g.advances = []; g.advBefore = []; } }
+function g5OutMoving(g){ return !!g && g.step === 'bases' && g.entry === 'O' && g.outPhase === 'move'; }
+window.g5OutRunnerTap = async function(box){
+  const g = state.activeSession.g5;
+  if(!g5OutMoving(g) || g.move) return;
+  const b = G5_BOX_BASE[box];
+  if(typeof b !== 'number' || !(g.bases & (1 << (b - 1)))) return;
+  g.move = { from: b, to: null, tap: true, result: null };
+  return g5Save();
+};
+window.g5OutHow = async function(how){
+  const g = state.activeSession.g5;
+  if(!g5OutMoving(g) || !g.move || typeof g.move.from !== 'number') return;
+  const m = g.move, out = how === 'thrown_out' || how === 'doubled_up' || how === 'tagged_out';
+  if(!out && !G5_OUT_SAFE.some(([k]) => k === how)) return;
+  if(!out && m.to === null) return;   // a tapped runner can only be out
+  g.advBefore.push({ bases: g.bases, addOuts: g.addOuts || 0 });
+  let bases = g.bases & ~(1 << (m.from - 1));
+  if(!out && typeof m.to === 'number') bases |= (1 << (m.to - 1));   // home: he scored, the base just empties
+  g.bases = bases;
+  g.advances.push({ from: m.from, to: out ? 0 : (m.to === 'home' ? 4 : m.to), how });
+  g.move = null;
+  if(out){
+    g.addOuts = (g.addOuts || 0) + 1;
+    if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');   // the third out ends it
+  }
   return g5Save();
 };
 window.g5Next = async function(){
   const s = state.activeSession, g = s.g5;
   if(!g || g.step !== 'bases') return;
+  if(g.entry === 'O' && g.outPhase === 'confirm' && g.bases){ g.outPhase = 'move'; return g5Save(); }   // runners on: move them first
   if(g5NeedsBatter(g)) return;   // put the batter on base first
   if(g.walkEvent){ return g5CloseWalkEvent(); }
   return g5Commit(g.walk ? 'ball' : 'in_play');
@@ -8655,6 +8691,13 @@ window.g5Back = async function(){
       g.zone = null; g.bbType = null; g.step = 'how'; break;
     case 'hr': g.step = 'where'; break;
     case 'bases':
+      if(g.move && g.entry === 'O'){ g.move = null; break; }
+      if(g5OutMoving(g)){
+        if(g.advances.length){ const b = g.advBefore.pop(); g.advances.pop(); g.bases = b.bases; g.addOuts = b.addOuts; }   // undo the last move
+        else g.outPhase = 'confirm';
+        break;
+      }
+      g.outPhase = null; g.advances = null; g.advBefore = null;
       if(g.walkEvent){ return g5CloseWalkEvent(); }   // the walk stands; Back keeps the forced runners
       if(g.walk){ g5FlipOut(); g.walk = false; g.bases = null; g.step = 'what'; }
       else { g.box = null; g.field = null; g.foulOut = false; g.bases = null; g.step = 'where'; }   // a foul-ground out keeps FOUL chosen
@@ -8676,13 +8719,15 @@ async function g5Commit(result){
     if(g.hr){ extra.hitType = 'HR'; extra.runnersAfter = 0; }   // everyone scores: the bases are empty after it
   }
   if(g.step === 'bases' && g5ProjectedOuts(g) < 3) extra.runnersAfter = g.bases || 0;
+  if(g.entry === 'O' && g.advances && g.advances.length) extra.g5Advances = g.advances.slice();   // Oct 19: who moved, and how
   g5FlipOut();   // turns the field back over only if it was up (ball / strike / foul tip never left the chart)
   s.g5 = null;
   return recordGameResult(result, extra);
 }
 // recordGameResult's G5 tail: extra outs, the tapped bases, velocity or reset.
 function g5FinishPitch(s, pushed, extra, atBatBefore){
-  pushed.batterTo = null; pushed.runnerAdvances = null; pushed.runsScored = null;   // G5: runs and runner paths aren't tracked
+  pushed.batterTo = null; pushed.runsScored = null;   // G5: runs aren't tracked
+  pushed.runnerAdvances = extra.g5Advances || null;   // Oct 19: an out's runner moves and why ({ from, to, how }); otherwise none
   const rolled = s.inning !== pushed.inning;
   const add = rolled ? 0 : (extra.addOuts || 0);
   if(add){
@@ -8775,13 +8820,21 @@ function g5CellInner(step, box){
     return null;
   }
   if(step === 'bases' && box === G5_HOME_BOX && g5BatterCanDrag(g) && !(g.move && g.move.from === 'batter')) return { inner: '<span class="g5-runner g5-batter" aria-hidden="true"></span>', onclick: null, cls: 'g5-drag g5-home' };
+  if(step === 'bases' && g.entry === 'O'){
+    if(g.box === box) return { inner: G5_BALL_SVG, onclick: null, cls: 'g5-marked' };
+    const bit = G5_BASE_BOX[box];
+    if(bit && (g5ShownBases(g, s) & bit)){
+      const lbl = `<span class="g5-runner" aria-hidden="true"></span><span class="g5-baselbl">${G5_BASE_LABEL[bit]}</span>`;
+      return g.outPhase === 'move' ? btn(lbl, `g5OutRunnerTap(${box})`, 'g5-pick on g5-drag') : { inner: lbl, onclick: null, cls: 'g5-pick on' };
+    }
+    return null;
+  }
   if(step === 'bases'){
     if(g.box === box && !g.walk) return { inner: G5_BALL_SVG, onclick: null, cls: 'g5-marked' };
     if(G5_BASE_BOX[box]){
       const bit = G5_BASE_BOX[box], on = !!(g5ShownBases(g, s) & bit);
       return btn(on ? `<span class="g5-baselbl">${G5_BASE_LABEL[bit]}</span>` : '', `g5Base(${box})`, 'g5-pick' + (on ? ' on g5-drag' : ''));
     }
-    if(box === G5_NEXT_BOX && !ggRadarOn() && !g5NeedsBatter(g)) return btn('<span class="g5-np">Next pitch</span>', 'g5Next()', 'g5-choice g5-nextbox');
   }
   return null;
 }
@@ -8791,6 +8844,7 @@ const G5_SHORT_CAPTION = { what: 'What happened?', hoe: 'Hit, out or error?',
 function g5Caption(step){
   const sg = state.activeSession && state.activeSession.g5;
   if(step === 'where' && sg && sg.zone === 'FOUL') return 'Select where the foul ball was caught';
+  if(step === 'bases' && sg && sg.entry === 'O') return sg.outPhase === 'move' ? 'Tap or move runners who advanced or are out' : 'Out recorded — tap Next';
   return { what: 'What happened?',
     hoe: 'In play — hit, out or error?', how: 'What type of contact?',
     where: 'Select Ball in Play Location', hr: 'Home run — where did it leave the park?', bases: 'Select current bases for baserunners',
@@ -8825,7 +8879,7 @@ function g5FieldActions(){
   // Joel, Oct 19: no + Out / + Strike / + Ball on the field -- ‹ Back (and Next on the bases question, radar on), laid out
   // like the chart side's Back / More. An out on the bases is a runner dragged and called Out.
   const blocked = g5NeedsBatter(g);
-  const next = (g.step === 'bases' && ggRadarOn()) ? `<button type="button" class="btn btn-primary btn-sm g5-nav-btn next-pitch" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>`
+  const next = g.step === 'bases' ? `<button type="button" class="btn btn-primary btn-sm g5-nav-btn next-pitch" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>`
     : '<span class="g5-nav-btn" aria-hidden="true"></span>';
   return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button>${next}</div>`;
 }
@@ -8849,7 +8903,7 @@ function g5NeedsBatter(g){ return !!g && g.step === 'bases' && (g.entry === 'H' 
 const G5_BASE_BIT = { 1: 1, 2: 2, 3: 4 };
 function g5ShownBases(g, s){
   let occ = g.step === 'bases' ? (g.bases || 0) : runnersBitmask(s.runners);
-  if(g.move && typeof g.move.from === 'number') occ &= ~G5_BASE_BIT[g.move.from];
+  if(g.move && typeof g.move.from === 'number' && g.move.to !== null) occ &= ~G5_BASE_BIT[g.move.from];   // a tapped runner (out screen) stays put while asked
   return occ;
 }
 function g5MoveTargetBox(g){
@@ -8857,7 +8911,7 @@ function g5MoveTargetBox(g){
   const to = g.move.to;
   return to === 'home' ? G5_HOME_BOX : to === 1 ? 23 : to === 2 ? 25 : to === 3 ? 17 : null;
 }
-function g5BatterCanDrag(g){ return g.step === 'bases' && !g.walk && !g.walkEvent && !g.foulOut && !g.batterPlaced; }
+function g5BatterCanDrag(g){ return g.step === 'bases' && g.entry !== 'O' && !g.walk && !g.walkEvent && !g.foulOut && !g.batterPlaced; }   // an out: the batter is gone
 function g5BaseName(b){ return b === 'home' ? 'home' : b === 'batter' ? 'the batter' : ['', '1B', '2B', '3B'][b]; }
 window.g5OpenRunners = async function(){
   const s = state.activeSession;
@@ -8893,6 +8947,13 @@ function g5Propose(from, to){
 }
 function g5MovePrompt(g){
   const m = g.move, soft = currentSport() === 'softball';
+  if(g5OutMoving(g)){
+    const who = 'Runner on ' + g5BaseName(m.from);
+    const opts = m.tap ? [['doubled_up', 'Doubled up'], ['tagged_out', 'Tagged out']] : [...G5_OUT_SAFE, ['thrown_out', 'Thrown out']];
+    return `<div class="g5-move"><div class="g5-q">${m.tap ? who : who + ' to ' + g5BaseName(m.to)} — what happened?</div>
+      <div class="g5-move-btns g5-why">${opts.map(([k, l]) => `<button type="button" class="btn ${k === 'thrown_out' || k === 'doubled_up' || k === 'tagged_out' ? 'btn-danger' : 'btn-secondary'} btn-sm g5-act" onclick="g5OutHow('${k}')">${l}</button>`).join('')}
+      <button type="button" class="btn btn-tertiary btn-sm g5-act" onclick="g5MoveCancel()">Cancel</button></div></div>`;
+  }
   const what = `${m.from === 'batter' ? 'The batter' : 'Runner on ' + g5BaseName(m.from)} to ${g5BaseName(m.to)}`;
   if(!m.result){
     return `<div class="g5-move"><div class="g5-q">${what} — safe or out?</div>
@@ -8944,6 +9005,7 @@ document.addEventListener('pointerdown', e => {
   const cell = e.target && e.target.closest ? e.target.closest('.gg-field .g5-cell.g5-drag') : null;
   const s = state.activeSession, g = s && s.g5;
   if(!cell || !g || (g.step !== 'runners' && g.step !== 'bases') || g.move) return;
+  if(g.step === 'bases' && g.entry === 'O' && g.outPhase !== 'move') return;   // the out screen: Next first
   const box = Number(cell.getAttribute('data-box'));
   const from = box === G5_HOME_BOX ? 'batter' : G5_BOX_BASE[box];
   if(from === undefined) return;
@@ -9033,10 +9095,12 @@ function g5ResultRow(step){
 const G5_ROW_STEPS = { hoe: 1, how: 1 };
 const G5_PAD_STEPS = { hoe: 1, how: 1, where: 1, hr: 1 };   // the steps with the cell-sized row under the field
 // Phones: the steps whose prompt sits in the band under the field (Oct 19), in words that fit one line.
-const G5_BAND_STEPS = { hoe: 1, how: 1, where: 1, hr: 1 };
+const G5_BAND_STEPS = { hoe: 1, how: 1, where: 1, hr: 1, bases: 1 };
 function g5PhoneCaption(g){
   if(g.step === 'where' && g.zone === 'FOUL') return 'Where was it caught?';
   if(g.step === 'hr') return 'Where did it leave the park?';
+  if(g.step === 'bases') return g.entry === 'O' ? (g.outPhase === 'move' ? 'Tap or move runners' : 'Out recorded — tap Next')
+    : g5NeedsBatter(g) ? 'Put the batter on base' : 'Move runners, then Next';
   return g5Caption(g.step);
 }
 function g5LocationCells(g){

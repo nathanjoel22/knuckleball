@@ -1576,6 +1576,8 @@
   .g5-res{ min-width:0; aspect-ratio:1/1; min-height:0; padding:0; border-radius:var(--radius-cell); /* geometry: the charting grid's cell math */ }
   .g5-res-l{ font-size:32px; font-weight:800; line-height:1; }
   .wide-right .g5-res-l{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.45); }
+  .g5-res-count{ font-size:26px; letter-spacing:-0.02em; }
+  .wide-right .g5-res-count{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.36); }
   .g5-nav{ display:flex; gap:6px; /* geometry: the Live Game field overlay math */ }
   .g5-nav-btn{ flex:1 1 0; min-width:0; }
   .g5-nav-btn.on{ box-shadow:var(--ring-select); }
@@ -8991,9 +8993,15 @@ function g5VeloRows(){
 // looking (the scorebook's called third strike), B ball, F foul (always a foul tip, Oct 19), IP in play.
 const G5_RESULT_BTNS = [['swing', 'K', 'Swing', false], ['looking', 'K', 'Looking', true], ['ball', 'B', 'Ball', false], ['foul', 'F', 'Foul', false], ['inplay', 'IP', 'In Play', false]];
 // Joel, Oct 19: the five buttons are the chart's own cell size -- a sixth row under the 5x5 -- always there, live
-// once a location is tapped. Under them: ‹ Back (undoes whatever was done last) and More (New batter, New inning,
-// + Strike, + Ball, - Strike, - Ball). There is no Undo button any more.
+// once a location is tapped. Under them: ‹ Back (undoes whatever was done last) and More, which turns the five into
+// +K -K +B -B (same cells) and shows New batter / New inning under Back / More. There is no Undo button any more.
 function g5ResultRow(step){
+  if(state.g5More){
+    // Joel, Oct 19: More turns the row into the count buttons, same cells -- +K -K, a gap, +B -B
+    const s = state.activeSession, walk = !!(s.g5 && s.g5.walkEvent);
+    const c = (col, label, aria, onclick, off) => `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${col};" onclick="g5MoreClose(); ${onclick}" ${off ? 'disabled ' : ''}aria-label="${aria}"><span class="g5-res-l g5-res-count" aria-hidden="true">${label}</span></button>`;
+    return `<div class="g5-pad" role="group" aria-label="Change the count">${c(1, '+K', 'Add a strike', "g5AddCount('strike')", walk)}${c(2, '−K', 'Take off a strike', "gameMinusCount('strike')", !s.strikes)}${c(4, '+B', 'Add a ball', "g5AddCount('ball')", walk)}${c(5, '−B', 'Take off a ball', "gameMinusCount('ball')", !s.balls)}</div>`;
+  }
   const live = step === 'what';
   return `<div class="g5-pad" role="group" aria-label="What happened?">${G5_RESULT_BTNS.map(([code, letter, word, mirror]) =>
     `<button type="button" class="btn btn-secondary g5-res" onclick="g5What('${code}')" ${live ? '' : 'disabled '}aria-label="${word === 'Swing' ? 'Strike swinging' : word === 'Looking' ? 'Strike looking' : word}"><span class="g5-res-l${mirror ? ' g5-kback' : ''}" aria-hidden="true">${letter}</span></button>`).join('')}</div>`;
@@ -9007,8 +9015,6 @@ function g5NavRow(){
       <button type="button" class="btn btn-secondary btn-sm g5-nav-btn${more ? ' on' : ''}" onclick="g5MoreToggle()" aria-expanded="${more ? 'true' : 'false'}">More ${more ? '▴' : '▾'}</button>
     </div>${more ? `<div class="g5-more" role="group" aria-label="More">
       ${b('New batter', 'gameNewBatter()')}${b('New inning', 'gameNewInning()')}
-      ${b('+ Strike', "g5AddCount('strike')", s.g5 && s.g5.walkEvent)}${b('+ Ball', "g5AddCount('ball')", s.g5 && s.g5.walkEvent)}
-      ${b('− Strike', "gameMinusCount('strike')", !s.strikes)}${b('− Ball', "gameMinusCount('ball')", !s.balls)}
     </div>` : ''}`;
 }
 // Under the square chart: the hint (Intent, phones), the extra-inning question, then the result buttons and Back / More.

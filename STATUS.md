@@ -23,7 +23,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - **Result buttons:** the five buttons (K, backwards K, B, F, IP) are the chart's own cell size, a sixth row under the 5×5. They're always shown and become tappable once a location is tapped.
   - **Back and More:** under the five buttons on every layout. Undo is removed everywhere.
     - **‹ Back** steps back one tap within a pitch; otherwise it undoes the last action (pitch, event, + / − count, New batter, New inning).
-    - **More** holds New batter, New inning, + Strike, + Ball, − Strike and − Ball.
+    - **More** (Joel, follow-up) turns the five buttons into **+K −K · +B −B**, same cells, middle one empty, and shows **New batter / New inning** under Back / More. Any of them closes it again.
   - **− Strike / − Ball:** change the count only; the pitches stay as charted (Joel's choice). New batter, New inning and the minus buttons keep their "before" in the draft (`s.manualActs`, ordered by `seq`, never synced), so Back can undo them.
 - **Not changed:** the field's own row (+ Out / + Strike / + Ball / Next / ‹ Back). Phones no longer show New batter / New inning under the field; Back out of the play first.
 - **Evidence:** headless Chrome on the real page, offline with a made-up login. Phone, iPad portrait and iPad landscape: the result buttons are the same width as the chart cells (64 / 60 / 66 px). The click-through checked foul, ball, More, − Strike, Back ×2, New batter + Back, + Ball / − Ball + Back ×2, and In Play → Out → Pop → FOUL → box 1 → Next (`in_play` / out / pop / box 1 / field null), then Back.

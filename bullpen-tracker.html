@@ -1587,6 +1587,8 @@
   .wide-right .g5-res-l{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.45); }
   .g5-res-count{ font-size:26px; letter-spacing:-0.02em; }
   .g5-res.on{ box-shadow:var(--ring-select); background:var(--card); }
+  .sb-tap{ cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .sb-tap.sb-on{ box-shadow:inset 0 -3px 0 var(--accent-game); }   /* Joel, Oct 19: the box being adjusted */
   .g5-res-word{ font-size:19px; }
   .wide-right .g5-res-word{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.27); }
   .wide-right .g5-res-count{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.36); }
@@ -6408,6 +6410,7 @@ window.handleGameZoneTap = async function(row, col){
   if(sportCfg().hasDelivery && !state.activeSession.delivery){ state.hint = 'Set or windup first'; render(); return; }
   if(tiebreakPending(state.activeSession)){ state.hint = 'Answer the extra-inning question first'; render(); return; }
   state.hint = '';
+  state.gameAdjust = null;   // a chart tap ends an adjustment
   // Joel, Oct 12: with Intent on, the first tap is where the pitch was called (the target), like a bullpen; the
   // second is where it went -- that box flashes dark with a ball on it, then what happened is asked as usual.
   const si = state.activeSession;
@@ -7053,6 +7056,37 @@ window.gameMinusCount = async function(kind){
   await storSet(draftKey(), s);
   render();
 };
+// Adjust from the top bar (Joel, Oct 19): tap Inning, Outs or Count and the result row becomes up / the number / down
+// (in the backwards-K / B / F cells) with the prompt reading "Adjust Balls" and so on. A correction: no walk, strikeout
+// or third out from here (balls 0-3, strikes 0-2, outs 0-2, inning 1 up). Balls and strikes move the pitch count the
+// same as +B / -B (Joel, Oct 19); inning and outs don't. Each tap is its own Back step.
+const GAME_ADJUST = {
+  inning: { label: 'Inning', min: 1, max: 99, key: 'inning' },
+  outs: { label: 'Outs', min: 0, max: 2, key: 'outs' },
+  balls: { label: 'Balls', min: 0, max: 3, key: 'balls', pc: 1 },
+  strikes: { label: 'Strikes', min: 0, max: 2, key: 'strikes', pc: 1 }
+};
+window.gameAdjustOpen = function(what){
+  const s = state.activeSession;
+  if(!s || s.kind !== 'game' || !GAME_ADJUST[what] || g5OnDiamond()) return;
+  if(what === 'balls' && state.gameAdjust === 'balls') what = 'strikes';   // tapping the count again: the other half
+  else if(state.gameAdjust === what) what = null;
+  state.gameAdjust = what; state.g5More = false;
+  render();
+};
+window.gameAdjustClose = function(){ state.gameAdjust = null; render(); };
+window.gameAdjustStep = async function(dir){
+  const s = state.activeSession, a = GAME_ADJUST[state.gameAdjust];
+  if(!s || !a) return;
+  const v = s[a.key] + dir;
+  if(v < a.min || v > a.max) return;
+  recordManualAct(s, 'adjust_' + state.gameAdjust);
+  s.manualActs[s.manualActs.length - 1].pc = a.pc ? dir : 0;
+  s[a.key] = v;
+  if(a.key === 'inning') defaultGameDelivery(s);
+  await storSet(draftKey(), s);
+  render();
+};
 // ‹ Back (Oct 19, replaces Undo): steps back within the pitch being entered; otherwise undoes the last action.
 function gameCanGoBack(s){
   return !!(s.g5 || (s.intent && s.gameTarget) || s.pitches.length || (s.events || []).length || (s.manualActs || []).length
@@ -7066,7 +7100,7 @@ window.gameBack = async function(){
   if(s.intent && s.gameTarget) return resetGameTarget();
   return undoLastGameAction();
 };
-window.g5MoreToggle = function(){ state.g5More = !state.g5More; render(); };
+window.g5MoreToggle = function(){ state.g5More = !state.g5More; state.gameAdjust = null; render(); };
 window.g5MoreClose = function(){ state.g5More = false; };
 window.gameNewBatter = async function(){
   const s = state.activeSession;
@@ -7450,7 +7484,8 @@ function gameHistoryTypeTable(p, pitches){
 // Read from the draft's own +K / +B events and -K / -B acts, so Back undoes the count with them.
 function gamePitchCountAdj(s){
   if(!s) return 0;
-  return (s.events || []).filter(e => e.pitchCountAdj).length - (s.manualActs || []).filter(a => a.kind === 'minus_strike' || a.kind === 'minus_ball').length;
+  return (s.events || []).filter(e => e.pitchCountAdj).length
+    + (s.manualActs || []).reduce((n, a) => n + (a.kind === 'minus_strike' || a.kind === 'minus_ball' ? -1 : (a.pc || 0)), 0);
 }
 function gameStats(pitches, adj){
   let k = 0, bb = 0, h = 0, strikeCount = 0, maxInning = 1;
@@ -7465,12 +7500,17 @@ function gameStats(pitches, adj){
   const charted = pitches.length, total = Math.max(0, charted + (adj || 0));
   return { total, k, bb, h, strikePct: charted ? Math.round(100 * strikeCount / charted) : 0, innings: maxInning };
 }
+// The top bar's Inning / Outs / Count open the adjust row (Joel, Oct 19); the open one is ringed.
+function gameAdjustAttrs(what, cls){
+  const on = state.gameAdjust === what || (what === 'balls' && state.gameAdjust === 'strikes');
+  return `class="${cls || 'sb-cell'} sb-tap${on ? ' sb-on' : ''}" role="button" tabindex="0" onclick="gameAdjustOpen('${what}')" aria-label="Adjust ${what === 'balls' ? 'count' : what}"`;
+}
 function renderGameStatusBar(){
   const s = state.activeSession;
   return `<div class="stat-readout">
-    <div class="stat-box"><span class="stat-num mono">${s.inning}</span><span class="stat-lbl">Inning</span></div>
-    <div class="stat-box"><span class="stat-num mono">${displayOuts(s)}</span><span class="stat-lbl">Outs</span></div>
-    <div class="stat-box"><span class="stat-num mono">${s.balls}-${s.strikes}</span><span class="stat-lbl">Count</span></div>
+    <div ${gameAdjustAttrs('inning', 'stat-box')}><span class="stat-num mono">${s.inning}</span><span class="stat-lbl">Inning</span></div>
+    <div ${gameAdjustAttrs('outs', 'stat-box')}><span class="stat-num mono">${displayOuts(s)}</span><span class="stat-lbl">Outs</span></div>
+    <div ${gameAdjustAttrs('balls', 'stat-box')}><span class="stat-num mono">${s.balls}-${s.strikes}</span><span class="stat-lbl">Count</span></div>
     <div class="stat-box"><span class="stat-num mono">${s.atBatIndex}</span><span class="stat-lbl">Batter #</span></div>
     <div class="stat-box">${renderRunnerDiamond()}<span class="stat-lbl">Runners</span></div>
   </div>`;
@@ -9110,6 +9150,12 @@ const G5_RESULT_BTNS = [['swing', 'K', 'Swing', false], ['looking', 'K', 'Lookin
 // once a location is tapped. Under them: ‹ Back (undoes whatever was done last) and More, which turns the five into
 // +K -K +B -B (same cells) and shows New batter / New inning under Back / More. There is no Undo button any more.
 function g5ResultRow(step){
+  const adj = GAME_ADJUST[state.gameAdjust];
+  if(adj){
+    const sa = state.activeSession, v = sa[adj.key];
+    const arrow = (col, label, aria, dir, off) => `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${col};" onclick="gameAdjustStep(${dir})" ${off ? 'disabled ' : ''}aria-label="${aria}"><span class="g5-res-l" aria-hidden="true">${label}</span></button>`;
+    return `<div class="g5-pad" role="group" aria-label="Adjust ${adj.label}">${arrow(2, '▲', adj.label + ' up', 1, v >= adj.max)}<div class="btn btn-secondary g5-res on" style="grid-column:3;" role="status" aria-label="${adj.label} ${v}"><span class="g5-res-l" aria-hidden="true">${v}</span></div>${arrow(4, '▼', adj.label + ' down', -1, v <= adj.min)}</div>`;
+  }
   if(state.g5More){
     // Joel, Oct 19: More turns the row into the count buttons, same cells -- +K -K, a gap, +B -B
     const s = state.activeSession, walk = !!(s.g5 && s.g5.walkEvent);
@@ -9161,6 +9207,13 @@ function g5HoeRow(){
 }
 function g5NavRow(){
   const s = state.activeSession;
+  if(GAME_ADJUST[state.gameAdjust]){
+    const other = state.gameAdjust === 'balls' ? ['Strikes', 'strikes'] : state.gameAdjust === 'strikes' ? ['Balls', 'balls'] : null;
+    return `<div class="g5-nav">
+      ${other ? `<button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="state.gameAdjust='${other[1]}'; render()">Adjust ${other[0]}</button>` : '<span></span>'}
+      <button type="button" class="btn btn-secondary btn-sm g5-nav-btn on" onclick="gameAdjustClose()">Done</button>
+    </div>`;
+  }
   const more = state.g5More;
   const b = (label, onclick, off) => `<button type="button" class="btn btn-secondary btn-sm g5-more-btn" onclick="g5MoreClose(); ${onclick}" ${off ? 'disabled' : ''}>${label}</button>`;
   return `<div class="g5-nav">
@@ -9185,6 +9238,7 @@ function g5BelowChart(step){
 // Tap Pitch Intent (Intent on) -> Tap Pitch Outcome -> Tap Pitch Result (then K / B / F / IP).
 function phoneLgPrompt(s){
   if(!s || s.kind !== 'game') return '';
+  if(GAME_ADJUST[state.gameAdjust]) return 'Adjust ' + GAME_ADJUST[state.gameAdjust].label;
   const step = g5Step();
   if(step === 'what') return 'Tap Pitch Result';
   if(step) return '';   // velocity, the extra-inning question, the field
@@ -9250,7 +9304,7 @@ function renderGameSessionView(p){
   // G5: after a location tap the chart flips over to the field chart (g5Surface); under the
   // square chart sit the extra-inning question or velocity + Next pitch (g5BelowChart).
   const g5Now = g5Step();
-  const zoneCaption = (s.g5 && g5Now) ? (g5NeedsBatter(s.g5) ? 'Put the batter on base (tap a base, or drag from home)' : g5Caption(g5Now))
+  const zoneCaption = GAME_ADJUST[state.gameAdjust] ? 'Adjust ' + GAME_ADJUST[state.gameAdjust].label : (s.g5 && g5Now) ? (g5NeedsBatter(s.g5) ? 'Put the batter on base (tap a base, or drag from home)' : g5Caption(g5Now))
     : s.intent ? (s.gameTarget ? 'Now tap where the pitch went' : 'Tap where the pitch is called') : `Tap where the pitch landed`;
   const g5Below = g5OnDiamond() ? g5HoeRow() + g5FieldActions() : g5BelowChart(g5Now);   // Oct 19: both sides put their buttons under the prompt
 
@@ -9260,7 +9314,7 @@ function renderGameSessionView(p){
       <div class="panel controls-panel ph-controls">
         ${renderAdjustRunnersFlow()}
         <div class="ph-status on-dark">
-          <span class="sb-cell"><span class="sb-num ph-inn">▲${s.inning}</span><span class="sb-lbl"><span class="lbl-long">Inning</span><span class="lbl-short">Inn</span></span></span><span class="sb-cell"><span class="sb-num ph-item">${displayOuts(s)}</span><span class="sb-lbl">Out${displayOuts(s) === 1 ? '' : 's'}</span></span><span class="sb-cell"><span class="sb-num ph-item">${s.balls}-${s.strikes}</span><span class="sb-lbl">Count</span></span>
+          <span ${gameAdjustAttrs('inning')}><span class="sb-num ph-inn">▲${s.inning}</span><span class="sb-lbl"><span class="lbl-long">Inning</span><span class="lbl-short">Inn</span></span></span><span ${gameAdjustAttrs('outs')}><span class="sb-num ph-item">${displayOuts(s)}</span><span class="sb-lbl">Out${displayOuts(s) === 1 ? '' : 's'}</span></span><span ${gameAdjustAttrs('balls')}><span class="sb-num ph-item">${s.balls}-${s.strikes}</span><span class="sb-lbl">Count</span></span>
           <span class="ph-diamond">${renderRunnerDiamond()}</span>
           ${renderStatusDelivery()}
         </div>

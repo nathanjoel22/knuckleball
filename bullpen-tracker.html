@@ -7446,7 +7446,13 @@ function gameHistoryTypeTable(p, pitches){
     <tbody>${rows}</tbody>
   </table>` : '';
 }
-function gameStats(pitches){
+// Joel, Oct 19: +K / +B add one to the pitch count and -K / -B take one off; the pitches charted stay as they are.
+// Read from the draft's own +K / +B events and -K / -B acts, so Back undoes the count with them.
+function gamePitchCountAdj(s){
+  if(!s) return 0;
+  return (s.events || []).filter(e => e.pitchCountAdj).length - (s.manualActs || []).filter(a => a.kind === 'minus_strike' || a.kind === 'minus_ball').length;
+}
+function gameStats(pitches, adj){
   let k = 0, bb = 0, h = 0, strikeCount = 0, maxInning = 1;
   pitches.forEach(pt => {
     if(GAME_STRIKE_RESULTS.has(pt.result)) strikeCount++;
@@ -7456,8 +7462,8 @@ function gameStats(pitches){
     if(pt.result === 'in_play' && pt.inPlayOutcome === 'hit') h++;
     if(pt.inning > maxInning) maxInning = pt.inning;
   });
-  const total = pitches.length;
-  return { total, k, bb, h, strikePct: total ? Math.round(100 * strikeCount / total) : 0, innings: maxInning };
+  const charted = pitches.length, total = Math.max(0, charted + (adj || 0));
+  return { total, k, bb, h, strikePct: charted ? Math.round(100 * strikeCount / charted) : 0, innings: maxInning };
 }
 function renderGameStatusBar(){
   const s = state.activeSession;
@@ -8675,7 +8681,7 @@ window.g5AddCount = async function(kind){
   const ab = s.atBatIndex, inning = s.inning;
   if(g && g.walkEvent) return;   // already answering a walk's runners question
   if(!g) s.gameTarget = null;   // Intent: a + Strike / + Ball between taps drops the called spot
-  await commitNoPitchEvent(kind === 'ball' ? 'auto_ball' : 'auto_strike', null, true);
+  await commitNoPitchEvent(kind === 'ball' ? 'auto_ball' : 'auto_strike', { pitchCountAdj: true }, true);
   const ended = !(s.atBatIndex === ab && s.inning === inning);
   if(kind === 'ball' && ended){
     // Joel, Oct 8: ball four by + Ball moves the forced runners up, then still asks the runners question
@@ -9210,7 +9216,7 @@ function g5Surface(pitches, chartingPerspective, currentBatterSide){
 function renderGameSessionView(p){
   const s = state.activeSession;
   const pitches = s.pitches;
-  const stats = gameStats(pitches);
+  const stats = gameStats(pitches, gamePitchCountAdj(s));
   const chartingPerspective = sessionPerspective(s);
   const currentBatterSide = sessionBatterSide(s);
 

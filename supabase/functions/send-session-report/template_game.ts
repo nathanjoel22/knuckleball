@@ -11,7 +11,7 @@ import { ZONE_NAMES } from './helpers.ts'
 import { drawGrid, drawLegend, drawLineChart, drawGridByResult, drawResultLegend, resultCategoryOf, drawTypeGrids, drawHitTypeGrids } from './svg.ts'
 import { CSS as PEN_CSS } from './template.ts'
 import {
-  type GamePitch, computeGameByType, computeGameByInning, computeGameByCount,
+  type GamePitch, computeGameByType, computeGameByInning, computeGameByCount, computeLeadoffReached,
   computeGamePerSideBlock, computeGameExcludedNullSide, computeGameVelocityByInning,
   computeRecentPensComparison, computeGameTrends, computeAtBatLog, resultGlyph,
   type RecentPenTypeRow, type GameHistoryEntry
@@ -37,6 +37,11 @@ export interface GameSummary {
   final_inning: number; final_inning_source: 'counter' | 'derived'
   pitch_count?: number   // Oct 19: pitches + the session's + / - adjustment (the rates still use pitches)
   runs?: number | null   // Oct 19: runs while he pitched; null when the game recorded none (games before runs were tracked)
+  // Release 2: runs is charged to him (inherited runners' runs left out); null = not tracked (games before)
+  er?: number | null
+  ir?: number | null
+  irs?: number | null
+  bb_charged_prev?: number | null
 }
 const pitchCount = (s: GameSummary) => s.pitch_count ?? s.pitches
 
@@ -149,6 +154,9 @@ function renderPitchingLine(p: GameReportPayload): string {
   const wp = new Set(evs.filter(e => e.eventType === 'wild_pitch').map(e => `${e.inningBefore}|${e.atBatIndex}|${e.ballsBefore}|${e.strikesBefore}`)).size
   const bk = evs.filter(e => softball ? (e.eventType === 'illegal_pitch' || e.eventType === 'balk') : e.eventType === 'balk').length
   const bkLabel = softball ? 'Illegal' : 'BK'
+  // Release 2: ER (games charted with earned runs), IR / IRS (a reliever), SF / SAC, walks charged to the previous pitcher
+  const sf = p.pitches.filter(x => x.sacrifice === 'SF').length, sac = p.pitches.filter(x => x.sacrifice === 'SAC').length
+  const hasEr = s.er != null, hasIr = s.ir != null, hasSac = sf + sac > 0
   const posRows = Array.from(byPosition.entries())
     .map(([pos, r]) => `<tr><td>${escapeHtml(pos)}</td><td>${r.outs}</td><td>${r.hits}</td><td>${r.errors}</td></tr>`)
     .join('')
@@ -156,11 +164,11 @@ function renderPitchingLine(p: GameReportPayload): string {
   <section class="section">
     <h2>Pitching line</h2>
     <div class="table-scroll"><table class="data-table wide">
-      <thead><tr><th>IP</th><th>BF</th><th>Pitches</th><th>Strikes</th><th>K</th><th>BB</th><th>H</th>${hasHitTypes ? '<th>1B/2B/3B/HR</th>' : ''}<th>HBP</th><th>WP</th><th>${bkLabel}</th><th>E</th><th>Outs in play</th>${s.runs != null ? '<th>R</th>' : ''}</tr></thead>
+      <thead><tr><th>IP</th><th>BF</th><th>Pitches</th><th>Strikes</th><th>K</th><th>BB</th><th>H</th>${hasHitTypes ? '<th>1B/2B/3B/HR</th>' : ''}<th>HBP</th><th>WP</th><th>${bkLabel}</th><th>E</th><th>Outs in play</th>${s.runs != null ? '<th>R</th>' : ''}${hasEr ? '<th>ER</th>' : ''}${hasIr ? '<th>IR/IRS</th>' : ''}${hasSac ? '<th>SF/SAC</th>' : ''}</tr></thead>
       <tbody><tr>
         <td>${fmtIP(s.outs_recorded)}</td><td>${s.batters_faced}</td><td>${pitchCount(s)}</td><td>${s.strikes}</td>
         <td>${s.k}</td><td>${s.bb}</td><td>${s.h}</td>${hasHitTypes ? `<td>${oneB}/${twoB}/${threeB}/${hr}</td>` : ''}
-        <td>${s.hbp}</td><td>${wp}</td><td>${bk}</td><td>${s.errors}</td><td>${s.outs_in_play}</td>${s.runs != null ? `<td>${s.runs}</td>` : ''}
+        <td>${s.hbp}</td><td>${wp}</td><td>${bk}</td><td>${s.errors}</td><td>${s.outs_in_play}</td>${s.runs != null ? `<td>${s.runs}</td>` : ''}${hasEr ? `<td>${s.er}</td>` : ''}${hasIr ? `<td>${s.ir}/${s.irs ?? 0}</td>` : ''}${hasSac ? `<td>${sf}/${sac}</td>` : ''}
       </tr></tbody>
     </table></div>
     ${posRows ? `
@@ -260,14 +268,17 @@ function renderByCount(p: GameReportPayload): string {
   if (!rows) return ''
   const body = rows.map(r => `<tr>
     <td>${escapeHtml(r.label)}</td><td>${r.pitches}</td><td>${r.strikePct ?? '—'}%</td><td>${r.inPlay.h}/${r.inPlay.out}/${r.inPlay.e}</td>
+    <td>${r.ended.k}/${r.ended.bb}/${r.ended.h}/${r.ended.other}</td>
   </tr>`).join('')
+  const lead = computeLeadoffReached(p.pitches, p.events ?? [])   // Release 2 (E7)
   return `
   <section class="section">
     <h2>Results by count</h2>
     <div class="table-scroll"><table class="data-table">
-      <thead><tr><th>Count</th><th>Pitches</th><th>Strike %</th><th>In-play H/Out/E</th></tr></thead>
+      <thead><tr><th>Count</th><th>Pitches</th><th>Strike %</th><th>In-play H/Out/E</th><th>Ended K/BB/H/other</th></tr></thead>
       <tbody>${body}</tbody>
     </table></div>
+    ${lead.innings ? `<p class="caption">Leadoff batter reached base in ${lead.reached} of ${lead.innings} inning${lead.innings === 1 ? '' : 's'}.</p>` : ''}
   </section>`
 }
 
@@ -506,7 +517,9 @@ function renderAtBatLog(p: GameReportPayload): string {
         return `${veloBit} ${g.glyph}${g.label ? ' ' + g.label : ''}${ttpBit}`
       }).join(' · ')
       const ending = ab.incomplete ? 'incomplete' : escapeHtml(ab.ending)
-      return `<div class="ab-row"><span class="ab-num">#${ab.atBatIndex} (${sideLabel}${deliveryLabel ? ', ' + deliveryLabel : ''})</span> ${seq} <span class="ab-ending">${ending}</span></div>`
+      // Release 2 (E6): the runners' moves (with why) and the runs, after the ending
+      const detail = ab.detail ? ` <span class="ab-detail" style="opacity:.75;">— ${escapeHtml(ab.detail)}</span>` : ''
+      return `<div class="ab-row"><span class="ab-num">#${ab.atBatIndex} (${sideLabel}${deliveryLabel ? ', ' + deliveryLabel : ''})</span> ${seq} <span class="ab-ending">${ending}</span>${detail}</div>`
     }).join('')
     return `<div class="ab-inning"><h3>Inning ${inning}</h3>${abs}</div>`
   }).join('')

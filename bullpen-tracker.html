@@ -8436,9 +8436,9 @@ const G5_OVER_FENCE = {
   8: 'polygon(0 0, 100% 0, 100% 67.5%, 87.5% 64.7%, 75% 62.1%, 62.5% 59.8%, 50% 57.7%, 37.5% 55.9%, 25% 54.3%, 12.5% 53.0%, 0% 51.9%)',
   9: 'polygon(0 0, 100% 0, 100% 100.0%, 87.5% 94.9%, 75% 90.2%, 62.5% 85.7%, 50% 81.5%, 37.5% 77.6%, 25% 74.0%, 12.5% 70.6%, 0% 67.5%)',
 };
-// Joel, Oct 19: O / E / H are no longer on the field's boxes -- they're the cell-sized row under the field
+// Joel, Oct 19: E / H / O (that order, Joel) are no longer on the field's boxes -- they're the cell-sized row under the field
 // (where K / B / F / IP sit under the chart), in columns 2-4.
-const G5_HOE_BTNS = [['O', 'Out', 2], ['E', 'Error', 3], ['H', 'Hit', 4]];
+const G5_HOE_BTNS = [['E', 'Error', 2], ['H', 'Hit', 3], ['O', 'Out', 4]];
 const G5_OUTCOME = { H: 'hit', O: 'out', E: 'error' };
 // Joel, Oct 19: the contact choices are the cell-sized row under the field too, letters only, in this order.
 const G5_HOW_BTNS = [['bunt', 'Bu', 'Bunt'], ['pop', 'PU', 'Pop up'], ['ground', 'GB', 'Ground ball'], ['line', 'LD', 'Line drive'], ['fly', 'FB', 'Fly ball']];
@@ -8843,14 +8843,14 @@ function g5CellInner(step, box){
   return null;
 }
 // Phones: the question sits between + Add out and ‹ Back, so it gets a short form.
-const G5_SHORT_CAPTION = { what: 'What happened?', hoe: 'Hit, out or error?',
+const G5_SHORT_CAPTION = { what: 'What happened?', hoe: 'Error, Hit or Out?',
   how: 'Type of contact?', where: 'Where fielded?', hr: 'Where did it leave?', bases: 'Runners on base', runners: 'Move a runner' };
 function g5Caption(step){
   const sg = state.activeSession && state.activeSession.g5;
   if(step === 'where' && sg && sg.zone === 'FOUL') return 'Select where the foul ball was caught';
   if(step === 'bases' && sg && sg.entry === 'O') return sg.outPhase === 'move' ? 'Tap or move runners who advanced or are out' : 'Out recorded — tap Next';
   return { what: 'What happened?',
-    hoe: 'In play — hit, out or error?', how: 'What type of contact?',
+    hoe: 'In play — Error, Hit or Out?', how: 'What type of contact?',
     where: 'Select Ball in Play Location', hr: 'Home run — where did it leave the park?', bases: 'Select current bases for baserunners',
     runners: 'Drag a runner to a base, or tap a runner then a base' }[step] || '';
 }

@@ -35,7 +35,10 @@ export interface GameSummary {
   batters_faced: number
   outs_recorded: number; outs_source: 'counter' | 'derived'
   final_inning: number; final_inning_source: 'counter' | 'derived'
+  pitch_count?: number   // Oct 19: pitches + the session's + / - adjustment (the rates still use pitches)
+  runs?: number | null   // Oct 19: runs while he pitched; null when the game recorded none (games before runs were tracked)
 }
+const pitchCount = (s: GameSummary) => s.pitch_count ?? s.pitches
 
 export interface GameReportPayload {
   // S1: from the SESSION ROW (index.ts), never from the client's payload.
@@ -92,7 +95,7 @@ function renderHeader(p: GameReportPayload): string {
     <span class="sport-tag">${asSport(p.sport) === 'softball' ? 'Softball' : 'Baseball'} · Live Game</span>
     <h1>${escapeHtml(p.pitcherName)}${numBit}</h1>
     <p class="header-meta">${dateStr}${oppBit}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''} · Live Game</p>
-    <p class="header-meta">${fmtIP(s.outs_recorded)} IP${ipNote} · ${s.outs_recorded} outs recorded · ${s.batters_faced} batters faced · ${s.pitches} pitches · charted by ${chartedBy}</p>
+    <p class="header-meta">${fmtIP(s.outs_recorded)} IP${ipNote} · ${s.outs_recorded} outs recorded · ${s.batters_faced} batters faced · ${pitchCount(s)} pitches · charted by ${chartedBy}</p>
     ${perspectiveNote}
   </header>`
 }
@@ -102,13 +105,14 @@ function renderSummary(p: GameReportPayload): string {
   const s = p.summary
   const vd = computeVelocityDepth(p.pitches as unknown as Parameters<typeof computeVelocityDepth>[0], allTypesOf(p))
   const tiles = [
-    tile(String(s.pitches), 'Pitches'),
+    tile(String(pitchCount(s)), 'Pitches'),
     tile(s.strike_pct + '%', 'Strike %'),
     tile(s.in_zone_pct + '%', 'In-zone %'),
     s.first_pitch_strike_pct !== null ? tile(s.first_pitch_strike_pct + '%', 'First-pitch strike %') : '',
     tile(String(s.k), 'K'),
     tile(String(s.bb), 'BB'),
-    tile(String(s.h) + (s.xbh ? ` (${s.xbh} XBH)` : ''), 'H')
+    tile(String(s.h) + (s.xbh ? ` (${s.xbh} XBH)` : ''), 'H'),
+    s.runs != null ? tile(String(s.runs), 'R') : ''
   ]
   if (vd.hasVelo) {
     const velos = p.pitches.map(x => safeNum(x.velo)).filter((v): v is number => v !== null)
@@ -144,11 +148,11 @@ function renderPitchingLine(p: GameReportPayload): string {
   <section class="section">
     <h2>Pitching line</h2>
     <div class="table-scroll"><table class="data-table wide">
-      <thead><tr><th>IP</th><th>BF</th><th>Pitches</th><th>Strikes</th><th>K</th><th>BB</th><th>H</th>${hasHitTypes ? '<th>1B/2B/3B/HR</th>' : ''}<th>HBP</th><th>E</th><th>Outs in play</th></tr></thead>
+      <thead><tr><th>IP</th><th>BF</th><th>Pitches</th><th>Strikes</th><th>K</th><th>BB</th><th>H</th>${hasHitTypes ? '<th>1B/2B/3B/HR</th>' : ''}<th>HBP</th><th>E</th><th>Outs in play</th>${s.runs != null ? '<th>R</th>' : ''}</tr></thead>
       <tbody><tr>
-        <td>${fmtIP(s.outs_recorded)}</td><td>${s.batters_faced}</td><td>${s.pitches}</td><td>${s.strikes}</td>
+        <td>${fmtIP(s.outs_recorded)}</td><td>${s.batters_faced}</td><td>${pitchCount(s)}</td><td>${s.strikes}</td>
         <td>${s.k}</td><td>${s.bb}</td><td>${s.h}</td>${hasHitTypes ? `<td>${oneB}/${twoB}/${threeB}/${hr}</td>` : ''}
-        <td>${s.hbp}</td><td>${s.errors}</td><td>${s.outs_in_play}</td>
+        <td>${s.hbp}</td><td>${s.errors}</td><td>${s.outs_in_play}</td>${s.runs != null ? `<td>${s.runs}</td>` : ''}
       </tr></tbody>
     </table></div>
     ${posRows ? `

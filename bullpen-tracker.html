@@ -8762,6 +8762,10 @@ window.g5NextPitch = async function(){
 // 2B sits at the bottom of box 25, clear of the outfield grass (Joel, Oct 7).
 // 1B and 3B sit just inside the foul lines, their outer side on the line (Joel, Oct 8).
 // Same drawing in send-session-report/diamond.ts -- change both or neither.
+// Center-field logo mown into the grass (Jordan's "Strikeout" mark, docs/cf-logo-mown.md): home plate cut as a band
+// with the scorebook K inside, the field's own greens cross-cut at 90 degrees and half the stripe width (each half
+// against its own side of the V), a 5% shade, a 10% hairline, the spot cut shorter. Both sports; same in diamond.ts.
+const G5_CF_LOGO = `<defs><pattern id="g5cfxl" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(-45 250 450)"><rect width="40" height="40" fill="#6FA548"/><rect width="40" height="20" fill="#8CBA5A"/></pattern><pattern id="g5cfxr" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="40" height="40" fill="#6FA548"/><rect width="40" height="20" fill="#8CBA5A"/></pattern><symbol id="g5cfmark" viewBox="0 0 100 100"><path fill-rule="evenodd" d="M2 2H98V50L50 98L2 50Z M9 9H91V47L50 88L9 47Z"/><path transform="translate(22 14) scale(0.034)" d="M0 0H442V1327H0Z M510 1139V494L820 0H1280Z M823 1327L673 1018L935 625L1301 1327Z"/></symbol><mask id="g5cfmask"><rect width="500" height="500" fill="#000"/><use href="#g5cfmark" x="170" y="74" width="160" height="160" fill="#fff"/></mask></defs><g mask="url(#g5cfmask)" pointer-events="none"><rect width="250" height="500" fill="url(#g5cfxl)"/><rect x="250" width="250" height="500" fill="url(#g5cfxr)"/><rect width="500" height="500" fill="#000000" fill-opacity="0.05"/></g><use href="#g5cfmark" x="170" y="74" width="160" height="160" fill="none" stroke="#000000" stroke-opacity="0.10" stroke-width="1" pointer-events="none"/><circle cx="274" cy="131.6" r="9.6" fill="#FFFFFF" fill-opacity="0.22" pointer-events="none"/>`;
 function g5FieldSvg(){
   const soft = currentSport() === 'softball';
   const g = state.activeSession && state.activeSession.g5;
@@ -8775,7 +8779,7 @@ function g5FieldSvg(){
   return `<svg class="g5-field" viewBox="0 0 500 500" aria-hidden="true">${mow}
 <rect width="250" height="500" fill="url(#g5dl)"/><rect x="250" width="250" height="500" fill="url(#g5dr)"/>
 <path d="M0,0 L500,0 L500,100 A650,650 0 0 0 0,100 Z" style="fill:var(--gg-fence)"/>
-<path d="M250,450 L0,200 L0,100 A650,650 0 0 1 250,50 Z" fill="url(#g5fl)"/><path d="M250,450 L500,200 L500,100 A650,650 0 0 0 250,50 Z" fill="url(#g5fr)"/><rect width="500" height="500" fill="url(#g5sun)"/>
+<path d="M250,450 L0,200 L0,100 A650,650 0 0 1 250,50 Z" fill="url(#g5fl)"/><path d="M250,450 L500,200 L500,100 A650,650 0 0 0 250,50 Z" fill="url(#g5fr)"/>${G5_CF_LOGO}<rect width="500" height="500" fill="url(#g5sun)"/>
 <path d="M0,100 A650,650 0 0 1 500,100" fill="none" style="stroke:var(--gg-line)" stroke-width="6" opacity="0.75"/>
 <path d="M250,450 L100,300 A250,250 0 0 1 400,300 Z" style="fill:var(--gg-dirt)"/>
 <polygon points="250,428 314,364 250,300 186,364" style="fill:${soft ? 'var(--gg-dirt)' : 'url(#g5pl)'}"/>

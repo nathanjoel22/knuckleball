@@ -15,6 +15,26 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-20 · Live Game Release 1 (gaps review) · **branch + staging database (not shipped)**
+- **Branch:** `live-game-back-more`. **Cache:** v260. No packet: Joel's choices on the 42-gap review of v259, then four layout answers. Plan and decisions: `plans/live-game-r1.md`. Release 2 (C2, C4, E1, E2, E3, E6, E7, F5) comes later.
+- **Joel held the ship** ("fix first") after his phone check of v259 passed; this goes out with the rest of the branch.
+- **Built:**
+  - **Hits (A1, C1):** after H, **1B · 2B · 3B · HR** (slots 2-5); HR left the location row. The batter goes to his base by himself and runners ahead are pushed only as far as they must (saved as `forced` moves). A home run's location row: OF = inside the park (keeps `spray_field` OF), FENCE = over the fence.
+  - **FC (A2):** **FC · E · H · O**. After the location: "Tap the runner who was out", then the batter is on 1B; Next waits for it. Saved as `in_play_outcome = 'fc'`. Greyed with the bases empty.
+  - **Runner moves kept (A4):** `batter_to` and `runner_advances` on walks, HBP, hits, errors, FC and HRs (forced pushes, drags, `hr`); outs unchanged. On a hit, a dragged runner can be **Hit by ball** (C8, an out).
+  - **Bunt K (A3):** a two-strike foul bunt counts as a K in the app, `compute_game_summary` and the report.
+  - **Reliever's IP (A5):** moving the inning in the top bar moves the carried-over outs too (Back restores it). **Final inning (A6):** the last inning a pitch or event happened in. **History card (A7):** counts IBB / auto ball four as BB, auto strike three as K, and shows R.
+  - **More → Rare plays ▸:** Dropped 3rd (batter out / reached; only with two strikes and 1B open or two out), Intentional walk, Catcher's int., Batter's int. (batter out / a runner out), **Clock ball / Clock strike** (A8: no pitch, not in the pitch count; +K / +B stay the missed pitch, +1), Foul bunt, Missed bunt, **HBP on swing** (B7: a swinging strike with `hbp_swing`).
+  - **Starting mid-game (E4):** without a hand-off, the start screen asks "Starting mid-game?" (inning, outs, runners); only his own outs count.
+  - **Report (E5):** WP and BK (softball: Illegal) in the pitching line; at-bat log shows 1B / 2B / 3B / HR, FC, batter's interference and the bunt K.
+- **Database (staging, Oct 20):** migration `20261020000000_live_game_r1`: `pitches.hbp_swing` (games, swinging strikes only), `sync_session` writes it, `compute_game_summary` counts the bunt K. Policies 34 before and after. Rollback: `supabase/rollback/20261020000000_live_game_r1_down.sql`.
+- **Proven:**
+  - `supabase/tests/live_game_r1.sql` on staging as the staging pitcher, rolled back: k=1 for a two-strike foul bunt (also with no outs counter: outs_recorded 1, derived); `hbp_swing` saved; a double's `hit_type` 2B, `batter_to` 2, forced move kept; FC saved; `hbp_swing` on a ball refused. Nothing left behind.
+  - The real page in headless Chrome with a made-up pitcher and Supabase unreachable: 45/45 checks at 390, 820 and 1180 px, no page errors (double, FC, both HRs, walk, single + run, hit by ball, HBP, every Rare play, IBB, clock vs +B, inning adjust + Back, final inning, Back paths, stats, the queued row, History card = live numbers, mid-game start). Screenshots of FC · E · H · O, the hit row, FENCE, Rare plays, FC's runner question and the start screen.
+  - The game report built in Deno: WP / BK columns (two runners on one wild pitch = one WP), the bunt K, 2B / FC / BI in the log, softball "Illegal". `deno check` passes.
+- **Not run:** a real phone; `send-session-report` is still not deployed on staging (Oct 14 version), so staging reports don't show the report changes yet.
+- **Shipping order:** production migrations `20261019000000` then `20261020000000` FIRST (History now reads `hbp_swing` and `game_events`), then the site, then `send-session-report`. Regenerate `supabase/schema/schema.sql` after. On shipping, update CLAUDE.md's G5 section.
+
 ## 2026-10-20 · no packet (staging report links) · **staging**
 - **Asked for by:** Joel. No code, database or cache change.
 - **Changed:** the staging `REPORT_SITE_ORIGIN` secret: `http://192.168.1.15:8000` → `http://192.168.1.68:8000`. The Mac's address on the home Wi-Fi changed, so emailed staging report links no longer opened. Verified by the stored secret's SHA-256 fingerprint (`193306103ad0fbda…`, matching the new value).

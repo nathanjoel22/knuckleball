@@ -23,6 +23,7 @@ export interface PenPitch {
 const STRIKE_RESULTS = new Set(['strike_looking', 'strike_swinging', 'foul', 'foul_tip', 'in_play', 'sac_bunt', 'sac_fly', 'dropped_third'])
 const isStrikeResult = (p: GamePitch) => STRIKE_RESULTS.has(p.result)
 const isK = (p: GamePitch) => p.result === 'dropped_third' || ((p.result === 'strike_looking' || p.result === 'strike_swinging' || p.result === 'foul_tip') && p.strikesBefore >= 2)
+    || (p.result === 'foul' && p.bbType === 'bunt' && p.strikesBefore >= 2)   // Oct 20: a two-strike foul bunt is a K (Joel)
 const isBB = (p: GamePitch) => p.result === 'ball' && p.ballsBefore >= 3
 const inPlay = (p: GamePitch, o: string) => p.result === 'in_play' && p.inPlayOutcome === o
 

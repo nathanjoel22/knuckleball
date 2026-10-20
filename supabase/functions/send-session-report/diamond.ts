@@ -128,6 +128,7 @@ const MATRIX_COLS: [string, (p: GamePitch) => boolean][] = [
 ]
 function isKDecider(p: GamePitch): boolean {
   return p.result === 'dropped_third' || ((p.result === 'strike_looking' || p.result === 'strike_swinging' || p.result === 'foul_tip') && p.strikesBefore >= 2)
+    || (p.result === 'foul' && p.bbType === 'bunt' && p.strikesBefore >= 2)   // Oct 20: a two-strike foul bunt is a K (Joel)
 }
 function isBBDecider(p: GamePitch): boolean { return p.result === 'ball' && p.ballsBefore >= 3 }
 

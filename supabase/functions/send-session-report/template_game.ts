@@ -141,6 +141,14 @@ function renderPitchingLine(p: GameReportPayload): string {
     else if (x.inPlayOutcome === 'error') row.errors++
     byPosition.set(x.fielder, row)
   }
+  // Oct 20 (E5): wild pitches and balks in the line. Each runner's move is its own event, so the runners who moved on
+  // one wild pitch are one WP (same inning, batter and count). Softball's illegal pitch (and its older balk rows)
+  // stands in for the balk.
+  const softball = asSport(p.sport) === 'softball'
+  const evs = p.events ?? []
+  const wp = new Set(evs.filter(e => e.eventType === 'wild_pitch').map(e => `${e.inningBefore}|${e.atBatIndex}|${e.ballsBefore}|${e.strikesBefore}`)).size
+  const bk = evs.filter(e => softball ? (e.eventType === 'illegal_pitch' || e.eventType === 'balk') : e.eventType === 'balk').length
+  const bkLabel = softball ? 'Illegal' : 'BK'
   const posRows = Array.from(byPosition.entries())
     .map(([pos, r]) => `<tr><td>${escapeHtml(pos)}</td><td>${r.outs}</td><td>${r.hits}</td><td>${r.errors}</td></tr>`)
     .join('')
@@ -148,11 +156,11 @@ function renderPitchingLine(p: GameReportPayload): string {
   <section class="section">
     <h2>Pitching line</h2>
     <div class="table-scroll"><table class="data-table wide">
-      <thead><tr><th>IP</th><th>BF</th><th>Pitches</th><th>Strikes</th><th>K</th><th>BB</th><th>H</th>${hasHitTypes ? '<th>1B/2B/3B/HR</th>' : ''}<th>HBP</th><th>E</th><th>Outs in play</th>${s.runs != null ? '<th>R</th>' : ''}</tr></thead>
+      <thead><tr><th>IP</th><th>BF</th><th>Pitches</th><th>Strikes</th><th>K</th><th>BB</th><th>H</th>${hasHitTypes ? '<th>1B/2B/3B/HR</th>' : ''}<th>HBP</th><th>WP</th><th>${bkLabel}</th><th>E</th><th>Outs in play</th>${s.runs != null ? '<th>R</th>' : ''}</tr></thead>
       <tbody><tr>
         <td>${fmtIP(s.outs_recorded)}</td><td>${s.batters_faced}</td><td>${pitchCount(s)}</td><td>${s.strikes}</td>
         <td>${s.k}</td><td>${s.bb}</td><td>${s.h}</td>${hasHitTypes ? `<td>${oneB}/${twoB}/${threeB}/${hr}</td>` : ''}
-        <td>${s.hbp}</td><td>${s.errors}</td><td>${s.outs_in_play}</td>${s.runs != null ? `<td>${s.runs}</td>` : ''}
+        <td>${s.hbp}</td><td>${wp}</td><td>${bk}</td><td>${s.errors}</td><td>${s.outs_in_play}</td>${s.runs != null ? `<td>${s.runs}</td>` : ''}
       </tr></tbody>
     </table></div>
     ${posRows ? `

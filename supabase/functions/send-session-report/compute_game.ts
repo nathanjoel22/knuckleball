@@ -22,7 +22,7 @@ export interface GamePitch {
   batterSide: 'R' | 'L' | null
   ts: number
   result: string
-  inPlayOutcome: 'hit' | 'out' | 'error' | 'reached' | null
+  inPlayOutcome: 'hit' | 'out' | 'error' | 'reached' | 'fc' | null
   hitType: '1B' | '2B' | '3B' | 'HR' | null
   fielder: string | null
   delivery: 'set' | 'windup' | null
@@ -75,6 +75,7 @@ function isWhiff(p: GamePitch): boolean { return p.result === 'strike_swinging' 
 // the others.
 function isK(p: GamePitch): boolean {
   return p.result === 'dropped_third' || ((p.result === 'strike_looking' || p.result === 'strike_swinging' || p.result === 'foul_tip') && p.strikesBefore >= 2)
+    || (p.result === 'foul' && p.bbType === 'bunt' && p.strikesBefore >= 2)   // Oct 20: a two-strike foul bunt is a K (Joel)
 }
 function isBB(p: GamePitch): boolean { return p.result === 'ball' && p.ballsBefore >= 3 }
 function isHit(p: GamePitch): boolean { return p.result === 'in_play' && p.inPlayOutcome === 'hit' }
@@ -303,11 +304,13 @@ function atBatEndingLabel(lastPitch: GamePitch, isDroppedThirdReached: boolean):
   switch (lastPitch.result) {
     case 'dropped_third': return isDroppedThirdReached ? 'K (reached)' : 'K'
     case 'strike_looking': case 'strike_swinging': return lastPitch.strikesBefore >= 2 ? 'K' : ''
+    case 'foul': return lastPitch.bbType === 'bunt' && lastPitch.strikesBefore >= 2 ? 'K' : ''   // Oct 20: foul bunt, strike three
     case 'ball': return lastPitch.ballsBefore >= 3 ? 'BB' : ''
     case 'in_play': {
       // G5: "Hit · LD · box 22" -- what was charted; no hit type or fielder is invented.
       if (typeof lastPitch.sprayBox === 'number') {
-        const what = lastPitch.hitType === 'HR' ? 'HR' : lastPitch.inPlayOutcome === 'hit' ? 'Hit' : lastPitch.inPlayOutcome === 'error' ? 'Error' : 'Out'
+        // Oct 20: hits carry 1B / 2B / 3B / HR, and FC is its own outcome
+        const what = lastPitch.inPlayOutcome === 'hit' ? (lastPitch.hitType ?? 'Hit') : lastPitch.inPlayOutcome === 'error' ? 'Error' : lastPitch.inPlayOutcome === 'fc' ? 'FC' : 'Out'
         return [what, lastPitch.bbType ? (G5_BB_LABEL[lastPitch.bbType] ?? '') : '', `box ${lastPitch.sprayBox}`].filter(Boolean).join(' · ')
       }
       if (lastPitch.inPlayOutcome === 'hit') return `${lastPitch.hitType ?? 'Hit'}${fielder ? ' to ' + fielder : ''}`
@@ -318,6 +321,7 @@ function atBatEndingLabel(lastPitch: GamePitch, isDroppedThirdReached: boolean):
     case 'sac_fly': return 'Sac fly'
     case 'hbp': return 'HBP'
     case 'interference': return 'Interference'
+    case 'batter_interference': return "Batter's interference"
     case 'other': return 'Other'
     default: return ''
   }

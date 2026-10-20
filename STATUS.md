@@ -15,6 +15,16 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-20 · no packet (staging report links) · **staging**
+- **Asked for by:** Joel. No code, database or cache change.
+- **Changed:** the staging `REPORT_SITE_ORIGIN` secret: `http://192.168.1.15:8000` → `http://192.168.1.68:8000`. The Mac's address on the home Wi-Fi changed, so emailed staging report links no longer opened. Verified by the stored secret's SHA-256 fingerprint (`193306103ad0fbda…`, matching the new value).
+- **Not redeployed:** `send-session-report` on staging (last deployed Oct 14). Redeploying from `live-game-back-more` would also put that branch's undeployed report changes on staging. Not checked by sending a real report email.
+- **Production:** untouched. It has no `REPORT_SITE_ORIGIN`.
+- **Docs:** CLAUDE.md "Staging report links" updated. The comments in `send-session-report/index.ts` still say `.15` (code unchanged; update with the next change to that file).
+- **Open:**
+  - reports emailed from staging before today still point at `.15`;
+  - reserve `192.168.1.68` for the Mac in the router so the address stops changing.
+
 ## 2026-10-19 · Live Game: Back / More, Foul = foul tip · **branch + staging database (not shipped)**
 - **Branch:** `live-game-back-more`. **Cache:** v259. Asked for by Joel (no packet). **One migration (staging only), and a report function change (not deployed):** see "Saved pitch count and runs in reports".
 - **Built:**

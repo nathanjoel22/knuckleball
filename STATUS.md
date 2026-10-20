@@ -32,7 +32,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - `supabase/tests/live_game_r1.sql` on staging as the staging pitcher, rolled back: k=1 for a two-strike foul bunt (also with no outs counter: outs_recorded 1, derived); `hbp_swing` saved; a double's `hit_type` 2B, `batter_to` 2, forced move kept; FC saved; `hbp_swing` on a ball refused. Nothing left behind.
   - The real page in headless Chrome with a made-up pitcher and Supabase unreachable: 45/45 checks at 390, 820 and 1180 px, no page errors (double, FC, both HRs, walk, single + run, hit by ball, HBP, every Rare play, IBB, clock vs +B, inning adjust + Back, final inning, Back paths, stats, the queued row, History card = live numbers, mid-game start). Screenshots of FC · E · H · O, the hit row, FENCE, Rare plays, FC's runner question and the start screen.
   - The game report built in Deno: WP / BK columns (two runners on one wild pitch = one WP), the bunt K, 2B / FC / BI in the log, softball "Illegal". `deno check` passes.
-- **Not run:** a real phone; `send-session-report` is still not deployed on staging (Oct 14 version), so staging reports don't show the report changes yet.
+- **Function (staging, Oct 20, Joel's OK):** `send-session-report` deployed to staging only (version 63), with the Oct 19 report changes (R, pitch count, center-field logo) and these. Production untouched.
+- **Not run:** a real phone; a real report generated on staging.
 - **Shipping order:** production migrations `20261019000000` then `20261020000000` FIRST (History now reads `hbp_swing` and `game_events`), then the site, then `send-session-report`. Regenerate `supabase/schema/schema.sql` after. On shipping, update CLAUDE.md's G5 section.
 
 ## 2026-10-20 · no packet (staging report links) · **staging**

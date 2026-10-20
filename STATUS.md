@@ -16,7 +16,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 ---
 
 ## 2026-10-19 · Live Game: Back / More, Foul = foul tip · **branch (not shipped)**
-- **Branch:** `live-game-back-more`. **Cache:** v254. Asked for by Joel (no packet). Frontend only: no database change.
+- **Branch:** `live-game-back-more`. **Cache:** v255. Asked for by Joel (no packet). Frontend only: no database change.
 - **Built:**
   - **Foul:** always a foul tip. The "Foul Tip / Foul Out" question is gone.
   - **Caught foul:** recorded as In Play → Out → contact. On any contact but a ground ball, a **FOUL** button (box 14) flashes foul ground only. It's saved as an out in play in that box with `spray_field` NULL, the same columns as the old Foul Out.
@@ -40,6 +40,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - **Radar off:** the "Next pitch" box on the mound is gone for every play; Next sits beside Back under the field.
   - Checked: out with nobody on → velocity; 1B + 3B → 3B tagged up home, 1B doubled up, Back ×3 to the out screen, redo, Next → `[{3→4 tagged_up},{1→0 doubled_up}]`, outs_on_play 2, runners_after 0; a double play for the third out saves itself; a hit with a runner still asks for the batter.
 - **E / H / O (Joel, follow-up):** the prompt reads "In play — Error, Hit or Out?" (short form "Error, Hit or Out?") and the buttons run **E · H · O** in columns 2-4.
+- **More: Hit by pitch, Balk (Joel, follow-up):** the More tray adds **Hit by pitch** (tap where it went first; the existing `hbp` result: batter to 1B, only forced runners move, `runners_after` saved, then velocity) and **Balk** (the existing `balk` event: every runner up one, no count change; greyed with the bases empty). Softball shows **Illegal pitch** there instead (the existing ADV illegal pitch: runners up and a ball). Back undoes either. Checked on a phone: 1B + 3B, 1-0 → HBP loads the bases, new batter, `runners_after` 7; Back restores; Balk → runner on 2B (3B scored); Back restores; no page errors.
 - **Center-field logo (docs/cf-logo-mown.md, uploaded Oct 19):** Jordan's "Strikeout" mark (home plate cut as a band, the scorebook K inside, the spot) is mown into center field: the field's own two greens cross-cut at 90° and half the stripe width, each half against its own side of the V, a 5% shade, a 10% hairline, the spot a 22% white overlay. Centered at 0.74 of the way to the fence, 0.40 of the fence distance wide, under the fence line, bases, shading and markers; never takes taps. Both sports. The spec's symbol was the 3×3 grid ("design #2") but its heading and demo use design #1, so design #1 is drawn; the field here is upright, so the spec's 45° rotation is dropped. Same drawing added to `send-session-report/diamond.ts` (`CF_LOGO`): **not deployed** -- new game reports get it only when Joel deploys that function; sent reports never change.
 - **No red hint on phones (Joel, follow-up):** the small red line over the top of the chart ("Select a pitch type first" and the rest) no longer shows on phones, in bullpens or Live Games. iPad / laptop keep it.
 - **Invisible 5×5 on the field (Joel, follow-up):** the same 25 boxes and tap rules, with no box outlines. Foul ground and over the fence now flash as one shape on the field drawing (like IF / OF already did), not box by box.

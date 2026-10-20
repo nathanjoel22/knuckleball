@@ -7079,6 +7079,24 @@ window.gameNewBatter = async function(){
   await storSet(draftKey(), s);
   render();
 };
+// Joel, Oct 19 (More): Hit by pitch is a pitch -- tap where it went, then More -> Hit by pitch. The batter takes first
+// and only forced runners move up, saved like a walk's runners (runners_after), straight on to velocity.
+window.gameHitByPitch = async function(){
+  const s = state.activeSession, g = s.g5;
+  if(!g || g.step !== 'what') return;
+  if(!gamePitchType()){ state.hint = 'Pick this pitch\'s type, then tap again'; render(); return; }
+  s.g5 = null;
+  return recordGameResult('hbp', { g5: true, addOuts: 0, runnersAfter: g5WalkMask(s.runners) });
+};
+// Balk (softball: Illegal pitch, runners up and a ball): not a pitch, so a spot already tapped is dropped. Every
+// runner moves up one base, through the existing balk / illegal_pitch event; Back undoes it.
+window.gameBalk = async function(){
+  const s = state.activeSession, soft = currentSport() === 'softball';
+  if(!soft && !gameHasRunners(s)) return;
+  g5Cancel(s);
+  if(soft) return commitIllegalPitch(true);
+  return commitNoPitchEvent('balk');
+};
 window.gameNewInning = async function(){
   const s = state.activeSession;
   g5Cancel(s);
@@ -9144,6 +9162,7 @@ function g5NavRow(){
       <button type="button" class="btn btn-secondary btn-sm g5-nav-btn${more ? ' on' : ''}" onclick="g5MoreToggle()" aria-expanded="${more ? 'true' : 'false'}">More ${more ? '▴' : '▾'}</button>
     </div>${more ? `<div class="g5-more" role="group" aria-label="More">
       ${b('New batter', 'gameNewBatter()')}${b('New inning', 'gameNewInning()')}
+      ${b('Hit by pitch', 'gameHitByPitch()', !(s.g5 && s.g5.step === 'what'))}${currentSport() === 'softball' ? b('Illegal pitch', 'gameBalk()') : b('Balk', 'gameBalk()', !gameHasRunners(s))}
     </div>` : ''}`;
 }
 // Under the square chart: the extra-inning question, then the result buttons and Back / More.

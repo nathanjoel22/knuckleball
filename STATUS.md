@@ -16,7 +16,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 ---
 
 ## 2026-10-19 · Live Game: Back / More, Foul = foul tip · **branch (not shipped)**
-- **Branch:** `live-game-back-more`. **Cache:** v253. Asked for by Joel (no packet). Frontend only: no database change.
+- **Branch:** `live-game-back-more`. **Cache:** v254. Asked for by Joel (no packet). Frontend only: no database change.
 - **Built:**
   - **Foul:** always a foul tip. The "Foul Tip / Foul Out" question is gone.
   - **Caught foul:** recorded as In Play → Out → contact. On any contact but a ground ball, a **FOUL** button (box 14) flashes foul ground only. It's saved as an out in play in that box with `spray_field` NULL, the same columns as the old Foul Out.
@@ -34,7 +34,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **All four, always (Joel, follow-up):** every contact type shows IF · OF · FOUL · HR in their slots, the ones that can't apply greyed. IF: not on a fly ball. OF: not on a bunt. FOUL: an out that isn't a ground ball, or a bunt on two strikes. HR: a line-drive or fly-ball hit. Checked all ten contact × out/hit combinations, plus a two-strike bunt.
 - **Outs and the runners (Joel, follow-up):** an out's location leads to the out screen ("Out recorded — tap Next": the ball, the runners, ‹ Back / Next ›).
   - Nobody on: Next saves the play, then velocity (radar on) or the next pitch.
-  - Runners on: Next asks "Tap or move runners who advanced or are out". Drag a runner to a base or home, then **Advanced / Tagged up / On error / Thrown out**; or tap a runner, then **Doubled up / Tagged out**. A third out saves at once. Back undoes the last move, then returns to the out screen.
+  - Runners on: Next asks "Tap or move runners who advanced or are out". Drag a runner to a base or home, then **Advanced / Tagged up / On error / Thrown out / Force out** (Force out added in a follow-up; saved as `force_out`, an out); or tap a runner, then **Doubled up / Tagged out**. A third out saves at once. Back undoes the last move, then returns to the out screen.
   - **Saved** with the pitch in `pitches.runner_advances` as `[{ from, to (0 out, 4 home), how }]`. This is the G1b column live games had left NULL; it allows any JSON array, and `sync_session` already sends it, so there's **no database change**. Reports don't show the reasons yet (nothing reads that column for live games); that would be a report change.
   - Hits and errors keep their own runners screen (Joel: outs only). The batter token is gone on an out.
   - **Radar off:** the "Next pitch" box on the mound is gone for every play; Next sits beside Back under the field.

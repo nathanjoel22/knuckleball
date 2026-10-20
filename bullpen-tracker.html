@@ -8583,11 +8583,12 @@ window.g5Base = async function(box){
 /* ---------- Outs and the runners (Joel, Oct 19) ----------
    An out's location leads to the out screen (the ball, the runners, Back / Next). With nobody on, Next saves the play.
    With runners on, Next asks "Tap or move runners who advanced or are out": drag a runner to a base or home, then
-   Advanced / Tagged up / On error / Thrown out; or tap a runner, then Doubled up / Tagged out. Next saves. Each move is
+   Advanced / Tagged up / On error / Thrown out / Force out; or tap a runner, then Doubled up / Tagged out. Next saves. Each move is
    saved with the pitch in pitches.runner_advances as { from, to (0 out, 4 home), how } -- the G1b column live games had
    left empty. Back undoes the last move, then returns to the out screen. Hits and errors keep their own runners screen. */
 const G5_OUT_SAFE = [['advanced', 'Advanced'], ['tagged_up', 'Tagged up'], ['on_error', 'On error']];
-const G5_OUT_HOW_LABEL = { advanced: 'Advanced', tagged_up: 'Tagged up', on_error: 'On error', thrown_out: 'Thrown out', doubled_up: 'Doubled up', tagged_out: 'Tagged out' };
+const G5_OUT_KINDS = { thrown_out: 1, force_out: 1, doubled_up: 1, tagged_out: 1 };   // the runner is out (Force out: Joel, Oct 19)
+const G5_OUT_HOW_LABEL = { advanced: 'Advanced', tagged_up: 'Tagged up', on_error: 'On error', thrown_out: 'Thrown out', force_out: 'Force out', doubled_up: 'Doubled up', tagged_out: 'Tagged out' };
 function g5StartOutScreen(g){ if(g.entry === 'O'){ g.outPhase = 'confirm'; g.advances = []; g.advBefore = []; } }
 function g5OutMoving(g){ return !!g && g.step === 'bases' && g.entry === 'O' && g.outPhase === 'move'; }
 window.g5OutRunnerTap = async function(box){
@@ -8601,7 +8602,7 @@ window.g5OutRunnerTap = async function(box){
 window.g5OutHow = async function(how){
   const g = state.activeSession.g5;
   if(!g5OutMoving(g) || !g.move || typeof g.move.from !== 'number') return;
-  const m = g.move, out = how === 'thrown_out' || how === 'doubled_up' || how === 'tagged_out';
+  const m = g.move, out = !!G5_OUT_KINDS[how];
   if(!out && !G5_OUT_SAFE.some(([k]) => k === how)) return;
   if(!out && m.to === null) return;   // a tapped runner can only be out
   g.advBefore.push({ bases: g.bases, addOuts: g.addOuts || 0 });
@@ -8953,9 +8954,9 @@ function g5MovePrompt(g){
   const m = g.move, soft = currentSport() === 'softball';
   if(g5OutMoving(g)){
     const who = 'Runner on ' + g5BaseName(m.from);
-    const opts = m.tap ? [['doubled_up', 'Doubled up'], ['tagged_out', 'Tagged out']] : [...G5_OUT_SAFE, ['thrown_out', 'Thrown out']];
+    const opts = m.tap ? [['doubled_up', 'Doubled up'], ['tagged_out', 'Tagged out']] : [...G5_OUT_SAFE, ['thrown_out', 'Thrown out'], ['force_out', 'Force out']];
     return `<div class="g5-move"><div class="g5-q">${m.tap ? who : who + ' to ' + g5BaseName(m.to)} — what happened?</div>
-      <div class="g5-move-btns g5-why">${opts.map(([k, l]) => `<button type="button" class="btn ${k === 'thrown_out' || k === 'doubled_up' || k === 'tagged_out' ? 'btn-danger' : 'btn-secondary'} btn-sm g5-act" onclick="g5OutHow('${k}')">${l}</button>`).join('')}
+      <div class="g5-move-btns g5-why">${opts.map(([k, l]) => `<button type="button" class="btn ${G5_OUT_KINDS[k] ? 'btn-danger' : 'btn-secondary'} btn-sm g5-act" onclick="g5OutHow('${k}')">${l}</button>`).join('')}
       <button type="button" class="btn btn-tertiary btn-sm g5-act" onclick="g5MoveCancel()">Cancel</button></div></div>`;
   }
   const what = `${m.from === 'batter' ? 'The batter' : 'Runner on ' + g5BaseName(m.from)} to ${g5BaseName(m.to)}`;

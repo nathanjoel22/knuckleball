@@ -7239,10 +7239,9 @@ window.gameBack = async function(){
 };
 window.g5MoreToggle = function(){ state.g5More = !state.g5More; state.g5Rare = false; state.g5RareAsk = null; state.gameAdjust = null; render(); };
 window.g5MoreClose = function(){ state.g5More = false; state.g5Rare = false; state.g5RareAsk = null; };
-// Joel, Oct 20: More -> Rare plays, a second tray: Dropped 3rd, Intentional walk, Catcher's / Batter's interference,
-// Clock ball / Clock strike (a pitch-clock violation: no pitch, not in the pitch count -- +K / +B stay the missed pitch,
-// +1), Foul bunt, Missed bunt, HBP on swing, and Balk (softball: Illegal pitch; moved from More, Joel, Oct 21). The pitch
-// ones need the spot tapped first, like Hit by pitch.
+// Joel, Oct 20: More -> Rare plays, a second tray (laid out in g5RareTray). Clock ball / Clock strike are a pitch-clock
+// violation: no pitch, not in the pitch count -- +K / +B stay the missed pitch, +1. Joel, Oct 21: Missed bunt and HBP on
+// swing removed; Interference and Violations group the rest. The pitch ones need the spot tapped first, like Hit by pitch.
 window.g5RareToggle = function(){ state.g5Rare = !state.g5Rare; state.g5RareAsk = null; render(); };
 window.g5RareAskSet = function(ask){ state.g5RareAsk = ask; render(); };
 function g5PitchReady(s){ return !!(s && s.g5 && s.g5.step === 'what'); }
@@ -7258,8 +7257,6 @@ window.gameRarePitch = async function(kind, base){
   const x = { g5: true, addOuts: 0 };
   switch(kind){
     case 'foul_bunt': return recordGameResult('foul', { ...x, bunt: true, bbType: 'bunt' });   // two strikes: the strikeout
-    case 'missed_bunt': return recordGameResult('strike_swinging', { ...x, bbType: 'bunt' });
-    case 'hbp_swing': return recordGameResult('strike_swinging', { ...x, hbpSwing: true });
     case 'ci': return recordGameResult('interference', { ...x, runnersAfter: walkMask });
     case 'd3_out': return recordGameResult('dropped_third', { ...x, inPlayOutcome: 'out' });
     case 'd3_reached': return recordGameResult('dropped_third', { ...x, inPlayOutcome: 'reached', runnersAfter: walkMask });
@@ -9731,25 +9728,36 @@ function g5NavRow(){
       <button type="button" class="btn btn-secondary btn-sm g5-more-btn" onclick="g5RareToggle()">Rare plays ▸</button>
     </div>`) : ''}`;
 }
-// Oct 20: the Rare plays tray (in More's place). Dropped 3rd and Batter's int. ask one more thing in the same spot.
+// Oct 20: the Rare plays tray (in More's place). Joel, Oct 21: Dropped 3rd, Intentional walk, Interference (then Catcher's
+// or Batter's), Violations (then Clock ball or Clock strike), Foul bunt, Balk. A choice that asks one more thing asks it in
+// the same spot, with ‹ Rare plays to go back.
 function g5RareTray(s){
   const b = (label, onclick, off, keep) => `<button type="button" class="btn btn-secondary btn-sm g5-more-btn" onclick="${keep ? '' : 'g5MoreClose(); '}${onclick}" ${off ? 'disabled' : ''}>${label}</button>`;
   const ready = g5PitchReady(s), walk = !!(s.g5 && s.g5.walkEvent), midPlay = !!(s.g5 && s.g5.step !== 'what');
-  const back = `<button type="button" class="btn btn-tertiary btn-sm g5-more-btn" onclick="${state.g5RareAsk ? "g5RareAskSet(null)" : 'g5RareToggle()'}">‹ ${state.g5RareAsk ? 'Rare plays' : 'More'}</button>`;
-  if(state.g5RareAsk === 'd3'){
+  const ask = state.g5RareAsk;
+  const back = `<button type="button" class="btn btn-tertiary btn-sm g5-more-btn" onclick="${ask === 'bi' ? "g5RareAskSet('int')" : ask ? 'g5RareAskSet(null)' : 'g5RareToggle()'}">‹ ${ask === 'bi' ? 'Interference' : ask ? 'Rare plays' : 'More'}</button>`;
+  if(ask === 'd3'){
     return `<div class="g5-more" role="group" aria-label="Dropped third strike">
       ${b('Batter out at 1B', "gameRarePitch('d3_out')")}${b('Batter reached 1B', "gameRarePitch('d3_reached')")}${back}</div>`;
   }
-  if(state.g5RareAsk === 'bi'){
+  if(ask === 'int'){
+    // Catcher's: the batter takes 1B and forced runners move up. Batter's: the batter is out, runners go back -- or, on a
+    // play on a runner, that runner is out instead (the next question).
+    return `<div class="g5-more" role="group" aria-label="Interference">
+      ${b("Catcher's", "gameRarePitch('ci')", !ready)}${b("Batter's", "g5RareAskSet('bi')", !ready, true)}${back}</div>`;
+  }
+  if(ask === 'bi'){
     const runners = [1, 2, 3].filter(n => s.runners[n]).map(n => b(`Runner on ${['', '1B', '2B', '3B'][n]} out`, `gameRarePitch('bi_runner', ${n})`)).join('');
     return `<div class="g5-more" role="group" aria-label="Batter's interference">${b('Batter out', "gameRarePitch('bi_batter')")}${runners}${back}</div>`;
   }
+  if(ask === 'viol'){
+    return `<div class="g5-more" role="group" aria-label="Violations">
+      ${b('Clock ball', "g5AddCount('ball', true)", walk)}${b('Clock strike', "g5AddCount('strike', true)", walk)}${back}</div>`;
+  }
   return `<div class="g5-more" role="group" aria-label="Rare plays">
     ${b('Dropped 3rd', "g5RareAskSet('d3')", !g5D3Ok(s), true)}${b('Intentional walk', 'gameIntentionalWalk()', midPlay || walk)}
-    ${b("Catcher's int.", "gameRarePitch('ci')", !ready)}${b("Batter's int.", "g5RareAskSet('bi')", !ready, true)}
-    ${b('Clock ball', "g5AddCount('ball', true)", walk)}${b('Clock strike', "g5AddCount('strike', true)", walk)}
-    ${b('Foul bunt', "gameRarePitch('foul_bunt')", !ready)}${b('Missed bunt', "gameRarePitch('missed_bunt')", !ready)}
-    ${b('HBP on swing', "gameRarePitch('hbp_swing')", !ready)}${currentSport() === 'softball' ? b('Illegal pitch', 'gameBalk()') : b('Balk', 'gameBalk()', !gameHasRunners(s))}
+    ${b('Interference', "g5RareAskSet('int')", !ready, true)}${b('Violations', "g5RareAskSet('viol')", walk, true)}
+    ${b('Foul bunt', "gameRarePitch('foul_bunt')", !ready)}${currentSport() === 'softball' ? b('Illegal pitch', 'gameBalk()') : b('Balk', 'gameBalk()', !gameHasRunners(s))}
     ${back}
   </div>`;
 }

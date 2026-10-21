@@ -15,6 +15,14 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: Rare plays regrouped · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v263. Asked for by Joel. No database or function change.
+- **Rare plays now:** Dropped 3rd · Intentional walk / **Interference** · **Violations** / Foul bunt · Balk / ‹ More.
+  - Interference → Catcher's (batter to 1B, forced runners up) or Batter's (→ Batter out, or Runner on 1B / 2B / 3B out, as before).
+  - Violations → Clock ball or Clock strike (no pitch; not in the pitch count).
+  - **Removed:** Missed bunt and HBP on swing (B7 dropped). `pitches.hbp_swing` (migration `20261020000000`, staging only) is now unused by the app.
+- **Proven:** headless Chrome: Release 1 47/47 (incl. the new Interference / Batter's / Violations steps and the two removed buttons doing nothing) and Release 2 27/27 at 390, 820 and 1180 px; screenshot of the tray.
+
 ## 2026-10-21 · Live Game: Balk into Rare plays · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v262. Asked for by Joel. No database or function change.
 - **Changed:** Balk (softball: Illegal pitch) moved from More into Rare plays, beside HBP on swing; "Rare plays ▸" now sits in Balk's old spot beside Hit by pitch.

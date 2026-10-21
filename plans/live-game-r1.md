@@ -19,7 +19,7 @@ later release. Skipped: B5, B8, C3, C5, C6, C7, D1-D5, F2, F3, F4, F6. Later: F1
 | A8 | Clock violation vs missed pitch | **Clock ball / Clock strike** (no pitch, not in the pitch count) separate from +K / +B (missed pitch, +1). |
 | B1-B4 | Dropped 3rd, IBB, catcher's int., batter's int. | In **More → Rare plays ▸** (Joel). |
 | B6 | Bunt attempts | **Foul bunt / Missed bunt** in Rare plays (a foul or swinging strike with `bb_type = 'bunt'`). |
-| B7 | HBP on a swing | **HBP on swing** in Rare plays: a swinging strike, `pitches.hbp_swing = true` (new column, Joel). |
+| B7 | HBP on a swing | ~~**HBP on swing** in Rare plays~~ -- removed (Joel, Oct 21), with Missed bunt. `pitches.hbp_swing` stays in the migration, unused. |
 | C8 | Runner hit by a batted ball | On a hit's runners screen, a runner called out can be "Hit by ball" (`how = 'hit_by_ball'`). |
 | E4 | Mid-game start without the hand-off | Start screen: "Starting mid-game?" → inning, outs, runners. Same carry-over as the hand-off. |
 | E5 | WP and BK in the pitching line | Report's pitching line gets WP and BK columns. |

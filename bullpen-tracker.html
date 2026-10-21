@@ -9020,13 +9020,55 @@ async function g5AfterLocation(){
   if(g.entry === 'H' && g.hitType === 'HR'){ g.hr = true; return g5Commit('in_play'); }   // Oct 20: inside the park
   if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');   // the half-inning is over: no runners question
   g.step = 'bases'; g.bases = runnersBitmask(s.runners);     // the runners as they were; the charter adds the batter
-  if(g.foulOut){ g5StartOutScreen(g); return g5Save(); }
+  if(g.entry === 'O'){
+    g5StartOutScreen(g);
+    if(g.bases){   // Joel, Oct 21: runners on -- straight to them (no "Out recorded" step), with the outs the fielders show
+      g.outPhase = 'move';
+      g5OutsFromFielders(g);
+      if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');
+    }
+    return g5Save();
+  }
   g.advances = []; g.batterTo = undefined; g.batterPlaced = false;
   if(g.entry === 'H') g5PlaceBatter(g, s, G5_HIT_BASE[g.hitType] || 1);   // Oct 20: the batter on his base by himself
   if(g.entry === 'E') g5PlaceBatter(g, s, g.reachBase || 1);                 // Oct 21: where the error left him
   if(g.entry === 'FC') g.fcPhase = 'pick';                                  // FC: who was out, first
   g5StartOutScreen(g);
   return g5Save();
+}
+// Joel, Oct 21: on a ground ball or bunt out with runners on, every fielder tapped after the first made an out at his
+// base -- 2B or SS covering is second, 3B third, C home, 1B or P covering first (the batter, already out). SS, 2B, 1B is
+// a 6-4-3 double play: the runner from first forced at second, the batter at first. Each is a runner move like the out
+// screen's own (Back undoes them one at a time).
+const G5_PUTOUT_BASE = { '1B': 1, P: 1, '2B': 2, SS: 2, '3B': 3, C: 4 };
+function g5OutsFromFielders(g){
+  const seq = g.fielderSeq || [];
+  if(!(g.bbType === 'ground' || g.bbType === 'bunt') || seq.length < 2) return;
+  const start = g.bases;
+  seq.slice(1).forEach(pos => {
+    const b = G5_PUTOUT_BASE[pos];
+    if(!b || b === 1 || g5ProjectedOuts(g) >= 3) return;   // first base: the batter
+    const from = b - 1, bit = 1 << (from - 1);
+    if(!(g.bases & bit)) return;                              // nobody coming into that base
+    const forced = from === 1 || (from === 2 && (start & 1)) || (from === 3 && (start & 3) === 3);
+    g.advBefore.push({ bases: g.bases, addOuts: g.addOuts || 0, runs: g.runs || 0 });
+    g.bases &= ~bit;
+    g.advances.push({ from, to: 0, how: forced ? 'force_out' : 'tagged_out' });
+    g.addOuts = (g.addOuts || 0) + 1;
+  });
+}
+function g5DpLabel(g){
+  const n = 1 + (g.addOuts || 0), seq = g.fielderSeq || [];
+  return n >= 2 ? `${n >= 3 ? 'Triple' : 'Double'} play${seq.length ? ' ' + fielderNotation(seq) : ''}` : '';
+}
+// The fielder question's words: bases empty, one fielder (a catch) or who fielded it / who made the out; runners on,
+// keep tapping in order, then Done.
+function g5FielderAsk(g){
+  const seq = g.fielderSeq || [], on = gameHasRunners(state.activeSession);
+  if(!seq.length) return 'Who fielded it?';
+  if(g.entry === 'O' && on) return G5_CAUGHT[g.bbType] ? 'Thrown to? Tap in order, or Done' : 'Who made the outs? Tap in order, then Done';
+  if(g5PutoutAsk(g)) return 'Who made the out?';
+  return 'Who fielded it?';
 }
 // Release 2 (C4, Joel, Oct 20): "Who fielded it?" -- the nine positions are buttons where they stand on the field; tap
 // them in the order the ball went (6, then 3 = 6-3). Done, or Skip with none. Saved as pitches.fielder (the first) and
@@ -9038,16 +9080,22 @@ const G5_POS_BOX = { 15: 'C', 24: 'P', 23: '1B', 22: '2B', 18: 'SS', 17: '3B', 4
 // runners. A ground ball or bunt out asks two things: who fielded it, then who made the out (6, then 3 = 6-3; the same
 // fielder again = he made it himself, unassisted).
 const G5_CAUGHT = { fly: 1, line: 1, pop: 1 };
-function g5PutoutAsk(g){ return !!g && g.step === 'fielder' && g.entry === 'O' && (g.bbType === 'ground' || g.bbType === 'bunt') && (g.fielderSeq || []).length === 1; }
+function g5PutoutAsk(g){ return !!g && g.step === 'fielder' && g.entry === 'O' && (g.bbType === 'ground' || g.bbType === 'bunt') && (g.fielderSeq || []).length === 1 && !gameHasRunners(state.activeSession); }
 window.g5Fielder = async function(box){
   const g = state.activeSession.g5, pos = G5_POS_BOX[box];
   if(!g || g.step !== 'fielder' || !pos) return;
   const seq = g.fielderSeq || (g.fielderSeq = []);
-  if(g.entry === 'O' && G5_CAUGHT[g.bbType]){ g.fielderSeq = [pos]; return g5AfterLocation(); }
+  const on = gameHasRunners(state.activeSession);   // Oct 21: with runners on, every out on the play is tapped in order
+  if(g.entry === 'O' && G5_CAUGHT[g.bbType]){
+    if(!on){ g.fielderSeq = [pos]; return g5AfterLocation(); }   // the catch is the out
+    if(seq[seq.length - 1] === pos || seq.length >= 5) return;
+    seq.push(pos); return g5Save();                              // the catch, then where it was thrown
+  }
   if(g.entry === 'O' && (g.bbType === 'ground' || g.bbType === 'bunt')){
     if(!seq.length){ seq.push(pos); return g5Save(); }   // then: who made the out?
-    if(pos !== seq[0]) seq.push(pos);
-    return g5AfterLocation();
+    if(!on){ if(pos !== seq[0]) seq.push(pos); return g5AfterLocation(); }
+    if(seq.length >= 5 || (pos === seq[seq.length - 1] && seq.length > 1)) return;   // the fielder himself once (6, 6 = he stepped on second)
+    seq.push(pos); return g5Save();
   }
   if(seq[seq.length - 1] === pos || seq.length >= 5) return;
   seq.push(pos);
@@ -9056,6 +9104,7 @@ window.g5Fielder = async function(box){
 window.g5FielderDone = async function(){
   const g = state.activeSession.g5;
   if(!g || g.step !== 'fielder' || g5PutoutAsk(g)) return;
+  if((g.fielderSeq || []).length === 1 && g.entry === 'O' && (g.bbType === 'ground' || g.bbType === 'bunt') && gameHasRunners(state.activeSession)) return;
   return g5AfterLocation();
 };
 window.g5Zone = async function(zone){
@@ -9113,7 +9162,7 @@ window.g5Base = async function(box){
    left empty. Back undoes the last move, then returns to the out screen. Hits and errors keep their own runners screen. */
 const G5_OUT_SAFE = [['advanced', 'Advanced'], ['tagged_up', 'Tagged up'], ['on_error', 'On error']];
 const G5_OUT_KINDS = { thrown_out: 1, force_out: 1, doubled_up: 1, tagged_out: 1 };   // the runner is out (Force out: Joel, Oct 19)
-const G5_OUT_HOW_LABEL = { advanced: 'Advanced', tagged_up: 'Tagged up', on_error: 'On error', thrown_out: 'Thrown out', force_out: 'Force out', doubled_up: 'Doubled up', tagged_out: 'Tagged out' };
+const G5_OUT_HOW_LABEL = { advanced: 'Advanced', tagged_up: 'Tagged up', on_error: 'On error', thrown_out: 'Thrown out', force_out: 'Force out', doubled_up: 'Doubled off', tagged_out: 'Tagged out' };   // Oct 21: 'Doubled off' (stored value unchanged)
 function g5StartOutScreen(g){ if(g.entry === 'O'){ g.outPhase = 'confirm'; g.advances = []; g.advBefore = []; } }
 function g5OutMoving(g){ return !!g && g.step === 'bases' && g.entry === 'O' && g.outPhase === 'move'; }
 window.g5OutRunnerTap = async function(box){
@@ -9241,9 +9290,8 @@ window.g5Back = async function(){
     case 'bases':
       if(g.move && g.entry === 'O'){ g.move = null; break; }
       if(g5OutMoving(g)){
-        if(g.advances.length){ const b = g.advBefore.pop(); g.advances.pop(); g.bases = b.bases; g.addOuts = b.addOuts; g.runs = b.runs || 0; }   // undo the last move
-        else g.outPhase = 'confirm';
-        break;
+        if(g.advances.length){ const b = g.advBefore.pop(); g.advances.pop(); g.bases = b.bases; g.addOuts = b.addOuts; g.runs = b.runs || 0; break; }   // undo the last move
+        // Oct 21: nothing left to undo -- back to the fielders (runners on skip the "Out recorded" step)
       }
       g.outPhase = null; g.advances = null; g.advBefore = null; g.runs = 0;
       g.batterTo = undefined; g.batterPlaced = false; g.fcPhase = null;   // Oct 20
@@ -9432,9 +9480,9 @@ const G5_SHORT_CAPTION = { what: 'What happened?', hoe: 'FC, Error, Hit or Out?'
 function g5Caption(step){
   const sg = state.activeSession && state.activeSession.g5;
   if(step === 'where' && sg && sg.zone === 'FOUL') return 'Select where the foul ball was caught';
-  if(step === 'fielder' && g5PutoutAsk(sg)) return 'Who made the out?';   // Oct 21: a ground ball or bunt out
+  if(step === 'fielder' && sg) return g5FielderAsk(sg);   // Oct 21
   if(step === 'bases' && sg && g5NeedsFcOut(sg)) return 'Fielder\'s choice — tap the runner who was out';
-  if(step === 'bases' && sg && sg.entry === 'O') return sg.outPhase === 'move' ? 'Tap or move runners who advanced or are out' : 'Out recorded — tap Next';
+  if(step === 'bases' && sg && sg.entry === 'O') return sg.outPhase === 'move' ? (g5DpLabel(sg) ? g5DpLabel(sg) + ' — tap or move other runners' : 'What happened to the runners? Tap or move them') : 'Out recorded — tap Next';
   return { what: 'What happened?',
     hoe: 'In play — FC, Error, Hit or Out?', hit: 'What kind of hit?', how: 'What type of contact?', fielder: 'Who fielded it?', reach: 'Where did the batter end up?',
     where: 'Select Ball in Play Location', hr: 'Home run — where did it leave the park?', bases: 'Select current bases for baserunners',
@@ -9471,8 +9519,9 @@ function g5FieldActions(){
   if(g.step === 'fielder'){
     // Oct 21: "Who made the out?" has no Skip -- one fielder alone reads as unassisted, so it must be answered (or Back)
     if(g5PutoutAsk(g)) return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button><span class="g5-nav-btn" aria-hidden="true"></span></div>`;
-    const any = (g.fielderSeq || []).length > 0;
-    return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button><button type="button" class="btn ${any ? 'btn-primary' : 'btn-secondary'} btn-sm g5-nav-btn" onclick="g5FielderDone()">${any ? 'Done ›' : 'Skip ›'}</button></div>`;
+    const n = (g.fielderSeq || []).length, any = n > 0;
+    const wait = n === 1 && g.entry === 'O' && (g.bbType === 'ground' || g.bbType === 'bunt') && gameHasRunners(state.activeSession);   // tap who made the out
+    return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button><button type="button" class="btn ${any ? 'btn-primary' : 'btn-secondary'} btn-sm g5-nav-btn" onclick="g5FielderDone()"${wait ? ' disabled' : ''}>${any ? 'Done ›' : 'Skip ›'}</button></div>`;
   }
   const blocked = g5NeedsBatter(g) || g5NeedsFcOut(g);
   const next = g.step === 'bases' ? `<button type="button" class="btn btn-primary btn-sm g5-nav-btn next-pitch" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>`
@@ -9545,7 +9594,7 @@ function g5MovePrompt(g){
   const m = g.move, soft = currentSport() === 'softball';
   if(g5OutMoving(g)){
     const who = 'Runner on ' + g5BaseName(m.from);
-    const opts = m.tap ? [['doubled_up', 'Doubled up'], ['tagged_out', 'Tagged out']] : [...G5_OUT_SAFE, ['thrown_out', 'Thrown out'], ['force_out', 'Force out']];
+    const opts = m.tap ? [['doubled_up', 'Doubled off'], ['tagged_out', 'Tagged out']] : [...G5_OUT_SAFE, ['thrown_out', 'Thrown out'], ['force_out', 'Force out']];
     return `<div class="g5-move"><div class="g5-q">${m.tap ? who : who + ' to ' + g5BaseName(m.to)} — what happened?</div>
       <div class="g5-move-btns g5-why">${opts.map(([k, l]) => `<button type="button" class="btn ${G5_OUT_KINDS[k] ? 'btn-danger' : 'btn-secondary'} btn-sm g5-act" onclick="g5OutHow('${k}')">${l}</button>`).join('')}
       <button type="button" class="btn btn-tertiary btn-sm g5-act" onclick="g5MoveCancel()">Cancel</button></div></div>`;
@@ -9711,8 +9760,8 @@ function g5PhoneCaption(g){
   if(g.step === 'where' && g.zone === 'FOUL') return 'Where was it caught?';
   if(g.step === 'hr') return 'Where did it leave the park?';
   if(g.step === 'bases' && g5NeedsFcOut(g)) return 'Tap the runner who was out';
-  if(g5PutoutAsk(g)) return 'Who made the out?';
-  if(g.step === 'bases') return g.entry === 'O' ? (g.outPhase === 'move' ? 'Tap or move runners' : 'Out recorded — tap Next')
+  if(g.step === 'fielder') return g5FielderAsk(g);
+  if(g.step === 'bases') return g.entry === 'O' ? (g.outPhase === 'move' ? (g5DpLabel(g) || 'What happened to the runners?') : 'Out recorded — tap Next')
     : g5NeedsBatter(g) ? 'Put the batter on base' : 'Move runners, then Next';
   return g5Caption(g.step);
 }

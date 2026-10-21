@@ -15,6 +15,15 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: double plays from the fielders · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v268. Asked for by Joel. No database change; one report label (`send-session-report`, not deployed).
+- **Changed (an out with runners on):**
+  - **Ground ball / bunt:** "Who fielded it?", then "Who made the outs? Tap in order, then Done" (Done waits for at least one). Every fielder after the first is an out at his base -- 2B or SS second, 3B third, C home, 1B or P first (the batter). SS, 2B, 1B = runner from 1B forced at 2B + the batter: "Double play 6-4-3"; a third out saves the play. Each is a runner move (force out, or tagged out when not forced) that Back undoes one at a time, then back to the fielders.
+  - **Fly / line / pop:** the first tap is the catch; tap where it was thrown, or Done.
+  - Both go straight to "What happened to the runners?" (no "Out recorded" step); a tapped runner offers **Doubled off** (was "Doubled up"; stored `doubled_up` unchanged; the report says "doubled off") or Tagged out.
+  - Bases empty: unchanged (one tap on a catch; who fielded it / who made the out on a grounder).
+- **Proven:** headless Chrome: Release 2 48/48 (new: Done waits, 6-4-3 with the force out and label, outs shown wait, Back twice, 6-4-3 saved with fielders 2B-1B and 2 outs; line drive to SS then the runner doubled off), Release 1 47/47 at 390, 820 and 1180; screenshots; `deno check` passes.
+
 ## 2026-10-21 · Live Game: outs count when the play is saved · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v267. Asked for by Joel. No database or function change.
 - **Changed:** the Outs shown (phone status bar, iPad / laptop readout) stay put while an out (or a runner out on a hit) is being entered and go up when the play is saved -- every out on it at once. Replaces Oct 12's "count each out the moment it's called". Runners not moved stay where they were (Joel: the outs number only).

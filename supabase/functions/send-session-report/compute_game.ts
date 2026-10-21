@@ -338,7 +338,7 @@ function playNotation(p: GamePitch): string {
 }
 // Release 2 (E6): what the runners did on a play, and the runs -- "R1 to 3B · R2 scores (tagged up) · 2 R, 1 ER".
 const HOW_LABEL: Record<string, string> = { tagged_up: 'tagged up', on_error: 'on error', thrown_out: 'thrown out', force_out: 'force out',
-  doubled_up: 'doubled up', tagged_out: 'tagged out', hit_by_ball: 'hit by ball', out: 'out' }
+  doubled_up: 'doubled off', tagged_out: 'tagged out', hit_by_ball: 'hit by ball', out: 'out' }
 export function runnerMovesText(adv: { from: number; to: number; how?: string }[] | null | undefined): string {
   return (adv ?? []).filter(a => a.from >= 1 && a.from <= 3).map(a => {
     const where = a.to === 0 ? 'out' : a.to === 4 ? 'scores' : `to ${['', '1B', '2B', '3B'][a.to]}`

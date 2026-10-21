@@ -18,35 +18,23 @@ export interface Pt { row: number; col: number; type: string }
 // Overlapping pitches at the same cell spiral outward (golden-angle
 // jitter), same technique the PDF used. Radius was clamp(cell*0.09, 2.2,
 // 3.6) before -- 3.6 on every 5x5, 260px report grid -- now +25%.
-// Joel, Oct 21: every pitch mark is a small baseball ringed in its colour (was a coloured dot with a halo), and pitches
-// in the same cell sit apart in a small grid inside the cell (was a golden-angle pile). Seams only where the ball is
-// big enough to show them. Reports already sent never change.
 interface DotPt { row: number; col: number; color: string }
-export function ballMark(x: number, y: number, r: number, color: string | null): string {
-  const ring = color ? Math.max(1.2, r * 0.38) : 0
-  const seams = r >= 3 ? `<path d="M${(x - r * 0.48).toFixed(1)} ${(y - r * 0.72).toFixed(1)}c${(r * 0.24).toFixed(2)} ${(r * 0.38).toFixed(2)} ${(r * 0.24).toFixed(2)} ${(r * 1.06).toFixed(2)} 0 ${(r * 1.44).toFixed(2)}M${(x + r * 0.48).toFixed(1)} ${(y - r * 0.72).toFixed(1)}c${(-r * 0.24).toFixed(2)} ${(r * 0.38).toFixed(2)} ${(-r * 0.24).toFixed(2)} ${(r * 1.06).toFixed(2)} 0 ${(r * 1.44).toFixed(2)}" fill="none" stroke="#C8302F" stroke-width="${Math.max(0.5, r * 0.12).toFixed(2)}"/>` : ''
-  return (color ? `<circle class="kb-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(r + ring / 2).toFixed(2)}" style="fill:none;stroke:${color}" stroke-width="${ring.toFixed(2)}"/>` : '')
-    + `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}" fill="#FFFFFF" stroke="#8A9A92" stroke-width="${Math.max(0.4, r * 0.08).toFixed(2)}"/>` + seams
-}
-// Where the i-th of n marks in one cell goes: a centred grid, a little space between each, all inside the cell.
-export function cellSlot(i: number, n: number, cell: number, rMax: number): { dx: number; dy: number; r: number } {
-  const cols = Math.ceil(Math.sqrt(n)), rows = Math.ceil(n / cols), slot = cell * 0.86 / Math.max(cols, rows)
-  const r = Math.min(rMax, slot * 0.34)
-  const c = i % cols, rr = Math.floor(i / cols), inRow = rr === rows - 1 ? n - rr * cols : cols
-  return { dx: (c - (inRow - 1) / 2) * slot, dy: (rr - (rows - 1) / 2) * slot, r }
-}
 function drawDots(pitches: DotPt[], cell: number): string {
-  const rMax = +Math.max(3.2, Math.min(7, cell * 0.16)).toFixed(2)
-  const total: Record<string, number> = {}, seen: Record<string, number> = {}
-  for (const p of pitches) { const k = p.row + '-' + p.col; total[k] = (total[k] || 0) + 1 }
-  let marks = ''
+  const r = +Math.max(2.75, Math.min(4.5, cell * 0.1125)).toFixed(2)
+  const seen: Record<string, number> = {}
+  let halos = '', dots = ''
   for (const p of pitches) {
-    const key = p.row + '-' + p.col, idx = seen[key] || 0
+    const key = p.row + '-' + p.col
+    const idx = seen[key] || 0
     seen[key] = idx + 1
-    const s = cellSlot(idx, total[key], cell, rMax)
-    marks += ballMark(p.col * cell + cell / 2 + s.dx, p.row * cell + cell / 2 + s.dy, s.r, p.color)
+    const cx = p.col * cell + cell / 2, cy = p.row * cell + cell / 2
+    const angle = idx * 137.508 * (Math.PI / 180)
+    const radius = idx === 0 ? 0 : Math.min(cell * 0.32, 2.5 + idx * 1.8)
+    const x = (cx + radius * Math.cos(angle)).toFixed(1), y = (cy + radius * Math.sin(angle)).toFixed(1)
+    halos += `<circle cx="${x}" cy="${y}" r="${r * 2}" style="fill:${p.color}"/>`
+    dots += `<circle class="kb-dot" cx="${x}" cy="${y}" r="${r}" style="fill:${p.color}" stroke="#FFFFFF" stroke-width="0.8"/>`
   }
-  return marks
+  return `<g opacity="0.28">${halos}</g>${dots}`
 }
 
 // A location grid. batterSide is null for a MIXED-side plot (physical framing,
@@ -257,22 +245,23 @@ export function drawHitGrid(opts: { size?: number; gridSize?: number; batterSide
       if (num !== null) cells += `<text x="${x + 4}" y="${y + 11}" font-size="8" style="fill:var(--kr-axis);font-family:var(--kr-sans)">${num}</text>`
     }
   }
-  const rMax = +Math.max(3.2, Math.min(7, cell * 0.16)).toFixed(2)
-  const total: Record<string, number> = {}, seen: Record<string, number> = {}
+  const r = +Math.max(2.75, Math.min(4.5, cell * 0.1125)).toFixed(2)
+  const seen: Record<string, number> = {}
   let marks = ''
-  // misses first (hollow rings, not colour-coded), then hits as baseballs ringed exact / RA (Oct 21); same cell sits apart
+  // misses first, so a hit in the same cell sits on top
   const ordered = [...opts.pts.filter(p => p.kind === 'miss'), ...opts.pts.filter(p => p.kind !== 'miss')]
-  for (const p of ordered){ const k = p.row + '-' + viewCol(p.col, gridSize); total[k] = (total[k] || 0) + 1 }
   for (const p of ordered) {
     const vc = viewCol(p.col, gridSize)
     const key = p.row + '-' + vc
     const idx = seen[key] || 0
     seen[key] = idx + 1
-    const s = cellSlot(idx, total[key], cell, rMax)
-    const x = vc * cell + cell / 2 + s.dx, y = p.row * cell + cell / 2 + s.dy
+    const cx = vc * cell + cell / 2, cy = p.row * cell + cell / 2
+    const angle = idx * 137.508 * (Math.PI / 180)
+    const radius = idx === 0 ? 0 : Math.min(cell * 0.32, 2.5 + idx * 1.8)
+    const x = (cx + radius * Math.cos(angle)).toFixed(1), y = (cy + radius * Math.sin(angle)).toFixed(1)
     marks += p.kind === 'miss'
-      ? `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${s.r.toFixed(2)}" style="fill:none;stroke:var(--kr-ink-faint)" stroke-width="1" opacity="0.5"/>`
-      : ballMark(x, y, s.r, p.kind === 'exact' ? hc.exact : hc.ra)
+      ? `<circle cx="${x}" cy="${y}" r="${r}" style="fill:none;stroke:var(--kr-ink-faint)" stroke-width="1" opacity="0.5"/>`
+      : `<circle class="kb-dot" cx="${x}" cy="${y}" r="${r}" style="fill:${p.kind === 'exact' ? hc.exact : hc.ra}" stroke="#FFFFFF" stroke-width="0.8"/>`
   }
   return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Where this pitch landed: exact and relative-accuracy hits">` +
     `<rect x="0" y="0" width="${size}" height="${size}" style="fill:var(--kr-card);stroke:var(--kr-line)"/>` + cells + marks + `</svg>`

@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Reports: baseballs on the field only (dots restored) · **branch + staging function**
+- **Branch:** `live-game-back-more` (PR #6). Joel: "just when it's the graphic of the baseball field". `svg.ts` back to its state before `b61149b` (coloured dots with halos, golden-angle spacing) for every location chart in game and bullpen reports; the field charts (`diamond.ts`) keep their baseballs (ringed on the pitch-type fields).
+- **Proven:** Deno builds: the game report's four field charts draw 28 baseballs for 7 balls in play (7 ringed); the bullpen report has 0 baseballs and its dots and halos back; `deno check` passes.
+- **Function (staging):** redeployed with this (see the version below) so the reports Joel checks match. Production untouched.
+
 ## 2026-10-21 · send-session-report to staging (v66) · **staging**
 - **Asked for by:** Joel. Commit `b61149b`. Production untouched.
 - **Carries:** everything on the branch -- since v65: the force wording ("out advancing to 3B (force)"), baseballs on the field charts, every pitch dot a ringed baseball.

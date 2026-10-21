@@ -9079,29 +9079,38 @@ function g5FielderAsk(g){
 // its box (C just below the plate, 3B top right, 1B top left, CF high) -- the layout is in the .g5-posc CSS.
 const G5_POS_BOX = { 15: 'C', 24: 'P', 23: '1B', 22: '2B', 18: 'SS', 17: '3B', 4: 'LF', 20: 'CF', 10: 'RF' };
 // Joel, Oct 21: on a fly ball, line drive or pop-up out the fielder who caught it made the out -- one tap and on to the
-// runners. A ground ball or bunt out asks two things: who fielded it, then who made the out (6, then 3 = 6-3; the same
-// fielder again = he made it himself, unassisted).
+// runners. A ground ball or bunt out asks two things: who fielded it, then who made the out (6, then 3 = 6-3; Unassisted
+// = he made it himself).
 const G5_CAUGHT = { fly: 1, line: 1, pop: 1 };
 function g5PutoutAsk(g){ return !!g && g.step === 'fielder' && g.entry === 'O' && (g.bbType === 'ground' || g.bbType === 'bunt') && (g.fielderSeq || []).length === 1 && !gameHasRunners(state.activeSession); }
 window.g5Fielder = async function(box){
   const g = state.activeSession.g5, pos = G5_POS_BOX[box];
   if(!g || g.step !== 'fielder' || !pos) return;
   const seq = g.fielderSeq || (g.fielderSeq = []);
+  // Joel, Oct 21: one tap selects a position, a second tap unselects it (the order of the rest is kept)
+  if(seq.includes(pos)){ g.fielderSeq = seq.filter(x => x !== pos); return g5Save(); }
   const on = gameHasRunners(state.activeSession);   // Oct 21: with runners on, every out on the play is tapped in order
   if(g.entry === 'O' && G5_CAUGHT[g.bbType]){
     if(!on){ g.fielderSeq = [pos]; return g5AfterLocation(); }   // the catch is the out
-    if(seq[seq.length - 1] === pos || seq.length >= 5) return;
+    if(seq.length >= 5) return;
     seq.push(pos); return g5Save();                              // the catch, then where it was thrown
   }
   if(g.entry === 'O' && (g.bbType === 'ground' || g.bbType === 'bunt')){
     if(!seq.length){ seq.push(pos); return g5Save(); }   // then: who made the out?
-    if(!on){ if(pos !== seq[0]) seq.push(pos); return g5AfterLocation(); }
-    if(seq.length >= 5 || (pos === seq[seq.length - 1] && seq.length > 1)) return;   // the fielder himself once (6, 6 = he stepped on second)
+    if(!on){ seq.push(pos); return g5AfterLocation(); }
+    if(seq.length >= 5) return;
     seq.push(pos); return g5Save();
   }
-  if(seq[seq.length - 1] === pos || seq.length >= 5) return;
+  if(seq.length >= 5) return;
   seq.push(pos);
   return g5Save();
+};
+// "Who made the out?" with the bases empty: the fielder who fielded it made it himself (3U). Replaces tapping him twice,
+// now that a second tap unselects (Joel, Oct 21).
+window.g5Unassisted = async function(){
+  const g = state.activeSession.g5;
+  if(!g5PutoutAsk(g)) return;
+  return g5AfterLocation();
 };
 window.g5FielderDone = async function(){
   const g = state.activeSession.g5;
@@ -9519,8 +9528,8 @@ function g5FieldActions(){
   // Joel, Oct 19: no + Out / + Strike / + Ball on the field -- ‹ Back (and Next on the bases question, radar on), laid out
   // like the chart side's Back / More. An out on the bases is a runner dragged and called Out.
   if(g.step === 'fielder'){
-    // Oct 21: "Who made the out?" has no Skip -- one fielder alone reads as unassisted, so it must be answered (or Back)
-    if(g5PutoutAsk(g)) return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button><span class="g5-nav-btn" aria-hidden="true"></span></div>`;
+    // Oct 21: "Who made the out?" has no Skip -- it's answered with a fielder or Unassisted (or Back)
+    if(g5PutoutAsk(g)) return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Unassisted()">Unassisted</button></div>`;
     const n = (g.fielderSeq || []).length, any = n > 0;
     const wait = n === 1 && g.entry === 'O' && (g.bbType === 'ground' || g.bbType === 'bunt') && gameHasRunners(state.activeSession);   // tap who made the out
     return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button><button type="button" class="btn ${any ? 'btn-primary' : 'btn-secondary'} btn-sm g5-nav-btn" onclick="g5FielderDone()"${wait ? ' disabled' : ''}>${any ? 'Done ›' : 'Skip ›'}</button></div>`;

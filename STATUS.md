@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: a tap selects or unselects a fielder · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v270. Asked for by Joel. No database or function change.
+- **Changed:** on "Who fielded it?" / "Who made the out(s)?", tapping a selected position unselects it (the rest keep their order). Because a second tap no longer means "the same fielder made it", "Who made the out?" (ground ball or bunt, bases empty) gets an **Unassisted** button beside Back. With runners on, the "6, 6 = he stepped on second" double tap is gone too.
+- **Proven:** headless Chrome: Release 2 51/51 (new: Unassisted offered, a second tap unselects with the bases empty and with runners on), Release 1 47/47 at 390, 820 and 1180; screenshot.
+
 ## 2026-10-21 · Live Game: HOME / FOUL / FENCE fit their buttons · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v269. Asked for by Joel (HOME ran outside its cell on his phone). No database or function change.
 - **Cause:** the word labels' smaller size was overridden by the later `.g5-res-count` rule, so HOME / FOUL were drawn at 26 px (25 px on iPad / laptop), filling their buttons in Chrome and spilling over with the phone's own font.

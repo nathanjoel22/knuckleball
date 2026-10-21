@@ -1619,6 +1619,7 @@
   .g5-res-l.g5-res-word{ font-size:17px; letter-spacing:-0.02em; }   /* Oct 21: FOUL / HOME / FENCE -- room to spare on a phone's own font */
   .wide-right .g5-res-l.g5-res-word{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.27); }   /* beats .g5-res-count's size */
   .g5-res-l.g5-res-word.g5-res-long{ font-size:14px; }   /* FENCE, HOME */
+  .g5-res-wrap{ white-space:normal; line-height:1.1; text-align:center; padding:0 2px; }   /* Oct 21: "ADV TO HOME" on two lines, the runner answers all one size */
   @media (max-width:359px){ .g5-res-l.g5-res-word{ font-size:15px; } .g5-res-l.g5-res-word.g5-res-long{ font-size:12px; } }   /* the smallest phones */
   @media (min-width:501px) and (max-width:860px){ .g5-res-l.g5-res-word{ font-size:16px; } .g5-res-l.g5-res-word.g5-res-long{ font-size:13px; } }   /* iPad portrait */
   .wide-right .g5-res-l.g5-res-word.g5-res-long{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.21); }
@@ -9183,8 +9184,8 @@ function g5RunOptions(g, o){
   let max = 4;
   for(let b = c + 1; b <= 3; b++){ if(occ & (1 << (b - 1))){ max = b - 1; break; } }   // can't pass a runner still ahead of him
   const name = ['', '1B', '2B', '3B'], opts = [];
-  for(let b = c; b <= Math.min(3, max); b++) opts.push([b, b === c && c === o ? 'HELD' : name[b]]);
-  if(max === 4) opts.push([4, 'HOME']);
+  for(let b = c; b <= Math.min(3, max); b++) opts.push([b, b === c && c === o ? 'HELD' : 'ADV TO ' + name[b]]);   // Joel, Oct 21: "Adv to 3B"
+  if(max === 4) opts.push([4, 'ADV TO HOME']);
   opts.push([0, 'OUT']);
   return opts;
 }
@@ -9996,7 +9997,7 @@ function g5HoeRow(){
   if(g && g.step === 'bases' && g5RunAsking(g)){   // Oct 21: where the runner ended up
     const o = g5RunAsking(g);
     return `<div class="g5-pad" role="group" aria-label="Runner from ${['', '1B', '2B', '3B'][o]}">${g5RunOptions(g, o).map(([d, label], i) =>
-      `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${i + 1};" onclick="g5RunAnswer(${d})" aria-label="${label === 'HELD' ? 'Held' : label === 'OUT' ? 'Out' : label === 'HOME' ? 'Scored' : 'To ' + label}"><span class="g5-res-l g5-res-count${label.length > 2 ? ' g5-res-word' : ''}${label.length > 3 ? ' g5-res-long' : ''}" aria-hidden="true">${label}</span></button>`).join('')}</div>`;
+      `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${i + 1};" onclick="g5RunAnswer(${d})" aria-label="${label === 'HELD' ? 'Held' : label === 'OUT' ? 'Out' : d === 4 ? 'Scored' : 'Advanced to ' + label.slice(7)}"><span class="g5-res-l g5-res-count g5-res-word g5-res-long g5-res-wrap" aria-hidden="true">${label}</span></button>`).join('')}</div>`;   // Oct 21: one size for every answer
   }
   if(!g || !G5_PAD_STEPS[g.step]) return '';
   if(!G5_ROW_STEPS[g.step]) return `<div class="g5-pad" role="group" aria-label="${g5Caption(g.step)}">${g5LocationCells(g)}</div>`;

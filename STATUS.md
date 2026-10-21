@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: runner answers one size, "ADV TO" · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v279. Asked for by Joel. No database or function change.
+- **Changed:** the runner question's answers read HELD · ADV TO 2B · ADV TO 3B · ADV TO HOME · OUT, all the same size as HELD / OUT (the "ADV TO" ones on two lines inside the button). Saved values unchanged.
+- **Proven:** every label inside its button, one size, at 320, 390, 820, 1180; screenshot; every check set at 390, 820, 1180 (runner-question labels updated).
+
 ## 2026-10-21 · Live Game: the "jumps back" glitch, no velocity Reset, bigger position badges · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v278. Asked for by Joel. No database or function change.
 - **Glitch (Joel: tap Charting, it opens the chart / Resume, the next tap jumps back):** opening the app online paints the cached screen at once, then the background catch-up (`loadFullContextOnline` -> `onTeamChange(teams[0], true)`) reset the team to the first one, the pitcher to the roster's first, the screen to Home, and reloaded the draft (`refreshDraftState` drops an open session back to "Resume session") -- landing a few seconds in, right on the next tap. Fixed in `reloadTeamKeepingPlace`: when the screen is already up, the catch-up keeps the team, pitcher, screen and an open or resumed session (with a pitch in progress). A first load (nothing painted) still starts fresh.

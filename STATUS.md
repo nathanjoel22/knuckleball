@@ -15,6 +15,14 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: the "jumps back" glitch, no velocity Reset, bigger position badges · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v278. Asked for by Joel. No database or function change.
+- **Glitch (Joel: tap Charting, it opens the chart / Resume, the next tap jumps back):** opening the app online paints the cached screen at once, then the background catch-up (`loadFullContextOnline` -> `onTeamChange(teams[0], true)`) reset the team to the first one, the pitcher to the roster's first, the screen to Home, and reloaded the draft (`refreshDraftState` drops an open session back to "Resume session") -- landing a few seconds in, right on the next tap. Fixed in `reloadTeamKeepingPlace`: when the screen is already up, the catch-up keeps the team, pitcher, screen and an open or resumed session (with a pitch in progress). A first load (nothing painted) still starts fresh.
+  - Proven in headless Chrome with the server half of `onTeamChange` stood in by its own resets (the real draft loader): the old path lands on Home with the session closed; the new one stays on the chart with the session and the pending pitch, and the next tap carries on; History stays History; a first load still lands on Home (5/5 at 390, 820, 1180). **Not run:** the real online path (headless runs with Supabase blocked); Joel's phone check.
+- **Velocity:** Reset removed; Next pitch is the full row.
+- **Position badges:** 16 px (the type scale's next size up from 13), 14 px under 360 px wide, cell-relative on iPad / laptop; every badge (with its tap order) checked inside its box at 320, 375, 390, 430, 820, 1180.
+- **Proven:** every check set at 390, 820 and 1180 (47, 55, 20, 8, 18, 5, 5 -- all passing); screenshots.
+
 ## 2026-10-21 · Live Game: Runs in the top bar, runners left, inherited runs · **branch + staging database (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v277. Asked for by Joel. Report change in `send-session-report` (not deployed).
 - **Database (staging, Oct 21):** migration `20261022000000_runners_left`: `sessions.runners_left` (games; 0-3; H1-locked), written by `sync_session`, returned by `compute_game_summary`. Policies 34 before and after. Rollback: `supabase/rollback/20261022000000_runners_left_down.sql`. Test: `supabase/tests/runners_left.sql` on staging, rolled back: runners_left 2, runs 0, ir 2, irs 1; changing it refused; a bullpen stores null.

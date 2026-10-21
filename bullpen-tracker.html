@@ -1554,7 +1554,8 @@
   .g5-posc .g5-ball{ position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); }
   .g5-pos-pill{ position:absolute; left:50%; top:58%; transform:translate(-50%, -50%); padding:3px 9px; border-radius:var(--radius-pill);
     background:linear-gradient(rgba(var(--accent-rgb), .26), rgba(var(--accent-rgb), .26)), var(--bg); color:var(--ink);
-    font-size:13px; font-weight:800; line-height:1.25; white-space:nowrap; box-shadow:0 1px 3px rgba(0, 0, 0, .3); }
+    font-size:var(--t-16); font-weight:800; line-height:1.25; white-space:nowrap; box-shadow:0 1px 3px rgba(0, 0, 0, .3); }   /* Joel, Oct 21: the next size up on the type scale */
+  @media (max-width:359px){ .g5-pos-pill{ font-size:var(--t-14); padding:2px 7px; } }   /* the smallest phones: still inside the box */
   .g5-posc.on .g5-pos-pill{ background:rgb(var(--accent-rgb)); }
   .g5-pos-pill .g5-pos-order{ font-size:9px; margin-left:2px; }
   .g5-pos-pill.pos-C{ top:79%; }                                              /* just below home plate */
@@ -1563,7 +1564,7 @@
   .g5-pos-pill.pos-1B{ left:3px; top:3px; transform:none; }                   /* top left */
   .g5-pos-pill.pos-SS{ left:66%; top:auto; bottom:2px; transform:translateX(-50%); }   /* Joel, Oct 21: in toward 2B and down, clear of the ball */
   .g5-pos-pill.pos-2B{ left:34%; top:auto; bottom:2px; transform:translateX(-50%); }
-  .wide-right .g5-pos-pill{ font-size:calc(var(--g5c) * 0.2); padding:calc(var(--g5c) * 0.04) calc(var(--g5c) * 0.12); }
+  .wide-right .g5-pos-pill{ font-size:calc(var(--g5c) * 0.24); padding:calc(var(--g5c) * 0.04) calc(var(--g5c) * 0.12); }
   /* Joel, Oct 21: in the box the ball landed in, the ball and the pill share it evenly -- ball above, pill below, the same
      space above, between and below -- so both are clearly seen at every size */
   .g5-posc.g5-has-ball .g5-in{ display:flex; flex-direction:column; align-items:center; justify-content:space-evenly; }
@@ -2580,6 +2581,34 @@ async function init(){
 // failure then is silent and keeps the cache. When false (nothing painted
 // yet -- fresh login, or cleared storage) a hard failure shows a clear
 // boot message instead of a dead spinner.
+// Oct 21 (Joel's "taps Charting, then it jumps back" glitch): when the cached screen is already up and in use, the
+// background catch-up refreshes the team, but must not undo where the person has gone since -- the team, the pitcher,
+// the screen, and a session they've opened or resumed (onTeamChange resets all four for a fresh start). Returns false
+// when the catch-up should stop (giveUp).
+async function reloadTeamKeepingPlace(alreadyPainted, giveUp){
+  const keep = alreadyPainted ? { team: state.currentTeamId, pitcher: state.currentPitcherId, view: state.view,
+    session: state.activeSession, selectedType: state.selectedType, draftAvailable: state.draftAvailable, pendingDraft: state.pendingDraft } : null;
+  if(state.teams.length){
+    const team = keep && keep.team && state.teams.some(t => t.id === keep.team) ? keep.team : state.teams[0].id;
+    try{ await netTimeout(onTeamChange(team, true)); }
+    catch(e){ if(giveUp && giveUp()) return false; }
+  }
+  if(keep && state.currentTeamId === keep.team){
+    const pitcherOk = !isCoach() || (state.roster || []).some(r => r.id === keep.pitcher);
+    if(keep.pitcher && pitcherOk && keep.pitcher !== state.currentPitcherId){
+      state.currentPitcherId = keep.pitcher;
+      try{ await netTimeout(loadSessionsForCurrentSelection()); }catch(e){}
+    }
+    if(state.currentPitcherId === keep.pitcher){
+      state.view = keep.view;
+      if(keep.session && ((keep.session.pitches || []).length || keep.session.kind || keep.session.startQ)){
+        state.activeSession = keep.session; state.selectedType = keep.selectedType;   // a session open on screen stays open
+        state.draftAvailable = false; state.pendingDraft = null;
+      } else { state.draftAvailable = keep.draftAvailable; state.pendingDraft = keep.pendingDraft; }
+    }
+  }
+  return true;
+}
 async function resolveOnline(alreadyPainted){
   // Confirm / refresh the session. supabase-js clears storage on a genuine
   // credential rejection (400/401) and leaves it alone on a mere network
@@ -2716,10 +2745,7 @@ async function loadFullContextOnline(alreadyPainted){
     }
   }
 
-  if(state.teams.length){
-    try{ await netTimeout(onTeamChange(state.teams[0].id, true)); }
-    catch(e){ if(giveUp()) return; }
-  }
+  if(!(await reloadTeamKeepingPlace(alreadyPainted, giveUp))) return;
 
   // U9: land a brand-new pitcher on the setup page once (setup_dismissed_at
   // is null only for a profile created after this shipped -- every
@@ -9906,8 +9932,7 @@ function g5Card(face, flip, chartHtml){
 // row, Reset + Next pitch on the last row -- so nothing is added below the chart.
 function g5VeloRows(){
   return `<div class="g5-velo-row gg-velo">${renderGameVeloStrip()}</div>
-    <div class="g5-next-row"><button type="button" class="btn btn-secondary btn-sm g5-reset" onclick="recordGameVelo(null)">Reset</button>
-    <button type="button" class="btn btn-primary g5-nextpitch next-pitch" onclick="g5NextPitch()">Next pitch ›</button></div>`;
+    <div class="g5-next-row"><button type="button" class="btn btn-primary g5-nextpitch next-pitch" onclick="g5NextPitch()">Next pitch ›</button></div>`;   // Joel, Oct 21: no Reset
 }
 // Joel, Oct 12: what happened, as big letters (no words; screen readers still hear each word), under the chart: K swinging, a backwards K
 // looking (the scorebook's called third strike), B ball, F foul (always a foul tip, Oct 19), IP in play.

@@ -29,7 +29,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - `supabase/tests/live_game_r2.sql` on staging as the staging pitcher, rolled back: a reliever's game -> runs 2, er 1, ir 2, irs 1, bb 0, bb_charged_prev 1; SF and fielders stored; changing IR after saving refused; an older-style game -> er / ir / irs null.
   - Headless Chrome, real page, made-up pitcher, Supabase unreachable: Release 2 27/27 and Release 1 45/45 at 390, 820 and 1180 px, no page errors (6-3 with Back, single to LF, SF, SAC, no SF on the third out, E6 then an unearned run, runs after the would-be third out, passed ball vs wild pitch, Back restoring the ledger, the editor's five changes and a refused entry, Move location, Show all, a reliever at 3-1 with 1B / 3B: charged walk, inherited run, R 0 / BB 0, the queued IR). Screenshots: "Who fielded it?", the editor, the mid-game count.
   - The game report in Deno: ER / IR-IRS / SF-SAC columns and values, 6-3 / E6 / 2B to LF / F8 SF, runner moves with runs and ER, SB from an event, the count rows and leadoff line; an older game shows none of the new columns. `deno check` passes for send-session-report and rerender-reports.
-- **Not run:** a real phone; `send-session-report` with these changes is not deployed on staging yet.
+- **Function (staging, Oct 21, Joel's OK):** `send-session-report` deployed to staging only (version 64) with the Release 2 report changes. Production untouched.
+- **Not run:** a real phone; a real report generated on staging.
 - **Shipping order:** production migrations `20261019000000`, `20261020000000`, `20261021000000` FIRST, then the site, then `send-session-report`. Regenerate `schema.sql`; update CLAUDE.md's G5 section.
 
 ## 2026-10-20 · Live Game Release 1 (gaps review) · **branch + staging database (not shipped)**

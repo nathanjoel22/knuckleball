@@ -8898,15 +8898,12 @@ function g5ProjectedOuts(g){
   const s = state.activeSession;
   return s.outs + (g.entry === 'O' ? 1 : 0) + (g.addOuts || 0);
 }
-// Joel, Oct 12: the outs shown in the status line count every out the moment it's called -- the batter's O, a
-// runner dragged and called out, + Out -- not only once Next saves the play. Display only; the play's own
-// bookkeeping (g5ProjectedOuts) is unchanged. Never more than three.
+// Joel, Oct 21 (replaces Oct 12's "count every out the moment it's called"): the Outs shown wait until the play is
+// settled -- the batter's O and any runner called out count when the play is saved (Next), every out on it at once.
+// Display only; the play's own bookkeeping (g5ProjectedOuts) is unchanged. Never more than three.
 function displayOuts(s){
   if(!s) return 0;
-  const g = s.g5;
-  let n = g ? g5ProjectedOuts(g) : s.outs;
-  if(g && g.step === 'runners' && g.move && g.move.result === 'out') n += 1;   // between pitches: out, before "why"
-  return Math.min(3, n);
+  return Math.min(3, s.outs);
 }
 function g5WalkMask(runners){
   let b1 = !!runners[1], b2 = !!runners[2], b3 = !!runners[3];

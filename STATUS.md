@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: outs count when the play is saved · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v267. Asked for by Joel. No database or function change.
+- **Changed:** the Outs shown (phone status bar, iPad / laptop readout) stay put while an out (or a runner out on a hit) is being entered and go up when the play is saved -- every out on it at once. Replaces Oct 12's "count each out the moment it's called". Runners not moved stay where they were (Joel: the outs number only).
+- **Proven:** headless Chrome: a ground-ball double play shows 0 outs through O, the out screen and the runner doubled up, then 2 after Next; Release 1 47/47, Release 2 37/37 at 390 and 1180.
+
 ## 2026-10-21 · Live Game: fielder pills and the ball · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v266. Asked for by Joel. No database or function change.
 - **Changed:** SS and 2B pinched in toward each other and down to the bottom of their boxes. In whichever position box the ball landed in, the ball and the pill share the box evenly (ball above, pill below, equal space above / between / below).

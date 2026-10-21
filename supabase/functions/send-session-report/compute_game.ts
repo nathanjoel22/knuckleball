@@ -341,11 +341,13 @@ function playNotation(p: GamePitch): string {
 }
 // Release 2 (E6): what the runners did on a play, and the runs -- "R1 to 3B · R2 scores (tagged up) · 2 R, 1 ER".
 const HOW_LABEL: Record<string, string> = { tagged_up: 'tagged up', on_error: 'on error', thrown_out: 'thrown out', force_out: 'force out',
-  doubled_up: 'doubled off', tagged_out: 'tagged out', hit_by_ball: 'hit by ball', out: 'out' }
+  doubled_up: 'doubled off', tagged_out: 'tagged out', hit_by_ball: 'hit by ball', out: 'out', out_advancing: 'out advancing' }
 export function runnerMovesText(adv: { from: number; to: number; how?: string }[] | null | undefined): string {
   return (adv ?? []).filter(a => a.from >= 1 && a.from <= 3).map(a => {
     const where = a.to === 0 ? 'out' : a.to === 4 ? 'scores' : `to ${['', '1B', '2B', '3B'][a.to]}`
-    const why = a.how && HOW_LABEL[a.how] && !(a.to === 0 && a.how === 'out') ? ` (${HOW_LABEL[a.how]})` : ''
+    const at = (a as { at?: number }).at
+    const why = a.how && HOW_LABEL[a.how] && !(a.to === 0 && a.how === 'out')
+      ? ` (${HOW_LABEL[a.how]}${a.how === 'out_advancing' && at ? ' to ' + (at === 4 ? 'home' : ['', '1B', '2B', '3B'][at]) : ''})` : ''   // Oct 21
     return `R${a.from} ${where}${why}`
   }).join(' · ')
 }

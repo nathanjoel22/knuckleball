@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: doubled off, or out advancing · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v275. Asked for by Joel. No database change; the report's at-bat log names it too (`send-session-report`, not deployed).
+- **Changed:** after a caught ball (fly, line drive, pop-up, foul out), OUT for a runner asks "Runner from 1B out — how?": **Doubled off**, or **Out advancing to** each base ahead of him (2B / 3B / home; Joel: "whatever base they're trying to advance to"), or Cancel. Saved as `how: 'out_advancing'` with `at` (the base; runner_advances already allows any JSON) or `doubled_up`. The confirm sentence reads e.g. "Runner from 1B out advancing to 3B". Back leaves the question first. A ground-ball OUT is still thrown out, no question.
+- **Proven:** headless Chrome: 7 new checks (the question and its bases, Back, the sentence, saved `{from:1,to:0,how:'out_advancing',at:3}` with 2 outs, a runner from 2B offered 3B / home only, doubled off saved, a ground ball not asked), Release 1 47/47, Release 2 55/55, runner questions 19/19 at 390, 820 and 1180; screenshot; `deno check` passes.
+
 ## 2026-10-21 · Live Game: confirm the play · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v274. Asked for by Joel. No database or function change.
 - **Changed:** replaces "Move Runners, or Next": once the batter and every runner are settled (and on an out with the bases empty, replacing "Out recorded — tap Next"), the prompt reads **Confirm the play** and the play is written out under the field, e.g. "Fly ball out to LF · Runner from 3B tagged up and scored · 1 run scored", "Ground ball, double play 6-4-3 · Runner from 1B forced out at 2B", "Batter reached 2B on an error by SS (E6) · Runner on 3B held". Dragging a runner still fixes it (the words follow); Next saves. Kept within the field's width.

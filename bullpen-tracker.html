@@ -9051,7 +9051,18 @@ async function g5AfterLocation(){
    under the field: HELD (not forced), each base he could reach (a forced runner starts where he was pushed), HOME when no
    runner ahead of him is still on base, OUT. Next waits for every answer; Back undoes the last. Recorded as runner moves
    (forced / advanced / tagged up on a catch; thrown out / doubled off on a catch). Dragging works again once answered. */
-function g5StartRunQ(g, s){ g.runQ = [3, 2, 1].filter(b => s.runners[b]); g.runAns = []; }
+function g5StartRunQ(g, s){ g.runQ = [3, 2, 1].filter(b => s.runners[b]); g.runAns = []; g.runOutPick = null; }
+window.g5RunOutCancel = async function(){ const g = state.activeSession.g5; if(g){ g.runOutPick = null; } return g5Save(); };
+// The out question after a catch, under the field like the other runner choices.
+// Every base ahead of him can be the one he was going for (Joel: "or whatever base they're trying to advance to").
+function g5RunOutPrompt(g){
+  const o = g.runOutPick, name = b => b === 4 ? 'home' : ['', '1B', '2B', '3B'][b];
+  const ahead = [2, 3, 4].filter(b => b > o).map(b =>
+    `<button type="button" class="btn btn-danger btn-sm g5-act" onclick="g5RunAnswer(0, 'out_advancing', ${b})">Out advancing to ${name(b)}</button>`).join('');
+  return `<div class="g5-move"><div class="g5-q">Runner from ${name(o)} out — how?</div>
+    <div class="g5-move-btns g5-why"><button type="button" class="btn btn-danger btn-sm g5-act" onclick="g5RunAnswer(0, 'doubled_up')">Doubled off</button>
+    ${ahead}<button type="button" class="btn btn-tertiary btn-sm g5-act" onclick="g5RunOutCancel()">Cancel</button></div></div>`;
+}
 /* Joel, Oct 21: once the batter and every runner are settled, the screen confirms the play -- "Confirm the play", and
    under the field what happened in words ("Fly ball out to LF · Runner from 3B tagged up and scored · 1 run scored").
    Dragging a runner still fixes it (the words follow); Next saves. An out with the bases empty confirms the same way. */
@@ -9074,11 +9085,12 @@ function g5PlaySummary(g, s){
     parts.push(`Fielder's choice${seq.length ? ' ' + fielderNotation(seq) : ''} — batter safe at ${B(g.batterTo || 1)}`);
   }
   const outWord = (how, o) => ({ force_out: `forced out at ${o === 3 ? 'home' : B(o + 1)}`, doubled_up: 'doubled off', thrown_out: 'thrown out',
+    out_advancing: 'out advancing',
     tagged_out: 'tagged out', hit_by_ball: 'out, hit by the ball', out: 'out' }[how] || 'out');
   [3, 2, 1].filter(o => s.runners[o]).forEach(o => {
     const e = (g.advances || []).find(a => a.from === o);
     if(!e) parts.push(`Runner on ${B(o)} held`);
-    else if(e.to === 0) parts.push(`Runner from ${B(o)} ${outWord(e.how, o)}`);
+    else if(e.to === 0) parts.push(`Runner from ${B(o)} ${outWord(e.how, o)}${e.how === 'out_advancing' && e.at ? ' to ' + (e.at === 4 ? 'home' : B(e.at)) : ''}`);
     else if(e.to === 4) parts.push(`Runner from ${B(o)} ${e.how === 'tagged_up' ? 'tagged up and scored' : 'scored'}`);
     else parts.push(`Runner from ${B(o)} ${e.how === 'tagged_up' ? 'tagged up to' : 'to'} ${B(e.to)}`);
   });
@@ -9109,21 +9121,26 @@ function g5RunOptions(g, o){
   opts.push([0, 'OUT']);
   return opts;
 }
-window.g5RunAnswer = async function(dest){
+window.g5RunAnswer = async function(dest, outHow, outAt){
   const s = state.activeSession, g = s.g5, o = g5RunAsking(g);
   if(!o || !g5RunOptions(g, o).some(([d]) => d === dest)) return;
+  const caughtBall = g.entry === 'O' && (G5_CAUGHT[g.bbType] || g.foulOut);
+  // Joel, Oct 21: a runner out after a catch -- doubled off, or out advancing to the next base? Asked first.
+  if(dest === 0 && caughtBall && !outHow){ g.runOutPick = o; return g5Save(); }
+  g.runOutPick = null;
   const c = g5RunCur(g, o);
   g.runAns.push({ o, snap: JSON.parse(JSON.stringify({ bases: g.bases || 0, runs: g.runs || 0, addOuts: g.addOuts || 0,
     advances: g.advances || [], advBefore: g.advBefore || [], batterTo: g.batterTo === undefined ? null : g.batterTo })) });
   g.bases = (g.bases || 0) & ~(1 << (c - 1));
   if(dest >= 1 && dest <= 3) g.bases |= 1 << (dest - 1);
   if(dest === 4) g.runs = (g.runs || 0) + 1;
-  const caught = g.entry === 'O' && (G5_CAUGHT[g.bbType] || g.foulOut);
-  const how = dest === 0 ? (caught ? 'doubled_up' : 'thrown_out') : (caught ? 'tagged_up' : 'advanced');
+  const how = dest === 0 ? (outHow || 'thrown_out') : (caughtBall ? 'tagged_up' : 'advanced');
   g.advances = g.advances || [];
   const e = g.advances.find(a => a.from === o);
   if(e){ if(e.to !== dest){ e.to = dest; e.how = how; } }
   else if(dest !== o) g.advances.push({ from: o, to: dest, how });
+  const mv = g.advances.find(a => a.from === o);
+  if(mv){ if(outHow === 'out_advancing' && outAt) mv.at = outAt; else delete mv.at; }   // the base he was out going for (1-3, 4 home)
   if(dest === 0){
     g.addOuts = (g.addOuts || 0) + 1;
     if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');   // the third out ends it
@@ -9271,7 +9288,7 @@ window.g5Base = async function(box){
    left empty. Back undoes the last move, then returns to the out screen. Hits and errors keep their own runners screen. */
 const G5_OUT_SAFE = [['advanced', 'Advanced'], ['tagged_up', 'Tagged up'], ['on_error', 'On error']];
 const G5_OUT_KINDS = { thrown_out: 1, force_out: 1, doubled_up: 1, tagged_out: 1 };   // the runner is out (Force out: Joel, Oct 19)
-const G5_OUT_HOW_LABEL = { advanced: 'Advanced', tagged_up: 'Tagged up', on_error: 'On error', thrown_out: 'Thrown out', force_out: 'Force out', doubled_up: 'Doubled off', tagged_out: 'Tagged out' };   // Oct 21: 'Doubled off' (stored value unchanged)
+const G5_OUT_HOW_LABEL = { advanced: 'Advanced', tagged_up: 'Tagged up', on_error: 'On error', thrown_out: 'Thrown out', force_out: 'Force out', doubled_up: 'Doubled off', tagged_out: 'Tagged out', out_advancing: 'Out advancing' };   // Oct 21: 'Doubled off' (stored value unchanged)
 function g5StartOutScreen(g){ if(g.entry === 'O'){ g.outPhase = 'confirm'; g.advances = []; g.advBefore = []; } }
 function g5OutMoving(g){ return !!g && g.step === 'bases' && g.entry === 'O' && g.outPhase === 'move'; }
 window.g5OutRunnerTap = async function(box){
@@ -9398,6 +9415,7 @@ window.g5Back = async function(){
       g.box = null; g.field = null; g.foulOut = false; g.step = 'where'; break;
     case 'bases':
       if(g.move && g.entry === 'O'){ g.move = null; break; }
+      if(g.runOutPick){ g.runOutPick = null; break; }                                       // Oct 21: out of the "how?" question
       if(g.runAns && g.runAns.length){ Object.assign(g, g.runAns.pop().snap); break; }   // Oct 21: undo the last runner answer
       if(g5OutMoving(g)){
         if(g.advances.length){ const b = g.advBefore.pop(); g.advances.pop(); g.bases = b.bases; g.addOuts = b.addOuts; g.runs = b.runs || 0; break; }   // undo the last move
@@ -9623,6 +9641,7 @@ function g5FieldInner(){
 function g5FieldActions(){
   const g = state.activeSession.g5;
   if(g.move) return g5MovePrompt(g);
+  if(g.step === 'bases' && g.runOutPick && g5RunAsking(g)) return g5RunOutPrompt(g);   // Oct 21
   if(g.step === 'runners'){
     return `<div class="g5-actions"><span class="g5-act-gap"></span><button type="button" class="btn btn-primary btn-sm g5-act" onclick="g5RunnersDone()">Done ›</button></div>`;
   }
@@ -9901,6 +9920,7 @@ function g5LocationCells(g){
 }
 function g5HoeRow(){
   const s = state.activeSession, g = s.g5;
+  if(g && g.step === 'bases' && g5RunAsking(g) && g.runOutPick) return '';   // the out question is under the field instead
   if(g && g.step === 'bases' && g5RunAsking(g)){   // Oct 21: where the runner ended up
     const o = g5RunAsking(g);
     return `<div class="g5-pad" role="group" aria-label="Runner from ${['', '1B', '2B', '3B'][o]}">${g5RunOptions(g, o).map(([d, label], i) =>

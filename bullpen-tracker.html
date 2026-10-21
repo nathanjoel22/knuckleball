@@ -1650,6 +1650,7 @@
   .g5-drag-token{ position:fixed; left:0; top:0; z-index:200; width:36px; height:36px; border-radius:var(--radius-circle); pointer-events:none;
     background:#fff; box-shadow:var(--shadow-lift), var(--ring-select-4); }
   .g5-q{ font-weight:800; font-size:16px; color:var(--ink); }   /* the runner and extra-inning questions, as bold as the prompt */
+  .sb-inh{ display:block; font-size:9px; font-weight:700; opacity:.8; letter-spacing:0; text-transform:none; }   /* Oct 21: inherited runs scored, under Runs */
   .g5-summary{ max-width:min(100%, 21em); margin:6px auto 10px; font-size:15px; font-weight:700; line-height:1.35; color:var(--ink); text-align:center; text-wrap:balance; }   /* Oct 21: the play, confirmed -- within the field's width */
   .g5-qbtns{ width:100%; }
   /* Velocity in the chart (Joel, Oct 6): the bar over row 4, Reset + Next pitch over row 5 --
@@ -5313,6 +5314,7 @@ window.endSession = async function(){
     raOn: state.activeSession.raOn === true,   // U14
     pitchCountAdjust: state.activeSession.kind === 'game' ? gamePitchCountAdj(state.activeSession) : 0,   // Oct 19: + / - pitch count, saved
     inheritedRunners: state.activeSession.kind === 'game' && Number.isInteger(state.activeSession.inheritedRunners) ? state.activeSession.inheritedRunners : null,   // Oct 21
+    runnersLeft: state.activeSession.kind === 'game' ? [1, 2, 3].filter(b => state.activeSession.runners && state.activeSession.runners[b]).length : null,   // Oct 21: on base when he came out
     queuedAt: Date.now(),
     lastError: null,
     lastAttemptAt: null
@@ -5547,7 +5549,8 @@ async function syncOutbox(){
       game_outs_recorded: (item.gameOutsRecorded === undefined) ? null : item.gameOutsRecorded,
       ra_on: item.raOn === true,   // U14: the start question's answer (false for anything queued before U14)
       pitch_count_adjust: item.kind === 'game' ? (item.pitchCountAdjust || 0) : 0,   // Oct 19: + / - pitch count
-      inherited_runners: item.kind === 'game' && Number.isInteger(item.inheritedRunners) ? item.inheritedRunners : null   // Oct 21: a reliever's IR
+      inherited_runners: item.kind === 'game' && Number.isInteger(item.inheritedRunners) ? item.inheritedRunners : null,   // Oct 21: a reliever's IR
+      runners_left: item.kind === 'game' && Number.isInteger(item.runnersLeft) ? item.runnersLeft : null   // Oct 21: left on base when he came out
     };
     const pitchRows = item.pitches.map(p => ({
       id: p.id,
@@ -7873,8 +7876,8 @@ function gameIsK(pt){
 // Release 2: R is the runs charged to this pitcher (inherited runners who scored are the previous pitcher's), ER of those
 // the earned ones (null for a game saved before earned runs were tracked); a walk charged to the previous pitcher isn't his.
 function gameStats(pitches, adj, events){
-  let k = 0, bb = 0, h = 0, r = 0, u = 0, tracked = false, strikeCount = 0, maxInning = 1;
-  const runs = x => { r += (x.runsScored || 0) - (x.inheritedRuns || 0); if(Number.isInteger(x.unearnedRuns)){ tracked = true; u += x.unearnedRuns; } };
+  let k = 0, bb = 0, h = 0, r = 0, irs = 0, u = 0, tracked = false, strikeCount = 0, maxInning = 1;
+  const runs = x => { r += (x.runsScored || 0) - (x.inheritedRuns || 0); irs += x.inheritedRuns || 0; if(Number.isInteger(x.unearnedRuns)){ tracked = true; u += x.unearnedRuns; } };
   pitches.forEach(pt => {
     if(GAME_STRIKE_RESULTS.has(pt.result)) strikeCount++;
     if(gameIsK(pt)) k++;
@@ -7889,12 +7892,19 @@ function gameStats(pitches, adj, events){
     runs(e);
   });
   const charted = pitches.length, total = Math.max(0, charted + (adj || 0));
-  return { total, k, bb, h, r, er: tracked ? Math.max(0, r - u) : null, strikePct: charted ? Math.round(100 * strikeCount / charted) : 0, innings: maxInning };
+  return { total, k, bb, h, r, irs, er: tracked ? Math.max(0, r - u) : null, strikePct: charted ? Math.round(100 * strikeCount / charted) : 0, innings: maxInning };
 }
 // The top bar's Inning / Outs / Count open the adjust row (Joel, Oct 19); the open one is ringed.
 function gameAdjustAttrs(what, cls){
   const on = state.gameAdjust === what || (what === 'balls' && state.gameAdjust === 'strikes');
   return `class="${cls || 'sb-cell'} sb-tap${on ? ' sb-on' : ''}" role="button" tabindex="0" onclick="gameAdjustOpen('${what}')" aria-label="Adjust ${what === 'balls' ? 'count' : what}"`;
+}
+// Joel, Oct 21: Runs in the top bar -- the runs this pitcher gave up; inherited runners who scored are the previous
+// pitcher's and show apart ("+1 inh").
+function gameRunsCell(s, phone){
+  const st = gameStats(s.pitches || [], 0, s.events), inh = st.irs ? `<span class="sb-inh">+${st.irs} inh</span>` : '';
+  return phone ? `<span class="sb-cell"><span class="sb-num ph-item">${st.r}</span><span class="sb-lbl">Runs${inh}</span></span>`
+    : `<div class="stat-box"><span class="stat-num mono">${st.r}</span><span class="stat-lbl">Runs${inh}</span></div>`;
 }
 function renderGameStatusBar(){
   const s = state.activeSession;
@@ -7903,6 +7913,7 @@ function renderGameStatusBar(){
     <div ${gameAdjustAttrs('outs', 'stat-box')}><span class="stat-num mono">${displayOuts(s)}</span><span class="stat-lbl">Outs</span></div>
     <div ${gameAdjustAttrs('balls', 'stat-box')}><span class="stat-num mono">${s.balls}-${s.strikes}</span><span class="stat-lbl">Count</span></div>
     <div class="stat-box"><span class="stat-num mono">${s.atBatIndex}</span><span class="stat-lbl">Batter #</span></div>
+    ${gameRunsCell(s)}
     <div class="stat-box">${renderRunnerDiamond()}<span class="stat-lbl">Runners</span></div>
   </div>`;
 }
@@ -9117,12 +9128,13 @@ function g5PlaySummary(g, s){
     const e = (g.advances || []).find(a => a.from === o);
     if(!e) parts.push(`Runner on ${B(o)} held`);
     else if(e.to === 0) parts.push(`Runner from ${B(o)} ${e.at && e.how !== 'out_advancing' ? 'out at ' + (e.at === 4 ? 'home' : B(e.at)) : outWord(e.how, o) + (e.how === 'out_advancing' && e.at ? ' to ' + (e.at === 4 ? 'home' : B(e.at)) : '')}`);
-    else if(e.to === 4) parts.push(`Runner from ${B(o)} ${e.how === 'tagged_up' ? 'tagged up and scored safely' : 'scored safely'}`);   // Oct 21: safe / out, and where
+    else if(e.to === 4) parts.push(`Runner from ${B(o)} ${e.how === 'tagged_up' ? 'tagged up and scored safely' : 'scored safely'}${s.runnerMeta && s.runnerMeta[o] && s.runnerMeta[o].i ? ' (inherited run)' : ''}`);   // Oct 21: safe / out, and where; an inherited runner's run is the previous pitcher's
     else parts.push(`Runner from ${B(o)} ${e.how === 'tagged_up' ? 'tagged up, safe at' : 'safe at'} ${B(e.to)}`);
   });
   const runs = (g.runs || 0) + (g.hr ? 1 + [1, 2, 3].filter(b => s.runners[b]).length : 0);   // a homer: everyone on and the batter
   if(g5ProjectedOuts(g) >= 3) parts.push('Third out');
-  if(runs) parts.push(`${runs} run${runs === 1 ? '' : 's'} scored`);
+  const inhRuns = (g.advances || []).filter(a => a.to === 4 && s.runnerMeta && s.runnerMeta[a.from] && s.runnerMeta[a.from].i).length;
+  if(runs) parts.push(`${runs} run${runs === 1 ? '' : 's'} scored${inhRuns ? ` (${inhRuns} inherited)` : ''}`);
   return parts.join(' · ');
 }
 // (was: once every runner is answered, "Move Runners, or Next")
@@ -10125,7 +10137,7 @@ function renderGameSessionView(p){
       <div class="panel controls-panel ph-controls">
         ${renderAdjustRunnersFlow()}
         <div class="ph-status on-dark">
-          <span ${gameAdjustAttrs('inning')}><span class="sb-num ph-inn">▲${s.inning}</span><span class="sb-lbl"><span class="lbl-long">Inning</span><span class="lbl-short">Inn</span></span></span><span ${gameAdjustAttrs('outs')}><span class="sb-num ph-item">${displayOuts(s)}</span><span class="sb-lbl">Out${displayOuts(s) === 1 ? '' : 's'}</span></span><span ${gameAdjustAttrs('balls')}><span class="sb-num ph-item">${s.balls}-${s.strikes}</span><span class="sb-lbl">Count</span></span>
+          <span ${gameAdjustAttrs('inning')}><span class="sb-num ph-inn">▲${s.inning}</span><span class="sb-lbl"><span class="lbl-long">Inning</span><span class="lbl-short">Inn</span></span></span><span ${gameAdjustAttrs('outs')}><span class="sb-num ph-item">${displayOuts(s)}</span><span class="sb-lbl">Out${displayOuts(s) === 1 ? '' : 's'}</span></span><span ${gameAdjustAttrs('balls')}><span class="sb-num ph-item">${s.balls}-${s.strikes}</span><span class="sb-lbl">Count</span></span>${gameRunsCell(s, true)}
           <span class="ph-diamond">${renderRunnerDiamond()}</span>
           ${renderStatusDelivery()}
         </div>

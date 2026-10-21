@@ -15,6 +15,16 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: Runs in the top bar, runners left, inherited runs · **branch + staging database (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v277. Asked for by Joel. Report change in `send-session-report` (not deployed).
+- **Database (staging, Oct 21):** migration `20261022000000_runners_left`: `sessions.runners_left` (games; 0-3; H1-locked), written by `sync_session`, returned by `compute_game_summary`. Policies 34 before and after. Rollback: `supabase/rollback/20261022000000_runners_left_down.sql`. Test: `supabase/tests/runners_left.sql` on staging, rolled back: runners_left 2, runs 0, ir 2, irs 1; changing it refused; a bullpen stores null.
+- **Changed:**
+  - **Runs** in the top bar (phone status bar and the iPad / laptop readout, beside Batter #): runs charged to this pitcher; inherited runners who scored show apart under it ("+1 inh").
+  - **Runners left on base** when the game is saved (the pitcher came out, or the game ended mid-inning) are saved; the report says "Left 2 runners on base when he came out."
+  - **Inherited runs** labelled where they happen: the confirm sentence ("Runner from 3B scored safely (inherited run) · 1 run scored (1 inherited)"), the at-bat log ("1 run (1 inherited)"), and the report ("1 of the 2 runners he inherited scored — charged to the previous pitcher, not in his R or ER."). They stay out of his R and ER (Release 2).
+- **Proven:** headless Chrome: 5 new checks (Runs box, the inherited run in the confirm sentence, his R 0 / inherited 1, "+1 inh" in the bar, runners left 2 queued) at 390, 820 and 1180, and every earlier set; screenshots of both bars; the report in Deno (the two lines, the log, an older game without them); `deno check` passes.
+- **Shipping order** now adds `20261022000000` after the other three migrations.
+
 ## 2026-10-21 · Live Game: five fixes from Joel's list · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v276. Asked for by Joel. No database change; the report's at-bat log reads the new "out at" too (`send-session-report`, not deployed).
 - **Changed:**

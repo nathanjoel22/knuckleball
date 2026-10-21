@@ -326,7 +326,10 @@ const POS_NUM: Record<string, number> = { P: 1, C: 2, '1B': 3, '2B': 4, '3B': 5,
 function playNotation(p: GamePitch): string {
   const seq = [p.fielder, ...(p.fielders ? p.fielders.split('-') : [])].filter((x): x is string => !!x)
   if (!seq.length) return ''
-  const nums = seq.map(x => POS_NUM[x] ?? x).join('-')
+  // Oct 21: the same fielder twice in a row is an unassisted out at his base -- SS, SS, 1B is 6U-3 (as the app writes it)
+  const parts: string[] = []
+  seq.forEach((x, i) => { if (i && x === seq[i - 1]) parts[parts.length - 1] += 'U'; else parts.push(String(POS_NUM[x] ?? x)) })
+  const nums = parts.join('-')
   if (p.inPlayOutcome === 'out') {
     if (seq.length === 1 && (p.bbType === 'fly' || p.bbType === 'line' || p.bbType === 'pop')) return ({ fly: 'F', line: 'L', pop: 'P' } as Record<string, string>)[p.bbType] + (POS_NUM[seq[0]] ?? '')
     if (seq.length === 1 && p.bbType === 'ground') return 'U' + (POS_NUM[seq[0]] ?? '')

@@ -8416,7 +8416,10 @@ window.nextPitch = async function(){
 // CF8 RF9) -- distinct from the swipe row's own letter labels; reuses the
 // same mapping G1b-r's addendum already built for the DP summary line.
 function fielderNotation(seq){
-  return (seq || []).filter(Boolean).map(p => POSITION_SCOREBOOK_NUMBER[p] || p).join('-');
+  // Oct 21: the same fielder twice in a row is an unassisted out at his base -- SS, SS, 1B is 6U-3
+  const out = [];
+  (seq || []).filter(Boolean).forEach((p, i, a) => { const n = POSITION_SCOREBOOK_NUMBER[p] || p; if(i && p === a[i - 1]) out[out.length - 1] += 'U'; else out.push(String(n)); });
+  return out.join('-');
 }
 // G1b-r2f: a runner's "out" ending now carries WHERE (outAt1/outAt2/
 // outAt3/outAtHome, set via the "at which base" follow-up -- see
@@ -9107,10 +9110,16 @@ window.g5Fielder = async function(box){
 };
 // "Who made the out?" with the bases empty: the fielder who fielded it made it himself (3U). Replaces tapping him twice,
 // now that a second tap unselects (Joel, Oct 21).
+// Joel, Oct 21: with runners on, Unassisted after the first tap = that fielder made an out himself at his own base (SS
+// stepping on second); then tap where he threw. Saved as the fielder twice in a row (SS, SS, 1B), written 6U-3.
+function g5UnassistedAsk(g){ return !!g && g.step === 'fielder' && g.entry === 'O' && (g.bbType === 'ground' || g.bbType === 'bunt')
+  && (g.fielderSeq || []).length === 1 && gameHasRunners(state.activeSession); }
 window.g5Unassisted = async function(){
   const g = state.activeSession.g5;
-  if(!g5PutoutAsk(g)) return;
-  return g5AfterLocation();
+  if(g5PutoutAsk(g)) return g5AfterLocation();
+  if(!g5UnassistedAsk(g)) return;
+  g.fielderSeq.push(g.fielderSeq[0]);
+  return g5Save();
 };
 window.g5FielderDone = async function(){
   const g = state.activeSession.g5;
@@ -9530,6 +9539,7 @@ function g5FieldActions(){
   if(g.step === 'fielder'){
     // Oct 21: "Who made the out?" has no Skip -- it's answered with a fielder or Unassisted (or Back)
     if(g5PutoutAsk(g)) return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Unassisted()">Unassisted</button></div>`;
+    if(g5UnassistedAsk(g)) return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Unassisted()">Unassisted</button></div>`;
     const n = (g.fielderSeq || []).length, any = n > 0;
     const wait = n === 1 && g.entry === 'O' && (g.bbType === 'ground' || g.bbType === 'bunt') && gameHasRunners(state.activeSession);   // tap who made the out
     return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button><button type="button" class="btn ${any ? 'btn-primary' : 'btn-secondary'} btn-sm g5-nav-btn" onclick="g5FielderDone()"${wait ? ' disabled' : ''}>${any ? 'Done ›' : 'Skip ›'}</button></div>`;

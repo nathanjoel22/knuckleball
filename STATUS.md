@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: Unassisted with runners on (6U-3) · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v271. Asked for by Joel. No database change; the report writes 6U-3 too (`send-session-report`, not deployed).
+- **Changed:** a ground ball or bunt out with runners on: after "Who fielded it?", **Unassisted** sits beside Back until a second fielder is tapped. It means that fielder made an out himself at his own base (SS stepping on second forces the runner from first); then tap where he threw, then Done. Saved as the fielder twice in a row (SS, SS, 1B), written 6U-3 in the app and the report. A tap on a selected position still always unselects it (Joel: the more common fix).
+- **Proven:** headless Chrome: Release 2 55/55 (new: Unassisted offered after the first tap, adds SS again, the runner from 1B forced at 2B, "Double play 6U-3", saved fielders SS-1B with 2 outs), Release 1 47/47 at 390, 820 and 1180; `deno check` passes.
+
 ## 2026-10-21 · Live Game: a tap selects or unselects a fielder · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v270. Asked for by Joel. No database or function change.
 - **Changed:** on "Who fielded it?" / "Who made the out(s)?", tapping a selected position unselects it (the rest keep their order). Because a second tap no longer means "the same fielder made it", "Who made the out?" (ground ball or bunt, bases empty) gets an **Unassisted** button beside Back. With runners on, the "6, 6 = he stepped on second" double tap is gone too.

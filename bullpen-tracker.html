@@ -8984,6 +8984,7 @@ window.g5FcOut = async function(box){
   const left = Object.assign({}, s.runners, { [b]: false });
   g5PlaceBatter(g, { runners: left }, 1);
   g.advances.unshift({ from: b, to: 0, how: 'out' });
+  g5StartRunQ(g, s);   // Oct 21: then the other runners, lead runner first
   return g5Save();
 };
 window.g5How = async function(t){
@@ -9031,6 +9032,7 @@ async function g5AfterLocation(){
       g.outPhase = 'move';
       g5OutsFromFielders(g);
       if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');
+      g5StartRunQ(g, s);
     }
     return g5Save();
   }
@@ -9039,8 +9041,58 @@ async function g5AfterLocation(){
   if(g.entry === 'E') g5PlaceBatter(g, s, g.reachBase || 1);                 // Oct 21: where the error left him
   if(g.entry === 'FC') g.fcPhase = 'pick';                                  // FC: who was out, first
   g5StartOutScreen(g);
+  if(g.entry === 'H' || g.entry === 'E') g5StartRunQ(g, s);                  // Oct 21: then each runner, lead runner first
   return g5Save();
 }
+/* ---------- Where did each runner end up? (Joel, Oct 21) ----------
+   After a ball in play with runners on -- a hit, an error, an FC, an out -- once the batter is settled, each runner is
+   asked about in turn, lead runner first: "Runner from 2B -- where did he end up?". The answers are cells in the row
+   under the field: HELD (not forced), each base he could reach (a forced runner starts where he was pushed), HOME when no
+   runner ahead of him is still on base, OUT. Next waits for every answer; Back undoes the last. Recorded as runner moves
+   (forced / advanced / tagged up on a catch; thrown out / doubled off on a catch). Dragging works again once answered. */
+function g5StartRunQ(g, s){ g.runQ = [3, 2, 1].filter(b => s.runners[b]); g.runAns = []; }
+function g5RunCur(g, o){ const e = (g.advances || []).find(a => a.from === o); return e ? e.to : o; }
+function g5RunAsking(g){
+  if(!g || g.step !== 'bases' || !g.runQ || g5NeedsFcOut(g) || (g.entry === 'O' && g.outPhase !== 'move')) return null;
+  const done = (g.runAns || []).map(x => x.o);
+  for(const o of g.runQ){
+    if(done.includes(o)) continue;
+    const c = g5RunCur(g, o);
+    if(c >= 1 && c <= 3) return o;   // out already, or scored already: not asked
+  }
+  return null;
+}
+function g5RunOptions(g, o){
+  const c = g5RunCur(g, o), occ = (g.bases || 0) & ~(1 << (c - 1));
+  let max = 4;
+  for(let b = c + 1; b <= 3; b++){ if(occ & (1 << (b - 1))){ max = b - 1; break; } }   // can't pass a runner still ahead of him
+  const name = ['', '1B', '2B', '3B'], opts = [];
+  for(let b = c; b <= Math.min(3, max); b++) opts.push([b, b === c && c === o ? 'HELD' : name[b]]);
+  if(max === 4) opts.push([4, 'HOME']);
+  opts.push([0, 'OUT']);
+  return opts;
+}
+window.g5RunAnswer = async function(dest){
+  const s = state.activeSession, g = s.g5, o = g5RunAsking(g);
+  if(!o || !g5RunOptions(g, o).some(([d]) => d === dest)) return;
+  const c = g5RunCur(g, o);
+  g.runAns.push({ o, snap: JSON.parse(JSON.stringify({ bases: g.bases || 0, runs: g.runs || 0, addOuts: g.addOuts || 0,
+    advances: g.advances || [], advBefore: g.advBefore || [], batterTo: g.batterTo === undefined ? null : g.batterTo })) });
+  g.bases = (g.bases || 0) & ~(1 << (c - 1));
+  if(dest >= 1 && dest <= 3) g.bases |= 1 << (dest - 1);
+  if(dest === 4) g.runs = (g.runs || 0) + 1;
+  const caught = g.entry === 'O' && (G5_CAUGHT[g.bbType] || g.foulOut);
+  const how = dest === 0 ? (caught ? 'doubled_up' : 'thrown_out') : (caught ? 'tagged_up' : 'advanced');
+  g.advances = g.advances || [];
+  const e = g.advances.find(a => a.from === o);
+  if(e){ if(e.to !== dest){ e.to = dest; e.how = how; } }
+  else if(dest !== o) g.advances.push({ from: o, to: dest, how });
+  if(dest === 0){
+    g.addOuts = (g.addOuts || 0) + 1;
+    if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');   // the third out ends it
+  }
+  return g5Save();
+};
 // Joel, Oct 21: on a ground ball or bunt out with runners on, every fielder tapped after the first made an out at his
 // base -- 2B or SS covering is second, 3B third, C home, 1B or P covering first (the batter, already out). SS, 2B, 1B is
 // a 6-4-3 double play: the runner from first forced at second, the batter at first. Each is a runner move like the out
@@ -9216,7 +9268,7 @@ window.g5Next = async function(){
   const s = state.activeSession, g = s.g5;
   if(!g || g.step !== 'bases') return;
   if(g.entry === 'O' && g.outPhase === 'confirm' && g.bases){ g.outPhase = 'move'; return g5Save(); }   // runners on: move them first
-  if(g5NeedsBatter(g) || g5NeedsFcOut(g)) return;   // put the batter on base (FC: call the runner out) first
+  if(g5NeedsBatter(g) || g5NeedsFcOut(g) || g5RunAsking(g)) return;   // the batter (FC: the runner out), then every runner, first
   if(g.walkEvent){ return g5CloseWalkEvent(); }
   return g5Commit(g.walk ? 'ball' : 'in_play');
 };
@@ -9309,12 +9361,13 @@ window.g5Back = async function(){
       g.box = null; g.field = null; g.foulOut = false; g.step = 'where'; break;
     case 'bases':
       if(g.move && g.entry === 'O'){ g.move = null; break; }
+      if(g.runAns && g.runAns.length){ Object.assign(g, g.runAns.pop().snap); break; }   // Oct 21: undo the last runner answer
       if(g5OutMoving(g)){
         if(g.advances.length){ const b = g.advBefore.pop(); g.advances.pop(); g.bases = b.bases; g.addOuts = b.addOuts; g.runs = b.runs || 0; break; }   // undo the last move
         // Oct 21: nothing left to undo -- back to the fielders (runners on skip the "Out recorded" step)
       }
       g.outPhase = null; g.advances = null; g.advBefore = null; g.runs = 0;
-      g.batterTo = undefined; g.batterPlaced = false; g.fcPhase = null;   // Oct 20
+      g.batterTo = undefined; g.batterPlaced = false; g.fcPhase = null; g.runQ = null; g.runAns = null;   // Oct 20 / 21
       if(!g.walkEvent) g.addOuts = 0;                                      // runners called out on this screen go with it
       if(g.walkEvent){ return g5CloseWalkEvent(); }   // the walk stands; Back keeps the forced runners
       if(g.walk){ g5FlipOut(); g.walk = false; g.bases = null; g.step = 'what'; }
@@ -9501,6 +9554,7 @@ function g5Caption(step){
   const sg = state.activeSession && state.activeSession.g5;
   if(step === 'where' && sg && sg.zone === 'FOUL') return 'Select where the foul ball was caught';
   if(step === 'fielder' && sg) return g5FielderAsk(sg);   // Oct 21
+  if(step === 'bases' && g5RunAsking(sg)){ const o = g5RunAsking(sg), d = g5DpLabel(sg); return (d ? d + ' — ' : '') + `Runner from ${['', '1B', '2B', '3B'][o]} — where did he end up?`; }
   if(step === 'bases' && sg && g5NeedsFcOut(sg)) return 'Fielder\'s choice — tap the runner who was out';
   if(step === 'bases' && sg && sg.entry === 'O') return sg.outPhase === 'move' ? (g5DpLabel(sg) ? g5DpLabel(sg) + ' — tap or move other runners' : 'What happened to the runners? Tap or move them') : 'Out recorded — tap Next';
   return { what: 'What happened?',
@@ -9544,7 +9598,7 @@ function g5FieldActions(){
     const wait = n === 1 && g.entry === 'O' && (g.bbType === 'ground' || g.bbType === 'bunt') && gameHasRunners(state.activeSession);   // tap who made the out
     return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button><button type="button" class="btn ${any ? 'btn-primary' : 'btn-secondary'} btn-sm g5-nav-btn" onclick="g5FielderDone()"${wait ? ' disabled' : ''}>${any ? 'Done ›' : 'Skip ›'}</button></div>`;
   }
-  const blocked = g5NeedsBatter(g) || g5NeedsFcOut(g);
+  const blocked = g5NeedsBatter(g) || g5NeedsFcOut(g) || !!g5RunAsking(g);
   const next = g.step === 'bases' ? `<button type="button" class="btn btn-primary btn-sm g5-nav-btn next-pitch" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>`
     : '<span class="g5-nav-btn" aria-hidden="true"></span>';
   return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button>${next}</div>`;
@@ -9681,6 +9735,7 @@ document.addEventListener('pointerdown', e => {
   const s = state.activeSession, g = s && s.g5;
   if(!cell || !g || (g.step !== 'runners' && g.step !== 'bases') || g.move) return;
   if(g.step === 'bases' && g.entry === 'O' && g.outPhase !== 'move') return;   // the out screen: Next first
+  if(g.step === 'bases' && g5RunAsking(g)) return;                               // Oct 21: answer the runner questions first
   const box = Number(cell.getAttribute('data-box'));
   const from = box === G5_HOME_BOX ? 'batter' : G5_BOX_BASE[box];
   if(from === undefined) return;
@@ -9782,6 +9837,7 @@ function g5PhoneCaption(g){
   if(g.step === 'hr') return 'Where did it leave the park?';
   if(g.step === 'bases' && g5NeedsFcOut(g)) return 'Tap the runner who was out';
   if(g.step === 'fielder') return g5FielderAsk(g);
+  if(g5RunAsking(g)) return `Runner from ${['', '1B', '2B', '3B'][g5RunAsking(g)]}?`;
   if(g.step === 'bases') return g.entry === 'O' ? (g.outPhase === 'move' ? (g5DpLabel(g) || 'What happened to the runners?') : 'Out recorded — tap Next')
     : g5NeedsBatter(g) ? 'Put the batter on base' : 'Move runners, then Next';
   return g5Caption(g.step);
@@ -9805,6 +9861,11 @@ function g5LocationCells(g){
 }
 function g5HoeRow(){
   const s = state.activeSession, g = s.g5;
+  if(g && g.step === 'bases' && g5RunAsking(g)){   // Oct 21: where the runner ended up
+    const o = g5RunAsking(g);
+    return `<div class="g5-pad" role="group" aria-label="Runner from ${['', '1B', '2B', '3B'][o]}">${g5RunOptions(g, o).map(([d, label], i) =>
+      `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${i + 1};" onclick="g5RunAnswer(${d})" aria-label="${label === 'HELD' ? 'Held' : label === 'OUT' ? 'Out' : label === 'HOME' ? 'Scored' : 'To ' + label}"><span class="g5-res-l g5-res-count${label.length > 2 ? ' g5-res-word' : ''}${label.length > 3 ? ' g5-res-long' : ''}" aria-hidden="true">${label}</span></button>`).join('')}</div>`;
+  }
   if(!g || !G5_PAD_STEPS[g.step]) return '';
   if(!G5_ROW_STEPS[g.step]) return `<div class="g5-pad" role="group" aria-label="${g5Caption(g.step)}">${g5LocationCells(g)}</div>`;
   const outBlocked = s.outs + 1 + (g.addOuts || 0) > 3;

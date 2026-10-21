@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: where did each runner end up? · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v272. Asked for by Joel. No database or function change.
+- **Changed:** after a ball in play with runners on (hit, error, FC, out), once the batter is settled each runner is asked about, lead runner first: "Runner from 2B -- where did he end up?" with cells in the row under the field: HELD (not forced), each base he could reach (a forced runner starts where he was pushed), HOME when no runner ahead is still on base, OUT. Runner on 3B + any ball in play: HELD · HOME · OUT; runner on 2B + single: HELD · 3B · HOME · OUT; runner on 1B + hit: 2B · 3B · HOME · OUT. Next waits for every answer; Back undoes the last; dragging works again once answered. Saved as runner moves (forced / advanced, or tagged up on a catch; thrown out, or doubled off on a catch); a third out saves the play.
+- **Proven:** headless Chrome: the new checks 19/19 (each of Joel's cases, Next waiting, a held lead runner blocking the trailing one, Back, a runner out, error and FC asking, the third out), Release 1 47/47 and Release 2 55/55 at 390, 820 and 1180 (their Next now answers the questions with the runner's current base); screenshot.
+
 ## 2026-10-21 · Live Game: Unassisted with runners on (6U-3) · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v271. Asked for by Joel. No database change; the report writes 6U-3 too (`send-session-report`, not deployed).
 - **Changed:** a ground ball or bunt out with runners on: after "Who fielded it?", **Unassisted** sits beside Back until a second fielder is tapped. It means that fielder made an out himself at his own base (SS stepping on second forces the runner from first); then tap where he threw, then Done. Saved as the fielder twice in a row (SS, SS, 1B), written 6U-3 in the app and the report. A tap on a selected position still always unselects it (Joel: the more common fix).

@@ -1547,12 +1547,21 @@
   @keyframes g5shade{ 50%{ opacity:0.55; } }
   .g5-word{ font-weight:800; font-size:12px; line-height:1.1; text-align:center; color:var(--gg-ink); padding:0 2px; /* geometry: the Live Game field overlay math */ }
   .g5-baselbl{ font-weight:800; font-size:14px; color:var(--ink); }
-  /* Release 2: "Who fielded it?" -- the scorebook number over the position, and the tap order once tapped */
-  .g5-pos .g5-pos-num{ font-weight:800; font-size:18px; line-height:1; color:#fff; }
-  .g5-pos .g5-baselbl{ color:#fff; font-size:12px; }
-  .g5-pos.on .g5-pos-num, .g5-pos.on .g5-baselbl{ color:var(--ink); }
-  .g5-pos .g5-pos-order{ position:absolute; top:3px; right:5px; font-size:11px; font-weight:800; color:var(--ink); }
-  .wide-right .g5-pos .g5-pos-num{ font-size:calc(var(--g5c) * 0.28); }
+  /* "Who fielded it?" (Joel, Oct 21): each position a pill in the prompt's own yellow, letters only, placed in its box;
+     tapped = the solid yellow of Done, with the tap order small beside the letters. The whole box still takes the tap. */
+  .g5-cell.g5-posc{ background:transparent !important; border-color:transparent !important; animation:none; cursor:pointer; }
+  .g5-posc .g5-in{ position:absolute; inset:0; display:block; }
+  .g5-posc .g5-ball{ position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); }
+  .g5-pos-pill{ position:absolute; left:50%; top:58%; transform:translate(-50%, -50%); padding:3px 9px; border-radius:var(--radius-pill);
+    background:linear-gradient(rgba(var(--accent-rgb), .26), rgba(var(--accent-rgb), .26)), var(--bg); color:var(--ink);
+    font-size:13px; font-weight:800; line-height:1.25; white-space:nowrap; box-shadow:0 1px 3px rgba(0, 0, 0, .3); }
+  .g5-posc.on .g5-pos-pill{ background:rgb(var(--accent-rgb)); }
+  .g5-pos-pill .g5-pos-order{ font-size:9px; margin-left:2px; }
+  .g5-pos-pill.pos-C{ top:79%; }                                              /* just below home plate */
+  .g5-pos-pill.pos-CF{ top:36%; }                                             /* high in its box */
+  .g5-pos-pill.pos-3B{ left:auto; right:3px; top:3px; transform:none; }       /* top right */
+  .g5-pos-pill.pos-1B{ left:3px; top:3px; transform:none; }                   /* top left */
+  .wide-right .g5-pos-pill{ font-size:calc(var(--g5c) * 0.2); padding:calc(var(--g5c) * 0.04) calc(var(--g5c) * 0.12); }
   .g5-marked{ background:rgba(255,255,255,0.25); }
   .g5-ball{ width:24px; height:24px; display:block; }
   /* Joel, Oct 8: on iPad / laptop the field buttons' contents grow with the box (one box = (--zg - 18px) / 5) */
@@ -9009,7 +9018,9 @@ async function g5AfterLocation(){
 // Release 2 (C4, Joel, Oct 20): "Who fielded it?" -- the nine positions are buttons where they stand on the field; tap
 // them in the order the ball went (6, then 3 = 6-3). Done, or Skip with none. Saved as pitches.fielder (the first) and
 // pitches.fielders (the rest, '4-3').
-const G5_POS_BOX = { 15: 'C', 24: 'P', 23: '1B', 22: '2B', 18: 'SS', 17: '3B', 19: 'LF', 20: 'CF', 21: 'RF' };
+// Joel, Oct 21: LF one box left (4) and RF one box right (10); each position a yellow pill with its letters only, placed in
+// its box (C just below the plate, 3B top right, 1B top left, CF high) -- the layout is in the .g5-posc CSS.
+const G5_POS_BOX = { 15: 'C', 24: 'P', 23: '1B', 22: '2B', 18: 'SS', 17: '3B', 4: 'LF', 20: 'CF', 10: 'RF' };
 window.g5Fielder = async function(box){
   const g = state.activeSession.g5, pos = G5_POS_BOX[box];
   if(!g || g.step !== 'fielder' || !pos) return;
@@ -9360,9 +9371,9 @@ function g5CellInner(step, box){
   if(step === 'fielder'){
     const pos = G5_POS_BOX[box], seq = g.fielderSeq || [];
     if(!pos) return g.box === box ? { inner: G5_BALL_SVG, onclick: null, cls: 'g5-marked' } : null;
-    const n = POSITION_SCOREBOOK_NUMBER[pos], order = seq.map((p, i) => p === pos ? i + 1 : 0).filter(Boolean);
-    return btn(`<span class="g5-pos-num">${n}</span><span class="g5-baselbl">${pos}</span>${order.length ? `<span class="g5-pos-order">${order.join(',')}</span>` : ''}`,
-      `g5Fielder(${box})`, 'g5-pick g5-pos' + (order.length ? ' on' : ''));
+    const order = seq.map((p, i) => p === pos ? i + 1 : 0).filter(Boolean);   // the tap order (6-3), shown small on the pill
+    return btn(`${g.box === box ? G5_BALL_SVG : ''}<span class="g5-pos-pill pos-${pos}">${pos}${order.length ? `<sup class="g5-pos-order">${order.join(',')}</sup>` : ''}</span>`,
+      `g5Fielder(${box})`, 'g5-posc' + (order.length ? ' on' : ''));
   }
   if(step === 'bases' && g5NeedsFcOut(g)){
     // FC (Oct 20): the runners as they were; tap the one who was out

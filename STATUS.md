@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: "Who fielded it?" positions restyled · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v264. Asked for by Joel. No database or function change.
+- **Changed:** each position is a pill in the prompt's yellow with its letters only (no numbers); tapped = solid yellow with the tap order small beside the letters. C just below home plate, 3B top right of its box, 1B top left, SS / 2B / P where they were, LF one box left (box 4), RF one box right (box 10), CF high in its box. The whole box still takes the tap. Saved values unchanged (`fielder` / `fielders` as positions).
+- **Proven:** headless Chrome: every pill inside its box at 390, 820 and 1180 px; screenshots at 390 and 1180; Release 1 47/47, Release 2 27/27 at 390 and 1180.
+
 ## 2026-10-21 · Live Game: Rare plays regrouped · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v263. Asked for by Joel. No database or function change.
 - **Rare plays now:** Dropped 3rd · Intentional walk / **Interference** · **Violations** / Foul bunt · Balk / ‹ More.

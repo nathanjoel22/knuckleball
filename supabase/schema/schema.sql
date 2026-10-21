@@ -602,10 +602,13 @@ declare
   v_kind text;
   v_final_inning smallint;
   v_outs_recorded smallint;
+  v_adjust smallint;
+  v_inherited smallint;
+  v_left smallint;
   v_result jsonb;
 begin
-  select kind, game_final_inning, game_outs_recorded
-    into v_kind, v_final_inning, v_outs_recorded
+  select kind, game_final_inning, game_outs_recorded, pitch_count_adjust, inherited_runners, runners_left
+    into v_kind, v_final_inning, v_outs_recorded, v_adjust, v_inherited, v_left
     from public.sessions
    where id = p_session_id;
 
@@ -625,9 +628,13 @@ begin
       (result in ('strike_looking','strike_swinging','foul','foul_tip','in_play','sac_bunt','sac_fly','dropped_third')) as is_strike_result,
       (result not in ('interference','other')) as counts_toward_pct,
       public.is_strike_cell(actual_row, actual_col) as in_zone,
-      (result in ('strike_looking','strike_swinging','foul_tip') and strikes_before >= 2) as is_regular_k_out,
-      (result = 'dropped_third' or (result in ('strike_looking','strike_swinging','foul_tip') and strikes_before >= 2)) as is_k,
-      (result = 'ball' and balls_before >= 3) as is_bb,
+      -- Oct 20: a foul bunt on two strikes is a strikeout too (Joel)
+      ((result in ('strike_looking','strike_swinging','foul_tip') and strikes_before >= 2)
+        or (result = 'foul' and bb_type = 'bunt' and strikes_before >= 2)) as is_regular_k_out,
+      (result = 'dropped_third' or (result in ('strike_looking','strike_swinging','foul_tip') and strikes_before >= 2)
+        or (result = 'foul' and bb_type = 'bunt' and strikes_before >= 2)) as is_k,
+      (result = 'ball' and balls_before >= 3 and not coalesce(charged_prev, false)) as is_bb,   -- Oct 21: not a walk charged to the previous pitcher
+      (result = 'ball' and balls_before >= 3 and coalesce(charged_prev, false)) as is_bb_prev,
       (result = 'in_play' and in_play_outcome = 'hit') as is_hit,
       (result = 'in_play' and in_play_outcome in ('hit') and hit_type in ('2B','3B','HR')) as is_xbh,
       (result = 'in_play' and in_play_outcome = 'out') as is_inplay_out,
@@ -642,14 +649,26 @@ begin
   -- pitch count, strike %, zone or first-pitch numbers.
   ev as (
     select at_bat_index,
-      (event_type = 'intentional_walk' or (event_type = 'auto_ball' and balls_before >= 3)) as is_bb,
+      (event_type = 'intentional_walk' or (event_type = 'auto_ball' and balls_before >= 3)) and not coalesce(charged_prev, false) as is_bb,
+      (event_type = 'intentional_walk' or (event_type = 'auto_ball' and balls_before >= 3)) and coalesce(charged_prev, false) as is_bb_prev,
       (event_type = 'auto_strike' and strikes_before >= 2) as is_k
       from public.game_events
      where session_id = p_session_id and event_type in ('intentional_walk','auto_ball','auto_strike')
   ),
   evagg as (
-    select count(*) filter (where is_bb) as ev_bb, count(*) filter (where is_k) as ev_k
+    select count(*) filter (where is_bb) as ev_bb, count(*) filter (where is_k) as ev_k, count(*) filter (where is_bb_prev) as ev_bb_prev
       from ev
+  ),
+  -- Oct 19: runs, from every pitch's and event's runs_scored; NULL when nothing in the game recorded runs (games
+  -- charted on the field before runs were tracked left the column empty).
+  runs as (
+    select (select sum(runs_scored) from public.pitches where session_id = p_session_id)  as pr,
+           (select sum(runs_scored) from public.game_events where session_id = p_session_id) as er,
+           -- Oct 21: inherited runs (the previous pitcher's) and unearned runs; NULL sums = not tracked (games before)
+           coalesce((select sum(inherited_runs) from public.pitches where session_id = p_session_id), 0)
+             + coalesce((select sum(inherited_runs) from public.game_events where session_id = p_session_id), 0) as inh,
+           (select sum(unearned_runs) from public.pitches where session_id = p_session_id) as pu,
+           (select sum(unearned_runs) from public.game_events where session_id = p_session_id) as eu
   ),
   bf as (
     select count(distinct ab) as batters_faced from (
@@ -669,6 +688,7 @@ begin
       count(*) filter (where is_first_pitch and is_strike_result) as fp_strikes,
       count(*) filter (where is_k) as k,
       count(*) filter (where is_bb) as bb,
+      count(*) filter (where is_bb_prev) as bb_prev,
       count(*) filter (where is_hit) as h,
       count(*) filter (where is_xbh) as xbh,
       count(*) filter (where is_inplay_out) as outs_in_play,
@@ -682,6 +702,15 @@ begin
   )
   select jsonb_build_object(
     'pitches', pitches,
+    'pitch_count', greatest(0, pitches + coalesce(v_adjust, 0)),   -- Oct 19: the pitch count with + / - (the rates still use pitches)
+    -- Oct 21: runs charged to this pitcher (inherited runners who scored are the previous pitcher's)
+    'runs', case when runs.pr is null and runs.er is null then null else coalesce(runs.pr, 0) + coalesce(runs.er, 0) - runs.inh end,
+    'er', case when runs.pu is null and runs.eu is null then null
+               else coalesce(runs.pr, 0) + coalesce(runs.er, 0) - runs.inh - coalesce(runs.pu, 0) - coalesce(runs.eu, 0) end,
+    'ir', v_inherited,
+    'irs', case when v_inherited is null then null else runs.inh end,
+    'bb_charged_prev', bb_prev + ev_bb_prev,
+    'runners_left', v_left,   -- Oct 22: runners on base when he came out (NULL: games saved before)
     'strikes', strikes,
     'strike_pct', case when pct_denom > 0 then round(100.0 * pct_num / pct_denom) else 0 end,
     'strike_pct_denominator', pct_denom,
@@ -697,7 +726,7 @@ begin
     'final_inning', coalesce(v_final_inning, greatest(max_inning, 1)),
     'final_inning_source', case when v_final_inning is not null then 'counter' else 'derived' end
   ) into v_result
-  from agg, evagg, bf;
+  from agg, evagg, bf, runs;
 
   return v_result;
 end;
@@ -1920,7 +1949,7 @@ CREATE OR REPLACE FUNCTION "public"."pitcher_workload"("p_profiles" "uuid"[]) RE
     AS $$
   with ss as (
     select s.id, s.pitcher_id, s.kind, s.started_at,
-           (select count(*) from public.pitches p where p.session_id = s.id)::int as n
+           greatest(0, (select count(*) from public.pitches p where p.session_id = s.id) + s.pitch_count_adjust)::int as n   -- Oct 19: + / - pitch count
       from public.sessions s
      where s.pitcher_id = any(p_profiles) and s.deleted_at is null and s.ended_at is not null
   ), last as (
@@ -2580,10 +2609,12 @@ begin
     if new.logged_by  is null then v_logged  := old.logged_by;  end if;
   end if;
   if (new.id, v_pitcher, new.team_id, v_logged, new.started_at, new.created_at, new.kind, new.sport,
-      new.charting_perspective, new.opponent, new.game_final_inning, new.game_outs_recorded, new.ra_on)
+      new.charting_perspective, new.opponent, new.game_final_inning, new.game_outs_recorded, new.ra_on, new.pitch_count_adjust,
+      new.inherited_runners, new.runners_left)
      is distinct from
      (old.id, old.pitcher_id, old.team_id, old.logged_by, old.started_at, old.created_at, old.kind, old.sport,
-      old.charting_perspective, old.opponent, old.game_final_inning, old.game_outs_recorded, old.ra_on) then
+      old.charting_perspective, old.opponent, old.game_final_inning, old.game_outs_recorded, old.ra_on, old.pitch_count_adjust,
+      old.inherited_runners, old.runners_left) then
     raise exception 'session_saved_locked' using detail = 'Who and what a saved session belongs to can''t change.';
   end if;
   if old.sealed_at is not null and new.sealed_at is distinct from old.sealed_at then
@@ -2753,7 +2784,8 @@ begin
       return jsonb_build_object('ok', false, 'error', 'not_entitled');
     end if;
     insert into public.sessions (id, pitcher_id, team_id, logged_by, started_at, ended_at, charting_perspective,
-                                 kind, opponent, game_final_inning, game_outs_recorded, ra_on)
+                                 kind, opponent, game_final_inning, game_outs_recorded, ra_on, pitch_count_adjust,
+                                 inherited_runners, runners_left)
     values (v_id, v_pitcher, v_team, v_logged,
             (p_session ->> 'started_at')::timestamptz, (p_session ->> 'ended_at')::timestamptz,
             coalesce(nullif(p_session ->> 'charting_perspective', ''), 'behind_catcher'),
@@ -2761,14 +2793,21 @@ begin
             nullif(p_session ->> 'opponent', ''),
             (p_session ->> 'game_final_inning')::smallint,
             (p_session ->> 'game_outs_recorded')::smallint,
-            coalesce((p_session ->> 'ra_on')::boolean, false));   -- U14
+            coalesce((p_session ->> 'ra_on')::boolean, false),   -- U14
+            case when coalesce(nullif(p_session ->> 'kind', ''), 'bullpen') = 'game'
+                 then coalesce((p_session ->> 'pitch_count_adjust')::smallint, 0) else 0 end,   -- Oct 19: + / - pitch count
+            case when coalesce(nullif(p_session ->> 'kind', ''), 'bullpen') = 'game'
+                 then (p_session ->> 'inherited_runners')::smallint end,   -- Oct 21: runners on when a reliever started
+            case when coalesce(nullif(p_session ->> 'kind', ''), 'bullpen') = 'game'
+                 then (p_session ->> 'runners_left')::smallint end);   -- Oct 22: runners on base when he came out
   end if;
 
   insert into public.pitches (id, session_id, type, velo, ts, target_row, target_col, actual_row, actual_col,
          accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, kind, result, in_play_outcome,
          hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, bb_type,
          bb_x, bb_y, fielders, runners_before, batter_to, runner_advances, outs_on_play, runs_scored, sacrifice,
-         bb_from_position, time_to_plate, spray_box, runners_after, spray_field, accuracy_hit_kind)
+         bb_from_position, time_to_plate, spray_box, runners_after, spray_field, accuracy_hit_kind, hbp_swing,
+         unearned_runs, inherited_runs, charged_prev)
   select r.id, v_id, r.type, r.velo, coalesce(r.ts, now()), r.target_row, r.target_col,
          coalesce(r.actual_row, 0), coalesce(r.actual_col, 0),
          r.accuracy_mode, r.batter_side, r.in_accuracy_zone, r.accuracy_zone_cells,
@@ -2776,18 +2815,21 @@ begin
          r.hit_type, r.fielder, r.delivery, r.inning, r.outs_before, r.balls_before, r.strikes_before, r.at_bat_index,
          r.bb_type, r.bb_x, r.bb_y, r.fielders, r.runners_before, r.batter_to, r.runner_advances, r.outs_on_play,
          r.runs_scored, r.sacrifice, r.bb_from_position, r.time_to_plate, r.spray_box, r.runners_after, r.spray_field,
-         r.accuracy_hit_kind
+         r.accuracy_hit_kind, r.hbp_swing,   -- Oct 20
+         r.unearned_runs, r.inherited_runs, r.charged_prev   -- Oct 21
     from jsonb_populate_recordset(null::public.pitches, coalesce(p_pitches, '[]'::jsonb)) r
    where r.id is not null
   on conflict (id) do nothing;
   get diagnostics v_np = row_count;
 
   insert into public.game_events (id, session_id, at_bat_index, after_pitch_id, event_type, runners_before,
-         runner_advances, outs_on_play, runs_scored, seq, inning_before, balls_before, strikes_before, outs_before)
+         runner_advances, outs_on_play, runs_scored, seq, inning_before, balls_before, strikes_before, outs_before,
+         unearned_runs, inherited_runs, charged_prev)
   select e.id, v_id, e.at_bat_index,
          case when e.after_pitch_id in (select p.id from public.pitches p where p.session_id = v_id) then e.after_pitch_id end,
          e.event_type, e.runners_before, e.runner_advances, e.outs_on_play,
-         e.runs_scored, e.seq, e.inning_before, e.balls_before, e.strikes_before, e.outs_before
+         e.runs_scored, e.seq, e.inning_before, e.balls_before, e.strikes_before, e.outs_before,
+         e.unearned_runs, e.inherited_runs, e.charged_prev   -- Oct 21
     from jsonb_populate_recordset(null::public.game_events, coalesce(p_events, '[]'::jsonb)) e
    where e.id is not null
   on conflict (id) do nothing;
@@ -2928,8 +2970,12 @@ CREATE TABLE IF NOT EXISTS "public"."game_events" (
     "balls_before" smallint,
     "strikes_before" smallint,
     "outs_before" smallint,
+    "unearned_runs" smallint,
+    "inherited_runs" smallint,
+    "charged_prev" boolean,
     CONSTRAINT "game_events_event_type_check" CHECK (("event_type" = ANY (ARRAY['stolen_base'::"text", 'caught_stealing'::"text", 'pickoff'::"text", 'wild_pitch'::"text", 'passed_ball'::"text", 'balk'::"text", 'other'::"text", 'intentional_walk'::"text", 'auto_ball'::"text", 'auto_strike'::"text", 'illegal_pitch'::"text", 'tiebreak_runner'::"text"]))),
     CONSTRAINT "game_events_outs_on_play_check" CHECK ((("outs_on_play" >= 0) AND ("outs_on_play" <= 3))),
+    CONSTRAINT "game_events_r2_runs_check" CHECK (((("unearned_runs" IS NULL) OR (("unearned_runs" >= 0) AND ("unearned_runs" <= 4))) AND (("inherited_runs" IS NULL) OR (("inherited_runs" >= 0) AND ("inherited_runs" <= 4))))),
     CONSTRAINT "game_events_runner_advances_check" CHECK ((("runner_advances" IS NULL) OR ("jsonb_typeof"("runner_advances") = 'array'::"text"))),
     CONSTRAINT "game_events_runners_before_check" CHECK ((("runners_before" >= 0) AND ("runners_before" <= 7))),
     CONSTRAINT "game_events_runs_scored_check" CHECK ((("runs_scored" >= 0) AND ("runs_scored" <= 4)))
@@ -3048,6 +3094,10 @@ CREATE TABLE IF NOT EXISTS "public"."pitches" (
     "runners_after" smallint,
     "spray_field" "text",
     "accuracy_hit_kind" "text",
+    "hbp_swing" boolean,
+    "unearned_runs" smallint,
+    "inherited_runs" smallint,
+    "charged_prev" boolean,
     CONSTRAINT "pitches_accuracy_hit_kind_check" CHECK ((("accuracy_hit_kind" IS NULL) OR ("accuracy_hit_kind" = ANY (ARRAY['exact'::"text", 'ra'::"text", 'miss'::"text"])))),
     CONSTRAINT "pitches_accuracy_mode_check" CHECK ((("accuracy_mode" IS NULL) OR ("accuracy_mode" = ANY (ARRAY['ring'::"text", 'nothingUp'::"text", 'nothingLow'::"text", 'nothingAway'::"text", 'nothingInside'::"text"])))),
     CONSTRAINT "pitches_batter_side_check" CHECK ((("batter_side" IS NULL) OR ("batter_side" = ANY (ARRAY['R'::"text", 'L'::"text"])))),
@@ -3058,10 +3108,12 @@ CREATE TABLE IF NOT EXISTS "public"."pitches" (
     CONSTRAINT "pitches_g1b_fields_check" CHECK (((("kind" = 'bullpen'::"text") AND ("bb_type" IS NULL) AND ("bb_x" IS NULL) AND ("bb_y" IS NULL) AND ("fielders" IS NULL) AND ("runners_before" IS NULL) AND ("batter_to" IS NULL) AND ("runner_advances" IS NULL) AND ("outs_on_play" IS NULL) AND ("runs_scored" IS NULL) AND ("sacrifice" IS NULL) AND ("bb_from_position" IS NULL)) OR ("kind" = 'game'::"text"))),
     CONSTRAINT "pitches_g5_fields_check" CHECK ((("kind" = 'game'::"text") OR (("spray_box" IS NULL) AND ("runners_after" IS NULL)))),
     CONSTRAINT "pitches_g5_spray_field_game_check" CHECK ((("kind" = 'game'::"text") OR ("spray_field" IS NULL))),
+    CONSTRAINT "pitches_hbp_swing_check" CHECK ((("hbp_swing" IS NULL) OR (("kind" = 'game'::"text") AND ("result" = 'strike_swinging'::"text")))),
     CONSTRAINT "pitches_hit_type_check" CHECK (("hit_type" = ANY (ARRAY['1B'::"text", '2B'::"text", '3B'::"text", 'HR'::"text"]))),
     CONSTRAINT "pitches_in_play_outcome_check" CHECK (("in_play_outcome" = ANY (ARRAY['hit'::"text", 'out'::"text", 'error'::"text", 'fc'::"text", 'reached'::"text"]))),
     CONSTRAINT "pitches_kind_check" CHECK (("kind" = ANY (ARRAY['bullpen'::"text", 'game'::"text"]))),
     CONSTRAINT "pitches_outs_on_play_check" CHECK ((("outs_on_play" IS NULL) OR (("outs_on_play" >= 0) AND ("outs_on_play" <= 3)))),
+    CONSTRAINT "pitches_r2_runs_check" CHECK (((("unearned_runs" IS NULL) OR (("unearned_runs" >= 0) AND ("unearned_runs" <= 4))) AND (("inherited_runs" IS NULL) OR (("inherited_runs" >= 0) AND ("inherited_runs" <= 4))) AND (("kind" = 'game'::"text") OR (("unearned_runs" IS NULL) AND ("inherited_runs" IS NULL) AND ("charged_prev" IS NULL))))),
     CONSTRAINT "pitches_ra_hit_has_cells" CHECK ((("accuracy_hit_kind" IS DISTINCT FROM 'ra'::"text") OR ("accuracy_zone_cells" IS NOT NULL))),
     CONSTRAINT "pitches_result_check" CHECK (("result" = ANY (ARRAY['ball'::"text", 'strike_looking'::"text", 'strike_swinging'::"text", 'foul'::"text", 'in_play'::"text", 'hbp'::"text", 'sac_bunt'::"text", 'sac_fly'::"text", 'dropped_third'::"text", 'interference'::"text", 'other'::"text", 'batter_interference'::"text", 'foul_tip'::"text"]))),
     CONSTRAINT "pitches_runner_advances_is_array" CHECK ((("runner_advances" IS NULL) OR ("jsonb_typeof"("runner_advances") = 'array'::"text"))),
@@ -3144,6 +3196,10 @@ COMMENT ON COLUMN "public"."pitches"."runners_after" IS 'G5: bases occupied afte
 
 
 COMMENT ON COLUMN "public"."pitches"."spray_field" IS 'G5: IF or OF -- where a ball in play was fielded (the charter taps IF or OF on the field); NULL when not chosen and for every other pitch.';
+
+
+
+COMMENT ON COLUMN "public"."pitches"."hbp_swing" IS 'Oct 20 2026: true when the batter swung at the pitch that hit him (a swinging strike). NULL otherwise.';
 
 
 
@@ -3392,12 +3448,18 @@ CREATE TABLE IF NOT EXISTS "public"."sessions" (
     "sport" "text" NOT NULL,
     "sealed_at" timestamp with time zone,
     "ra_on" boolean DEFAULT false NOT NULL,
+    "pitch_count_adjust" smallint DEFAULT 0 NOT NULL,
+    "inherited_runners" smallint,
+    "runners_left" smallint,
     CONSTRAINT "sessions_charting_perspective_check" CHECK (("charting_perspective" = ANY (ARRAY['behind_catcher'::"text", 'behind_pitcher'::"text"]))),
     CONSTRAINT "sessions_deletion_check" CHECK ((("deleted_at" IS NULL) OR (("deleted_by" IS NOT NULL) AND ("deleted_by_role" = ANY (ARRAY['pitcher'::"text", 'coach'::"text"])) AND ("pitch_count" IS NOT NULL) AND ("pitch_count" >= 0)) OR (("deleted_by_role" = 'deleted_account'::"text") AND ("deleted_by_name" IS NULL) AND ("pitch_count" IS NOT NULL) AND ("pitch_count" >= 0)))),
     CONSTRAINT "sessions_game_fields_check" CHECK (((("kind" = 'bullpen'::"text") AND ("opponent" IS NULL) AND ("game_final_inning" IS NULL) AND ("game_outs_recorded" IS NULL)) OR ("kind" = 'game'::"text"))),
+    CONSTRAINT "sessions_inherited_runners_check" CHECK ((("inherited_runners" IS NULL) OR (("kind" = 'game'::"text") AND (("inherited_runners" >= 0) AND ("inherited_runners" <= 3))))),
     CONSTRAINT "sessions_kind_check" CHECK (("kind" = ANY (ARRAY['bullpen'::"text", 'game'::"text"]))),
     CONSTRAINT "sessions_opponent_length" CHECK ((("opponent" IS NULL) OR ("char_length"("opponent") <= 60))),
+    CONSTRAINT "sessions_pitch_count_adjust_check" CHECK (((("pitch_count_adjust" >= '-999'::integer) AND ("pitch_count_adjust" <= 999)) AND (("kind" = 'game'::"text") OR ("pitch_count_adjust" = 0)))),
     CONSTRAINT "sessions_pitcher_unless_tombstone" CHECK ((("pitcher_id" IS NOT NULL) OR ("deleted_at" IS NOT NULL))),
+    CONSTRAINT "sessions_runners_left_check" CHECK ((("runners_left" IS NULL) OR (("kind" = 'game'::"text") AND (("runners_left" >= 0) AND ("runners_left" <= 3))))),
     CONSTRAINT "sessions_sport_check" CHECK (("sport" = ANY (ARRAY['baseball'::"text", 'softball'::"text"])))
 );
 

@@ -7241,7 +7241,8 @@ window.g5MoreToggle = function(){ state.g5More = !state.g5More; state.g5Rare = f
 window.g5MoreClose = function(){ state.g5More = false; state.g5Rare = false; state.g5RareAsk = null; };
 // Joel, Oct 20: More -> Rare plays, a second tray: Dropped 3rd, Intentional walk, Catcher's / Batter's interference,
 // Clock ball / Clock strike (a pitch-clock violation: no pitch, not in the pitch count -- +K / +B stay the missed pitch,
-// +1), Foul bunt, Missed bunt, HBP on swing. The pitch ones need the spot tapped first, like Hit by pitch.
+// +1), Foul bunt, Missed bunt, HBP on swing, and Balk (softball: Illegal pitch; moved from More, Joel, Oct 21). The pitch
+// ones need the spot tapped first, like Hit by pitch.
 window.g5RareToggle = function(){ state.g5Rare = !state.g5Rare; state.g5RareAsk = null; render(); };
 window.g5RareAskSet = function(ask){ state.g5RareAsk = ask; render(); };
 function g5PitchReady(s){ return !!(s && s.g5 && s.g5.step === 'what'); }
@@ -9726,7 +9727,7 @@ function g5NavRow(){
       <button type="button" class="btn btn-secondary btn-sm g5-nav-btn${more ? ' on' : ''}" onclick="g5MoreToggle()" aria-expanded="${more ? 'true' : 'false'}">More ${more ? '▴' : '▾'}</button>
     </div>${more ? (state.g5Rare ? g5RareTray(s) : `<div class="g5-more" role="group" aria-label="More">
       ${b('New batter', 'gameNewBatter()')}${b('New inning', 'gameNewInning()')}
-      ${b('Hit by pitch', 'gameHitByPitch()', !(s.g5 && s.g5.step === 'what'))}${currentSport() === 'softball' ? b('Illegal pitch', 'gameBalk()') : b('Balk', 'gameBalk()', !gameHasRunners(s))}
+      ${b('Hit by pitch', 'gameHitByPitch()', !(s.g5 && s.g5.step === 'what'))}
       <button type="button" class="btn btn-secondary btn-sm g5-more-btn" onclick="g5RareToggle()">Rare plays ▸</button>
     </div>`) : ''}`;
 }
@@ -9748,7 +9749,8 @@ function g5RareTray(s){
     ${b("Catcher's int.", "gameRarePitch('ci')", !ready)}${b("Batter's int.", "g5RareAskSet('bi')", !ready, true)}
     ${b('Clock ball', "g5AddCount('ball', true)", walk)}${b('Clock strike', "g5AddCount('strike', true)", walk)}
     ${b('Foul bunt', "gameRarePitch('foul_bunt')", !ready)}${b('Missed bunt', "gameRarePitch('missed_bunt')", !ready)}
-    ${b('HBP on swing', "gameRarePitch('hbp_swing')", !ready)}${back}
+    ${b('HBP on swing', "gameRarePitch('hbp_swing')", !ready)}${currentSport() === 'softball' ? b('Illegal pitch', 'gameBalk()') : b('Balk', 'gameBalk()', !gameHasRunners(s))}
+    ${back}
   </div>`;
 }
 // Under the square chart: the extra-inning question, then the result buttons and Back / More.

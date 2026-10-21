@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: Balk into Rare plays · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v262. Asked for by Joel. No database or function change.
+- **Changed:** Balk (softball: Illegal pitch) moved from More into Rare plays, beside HBP on swing; "Rare plays ▸" now sits in Balk's old spot beside Hit by pitch.
+- **Proven:** headless Chrome at 390 px: More shows New batter / New inning / Hit by pitch / Rare plays ▸ (Rare plays beside Hit by pitch); Rare plays has Balk, which still moves every runner up one (a run from 3B); Release 1 45/45 and Release 2 27/27 at 390 and 1180 px.
+
 ## 2026-10-20 · Live Game Release 2 (gaps review) · **branch + staging database (not shipped)**
 - **Branch:** `live-game-back-more`. **Cache:** v261. No packet: the Release 2 items, with Joel's answers (fielders on the field with the prompt in the yellow badge; earned runs automatic with an override; inherited runners / the starter's walk on the reliever's line only; the at-bat editor details only; hits ask the fielder too). Plan: `plans/live-game-r2.md`.
 - **Built:**

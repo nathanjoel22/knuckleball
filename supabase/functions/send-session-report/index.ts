@@ -359,7 +359,7 @@ Deno.serve(async (req) => {
       // never the service-role client and never from the client payload.
       const { data: evRows, error: evErr } = await callerClient
         .from('game_events')
-        .select('event_type, at_bat_index, seq, inning_before, balls_before, strikes_before, runner_advances')
+        .select('event_type, at_bat_index, seq, inning_before, balls_before, strikes_before, runner_advances, runs_scored, unearned_runs, inherited_runs')
         .eq('session_id', sessionId)
         .order('seq', { ascending: true, nullsFirst: true })
       if (evErr) {
@@ -392,7 +392,10 @@ Deno.serve(async (req) => {
           inningBefore: (e.inning_before as number | null) ?? null,
           ballsBefore: (e.balls_before as number | null) ?? null,
           strikesBefore: (e.strikes_before as number | null) ?? null,
-          runnerAdvances: (e.runner_advances as unknown[] | null) ?? null
+          runnerAdvances: (e.runner_advances as unknown[] | null) ?? null,
+          runsScored: (e.runs_scored as number | null) ?? null,         // Release 2
+          unearnedRuns: (e.unearned_runs as number | null) ?? null,
+          inheritedRuns: (e.inherited_runs as number | null) ?? null
         }))
       }
       try {

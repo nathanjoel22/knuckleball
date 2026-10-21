@@ -18,7 +18,7 @@ const U6_CUTOFF_TS = 1789965601000   // the app's U6_CUTOFF_TS: a 65 mph reading
 const PITCH_COLS = 'session_id, type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, in_accuracy_zone, ' +
   'accuracy_zone_cells, batter_side, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, ' +
   'balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, ' +
-  'accuracy_hit_kind'
+  'accuracy_hit_kind, fielders, sacrifice, batter_to, runner_advances, runs_scored, unearned_runs, inherited_runs, charged_prev'   // Release 2
 
 type Row = Record<string, unknown>
 // deno-lint-ignore no-explicit-any
@@ -46,7 +46,10 @@ export function pitchFromRow(p: Row): AppPitch {
     inning: nn(p.inning), outsBefore: nn(p.outs_before), ballsBefore: nn(p.balls_before),
     strikesBefore: nn(p.strikes_before), atBatIndex: nn(p.at_bat_index),
     // G5: the field sections (app mapping: loadSessionsForCurrentSelection)
-    bbType: p.bb_type || null, runnersBefore: nn(p.runners_before), sprayBox: nn(p.spray_box), sprayField: p.spray_field || null, runnersAfter: nn(p.runners_after)
+    bbType: p.bb_type || null, runnersBefore: nn(p.runners_before), sprayBox: nn(p.spray_box), sprayField: p.spray_field || null, runnersAfter: nn(p.runners_after),
+    // Release 2: same as the app's mapping (loadSessionsForCurrentSelection)
+    fielders: p.fielders || null, sacrifice: p.sacrifice || null, batterTo: nn(p.batter_to), runnerAdvances: p.runner_advances || null,
+    runsScored: nn(p.runs_scored), unearnedRuns: nn(p.unearned_runs), inheritedRuns: nn(p.inherited_runs), chargedPrev: p.charged_prev === true
   }
 }
 const isDefaultVelo = (pt: AppPitch) => pt.velo === 65 && pt.ts < U6_CUTOFF_TS
@@ -184,7 +187,7 @@ export async function renderReportFromRows(db: SupabaseClient, sessionId: string
     })
   }
   const { data: evRows, error: evErr } = await db.from('game_events')
-    .select('event_type, at_bat_index, seq, inning_before, balls_before, strikes_before, runner_advances')
+    .select('event_type, at_bat_index, seq, inning_before, balls_before, strikes_before, runner_advances, runs_scored, unearned_runs, inherited_runs')
     .eq('session_id', s.id).order('seq', { ascending: true, nullsFirst: true })
   if (evErr) throw new Error('game events read failed: ' + evErr.message)
   const payload: GameReportPayload = {
@@ -199,7 +202,8 @@ export async function renderReportFromRows(db: SupabaseClient, sessionId: string
     events: (evRows ?? []).map((e: Row) => ({
       eventType: String(e.event_type), atBatIndex: (e.at_bat_index as number | null) ?? null, seq: (e.seq as number | null) ?? null,
       inningBefore: (e.inning_before as number | null) ?? null, ballsBefore: (e.balls_before as number | null) ?? null,
-      strikesBefore: (e.strikes_before as number | null) ?? null, runnerAdvances: (e.runner_advances as unknown[] | null) ?? null
+      strikesBefore: (e.strikes_before as number | null) ?? null, runnerAdvances: (e.runner_advances as unknown[] | null) ?? null,
+      runsScored: (e.runs_scored as number | null) ?? null, unearnedRuns: (e.unearned_runs as number | null) ?? null, inheritedRuns: (e.inherited_runs as number | null) ?? null   // Release 2
     }))
   }
   return { html: buildGameReportHtml(payload), kind: 'game', sport: String(s.sport), payload }

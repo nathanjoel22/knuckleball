@@ -49,17 +49,19 @@ export function drawDiamond(opts: { counts: Record<number, number>; sport: 'base
       const box = G5_BOX[r][col]
       const n = opts.counts[box] || 0
       const x = col * 100, y = r * 100
-      cells += `<rect x="${x + 3}" y="${y + 3}" width="94" height="94" rx="6" fill="${n ? `rgba(${shadeRgb},${(0.18 + 0.6 * n / max).toFixed(2)})` : 'none'}" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="2"/>`
-      if (n) cells += `<text x="${x + 50}" y="${y + 50}" text-anchor="middle" dominant-baseline="central" font-size="34" font-weight="800" fill="#FFFFFF" stroke="rgba(0,0,0,0.35)" stroke-width="1.5" paint-order="stroke">${n}</text>`
+      cells += `<rect x="${x + 3}" y="${y + 3}" width="94" height="94" rx="6" fill="${n ? `rgba(${shadeRgb},${(0.12 + 0.38 * n / max).toFixed(2)})` : 'none'}" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="2"/>`
+      if (n) cells += baseballs(x, y, n, opts.color)   // Joel, Oct 21: a baseball for each ball in play, not a number
     }
   }
   const base = (x: number, y: number) => `<rect x="${x - 11}" y="${y - 11}" width="22" height="22" rx="2" transform="rotate(45 ${x} ${y})"/>`
   // Joel, Oct 8 (both sports): the app's g5FieldSvg grass -- mower stripes parallel to each foul line meeting in
   // a V, foul ground darker, a crosshatch plaid on the infield grass; softball's infield stays all dirt.
   const mow = `<defs><pattern id="kbfl" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="80" height="80" fill="#6FA548"/><rect width="80" height="40" fill="#8CBA5A"/></pattern><pattern id="kbfr" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(-45 250 450)"><rect width="80" height="80" fill="#6FA548"/><rect width="80" height="40" fill="#8CBA5A"/></pattern><pattern id="kbdl" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="80" height="80" fill="#548A35"/><rect width="80" height="40" fill="#60963C"/></pattern><pattern id="kbdr" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(-45 250 450)"><rect width="80" height="80" fill="#548A35"/><rect width="80" height="40" fill="#60963C"/></pattern><pattern id="kbpl" width="24" height="24" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 350)"><rect width="24" height="24" fill="#8CBA5A"/><rect width="12" height="24" fill="#000000" fill-opacity="0.10"/><rect width="24" height="12" fill="#000000" fill-opacity="0.10"/></pattern><linearGradient id="kbsun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.10"/><stop offset="1" stop-color="#000000" stop-opacity="0.08"/></linearGradient></defs>`
+  // the app's center-field logo, mown into the grass (G5_CF_LOGO in the tracker; docs/cf-logo-mown.md)
+  const CF_LOGO = `<defs><pattern id="kbcfxl" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(-45 250 450)"><rect width="40" height="40" fill="#6FA548"/><rect width="40" height="20" fill="#8CBA5A"/></pattern><pattern id="kbcfxr" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="40" height="40" fill="#6FA548"/><rect width="40" height="20" fill="#8CBA5A"/></pattern><symbol id="kbcfmark" viewBox="0 0 100 100"><path fill-rule="evenodd" d="M2 2H98V50L50 98L2 50Z M9 9H91V47L50 88L9 47Z"/><path transform="translate(22 14) scale(0.034)" d="M0 0H442V1327H0Z M510 1139V494L820 0H1280Z M823 1327L673 1018L935 625L1301 1327Z"/></symbol><mask id="kbcfmask"><rect width="500" height="500" fill="#000"/><use href="#kbcfmark" x="170" y="74" width="160" height="160" fill="#fff"/></mask></defs><g mask="url(#kbcfmask)" pointer-events="none"><rect width="250" height="500" fill="url(#kbcfxl)"/><rect x="250" width="250" height="500" fill="url(#kbcfxr)"/><rect width="500" height="500" fill="#000000" fill-opacity="0.05"/></g><use href="#kbcfmark" x="170" y="74" width="160" height="160" fill="none" stroke="#000000" stroke-opacity="0.10" stroke-width="1" pointer-events="none"/><circle cx="274" cy="131.6" r="9.6" fill="#FFFFFF" fill-opacity="0.22" pointer-events="none"/>`
   const field = `${mow}<rect width="250" height="500" fill="url(#kbdl)"/><rect x="250" width="250" height="500" fill="url(#kbdr)"/>
 <path d="M0,0 L500,0 L500,100 A650,650 0 0 0 0,100 Z" fill="${c.fence}"/>
-<path d="M250,450 L0,200 L0,100 A650,650 0 0 1 250,50 Z" fill="url(#kbfl)"/><path d="M250,450 L500,200 L500,100 A650,650 0 0 0 250,50 Z" fill="url(#kbfr)"/><rect width="500" height="500" fill="url(#kbsun)"/>
+<path d="M250,450 L0,200 L0,100 A650,650 0 0 1 250,50 Z" fill="url(#kbfl)"/><path d="M250,450 L500,200 L500,100 A650,650 0 0 0 250,50 Z" fill="url(#kbfr)"/>${CF_LOGO}<rect width="500" height="500" fill="url(#kbsun)"/>
 <path d="M0,100 A650,650 0 0 1 500,100" fill="none" stroke="${c.line}" stroke-width="6" opacity="0.75"/>
 <path d="M250,450 L100,300 A250,250 0 0 1 400,300 Z" fill="${c.dirt}"/>
 <polygon points="250,428 314,364 250,300 186,364" fill="${soft ? c.dirt : 'url(#kbpl)'}"/>
@@ -68,6 +70,25 @@ ${soft ? '<circle cx="250" cy="350" r="16" fill="none" stroke="#FFFFFF" stroke-w
 <g fill="#FFFFFF" stroke="${c.line}" stroke-width="1.5">${base(342.2, 342.2)}${base(250, 282)}${base(157.8, 342.2)}</g>
 <polygon points="237,438 263,438 263,451 250,464 237,451" fill="#FFFFFF" stroke="${c.line}" stroke-width="1.5"/>`
   return `<svg class="kb-diamond" width="${size}" height="${size}" viewBox="0 0 500 500" role="img" aria-label="Field boxes">${field}${cells}</svg>`
+}
+// Joel, Oct 21: n baseballs in one 100-unit box, a little space between each, all inside the box; a colour-coded chart
+// (by pitch type) rings each ball in that colour. Seams as the app's own field ball (G5_BALL_SVG).
+function baseballs(x: number, y: number, n: number, ring?: string): string {
+  const cols = n <= 1 ? 1 : n <= 4 ? 2 : 3, shown = Math.min(n, 9), rows = Math.ceil(shown / cols)
+  const slot = 86 / Math.max(cols, rows), r = Math.min(15, slot / 2 - (ring ? 5 : 3))
+  let out = ''
+  for (let i = 0; i < shown; i++) {
+    const c = i % cols, rr = Math.floor(i / cols)
+    const inRow = rr === rows - 1 ? shown - rr * cols : cols   // a short last row sits centred
+    const cx = x + 50 + (c - (inRow - 1) / 2) * slot, cy = y + 50 + (rr - (rows - 1) / 2) * slot
+    const k = r / 10.5
+    out += `<g transform="translate(${(cx - 12 * k).toFixed(1)} ${(cy - 12 * k).toFixed(1)}) scale(${k.toFixed(3)})">`
+      + (ring ? `<circle cx="12" cy="12" r="13.6" fill="none" stroke="${ring}" stroke-width="3.2"/>` : '')
+      + `<circle cx="12" cy="12" r="10.5" fill="#FFFFFF" stroke="#8A9A92" stroke-width="1"/>`
+      + `<path d="M7 4.5c2.5 4 2.5 11 0 15M17 4.5c-2.5 4-2.5 11 0 15" fill="none" stroke="#C8302F" stroke-width="1.3" stroke-dasharray="1.6 1.4"/></g>`
+  }
+  if (n > shown) out += `<text x="${x + 92}" y="${y + 92}" text-anchor="end" font-size="16" font-weight="800" fill="#FFFFFF" stroke="rgba(0,0,0,0.4)" stroke-width="1" paint-order="stroke">+${n - shown}</text>`
+  return out
 }
 function hexToRgb(hex: string): string {
   const h = hex.replace('#', '')
@@ -107,7 +128,7 @@ export function renderSprayCharts(pitches: GamePitch[], allTypes: string[], spor
     ${byResult.length ? `<h3>By result</h3><div class="grid-row">${byResult.map(([o, ps]) => figure(OUTCOME_LABEL[o], d(ps), ps.length)).join('')}</div>` : ''}
     ${byBB.length ? `<h3>By how it was hit</h3><div class="grid-row">${byBB.map(([t, ps]) => figure(BB_LABEL[t], d(ps), ps.length)).join('')}</div>` : ''}
     <h3>By pitch type</h3><div class="grid-row">${byType.map(([t, ps]) => figure(t.toUpperCase(), d(ps, colorForType(t, allTypes)), ps.length)).join('')}</div>
-    <p class="caption">Where each ball in play was fielded, on the field's 25 boxes (foul ground included). The number is how many; darker means more.${oldGame ? ' Games charted before the field chart are placed by the fielder who made the play.' : ''}</p>
+    <p class="caption">Where each ball in play was fielded, on the field's 25 boxes (foul ground included). Each baseball is one ball in play (by pitch type, ringed in its colour); darker means more.${oldGame ? ' Games charted before the field chart are placed by the fielder who made the play.' : ''}</p>
   </section>`
 }
 
@@ -126,6 +147,7 @@ const MATRIX_COLS: [string, (p: GamePitch) => boolean][] = [
 ]
 function isKDecider(p: GamePitch): boolean {
   return p.result === 'dropped_third' || ((p.result === 'strike_looking' || p.result === 'strike_swinging' || p.result === 'foul_tip') && p.strikesBefore >= 2)
+    || (p.result === 'foul' && p.bbType === 'bunt' && p.strikesBefore >= 2)   // Oct 20: a two-strike foul bunt is a K (Joel)
 }
 function isBBDecider(p: GamePitch): boolean { return p.result === 'ball' && p.ballsBefore >= 3 }
 

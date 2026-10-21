@@ -22,7 +22,7 @@ export interface GamePitch {
   batterSide: 'R' | 'L' | null
   ts: number
   result: string
-  inPlayOutcome: 'hit' | 'out' | 'error' | 'reached' | null
+  inPlayOutcome: 'hit' | 'out' | 'error' | 'reached' | 'fc' | null
   hitType: '1B' | '2B' | '3B' | 'HR' | null
   fielder: string | null
   delivery: 'set' | 'windup' | null
@@ -39,6 +39,16 @@ export interface GamePitch {
   bbType?: string | null
   runnersBefore?: number | null
   runnersAfter?: number | null
+  // Release 2 (Oct 20): the play itself -- fielders after the first ('4-3'), SF / SAC, where the batter and runners went
+  // (and why), runs, and of those runs how many were unearned / the previous pitcher's inherited runners
+  fielders?: string | null
+  sacrifice?: 'SF' | 'SAC' | null
+  batterTo?: number | null
+  runnerAdvances?: { from: number; to: number; how?: string }[] | null
+  runsScored?: number | null
+  unearnedRuns?: number | null
+  inheritedRuns?: number | null
+  chargedPrev?: boolean | null
 }
 
 // Decision 2 + Joel's foul-tip ruling (Sept 28, 2026 chat -- not yet a
@@ -75,6 +85,7 @@ function isWhiff(p: GamePitch): boolean { return p.result === 'strike_swinging' 
 // the others.
 function isK(p: GamePitch): boolean {
   return p.result === 'dropped_third' || ((p.result === 'strike_looking' || p.result === 'strike_swinging' || p.result === 'foul_tip') && p.strikesBefore >= 2)
+    || (p.result === 'foul' && p.bbType === 'bunt' && p.strikesBefore >= 2)   // Oct 20: a two-strike foul bunt is a K (Joel)
 }
 function isBB(p: GamePitch): boolean { return p.result === 'ball' && p.ballsBefore >= 3 }
 function isHit(p: GamePitch): boolean { return p.result === 'in_play' && p.inPlayOutcome === 'hit' }
@@ -151,7 +162,9 @@ export function computeGameByInning(pitches: GamePitch[], gridSize = 5) {
 const COUNT_BUCKETS: { key: string; label: string; states: [number, number][] }[] = [
   { key: 'first', label: 'First pitch (0-0)', states: [[0, 0]] },
   { key: 'ahead', label: 'Ahead (0-2, 1-2)', states: [[0, 2], [1, 2]] },
-  { key: 'behind', label: 'Behind (2-0, 3-0, 3-1)', states: [[2, 0], [3, 0], [3, 1]] }
+  { key: 'behind', label: 'Behind (2-0, 3-0, 3-1)', states: [[2, 0], [3, 0], [3, 1]] },
+  { key: 'three', label: 'Three balls (3-0, 3-1, 3-2)', states: [[3, 0], [3, 1], [3, 2]] },   // Release 2 (E7)
+  { key: 'two_strikes', label: 'Two strikes (0-2, 1-2, 2-2, 3-2)', states: [[0, 2], [1, 2], [2, 2], [3, 2]] }
 ]
 export function computeGameByCount(pitches: GamePitch[]) {
   const total = pitches.length
@@ -169,9 +182,30 @@ export function computeGameByCount(pitches: GamePitch[]) {
         h: inPlay.filter(p => p.inPlayOutcome === 'hit').length,
         out: inPlay.filter(p => p.inPlayOutcome === 'out').length,
         e: inPlay.filter(p => p.inPlayOutcome === 'error').length
-      }
+      },
+      // Release 2 (E7): how the plate appearances that ended on a pitch in this count came out
+      ended: (() => {
+        const end = bp.filter(pitchEndsAtBat)
+        return { k: end.filter(isK).length, bb: end.filter(isBB).length, h: end.filter(isHit).length, other: end.length - end.filter(isK).length - end.filter(isBB).length - end.filter(isHit).length }
+      })()
     }
   })
+}
+// Release 2 (E7): did the first batter of each inning reach base (hit, walk, HBP, error, FC, catcher's interference,
+// a dropped third strike)?
+export function computeLeadoffReached(pitches: GamePitch[], events: GameEvent[] = []) {
+  const log = computeAtBatLog(pitches, events).filter(ab => !ab.incomplete)
+  const first = new Map<number, AtBatLogEntry>()
+  for (const ab of log) if (!first.has(ab.inning) || ab.atBatIndex < first.get(ab.inning)!.atBatIndex) first.set(ab.inning, ab)
+  let reached = 0
+  for (const ab of first.values()) {
+    const last = ab.pitches[ab.pitches.length - 1]
+    const onBase = ab.ending === 'IBB' || ab.ending === 'BB' || (!!last && (isBB(last) || last.result === 'hbp' || last.result === 'interference'
+      || (last.result === 'dropped_third' && last.inPlayOutcome === 'reached')
+      || (last.result === 'in_play' && ['hit', 'error', 'fc', 'reached'].includes(last.inPlayOutcome ?? ''))))
+    if (onBase) reached++
+  }
+  return { innings: first.size, reached }
 }
 
 // ---------- vs RHB / vs LHB (content spec section 8) ----------
@@ -281,12 +315,51 @@ function pitchEndsAtBat(p: GamePitch): boolean {
   switch (p.result) {
     case 'ball': return p.ballsBefore >= 3
     case 'strike_looking': case 'strike_swinging': return p.strikesBefore >= 2
-    case 'foul': return false
+    case 'foul': return p.bbType === 'bunt' && p.strikesBefore >= 2   // Oct 20: a two-strike foul bunt is strike three
     default: return true // in_play, hbp, sac_bunt, sac_fly, dropped_third, interference, other
   }
 }
 
 const G5_BB_LABEL: Record<string, string> = { ground: 'GB', line: 'LD', pop: 'Pop', fly: 'Fly', bunt: 'Bunt' }
+// Release 2: the same notation as the app's at-bat log (gameResultText): an out 6-3 / F8 / U6, an error E6, a hit to LF.
+const POS_NUM: Record<string, number> = { P: 1, C: 2, '1B': 3, '2B': 4, '3B': 5, SS: 6, LF: 7, CF: 8, RF: 9 }
+function playNotation(p: GamePitch): string {
+  const seq = [p.fielder, ...(p.fielders ? p.fielders.split('-') : [])].filter((x): x is string => !!x)
+  if (!seq.length) return ''
+  // Oct 21: the same fielder twice in a row is an unassisted out at his base -- SS, SS, 1B is 6U-3 (as the app writes it)
+  const parts: string[] = []
+  seq.forEach((x, i) => { if (i && x === seq[i - 1]) parts[parts.length - 1] += 'U'; else parts.push(String(POS_NUM[x] ?? x)) })
+  const nums = parts.join('-')
+  if (p.inPlayOutcome === 'out') {
+    if (seq.length === 1 && (p.bbType === 'fly' || p.bbType === 'line' || p.bbType === 'pop')) return ({ fly: 'F', line: 'L', pop: 'P' } as Record<string, string>)[p.bbType] + (POS_NUM[seq[0]] ?? '')
+    if (seq.length === 1 && p.bbType === 'ground') return 'U' + (POS_NUM[seq[0]] ?? '')
+    return nums
+  }
+  if (p.inPlayOutcome === 'error') return 'E' + (POS_NUM[seq[0]] ?? '') + (seq.length > 1 ? ` (${nums})` : '')
+  if (p.inPlayOutcome === 'fc') return nums
+  return 'to ' + seq[0]
+}
+// Release 2 (E6): what the runners did on a play, and the runs -- "R1 to 3B · R2 scores (tagged up) · 2 R, 1 ER".
+const HOW_LABEL: Record<string, string> = { tagged_up: 'tagged up', on_error: 'on error', thrown_out: 'thrown out', force_out: 'force out',
+  doubled_up: 'doubled off', tagged_out: 'tagged out', hit_by_ball: 'hit by ball', out: 'out', out_advancing: 'out advancing' }
+export function runnerMovesText(adv: { from: number; to: number; how?: string }[] | null | undefined): string {
+  return (adv ?? []).filter(a => a.from >= 1 && a.from <= 3).map(a => {
+    // Oct 21: a force reads as the app writes it -- "R2 out advancing to 3B (force)"
+    if (a.to === 0 && a.how === 'force_out') return `R${a.from} out advancing to ${a.from === 3 ? 'home' : ['', '1B', '2B', '3B'][a.from + 1]} (force)`
+    const where = a.to === 0 ? 'out' : a.to === 4 ? 'scores' : `to ${['', '1B', '2B', '3B'][a.to]}`
+    const at = (a as { at?: number }).at
+    const why = a.how && HOW_LABEL[a.how] && !(a.to === 0 && a.how === 'out')
+      ? ` (${HOW_LABEL[a.how]}${a.how === 'out_advancing' && at ? ' to ' + (at === 4 ? 'home' : ['', '1B', '2B', '3B'][at]) : ''})` : ''   // Oct 21
+    return `R${a.from} ${where}${why}`
+  }).join(' · ')
+}
+export function runsText(x: { runsScored?: number | null; unearnedRuns?: number | null; inheritedRuns?: number | null }): string {
+  const r = x.runsScored ?? 0
+  if (!r) return ''
+  const inh = x.inheritedRuns ?? 0, charged = r - inh
+  const er = typeof x.unearnedRuns === 'number' ? charged - x.unearnedRuns : null
+  return `${r} R` + (inh ? ` (${inh} inherited)` : '') + (er !== null && charged > 0 ? `, ${er} ER` : '')
+}
 const FIELDER_LABEL: Record<string, string> = {
   P: 'P', C: 'C', '1B': '1B', '2B': '2B', '3B': '3B', SS: 'SS', LF: 'LF', CF: 'CF', RF: 'RF'
 }
@@ -303,12 +376,15 @@ function atBatEndingLabel(lastPitch: GamePitch, isDroppedThirdReached: boolean):
   switch (lastPitch.result) {
     case 'dropped_third': return isDroppedThirdReached ? 'K (reached)' : 'K'
     case 'strike_looking': case 'strike_swinging': return lastPitch.strikesBefore >= 2 ? 'K' : ''
+    case 'foul': return lastPitch.bbType === 'bunt' && lastPitch.strikesBefore >= 2 ? 'K' : ''   // Oct 20: foul bunt, strike three
     case 'ball': return lastPitch.ballsBefore >= 3 ? 'BB' : ''
     case 'in_play': {
       // G5: "Hit · LD · box 22" -- what was charted; no hit type or fielder is invented.
       if (typeof lastPitch.sprayBox === 'number') {
-        const what = lastPitch.hitType === 'HR' ? 'HR' : lastPitch.inPlayOutcome === 'hit' ? 'Hit' : lastPitch.inPlayOutcome === 'error' ? 'Error' : 'Out'
-        return [what, lastPitch.bbType ? (G5_BB_LABEL[lastPitch.bbType] ?? '') : '', `box ${lastPitch.sprayBox}`].filter(Boolean).join(' · ')
+        // Oct 20: hits carry 1B / 2B / 3B / HR, and FC is its own outcome. Release 2: fielders as the scorebook writes
+        // them (6-3, F8, E6, to LF) and SF / SAC.
+        const what = lastPitch.inPlayOutcome === 'hit' ? (lastPitch.hitType ?? 'Hit') : lastPitch.inPlayOutcome === 'error' ? 'Error' : lastPitch.inPlayOutcome === 'fc' ? 'FC' : 'Out'
+        return [what, playNotation(lastPitch), lastPitch.sacrifice ?? '', lastPitch.bbType ? (G5_BB_LABEL[lastPitch.bbType] ?? '') : '', `box ${lastPitch.sprayBox}`].filter(Boolean).join(' · ')
       }
       if (lastPitch.inPlayOutcome === 'hit') return `${lastPitch.hitType ?? 'Hit'}${fielder ? ' to ' + fielder : ''}`
       if (lastPitch.inPlayOutcome === 'error') return `Error${fielder ? ' (' + fielder + ')' : ''}`
@@ -318,6 +394,7 @@ function atBatEndingLabel(lastPitch: GamePitch, isDroppedThirdReached: boolean):
     case 'sac_fly': return 'Sac fly'
     case 'hbp': return 'HBP'
     case 'interference': return 'Interference'
+    case 'batter_interference': return "Batter's interference"
     case 'other': return 'Other'
     default: return ''
   }
@@ -347,6 +424,7 @@ export interface AtBatLogEntry {
   pitches: GamePitch[]
   ending: string   // '' when incomplete
   incomplete: boolean
+  detail?: string  // Release 2 (E6): runner moves and runs during the at-bat
 }
 // G3 item 2 (Joel, Oct 2): no-pitch events as stored in game_events. Never
 // pitches -- they stay out of every pitch stat -- but an IBB, an auto ball
@@ -360,6 +438,9 @@ export interface GameEvent {
   ballsBefore: number | null
   strikesBefore: number | null
   runnerAdvances: unknown[] | null
+  runsScored?: number | null       // Release 2
+  unearnedRuns?: number | null
+  inheritedRuns?: number | null
 }
 export function eventEndsAtBat(e: GameEvent): string {
   if (e.eventType === 'intentional_walk') return 'IBB'
@@ -382,6 +463,22 @@ export function computeAtBatLog(pitches: GamePitch[], events: GameEvent[] = []):
   }
   for (const idx of evEnd.keys()) if (!byAtBat.has(idx)) byAtBat.set(idx, [])
   const indices = Array.from(byAtBat.keys()).sort((a, b) => a - b)
+  // Release 2 (E6): every runner move and run in the at-bat -- the plays', and the events' between pitches (SB, WP...)
+  const EV_SHORT: Record<string, string> = { stolen_base: 'SB', caught_stealing: 'CS', pickoff: 'PO', wild_pitch: 'WP', passed_ball: 'PB', balk: 'BK',
+    illegal_pitch: 'Illegal pitch', intentional_walk: 'IBB', auto_ball: 'Auto ball', other: 'Other', tiebreak_runner: 'Runner placed on 2B' }
+  const detailOf = (idx: number, ps: GamePitch[]) => {
+    const bits: string[] = []
+    for (const p of ps) {
+      const m = runnerMovesText(p.runnerAdvances), r = runsText(p)
+      if (m || r) bits.push([m, r].filter(Boolean).join(' · '))
+    }
+    for (const e of events) {
+      if (e.atBatIndex !== idx) continue
+      const m = runnerMovesText(e.runnerAdvances as { from: number; to: number; how?: string }[] | null), r = runsText(e)
+      if ((m || r) && e.eventType !== 'auto_ball') bits.push([EV_SHORT[e.eventType] ?? e.eventType, m, r].filter(Boolean).join(' · '))
+    }
+    return bits.join('; ')
+  }
   return indices.map(idx => {
     const ev = evEnd.get(idx)
     const evPs = byAtBat.get(idx)!
@@ -394,7 +491,8 @@ export function computeAtBatLog(pitches: GamePitch[], events: GameEvent[] = []):
         delivery: ps.length ? ps[0].delivery : null,
         pitches: ps,
         ending: ev.label,
-        incomplete: false
+        incomplete: false,
+        detail: detailOf(idx, ps)
       }
     }
     const ps = byAtBat.get(idx)!.slice().sort((a, b) => a.ts - b.ts)
@@ -408,7 +506,8 @@ export function computeAtBatLog(pitches: GamePitch[], events: GameEvent[] = []):
       delivery: ps[0].delivery,
       pitches: ps,
       ending: complete ? atBatEndingLabel(last, droppedThirdReached) : '',
-      incomplete: !complete
+      incomplete: !complete,
+      detail: detailOf(idx, ps)
     }
   })
 }

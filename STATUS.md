@@ -15,6 +15,16 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: five fixes from Joel's list · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v276. Asked for by Joel. No database change; the report's at-bat log reads the new "out at" too (`send-session-report`, not deployed).
+- **Changed:**
+  1. With runners on, the fielder prompt reads "Record outs, tap in order, then Done".
+  2. On a hit, error, FC or ground ball, OUT for a runner asks "at which base?" (Out at 2B / 3B / home; saved as `thrown_out` with `at`). The confirm sentence says safe at / out at / scored safely for every runner.
+  3. A third out and a home run (over the fence or inside the park) no longer save by themselves: they stop on "Confirm the play" ("... · Third out", "Home run (fly ball) · Runner from 1B scored safely · 2 runs scored"); once the third out is made nobody else is asked. Back from a homer's confirm returns to where it left the park (or who fielded it).
+  4. Velocity: the speeds are cell-sized buttons on the chart's own cells (no dark band, no white bar, no dark fill on the chosen one); the gold window over the middle button marks the speed and a tapped speed slides into it; small < > at the ends. Cell steps are measured from the buttons (`veloStep`).
+  5. More: Hit by pitch and Rare plays ▸ above New batter and New inning.
+- **Proven:** headless Chrome at 390, 820 and 1180: Release 1 47/47, Release 2 55/55, runner questions 20/20, out advancing 8/8, and 18 new checks (HR confirm + Back + save, inside-the-park confirm + Back, third-out fly with nobody asked, safe at 3B, the prompt text, More order, velocity: no band, five cell-wide buttons, no fill and the window on the middle button, a tap sliding into the window, > to 76); screenshots; `deno check` passes. Older checks updated where the behaviour changed on purpose (third out / homer now confirm, OUT asks a base, the prompt text).
+
 ## 2026-10-21 · Live Game: doubled off, or out advancing · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v275. Asked for by Joel. No database change; the report's at-bat log names it too (`send-session-report`, not deployed).
 - **Changed:** after a caught ball (fly, line drive, pop-up, foul out), OUT for a runner asks "Runner from 1B out — how?": **Doubled off**, or **Out advancing to** each base ahead of him (2B / 3B / home; Joel: "whatever base they're trying to advance to"), or Cancel. Saved as `how: 'out_advancing'` with `at` (the base; runner_advances already allows any JSON) or `doubled_up`. The confirm sentence reads e.g. "Runner from 1B out advancing to 3B". Back leaves the question first. A ground-ball OUT is still thrown out, no question.

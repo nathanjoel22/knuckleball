@@ -1665,6 +1665,20 @@
   .g5-velo-row .velo-strip-wrap{ flex:1; min-width:0; background:var(--card); border-radius:var(--radius-control); }
   .g5-velo-row .velo-cell{ min-height:0; height:100%; }
   .g5-reset, .g5-nextpitch{ height:100%; }
+  /* Joel, Oct 21: the speeds are cell-sized buttons like K / B / F / IP -- no dark band or white bar behind them and no
+     dark fill on the chosen one; the gold window over the middle button is the speed (a tapped speed slides into it).
+     < and > sit small at the row's ends; a swipe moves the speeds too. (.g5-velo-row.gg-velo beats the older .gg-velo bar.) */
+  .g5-velo-row, .g5-velo-row.gg-velo{ background:transparent; box-shadow:none; border:0; padding:0; margin:0; border-radius:0; }
+  .g5-velo-row.gg-velo .game-velo{ flex:1; min-width:0; background:transparent; padding:0; border-radius:0; }
+  .g5-velo-row.gg-velo .velo-strip-wrap{ position:relative; gap:0; background:transparent; border-radius:0; }
+  .g5-velo-row.gg-velo .velo-strip{ gap:3px; border:0; border-radius:0; background:transparent; }
+  .g5-velo-row.gg-velo .velo-cell{ flex:0 0 calc((100% - 12px) / 5); min-height:0; border:0; border-radius:var(--radius-cell); background:var(--btn-soft); color:var(--btn-ink); }
+  .g5-velo-row.gg-velo .velo-cell.typical, .g5-velo-row.gg-velo .velo-cell.selected{ background:var(--btn-soft); color:var(--btn-ink); box-shadow:none; }
+  .g5-velo-row.gg-velo .velo-strip-box::after{ left:calc((100% - 12px) * 0.4 + 6px); width:calc((100% - 12px) * 0.2); border-width:3px; border-radius:var(--radius-cell); }
+  .g5-velo-row.gg-velo .velo-arrow{ position:absolute; top:0; bottom:0; z-index:2; width:16px; min-width:0; height:auto; padding:0; flex:none;
+    background:transparent; color:var(--ink-faint); font-size:13px; }
+  .g5-velo-row.gg-velo .velo-arrow:first-child{ left:0; }
+  .g5-velo-row.gg-velo .velo-arrow:last-child{ right:0; }
   .g5-reset{ flex:0 0 calc((100% - 12px) / 5); padding:0 4px; /* geometry: the Live Game field overlay math */ }
   .g5-nextpitch{ flex:1; }
   /* ---------- G1b-r3: in-grid play entry (docs/game-grid-reference.html) ---------- */
@@ -4870,6 +4884,12 @@ const U6_CUTOFF_TS = 1789965601000;
 // changed -- this only decides what counts. Change both together or a pitcher's numbers will
 // differ between the app and the leaderboard.
 function isDefaultVeloReading(pt){ return pt.velo === 65 && pt.ts < U6_CUTOFF_TS; }
+// One velocity cell's step (its width plus any gap) -- read from the cells, so the Live Game row's spaced, cell-sized
+// buttons (Oct 21) center and step as exactly as the touching cells elsewhere.
+function veloStep(strip){
+  const c = strip.children;
+  return c.length > 1 ? (c[1].offsetLeft - c[0].offsetLeft) : strip.clientWidth / veloVisible();
+}
 function veloVisible(){
   // G1b-r3: the Live Game velocity step draws the strip inside the grid's
   // three right-hand columns -- 3 speeds across keeps each a real tap target
@@ -4960,13 +4980,19 @@ window.recordVelo = async function(v){
 // Joel, Oct 1: the in-grid bar's < > arrows step the selected speed by 1
 // mph (starting from whatever sits in the center window) and keep it
 // centered -- same result as sliding the bar one notch.
+// Oct 21: a tapped speed slides into the gold window (the window is what shows the speed now -- no dark fill).
+window.tapGameVelo = function(v){
+  const strip = document.querySelector('.gg-velo .velo-strip, .g5-velo-row .velo-strip');
+  if(strip) state.veloScrollLeft = Math.max(0, (v - VELO_MIN - Math.floor(veloVisible() / 2)) * veloStep(strip));
+  return recordGameVelo(v);
+};
 window.gameVeloArrow = function(dir){
   const strip = document.querySelector('.gg-velo .velo-strip, .g5-velo-row .velo-strip');
   if(!strip) return veloStripShift(dir);
   const t = gameVeloTarget();
   if(!t) return;
   const visible = veloVisible(), half = Math.floor(visible / 2);
-  const cellW = strip.clientWidth / visible;
+  const cellW = veloStep(strip);
   const centered = VELO_MIN + Math.round(strip.scrollLeft / cellW) + half;
   const cur = (t.obj.velo === null || t.obj.velo === undefined) ? centered : t.obj.velo;
   const v = Math.max(VELO_MIN, Math.min(VELO_MAX, cur + dir));
@@ -4976,7 +5002,7 @@ window.gameVeloArrow = function(dir){
 window.veloStripShift = function(dir){
   const strip = document.getElementById('velo-strip');
   if(!strip) return;
-  strip.scrollBy({ left: dir * 3 * (strip.clientWidth / veloVisible()), behavior: 'smooth' });
+  strip.scrollBy({ left: dir * 3 * veloStep(strip), behavior: 'smooth' });
 };
 function renderVeloStrip(){
   const active = veloStripActive();
@@ -5005,7 +5031,7 @@ function attachVeloStrip(){
   const strip = document.getElementById('velo-strip');
   if(!strip) return;
   const visible = veloVisible();
-  const cellW = strip.clientWidth / visible;
+  const cellW = veloStep(strip);
   const key = strip.getAttribute('data-key');
   if(key === state.veloStripKey){
     strip.scrollLeft = state.veloScrollLeft;
@@ -5077,7 +5103,7 @@ function renderGameVeloStrip(){
   let cells = '';
   for(let v = VELO_MIN; v <= VELO_MAX; v++){
     const cls = 'velo-cell' + (v === center ? ' typical' : '') + (target && target.velo === v ? ' selected' : '');
-    cells += `<button class="${cls}" ${t ? '' : 'disabled'} onclick="recordGameVelo(${v})">${v}</button>`;
+    cells += `<button class="${cls}" ${t ? '' : 'disabled'} onclick="tapGameVelo(${v})">${v}</button>`;
   }
   const stripKey = `${t ? t.kind : 'none'}|${type}|${center}|${veloVisible()}`;
   const help = t
@@ -8770,7 +8796,7 @@ document.addEventListener('pointerup', e => {
   veloDrag = null;
   if(!d.moved) return;
   veloDragAt = Date.now();
-  const st = d.strip, cw = st.clientWidth / veloVisible();
+  const st = d.strip, cw = veloStep(st);
   st.style.cursor = '';
   const goal = Math.round(st.scrollLeft / cw) * cw;
   try{ st.scrollTo({ left: goal, behavior: 'smooth' }); }catch(err){ st.scrollLeft = goal; }   // settle on a square
@@ -8981,7 +9007,6 @@ window.g5FcOut = async function(box){
   if(typeof b !== 'number' || !s.runners[b]) return;
   g.fcPhase = null;
   g.addOuts = (g.addOuts || 0) + 1;
-  if(g5ProjectedOuts(g) >= 3){ g.advances = [{ from: b, to: 0, how: 'out' }]; g.batterTo = 1; return g5Commit('in_play'); }   // the third out ends it
   const left = Object.assign({}, s.runners, { [b]: false });
   g5PlaceBatter(g, { runners: left }, 1);
   g.advances.unshift({ from: b, to: 0, how: 'out' });
@@ -9024,15 +9049,14 @@ window.g5Where = async function(box){
 // After "Who fielded it?": an inside-the-park homer saves; a third out saves; otherwise the runners.
 async function g5AfterLocation(){
   const s = state.activeSession, g = s.g5;
-  if(g.entry === 'H' && g.hitType === 'HR'){ g.hr = true; return g5Commit('in_play'); }   // Oct 20: inside the park
-  if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');   // the half-inning is over: no runners question
+  if(g.entry === 'H' && g.hitType === 'HR') return g5HrConfirm();   // Oct 20: inside the park; Oct 21: confirmed first
+  // Oct 21: a third out no longer saves by itself -- the runners screen shows "Confirm the play" (nobody is asked)
   g.step = 'bases'; g.bases = runnersBitmask(s.runners);     // the runners as they were; the charter adds the batter
   if(g.entry === 'O'){
     g5StartOutScreen(g);
     if(g.bases){   // Joel, Oct 21: runners on -- straight to them (no "Out recorded" step), with the outs the fielders show
       g.outPhase = 'move';
       g5OutsFromFielders(g);
-      if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');
       g5StartRunQ(g, s);
     }
     return g5Save();
@@ -9057,11 +9081,13 @@ window.g5RunOutCancel = async function(){ const g = state.activeSession.g5; if(g
 // Every base ahead of him can be the one he was going for (Joel: "or whatever base they're trying to advance to").
 function g5RunOutPrompt(g){
   const o = g.runOutPick, name = b => b === 4 ? 'home' : ['', '1B', '2B', '3B'][b];
-  const ahead = [2, 3, 4].filter(b => b > o).map(b =>
-    `<button type="button" class="btn btn-danger btn-sm g5-act" onclick="g5RunAnswer(0, 'out_advancing', ${b})">Out advancing to ${name(b)}</button>`).join('');
-  return `<div class="g5-move"><div class="g5-q">Runner from ${name(o)} out — how?</div>
-    <div class="g5-move-btns g5-why"><button type="button" class="btn btn-danger btn-sm g5-act" onclick="g5RunAnswer(0, 'doubled_up')">Doubled off</button>
-    ${ahead}<button type="button" class="btn btn-tertiary btn-sm g5-act" onclick="g5RunOutCancel()">Cancel</button></div></div>`;
+  const caught = g.entry === 'O' && (G5_CAUGHT[g.bbType] || g.foulOut);
+  const btn = (how, at, label) => `<button type="button" class="btn btn-danger btn-sm g5-act" onclick="g5RunAnswer(0, '${how}'${at ? ', ' + at : ''})">${label}</button>`;
+  const ahead = [2, 3, 4].filter(b => b > o);
+  const opts = caught ? btn('doubled_up', 0, 'Doubled off') + ahead.map(b => btn('out_advancing', b, 'Out advancing to ' + name(b))).join('')
+    : ahead.map(b => btn('thrown_out', b, 'Out at ' + name(b))).join('');   // Oct 21: a hit, error, FC or ground ball -- at which base
+  return `<div class="g5-move"><div class="g5-q">Runner from ${name(o)} out — ${caught ? 'how' : 'at which base'}?</div>
+    <div class="g5-move-btns g5-why">${opts}<button type="button" class="btn btn-tertiary btn-sm g5-act" onclick="g5RunOutCancel()">Cancel</button></div></div>`;
 }
 /* Joel, Oct 21: once the batter and every runner are settled, the screen confirms the play -- "Confirm the play", and
    under the field what happened in words ("Fly ball out to LF · Runner from 3B tagged up and scored · 1 run scored").
@@ -9077,7 +9103,7 @@ function g5PlaySummary(g, s){
     else if(outs >= 2) parts.push(`${cap(contact)}, ${outs >= 3 ? 'triple' : 'double'} play${seq.length ? ' ' + fielderNotation(seq) : ''}`);
     else parts.push(`${cap(contact)} out${seq.length > 1 ? ' ' + fielderNotation(seq) : seq.length ? ', ' + seq[0] + ' unassisted' : ''}`);
   } else if(g.entry === 'H'){
-    const hit = { '1B': 'Single', '2B': 'Double', '3B': 'Triple', HR: 'Home run' }[g.hitType] || 'Hit';
+    const hit = { '1B': 'Single', '2B': 'Double', '3B': 'Triple', HR: g.hr && !g.overFence ? 'Inside-the-park home run' : 'Home run' }[g.hitType] || 'Hit';
     parts.push(`${hit}${seq[0] ? ' to ' + seq[0] : ''}${contact ? ' (' + contact + ')' : ''}${g.batterTo !== undefined && g.batterTo !== null && G5_HIT_BASE[g.hitType] !== g.batterTo ? ', batter to ' + (g.batterTo === 4 ? 'home' : g.batterTo === 0 ? 'out' : B(g.batterTo)) : ''}`);
   } else if(g.entry === 'E'){
     parts.push(`Batter ${g.batterTo === 4 ? 'scored' : 'reached ' + B(g.batterTo || 1)} on an error${seq[0] ? ' by ' + seq[0] + ' (E' + (POSITION_SCOREBOOK_NUMBER[seq[0]] || '') + ')' : ''}`);
@@ -9090,11 +9116,13 @@ function g5PlaySummary(g, s){
   [3, 2, 1].filter(o => s.runners[o]).forEach(o => {
     const e = (g.advances || []).find(a => a.from === o);
     if(!e) parts.push(`Runner on ${B(o)} held`);
-    else if(e.to === 0) parts.push(`Runner from ${B(o)} ${outWord(e.how, o)}${e.how === 'out_advancing' && e.at ? ' to ' + (e.at === 4 ? 'home' : B(e.at)) : ''}`);
-    else if(e.to === 4) parts.push(`Runner from ${B(o)} ${e.how === 'tagged_up' ? 'tagged up and scored' : 'scored'}`);
-    else parts.push(`Runner from ${B(o)} ${e.how === 'tagged_up' ? 'tagged up to' : 'to'} ${B(e.to)}`);
+    else if(e.to === 0) parts.push(`Runner from ${B(o)} ${e.at && e.how !== 'out_advancing' ? 'out at ' + (e.at === 4 ? 'home' : B(e.at)) : outWord(e.how, o) + (e.how === 'out_advancing' && e.at ? ' to ' + (e.at === 4 ? 'home' : B(e.at)) : '')}`);
+    else if(e.to === 4) parts.push(`Runner from ${B(o)} ${e.how === 'tagged_up' ? 'tagged up and scored safely' : 'scored safely'}`);   // Oct 21: safe / out, and where
+    else parts.push(`Runner from ${B(o)} ${e.how === 'tagged_up' ? 'tagged up, safe at' : 'safe at'} ${B(e.to)}`);
   });
-  if(g.runs) parts.push(`${g.runs} run${g.runs === 1 ? '' : 's'} scored`);
+  const runs = (g.runs || 0) + (g.hr ? 1 + [1, 2, 3].filter(b => s.runners[b]).length : 0);   // a homer: everyone on and the batter
+  if(g5ProjectedOuts(g) >= 3) parts.push('Third out');
+  if(runs) parts.push(`${runs} run${runs === 1 ? '' : 's'} scored`);
   return parts.join(' · ');
 }
 // (was: once every runner is answered, "Move Runners, or Next")
@@ -9103,6 +9131,7 @@ function g5RunsAnswered(g){ return !!g && g.step === 'bases' && !!g.runQ && !g5R
 function g5RunCur(g, o){ const e = (g.advances || []).find(a => a.from === o); return e ? e.to : o; }
 function g5RunAsking(g){
   if(!g || g.step !== 'bases' || !g.runQ || g5NeedsFcOut(g) || (g.entry === 'O' && g.outPhase !== 'move')) return null;
+  if(g5ProjectedOuts(g) >= 3) return null;   // Oct 21: the third out -- nobody else to ask about; confirm the play
   const done = (g.runAns || []).map(x => x.o);
   for(const o of g.runQ){
     if(done.includes(o)) continue;
@@ -9125,8 +9154,8 @@ window.g5RunAnswer = async function(dest, outHow, outAt){
   const s = state.activeSession, g = s.g5, o = g5RunAsking(g);
   if(!o || !g5RunOptions(g, o).some(([d]) => d === dest)) return;
   const caughtBall = g.entry === 'O' && (G5_CAUGHT[g.bbType] || g.foulOut);
-  // Joel, Oct 21: a runner out after a catch -- doubled off, or out advancing to the next base? Asked first.
-  if(dest === 0 && caughtBall && !outHow){ g.runOutPick = o; return g5Save(); }
+  // Joel, Oct 21: a runner out -- after a catch, doubled off or out advancing (to which base); otherwise out at which base.
+  if(dest === 0 && !outHow){ g.runOutPick = o; return g5Save(); }
   g.runOutPick = null;
   const c = g5RunCur(g, o);
   g.runAns.push({ o, snap: JSON.parse(JSON.stringify({ bases: g.bases || 0, runs: g.runs || 0, addOuts: g.addOuts || 0,
@@ -9140,11 +9169,8 @@ window.g5RunAnswer = async function(dest, outHow, outAt){
   if(e){ if(e.to !== dest){ e.to = dest; e.how = how; } }
   else if(dest !== o) g.advances.push({ from: o, to: dest, how });
   const mv = g.advances.find(a => a.from === o);
-  if(mv){ if(outHow === 'out_advancing' && outAt) mv.at = outAt; else delete mv.at; }   // the base he was out going for (1-3, 4 home)
-  if(dest === 0){
-    g.addOuts = (g.addOuts || 0) + 1;
-    if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');   // the third out ends it
-  }
+  if(mv){ if(dest === 0 && outAt) mv.at = outAt; else delete mv.at; }   // the base he was out at / going for (1-3, 4 home)
+  if(dest === 0) g.addOuts = (g.addOuts || 0) + 1;   // a third out ends the questions; the play is then confirmed (Oct 21)
   return g5Save();
 };
 // Joel, Oct 21: on a ground ball or bunt out with runners on, every fielder tapped after the first made an out at his
@@ -9177,7 +9203,7 @@ function g5DpLabel(g){
 function g5FielderAsk(g){
   const seq = g.fielderSeq || [], on = gameHasRunners(state.activeSession);
   if(!seq.length) return 'Who fielded it?';
-  if(g.entry === 'O' && on) return G5_CAUGHT[g.bbType] ? 'Thrown to? Tap in order, or Done' : 'Who made the outs? Tap in order, then Done';
+  if(g.entry === 'O' && on) return G5_CAUGHT[g.bbType] ? 'Thrown to? Tap in order, or Done' : 'Record outs, tap in order, then Done';   // Joel, Oct 21
   if(g5PutoutAsk(g)) return 'Who made the out?';
   return 'Who fielded it?';
 }
@@ -9270,12 +9296,20 @@ window.g5HrAsk = async function(){
 window.g5HR = async function(box){
   const g = state.activeSession.g5;
   if(!g || g.step !== 'hr' || !G5_OVER_FENCE[box]) return;
-  g.box = box; g.hr = true; g.overFence = true;
-  return g5Commit('in_play');
+  g.box = box; g.overFence = true;
+  return g5HrConfirm();
 };
+// Oct 21: a home run stops on "Confirm the play" too -- every runner and the batter home ("Home run to CF · Runner from
+// 1B scored safely · 2 runs scored"); Next saves it, Back goes back to where it left the park (or who fielded it).
+async function g5HrConfirm(){
+  const s = state.activeSession, g = s.g5;
+  g.hr = true; g.step = 'bases'; g.bases = 0; g.batterPlaced = true; g.batterTo = 4; g.runQ = []; g.runAns = [];
+  g.advances = [1, 2, 3].filter(b => s.runners[b]).map(b => ({ from: b, to: 4, how: 'hr' }));
+  return g5Save();
+}
 window.g5Base = async function(box){
   const g = state.activeSession.g5;
-  if(!g || g.step !== 'bases' || !G5_BASE_BOX[box] || g.entry === 'O' || g5NeedsFcOut(g)) return;   // an out moves runners by drag / tap
+  if(!g || g.step !== 'bases' || !G5_BASE_BOX[box] || g.entry === 'O' || g5NeedsFcOut(g) || g.hr) return;   // an out moves runners by drag / tap
   g.bases = (g.bases || 0) ^ G5_BASE_BOX[box];
   if((g.bases & G5_BASE_BOX[box]) && !g.batterPlaced){ g.batterPlaced = true; g.batterTo = G5_BIT_BASE[G5_BASE_BOX[box]]; }   // a base tapped on: the batter is placed (no token left at home)
   return g5Save();
@@ -9312,10 +9346,7 @@ window.g5OutHow = async function(how){
   g.bases = bases;
   g.advances.push({ from: m.from, to: out ? 0 : (m.to === 'home' ? 4 : m.to), how });
   g.move = null;
-  if(out){
-    g.addOuts = (g.addOuts || 0) + 1;
-    if(g5ProjectedOuts(g) >= 3) return g5Commit('in_play');   // the third out ends it
-  }
+  if(out) g.addOuts = (g.addOuts || 0) + 1;   // Oct 21: a third out is confirmed, not saved by itself
   return g5Save();
 };
 window.g5Next = async function(){
@@ -9354,8 +9385,7 @@ window.g5AddOut = async function(){
   if(!g || g.walkEvent) return;
   if(g5ProjectedOuts(g) >= 3) return;                         // never past three
   g.addOuts = (g.addOuts || 0) + 1;
-  if(g.step === 'bases' && g5ProjectedOuts(g) >= 3) return g5Commit(g.walk ? 'ball' : 'in_play');
-  return g5Save();
+  return g5Save();   // Oct 21: a third out is confirmed with Next, not saved by itself
 };
 // Joel, Oct 8: + Strike / + Ball -- a strike or ball with no pitch (a pitch-clock violation), saved as the
 // existing auto_strike / auto_ball events (ball four walks, strike three is a K; the report lists them under
@@ -9416,6 +9446,11 @@ window.g5Back = async function(){
     case 'bases':
       if(g.move && g.entry === 'O'){ g.move = null; break; }
       if(g.runOutPick){ g.runOutPick = null; break; }                                       // Oct 21: out of the "how?" question
+      if(g.hr){   // Oct 21: back from a home run's confirm -- to where it left the park, or who fielded it (inside the park)
+        g.hr = false; g.advances = null; g.batterTo = undefined; g.batterPlaced = false; g.runQ = null; g.runAns = null; g.bases = null;
+        if(g.overFence){ g.overFence = false; g.box = null; g.step = 'hr'; } else g.step = 'fielder';
+        break;
+      }
       if(g.runAns && g.runAns.length){ Object.assign(g, g.runAns.pop().snap); break; }   // Oct 21: undo the last runner answer
       if(g5OutMoving(g)){
         if(g.advances.length){ const b = g.advBefore.pop(); g.advances.pop(); g.bases = b.bases; g.addOuts = b.addOuts; g.runs = b.runs || 0; break; }   // undo the last move
@@ -9958,9 +9993,9 @@ function g5NavRow(){
       <button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="gameBack()" ${gameCanGoBack(s) ? '' : 'disabled'}>‹ Back</button>
       <button type="button" class="btn btn-secondary btn-sm g5-nav-btn${more ? ' on' : ''}" onclick="g5MoreToggle()" aria-expanded="${more ? 'true' : 'false'}">More ${more ? '▴' : '▾'}</button>
     </div>${more ? (state.g5Rare ? g5RareTray(s) : `<div class="g5-more" role="group" aria-label="More">
-      ${b('New batter', 'gameNewBatter()')}${b('New inning', 'gameNewInning()')}
       ${b('Hit by pitch', 'gameHitByPitch()', !(s.g5 && s.g5.step === 'what'))}
       <button type="button" class="btn btn-secondary btn-sm g5-more-btn" onclick="g5RareToggle()">Rare plays ▸</button>
+      ${b('New batter', 'gameNewBatter()')}${b('New inning', 'gameNewInning()')}
     </div>`) : ''}`;
 }
 // Oct 20: the Rare plays tray (in More's place). Joel, Oct 21: Dropped 3rd, Intentional walk, Interference (then Catcher's

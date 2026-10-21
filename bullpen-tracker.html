@@ -9051,6 +9051,9 @@ async function g5AfterLocation(){
    runner ahead of him is still on base, OUT. Next waits for every answer; Back undoes the last. Recorded as runner moves
    (forced / advanced / tagged up on a catch; thrown out / doubled off on a catch). Dragging works again once answered. */
 function g5StartRunQ(g, s){ g.runQ = [3, 2, 1].filter(b => s.runners[b]); g.runAns = []; }
+// Joel, Oct 21: once every runner is answered, the prompt reads "Move Runners, or Next" (a double play keeps its label).
+function g5RunsAnswered(g){ return !!g && g.step === 'bases' && !!g.runQ && !g5RunAsking(g) && !g5NeedsBatter(g) && !g5NeedsFcOut(g)
+  && !(g.entry === 'O' && g.outPhase !== 'move'); }
 function g5RunCur(g, o){ const e = (g.advances || []).find(a => a.from === o); return e ? e.to : o; }
 function g5RunAsking(g){
   if(!g || g.step !== 'bases' || !g.runQ || g5NeedsFcOut(g) || (g.entry === 'O' && g.outPhase !== 'move')) return null;
@@ -9555,6 +9558,7 @@ function g5Caption(step){
   if(step === 'where' && sg && sg.zone === 'FOUL') return 'Select where the foul ball was caught';
   if(step === 'fielder' && sg) return g5FielderAsk(sg);   // Oct 21
   if(step === 'bases' && g5RunAsking(sg)){ const o = g5RunAsking(sg), d = g5DpLabel(sg); return (d ? d + ' — ' : '') + `Runner from ${['', '1B', '2B', '3B'][o]} — where did he end up?`; }
+  if(step === 'bases' && g5RunsAnswered(sg)){ const d = g5DpLabel(sg); return (d ? d + ' — ' : '') + 'Move Runners, or Next'; }   // Joel, Oct 21
   if(step === 'bases' && sg && g5NeedsFcOut(sg)) return 'Fielder\'s choice — tap the runner who was out';
   if(step === 'bases' && sg && sg.entry === 'O') return sg.outPhase === 'move' ? (g5DpLabel(sg) ? g5DpLabel(sg) + ' — tap or move other runners' : 'What happened to the runners? Tap or move them') : 'Out recorded — tap Next';
   return { what: 'What happened?',
@@ -9838,6 +9842,7 @@ function g5PhoneCaption(g){
   if(g.step === 'bases' && g5NeedsFcOut(g)) return 'Tap the runner who was out';
   if(g.step === 'fielder') return g5FielderAsk(g);
   if(g5RunAsking(g)) return `Runner from ${['', '1B', '2B', '3B'][g5RunAsking(g)]}?`;
+  if(g5RunsAnswered(g)){ const d = g5DpLabel(g); return (d ? d.replace('Double play', 'DP').replace('Triple play', 'TP') + ' · ' : '') + 'Move Runners, or Next'; }
   if(g.step === 'bases') return g.entry === 'O' ? (g.outPhase === 'move' ? (g5DpLabel(g) || 'What happened to the runners?') : 'Out recorded — tap Next')
     : g5NeedsBatter(g) ? 'Put the batter on base' : 'Move runners, then Next';
   return g5Caption(g.step);

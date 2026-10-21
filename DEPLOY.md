@@ -234,6 +234,9 @@ Run this against staging after any non-trivial change, before touching productio
    and open `http://localhost:8080/report.html?r=<token>` while serving locally with the
    staging config (above). Confirm it renders and looks correct.
 
+6. **Entry pages (L1)** — `/` shows the landing page; `/signin.html` shows the Which sport? picker
+   (sign in); a signed-in device opening `/` lands in the app (`bullpen-tracker.html`).
+
 This was run in full against staging on 2026-08-26 (see git history / task record for
 P1-08) — all five steps passed with test data.
 

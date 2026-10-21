@@ -181,3 +181,7 @@ Then hand Joel these three on-device checks (iPhone/iPad, production): installed
 - **Under-13 / parent copy** (Coaches, Players, FAQ) promises a parent-managed flow; discovery F says whether the app has it today. If not, those three lines need rewording before the page is widely shared.
 - Coaches/Players section words are the designer's draft; the hero is yours.
 - `signin.html` still wears its current look; a later packet can bring it in line with the landing page (it already shares the tokens).
+
+---
+
+**Shipped (branch `l1-landing-page`, Oct 21 2026):** `9612af0` media, `1c161f1` landing page at `/` + sign-in move (`kb-shell-v281`), and the docs / bundle-removal commit after them. Gate 1 found `index.html` was the Which sport? / Pitcher-Coach picker, not a sign-in form; Joel kept the plan (picker → `signin.html`, `#signup` → the sign-up pages).

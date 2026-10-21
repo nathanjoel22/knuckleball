@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: a force elsewhere with no out at first is a fielder's choice · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v280. Asked for by Joel. No database change; report wording in `send-session-report` (not deployed; staging has v65).
+- **Changed:** a ground ball or bunt out with runners on whose fielders (after the first) show a force at second, third or home and none at first is saved as a fielder's choice: the batter safe at 1B, the forced runner out, the other runners pushed as on a single and asked as normal (a third out goes straight to Confirm). Joel's case, 1B and 2B with two out, 6-5: "Fielder's choice 6-5 — batter safe at 1B · Runner from 2B out advancing to 3B (force) · Third out" (was "Ground ball out 6-5 · Runner on 2B held · Runner on 1B held · Third out"). With 1B in the taps (6-4-3) it stays a double play. Back returns to the fielders as the out that was tapped. A force now reads "out advancing to 3B (force)" in the confirm sentence and the report.
+- **Proven:** headless Chrome, 8 new checks (Joel's case and how it saves -- FC, batter to 1B, one out, inning over; the no-out case asking the runner from 1B; 6-4-3 unchanged; Back from both) and every earlier set at 390, 820 and 1180; `deno check` passes; the report's runner text checked.
+
 ## 2026-10-21 · send-session-report to staging (v65) · **staging**
 - **Asked for by:** Joel ("deploy the report function to staging first", before shipping). Commit `bedb336`. Production untouched.
 - **Carries:** every report change on the branch since v64 -- "doubled off", 6U-3, out at / out advancing (with the base), runners left on base, the inherited-runs line.

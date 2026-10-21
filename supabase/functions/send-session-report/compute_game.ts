@@ -344,6 +344,8 @@ const HOW_LABEL: Record<string, string> = { tagged_up: 'tagged up', on_error: 'o
   doubled_up: 'doubled off', tagged_out: 'tagged out', hit_by_ball: 'hit by ball', out: 'out', out_advancing: 'out advancing' }
 export function runnerMovesText(adv: { from: number; to: number; how?: string }[] | null | undefined): string {
   return (adv ?? []).filter(a => a.from >= 1 && a.from <= 3).map(a => {
+    // Oct 21: a force reads as the app writes it -- "R2 out advancing to 3B (force)"
+    if (a.to === 0 && a.how === 'force_out') return `R${a.from} out advancing to ${a.from === 3 ? 'home' : ['', '1B', '2B', '3B'][a.from + 1]} (force)`
     const where = a.to === 0 ? 'out' : a.to === 4 ? 'scores' : `to ${['', '1B', '2B', '3B'][a.to]}`
     const at = (a as { at?: number }).at
     const why = a.how && HOW_LABEL[a.how] && !(a.to === 0 && a.how === 'out')

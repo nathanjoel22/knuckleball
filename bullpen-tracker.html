@@ -9094,6 +9094,17 @@ async function g5AfterLocation(){
     g5StartOutScreen(g);
     if(g.bases){   // Joel, Oct 21: runners on -- straight to them (no "Out recorded" step), with the outs the fielders show
       g.outPhase = 'move';
+      if(g5FcFromFielders(g)){
+        // Joel, Oct 21: the fielders show a force somewhere other than first and nobody at first -- the batter wasn't
+        // out: a fielder's choice (6-5: the runner from 2B out advancing to 3B, the batter safe at 1B), then as normal.
+        g.entry = 'FC'; g.convertedFc = true; g.outPhase = null;
+        g5OutsFromFielders(g);
+        const outs = g.advances.slice();
+        g5PlaceBatter(g, { runners: runnersFromBitmask(g.bases) }, 1);
+        g.advances = outs.concat(g.advances);
+        g5StartRunQ(g, s);
+        return g5Save();
+      }
       g5OutsFromFielders(g);
       g5StartRunQ(g, s);
     }
@@ -9148,7 +9159,7 @@ function g5PlaySummary(g, s){
   } else if(g.entry === 'FC'){
     parts.push(`Fielder's choice${seq.length ? ' ' + fielderNotation(seq) : ''} — batter safe at ${B(g.batterTo || 1)}`);
   }
-  const outWord = (how, o) => ({ force_out: `forced out at ${o === 3 ? 'home' : B(o + 1)}`, doubled_up: 'doubled off', thrown_out: 'thrown out',
+  const outWord = (how, o) => ({ force_out: `out advancing to ${o === 3 ? 'home' : B(o + 1)} (force)`, doubled_up: 'doubled off', thrown_out: 'thrown out',
     out_advancing: 'out advancing',
     tagged_out: 'tagged out', hit_by_ball: 'out, hit by the ball', out: 'out' }[how] || 'out');
   [3, 2, 1].filter(o => s.runners[o]).forEach(o => {
@@ -9232,6 +9243,14 @@ function g5OutsFromFielders(g){
     g.advances.push({ from, to: 0, how: forced ? 'force_out' : 'tagged_out' });
     g.addOuts = (g.addOuts || 0) + 1;
   });
+}
+// A ground ball or bunt with runners on whose fielders (after the first) show an out at second, third or home -- with a
+// runner coming into that base -- and none at first: a fielder's choice, not an out on the batter.
+function g5FcFromFielders(g){
+  const seq = g.fielderSeq || [];
+  if(!(g.bbType === 'ground' || g.bbType === 'bunt') || seq.length < 2) return false;
+  const bases = seq.slice(1).map(p => G5_PUTOUT_BASE[p]).filter(Boolean);
+  return !bases.includes(1) && bases.some(b => b > 1 && (g.bases & (1 << (b - 2))));
 }
 function g5DpLabel(g){
   const n = 1 + (g.addOuts || 0), seq = g.fielderSeq || [];
@@ -9497,6 +9516,7 @@ window.g5Back = async function(){
       }
       g.outPhase = null; g.advances = null; g.advBefore = null; g.runs = 0;
       g.batterTo = undefined; g.batterPlaced = false; g.fcPhase = null; g.runQ = null; g.runAns = null;   // Oct 20 / 21
+      if(g.convertedFc){ g.entry = 'O'; g.convertedFc = false; }   // Oct 21: back to the out the charter tapped
       if(!g.walkEvent) g.addOuts = 0;                                      // runners called out on this screen go with it
       if(g.walkEvent){ return g5CloseWalkEvent(); }   // the walk stands; Back keeps the forced runners
       if(g.walk){ g5FlipOut(); g.walk = false; g.bases = null; g.step = 'what'; }

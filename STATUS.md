@@ -15,6 +15,15 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: batter first, then runners · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v265. Asked for by Joel. No database or function change.
+- **Changed:**
+  - **Errors:** after the contact, "Where did the batter end up?" 1B · 2B · 3B · HOME (slots 2-5), then the location and fielders; the batter is placed by himself and runners ahead pushed only as far as they must go (like a hit); then the runners. Back from the location returns to this question.
+  - **Outs:** fly ball / line drive / pop-up -- one fielder tap is the catch and goes straight on to the runners (F8). Ground ball / bunt -- "Who fielded it?" then "Who made the out?" (6, 3 = 6-3; the same fielder twice = unassisted, U3); that second question has no Skip.
+  - **Bunts:** the infield lights by itself on every play (no IF tap).
+  - Hits unchanged (1B / 2B / 3B / HR first, Joel).
+- **Proven:** headless Chrome: Release 1 47/47, Release 2 37/37 at 390, 820 and 1180 px (new: putout question and Back, one-tap fly out, unassisted, error to 2B pushing the runner to 3B, Back from location to the batter question, bunt lights the infield); screenshots of both new questions.
+
 ## 2026-10-21 · Live Game: "Who fielded it?" positions restyled · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v264. Asked for by Joel. No database or function change.
 - **Changed:** each position is a pill in the prompt's yellow with its letters only (no numbers); tapped = solid yellow with the tap order small beside the letters. C just below home plate, 3B top right of its box, 1B top left, SS / 2B / P where they were, LF one box left (box 4), RF one box right (box 10), CF high in its box. The whole box still takes the tap. Saved values unchanged (`fielder` / `fielders` as positions).

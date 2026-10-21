@@ -4003,38 +4003,6 @@ CREATE POLICY "Game events: read by the pitcher, the recording team's coaches " 
 
 
 
-CREATE POLICY "H1 grace: old-app event insert" ON "public"."game_events" FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "game_events"."session_id") AND ("s"."ended_at" IS NOT NULL) AND ("s"."sealed_at" IS NULL) AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id"))))));
-
-
-
-CREATE POLICY "H1 grace: old-app event re-send" ON "public"."game_events" FOR UPDATE USING ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "game_events"."session_id") AND ("s"."sealed_at" IS NULL) AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id")))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "game_events"."session_id") AND ("s"."sealed_at" IS NULL) AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id"))))));
-
-
-
-CREATE POLICY "H1 grace: old-app pitch insert" ON "public"."pitches" FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "pitches"."session_id") AND ("s"."ended_at" IS NOT NULL) AND ("s"."sealed_at" IS NULL) AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id"))))));
-
-
-
-CREATE POLICY "H1 grace: old-app pitch re-send" ON "public"."pitches" FOR UPDATE USING ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "pitches"."session_id") AND ("s"."sealed_at" IS NULL) AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id")))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "pitches"."session_id") AND ("s"."sealed_at" IS NULL) AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_team_coach"("s"."team_id"))))));
-
-
-
-CREATE POLICY "H1 grace: old-app session insert" ON "public"."sessions" FOR INSERT WITH CHECK ((("public"."is_my_profile"("pitcher_id") OR "public"."is_team_coach"("team_id")) AND ("ended_at" IS NOT NULL) AND ("sealed_at" IS NULL)));
-
-
-
 CREATE POLICY "Invited person marks their invite accepted" ON "public"."invites" FOR UPDATE USING (("email" = ("auth"."jwt"() ->> 'email'::"text"))) WITH CHECK (("email" = ("auth"."jwt"() ->> 'email'::"text")));
 
 

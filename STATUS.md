@@ -15,6 +15,13 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · H1 grace path closed · **production**
+- **By:** Joel ("close the H1 grace path"); operator `Nathan <joelhauserman@gmail.com>`. Branch `h1-grace-close`. No app or cache change.
+- **Conditions (CLAUDE.md):** >= 14 days since H1 (Oct 5 -> Oct 19, met); no old-path write for a week (production's newest unsealed session was created Oct 7; none in the last 7 days, rechecked just before the close).
+- **Leftovers shown to Joel first:** production 69 saved-but-unsealed, 0 unsaved; staging 49 saved-but-unsealed and 2 old unsaved test rows (Sept 23 with 2 pitches, Sept 26 with none) -- deleted on staging at Joel's word (scoped to their ids and `ended_at is null`).
+- **Migration `20261023000000_h1_grace_close`:** drops the five "H1 grace" policies (CLAUDE.md said six -- a miscount; H1 created five) and seals every saved session. Rollback `supabase/rollback/20261023000000_h1_grace_close_down.sql` re-creates the policies exactly as production had them (read from `pg_policies`); sealing stays.
+- **Staging first:** 34 -> 29 policies, 0 grace, 0 unsealed; `supabase/tests/h1_grace_closed.sql` (rolled back): an old-app session insert refused, `sync_session` saves and seals, adding a pitch afterwards refused.
+- **Production:** backup `~/knuckleball-backups/2026-10-21-1538-{schema,data}.sql` (34 policies); dry run listed only this migration; after: 29 policies, 0 grace, 0 saved-but-unsealed, 122 sessions and 2,534 pitches unchanged. `supabase/schema/schema.sql` regenerated (29 policies).
 ## 2026-10-21 · Live Game rework + Release 1 + Release 2 (v280) · **production**
 - **Shipped by:** Joel ("check it and assuming everything is good lets ship the live game branch"); operator `Nathan <joelhauserman@gmail.com>`. PR #6 (`live-game-back-more` → `main`), merge `98d2015` -- an admin merge (Joel's choice): `main`'s ruleset needs one approving review and an author can't approve his own PR. **Cache:** v280.
 - **Checked first:** `main`'s new commits since Oct 19 (four uploads) only add `plans/l1-landing-page.md` and `plans/l1-landing-bundle.zip` -- nothing overwritten; the branch merged cleanly; the branch's committed config points at production.
@@ -961,4 +968,3 @@ Rebuilt from git history on Oct 10, 2026, so each entry is shorter than a live o
 - **T1 team branding (logo upload, team colors):** moved to later (Joel, Oct 14). Not started; no spec on GitHub yet.
 - **NCAA softball illegal-pitch variant:** not built; needs a short spec of the rule.
 - **Cross-checks owed by Joel:** U13 4b (iPhone video of the bottom menu); the P1-01 offline checks; the Stage C dock-drag / tray-tap feel check.
-- **H1 grace path:** close no earlier than **Oct 19, 2026**. Drop the 6 grace policies, seal the remaining sessions, and show Joel any leftovers first.

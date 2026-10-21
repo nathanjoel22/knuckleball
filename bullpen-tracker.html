@@ -1650,6 +1650,7 @@
   .g5-drag-token{ position:fixed; left:0; top:0; z-index:200; width:36px; height:36px; border-radius:var(--radius-circle); pointer-events:none;
     background:#fff; box-shadow:var(--shadow-lift), var(--ring-select-4); }
   .g5-q{ font-weight:800; font-size:16px; color:var(--ink); }   /* the runner and extra-inning questions, as bold as the prompt */
+  .g5-summary{ max-width:min(100%, 21em); margin:6px auto 10px; font-size:15px; font-weight:700; line-height:1.35; color:var(--ink); text-align:center; text-wrap:balance; }   /* Oct 21: the play, confirmed -- within the field's width */
   .g5-qbtns{ width:100%; }
   /* Velocity in the chart (Joel, Oct 6): the bar over row 4, Reset + Next pitch over row 5 --
      placed from the grid's own track math (3px padding, 3px gaps, five equal cells). */
@@ -9051,7 +9052,40 @@ async function g5AfterLocation(){
    runner ahead of him is still on base, OUT. Next waits for every answer; Back undoes the last. Recorded as runner moves
    (forced / advanced / tagged up on a catch; thrown out / doubled off on a catch). Dragging works again once answered. */
 function g5StartRunQ(g, s){ g.runQ = [3, 2, 1].filter(b => s.runners[b]); g.runAns = []; }
-// Joel, Oct 21: once every runner is answered, the prompt reads "Move Runners, or Next" (a double play keeps its label).
+/* Joel, Oct 21: once the batter and every runner are settled, the screen confirms the play -- "Confirm the play", and
+   under the field what happened in words ("Fly ball out to LF · Runner from 3B tagged up and scored · 1 run scored").
+   Dragging a runner still fixes it (the words follow); Next saves. An out with the bases empty confirms the same way. */
+function g5Confirming(g){ return g5RunsAnswered(g) || (!!g && g.step === 'bases' && g.entry === 'O' && g.outPhase === 'confirm'); }
+const G5_CONTACT_WORD = { ground: 'ground ball', line: 'line drive', fly: 'fly ball', pop: 'pop-up', bunt: 'bunt' };
+function g5PlaySummary(g, s){
+  const B = b => ['', '1B', '2B', '3B'][b] || '', seq = g.fielderSeq || [], cap = t => t ? t[0].toUpperCase() + t.slice(1) : '';
+  const contact = G5_CONTACT_WORD[g.bbType] || '', outs = 1 + (g.addOuts || 0), parts = [];
+  if(g.entry === 'O'){
+    const caught = G5_CAUGHT[g.bbType] || g.foulOut;
+    if(caught) parts.push(`${cap(contact)} out${seq[0] ? ' to ' + seq[0] : ''}${g.foulOut ? ' in foul ground' : ''}${outs >= 2 ? ` — ${outs >= 3 ? 'triple' : 'double'} play` : ''}`);
+    else if(outs >= 2) parts.push(`${cap(contact)}, ${outs >= 3 ? 'triple' : 'double'} play${seq.length ? ' ' + fielderNotation(seq) : ''}`);
+    else parts.push(`${cap(contact)} out${seq.length > 1 ? ' ' + fielderNotation(seq) : seq.length ? ', ' + seq[0] + ' unassisted' : ''}`);
+  } else if(g.entry === 'H'){
+    const hit = { '1B': 'Single', '2B': 'Double', '3B': 'Triple', HR: 'Home run' }[g.hitType] || 'Hit';
+    parts.push(`${hit}${seq[0] ? ' to ' + seq[0] : ''}${contact ? ' (' + contact + ')' : ''}${g.batterTo !== undefined && g.batterTo !== null && G5_HIT_BASE[g.hitType] !== g.batterTo ? ', batter to ' + (g.batterTo === 4 ? 'home' : g.batterTo === 0 ? 'out' : B(g.batterTo)) : ''}`);
+  } else if(g.entry === 'E'){
+    parts.push(`Batter ${g.batterTo === 4 ? 'scored' : 'reached ' + B(g.batterTo || 1)} on an error${seq[0] ? ' by ' + seq[0] + ' (E' + (POSITION_SCOREBOOK_NUMBER[seq[0]] || '') + ')' : ''}`);
+  } else if(g.entry === 'FC'){
+    parts.push(`Fielder's choice${seq.length ? ' ' + fielderNotation(seq) : ''} — batter safe at ${B(g.batterTo || 1)}`);
+  }
+  const outWord = (how, o) => ({ force_out: `forced out at ${o === 3 ? 'home' : B(o + 1)}`, doubled_up: 'doubled off', thrown_out: 'thrown out',
+    tagged_out: 'tagged out', hit_by_ball: 'out, hit by the ball', out: 'out' }[how] || 'out');
+  [3, 2, 1].filter(o => s.runners[o]).forEach(o => {
+    const e = (g.advances || []).find(a => a.from === o);
+    if(!e) parts.push(`Runner on ${B(o)} held`);
+    else if(e.to === 0) parts.push(`Runner from ${B(o)} ${outWord(e.how, o)}`);
+    else if(e.to === 4) parts.push(`Runner from ${B(o)} ${e.how === 'tagged_up' ? 'tagged up and scored' : 'scored'}`);
+    else parts.push(`Runner from ${B(o)} ${e.how === 'tagged_up' ? 'tagged up to' : 'to'} ${B(e.to)}`);
+  });
+  if(g.runs) parts.push(`${g.runs} run${g.runs === 1 ? '' : 's'} scored`);
+  return parts.join(' · ');
+}
+// (was: once every runner is answered, "Move Runners, or Next")
 function g5RunsAnswered(g){ return !!g && g.step === 'bases' && !!g.runQ && !g5RunAsking(g) && !g5NeedsBatter(g) && !g5NeedsFcOut(g)
   && !(g.entry === 'O' && g.outPhase !== 'move'); }
 function g5RunCur(g, o){ const e = (g.advances || []).find(a => a.from === o); return e ? e.to : o; }
@@ -9558,7 +9592,7 @@ function g5Caption(step){
   if(step === 'where' && sg && sg.zone === 'FOUL') return 'Select where the foul ball was caught';
   if(step === 'fielder' && sg) return g5FielderAsk(sg);   // Oct 21
   if(step === 'bases' && g5RunAsking(sg)){ const o = g5RunAsking(sg), d = g5DpLabel(sg); return (d ? d + ' — ' : '') + `Runner from ${['', '1B', '2B', '3B'][o]} — where did he end up?`; }
-  if(step === 'bases' && g5RunsAnswered(sg)){ const d = g5DpLabel(sg); return (d ? d + ' — ' : '') + 'Move Runners, or Next'; }   // Joel, Oct 21
+  if(step === 'bases' && g5Confirming(sg)) return 'Confirm the play';   // Joel, Oct 21: what happened, under the field
   if(step === 'bases' && sg && g5NeedsFcOut(sg)) return 'Fielder\'s choice — tap the runner who was out';
   if(step === 'bases' && sg && sg.entry === 'O') return sg.outPhase === 'move' ? (g5DpLabel(sg) ? g5DpLabel(sg) + ' — tap or move other runners' : 'What happened to the runners? Tap or move them') : 'Out recorded — tap Next';
   return { what: 'What happened?',
@@ -9592,6 +9626,7 @@ function g5FieldActions(){
   if(g.step === 'runners'){
     return `<div class="g5-actions"><span class="g5-act-gap"></span><button type="button" class="btn btn-primary btn-sm g5-act" onclick="g5RunnersDone()">Done ›</button></div>`;
   }
+  const summary = g5Confirming(g) ? `<div class="g5-summary" role="status">${escHtml(g5PlaySummary(g, state.activeSession))}</div>` : '';   // Oct 21
   // Joel, Oct 19: no + Out / + Strike / + Ball on the field -- ‹ Back (and Next on the bases question, radar on), laid out
   // like the chart side's Back / More. An out on the bases is a runner dragged and called Out.
   if(g.step === 'fielder'){
@@ -9605,7 +9640,7 @@ function g5FieldActions(){
   const blocked = g5NeedsBatter(g) || g5NeedsFcOut(g) || !!g5RunAsking(g);
   const next = g.step === 'bases' ? `<button type="button" class="btn btn-primary btn-sm g5-nav-btn next-pitch" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>`
     : '<span class="g5-nav-btn" aria-hidden="true"></span>';
-  return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button>${next}</div>`;
+  return `${summary}<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button>${next}</div>`;
 }
 /* ---------- Runners on the field (Joel, Oct 12) ----------
    Drag a runner to another base or home -- as eager as the coach dock: it moves the moment the finger does --
@@ -9842,7 +9877,7 @@ function g5PhoneCaption(g){
   if(g.step === 'bases' && g5NeedsFcOut(g)) return 'Tap the runner who was out';
   if(g.step === 'fielder') return g5FielderAsk(g);
   if(g5RunAsking(g)) return `Runner from ${['', '1B', '2B', '3B'][g5RunAsking(g)]}?`;
-  if(g5RunsAnswered(g)){ const d = g5DpLabel(g); return (d ? d.replace('Double play', 'DP').replace('Triple play', 'TP') + ' · ' : '') + 'Move Runners, or Next'; }
+  if(g5Confirming(g)) return 'Confirm the play';
   if(g.step === 'bases') return g.entry === 'O' ? (g.outPhase === 'move' ? (g5DpLabel(g) || 'What happened to the runners?') : 'Out recorded — tap Next')
     : g5NeedsBatter(g) ? 'Put the batter on base' : 'Move runners, then Next';
   return g5Caption(g.step);

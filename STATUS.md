@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: confirm the play · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v274. Asked for by Joel. No database or function change.
+- **Changed:** replaces "Move Runners, or Next": once the batter and every runner are settled (and on an out with the bases empty, replacing "Out recorded — tap Next"), the prompt reads **Confirm the play** and the play is written out under the field, e.g. "Fly ball out to LF · Runner from 3B tagged up and scored · 1 run scored", "Ground ball, double play 6-4-3 · Runner from 1B forced out at 2B", "Batter reached 2B on an error by SS (E6) · Runner on 3B held". Dragging a runner still fixes it (the words follow); Next saves. Kept within the field's width.
+- **Proven:** headless Chrome: the sentence for ten plays (fly with a tag-up, bases-empty fly, 6-4-3, 3U, line drive + doubled off, single + runner to 3B, double with two scoring, E6 to 2B, FC 6-4 with a run, and none while a runner is still asked); width inside the field at 320, 390, 820 and 1180; Release 1 47/47, Release 2 55/55, runner questions 19/19 at 390 and 1180; screenshots.
+
 ## 2026-10-21 · Live Game: "Move Runners, or Next" · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v273. Asked for by Joel. No database or function change.
 - **Changed:** once every runner is answered (hits, errors, FC, outs), the yellow prompt reads "Move Runners, or Next"; a double play keeps its label in front ("Double play 6-4-3 — Move Runners, or Next"; phones "DP 6-4-3 · Move Runners, or Next").

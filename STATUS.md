@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Reports: every pitch dot is a baseball · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). Report only (`send-session-report/svg.ts`, not deployed). Joel: "Yes, every dot".
+- **Changed:** every pitch mark in the game and bullpen reports (the location charts by type / result / side, "The pitches that mattered", "What led to it", the U14 exact / RA hit grids) is a small baseball ringed in its colour, instead of a coloured dot with a halo; pitches in one cell sit apart in a small centred grid inside the cell (was a golden-angle pile); seams shown where the ball is big enough. U14 misses stay hollow grey rings (not colour-coded). The print rule still outlines the ring (`.kb-dot`). Reports already sent never change.
+- **Proven:** a game report and a bullpen report built in Deno: no halos left, 52 baseballs on the pen report; screenshots (crowded cells, the pitch-type grids, "The pitches that mattered"); `deno check` passes for send-session-report and rerender-reports.
+
 ## 2026-10-21 · Game report: baseballs on the field charts · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). Report only (`send-session-report/diamond.ts`, not deployed). No app or database change.
 - **Changed:** every field chart in the game report ("Balls in play — the field": all, by result, by how it was hit, by pitch type) draws a baseball for each ball in play in a box instead of the number -- several in one box sit in a small grid with space between them, all inside the box (more than nine: nine and "+N"). The pitch-type fields ring each baseball in that pitch's colour. The box shading stays, lighter. Caption updated. Reports already sent never change.

@@ -15,11 +15,12 @@
 // stale-while-revalidate fetch handler below is the offline/secondary
 // path -- it is not what ships a code change. This bump is a required
 // step in DEPLOY.md ("Frontend: deploy to production").
-const CACHE_VERSION = 'kb-shell-v280';
+const CACHE_VERSION = 'kb-shell-v281';
 
 const PRECACHE_URLS = [
   '/',
   '/index.html',
+  '/signin.html',   // L1: the sport / role picker (was index.html); / is now the landing page
   '/login.html',
   '/bullpen-tracker.html',
   '/coach-signup.html',
@@ -149,6 +150,9 @@ self.addEventListener('fetch', (event) => {
   // Leave everything else (anything unexpected from another origin) alone --
   // this worker only knows about its own enumerated shell assets.
   if (!isShellRequest(url)) return;
+
+  // L1: the landing page's film and screenshots are never cached (13 MB) -- straight to the network.
+  if (url.pathname.startsWith('/media/hero-') || url.pathname.startsWith('/media/shots/')) return;
 
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_VERSION);

@@ -56,7 +56,10 @@ img{max-width:100%}
 .site-nav{position:fixed;inset:0 0 auto;z-index:30;padding-top:env(safe-area-inset-top,0px);color:var(--on-dark);transition:background-color var(--duration-base) ease}
 .site-nav.solid{background:var(--brand-bg-deep);box-shadow:0 1px 0 var(--brand-line)}
 .site-nav .wrap{height:var(--nav-h);display:flex;align-items:center;gap:var(--s-24)}
-.site-nav .wm{font-size:24px;text-decoration:none;color:var(--on-dark)}
+.lockup{display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:var(--on-dark)}
+.lockup .mark{width:1.35em;height:1.35em;flex:none}
+.site-nav .lockup{font-size:24px}
+.site-nav .wm{font-size:inherit}
 .site-nav .links{display:flex;gap:var(--s-32);margin:0 auto}
 .site-nav .links a,.site-nav .signin{font-size:var(--t-14);font-weight:700;font-stretch:90%;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;color:var(--on-dark-dim)}
 .site-nav .links a:hover,.site-nav .signin:hover{color:var(--on-dark)}
@@ -65,7 +68,10 @@ img{max-width:100%}
 .menu-panel{position:fixed;left:0;right:0;top:calc(var(--nav-h) + env(safe-area-inset-top,0px));z-index:29;background:var(--brand-bg-deep);border-top:1px solid var(--brand-line);padding-block:var(--s-8) var(--s-24)}
 .menu-panel a{display:flex;align-items:center;min-height:52px;border-bottom:1px solid var(--brand-line);font-family:var(--font-display);font-weight:800;font-size:28px;text-transform:uppercase;color:var(--on-dark);text-decoration:none}
 @media (max-width:1020px){ .site-nav .links{display:none} .site-nav .right{margin-left:auto} .site-nav .menu{display:inline-flex} }
-@media (max-width:400px){ .site-nav .wm{font-size:19px} .site-nav .right{gap:var(--s-8)} }
+.site-nav .signin{white-space:nowrap}
+.menu-panel .m-signin{display:none}
+@media (max-width:440px){ .site-nav .signin{display:none} .menu-panel .m-signin{display:flex} }
+@media (max-width:400px){ .site-nav .lockup{font-size:19px} .site-nav .right{gap:var(--s-8)} }
 
 /* ---------- Hero: pinned film ---------- */
 .hero{position:sticky;top:min(0px, calc(100svh - var(--hh)));z-index:1;height:max(620px, min(100svh, 1000px));overflow:hidden;background:var(--brand-bg-deep);color:var(--on-dark)}
@@ -282,7 +288,8 @@ img{max-width:100%}
 .close .lede{color:var(--on-accent)}
 .foot{padding-block:var(--s-48) calc(var(--s-48) + 56px);color:var(--on-dark-faint);font-size:var(--t-14)}
 .foot .wrap{display:flex;justify-content:space-between;align-items:center;gap:var(--s-24);flex-wrap:wrap}
-.foot .wm{font-size:22px;color:var(--on-dark)}
+.foot .lockup{font-size:22px}
+.foot .wm{color:var(--on-dark)}
 .foot nav{display:flex;gap:var(--s-24);flex-wrap:wrap}
 .foot a{color:var(--on-dark-dim);text-decoration:none}
 .foot a:hover{color:var(--on-dark);text-decoration:underline}
@@ -298,9 +305,18 @@ img{max-width:100%}
 .notes-btn[aria-pressed="true"]{background:var(--ink);color:#fff}
 </style>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <!-- The main mark, "The spot" (Jordan + Joel, Oct 21): the strike zone slanted like the brand tags, one pocket lit.
+       Cells take currentColor, the lit pocket --mark-lit (gold; rally pink in softball). -->
+  <symbol id="kb-mark" viewBox="0 0 100 100"><g transform="translate(50 50) skewX(-14) translate(-38 -38)">
+    <rect x="0" y="0" width="22" height="22" rx="2" fill="currentColor"/><rect x="27" y="0" width="22" height="22" rx="2" fill="currentColor"/><rect x="54" y="0" width="22" height="22" rx="2" fill="currentColor"/>
+    <rect x="0" y="27" width="22" height="22" rx="2" fill="currentColor"/><rect x="27" y="27" width="22" height="22" rx="2" fill="currentColor"/><rect x="54" y="27" width="22" height="22" rx="2" fill="currentColor"/>
+    <rect x="0" y="54" width="22" height="22" rx="2" fill="currentColor"/><rect x="27" y="54" width="22" height="22" rx="2" fill="currentColor"/><rect x="54" y="54" width="22" height="22" rx="2" fill="var(--mark-lit, var(--accent))"/>
+  </g></symbol>
+</defs></svg>
 <header class="site-nav" id="nav">
   <div class="wrap">
-    <a class="wm" href="#top" aria-label="Knuckleball home">KNUCKLEBALL</a>
+    <a class="lockup" href="#top" aria-label="Knuckleball home"><svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><use href="#kb-mark"/></svg><span class="wm">KNUCKLEBALL</span></a>
     <nav class="links" aria-label="Sections">
       <a href="#how">How it works</a><a href="#coaches">Coaches</a><a href="#players">Players &amp; parents</a><a href="#pricing">Pricing</a>
     </nav>
@@ -314,7 +330,7 @@ img{max-width:100%}
   </div>
 </header>
 <div class="menu-panel" id="menuPanel" hidden>
-  <div class="wrap"><a href="#how">How it works</a><a href="#coaches">Coaches</a><a href="#players">Players &amp; parents</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></div>
+  <div class="wrap"><a href="#how">How it works</a><a href="#coaches">Coaches</a><a href="#players">Players &amp; parents</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><a class="m-signin" href="#signin" data-flow="signin">Sign in</a></div>
 </div>
 
 <main id="top">
@@ -554,7 +570,7 @@ img{max-width:100%}
 
     <footer class="foot deep">
       <div class="wrap">
-        <span class="wm">KNUCKLEBALL</span>
+        <span class="lockup"><svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><use href="#kb-mark"/></svg><span class="wm">KNUCKLEBALL</span></span>
         <nav aria-label="Footer"><a href="#privacy">Privacy</a><a href="#terms">Terms</a><a href="#delete">Delete account</a><a href="#signin" data-flow="signin">Sign in</a></nav>
         <span>Knuckleball LLC 2026</span>
       </div>

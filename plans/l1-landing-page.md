@@ -18,12 +18,12 @@
 
    Footers that link to `index.html` as "knuckleballonline.com" (`privacy.html:194`, `terms.html:133`) keep going to the landing page, which is right for a footer. The router (1) covers anything that still passes `?sport=` to the root.
 3. **Nav:**
-   - the KNUCKLEBALL wordmark on the left, with an empty slot for the mark until the logo is chosen;
+   - the lockup on the left: the main mark, **The spot**, then the KNUCKLEBALL wordmark (amendment 1). The footer uses the same lockup;
    - How it works · Coaches · Players & parents · Pricing;
    - **Sign in** → `start.html`;
    - **Join** (primary) → `start.html?join=1`, whose role step links to the sport's sign-up pages instead of `login.html`.
 
-   The nav is fixed, transparent over the film and solid once the page moves. Below 1020 px the links go into a menu button.
+   The nav is fixed, transparent over the film and solid once the page moves. Below 1020 px the links go into a menu button; below 440 px Sign in moves into that menu too, so the nav stays on one line.
 4. **Hero film** (`media/`, self-hosted):
    - `<video muted autoplay playsinline preload="auto">` with the 4:5 files for `max-width: 767px` and 1080p otherwise, AV1 WebM first, then MP4, and a poster;
    - it **plays once and holds its last frame**: no `loop` attribute, no `ended` handler that seeks;
@@ -74,7 +74,6 @@
 
 - **Prices and plan names** (Stage D).
 - **Draft copy:** Coaches, Players & parents, FAQ, the buttons and the closing band.
-- **The logo mark** for the nav slot, the favicon and the app icon. Note: `docs/cf-logo-mown.md` names design #1 (Strikeout) in its text but its SVG draws design #2 (The spot); the comment in it says #2.
 - **The hero text split:** the line "Every intention…" sits in its own gold band. Or put it all in the hero?
 
 ---
@@ -142,7 +141,8 @@ BUILD (one stage per commit; each stage testable on its own):
        (hidden), Pricing (Free + "coming"), FAQ, closing band, footer.
      - Approved copy exactly as in spec 7; draft copy from the mockup.
   D. Pricing, when Joel sets prices: the four cards from the mockup.
-OUT OF SCOPE: the logo mark, favicon and app icon; a sign-in redesign or
+OUT OF SCOPE: the favicon, app icon and splash images (their own packet,
+  from assets/app-icon.svg via scripts/splash.js); a sign-in redesign or
   sport tray in login.html; analytics or any third-party load; copy beyond
   spec 7 and the mockup; the tracker, reports, database and edge functions
   (if the audit says one must change, escalate).
@@ -183,4 +183,10 @@ No build step on the site. No fonts, scripts, video or images from other hosts. 
 
 ## Amendments
 
-(None yet. Joel's additions go here, dated.)
+1. **Oct 21, 2026 (Jordan + Joel): the logos.**
+   - **Main logo: The spot**, design #2 of Jordan's Knuckleball Mark Concepts: the strike zone slanted like the brand tags, the low-outside pocket lit. It's the mark for the app icon, the favicon and the splash screen, and the one beside the wordmark in the nav and footer.
+   - **Secondary logo: Strikeout**, design #1: home plate in true 17-inch proportions with the Black Ops One K and the spot. It's for limited uses, such as the outfield grass striping in the Live Game field.
+   - **For L1:** the nav and footer use the main mark. The SVG `<symbol id="kb-mark">` is in `docs/design/landing/l1-mockup.html`. Its cells take `currentColor` and the lit pocket takes `--mark-lit` (default `--accent`), so softball gets rally pink with no extra file.
+   - **Fix for `docs/cf-logo-mown.md`:** its text names #1 (Strikeout) for the outfield, which is right under this decision, but its SVG draws #2 (`kb-spot`, the keypad). The mown version should be the home plate. Correct the SVG before that change is built.
+   - The favicon, app icon and splash images with the main mark are a separate packet. L1 doesn't change them.
+

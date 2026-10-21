@@ -76,7 +76,7 @@
     </div>
     <h2 class="display">Link no longer <span class="last">valid</span></h2></header>
     <div class="info-msg">This invite link has expired or was replaced with a new one. Ask the head coach for a current link.</div>
-    <a href="index.html">&larr; Back to Knuckleball</a>
+    <a href="signin.html">&larr; Back to Knuckleball</a>
   </div>
 
   <!-- R6 acceptance check 6: a pitcher opening a coach link gets an
@@ -137,7 +137,7 @@
     <div class="error-msg" id="error-msg"></div>
     <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Create account &amp; join</button>
     <div class="foot-row">
-      <a href="index.html">&larr; Back</a>
+      <a href="signin.html">&larr; Back</a>
       <a href="login.html">Already have an account? Log in</a>
     </div>
   </form>
@@ -265,7 +265,7 @@
     teamSport = sp === 'softball' ? 'softball' : 'baseball';
     document.documentElement.setAttribute('data-sport', teamSport);
     // S1: this page's links lead to the team's sport.
-    document.querySelectorAll('a[href^="index.html"]').forEach(a => a.setAttribute('href', 'index.html?sport=' + teamSport));
+    document.querySelectorAll('a[href^="signin.html"]').forEach(a => a.setAttribute('href', 'signin.html?sport=' + teamSport));   // L1: the sport / role picker moved from index.html
     document.querySelectorAll('a[href^="login.html"]').forEach(a => a.setAttribute('href', 'login.html?sport=' + teamSport));
     kbPolicyLinks(teamSport);
   }

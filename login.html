@@ -121,7 +121,7 @@
     }catch(e){}
     window.KB_SPORT_KNOWN = (sp === 'baseball' || sp === 'softball');
     // Sign-in is always one sport's (Joel, Oct 1). Sport unknown -> choose it first.
-    if(!window.KB_SPORT_KNOWN){ location.replace('index.html?choose=1'); return; }
+    if(!window.KB_SPORT_KNOWN){ location.replace('signin.html?choose=1'); return; }
     window.KB_SPORT = sp === 'softball' ? 'softball' : 'baseball';
     document.documentElement.setAttribute('data-sport', window.KB_SPORT);
   })();
@@ -158,7 +158,7 @@
     <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Log in</button>
 
     <div class="foot-row">
-      <a href="index.html?choose=1">&larr; Back</a>
+      <a href="signin.html?choose=1">&larr; Back</a>
       <a href="coach-signup.html" id="coach-signup-link">New coach? Create an account</a>
       <a href="pitcher-signup.html" id="pitcher-signup-link">New pitcher? Create an account</a>
     </div>

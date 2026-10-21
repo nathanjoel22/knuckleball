@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · send-session-report to staging (v65) · **staging**
+- **Asked for by:** Joel ("deploy the report function to staging first", before shipping). Commit `bedb336`. Production untouched.
+- **Carries:** every report change on the branch since v64 -- "doubled off", 6U-3, out at / out advancing (with the base), runners left on base, the inherited-runs line.
+- **Open:** Joel to view a staging game report on his phone (History -> View report), then ship.
+
 ## 2026-10-21 · Live Game: runner answers one size, "ADV TO" · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v279. Asked for by Joel. No database or function change.
 - **Changed:** the runner question's answers read HELD · ADV TO 2B · ADV TO 3B · ADV TO HOME · OUT, all the same size as HELD / OUT (the "ADV TO" ones on two lines inside the button). Saved values unchanged.

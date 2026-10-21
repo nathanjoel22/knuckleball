@@ -22,6 +22,18 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Migration `20261023000000_h1_grace_close`:** drops the five "H1 grace" policies (CLAUDE.md said six -- a miscount; H1 created five) and seals every saved session. Rollback `supabase/rollback/20261023000000_h1_grace_close_down.sql` re-creates the policies exactly as production had them (read from `pg_policies`); sealing stays.
 - **Staging first:** 34 -> 29 policies, 0 grace, 0 unsealed; `supabase/tests/h1_grace_closed.sql` (rolled back): an old-app session insert refused, `sync_session` saves and seals, adding a pitch afterwards refused.
 - **Production:** backup `~/knuckleball-backups/2026-10-21-1538-{schema,data}.sql` (34 policies); dry run listed only this migration; after: 29 policies, 0 grace, 0 saved-but-unsealed, 122 sessions and 2,534 pitches unchanged. `supabase/schema/schema.sql` regenerated (29 policies).
+## 2026-10-21 · Live Game rework + Release 1 + Release 2 (v280) · **production**
+- **Shipped by:** Joel ("check it and assuming everything is good lets ship the live game branch"); operator `Nathan <joelhauserman@gmail.com>`. PR #6 (`live-game-back-more` → `main`), merge `98d2015` -- an admin merge (Joel's choice): `main`'s ruleset needs one approving review and an author can't approve his own PR. **Cache:** v280.
+- **Checked first:** `main`'s new commits since Oct 19 (four uploads) only add `plans/l1-landing-page.md` and `plans/l1-landing-bundle.zip` -- nothing overwritten; the branch merged cleanly; the branch's committed config points at production.
+- **Backup first:** `~/knuckleball-backups/2026-10-21-1526-{schema,data}.sql` (34 policies; the first attempt hit a Supabase API 502 and was retried).
+- **Database:** production's `sync_session`, `sessions_h1_lock` and `compute_game_summary` checked first (the Oct 15 / Oct 17 versions the migrations replace); the dry run listed exactly `20261019000000_pitch_count_runs`, `20261020000000_live_game_r1`, `20261021000000_live_game_r2`, `20261022000000_runners_left`; applied before the merge. After: 34 policies; the 10 new columns present; `sync_session` / `compute_game_summary` the new versions; 122 sessions and 2,534 pitches intact; `supabase migration list` identical local / remote. `supabase/schema/schema.sql` regenerated.
+- **Function:** `send-session-report` deployed to production (version 41) from the files on `main`; `REPORT_SITE_ORIGIN` still unset on production.
+- **Site:** knuckleballonline.com serves `kb-shell-v280` (checked).
+- **Docs:** CLAUDE.md gets "Live Game charting now" (supersedes the G5 section where they differ).
+- **Open:**
+  - Joel's production phone check (a short Live Game and its report; installed apps take the "new version" bar);
+  - the H1 grace path close (due since Oct 19) is still open;
+  - `pitches.hbp_swing` is unused (HBP on swing was removed) -- leave or drop later.
 
 ## 2026-10-21 · Reports: baseballs on the field only (dots restored) · **branch + staging function**
 - **Branch:** `live-game-back-more` (PR #6). Joel: "just when it's the graphic of the baseball field". `svg.ts` back to its state before `b61149b` (coloured dots with halos, golden-angle spacing) for every location chart in game and bullpen reports; the field charts (`diamond.ts`) keep their baseballs (ringed on the pitch-type fields).
@@ -953,7 +965,6 @@ Rebuilt from git history on Oct 10, 2026, so each entry is shorter than a live o
 
 ## Standing open items (not tied to one release)
 - **Design (D1, D2, D3):** done, on production (v227, v232–v233, v241). Jordan's side: re-sync `docs/design/target/` and `design-tokens.json` to the shipped `css/tokens.css`.
-- **A1 account deletion and export:** preconditions report `plans/a1-preconditions.md` (Oct 14); waiting on Joel's decisions. Then the App Store wrapper (Dec–Jan).
 - **T1 team branding (logo upload, team colors):** moved to later (Joel, Oct 14). Not started; no spec on GitHub yet.
 - **NCAA softball illegal-pitch variant:** not built; needs a short spec of the rule.
 - **Cross-checks owed by Joel:** U13 4b (iPhone video of the bottom menu); the P1-01 offline checks; the Stage C dock-drag / tray-tap feel check.

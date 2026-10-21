@@ -85,6 +85,46 @@ Built far past the uploaded spec `plans/g5-live-game-diamond.md` -- where they d
 - **Data:** `pitches.spray_box` (1–25), `runners_after` (bitmask), `spray_field` (IF/OF) -- game-only (CHECKs), saved by `sync_session` (migrations `20261007000000_g5_spray_box`, `20261008000000_g5_spray_field`). New games leave `hit_type` (except HR), fielders, `runner_advances`, `runs_scored`, `bb_x/bb_y` NULL. Old games are placed on the field by fielder (C 15, P 24, 1B 23, 2B 22, SS 18, 3B 17, LF 19, CF 20, RF 21).
 - **Game report:** spray charts on the field (all / by result / by contact / by pitch type, Infield · Outfield counts), what led to it (per box, per contact, pitch type × result), base states, "The pitches that mattered" (strike three, first-pitch strikes, hits, outs in play, walks, errors), "Bullpen to game" (same pitch, same spot vs the last 5 bullpens, same team; the app sends `recentPenPitches`, `from_rows.ts` builds the same).
 
+## Live Game charting now (Joel, Oct 19–21 2026; v252–v280; shipped Oct 21)
+
+**Where this and the G5 section above differ, this wins.** Superseded from G5: Foul Tip / Foul Out (Foul is always a
+foul tip; a caught foul is Out → FOUL), H/O/E and contact and IF/OF on the field's boxes (they're cell-sized rows under
+the field now), "+ Out / + Strike / + Ball under the field" (gone), "new games leave fielders NULL" (fielders are asked
+again), "runner_advances NULL on new games" (kept on every play), and the Outs shown counting each out as it's called.
+Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full log is STATUS.md (Oct 19–21).
+- **Under the chart:** K · backwards K · B · F · IP (cell-sized), then ‹ Back (undoes the last tap or action; there is no
+  Undo) and More: +K / −K / +B / −B (a missed pitch: ±1 pitch count, saved as `sessions.pitch_count_adjust`), Hit by
+  pitch, Rare plays ▸ (Dropped 3rd, Intentional walk, Interference → Catcher's / Batter's, Violations → Clock ball /
+  Clock strike (no pitch, not in the count), Foul bunt, Balk / softball Illegal pitch), New batter, New inning. Tapping
+  Inning / Outs / Count in the top bar adjusts it. The top bar also shows **Runs** (his own; inherited runs scored as
+  "+N inh").
+- **A ball in play:** FC · E · H · O → H asks 1B / 2B / 3B / HR; E asks "Where did the batter end up?" (1B/2B/3B/Home)
+  → contact (Bu PU GB LD FB; a bunt lights the infield by itself) → location (IF / OF / FOUL, and FENCE for a homer;
+  OF on a homer = inside the park) → **Who fielded it?** (positions as yellow pills on the field; a tap selects /
+  unselects; with runners on, tap the outs in order -- 6-4-3 = force at 2B + batter; a force away from first with no
+  out at first is a fielder's choice; Unassisted; a fly / line / pop out is one tap) → the batter is placed and runners
+  pushed only as far as forced → **each runner asked, lead runner first** (HELD · ADV TO 2B/3B/HOME · OUT; OUT asks the
+  base, or after a catch Doubled off / Out advancing to …) → **Confirm the play** (the play written out; Next saves;
+  third outs and home runs stop here too). The Outs shown go up when the play is saved.
+- **Runs and the pitching line:** runs per play (`runs_scored`), unearned (`unearned_runs`: reached on E / CI, "On error",
+  passed ball, after the inning would have ended, the placed extra-inning runner; changed in the editor), inherited
+  (`inherited_runs`; runners on when he started -- hand-off or "Starting mid-game?" with inning / outs / runners / count),
+  a walk on the starter's 2-0 / 2-1 / 3-0 / 3-1 / 3-2 count charged to him (`charged_prev`). The reliever's R / ER leave
+  inherited runs out; the starter's saved game never changes. `sessions.inherited_runners` (IR) and
+  `sessions.runners_left` (on base when he came out). Sacrifices (SF / SAC) are derived. Fielders in `fielder` /
+  `fielders` ('SS-1B'; the same fielder twice = unassisted, 6U-3).
+- **During a game, before saving:** "edit" on any pitch in the log (type, velocity, contact, Hit / Error / FC, fielders,
+  earned runs, Move location); anything that changes outs, the count or the runners still needs Back.
+- **Database (all on production Oct 21):** migrations `20261019000000_pitch_count_runs`, `20261020000000_live_game_r1`
+  (`pitches.hbp_swing`, now unused by the app), `20261021000000_live_game_r2`, `20261022000000_runners_left`, each with a
+  down script in `supabase/rollback/` and a test in `supabase/tests/`. `compute_game_summary` returns `pitch_count`,
+  `runs` (his), `er`, `ir`, `irs`, `bb_charged_prev`, `runners_left`; a two-strike foul bunt is a K.
+- **Game report:** WP / BK, ER, IR / IRS, SF / SAC in the pitching line; play notation, runner moves and runs in the at-bat
+  log; runners left and inherited-runs lines; count splits and leadoff reached. The field charts draw a **baseball per
+  ball in play** (ringed in the pitch colour by pitch type); every other chart keeps coloured dots (Joel, Oct 21).
+- **The online catch-up keeps your place** (`reloadTeamKeepingPlace`): after a cached paint, the background reload keeps
+  the team, pitcher, screen and an open session (Oct 21 fix for "taps Charting, then jumps back").
+
 ## App chrome and History (Joel, Oct 8–9 2026; v188–v194)
 
 - **History cards (v188):** every pen and game card shows the report's first chart (`renderHistoryPlot`): dots by pitch type in the PITCHER'S view (Amendment 16), a grey translucent ring, a cream 3×3 strike zone, no zone numbers and no heat shading, above a drawn home plate (`renderPerspectivePlate`, our own drawing -- no stock images). Games also get a per-type table (`gameHistoryTypeTable`).

@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: HOME / FOUL / FENCE fit their buttons · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v269. Asked for by Joel (HOME ran outside its cell on his phone). No database or function change.
+- **Cause:** the word labels' smaller size was overridden by the later `.g5-res-count` rule, so HOME / FOUL were drawn at 26 px (25 px on iPad / laptop), filling their buttons in Chrome and spilling over with the phone's own font.
+- **Changed:** the word sizes now win (17 px; FENCE / HOME 14 px; 15 / 12 px under 360 px wide; 16 / 13 px on iPad portrait; iPad / laptop cell-relative as intended).
+- **Proven:** headless Chrome, each label's text as a share of its button: HOME 66-69%, FOUL 73-76%, FENCE 73-76% at 320, 375, 390, 430, 820 and 1180 px (was HOME 26 px and FOUL 100% on the laptop layout); screenshot; Release 1 47/47, Release 2 48/48 at 390 and 1180.
+
 ## 2026-10-21 · Live Game: double plays from the fielders · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v268. Asked for by Joel. No database change; one report label (`send-session-report`, not deployed).
 - **Changed (an out with runners on):**

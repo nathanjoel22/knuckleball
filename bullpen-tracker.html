@@ -1615,10 +1615,12 @@
   .g5-res.on{ box-shadow:var(--ring-select); background:var(--card); }
   .sb-tap{ cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .sb-tap.sb-on{ box-shadow:inset 0 -3px 0 var(--accent-game); }   /* Joel, Oct 19: the box being adjusted */
-  .g5-res-word{ font-size:19px; }
-  .wide-right .g5-res-word{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.27); }
-  .g5-res-word.g5-res-long{ font-size:15px; }   /* Oct 20: FENCE */
-  .wide-right .g5-res-word.g5-res-long{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.21); }
+  .g5-res-l.g5-res-word{ font-size:17px; letter-spacing:-0.02em; }   /* Oct 21: FOUL / HOME / FENCE -- room to spare on a phone's own font */
+  .wide-right .g5-res-l.g5-res-word{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.27); }   /* beats .g5-res-count's size */
+  .g5-res-l.g5-res-word.g5-res-long{ font-size:14px; }   /* FENCE, HOME */
+  @media (max-width:359px){ .g5-res-l.g5-res-word{ font-size:15px; } .g5-res-l.g5-res-word.g5-res-long{ font-size:12px; } }   /* the smallest phones */
+  @media (min-width:501px) and (max-width:860px){ .g5-res-l.g5-res-word{ font-size:16px; } .g5-res-l.g5-res-word.g5-res-long{ font-size:13px; } }   /* iPad portrait */
+  .wide-right .g5-res-l.g5-res-word.g5-res-long{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.21); }
   .wide-right .g5-res-count{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.36); }
   .g5-nav{ display:flex; gap:6px; /* geometry: the Live Game field overlay math */ }
   .g5-nav-btn{ flex:1 1 0; min-width:0; }
@@ -9793,7 +9795,7 @@ function g5HoeRow(){
       `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${col};" onclick="g5Entry('${e}')" ${off(e) ? 'disabled ' : ''}aria-label="${word}"><span class="g5-res-l${e.length > 1 ? ' g5-res-count' : ''}" aria-hidden="true">${e}</span></button>`).join('')
     : g.step === 'reach'
     ? G5_REACH_BTNS.map(([n, label, word, col]) =>
-      `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${col};" onclick="g5Reach(${n})" aria-label="${word}"><span class="g5-res-l g5-res-count${label.length > 2 ? ' g5-res-word' : ''}" aria-hidden="true">${label}</span></button>`).join('')
+      `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${col};" onclick="g5Reach(${n})" aria-label="${word}"><span class="g5-res-l g5-res-count${label.length > 2 ? ' g5-res-word g5-res-long' : ''}" aria-hidden="true">${label}</span></button>`).join('')
     : g.step === 'hit'
     ? G5_HIT_BTNS.map(([t, word, col]) =>
       `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${col};" onclick="g5Hit('${t}')" aria-label="${word}"><span class="g5-res-l g5-res-count" aria-hidden="true">${t}</span></button>`).join('')

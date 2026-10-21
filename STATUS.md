@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Game report: baseballs on the field charts · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). Report only (`send-session-report/diamond.ts`, not deployed). No app or database change.
+- **Changed:** every field chart in the game report ("Balls in play — the field": all, by result, by how it was hit, by pitch type) draws a baseball for each ball in play in a box instead of the number -- several in one box sit in a small grid with space between them, all inside the box (more than nine: nine and "+N"). The pitch-type fields ring each baseball in that pitch's colour. The box shading stays, lighter. Caption updated. Reports already sent never change.
+- **Proven:** a game report built in Deno: no numbers left on the fields, 28 baseballs for 7 balls in play across the four charts, 7 colour rings on the pitch-type fields; screenshots; `deno check` passes.
+
 ## 2026-10-21 · Live Game: a force elsewhere with no out at first is a fielder's choice · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v280. Asked for by Joel. No database change; report wording in `send-session-report` (not deployed; staging has v65).
 - **Changed:** a ground ball or bunt out with runners on whose fielders (after the first) show a force at second, third or home and none at first is saved as a fielder's choice: the batter safe at 1B, the forced runner out, the other runners pushed as on a single and asked as normal (a third out goes straight to Confirm). Joel's case, 1B and 2B with two out, 6-5: "Fielder's choice 6-5 — batter safe at 1B · Runner from 2B out advancing to 3B (force) · Third out" (was "Ground ball out 6-5 · Runner on 2B held · Runner on 1B held · Third out"). With 1B in the taps (6-4-3) it stays a double play. Back returns to the fielders as the out that was tapped. A force now reads "out advancing to 3B (force)" in the confirm sentence and the report.

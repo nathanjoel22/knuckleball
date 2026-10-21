@@ -49,8 +49,8 @@ export function drawDiamond(opts: { counts: Record<number, number>; sport: 'base
       const box = G5_BOX[r][col]
       const n = opts.counts[box] || 0
       const x = col * 100, y = r * 100
-      cells += `<rect x="${x + 3}" y="${y + 3}" width="94" height="94" rx="6" fill="${n ? `rgba(${shadeRgb},${(0.18 + 0.6 * n / max).toFixed(2)})` : 'none'}" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="2"/>`
-      if (n) cells += `<text x="${x + 50}" y="${y + 50}" text-anchor="middle" dominant-baseline="central" font-size="34" font-weight="800" fill="#FFFFFF" stroke="rgba(0,0,0,0.35)" stroke-width="1.5" paint-order="stroke">${n}</text>`
+      cells += `<rect x="${x + 3}" y="${y + 3}" width="94" height="94" rx="6" fill="${n ? `rgba(${shadeRgb},${(0.12 + 0.38 * n / max).toFixed(2)})` : 'none'}" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="2"/>`
+      if (n) cells += baseballs(x, y, n, opts.color)   // Joel, Oct 21: a baseball for each ball in play, not a number
     }
   }
   const base = (x: number, y: number) => `<rect x="${x - 11}" y="${y - 11}" width="22" height="22" rx="2" transform="rotate(45 ${x} ${y})"/>`
@@ -70,6 +70,25 @@ ${soft ? '<circle cx="250" cy="350" r="16" fill="none" stroke="#FFFFFF" stroke-w
 <g fill="#FFFFFF" stroke="${c.line}" stroke-width="1.5">${base(342.2, 342.2)}${base(250, 282)}${base(157.8, 342.2)}</g>
 <polygon points="237,438 263,438 263,451 250,464 237,451" fill="#FFFFFF" stroke="${c.line}" stroke-width="1.5"/>`
   return `<svg class="kb-diamond" width="${size}" height="${size}" viewBox="0 0 500 500" role="img" aria-label="Field boxes">${field}${cells}</svg>`
+}
+// Joel, Oct 21: n baseballs in one 100-unit box, a little space between each, all inside the box; a colour-coded chart
+// (by pitch type) rings each ball in that colour. Seams as the app's own field ball (G5_BALL_SVG).
+function baseballs(x: number, y: number, n: number, ring?: string): string {
+  const cols = n <= 1 ? 1 : n <= 4 ? 2 : 3, shown = Math.min(n, 9), rows = Math.ceil(shown / cols)
+  const slot = 86 / Math.max(cols, rows), r = Math.min(15, slot / 2 - (ring ? 5 : 3))
+  let out = ''
+  for (let i = 0; i < shown; i++) {
+    const c = i % cols, rr = Math.floor(i / cols)
+    const inRow = rr === rows - 1 ? shown - rr * cols : cols   // a short last row sits centred
+    const cx = x + 50 + (c - (inRow - 1) / 2) * slot, cy = y + 50 + (rr - (rows - 1) / 2) * slot
+    const k = r / 10.5
+    out += `<g transform="translate(${(cx - 12 * k).toFixed(1)} ${(cy - 12 * k).toFixed(1)}) scale(${k.toFixed(3)})">`
+      + (ring ? `<circle cx="12" cy="12" r="13.6" fill="none" stroke="${ring}" stroke-width="3.2"/>` : '')
+      + `<circle cx="12" cy="12" r="10.5" fill="#FFFFFF" stroke="#8A9A92" stroke-width="1"/>`
+      + `<path d="M7 4.5c2.5 4 2.5 11 0 15M17 4.5c-2.5 4-2.5 11 0 15" fill="none" stroke="#C8302F" stroke-width="1.3" stroke-dasharray="1.6 1.4"/></g>`
+  }
+  if (n > shown) out += `<text x="${x + 92}" y="${y + 92}" text-anchor="end" font-size="16" font-weight="800" fill="#FFFFFF" stroke="rgba(0,0,0,0.4)" stroke-width="1" paint-order="stroke">+${n - shown}</text>`
+  return out
 }
 function hexToRgb(hex: string): string {
   const h = hex.replace('#', '')
@@ -109,7 +128,7 @@ export function renderSprayCharts(pitches: GamePitch[], allTypes: string[], spor
     ${byResult.length ? `<h3>By result</h3><div class="grid-row">${byResult.map(([o, ps]) => figure(OUTCOME_LABEL[o], d(ps), ps.length)).join('')}</div>` : ''}
     ${byBB.length ? `<h3>By how it was hit</h3><div class="grid-row">${byBB.map(([t, ps]) => figure(BB_LABEL[t], d(ps), ps.length)).join('')}</div>` : ''}
     <h3>By pitch type</h3><div class="grid-row">${byType.map(([t, ps]) => figure(t.toUpperCase(), d(ps, colorForType(t, allTypes)), ps.length)).join('')}</div>
-    <p class="caption">Where each ball in play was fielded, on the field's 25 boxes (foul ground included). The number is how many; darker means more.${oldGame ? ' Games charted before the field chart are placed by the fielder who made the play.' : ''}</p>
+    <p class="caption">Where each ball in play was fielded, on the field's 25 boxes (foul ground included). Each baseball is one ball in play (by pitch type, ringed in its colour); darker means more.${oldGame ? ' Games charted before the field chart are placed by the fielder who made the play.' : ''}</p>
   </section>`
 }
 

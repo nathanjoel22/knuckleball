@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · L1 landing page · **production**
+- **Shipped by:** Joel ("run plans/l1-landing-page.md", then "Ship now (admin merge)"); operator `Nathan <joelhauserman@gmail.com>`. Packet `plans/l1-landing-page.md`; branch `l1-landing-page` → `main` via PR #11 (admin merge -- `main` needs a review). Commits `9612af0` (media), `1c161f1` (landing page at `/`, sign-in move), `f24a698` (docs, bundle removed). **Cache:** v281. Frontend only.
+- **Gate 1 deviation:** `index.html` was the Which sport? / Pitcher-Coach picker, not a sign-in form (sign-in is `login.html`, sign-up separate pages). Joel kept the plan: the picker moved to `signin.html` unchanged except `noindex` and a `#signup` hook (its cards open `pitcher-signup.html` / `coach-signup.html`); `login.html`'s sport-unknown bounce and Back and the join pages' Back links → `signin.html`; privacy / terms footer brand links → `/` (link targets only, no policy wording). Footer "Delete account" → `delete-account.html` (privacy has no deletion anchor). Manifest unchanged (start_url already `/bullpen-tracker.html`). `sw.js`: `/signin.html` precached; `media/hero-*` and `media/shots/*` never cached.
+- **Checks (local, staging config):** 1, 2, 3, 5, 6, 8, 9, 10, 11, 12 pass; 4 (fresh staging sign-up, sends a real email) and the sync half of 7 (needs a real login) not run. **Live:** `/`, `/signin.html`, `/media/hero-poster.jpg` 200; `/` carries 10 `signin.html` links; `/signin.html` noindex; the film serves byte ranges (206).
+- **Open (Joel, on device):** installed home-screen app opens the app (not the landing page); Safari signed out → landing page, film plays, Sign in works; a password-reset email ends on the reset form. **Recommended (dashboard, both projects):** Site URL → `https://knuckleballonline.com/signin.html` and add it to Redirect URLs (the forwarder covers it meanwhile). **Packet §8 follow-ups:** "$—" / "Price not set" tiers, the arm-care teaser, "Talk to us", the designer's draft copy.
+
 ## 2026-10-21 · H1 grace path closed · **production**
 - **By:** Joel ("close the H1 grace path"); operator `Nathan <joelhauserman@gmail.com>`. Branch `h1-grace-close`. No app or cache change.
 - **Conditions (CLAUDE.md):** >= 14 days since H1 (Oct 5 -> Oct 19, met); no old-path write for a week (production's newest unsealed session was created Oct 7; none in the last 7 days, rechecked just before the close).

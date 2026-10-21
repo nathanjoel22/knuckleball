@@ -1561,7 +1561,13 @@
   .g5-pos-pill.pos-CF{ top:36%; }                                             /* high in its box */
   .g5-pos-pill.pos-3B{ left:auto; right:3px; top:3px; transform:none; }       /* top right */
   .g5-pos-pill.pos-1B{ left:3px; top:3px; transform:none; }                   /* top left */
+  .g5-pos-pill.pos-SS{ left:66%; top:auto; bottom:2px; transform:translateX(-50%); }   /* Joel, Oct 21: in toward 2B and down, clear of the ball */
+  .g5-pos-pill.pos-2B{ left:34%; top:auto; bottom:2px; transform:translateX(-50%); }
   .wide-right .g5-pos-pill{ font-size:calc(var(--g5c) * 0.2); padding:calc(var(--g5c) * 0.04) calc(var(--g5c) * 0.12); }
+  /* Joel, Oct 21: in the box the ball landed in, the ball and the pill share it evenly -- ball above, pill below, the same
+     space above, between and below -- so both are clearly seen at every size */
+  .g5-posc.g5-has-ball .g5-in{ display:flex; flex-direction:column; align-items:center; justify-content:space-evenly; }
+  .g5-posc.g5-has-ball .g5-ball, .g5-posc.g5-has-ball .g5-pos-pill{ position:static; transform:none; flex:none; }
   .g5-marked{ background:rgba(255,255,255,0.25); }
   .g5-ball{ width:24px; height:24px; display:block; }
   /* Joel, Oct 8: on iPad / laptop the field buttons' contents grow with the box (one box = (--zg - 18px) / 5) */
@@ -9396,7 +9402,7 @@ function g5CellInner(step, box){
     if(!pos) return g.box === box ? { inner: G5_BALL_SVG, onclick: null, cls: 'g5-marked' } : null;
     const order = seq.map((p, i) => p === pos ? i + 1 : 0).filter(Boolean);   // the tap order (6-3), shown small on the pill
     return btn(`${g.box === box ? G5_BALL_SVG : ''}<span class="g5-pos-pill pos-${pos}">${pos}${order.length ? `<sup class="g5-pos-order">${order.join(',')}</sup>` : ''}</span>`,
-      `g5Fielder(${box})`, 'g5-posc' + (order.length ? ' on' : ''));
+      `g5Fielder(${box})`, 'g5-posc' + (order.length ? ' on' : '') + (g.box === box ? ' g5-has-ball' : ''));
   }
   if(step === 'bases' && g5NeedsFcOut(g)){
     // FC (Oct 20): the runners as they were; tap the one who was out

@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · Live Game: fielder pills and the ball · **branch (not shipped)**
+- **Branch:** `live-game-back-more` (PR #6). **Cache:** v266. Asked for by Joel. No database or function change.
+- **Changed:** SS and 2B pinched in toward each other and down to the bottom of their boxes. In whichever position box the ball landed in, the ball and the pill share the box evenly (ball above, pill below, equal space above / between / below).
+- **Proven:** headless Chrome, the ball in each of the nine position boxes: no overlap, both inside the box, gaps 6/6/6 px (390), 5/5/5 (820), 7/7/7 (1180); screenshot; Release 1 47/47, Release 2 37/37 at 390 and 1180.
+
 ## 2026-10-21 · Live Game: batter first, then runners · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). **Cache:** v265. Asked for by Joel. No database or function change.
 - **Changed:**

@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-21 · send-session-report to staging (v66) · **staging**
+- **Asked for by:** Joel. Commit `b61149b`. Production untouched.
+- **Carries:** everything on the branch -- since v65: the force wording ("out advancing to 3B (force)"), baseballs on the field charts, every pitch dot a ringed baseball.
+- **Open:** Joel to view new staging reports (game and bullpen) on his phone, then ship.
+
 ## 2026-10-21 · Reports: every pitch dot is a baseball · **branch (not shipped)**
 - **Branch:** `live-game-back-more` (PR #6). Report only (`send-session-report/svg.ts`, not deployed). Joel: "Yes, every dot".
 - **Changed:** every pitch mark in the game and bullpen reports (the location charts by type / result / side, "The pitches that mattered", "What led to it", the U14 exact / RA hit grids) is a small baseball ringed in its colour, instead of a coloured dot with a halo; pitches in one cell sit apart in a small centred grid inside the cell (was a golden-angle pile); seams shown where the ball is big enough. U14 misses stay hollow grey rings (not colour-coded). The print rule still outlines the ring (`.kb-dot`). Reports already sent never change.

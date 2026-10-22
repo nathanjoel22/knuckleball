@@ -9,16 +9,19 @@
   <pattern id="stripesX" patternUnits="userSpaceOnUse" width="14" height="14" patternTransform="rotate(135 51.8 201.2)">
     <rect width="14" height="7" fill="#8CBA5A"/><rect y="7" width="14" height="7" fill="#6FA548"/>
   </pattern>
-  <!-- the mark, design #2, in field units -->
+  <!-- the K from the wordmark (kb-plate carries its own copy) -->
   <path id="kGlyph" d="M0 0H442V1327H0Z M510 1139V494L820 0H1280Z M823 1327L673 1018L935 625L1301 1327Z"/>
-  <!-- design #1: home plate (17-inch proportions) with the scorebook K; the mown version cuts the plate as a band and the K inside it -->
-  <symbol id="kb-spot" viewBox="0 0 100 100">
-    <path fill-rule="evenodd" d="M2 2H98V50L50 98L2 50Z M9 9H91V47L50 88L9 47Z"/>
-    <use href="#kGlyph" transform="translate(22 14) scale(0.034)"/>
-  </symbol>
-  <symbol id="kb-spot-lit" viewBox="0 0 100 100"><circle cx="65" cy="36" r="6"/></symbol>
+<!-- the secondary mark, Strikeout: home plate (true 17-inch proportions) cut as a band, the K inside -->
+<symbol id="kb-plate" viewBox="0 0 100 100">
+  <path fill-rule="evenodd" d="M2 2H98V50L50 98L2 50Z M9 9H91V47.1L50 88.1L9 47.1Z"/>
+  <path transform="translate(26 16) scale(0.03466)" d="M0 0H442V1327H0Z M510 1139V494L820 0H1280Z M823 1327L673 1018L935 625L1301 1327Z"/>
+</symbol>
+<!-- the spot, "cut shorter" -->
+<symbol id="kb-plate-lit" viewBox="0 0 100 100">
+  <circle cx="67.9" cy="38.2" r="5.6"/>
+</symbol>
   <mask id="logoMask"><rect width="253" height="253" fill="#000"/>
-    <use href="#kb-spot" x="120.1" y="48.4" width="84.5" height="84.5" fill="#fff" transform="rotate(45 162.4 90.6)"/></mask>
+    <use href="#kb-plate" x="120.1" y="48.4" width="84.5" height="84.5" fill="#fff" transform="rotate(45 162.4 90.6)"/></mask>
 </defs>
 <rect width="253" height="253" fill="#548A35"/>
 <g clip-path="url(#fair)">
@@ -29,9 +32,9 @@
     <rect width="253" height="253" fill="url(#stripesX)"/>
     <rect width="253" height="253" fill="rgba(0,0,0,.05)"/>
   </g>
-  <use href="#kb-spot" x="120.1" y="48.4" width="84.5" height="84.5" transform="rotate(45 162.4 90.6)" fill="none" stroke="rgba(0,0,0,.10)" stroke-width="1"/>
-  <!-- the lit pocket: mown shorter, so a touch lighter -->
-  <use href="#kb-spot-lit" x="120.1" y="48.4" width="84.5" height="84.5" transform="rotate(45 162.4 90.6)" fill="rgba(255,255,255,.22)"/>
+  <use href="#kb-plate" x="120.1" y="48.4" width="84.5" height="84.5" transform="rotate(45 162.4 90.6)" fill="none" stroke="rgba(0,0,0,.10)" stroke-width="1"/>
+  <!-- the spot: mown shorter, so a touch lighter -->
+  <use href="#kb-plate-lit" x="120.1" y="48.4" width="84.5" height="84.5" transform="rotate(45 162.4 90.6)" fill="rgba(255,255,255,.22)"/>
 </g>
 <!-- infield for context -->
 <circle cx="71" cy="182" r="82" fill="#C9A97C" clip-path="url(#fair)"/>

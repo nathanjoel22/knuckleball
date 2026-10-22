@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-22 · no packet (relative-accuracy painter jumped to the top) · **production**
+- **Shipped by:** Joel ("Ship it now"); operator `Nathan <joelhauserman@gmail.com>`. Branch `fix-zone-save-scroll` from `main`. **Cache:** v297. Frontend only.
+- **Found:** in the setup window, Save cells (and opening / closing the painter) snapped the window to the top: it scrolls inside `.modal-panel`, and `renderKeepScroll` only kept the page's scroll. **Fix:** `renderKeepScroll` also keeps `.modal-panel`'s scroll; open / close use it too.
+- **Checks:** headless in the setup window: before (main) open 278 -> 0, Save 658 -> 0; after open 278 -> 278, Save 658 -> 658. r1, lgr3, noread pass.
+
 ## 2026-10-22 · L1.1 landing page corrections · **production**
 - **Shipped by:** Joel ("Ship it now"); operator `Nathan <joelhauserman@gmail.com>`. **Packet:** `plans/l1.1-landing-fixes.md` (PR #13); preconditions + Joel's answers `plans/l1.1-preconditions.md`. Branch `l1.1-landing-fixes-build` → `main` (admin merge). **Cache:** v295. Frontend only (`index.html`).
 - **Built:** pricing shows the Free card only, with "Paid plans for families, teams and facilities are coming." beside it (below it on phones); the Plus / Team / Facility cards and the "placeholders" footnote stay in the file, `hidden`; "Running a facility? Email nate@knuckleballonline.com" (mailto, selectable) under them; the arm-care section hidden; the FAQ "Who sees a pitcher's charts?" answer is Joel's approved wording (Oct 22: the packet's text plus "the coaches on their teams", "anyone you send a report link to", "licensed or sold"), each claim checked against `privacy.html` Version 2026-10-17; the root's router sends `?sport=` / `?role=` / `?choose=` to `signin.html` with the query (section anchors and a plain `/` unaffected).

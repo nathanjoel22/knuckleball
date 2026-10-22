@@ -1684,6 +1684,7 @@
   .g5-velo-row.gg-velo .velo-arrow:last-child{ right:0; }
   .g5-reset{ flex:0 0 calc((100% - 12px) / 5); padding:0 4px; /* geometry: the Live Game field overlay math */ }
   .g5-nextpitch{ flex:1; }
+  .g5-noread{ flex:0 0 calc((100% - 12px) * 0.4 + 3px); height:100%; padding:0 4px; /* two cells: Joel, Oct 22 */ }
   /* ---------- G1b-r3: in-grid play entry (docs/game-grid-reference.html) ---------- */
   .gg-field{
     --gg-fence:#B9D1C4; --gg-grass:#C7DCBD;   /* Joel, Oct 1: a shade darker (field art matches) */ --gg-dirt:#C9A97C;
@@ -9740,6 +9741,12 @@ function g5FinishPitch(s, pushed, extra, atBatBefore){
   if(ggRadarOn()){ s.gameVeloIdx = s.pitches.length - 1; }
   else { s.gameVeloIdx = null; s.gameDot = null; }
 }
+// Joel, Oct 22: "No read" -- this pitch has no velocity, even if the bar was touched by accident; then on to the next.
+window.g5NoRead = async function(){
+  const t = gameVeloTarget();
+  if(t) t.obj.velo = null;
+  return g5NextPitch();
+};
 window.g5NextPitch = async function(){
   const s = state.activeSession;
   s.gameVeloIdx = null; s.gameDot = null;
@@ -10104,7 +10111,7 @@ function g5Card(face, flip, chartHtml){
 // row, Reset + Next pitch on the last row -- so nothing is added below the chart.
 function g5VeloRows(){
   return `<div class="g5-velo-row gg-velo">${renderGameVeloStrip()}</div>
-    <div class="g5-next-row"><button type="button" class="btn btn-primary g5-nextpitch next-pitch" onclick="g5NextPitch()">Next pitch ›</button></div>`;   // Joel, Oct 21: no Reset
+    <div class="g5-next-row"><button type="button" class="btn btn-secondary g5-noread" onclick="g5NoRead()">No read</button><button type="button" class="btn btn-primary g5-nextpitch next-pitch" onclick="g5NextPitch()">Next pitch ›</button></div>`;   // Joel, Oct 21: no Reset; Oct 22: No read
 }
 // Joel, Oct 12: what happened, as big letters (no words; screen readers still hear each word), under the chart: K swinging, a backwards K
 // looking (the scorebook's called third strike), B ball, F foul (always a foul tip, Oct 19), IP in play.
@@ -10257,7 +10264,8 @@ function phoneLgPrompt(s){
   if(GAME_ADJUST[state.gameAdjust]) return 'Adjust ' + GAME_ADJUST[state.gameAdjust].label;
   const step = g5Step();
   if(step === 'what') return 'Tap Pitch Result';
-  if(step) return '';   // velocity, the extra-inning question, the field
+  if(step === 'velo') return 'Record Velocity';   // Joel, Oct 22
+  if(step) return '';   // the extra-inning question, the field
   return (s.intent && !s.gameTarget) ? 'Tap Pitch Intent' : 'Tap Pitch Outcome';
 }
 function g5Surface(pitches, chartingPerspective, currentBatterSide){
@@ -10325,6 +10333,7 @@ function renderGameSessionView(p){
   // square chart sit the extra-inning question or velocity + Next pitch (g5BelowChart).
   const g5Now = g5Step();
   const zoneCaption = GAME_ADJUST[state.gameAdjust] ? 'Adjust ' + GAME_ADJUST[state.gameAdjust].label : (s.g5 && g5Now) ? (g5NeedsBatter(s.g5) ? 'Put the batter on base (tap a base, or drag from home)' : g5Caption(g5Now))
+    : g5Now === 'velo' ? 'Record Velocity'   // Joel, Oct 22: while the speeds are up
     : s.intent ? (s.gameTarget ? 'Now tap where the pitch went' : 'Tap where the pitch is called') : `Tap where the pitch landed`;
   const g5Below = g5OnDiamond() ? g5HoeRow() + g5FieldActions() : g5BelowChart(g5Now);   // Oct 19: both sides put their buttons under the prompt
 

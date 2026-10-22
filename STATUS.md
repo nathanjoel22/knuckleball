@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-22 · no packet (Live Game velocity: No read, "Record Velocity") · **staging (local), branch**
+- **Asked by:** Joel. Branch `live-game-r3` (rides with R3 Stage B). **Cache:** v284.
+- **Built:** the velocity step's last row is "No read" (two cells, left) and "Next pitch ›" (three cells); No read clears any speed (an accidental touch of the bar) and moves on. While the speeds are up, the prompt under the chart says "Record Velocity" (was "Tap where the pitch landed"; phones showed nothing). Unchanged: an untouched bar records nothing -- only a tap, the ‹ › arrows or a swipe save a speed.
+- **Checks:** headless at 390 / 820 / 1180: 8/8 each (prompt, button sizes and order, untouched = no reading, tap 88 then No read = none, Next pitch keeps a tapped speed). r1, r4, r5, glitchfix pass.
+- **Open:** ships with Stage B unless Joel wants it sooner.
+
 ## 2026-10-22 · Live Game R3, Stage B · **staging**
 - **Packet:** `plans/live-game-r3-review.md` Stage B, decisions 1-8 in `plans/live-game-r3-preconditions.md` (Joel: all yes). Branch `live-game-r3`. **Cache:** v283 (local staging site). Migration `20261025000000_live_game_r3b` on **staging only**; `send-session-report` staging **v68**.
 - **Built:** a pitcher's line stays open for the runners he left. `sessions.final_at` (full lock), `exit_runs` / `exit_er` / `exit_bb`, `relieved_session_id`, `left_owners`; `pitches` / `game_events.charged_runs` + `charged_prev_session`; `r3_apply_relief` (server only, from the reliever's `sync_session`, up the relief chain, capped); `r3_finalize_stale` + pg_cron `r3-final-lock` every 15 minutes (6 hours after his save); the H1 lock covers the new columns; `compute_game_summary` adds `exit_*` and `provisional`; every earlier saved session backfilled final; `pitches.hbp_swing` dropped (decision 1). App: each runner carries its owner; the hand-off carries the game id, owners and names; "Who was pitching?" under "Starting mid-game?" with runners on (this device's games from the last 6 hours, plus the team's open games online, or Not charted); History adds the charged-after runs / ER / BB, a "Line open" tag, and holds Send / View report while open. `send-session-report`: 409 `line_open` for a provisional game; the starter's report says how many of the runners he left scored after he left.

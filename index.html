@@ -13,7 +13,8 @@
     var h=location.hash, q=location.search;
     if(/^#(top|how|charts|coaches|players|arm|pricing|faq)$/.test(h)) return;
     var go=/(^|[#&])(access_token|refresh_token|token_hash|type|error|error_code|error_description)=/.test(h)
-        || /(^|[?&])(code|token_hash|type|error|error_code)=/.test(q);
+        || /(^|[?&])(code|token_hash|type|error|error_code)=/.test(q)
+        || /(^|[?&])(sport|role|choose)=/.test(q);   /* L1.1: an old picker link or bookmark (/?sport=, /?choose=1) */
     if(!go){ for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(/^sb-.+-auth-token$/.test(k)&&localStorage.getItem(k)){ go=true; break; } } }
     if(go) location.replace('signin.html'+q+h);
   }catch(e){}
@@ -298,6 +299,13 @@ img{max-width:100%}
 .price-foot{margin:var(--s-24) 0 0;font-size:var(--t-14);color:var(--on-dark-faint)}
 @media (max-width:1020px){ .tiers{grid-template-columns:repeat(2,minmax(0,1fr))} }
 @media (max-width:560px){ .tiers{grid-template-columns:minmax(0,1fr)} }
+/* L1.1: the Free card alone, the "coming" line beside it, the facility email under them */
+[hidden]{display:none !important}
+.tiers.solo{grid-template-columns:minmax(0,360px) minmax(0,1fr);align-items:center;gap:var(--s-32)}
+.tiers.solo .coming{margin:0;font-size:var(--t-24);font-weight:700;line-height:1.25;color:var(--on-dark);max-width:22ch}
+.facility-line{margin:var(--s-24) 0 0;font-size:var(--t-16);color:var(--on-dark-dim)}
+.facility-line a{color:var(--accent);font-weight:700;user-select:text;-webkit-user-select:text;overflow-wrap:anywhere}
+@media (max-width:560px){ .tiers.solo{grid-template-columns:minmax(0,1fr);gap:var(--s-16)} .tiers.solo .coming{font-size:var(--t-20)} }
 
 /* ---------- FAQ ---------- */
 .faq-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.4fr);gap:var(--s-64);align-items:start}
@@ -494,8 +502,8 @@ img{max-width:100%}
       </div>
     </section>
 
-    <!-- 6. Arm care (later) -->
-    <section class="band light cut" id="arm" style="padding-block:calc(var(--band-pad) * .6)">
+    <!-- 6. Arm care (later) -- L1.1: hidden until Joel announces it -->
+    <section class="band light cut" id="arm" style="padding-block:calc(var(--band-pad) * .6)" hidden>
       <div class="wrap">
         <div class="arm">
           <img src="vendor/icons/arm.png" alt="" width="96" height="96">
@@ -516,7 +524,8 @@ img{max-width:100%}
           <h2 class="disp">Charting is <span class="a">free.</span></h2>
           <p class="lede">Every pitch, every session, at no cost. Paid plans add the season: reports across sessions, progress and more.</p>
         </div>
-        <div class="tiers">
+        <!-- L1.1 (Joel, Oct 22): the Free card only until prices are set; the paid cards stay here, hidden, for Stage D -->
+        <div class="tiers solo">
           <div class="tier free">
             <h3>Free</h3>
             <p class="who">For every pitcher and coach.</p>
@@ -524,7 +533,8 @@ img{max-width:100%}
             <ul><li>Unlimited bullpens and live games</li><li>Session reports</li><li>Baseball and softball</li><li>Works with no signal</li></ul>
             <a class="btn btn-primary" href="signin.html#signup">Start charting free</a>
           </div>
-          <div class="tier">
+          <p class="coming">Paid plans for families, teams and facilities are coming.</p>
+          <div class="tier" hidden>
             <h3>Plus</h3>
             <p class="who">For the household: every player, both sports.</p>
             <div class="price"><span class="num">$—</span><small>/ year</small></div>
@@ -532,7 +542,7 @@ img{max-width:100%}
             <ul><li>Everything in Free</li><li>Season trends and progress</li><li>Every player in the family</li></ul>
             <a class="btn btn-secondary" href="signin.html#signup">Choose Plus</a>
           </div>
-          <div class="tier">
+          <div class="tier" hidden>
             <h3>Team</h3>
             <p class="who">Priced by level: youth, high school, college.</p>
             <div class="price"><span class="num">$—</span><small>/ year</small></div>
@@ -540,7 +550,7 @@ img{max-width:100%}
             <ul><li>Everything in Free</li><li>Reports for the whole staff</li><li>Season reports for every pitcher</li></ul>
             <a class="btn btn-secondary" href="signin.html#signup">Choose Team</a>
           </div>
-          <div class="tier">
+          <div class="tier" hidden>
             <h3>Facility</h3>
             <p class="who">For training facilities and their trainees.</p>
             <div class="price"><span class="num">$—</span><small>/ year</small></div>
@@ -549,7 +559,8 @@ img{max-width:100%}
             <a class="btn btn-secondary" href="#faq">Talk to us</a>
           </div>
         </div>
-        <p class="price-foot">Prices and plan names are placeholders until Knuckleball sets them.</p>
+        <p class="facility-line">Running a facility? Email <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a></p>
+        <p class="price-foot" hidden>Prices and plan names are placeholders until Knuckleball sets them.</p>
       </div>
     </section>
 
@@ -566,7 +577,7 @@ img{max-width:100%}
             <details><summary>Baseball or softball?</summary><p>Both. Pick your sport when you join. Each has its own colors and pitch types.</p></details>
             <details><summary>Do I need to download an app?</summary><p>No. Knuckleball runs in the browser on the phone you already have, and you can add it to your home screen.</p></details>
             <details><summary>How old do players have to be?</summary><p>Any age. Players under 13 join through a parent, who sets up the account and approves it.</p></details>
-            <details><summary>Who sees a pitcher's charts?</summary><p>The pitcher, the coaches on their team and the parents on the account. Our <a href="privacy.html">privacy policy</a> explains how charting data is used.</p></details>
+            <details><summary>Who sees a pitcher's charts?</summary><p>In the app: the pitcher, the coaches on their teams and the parents on the account, plus anyone you send a report link to. Knuckleball doesn't sell or license charting data today, but <a href="privacy.html">our privacy policy</a> keeps that option open: charting data and statistics, with the player's name, may be licensed or sold to teams, programs, organizations, scouts and analytics companies. Email addresses, passwords, photos and coach notes are never sold, and a player added by a parent is only included if the parent agrees.</p></details>
             <details><summary>Can I chart a live game?</summary><p>Yes. Live Game charts every pitch with the count, the batter's side and the result.</p></details>
             <details><summary>Can I take my data with me?</summary><p>Yes. Download my data in your profile gives you everything in one file, and you can delete your account from the same screen.</p></details>
             <details><summary>What does it cost?</summary><p>Charting is free. Paid plans for families, teams and facilities are on the way.</p></details>

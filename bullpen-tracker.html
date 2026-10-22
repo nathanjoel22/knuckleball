@@ -2090,7 +2090,7 @@ function mapProfile(row){
   // snapshot for free and never gets re-read mid-session (an already-open
   // charting page keeps whatever it read at load, so a toggle change can
   // never affect the current pen).
-  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, throws: row.throws || null, relativeAccuracy: !!row.relative_accuracy_enabled, usesRadarGun: !!row.uses_radar_gun, setupDismissedAt: row.setup_dismissed_at || null, uniformNumber: null, headshotUpdatedAt: row.headshot_updated_at || null };
+  return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, throws: row.throws || null, relativeAccuracy: !!row.relative_accuracy_enabled, usesRadarGun: !!row.uses_radar_gun, setupDismissedAt: row.setup_dismissed_at || null, uniformNumber: null, headshotUpdatedAt: row.headshot_updated_at || null, level: row.level || null };
 }
 function isCoach(){ return state.profile && state.profile.role === 'coach'; }
 // R6: UI-side mirror of is_team_head -- every admin control also hides
@@ -2352,7 +2352,7 @@ window.changeGuardianEmail = async function(){
   render();
 };
 function currentPitcherOnTeam(p){
-  return isCoach() ? true : !!(state.teams && state.teams.length);
+  return true;   // P2 (Oct 22): reports no longer need a team -- the server's is_pitcher_report_eligible agrees
 }
 // U4b coach-gate (Joel, Sept 2026, after a staging investigation found an
 // unverified coach could sign up, get an invite link, have a verified
@@ -2527,6 +2527,7 @@ function applyCachedContext(cached){
   state.rosterDotsReady = !!(cached.rosterDotLatest && cached.rosterDotSeen && cached.unopenedSessions);
   state.currentTeamId = cached.currentTeamId;
   state.currentPitcherId = cached.currentPitcherId;
+  if(!state.teams.length && state.profile && state.profile.role === 'pitcher'){ state.currentTeamId = null; state.currentPitcherId = state.profile.id; }   // P2: Independent
   state.myVerification = cached.myVerification || { email: null, emailConfirmed: false };
   state.view = 'home';   // Joel, Oct 12: open on Home (Charting / History / ...), never straight into the chart question
 }
@@ -2601,6 +2602,9 @@ async function reloadTeamKeepingPlace(alreadyPainted, giveUp){
   if(state.teams.length){
     const team = keep && keep.team && state.teams.some(t => t.id === keep.team) ? keep.team : state.teams[0].id;
     try{ await netTimeout(onTeamChange(team, true)); }
+    catch(e){ if(giveUp && giveUp()) return false; }
+  } else if(!isCoach()){   // P2 (Oct 22): a pitcher on no team charts Independent -- no team needed
+    try{ await netTimeout(onTeamChange(null, true)); }
     catch(e){ if(giveUp && giveUp()) return false; }
   }
   if(keep && state.currentTeamId === keep.team){
@@ -2739,6 +2743,7 @@ async function loadFullContextOnline(alreadyPainted){
 
   try{ await netTimeout(loadTeams()); }
   catch(e){ if(giveUp()) return; }
+  applyPendingLevel();   // P2: the level chosen at signup, if it couldn't be saved then (background)
 
   // A coach with a profile but no team: try to finish setup from signup
   // metadata, then fall back to the create-team form.
@@ -3265,7 +3270,7 @@ function activeTeams(){ return (state.teams || []).filter(t => !t.archived); }
 // profiles are always read with this explicit list, never select('*').
 // A NEW profiles column is unreadable until it's granted in a migration AND
 // added here (safe by default).
-const PROFILE_COLS = 'id, account_id, is_primary, managed_by, role, sport, full_name, pitch_types, created_at, contact_emails, email_verified_at, email_verify_token_sent_at, throws, relative_accuracy_enabled, uses_radar_gun, setup_dismissed_at, headshot_updated_at, age_attestation, attested_at, attested_via, terms_version, terms_agreed_at, guardian_consent_sent_at, guardian_consented_at, consent_via';
+const PROFILE_COLS = 'id, account_id, is_primary, managed_by, role, sport, full_name, pitch_types, created_at, contact_emails, email_verified_at, email_verify_token_sent_at, throws, relative_accuracy_enabled, uses_radar_gun, setup_dismissed_at, headshot_updated_at, age_attestation, attested_at, attested_via, terms_version, terms_agreed_at, guardian_consent_sent_at, guardian_consented_at, consent_via, level';   // P2: level (Oct 22)
 function lastKnownKey(userId){ return 'lastKnownContext:' + userId; }
 
 /* ---------- S4 STAGE A: ONE LOGIN, MANY PROFILES (Joel, Oct 2) ----------
@@ -5318,7 +5323,7 @@ window.endSession = async function(){
   const item = {
     id: sessionId,
     pitcherId: state.currentPitcherId,
-    teamId: state.currentTeamId,
+    teamId: sessionFiling(state.activeSession),   // P2: the team it was filed to, or null (Independent)
     loggedBy: state.profile.id,
     startedAt: state.activeSession.startedAt,
     endedAt: Date.now(),
@@ -5485,9 +5490,10 @@ async function refreshOutboxState(){
 }
 function pendingSessionsForCurrentSelection(){
   return state.outbox
-    .filter(item => item.pitcherId === state.currentPitcherId && item.teamId === state.currentTeamId)
+    .filter(item => item.pitcherId === state.currentPitcherId && (!isCoach() || item.teamId === state.currentTeamId))   // P2: the pitcher sees every filing
     .map(item => ({
       id: item.id,
+      teamId: item.teamId === undefined ? state.currentTeamId : item.teamId,   // P2: its filing (null = Independent)
       date: item.endedAt,
       loggedByCoach: item.loggedBy !== item.pitcherId,
       pitches: item.pitches,
@@ -5838,7 +5844,7 @@ async function loadSessionTeamNames(pitcherId, rows){
   if(state.historyTeam && state.historyTeam !== 'all' && !names[state.historyTeam]) state.historyTeam = 'all';
 }
 function teamChipHtml(s){
-  if(!s.teamId) return '';
+  if(!s.teamId) return (s.tombstone || s.deletedAt) ? '' : ` <span class="team-chip">Independent</span>`;   // P2: an independent session, for him and for his coaches
   const name = (state.sessionTeamNames || {})[s.teamId];
   if(isCoach()) return s.otherTeam ? ` <span class="team-chip">for ${escHtml(name || 'another team')}</span>` : '';
   // The pitcher: label every row once his sessions span more than one team.
@@ -5847,7 +5853,7 @@ function teamChipHtml(s){
 function otherTeamReportPanel(s){
   const name = (state.sessionTeamNames || {})[s.teamId] || 'its team';
   return `<div class="report-panel"><div class="field-label">Report</div>
-    <p class="report-recipients">Charted for ${escHtml(name)}. Only that team's coaches and the pitcher can create or send its report${s.reportPath ? '.' : ' (none yet).'}</p>
+    <p class="report-recipients">${s.teamId ? `Charted for ${escHtml(name)}. Only that team's coaches and the pitcher can create or send its report` : 'An Independent session: only the pitcher can create or send its report'}${s.reportPath ? '.' : ' (none yet).'}</p>
     ${s.reportPath ? `<div class="report-actions"><a class="btn btn-secondary" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>${shareReportBtn(s.reportPath)}</div>` : ''}</div>`;
 }
 window.setHistoryTeam = function(v){ state.historyTeam = v; render(); };
@@ -5885,7 +5891,7 @@ function workloadBanner(){
 async function loadSessionsForCurrentSelection(){
   const pitcherId = state.currentPitcherId;
   const teamId = state.currentTeamId;
-  if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
+  if(!pitcherId || (!teamId && isCoach())){ state.sessions = []; state.deletedSessions = []; return; }   // P2: a pitcher's History needs no team
   const { data, error } = await supabaseClient
     .from('sessions')
     .select('id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, pitch_count_adjust, final_at, exit_runs, exit_er, exit_bb, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, accuracy_hit_kind, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, runs_scored, unearned_runs, inherited_runs, charged_prev, fielders, batter_to, runner_advances, outs_on_play, sacrifice), game_events(event_type, balls_before, strikes_before, runs_scored, unearned_runs, inherited_runs, charged_prev), session_notes(id, author_id, author_name, body, created_at)')
@@ -6414,7 +6420,7 @@ window.chooseSessionKind = async function(kind){
   // Joel, Oct 12: then the start questions -- radar gun today, relative accuracy (bullpen), opponent (Live Game).
   // Defaults come from the profile; the answers belong to this session only.
   const pq = currentPitcher();
-  state.activeSession.startQ = { radar: !!(pq && pq.usesRadarGun), rel: raLastAnswer(pq), intent: false, intentHelp: false };
+  state.activeSession.startQ = { radar: !!(pq && pq.usesRadarGun), rel: raLastAnswer(pq), intent: false, intentHelp: false, file: fileDefault() };
   const handoff = kind === 'game' ? gameHandoff() : null;
   if(handoff){ state.activeSession.startQ.carry = true; if(handoff.opponent && !state.activeSession.opponent) state.activeSession.opponent = handoff.opponent; }
   if(kind === 'game') loadOpponents();   // the saved list, refreshed in the background when online
@@ -6474,9 +6480,54 @@ function rememberRaAnswer(p, on){
     }catch(e){}
   })();
 }
+// P2 (Joel, Oct 22): which team a pitcher's session is for, or Independent. Asked at the start (locked once charting
+// begins), default = his last answer on this device. A coach always files under his team; a pitcher on no team is
+// always Independent. 'none' in the question = Independent (teamId null on the session).
+function fileLastKey(id){ return 'kb:fileLast:' + id; }
+// P2: a level chosen at signup that couldn't be written then (email confirmation came first) -- saved on the first
+// online load, from this device or the signup's own metadata. Best effort; Profile can always set it.
+async function applyPendingLevel(){
+  if(isCoach() || !state.profile || state.profile.role !== 'pitcher' || state.profile.level) return;
+  let lv = null;
+  try{ lv = localStorage.getItem('kb:levelPending'); }catch(e){}
+  if(!lv && state.session && state.session.user && state.session.user.user_metadata) lv = state.session.user.user_metadata.intended_level || null;
+  if(!lv || !(LEVELS[currentSport()] || []).some(l => l[0] === lv)) return;
+  try{
+    const { error } = await supabaseClient.from('profiles').update({ level: lv }).eq('id', state.profile.id);
+    if(!error){ state.profile.level = lv; try{ localStorage.removeItem('kb:levelPending'); }catch(e){} saveLastKnownContext(); }
+  }catch(e){}
+}
+function fileChoices(){ return isCoach() ? [] : activeTeams(); }
+function fileDefault(){
+  if(isCoach()) return state.currentTeamId;
+  const teams = fileChoices();
+  if(!teams.length) return 'none';
+  let last = null;
+  try{ last = localStorage.getItem(fileLastKey(state.profile.id)); }catch(e){}
+  if(last === 'none' || teams.some(t => t.id === last)) return last;
+  return teams.some(t => t.id === state.currentTeamId) ? state.currentTeamId : teams[0].id;
+}
+function sessionFiling(s){
+  if(isCoach()) return state.currentTeamId;
+  if(s && s.fileTeam !== undefined) return s.fileTeam;
+  return fileChoices().length ? state.currentTeamId : null;
+}
+function fileStartQuestion(q){
+  const teams = fileChoices();
+  if(!teams.length) return '';
+  const tray = segTray(teams.map(t => ({ label: t.name, selected: q.file === t.id, onclick: `setStartQ('file', ${JSON.stringify(t.id).replace(/"/g, '&quot;')})` }))
+    .concat([{ label: 'Independent', selected: q.file === 'none', onclick: "setStartQ('file', 'none')" }]), { key: 'sq-file', label: 'Session for', cls: 'start-yn' });
+  return `<div class="start-q-item"><div class="start-q-label">Which team is this for?</div>${tray}
+    <p class="start-q-note">${q.file === 'none' ? 'Independent: yours alone. Your coaches can read it; only you can send its report or delete it.' : 'Your team\'s coaches can see it and send its report.'}</p></div>`;
+}
 window.startSessionNow = async function(){
   const s = state.activeSession, q = s && s.startQ;
   if(!q) return;
+  if(!isCoach()){   // P2: the filing, fixed now
+    const f = fileChoices().length ? (q.file || fileDefault()) : 'none';
+    s.fileTeam = f === 'none' ? null : f;
+    try{ localStorage.setItem(fileLastKey(state.profile.id), f); }catch(e){}
+  }
   s.usesRadarGun = !!q.radar; s.radarAsked = true;
   if(s.kind === 'bullpen') s.relAccuracyToday = !!q.rel;
   // U14: the answer is the session's own (stored as sessions.ra_on); a Live Game asks only with Intent on
@@ -6489,6 +6540,7 @@ window.startSessionNow = async function(){
     s.opponent = name || null;
     if(name) rememberOpponent(name);
   }
+  if(s.kind === 'game' && !isCoach() && s.fileTeam === null) s.extraStart = extraInningStart(state.profile.level);   // P2: his own level
   if(s.kind === 'game' && q.carry){
     const h = gameHandoff();
     if(h){
@@ -6648,6 +6700,7 @@ function renderStartQuestions(p){
   const who = isCoach() ? escHtml(p.name) + "'s" : 'your';
   return `<div class="start-q">
     <h2 class="display start-q-title">${game ? 'Live Game' : 'Bullpen'}</h2>
+    ${fileStartQuestion(q)}
     <div class="start-q-item"><div class="start-q-label">Will you be using a radar gun today?</div>${yn('radar', q.radar)}</div>
     ${game ? '' : raStartQuestion(q, who)}
     ${game ? `<div class="start-q-item"><div class="start-q-label intent-q">Turn on Intent?
@@ -11992,6 +12045,22 @@ function renderPasswordSection(){
     </div>
     ${st && st.indexOf('error:') === 0 ? `<p class="error-msg" style="margin:0;">${escHtml(st.slice(6))}</p>` : ''}</div>`;
 }
+// P2 (Joel, Oct 22): his level of play -- asked at signup, changed here. Independent games start extra innings from it
+// (team games use the team's level).
+function renderLevelSection(p){
+  if(isCoach() || !p) return '';
+  const lv = LEVELS[currentSport()], cur = p.level || state.profile.level || null;
+  return `<div class="profile-section"><h3>Level</h3>
+    <div class="profile-row">${segTray(lv.map(([k, l]) => ({ label: l, selected: cur === k, onclick: `setMyLevel('${k}')` })), { key: 'level', label: 'Level', cls: 'tray-fit' })}</div>
+    <p class="profile-note">Used for extra innings in Live Games you chart on your own (Independent).</p></div>`;
+}
+window.setMyLevel = async function(val){
+  if(isCoach() || !state.profile) return;
+  const { error } = await supabaseClient.from('profiles').update({ level: val }).eq('id', state.profile.id);
+  state.profileMsg = error ? 'Could not save. Check your connection and try again.' : '';
+  if(!error){ state.profile.level = val; await saveLastKnownContext(); }
+  render();
+};
 function renderThrowsSection(p){
   return `<div class="profile-section"><h3>Throws</h3>
     <div class="profile-row">
@@ -12349,12 +12418,12 @@ function renderProfileView(){
     return `<div class="profile-page">${msg}${renderNameSection(mapProfile(state.profile), true)}${renderEmailSection()}${renderPasswordSection()}${renderCoachTeamAdmin()}${renderDataSection()}</div>`;
   }
   const p = currentPitcher();
-  const uniformRows = state.teams.map(t => uniformRowHtml(t.id, state.profile.id, 'Uniform # · ' + t.name)).join('')
-    || '<p class="profile-note">Join a team to set a uniform number.</p>';
+  const uniformRows = state.teams.map(t => uniformRowHtml(t.id, state.profile.id, 'Uniform # · ' + t.name)).join('');
   return `<div class="profile-page">
     ${renderHeadshotControls(p)}
     ${msg}
-    <div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>
+    ${uniformRows ? `<div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>` : ''}
+    ${renderLevelSection(p)}
     ${renderThrowsSection(p)}
     ${renderPitchMixSection(p)}
     ${renderRelAccuracySection(p)}
@@ -12549,7 +12618,7 @@ window.openSetupModal = function(){
 // not here, so this function only ever needs to answer "is setup itself
 // incomplete."
 function setupIncomplete(p){
-  const uniformOk = state.teams.length > 0 && state.teams.every(t => t.uniform_number !== null && t.uniform_number !== undefined);
+  const uniformOk = state.teams.every(t => t.uniform_number !== null && t.uniform_number !== undefined);   // P2: no team, no number to set
   return !uniformOk || !p.throws || !(p.pitchTypes && p.pitchTypes.length);
 }
 function renderSetupReminderBanner(){
@@ -12577,8 +12646,10 @@ window.dismissSetupReminderForSession = function(){
 // R4 follow-up (Joel, Oct 6): a report belongs to the team its session was charted for -- its
 // team name, uniform number and trend sections come from THAT team's sessions only, never from
 // the other teams R4 lets the viewer see.
-function reportTeamId(session){ return session.teamId || state.currentTeamId; }
-function sameReportTeam(s, tid){ return (s.teamId || state.currentTeamId) === tid; }
+// P2: a session's own filing -- an independent session (teamId null) reports as Independent, its trends from his
+// independent sessions only. A row without the field (never, today) falls back to the current team.
+function reportTeamId(session){ return session.teamId !== undefined ? session.teamId : state.currentTeamId; }
+function sameReportTeam(s, tid){ return (s.teamId !== undefined ? s.teamId : state.currentTeamId) === tid; }
 function buildReportPayload(session, p){
   const tid = reportTeamId(session);
   const team = state.teams.find(t => t.id === tid);
@@ -12626,7 +12697,7 @@ function buildReportPayload(session, p){
     // roster-sourced p.uniformNumber already has the real value.
     uniformNumber: (p.uniformNumber != null) ? p.uniformNumber : (team && team.uniform_number != null ? team.uniform_number : null),
     date: session.date,
-    teamName: team ? team.name : '',
+    teamName: team ? team.name : (tid ? '' : 'Independent'),   // P2
     chartingPerspective: session.chartingPerspective,
     loggedByCoach: session.loggedByCoach,
     raOn: session.raOn === true,   // U14: the legend shows only when RA was on
@@ -12763,7 +12834,7 @@ async function buildGameReportPayload(session, p){
     pitcherName: p.name,
     uniformNumber: (p.uniformNumber != null) ? p.uniformNumber : (team && team.uniform_number != null ? team.uniform_number : null),
     date: session.date,
-    teamName: team ? team.name : null,
+    teamName: team ? team.name : (tid ? null : 'Independent'),   // P2
     opponent: session.opponent || null,
     chartingPerspective: session.chartingPerspective,
     loggedByCoach: session.loggedByCoach,
@@ -12900,7 +12971,7 @@ function render(){
     return;
   }
 
-  if(!state.teams.length){
+  if(!state.teams.length && isCoach()){   // P2 (Oct 22): only a coach needs a team; a pitcher on none charts Independent
     const msg = isCoach()
       ? `<p>You don't have a team yet — something may have gone wrong during signup.</p>`
       : (state.profile && state.profile.managed_by)
@@ -12920,7 +12991,9 @@ function render(){
   const archivedList = state.teams.filter(t => t.archived);
   const teamOptions = activeTeams().map(teamOpt).join('')
     + (archivedList.length ? `<optgroup label="Archived">${archivedList.map(teamOpt).join('')}</optgroup>` : '');
-  const teamSelector = state.teams.length > 1
+  const teamSelector = !state.teams.length
+    ? `<div class="team-select-wrap"><span class="roster-label">Team</span><div style="font-size:14px;font-weight:600;">Independent</div></div>`   // P2
+    : state.teams.length > 1
     ? `<div class="team-select-wrap"><span class="roster-label">Team</span><select class="team-select" onchange="onTeamChange(this.value)">${teamOptions}</select></div>`
     : `<div class="team-select-wrap"><span class="roster-label">Team</span><div style="font-size:14px;font-weight:600;">${escHtml(state.teams[0].name)}${state.teams[0].archived ? ' <span class="throws-tag">ARCHIVED</span>' : ''}</div></div>`;
 

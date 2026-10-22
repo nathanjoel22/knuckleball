@@ -64,7 +64,7 @@
     </div>
     <div>
       <h2 class="display">Create a pitcher <span class="last">account</span></h2>
-      <p class="sub">Chart your bullpens and see your history. To join your team, ask your coach for the team's invite link.</p>
+      <p class="sub">Chart your bullpens and games and see your history, no team needed. You can join a team later with a coach's link.</p>
       <p class="sub" style="margin-top:var(--s-8);">Parent or guardian setting up a child? <a href="parent-signup.html" class="parent-link">Create a parent account</a></p>
     </div></header>
 
@@ -79,6 +79,10 @@
     <div class="field">
       <label class="field-label" for="password">Password</label>
       <input class="text-input" id="password" type="password" placeholder="At least 8 characters" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <span class="field-label">What level do you pitch at?</span>
+      <div class="age-options" id="level-options"></div>
     </div>
     <div class="field">
       <span class="field-label">How old are you?</span>
@@ -109,7 +113,7 @@
       <span class="tagline">Always a Step Ahead</span>
     </div>
     <h2 class="display">Check your <span class="last">email</span></h2></header>
-    <div class="info-msg">We sent a confirmation link to your email. Click it, then come back and log in to finish setting up your team.</div>
+    <div class="info-msg">We sent a confirmation link to your email. Click it, then come back and log in to start charting.</div>
     <a href="login.html">Go to login &rarr;</a>
   </div>
 
@@ -215,6 +219,11 @@
       errorEl.textContent = 'Password should be at least 8 characters.';
       return;
     }
+    // P2 (Joel, Oct 22): his level of play -- extra innings in games he charts on his own; changeable in Profile
+    const levelEl = document.querySelector('input[name="level"]:checked');
+    if(!levelEl){ errorEl.textContent = 'Choose the level you pitch at.'; return; }
+    const level = levelEl.value;
+    try{ localStorage.setItem('kb:levelPending', level); }catch(e){}
     const attest = kbAgeRead('', false, email);   // P1-10: nothing is created without an answer
     if(attest.error){ errorEl.textContent = attest.error; return; }
     kbStashAttest(attest);
@@ -224,7 +233,7 @@
 
     const { data: signUpData, error: signUpErr } = await supabaseClient.auth.signUp({
       email, password,
-      options: { data: { full_name: fullName, intended_role: 'pitcher', intended_sport: (localStorage.getItem('kb:sport') === 'softball' ? 'softball' : 'baseball') } }   // P1-10: pitcher signup from the landing page (S1: the landing page's sport)
+      options: { data: { full_name: fullName, intended_role: 'pitcher', intended_level: level, intended_sport: (localStorage.getItem('kb:sport') === 'softball' ? 'softball' : 'baseball') } }   // P1-10: pitcher signup from the landing page (S1: the landing page's sport)
     });
     if(signUpErr){
       errorEl.textContent = signUpErr.message;
@@ -248,6 +257,10 @@
     // exist (it's a no-op if they do) before entering the app.
     await supabaseClient.rpc('ensure_account_setup', { p_role: 'pitcher', p_full_name: fullName });
     await kbFlushStashedAttest();   // P1-10 (if this fails, the app asks once on first load)
+    try{   // P2: the level, on his primary profile (if this fails, the app saves it on first load)
+      const u = (await supabaseClient.auth.getUser()).data.user;
+      if(u){ const { error } = await supabaseClient.from('profiles').update({ level }).eq('id', u.id); if(!error) localStorage.removeItem('kb:levelPending'); }
+    }catch(e){}
     // R0: our own verification email (best effort; the app's banner can resend).
     try{
       const s = (await supabaseClient.auth.getSession()).data.session;
@@ -257,6 +270,17 @@
     }catch(e){}
     window.location.href = 'bullpen-tracker.html';
   });
+</script>
+<script>
+  // P2 (Joel, Oct 22): the level options for this page's sport (the same values as a team's level).
+  (function(){
+    var sp = window.KB_SPORT === 'softball' ? 'softball' : 'baseball';
+    var lv = sp === 'softball' ? [['little_league', 'Little League'], ['high_school_up', 'High school & up']]
+                               : [['little_league', 'Little League'], ['high_school', 'High school'], ['college', 'College']];
+    document.getElementById('level-options').innerHTML = lv.map(function(l){
+      return '<label class="age-opt"><input type="radio" name="level" value="' + l[0] + '"> ' + l[1] + '</label>';
+    }).join('');
+  })();
 </script>
 <script>
   // S1: every link to sign-in or signup goes to THIS sport's page.

@@ -19,6 +19,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { takeRateLimit } from '../_shared/rate_limit.ts'
+import { brandedEmail } from '../_shared/email.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -77,15 +78,20 @@ Deno.serve(async (req) => {
   const name = escapeHtml(String(claim.name || 'A player'))
   const sport = claim.sport === 'softball' ? 'softball' : 'baseball'
 
-  const html =
-    `<p>Hello,</p>` +
-    `<p><strong>${name}</strong> signed up for Knuckleball, a pitch-charting app for ${sport} pitchers and their coaches, ` +
-    `and listed you as a parent or guardian. Because they told us they're 13 to 17, we need a parent or guardian to approve the account.</p>` +
-    `<p>Until you approve, they can still chart their pitching, but they can't view or send reports.</p>` +
-    `<p><a href="${escapeHtml(link)}">Review and approve the account</a></p>` +
-    `<p>The page explains what's stored and who can see it, with links to our Privacy Policy and Terms. ` +
-    `If you don't recognize this, you can ignore this email and nothing will be approved.</p>` +
-    `<p>Knuckleball LLC</p>`
+  // Branded emails (Joel, Oct 22): the same words, in the player's sport's look
+  const html = brandedEmail({
+    sport,
+    title: 'A parent or guardian\'s approval',
+    paragraphs: [
+      `Hello,`,
+      `<strong>${name}</strong> signed up for Knuckleball, a pitch-charting app for ${sport} pitchers and their coaches, ` +
+        `and listed you as a parent or guardian. Because they told us they're 13 to 17, we need a parent or guardian to approve the account.`,
+      `Until you approve, they can still chart their pitching, but they can't view or send reports.`,
+    ],
+    button: { href: link, label: 'Review and approve the account' },
+    footnote: `The page explains what's stored and who can see it, with links to our Privacy Policy and Terms. ` +
+      `If you don't recognize this, you can ignore this email and nothing will be approved.<br>Knuckleball LLC`,
+  })
 
   const resendRes = await fetch('https://api.resend.com/emails', {
     method: 'POST',

@@ -76,6 +76,9 @@ body.signin .signin-head{
   background:var(--brand-bg); color:var(--on-dark);
   clip-path:polygon(0 0, 100% 0, 100% calc(100% - var(--cut)), 0 100%);
   display:flex; flex-direction:column; gap:var(--s-16);
+  /* Joel, Oct 22: its own layer, so Safari removes all of it when a step hides its card -- the band reaches past the
+     card's edges, and Mac Safari left those pieces of the old header on screen after "Password updated". */
+  transform:translateZ(0);
 }
 body.signin .brand-block{ display:flex; flex-direction:column; gap:var(--s-6); }
 body.signin .brand{ display:flex; align-items:baseline; gap:var(--s-8); }

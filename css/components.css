@@ -181,7 +181,14 @@ body.landing .option-card{
 body.landing .option-card:hover{ border-color:var(--brand-mid); background:var(--card-2); transform:translateY(-3px); }
 body.landing .option-icon{ width:56px; height:56px; border-radius:var(--radius-circle); background:var(--surface); display:flex; align-items:center; justify-content:center; }
 body.landing .option-icon svg{ width:26px; height:26px; color:var(--ink); }
-body.landing .option-icon svg.ball{ width:34px; height:34px; }
+/* Joel, Oct 22: the wordmark with "The spot" beside it (as on the landing page), and each sport's card shows its own
+   mark -- white cells, the pocket in that sport's accent (gold; rally pink) -- instead of a drawn ball. */
+body.landing .brand-lockup{ display:flex; align-items:center; justify-content:center; gap:10px; }
+body.landing .brand-lockup .mark{ width:30px; height:30px; flex:none; color:var(--ink); }
+body.landing .option-card.sport-bb .option-icon.option-mark, body.landing .option-card.sport-sb .option-icon.option-mark{ background:transparent; width:56px; height:56px; }
+body.landing .option-icon.option-mark svg.mark{ width:52px; height:52px; color:#FFFFFF; }
+body.landing .option-card.sport-bb .option-mark{ --mark-lit:var(--bb-accent); }
+body.landing .option-card.sport-sb .option-mark{ --mark-lit:var(--sb-accent); }
 body.landing .option-title{ font-family:var(--font-display); font-size:var(--t-32); font-weight:800; text-transform:uppercase; letter-spacing:var(--tr-display); }
 body.landing .option-desc{ font-size:var(--t-14); color:var(--ink-faint); line-height:1.5; }
 /* the two sport cards: each sport's own brand and accent */

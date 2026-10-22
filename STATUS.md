@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-22 · no packet (sport picker branding) · **production**
+- **Shipped by:** Joel ("Ship it now"); operator `Nathan <joelhauserman@gmail.com>`. Branch `signin-brand` from `main`. **Cache:** v291. Frontend only (`signin.html`, `css/components.css` -- rules scoped to `body.landing`, the picker).
+- **Built:** "The spot" beside the KNUCKLEBALL wordmark (pocket in the sport's accent), and each sport's card shows its own mark (white cells, gold / rally-pink pocket) instead of a drawn ball. Fonts unchanged: they were already the brand set (Black Ops One, Big Shoulders Display, Archivo) -- `docs/design/DESIGN.md` still lists the pre-D2 fonts.
+- **Checks (local):** marks render with the right colours in both cards and the header; no ball graphics left; Pitcher / Coach screen and its sign-in links unchanged; screenshots at 390.
+- **Open:** the Pitcher / Coach line icons and the "Always a Step Ahead" tagline are unchanged (Joel didn't say). `DESIGN.md` typography is stale.
+
 ## 2026-10-22 · no packet (password-reset link opened the sport picker) · **production**
 - **Shipped by:** Joel ("Ship it now"); operator `Nathan <joelhauserman@gmail.com>`. Branch `fix-reset-link` from `main`. **Cache:** v290. Frontend only (`signin.html`).
 - **Found:** Joel's reset email opened "Which sport?". The reset page asks Supabase to return to `reset-password.html?sport=…`; when Supabase doesn't use that address it falls back to the Site URL, which since Oct 21 is `signin.html` (the picker), and the picker ignored the token. **Fix:** the picker hands any `#…type=recovery` link to `reset-password.html` (query and token kept) before anything else, signed in or not; the landing page's forwarder already passes tokens to the picker. Production's reset template uses `{{ .ConfirmationURL }}` (implicit flow, token in the hash).

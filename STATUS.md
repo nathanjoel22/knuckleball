@@ -15,6 +15,13 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-22 · L1.1 landing page corrections · **production**
+- **Shipped by:** Joel ("Ship it now"); operator `Nathan <joelhauserman@gmail.com>`. **Packet:** `plans/l1.1-landing-fixes.md` (PR #13); preconditions + Joel's answers `plans/l1.1-preconditions.md`. Branch `l1.1-landing-fixes-build` → `main` (admin merge). **Cache:** v295. Frontend only (`index.html`).
+- **Built:** pricing shows the Free card only, with "Paid plans for families, teams and facilities are coming." beside it (below it on phones); the Plus / Team / Facility cards and the "placeholders" footnote stay in the file, `hidden`; "Running a facility? Email nate@knuckleballonline.com" (mailto, selectable) under them; the arm-care section hidden; the FAQ "Who sees a pitcher's charts?" answer is Joel's approved wording (Oct 22: the packet's text plus "the coaches on their teams", "anyone you send a report link to", "licensed or sold"), each claim checked against `privacy.html` Version 2026-10-17; the root's router sends `?sport=` / `?role=` / `?choose=` to `signin.html` with the query (section anchors and a plain `/` unaffected).
+- **Deviations:** spec 6 (outfield logo docs) was already done (PR #14, `plans/cf-logo-mown-fix.md`); the footnote hidden too (Joel).
+- **Checks (local, 390 and 1440):** no "$—" / "Price not set" / "Choose …" / "Talk to us" / placeholder text; Free card and the coming line visible, the three paid cards in the DOM and hidden; the facility link is `mailto:` with the address as its text; arm care not visible; no horizontal scroll; no console errors. Router: `/?sport=softball`, `/?choose=1`, `/?role=coach&sport=baseball` -> `signin.html` with the same query; `/`, `/#pricing`, `/?sport=softball#pricing` stay; `#access_token=…` reaches `signin.html`; signed in, `/` -> the app and `/#pricing` stays.
+- **Open:** Joel's phone check after ship (pricing, FAQ, no arm care, an old `/?sport=softball` link).
+
 ## 2026-10-22 · Live Game R3, Stage B · **production**
 - **Shipped by:** Joel ("everything looks good, ship stage B" after the Stage C phone pass); operator `Nathan <joelhauserman@gmail.com>`. Branch `live-game-r3` → `main` (admin merge). **Cache:** v294.
 - **Checked first:** production's `sync_session` = Stage A's (md5 `8df74e48…`); `a1-account-deletion` job present; 29 policies; the branch's committed config points at production; `main` had nothing the branch lacked.

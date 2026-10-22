@@ -5351,13 +5351,15 @@ window.endSession = async function(){
     pitchCountAdjust: state.activeSession.kind === 'game' ? gamePitchCountAdj(state.activeSession) : 0,   // Oct 19: + / - pitch count, saved
     inheritedRunners: state.activeSession.kind === 'game' && Number.isInteger(state.activeSession.inheritedRunners) ? state.activeSession.inheritedRunners : null,   // Oct 21
     runnersLeft: state.activeSession.kind === 'game' ? [1, 2, 3].filter(b => state.activeSession.runners && state.activeSession.runners[b]).length : null,   // Oct 21: on base when he came out
+    relievedSessionId: state.activeSession.kind === 'game' ? (state.activeSession.relievedSessionId || null) : null,   // R3 (B3)
+    leftOwners: state.activeSession.kind === 'game' ? gameLeftOwners(state.activeSession, sessionId) : null,
     queuedAt: Date.now(),
     lastError: null,
     lastAttemptAt: null
   };
   await enqueueOutboxItem(state.session.user.id, item);
   await storDelete(draftKey());
-  if(item.kind === 'game') saveGameHandoff(state.activeSession, item);
+  if(item.kind === 'game'){ saveGameHandoff(state.activeSession, item); rememberRecentGame(item); }   // R3 (B5): "Who was pitching?" offline
 
   await appendVeloHistory(item.pitcherId, item.teamId, item.pitches);
 
@@ -5517,7 +5519,8 @@ const SYNC_ERRORS = {
   not_entitled: "This account can't save that session (it isn't the pitcher's or a coach of the team).",
   not_saved: "This session wasn't saved properly on this device.",
   invalid_session: "This session's data couldn't be read.",
-  team_archived: "This session's team was archived, so it can't be saved yet. It will sync if the head coach restores the team."
+  team_archived: "This session's team was archived, so it can't be saved yet. It will sync if the head coach restores the team.",
+  relieved_not_saved: "Waiting for the game this pitcher took over from to save first. It syncs right after it."   // R3 (B)
 };
 async function syncOutbox(){
   if(!state.session) return;
@@ -5586,7 +5589,10 @@ async function syncOutbox(){
       ra_on: item.raOn === true,   // U14: the start question's answer (false for anything queued before U14)
       pitch_count_adjust: item.kind === 'game' ? (item.pitchCountAdjust || 0) : 0,   // Oct 19: + / - pitch count
       inherited_runners: item.kind === 'game' && Number.isInteger(item.inheritedRunners) ? item.inheritedRunners : null,   // Oct 21: a reliever's IR
-      runners_left: item.kind === 'game' && Number.isInteger(item.runnersLeft) ? item.runnersLeft : null   // Oct 21: left on base when he came out
+      runners_left: item.kind === 'game' && Number.isInteger(item.runnersLeft) ? item.runnersLeft : null,   // Oct 21: left on base when he came out
+      // R3 (B1): the game he relieved and whose runners he left; the server charges the earlier pitchers from this game's rows
+      relieved_session_id: item.kind === 'game' ? (item.relievedSessionId || null) : null,
+      left_owners: item.kind === 'game' && item.leftOwners ? item.leftOwners : null
     };
     const pitchRows = item.pitches.map(p => ({
       id: p.id,
@@ -5644,7 +5650,9 @@ async function syncOutbox(){
       // inherited runners; a walk charged to the previous pitcher
       unearned_runs: item.kind === 'game' && Number.isInteger(p.unearnedRuns) ? p.unearnedRuns : null,
       inherited_runs: item.kind === 'game' && Number.isInteger(p.inheritedRuns) ? p.inheritedRuns : null,
-      charged_prev: item.kind === 'game' && p.chargedPrev === true ? true : null
+      charged_prev: item.kind === 'game' && p.chargedPrev === true ? true : null,
+      charged_runs: item.kind === 'game' && p.chargedRuns && p.chargedRuns.length ? p.chargedRuns : null,   // R3 (B3)
+      charged_prev_session: item.kind === 'game' && p.chargedPrev === true ? (item.relievedSessionId || null) : null
     }));
     // G1b (h): game_events, pitches' sibling in the same queued item.
     // after_pitch_id relies on pitch ids being client-generated UUIDs
@@ -5670,7 +5678,9 @@ async function syncOutbox(){
       outs_before: (e.outsBeforeCount === undefined) ? null : e.outsBeforeCount,
       unearned_runs: Number.isInteger(e.unearnedRuns) ? e.unearnedRuns : null,     // Oct 21
       inherited_runs: Number.isInteger(e.inheritedRuns) ? e.inheritedRuns : null,
-      charged_prev: e.chargedPrev === true ? true : null
+      charged_prev: e.chargedPrev === true ? true : null,
+      charged_runs: e.chargedRuns && e.chargedRuns.length ? e.chargedRuns : null,   // R3 (B3)
+      charged_prev_session: e.chargedPrev === true ? (item.relievedSessionId || null) : null
     }));
     // H1 (Joel, Oct 3): ONE atomic call per saved session -- sync_session inserts the
     // session, its pitches and its events and seals it, or writes nothing. A retry of a
@@ -5878,7 +5888,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, pitch_count_adjust, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, accuracy_hit_kind, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, runs_scored, unearned_runs, inherited_runs, charged_prev, fielders, batter_to, runner_advances, outs_on_play, sacrifice), game_events(event_type, balls_before, strikes_before, runs_scored, unearned_runs, inherited_runs, charged_prev), session_notes(id, author_id, author_name, body, created_at)')
+    .select('id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, pitch_count_adjust, final_at, exit_runs, exit_er, exit_bb, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, accuracy_hit_kind, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, runs_scored, unearned_runs, inherited_runs, charged_prev, fielders, batter_to, runner_advances, outs_on_play, sacrifice), game_events(event_type, balls_before, strikes_before, runs_scored, unearned_runs, inherited_runs, charged_prev), session_notes(id, author_id, author_name, body, created_at)')
     .eq('pitcher_id', pitcherId)
     .order('started_at', { ascending: false });   // R4: every team -- RLS decides what this viewer sees
   if(error){ console.error(error); state.sessions = []; state.deletedSessions = []; return; }
@@ -5912,6 +5922,10 @@ async function loadSessionsForCurrentSelection(){
     kind: s.kind || 'bullpen',
     raOn: s.ra_on === true,   // U14 (false for every session from before it)
     pitchCountAdjust: s.pitch_count_adjust || 0,   // Oct 19: + / - pitch count (games)
+    // R3 (B6): his line is open while runners he left on can still score (final_at NULL); runs / ER / walks charged
+    // to him after he left come from the relief games' saves
+    finalAt: s.final_at ? new Date(s.final_at).getTime() : null,
+    exitRuns: s.exit_runs || 0, exitEr: s.exit_er || 0, exitBb: s.exit_bb || 0,
     // G2 approach (b): null for every bullpen and for a game saved without
     // one -- History/the report both render "Game · <date>" in that case.
     opponent: s.opponent || null,
@@ -6412,9 +6426,14 @@ window.chooseSessionKind = async function(kind){
 // runners over. Kept on this device only (works offline); used once.
 const GAME_HANDOFF_KEY = 'kb:gameHandoff', GAME_HANDOFF_MS = 5 * 60 * 1000;
 function saveGameHandoff(s, item){
+  // R3 (B3): each runner's owner -- this game for his own runners, the earlier pitcher's game for one he inherited
+  const meta = {};
+  [1, 2, 3].forEach(b => { const m = s.runnerMeta && s.runnerMeta[b]; meta[b] = m ? { u: !!m.u, i: !!m.i, s: m.i ? (m.s || null) : item.id } : null; });
+  const me = currentPitcher(), names = Object.assign({}, s.ownerNames || {}, { [item.id]: (me && me.name) || 'the previous pitcher' });
   try{ localStorage.setItem(GAME_HANDOFF_KEY, JSON.stringify({ at: Date.now(), teamId: item.teamId, pitcherId: item.pitcherId, sport: currentSport(),
     inning: s.inning, outs: s.outs, balls: s.balls, strikes: s.strikes, runners: runnersBitmask(s.runners), opponent: s.opponent || null,
-    meta: s.runnerMeta || null, phantomOuts: s.phantomInning === s.inning ? (s.phantomOuts || 0) : 0 })); }catch(e){}   // Release 2: whose runners, and the inning's would-be outs
+    meta, phantomOuts: s.phantomInning === s.inning ? (s.phantomOuts || 0) : 0,   // Release 2: whose runners, and the inning's would-be outs
+    sessionId: item.id, ownerNames: names })); }catch(e){}   // R3 (B3): the game he relieves, and whose names go with the owners
 }
 function gameHandoff(){
   let h = null;
@@ -6475,7 +6494,7 @@ window.startSessionNow = async function(){
     if(h){
       s.inning = h.inning; s.outs = h.outs; s.balls = h.balls; s.strikes = h.strikes; s.runners = runnersFromBitmask(h.runners);
       s.carriedInning = h.inning; s.carryOutsBefore = (h.inning - 1) * 3 + h.outs;
-      gameStartInherited(s, h.meta, h.phantomOuts);
+      gameStartInherited(s, h.meta, h.phantomOuts, h.sessionId || null, h.ownerNames);
       defaultGameDelivery(s);
     }
   }
@@ -6483,7 +6502,8 @@ window.startSessionNow = async function(){
     const inn = q.midInning || 1, outs = q.midOuts || 0;
     s.inning = inn; s.outs = outs; s.balls = q.midBalls || 0; s.strikes = q.midStrikes || 0; s.runners = runnersFromBitmask(q.midRunners || 0);
     s.carriedInning = inn; s.carryOutsBefore = (inn - 1) * 3 + outs;
-    gameStartInherited(s, null, 0);
+    const from = q.midFrom && q.midFrom !== 'none' ? q.midFrom : null;   // R3 (B5): "Who was pitching?"
+    gameStartInherited(s, null, 0, from, from ? { [from]: q.midFromName || 'the previous pitcher' } : {});
     defaultGameDelivery(s);
   }
   if(s.kind === 'game'){ try{ localStorage.removeItem(GAME_HANDOFF_KEY); }catch(e){} }   // asked once
@@ -6526,9 +6546,24 @@ function raStartQuestion(q, who){
 // Release 2 (E2 / E3): a reliever taking over -- the runners on base are inherited (IR; the hand-off keeps whether each
 // one's run would be unearned), and the batter at the plate, if the count is 2-0 / 2-1 / 3-0 / 3-1 / 3-2, is the
 // previous pitcher's should he walk.
-function gameStartInherited(s, meta, phantom){
+// R3 (B1): whose runner each one on base is as he comes out -- his own (this game) or an earlier pitcher's. A runner
+// whose owner isn't known ("Not charted") is left out: nobody to charge.
+function gameLeftOwners(s, sessionId){
+  const o = {};
+  [1, 2, 3].forEach(b => {
+    if(!s.runners || !s.runners[b]) return;
+    const m = s.runnerMeta && s.runnerMeta[b];
+    const who = m && m.i ? m.s : sessionId;
+    if(who) o[b] = who;
+  });
+  return o;
+}
+function gameStartInherited(s, meta, phantom, fromSession, names){
   s.runnerMeta = { 1: null, 2: null, 3: null };
-  [1, 2, 3].forEach(b => { if(s.runners[b]) s.runnerMeta[b] = { u: !!(meta && meta[b] && meta[b].u), i: true }; });
+  // R3 (B3): s = whose runner (the game he came from); the server charges that pitcher if he scores
+  [1, 2, 3].forEach(b => { if(s.runners[b]) s.runnerMeta[b] = { u: !!(meta && meta[b] && meta[b].u), i: true, s: (meta && meta[b] && meta[b].s) || fromSession || null }; });
+  s.relievedSessionId = fromSession || null;
+  s.ownerNames = names || {};
   s.inheritedRunners = [1, 2, 3].filter(b => s.runners[b]).length;
   s.phantomOuts = phantom || 0; s.phantomInning = s.inning;
   s.carriedCount = (s.balls || s.strikes) ? { b: s.balls, s: s.strikes, ab: s.atBatIndex } : null;
@@ -6550,8 +6585,63 @@ function startMidGameQuestion(q){
   return `<div class="start-q-item"><div class="start-q-label">Starting mid-game?</div>${yn}
     <div class="start-q-mid">${inning}${outTray}${runTray}</div>
     <div class="start-q-mid">${step('midBalls', bl, 3, 'Balls')}${step('midStrikes', st, 2, 'Strikes')}</div>
-    <p class="start-q-note">Starts at inning ${inn}, ${outs} out${outs === 1 ? '' : 's'}, ${bl}-${st}, ${run ? 'runners on ' + [[1, '1B'], [2, '2B'], [4, '3B']].filter(([bit]) => run & bit).map(([, l]) => l).join(', ') : 'bases empty'}.</p></div>`;
+    <p class="start-q-note">Starts at inning ${inn}, ${outs} out${outs === 1 ? '' : 's'}, ${bl}-${st}, ${run ? 'runners on ' + [[1, '1B'], [2, '2B'], [4, '3B']].filter(([bit]) => run & bit).map(([, l]) => l).join(', ') : 'bases empty'}.</p>
+    ${run ? midFromQuestion(q) : ''}</div>`;
 }
+// R3 (B5, Joel, Oct 21): with runners on, "Who was pitching?" -- the runners are his, so if they score it goes on his
+// line. Offline it lists this device's own games from the last 6 hours; online it adds the team's games that are still
+// open (not final). "Not charted": nobody to charge.
+const RECENT_GAMES_KEY = 'kb:recentGames', RECENT_GAMES_MS = 6 * 60 * 60 * 1000;
+function recentDeviceGames(){
+  let a = [];
+  try{ a = JSON.parse(localStorage.getItem(RECENT_GAMES_KEY) || '[]'); }catch(e){}
+  return (Array.isArray(a) ? a : []).filter(g => g && Date.now() - g.endedAt < RECENT_GAMES_MS);
+}
+function rememberRecentGame(item){
+  const me = currentPitcher();
+  const a = [{ id: item.id, teamId: item.teamId, pitcherId: item.pitcherId, name: (me && me.name) || 'Pitcher', endedAt: item.endedAt }]
+    .concat(recentDeviceGames().filter(g => g.id !== item.id)).slice(0, 20);
+  try{ localStorage.setItem(RECENT_GAMES_KEY, JSON.stringify(a)); }catch(e){}
+}
+function midFromChoices(){
+  const team = state.currentTeamId, me = state.currentPitcherId, seen = {}, out = [];
+  const nameOf = id => { const r = (state.roster || []).find(x => x.id === id); return r ? r.name : 'Teammate'; };
+  recentDeviceGames().concat(state.midFromServer || []).forEach(g => {
+    if(!g || seen[g.id] || g.teamId !== team || g.pitcherId === me) return;
+    seen[g.id] = 1; out.push({ id: g.id, name: g.name || nameOf(g.pitcherId), endedAt: g.endedAt });
+  });
+  return out.sort((x, y) => y.endedAt - x.endedAt).slice(0, 6);
+}
+async function loadMidFromServer(){
+  state.midFromLoaded = state.currentTeamId;
+  if(!isOnline() || !state.currentTeamId) return;
+  try{
+    const { data, error } = await supabaseClient.from('sessions').select('id, pitcher_id, team_id, ended_at')
+      .eq('team_id', state.currentTeamId).eq('kind', 'game').is('final_at', null).is('deleted_at', null)
+      .gte('ended_at', new Date(Date.now() - RECENT_GAMES_MS).toISOString()).limit(20);
+    if(error || !data) return;
+    state.midFromServer = data.map(r => ({ id: r.id, pitcherId: r.pitcher_id, teamId: r.team_id, endedAt: new Date(r.ended_at).getTime() }));
+    if(state.activeSession && state.activeSession.startQ) render();
+  }catch(e){}
+}
+function midFromQuestion(q){
+  if(state.midFromLoaded !== state.currentTeamId) loadMidFromServer();
+  const list = midFromChoices();
+  state.midFromList = list;
+  const t = ms => new Date(ms).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const tray = segTray(list.map((g, i) => ({ label: `${g.name} · ${t(g.endedAt)}`, selected: q.midFrom === g.id, onclick: `setMidFrom(${i})` }))
+    .concat([{ label: 'Not charted', selected: !q.midFrom || q.midFrom === 'none', onclick: 'setMidFrom(-1)' }]), { label: 'Who was pitching?', cls: 'start-yn start-q-from' });
+  return `<div class="start-q-label start-q-sub">Who was pitching?</div>${tray}
+    <p class="start-q-note">${q.midFrom && q.midFrom !== 'none' ? `If these runners score, the runs go on ${escHtml(q.midFromName || 'that pitcher')}'s line.` : 'If these runners score, the runs aren\'t charged to anyone.'}</p>`;
+}
+window.setMidFrom = async function(i){
+  const g = i >= 0 ? (state.midFromList || [])[i] : null;
+  const q = state.activeSession && state.activeSession.startQ;
+  if(!q) return;
+  q.midFrom = g ? g.id : 'none'; q.midFromName = g ? g.name : null;
+  await storSet(draftKey(), state.activeSession);
+  render();
+};
 function renderStartQuestions(p){
   const s = state.activeSession, q = s.startQ, game = s.kind === 'game';
   const yn = (k, v) => segTray([{ label: 'Yes', selected: !!v, onclick: `setStartQ('${k}', true)` }, { label: 'No', selected: !v, onclick: `setStartQ('${k}', false)` }], { key: 'sq-' + k, label: k, cls: 'start-yn' });
@@ -7797,7 +7887,7 @@ function gameLedger(s, rec, before, o){
     if(!(a.from >= 1 && a.from <= 3)) return;
     movedFrom[a.from] = 1;
     const who = m0[a.from] || { u: false, i: false };
-    const meta = { u: !!(who.u || a.how === 'on_error' || o.allUnearned), i: !!who.i };
+    const meta = { u: !!(who.u || a.how === 'on_error' || o.allUnearned), i: !!who.i, s: who.s || null };   // s: R3 B, whose runner
     if(a.to === 4) scored.push(meta);
     else if(a.to >= 1 && a.to <= 3) next[a.to] = meta;
   });
@@ -7805,8 +7895,10 @@ function gameLedger(s, rec, before, o){
   const bt = o.batterTo !== undefined ? o.batterTo : rec.batterTo;
   // R3 (A3, rule 9.16(g)): a batter who reaches on a play that put out an inherited runner takes that runner's place
   // -- his run would be the previous pitcher's. One batter replaces one runner; his own taint (u) stays his.
-  const replaced = bt >= 1 && bt <= 4 && adv.some(a => a.from >= 1 && a.from <= 3 && a.to === 0 && m0[a.from] && m0[a.from].i);
-  const bm = { u: !!o.batterTaint, i: !!(o.batterInherited || replaced) };
+  const outInh = bt >= 1 && bt <= 4 ? adv.find(a => a.from >= 1 && a.from <= 3 && a.to === 0 && m0[a.from] && m0[a.from].i) : null;
+  // R3 (B3): and whose runner he is -- the put-out runner's owner, or (E3) the pitcher who left the count
+  const bm = { u: !!o.batterTaint, i: !!(o.batterInherited || outInh),
+    s: outInh ? (m0[outInh.from].s || null) : o.batterInherited ? (s.relievedSessionId || null) : null };
   if(bt >= 1 && bt <= 3) next[bt] = bm; else if(bt === 4) scored.push(bm);
   [1, 2, 3].forEach(b => { if(!s.runners[b]) next[b] = null; else if(!next[b]) next[b] = { u: false, i: false }; });
   const runs = rec.runsScored || 0;
@@ -7816,6 +7908,9 @@ function gameLedger(s, rec, before, o){
   const ended = before.outs + phantomNow >= 3;   // the inning should already have been over
   rec.inheritedRuns = counted.filter(x => x.i).length;
   rec.unearnedRuns = counted.filter(x => !x.i && (x.u || ended || o.allUnearned)).length;
+  // R3 (B3): each inherited run with its owner (the game he came from) and whether it's earned for him -- the server
+  // charges these to that pitcher's line (pitches / game_events.charged_runs)
+  rec.chargedRuns = counted.filter(x => x.i).map(x => ({ s: x.s || null, u: !!(x.u || ended || o.allUnearned) }));
   rec.ledgerBefore = before;
   rec.ledgerOpts = o;   // R3 (A2): client only, so an edit can replay this play
   s.runnerMeta = next;
@@ -7830,7 +7925,10 @@ function gameLedgerDrags(s, ev){
   ev.walkDrags.forEach(a => {
     const who = m[a.from] || { u: false, i: false };
     if(a.to >= 1 && a.to <= 3) nm[a.to] = who;
-    else if(a.to === 4){ if(who.i) ev.inheritedRuns = (ev.inheritedRuns || 0) + 1; else if(who.u) ev.unearnedRuns = (ev.unearnedRuns || 0) + 1; }
+    else if(a.to === 4){
+      if(who.i){ ev.inheritedRuns = (ev.inheritedRuns || 0) + 1; ev.chargedRuns = (ev.chargedRuns || []).concat([{ s: who.s || null, u: !!who.u }]); }
+      else if(who.u) ev.unearnedRuns = (ev.unearnedRuns || 0) + 1;
+    }
   });
   s.runnerMeta = nm;
 }
@@ -11224,6 +11322,9 @@ function renderHistoryView(){
       const dateStr = new Date(s.date).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
       const oppLabel = s.opponent ? `vs ${escHtml(s.opponent)} · ${dateStr}` : `Game · ${dateStr}`;
       const stats = gameStats(s.pitches, s.pitchCountAdjust, s.events);
+      stats.r += s.exitRuns || 0; stats.bb += s.exitBb || 0;   // R3 (B6): charged after he left
+      if(stats.er !== null) stats.er += s.exitEr || 0;
+      const lineOpen = gameLineOpen(s);
       const expanded = state.expandedSessionId === s.id;
       const pendingTag = s.pending ? ` <span class="coach-logged-tag pending-tag">Pending sync${s.lastError ? ' · retrying' : ''}</span>` : '';
 
@@ -11243,6 +11344,11 @@ function renderHistoryView(){
         <div class="report-panel">
           <div class="field-label">Email this report</div>
           <p class="report-recipients">Available once this session has synced.</p>
+          <button class="btn btn-primary" disabled>Send report</button>
+        </div>` : (lineOpen && !s.reportPath) ? `
+        <div class="report-panel">
+          <div class="field-label">Email this report</div>
+          <p class="report-recipients">${GAME_LINE_OPEN_TEXT}</p>
           <button class="btn btn-primary" disabled>Send report</button>
         </div>` : `
         <div class="report-panel">
@@ -11280,7 +11386,7 @@ function renderHistoryView(){
       return `
         <div class="session-card">
           <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
-            <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${pendingTag}</div>
+            <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${lineOpen ? ' <span class="coach-logged-tag">Line open</span>' : ''}${pendingTag}</div>
             <div class="session-meta">
               <div class="meta-item"><span class="meta-num mono">${stats.innings}</span><span class="meta-lbl">Innings</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
@@ -12684,10 +12790,15 @@ async function callSendReportFunction(payload){
   return body;
 }
 
+// R3 (B5): a game whose pitcher left runners on stays open until they're out or score (the next pitcher's save, or
+// 6 hours after his); its report waits, so the frozen report has his final runs.
+const GAME_LINE_OPEN_TEXT = 'His line is still open: runners he left on base can still score. The report is ready once they\'re out or home (within 6 hours of the save).';
+function gameLineOpen(s){ return !!s && (s.kind || 'bullpen') === 'game' && !s.pending && !s.tombstone && !s.finalAt; }
 window.sendSessionReport = async function(sessionId){
   const p = currentPitcher();
   const session = state.sessions.find(s => s.id === sessionId);
   if(!session || !p) return;
+  if(gameLineOpen(session) && !session.reportPath){ state.reportStatus = { sessionId, status: 'error', message: GAME_LINE_OPEN_TEXT }; render(); return; }   // R3 (B5)
   const contacts = p.contactEmails || {};
   // R0 item (g), revised after check 8 on staging, extended U4b Phase 2 and
   // its coach-gate follow-up: matches renderHistoryView's own filter -- an
@@ -12733,6 +12844,7 @@ window.viewSessionReport = async function(sessionId){
   if(!session || session.reportPath) return; // already rendered as a real link -- nothing to do
   const p = currentPitcher();
   if(!p) return;
+  if(gameLineOpen(session)){ state.reportStatus = { sessionId, status: 'error', message: GAME_LINE_OPEN_TEXT }; render(); return; }   // R3 (B5)
 
   state.reportStatus = { sessionId, status: 'sending', message: 'Generating report…' };
   render();

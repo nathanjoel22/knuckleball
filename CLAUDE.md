@@ -114,14 +114,28 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
   inherited runs out; the starter's saved game never changes. `sessions.inherited_runners` (IR) and
   `sessions.runners_left` (on base when he came out). Sacrifices (SF / SAC) are derived. Fielders in `fielder` /
   `fielders` ('SS-1B'; the same fielder twice = unassisted, 6U-3).
+- **A pitcher's line stays open for the runners he left (R3 Stage B, Jordan + Joel, Oct 21-22; `plans/live-game-r3-*`).**
+  Pitches lock at save (`sealed_at`); his runs / ER / walks can still grow until `sessions.final_at` (the full lock: set
+  at save if no runner of his own is left on; else by the next pitcher's save once none of his runners is on base; else
+  6 hours after his save, pg_cron `r3-final-lock` -> `r3_finalize_stale()`). Each runner carries its owner (the game he
+  came from: `runnerMeta[b].s`); the hand-off and "Starting mid-game?" -> "Who was pitching?" (this device's games from
+  the last 6 hours, plus the team's open games when online, or "Not charted") set the reliever's `relieved_session_id`.
+  The reliever's rows carry `charged_runs` ([{s, u}] per inherited run) and `charged_prev_session`; his `sync_session`
+  runs `r3_apply_relief` (server only, up the relief chain, capped at the runners each one left plus his charged walk)
+  into the earlier pitchers' `exit_runs` / `exit_er` / `exit_bb`. Linking needs the same team, another pitcher, saved
+  before and within 6 hours, and the caller a coach of the team or that game's own charter; a starter not saved yet ->
+  `relieved_not_saved` (stays queued; after a day it saves unlinked). The H1 lock: `relieved_session_id` / `left_owners`
+  never change; `final_at` / `exit_*` only by the server, never once final. `compute_game_summary` adds `exit_*` and
+  returns `provisional`; a game with an open line has no report yet ("Line open" in History; `send-session-report`
+  refuses with 409 `line_open`); its report says how many of the runners he left scored after he left.
 - **During a game, before saving:** "edit" on any pitch in the log (type, velocity, contact, Hit / Error / FC, fielders,
   earned runs, Move location); anything that changes outs, the count or the runners still needs Back. Changing Hit /
   Error / FC or the contact re-runs the runs from that play to the end of its inning (`gameReplayLedger`; earned runs
   set by hand stay) and re-derives SF / SAC (`gameSacrifice`) -- R3 A2. A batter who reaches on a play that put out an
   inherited runner takes his place (rule 9.16(g), R3 A3).
 - **Database (all on production Oct 21):** migrations `20261019000000_pitch_count_runs`, `20261020000000_live_game_r1`
-  (`pitches.hbp_swing`: unused, no longer written since R3 A; dropped with R3 Stage B), `20261021000000_live_game_r2`,
-  `20261022000000_runners_left`, then R3 Stage A `20261024000000_live_game_r3a` (staging Oct 21), each with a
+  (`pitches.hbp_swing`: dropped by R3 Stage B, Oct 22), `20261021000000_live_game_r2`,
+  `20261022000000_runners_left`, then R3 `20261024000000_live_game_r3a` (production Oct 22) and `20261025000000_live_game_r3b` (production Oct 22), each with a
   down script in `supabase/rollback/` and a test in `supabase/tests/`. `compute_game_summary` returns `pitch_count`,
   `runs` (his), `er`, `ir`, `irs`, `bb_charged_prev`, `runners_left`; a two-strike foul bunt is a K.
 - **Game report:** WP / BK, ER, IR / IRS, SF / SAC in the pitching line; play notation, runner moves and runs in the at-bat
@@ -182,7 +196,7 @@ There are 29 RLS policies (production, Oct 21 2026 after the H1 grace close -- 3
 
 **Change Email (Joel signed off as an auth-flow change, Oct 2 2026).** The address lives ONLY in `auth.users` (no `profiles.email`). The client never calls `supabase.auth.updateUser({ email })`. `request-email-change` (Edge Function, caller's JWT) calls `begin_email_change()` (records the request in hidden profile columns, cancels any outstanding verify link, 1 per 10 minutes), has Supabase GENERATE (not send) the email-change link with the admin client -- its only admin use -- and sends ONE Knuckleball email via Resend to the new address. Landing (`bullpen-tracker.html?email_change=1`) runs `confirm_email_change()`: the login's `auth.users` email must equal the requested address with nothing pending; it sets `email_verified_at` and moves `contact_emails.pitcher` on every profile the login owns. The account stays verified on its old address while a change is pending. `verify_email` links are bound to the address they were sent to (`email_verify_sent_to`). Only `verify_email` and `confirm_email_change` set `email_verified_at`; neither reads `email_confirmed_at` (Amendment 9). Requires, in BOTH projects' Auth settings: "Secure email change" OFF, and the tracker's `?email_change=1` URL in the redirect allow-list. Rollback: `supabase/rollback/20261002070000_email_change_down.sql`.
 
-**Staging report links.** `send-session-report` reads an optional `REPORT_SITE_ORIGIN` secret for the emailed link: staging has `http://192.168.1.68:8000` (Oct 20; the Mac's Wi-Fi address changed from `.15`, set Oct 14, which replaced `http://localhost:8080`; if it changes again, update the secret: the local staging site on Joel's home Wi-Fi, which reads staging storage, so an emailed staging link opens on a phone on that Wi-Fi while the local server runs); production has NONE, so it links to https://knuckleballonline.com. Never set it on production.
+**Staging report links.** `send-session-report` reads an optional `REPORT_SITE_ORIGIN` secret for the emailed link: staging has `http://192.168.1.19:8000` (Oct 22; was `.68` from Oct 20, `.15` from Oct 14, `http://localhost:8080` before; if the Mac's Wi-Fi address changes again, update the secret: the local staging site on Joel's home Wi-Fi, which reads staging storage, so an emailed staging link opens on a phone on that Wi-Fi while the local server runs); production has NONE, so it links to https://knuckleballonline.com. Never set it on production.
 
 **Saved sessions and sync (H1, Joel, Oct 3 2026; absorbs SC2).**
 - **Nothing reaches the server until "End session & save"** (Joel accepts this). In-session edits and Undo are device-only; every session row is saved (`ended_at` set) when it's written.

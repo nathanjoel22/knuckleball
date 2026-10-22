@@ -355,6 +355,11 @@ Deno.serve(async (req) => {
       if (summary && typeof summary === 'object' && 'error' in (summary as Record<string, unknown>)) {
         return new Response(JSON.stringify({ error: 'compute_game_summary: ' + (summary as Record<string, unknown>).error }), { status: 400, headers: corsHeaders })
       }
+      // R3 Stage B: a pitcher who left runners on has an open line until they're out or score (the next pitcher's save,
+      // or 6 hours). A report is frozen, so it waits for his final runs.
+      if (summary && typeof summary === 'object' && (summary as Record<string, unknown>).provisional === true) {
+        return new Response(JSON.stringify({ error: "His line is still open: runners he left on base can still score. The report is ready once they're out or home (within 6 hours of the save).", code: 'line_open' }), { status: 409, headers: corsHeaders })
+      }
 
       // G3 item 2: no-pitch events, read with the CALLER's own client (RLS),
       // never the service-role client and never from the client payload.

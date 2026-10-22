@@ -214,3 +214,22 @@ As the packet lists, plus: a reliever synced before his starter (`relieved_not_s
 6. **B5:** the 6-hour lock is a `pg_cron` job.
 7. **B5:** a starter's report waits (buttons off) until his game is final, at most 6 hours.
 8. **Two migrations:** Stage A (`20261024000000_live_game_r3a`) and Stage B (`20261025000000_live_game_r3b`).
+
+---
+
+## Stage B ship checklist (written Oct 22 2026, when Stage B was ready on staging)
+
+Ready on staging: migration `20261025000000_live_game_r3b`, `send-session-report` v68, the site at v292 (branch `live-game-r3`, already merged with `main`'s v289 / v290). Database tests `live_game_r3a.sql` and `live_game_r3b.sql` pass on staging; app suites 214/214.
+
+**Before (Joel, Stage C):** the phone pass on http://192.168.1.19:8000 -- both sports; a starter who leaves runners on, the reliever with "Continue from where he left off", the runners scoring (the starter's History card: "Line open", then his runs once the reliever saves); "Starting mid-game?" with runners on -> "Who was pitching?"; −K / −B; the editor; No read. Real staging reports for the starter, the reliever and a bullpen (emailed staging links open on the Mac's `.19` again).
+
+**Production, in this order** (operator Joel, `git config user.email` = joelhauserman@gmail.com):
+1. Backup: `supabase db dump --linked -s public` and `--data-only` to `~/knuckleball-backups/<stamp>-{schema,data}.sql` (Docker running). Note the session and pitch counts and the policy count (29).
+2. Read-only checks: production's `sync_session` is Stage A's (md5 of `pg_get_functiondef` = `8df74e48…`, same as staging had before Stage B); `pg_cron` present (`a1-account-deletion` job listed); no session with `ended_at` set and `final_at` already present (the column doesn't exist yet).
+3. `supabase db push --project-ref fkgccjhuimkkbupbanxp --dry-run` lists only `20261025000000_live_game_r3b`; then apply.
+4. Verify: 29 policies; `r3-final-lock` in `cron.job`; every saved session has `final_at` (0 open); `pitches.hbp_swing` gone; counts unchanged.
+5. Site: PR `live-game-r3` -> `main`, admin merge; live `sw.js` shows the branch's version (v292 or later). The site must follow the migration: History now selects `final_at` / `exit_*`.
+6. `supabase functions deploy send-session-report --project-ref fkgccjhuimkkbupbanxp` (after the migration: it reads `provisional`).
+7. Regenerate `supabase/schema/schema.sql` from production; STATUS entry; CLAUDE.md "Database" line (Stage B on production).
+
+**Rollback:** `supabase/rollback/20261025000000_live_game_r3b_down.sql` (tested on staging inside a rolled-back transaction); the site by `git revert` of the merge; the function by redeploying `main`'s previous copy. Charged-after stats written before a rollback are lost with the columns.

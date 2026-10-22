@@ -27,7 +27,7 @@ begin
     '[]'::jsonb);
   out := out || format(' | old app -3: %s, saved adjust=%s, pitches=%s, hbp_swing=%s', r ->> 'status',
     (select pitch_count_adjust from public.sessions where id = G), r ->> 'pitches',
-    coalesce((select hbp_swing::text from public.pitches where id = X), 'NULL'));
+    coalesce((select to_jsonb(px) ->> 'hbp_swing' from public.pitches px where px.id = X), 'NULL'));   -- NULL also once Stage B drops the column
   -- 3. +K / +B still count
   r := public.sync_session(
     jsonb_build_object('id', G2, 'pitcher_id', P, 'team_id', T, 'logged_by', P, 'started_at', now() - interval '30 minutes',

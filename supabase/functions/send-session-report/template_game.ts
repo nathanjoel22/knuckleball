@@ -43,6 +43,10 @@ export interface GameSummary {
   irs?: number | null
   bb_charged_prev?: number | null
   runners_left?: number | null   // Oct 21: runners on base when he came out; null = games saved before
+  exit_runs?: number | null      // R3 Stage B: charged to him after he left (his runners who scored); in runs / er / bb
+  exit_er?: number | null
+  exit_bb?: number | null
+  provisional?: boolean
 }
 const pitchCount = (s: GameSummary) => s.pitch_count ?? s.pitches
 
@@ -172,7 +176,7 @@ function renderPitchingLine(p: GameReportPayload): string {
         <td>${s.hbp}</td><td>${wp}</td><td>${bk}</td><td>${s.errors}</td><td>${s.outs_in_play}</td>${s.runs != null ? `<td>${s.runs}</td>` : ''}${hasEr ? `<td>${s.er}</td>` : ''}${hasIr ? `<td>${s.ir}/${s.irs ?? 0}</td>` : ''}${hasSac ? `<td>${sf}/${sac}</td>` : ''}
       </tr></tbody>
     </table></div>
-    ${typeof s.runners_left === 'number' && s.runners_left > 0 ? `<p class="caption">Left ${s.runners_left} runner${s.runners_left === 1 ? '' : 's'} on base when he came out.</p>` : ''}
+    ${typeof s.runners_left === 'number' && s.runners_left > 0 ? `<p class="caption">Left ${s.runners_left} runner${s.runners_left === 1 ? '' : 's'} on base when he came out${(s.exit_runs ?? 0) > 0 ? `; ${s.exit_runs} of them scored after he left and ${(s.exit_runs ?? 0) === 1 ? 'is' : 'are'} in his R${hasEr ? ` (${s.exit_er ?? 0} earned)` : ''}` : ''}.</p>` : ''}
     ${hasIr && (s.irs ?? 0) > 0 ? `<p class="caption">${s.irs} of the ${s.ir} runner${s.ir === 1 ? '' : 's'} he inherited scored — charged to the previous pitcher, not in his R or ER.</p>` : ''}
     ${posRows ? `
     <div class="table-scroll" style="margin-top:12px;"><table class="data-table">

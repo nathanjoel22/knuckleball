@@ -168,8 +168,11 @@
   .sess-num{ font-size:14px; color:var(--on-dark-dim); flex:none; }
   .sess-offline{ flex:none; width:9px; height:9px; border-radius:var(--radius-circle); background:var(--accent-bright); }   /* offline: a dot, so the name keeps its room */
   .sess-more{ font-size:24px; }
-  .dots9{ display:grid; grid-template-columns:repeat(3, 4px); gap:3px; /* geometry: the 9-dot icon */ }
-  .dots9 i{ width:4px; height:4px; border-radius:var(--radius-circle); background:var(--on-dark); }
+  .btn-icon.on-dark.sess-more{ background:transparent; }   /* Joel, Oct 22: the mark sits on the header's own dark, like the names beside it */
+  /* Joel, Oct 22: the session menu button is the main mark, "The spot" (Jordan + Joel, Oct 21; index.html's kb-mark):
+     the slanted strike zone, cells in the header's white like the names beside it, the low-away pocket lit in the
+     sport's accent (gold; rally pink) as in the logo, on the header's own dark (no lighter square). */
+  .kb-mark-btn{ width:24px; height:24px; color:var(--on-dark); display:block; }
   .ph-layout .controls-panel.ph-controls{ padding:var(--s-6); gap:var(--s-8); border:0; box-shadow:none; background:transparent; }
   .ph-layout{ gap:var(--s-12) !important; }
   /* D2 Stage C: the scoreboard -- Big Shoulders numbers over small caps labels, cells split by a hairline */
@@ -1684,6 +1687,12 @@
   .g5-velo-row.gg-velo .velo-arrow:last-child{ right:0; }
   .g5-reset{ flex:0 0 calc((100% - 12px) / 5); padding:0 4px; /* geometry: the Live Game field overlay math */ }
   .g5-nextpitch{ flex:1; }
+  /* Joel, Oct 22: "No read" sits alone over the chart's top-right two cells -- full cells (a real tap target) in the brand's
+     dark, far from the speeds and Next pitch so a stray thumb doesn't hit it. */
+  .g5-noread{ position:absolute; z-index:6; top:3px; right:3px; width:calc((100% - 18px) / 5 * 2 + 3px); height:calc((100% - 18px) / 5);   /* two cells (Joel, Oct 22) */
+    min-height:0; padding:0 2px; border:0; border-radius:var(--radius-cell); background:var(--brand-mid); color:var(--on-dark);
+    font-size:13px; font-weight:700; line-height:1.15; white-space:normal; /* geometry: the Live Game field overlay math */ }
+  .g5-noread:focus-visible{ outline:3px solid var(--btn-accent); outline-offset:2px; }
   /* ---------- G1b-r3: in-grid play entry (docs/game-grid-reference.html) ---------- */
   .gg-field{
     --gg-fence:#B9D1C4; --gg-grass:#C7DCBD;   /* Joel, Oct 1: a shade darker (field art matches) */ --gg-dirt:#C9A97C;
@@ -6589,6 +6598,11 @@ function renderStartQuestions(p){
 // never saved, an accepted small loss. Still fire-and-forget from the
 // onclick attributes that call them (none of those await), same as every
 // other async handler in this file.
+// The main mark, drawn as index.html's kb-mark (keep the two the same): cells in the header's white, the pocket lit.
+const KB_MARK_SVG = `<svg class="kb-mark-btn" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><g transform="translate(50 50) skewX(-14) translate(-38 -38)">`
+  + [[0, 0], [27, 0], [54, 0], [0, 27], [27, 27], [54, 27], [0, 54], [27, 54], [54, 54]]
+    .map(([x, y], i) => `<rect x="${x}" y="${y}" width="22" height="22" rx="2" fill="${i === 8 ? 'var(--accent)' : 'currentColor'}"/>`).join('')
+  + `</g></svg>`;
 window.handleGameZoneTap = async function(row, col){
   // Release 2 (F5): "Move location" in the at-bat editor -- this tap is that pitch's new spot, not a new pitch
   if(state.editGameLoc !== null && state.editGameLoc !== undefined){
@@ -9642,6 +9656,12 @@ function g5FinishPitch(s, pushed, extra, atBatBefore){
   if(ggRadarOn()){ s.gameVeloIdx = s.pitches.length - 1; }
   else { s.gameVeloIdx = null; s.gameDot = null; }
 }
+// Joel, Oct 22: "No read" -- this pitch has no velocity, even if the bar was touched by accident; then on to the next.
+window.g5NoRead = async function(){
+  const t = gameVeloTarget();
+  if(t) t.obj.velo = null;
+  return g5NextPitch();
+};
 window.g5NextPitch = async function(){
   const s = state.activeSession;
   s.gameVeloIdx = null; s.gameDot = null;
@@ -10006,7 +10026,8 @@ function g5Card(face, flip, chartHtml){
 // row, Reset + Next pitch on the last row -- so nothing is added below the chart.
 function g5VeloRows(){
   return `<div class="g5-velo-row gg-velo">${renderGameVeloStrip()}</div>
-    <div class="g5-next-row"><button type="button" class="btn btn-primary g5-nextpitch next-pitch" onclick="g5NextPitch()">Next pitch ›</button></div>`;   // Joel, Oct 21: no Reset
+    <div class="g5-next-row"><button type="button" class="btn btn-primary g5-nextpitch next-pitch" onclick="g5NextPitch()">Next pitch ›</button></div>
+    <button type="button" class="btn g5-noread" onclick="g5NoRead()" aria-label="No read: no velocity for this pitch">No read</button>`;   // Joel, Oct 21: no Reset; Oct 22: No read, top-right cell
 }
 // Joel, Oct 12: what happened, as big letters (no words; screen readers still hear each word), under the chart: K swinging, a backwards K
 // looking (the scorebook's called third strike), B ball, F foul (always a foul tip, Oct 19), IP in play.
@@ -10159,7 +10180,8 @@ function phoneLgPrompt(s){
   if(GAME_ADJUST[state.gameAdjust]) return 'Adjust ' + GAME_ADJUST[state.gameAdjust].label;
   const step = g5Step();
   if(step === 'what') return 'Tap Pitch Result';
-  if(step) return '';   // velocity, the extra-inning question, the field
+  if(step === 'velo') return 'Record Velocity';   // Joel, Oct 22
+  if(step) return '';   // the extra-inning question, the field
   return (s.intent && !s.gameTarget) ? 'Tap Pitch Intent' : 'Tap Pitch Outcome';
 }
 function g5Surface(pitches, chartingPerspective, currentBatterSide){
@@ -10227,6 +10249,7 @@ function renderGameSessionView(p){
   // square chart sit the extra-inning question or velocity + Next pitch (g5BelowChart).
   const g5Now = g5Step();
   const zoneCaption = GAME_ADJUST[state.gameAdjust] ? 'Adjust ' + GAME_ADJUST[state.gameAdjust].label : (s.g5 && g5Now) ? (g5NeedsBatter(s.g5) ? 'Put the batter on base (tap a base, or drag from home)' : g5Caption(g5Now))
+    : g5Now === 'velo' ? 'Record Velocity'   // Joel, Oct 22: while the speeds are up
     : s.intent ? (s.gameTarget ? 'Now tap where the pitch went' : 'Tap where the pitch is called') : `Tap where the pitch landed`;
   const g5Below = g5OnDiamond() ? g5HoeRow() + g5FieldActions() : g5BelowChart(g5Now);   // Oct 19: both sides put their buttons under the prompt
 
@@ -10381,7 +10404,7 @@ function renderSessionHeader(p){
     <button type="button" class="btn btn-tertiary on-dark sess-back" onclick="sessionLeave()" aria-label="Back to the roster (this session is kept)">‹ <span class="sess-team">${escHtml(team ? team.name : '')}</span></button>
     <span class="sess-who">${renderHeadshot(p)}<span class="sess-name">${escHtml(last)}</span>${(num === null || num === undefined) ? '' : `<span class="sess-num">#${escHtml(String(num))}</span>`}</span>
     ${isOnline() ? '' : '<span class="sess-offline" title="Offline -- saved on this device" aria-label="Offline, saved on this device"></span>'}
-    <button type="button" class="btn btn-icon on-dark sess-more" onclick="openSessionSheet()" aria-label="Session options"><span class="dots9" aria-hidden="true">${'<i></i>'.repeat(9)}</span></button>
+    <button type="button" class="btn btn-icon on-dark sess-more" onclick="openSessionSheet()" aria-label="Session options">${KB_MARK_SVG}</button>
   </div>`;
 }
 // ‹ team (Joel, Oct 1): never the session sheet -- that box is only behind

@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-22 · no packet (Live Game: No read, "Record Velocity"; the session menu is the mark) · **production**
+- **Shipped by:** Joel ("ship these UI changes to production now"); operator `Nathan <joelhauserman@gmail.com>`. Branch `ui-noread-mark` from `main` (only the UI half of `live-game-r3`'s commits 9a34cdc..bb194c3, applied to `bullpen-tracker.html`; R3 Stage B stays on its branch). **Cache:** v289 (above every version `live-game-r3` used). Frontend only; no database or function change.
+- **Live:** in a Live Game's velocity step, "No read" over the chart's top-right two cells (brand mid green, white text) clears any speed and moves on; Next pitch spans the full last row; the prompt says "Record Velocity" while the speeds are up (phones too). An untouched bar still saves no reading. The phone session menu button is the main mark ("The spot"): white cells like the names on that line, the bottom-right pocket gold (rally pink in softball), no lighter square.
+- **Checks (this build, local, staging config):** No read 11/11 at 390 / 820 / 1180; the mark 6/6 (softball pocket rally pink checked separately); r1 47, r2 55, r3 20, outadv 8, r4 18, r5 5, glitchfix 5, fc65 8, lgr3 27 -- all pass.
+- **Open:** Joel's phone check. While the speeds are up, the two corner cells under No read can't be tapped as the next pitch's spot (No read or Next pitch first).
+
 ## 2026-10-22 · Live Game R3, Stage A · **production**
 - **Shipped by:** Joel ("ship stage A to production first, then build R3 Stage B"); operator `Nathan <joelhauserman@gmail.com>`. Branch `live-game-r3` → `main` (admin merge; also carries the R3 packet and preconditions). **Cache:** v282.
 - **Checked first:** production's `sync_session` identical to staging's pre-R3 copy (md5 `d85a1373…`), the old CHECK (-999..999), 0 negative `pitch_count_adjust`, 29 policies; `main` had nothing the branch lacked; the branch's committed config points at production.

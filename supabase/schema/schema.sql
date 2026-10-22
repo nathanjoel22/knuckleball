@@ -605,10 +605,13 @@ declare
   v_adjust smallint;
   v_inherited smallint;
   v_left smallint;
+  v_final timestamptz;
+  v_xr smallint; v_xer smallint; v_xbb smallint;
   v_result jsonb;
 begin
-  select kind, game_final_inning, game_outs_recorded, pitch_count_adjust, inherited_runners, runners_left
-    into v_kind, v_final_inning, v_outs_recorded, v_adjust, v_inherited, v_left
+  select kind, game_final_inning, game_outs_recorded, pitch_count_adjust, inherited_runners, runners_left,
+         final_at, exit_runs, exit_er, exit_bb
+    into v_kind, v_final_inning, v_outs_recorded, v_adjust, v_inherited, v_left, v_final, v_xr, v_xer, v_xbb
     from public.sessions
    where id = p_session_id;
 
@@ -704,9 +707,12 @@ begin
     'pitches', pitches,
     'pitch_count', greatest(0, pitches + coalesce(v_adjust, 0)),   -- Oct 19: the pitch count with + / - (the rates still use pitches)
     -- Oct 21: runs charged to this pitcher (inherited runners who scored are the previous pitcher's)
-    'runs', case when runs.pr is null and runs.er is null then null else coalesce(runs.pr, 0) + coalesce(runs.er, 0) - runs.inh end,
-    'er', case when runs.pu is null and runs.eu is null then null
-               else coalesce(runs.pr, 0) + coalesce(runs.er, 0) - runs.inh - coalesce(runs.pu, 0) - coalesce(runs.eu, 0) end,
+    -- R3 Stage B: plus the runs charged to him after he left (his runners who scored off the next pitcher)
+    'runs', case when runs.pr is null and runs.er is null and v_xr is null then null else coalesce(runs.pr, 0) + coalesce(runs.er, 0) - runs.inh + coalesce(v_xr, 0) end,
+    'er', case when runs.pu is null and runs.eu is null and v_xer is null then null
+               else coalesce(runs.pr, 0) + coalesce(runs.er, 0) - runs.inh - coalesce(runs.pu, 0) - coalesce(runs.eu, 0) + coalesce(v_xer, 0) end,
+    'exit_runs', v_xr, 'exit_er', v_xer, 'exit_bb', v_xbb,
+    'provisional', v_final is null,   -- his line can still change (runners he left on); reports wait for final
     'ir', v_inherited,
     'irs', case when v_inherited is null then null else runs.inh end,
     'bb_charged_prev', bb_prev + ev_bb_prev,
@@ -718,7 +724,7 @@ begin
     'in_zone_pct', case when pitches > 0 then round(100.0 * in_zone / pitches) else 0 end,
     'first_pitch_pitches', fp_pitches,
     'first_pitch_strike_pct', case when fp_pitches > 0 then round(100.0 * fp_strikes / fp_pitches) else null end,
-    'k', k + ev_k, 'bb', bb + ev_bb, 'h', h, 'xbh', xbh,
+    'k', k + ev_k, 'bb', bb + ev_bb + coalesce(v_xbb, 0), 'h', h, 'xbh', xbh,
     'outs_in_play', outs_in_play, 'errors', errors, 'hbp', hbp,
     'batters_faced', bf.batters_faced,
     'outs_recorded', coalesce(v_outs_recorded, regular_k_outs + ev_k + outs_in_play + sac_outs + dropped_third_outs),
@@ -1987,6 +1993,83 @@ $$;
 ALTER FUNCTION "public"."profiles_s4_cap"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."r3_apply_relief"("p_relief" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  r public.sessions%rowtype;
+  o public.sessions%rowtype;
+  cur uuid;
+  depth int := 0;
+  v_runs int; v_u int; v_bb int; v_room int;
+  v_out jsonb := '[]'::jsonb;
+begin
+  select * into r from public.sessions where id = p_relief;
+  if not found or r.relieved_session_id is null then
+    return v_out;
+  end if;
+  cur := r.relieved_session_id;
+  while cur is not null and depth < 10 loop
+    depth := depth + 1;
+    select * into o from public.sessions where id = cur for update;
+    exit when not found;
+    if o.final_at is null and o.kind = 'game' and o.team_id = r.team_id and o.id <> r.id then
+      select count(*), count(*) filter (where coalesce((x ->> 'u')::boolean, false))
+        into v_runs, v_u
+        from (select jsonb_array_elements(p.charged_runs) as x from public.pitches p
+               where p.session_id = r.id and jsonb_typeof(p.charged_runs) = 'array'
+              union all
+              select jsonb_array_elements(e.charged_runs) from public.game_events e
+               where e.session_id = r.id and jsonb_typeof(e.charged_runs) = 'array') q
+       where q.x ->> 's' = o.id::text;
+      v_bb := 0;
+      if o.id = r.relieved_session_id then   -- only the pitcher he took over from left a count behind
+        v_bb := least(1, (select count(*) from public.pitches where session_id = r.id and charged_prev and charged_prev_session = o.id)
+                       + (select count(*) from public.game_events where session_id = r.id and charged_prev and charged_prev_session = o.id));
+      end if;
+      v_room := greatest(0, coalesce(o.runners_left, 0) + coalesce(o.exit_bb, 0) + v_bb - coalesce(o.exit_runs, 0));
+      v_runs := least(v_runs, v_room);
+      v_u := least(v_u, v_runs);
+      if v_runs > 0 or v_bb > 0 then
+        update public.sessions
+           set exit_runs = coalesce(exit_runs, 0) + v_runs,
+               exit_er   = coalesce(exit_er, 0) + v_runs - v_u,
+               exit_bb   = coalesce(exit_bb, 0) + v_bb
+         where id = o.id;
+      end if;
+      if not exists (select 1 from jsonb_each_text(coalesce(r.left_owners, '{}'::jsonb)) x where x.value = o.id::text) then
+        update public.sessions set final_at = now() where id = o.id;
+      end if;
+      v_out := v_out || jsonb_build_object('session', o.id, 'runs', v_runs, 'unearned', v_u, 'bb', v_bb);
+    end if;
+    cur := o.relieved_session_id;
+  end loop;
+  return v_out;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."r3_apply_relief"("p_relief" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."r3_finalize_stale"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare n integer;
+begin
+  update public.sessions set final_at = now()
+   where final_at is null and ended_at is not null and coalesce(sealed_at, ended_at) < now() - interval '6 hours';
+  get diagnostics n = row_count;
+  return n;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."r3_finalize_stale"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."rate_limit_refusal"("p_key" "text", "p_retry_at" timestamp with time zone) RETURNS "jsonb"
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -2610,11 +2693,11 @@ begin
   end if;
   if (new.id, v_pitcher, new.team_id, v_logged, new.started_at, new.created_at, new.kind, new.sport,
       new.charting_perspective, new.opponent, new.game_final_inning, new.game_outs_recorded, new.ra_on, new.pitch_count_adjust,
-      new.inherited_runners, new.runners_left)
+      new.inherited_runners, new.runners_left, new.relieved_session_id, new.left_owners)
      is distinct from
      (old.id, old.pitcher_id, old.team_id, old.logged_by, old.started_at, old.created_at, old.kind, old.sport,
       old.charting_perspective, old.opponent, old.game_final_inning, old.game_outs_recorded, old.ra_on, old.pitch_count_adjust,
-      old.inherited_runners, old.runners_left) then
+      old.inherited_runners, old.runners_left, old.relieved_session_id, old.left_owners) then
     raise exception 'session_saved_locked' using detail = 'Who and what a saved session belongs to can''t change.';
   end if;
   if old.sealed_at is not null and new.sealed_at is distinct from old.sealed_at then
@@ -2626,6 +2709,16 @@ begin
      and (new.deleted_at, new.deleted_by, new.deleted_by_role, new.deleted_by_name, new.pitch_count)
          is distinct from (old.deleted_at, old.deleted_by, old.deleted_by_role, old.deleted_by_name, old.pitch_count) then
     raise exception 'session_saved_locked' using detail = 'Only delete_session() can delete a session.';
+  end if;
+  -- R3 Stage B: the full lock and the stats charged after he left are written only by the server's own functions
+  -- (sync_session's relief step, the 6-hour job, the backfill), never by an API caller, and never again once final.
+  if (new.final_at, new.exit_runs, new.exit_er, new.exit_bb) is distinct from (old.final_at, old.exit_runs, old.exit_er, old.exit_bb) then
+    if v_api then
+      raise exception 'session_saved_locked' using detail = 'Only the server sets a game''s final line.';
+    end if;
+    if old.final_at is not null then
+      raise exception 'session_saved_locked' using detail = 'This game''s line is final.';
+    end if;
   end if;
   return new;   -- report_path / report_generated_at, and sealing an unsealed session, stay writable
 end;
@@ -2747,6 +2840,11 @@ declare
   v_status   text := 'saved';
   v_np       int := 0;
   v_ne       int := 0;
+  v_kind     text;
+  v_rel      uuid;          -- R3 Stage B: the game this one relieved (validated below)
+  v_owners   jsonb;         -- whose runner each one left on base was
+  v_owner    public.sessions%rowtype;
+  v_link     text := null;
 begin
   if auth.uid() is null then
     return jsonb_build_object('ok', false, 'error', 'not_authenticated');
@@ -2756,6 +2854,12 @@ begin
     v_pitcher := (p_session ->> 'pitcher_id')::uuid;
     v_team    := (p_session ->> 'team_id')::uuid;
     v_logged  := (p_session ->> 'logged_by')::uuid;
+    v_rel     := nullif(p_session ->> 'relieved_session_id', '')::uuid;
+    v_owners  := case when jsonb_typeof(p_session -> 'left_owners') = 'object' then p_session -> 'left_owners' end;
+    if v_owners is not null then
+      perform (x.value)::uuid from jsonb_each_text(v_owners) x;   -- every owner a session id
+      if exists (select 1 from jsonb_object_keys(v_owners) k where k not in ('1', '2', '3')) then raise exception 'bad base'; end if;
+    end if;
   exception when others then
     return jsonb_build_object('ok', false, 'error', 'invalid_session');
   end;
@@ -2783,9 +2887,32 @@ begin
     if not (public.is_my_profile(v_pitcher) or public.is_team_coach(v_team)) or not public.is_my_profile(v_logged) then
       return jsonb_build_object('ok', false, 'error', 'not_entitled');
     end if;
+    v_kind := coalesce(nullif(p_session ->> 'kind', ''), 'bullpen');
+    if v_kind <> 'game' then v_rel := null; v_owners := null; end if;
+    -- R3 Stage B: a relief game names the game it relieved. Linked only when it's this team's game, another pitcher's,
+    -- saved before this one started and within 6 hours of it, and the caller is a coach of the team or charted that
+    -- game himself (a pitcher charting himself can't add runs to a teammate's line). Not saved yet: wait in the
+    -- outbox (retried) for a day, then save unlinked -- nothing is ever discarded.
+    if v_rel is not null then
+      select * into v_owner from public.sessions where id = v_rel;
+      if not found then
+        if (p_session ->> 'ended_at')::timestamptz > now() - interval '24 hours' then
+          return jsonb_build_object('ok', false, 'error', 'relieved_not_saved');
+        end if;
+        v_rel := null; v_link := 'not_found';
+      elsif not (v_owner.kind = 'game' and v_owner.team_id = v_team and v_owner.pitcher_id is distinct from v_pitcher
+                 and v_owner.deleted_at is null and v_owner.ended_at is not null
+                 and v_owner.ended_at <= (p_session ->> 'started_at')::timestamptz + interval '5 minutes'
+                 and (p_session ->> 'started_at')::timestamptz - v_owner.ended_at <= interval '6 hours'
+                 and (public.is_team_coach(v_team) or public.is_my_profile(v_owner.logged_by))) then
+        v_rel := null; v_link := 'refused';
+      else
+        v_link := 'linked';
+      end if;
+    end if;
     insert into public.sessions (id, pitcher_id, team_id, logged_by, started_at, ended_at, charting_perspective,
                                  kind, opponent, game_final_inning, game_outs_recorded, ra_on, pitch_count_adjust,
-                                 inherited_runners, runners_left)
+                                 inherited_runners, runners_left, relieved_session_id, left_owners, final_at)
     values (v_id, v_pitcher, v_team, v_logged,
             (p_session ->> 'started_at')::timestamptz, (p_session ->> 'ended_at')::timestamptz,
             coalesce(nullif(p_session ->> 'charting_perspective', ''), 'behind_catcher'),
@@ -2799,7 +2926,11 @@ begin
             case when coalesce(nullif(p_session ->> 'kind', ''), 'bullpen') = 'game'
                  then (p_session ->> 'inherited_runners')::smallint end,   -- Oct 21: runners on when a reliever started
             case when coalesce(nullif(p_session ->> 'kind', ''), 'bullpen') = 'game'
-                 then (p_session ->> 'runners_left')::smallint end);   -- Oct 22: runners on base when he came out
+                 then (p_session ->> 'runners_left')::smallint end,   -- Oct 22: runners on base when he came out
+            v_rel, v_owners,   -- R3 Stage B
+            -- final now unless he left a runner of his own on base (then the next pitcher's save, or 6 hours, decides)
+            case when exists (select 1 from jsonb_each_text(coalesce(v_owners, '{}'::jsonb)) x where x.value = v_id::text)
+                 then null else now() end);
   end if;
 
   insert into public.pitches (id, session_id, type, velo, ts, target_row, target_col, actual_row, actual_col,
@@ -2807,7 +2938,7 @@ begin
          hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, bb_type,
          bb_x, bb_y, fielders, runners_before, batter_to, runner_advances, outs_on_play, runs_scored, sacrifice,
          bb_from_position, time_to_plate, spray_box, runners_after, spray_field, accuracy_hit_kind,
-         unearned_runs, inherited_runs, charged_prev)
+         unearned_runs, inherited_runs, charged_prev, charged_runs, charged_prev_session)
   select r.id, v_id, r.type, r.velo, coalesce(r.ts, now()), r.target_row, r.target_col,
          coalesce(r.actual_row, 0), coalesce(r.actual_col, 0),
          r.accuracy_mode, r.batter_side, r.in_accuracy_zone, r.accuracy_zone_cells,
@@ -2816,7 +2947,8 @@ begin
          r.bb_type, r.bb_x, r.bb_y, r.fielders, r.runners_before, r.batter_to, r.runner_advances, r.outs_on_play,
          r.runs_scored, r.sacrifice, r.bb_from_position, r.time_to_plate, r.spray_box, r.runners_after, r.spray_field,
          r.accuracy_hit_kind,
-         r.unearned_runs, r.inherited_runs, r.charged_prev   -- Oct 21
+         r.unearned_runs, r.inherited_runs, r.charged_prev,   -- Oct 21
+         case when jsonb_typeof(r.charged_runs) = 'array' then r.charged_runs end, r.charged_prev_session   -- R3 Stage B
     from jsonb_populate_recordset(null::public.pitches, coalesce(p_pitches, '[]'::jsonb)) r
    where r.id is not null
   on conflict (id) do nothing;
@@ -2824,19 +2956,24 @@ begin
 
   insert into public.game_events (id, session_id, at_bat_index, after_pitch_id, event_type, runners_before,
          runner_advances, outs_on_play, runs_scored, seq, inning_before, balls_before, strikes_before, outs_before,
-         unearned_runs, inherited_runs, charged_prev)
+         unearned_runs, inherited_runs, charged_prev, charged_runs, charged_prev_session)
   select e.id, v_id, e.at_bat_index,
          case when e.after_pitch_id in (select p.id from public.pitches p where p.session_id = v_id) then e.after_pitch_id end,
          e.event_type, e.runners_before, e.runner_advances, e.outs_on_play,
          e.runs_scored, e.seq, e.inning_before, e.balls_before, e.strikes_before, e.outs_before,
-         e.unearned_runs, e.inherited_runs, e.charged_prev   -- Oct 21
+         e.unearned_runs, e.inherited_runs, e.charged_prev,   -- Oct 21
+         case when jsonb_typeof(e.charged_runs) = 'array' then e.charged_runs end, e.charged_prev_session   -- R3 Stage B
     from jsonb_populate_recordset(null::public.game_events, coalesce(p_events, '[]'::jsonb)) e
    where e.id is not null
   on conflict (id) do nothing;
   get diagnostics v_ne = row_count;
 
   update public.sessions set sealed_at = now() where id = v_id;
-  return jsonb_build_object('ok', true, 'status', v_status, 'pitches', v_np, 'events', v_ne);
+  if v_link = 'linked' then
+    perform public.r3_apply_relief(v_id);   -- R3 Stage B: charge the pitchers whose runners scored, same transaction
+  end if;
+  return jsonb_build_object('ok', true, 'status', v_status, 'pitches', v_np, 'events', v_ne)
+         || case when v_link is not null then jsonb_build_object('relief', v_link) else '{}'::jsonb end;
 end;
 $$;
 
@@ -2973,9 +3110,12 @@ CREATE TABLE IF NOT EXISTS "public"."game_events" (
     "unearned_runs" smallint,
     "inherited_runs" smallint,
     "charged_prev" boolean,
+    "charged_runs" "jsonb",
+    "charged_prev_session" "uuid",
     CONSTRAINT "game_events_event_type_check" CHECK (("event_type" = ANY (ARRAY['stolen_base'::"text", 'caught_stealing'::"text", 'pickoff'::"text", 'wild_pitch'::"text", 'passed_ball'::"text", 'balk'::"text", 'other'::"text", 'intentional_walk'::"text", 'auto_ball'::"text", 'auto_strike'::"text", 'illegal_pitch'::"text", 'tiebreak_runner'::"text"]))),
     CONSTRAINT "game_events_outs_on_play_check" CHECK ((("outs_on_play" >= 0) AND ("outs_on_play" <= 3))),
     CONSTRAINT "game_events_r2_runs_check" CHECK (((("unearned_runs" IS NULL) OR (("unearned_runs" >= 0) AND ("unearned_runs" <= 4))) AND (("inherited_runs" IS NULL) OR (("inherited_runs" >= 0) AND ("inherited_runs" <= 4))))),
+    CONSTRAINT "game_events_r3_charged_check" CHECK ((("charged_runs" IS NULL) OR ("jsonb_typeof"("charged_runs") = 'array'::"text"))),
     CONSTRAINT "game_events_runner_advances_check" CHECK ((("runner_advances" IS NULL) OR ("jsonb_typeof"("runner_advances") = 'array'::"text"))),
     CONSTRAINT "game_events_runners_before_check" CHECK ((("runners_before" >= 0) AND ("runners_before" <= 7))),
     CONSTRAINT "game_events_runs_scored_check" CHECK ((("runs_scored" >= 0) AND ("runs_scored" <= 4)))
@@ -3094,10 +3234,11 @@ CREATE TABLE IF NOT EXISTS "public"."pitches" (
     "runners_after" smallint,
     "spray_field" "text",
     "accuracy_hit_kind" "text",
-    "hbp_swing" boolean,
     "unearned_runs" smallint,
     "inherited_runs" smallint,
     "charged_prev" boolean,
+    "charged_runs" "jsonb",
+    "charged_prev_session" "uuid",
     CONSTRAINT "pitches_accuracy_hit_kind_check" CHECK ((("accuracy_hit_kind" IS NULL) OR ("accuracy_hit_kind" = ANY (ARRAY['exact'::"text", 'ra'::"text", 'miss'::"text"])))),
     CONSTRAINT "pitches_accuracy_mode_check" CHECK ((("accuracy_mode" IS NULL) OR ("accuracy_mode" = ANY (ARRAY['ring'::"text", 'nothingUp'::"text", 'nothingLow'::"text", 'nothingAway'::"text", 'nothingInside'::"text"])))),
     CONSTRAINT "pitches_batter_side_check" CHECK ((("batter_side" IS NULL) OR ("batter_side" = ANY (ARRAY['R'::"text", 'L'::"text"])))),
@@ -3108,12 +3249,12 @@ CREATE TABLE IF NOT EXISTS "public"."pitches" (
     CONSTRAINT "pitches_g1b_fields_check" CHECK (((("kind" = 'bullpen'::"text") AND ("bb_type" IS NULL) AND ("bb_x" IS NULL) AND ("bb_y" IS NULL) AND ("fielders" IS NULL) AND ("runners_before" IS NULL) AND ("batter_to" IS NULL) AND ("runner_advances" IS NULL) AND ("outs_on_play" IS NULL) AND ("runs_scored" IS NULL) AND ("sacrifice" IS NULL) AND ("bb_from_position" IS NULL)) OR ("kind" = 'game'::"text"))),
     CONSTRAINT "pitches_g5_fields_check" CHECK ((("kind" = 'game'::"text") OR (("spray_box" IS NULL) AND ("runners_after" IS NULL)))),
     CONSTRAINT "pitches_g5_spray_field_game_check" CHECK ((("kind" = 'game'::"text") OR ("spray_field" IS NULL))),
-    CONSTRAINT "pitches_hbp_swing_check" CHECK ((("hbp_swing" IS NULL) OR (("kind" = 'game'::"text") AND ("result" = 'strike_swinging'::"text")))),
     CONSTRAINT "pitches_hit_type_check" CHECK (("hit_type" = ANY (ARRAY['1B'::"text", '2B'::"text", '3B'::"text", 'HR'::"text"]))),
     CONSTRAINT "pitches_in_play_outcome_check" CHECK (("in_play_outcome" = ANY (ARRAY['hit'::"text", 'out'::"text", 'error'::"text", 'fc'::"text", 'reached'::"text"]))),
     CONSTRAINT "pitches_kind_check" CHECK (("kind" = ANY (ARRAY['bullpen'::"text", 'game'::"text"]))),
     CONSTRAINT "pitches_outs_on_play_check" CHECK ((("outs_on_play" IS NULL) OR (("outs_on_play" >= 0) AND ("outs_on_play" <= 3)))),
     CONSTRAINT "pitches_r2_runs_check" CHECK (((("unearned_runs" IS NULL) OR (("unearned_runs" >= 0) AND ("unearned_runs" <= 4))) AND (("inherited_runs" IS NULL) OR (("inherited_runs" >= 0) AND ("inherited_runs" <= 4))) AND (("kind" = 'game'::"text") OR (("unearned_runs" IS NULL) AND ("inherited_runs" IS NULL) AND ("charged_prev" IS NULL))))),
+    CONSTRAINT "pitches_r3_charged_check" CHECK ((("charged_runs" IS NULL) OR (("kind" = 'game'::"text") AND ("jsonb_typeof"("charged_runs") = 'array'::"text")))),
     CONSTRAINT "pitches_ra_hit_has_cells" CHECK ((("accuracy_hit_kind" IS DISTINCT FROM 'ra'::"text") OR ("accuracy_zone_cells" IS NOT NULL))),
     CONSTRAINT "pitches_result_check" CHECK (("result" = ANY (ARRAY['ball'::"text", 'strike_looking'::"text", 'strike_swinging'::"text", 'foul'::"text", 'in_play'::"text", 'hbp'::"text", 'sac_bunt'::"text", 'sac_fly'::"text", 'dropped_third'::"text", 'interference'::"text", 'other'::"text", 'batter_interference'::"text", 'foul_tip'::"text"]))),
     CONSTRAINT "pitches_runner_advances_is_array" CHECK ((("runner_advances" IS NULL) OR ("jsonb_typeof"("runner_advances") = 'array'::"text"))),
@@ -3196,10 +3337,6 @@ COMMENT ON COLUMN "public"."pitches"."runners_after" IS 'G5: bases occupied afte
 
 
 COMMENT ON COLUMN "public"."pitches"."spray_field" IS 'G5: IF or OF -- where a ball in play was fielded (the charter taps IF or OF on the field); NULL when not chosen and for every other pitch.';
-
-
-
-COMMENT ON COLUMN "public"."pitches"."hbp_swing" IS 'Oct 20 2026: true when the batter swung at the pitch that hit him (a swinging strike). NULL otherwise.';
 
 
 
@@ -3451,6 +3588,12 @@ CREATE TABLE IF NOT EXISTS "public"."sessions" (
     "pitch_count_adjust" smallint DEFAULT 0 NOT NULL,
     "inherited_runners" smallint,
     "runners_left" smallint,
+    "final_at" timestamp with time zone,
+    "exit_runs" smallint,
+    "exit_er" smallint,
+    "exit_bb" smallint,
+    "relieved_session_id" "uuid",
+    "left_owners" "jsonb",
     CONSTRAINT "sessions_charting_perspective_check" CHECK (("charting_perspective" = ANY (ARRAY['behind_catcher'::"text", 'behind_pitcher'::"text"]))),
     CONSTRAINT "sessions_deletion_check" CHECK ((("deleted_at" IS NULL) OR (("deleted_by" IS NOT NULL) AND ("deleted_by_role" = ANY (ARRAY['pitcher'::"text", 'coach'::"text"])) AND ("pitch_count" IS NOT NULL) AND ("pitch_count" >= 0)) OR (("deleted_by_role" = 'deleted_account'::"text") AND ("deleted_by_name" IS NULL) AND ("pitch_count" IS NOT NULL) AND ("pitch_count" >= 0)))),
     CONSTRAINT "sessions_game_fields_check" CHECK (((("kind" = 'bullpen'::"text") AND ("opponent" IS NULL) AND ("game_final_inning" IS NULL) AND ("game_outs_recorded" IS NULL)) OR ("kind" = 'game'::"text"))),
@@ -3459,6 +3602,8 @@ CREATE TABLE IF NOT EXISTS "public"."sessions" (
     CONSTRAINT "sessions_opponent_length" CHECK ((("opponent" IS NULL) OR ("char_length"("opponent") <= 60))),
     CONSTRAINT "sessions_pitch_count_adjust_check" CHECK (((("pitch_count_adjust" >= 0) AND ("pitch_count_adjust" <= 999)) AND (("kind" = 'game'::"text") OR ("pitch_count_adjust" = 0)))),
     CONSTRAINT "sessions_pitcher_unless_tombstone" CHECK ((("pitcher_id" IS NOT NULL) OR ("deleted_at" IS NOT NULL))),
+    CONSTRAINT "sessions_r3_exit_check" CHECK (((("exit_runs" IS NULL) AND ("exit_er" IS NULL) AND ("exit_bb" IS NULL)) OR (("kind" = 'game'::"text") AND (("exit_runs" >= 0) AND ("exit_runs" <= 99)) AND (("exit_er" >= 0) AND ("exit_er" <= "exit_runs")) AND (("exit_bb" >= 0) AND ("exit_bb" <= 99))))),
+    CONSTRAINT "sessions_r3_relief_check" CHECK (((("relieved_session_id" IS NULL) AND ("left_owners" IS NULL)) OR (("kind" = 'game'::"text") AND (("left_owners" IS NULL) OR ("jsonb_typeof"("left_owners") = 'object'::"text"))))),
     CONSTRAINT "sessions_runners_left_check" CHECK ((("runners_left" IS NULL) OR (("kind" = 'game'::"text") AND (("runners_left" >= 0) AND ("runners_left" <= 3))))),
     CONSTRAINT "sessions_sport_check" CHECK (("sport" = ANY (ARRAY['baseball'::"text", 'softball'::"text"])))
 );
@@ -3509,6 +3654,18 @@ COMMENT ON COLUMN "public"."sessions"."sport" IS 'S1: the pitcher''s sport, set 
 
 
 COMMENT ON COLUMN "public"."sessions"."sealed_at" IS 'H1: set by sync_session() once the session, its pitches and its events are all in. After it nothing can be added; updates are already locked once ended_at is set.';
+
+
+
+COMMENT ON COLUMN "public"."sessions"."final_at" IS 'R3 Stage B: the full lock -- his line (exit_*) can''t change after this. NULL while runners he left on base may still score.';
+
+
+
+COMMENT ON COLUMN "public"."sessions"."relieved_session_id" IS 'R3 Stage B: the game this relief game took over from (its pitcher''s runners).';
+
+
+
+COMMENT ON COLUMN "public"."sessions"."left_owners" IS 'R3 Stage B: {"1"|"2"|"3": session id} -- whose runner each one on base was when he came out.';
 
 
 
@@ -3916,6 +4073,11 @@ ALTER TABLE ONLY "public"."sessions"
 
 ALTER TABLE ONLY "public"."sessions"
     ADD CONSTRAINT "sessions_pitcher_id_fkey" FOREIGN KEY ("pitcher_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."sessions"
+    ADD CONSTRAINT "sessions_relieved_session_id_fkey" FOREIGN KEY ("relieved_session_id") REFERENCES "public"."sessions"("id");
 
 
 
@@ -4546,6 +4708,16 @@ GRANT ALL ON FUNCTION "public"."pitcher_workload"("p_profiles" "uuid"[]) TO "ser
 
 REVOKE ALL ON FUNCTION "public"."profiles_s4_cap"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."profiles_s4_cap"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."r3_apply_relief"("p_relief" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."r3_apply_relief"("p_relief" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."r3_finalize_stale"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."r3_finalize_stale"() TO "service_role";
 
 
 

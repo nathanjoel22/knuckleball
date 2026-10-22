@@ -15,6 +15,14 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-22 · Live Game R3, Stage B · **production**
+- **Shipped by:** Joel ("everything looks good, ship stage B" after the Stage C phone pass); operator `Nathan <joelhauserman@gmail.com>`. Branch `live-game-r3` → `main` (admin merge). **Cache:** v294.
+- **Checked first:** production's `sync_session` = Stage A's (md5 `8df74e48…`); `a1-account-deletion` job present; 29 policies; the branch's committed config points at production; `main` had nothing the branch lacked.
+- **Backup first:** `~/knuckleball-backups/2026-10-22-1357-{schema,data}.sql` (29 policies; 124 sessions, 2,482 pitches, 68 events).
+- **Database:** dry run listed only `20261025000000_live_game_r3b`; applied before the merge. After: 29 policies; `r3-final-lock` scheduled; every saved session final (0 open); `pitches.hbp_swing` gone; the 6 new session columns present; counts unchanged; `sync_session` and `compute_game_summary` identical to staging's (md5 `653b3955…`, `173b7042…`). `supabase/schema/schema.sql` regenerated.
+- **Function:** `send-session-report` deployed to production after the site (reads `provisional`; 409 `line_open`).
+- **Open:** none from the ship. Production's Redirect URLs still need `https://knuckleballonline.com/**` (it was added to staging by mistake). Staging's `REPORT_SITE_ORIGIN` is `.19`; the Mac is on another network today.
+
 ## 2026-10-22 · no packet (Mac Safari left pieces of the sign-in header behind) · **production**
 - **Shipped by:** Joel ("ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `fix-safari-repaint` from `main`. **Cache:** v293. Frontend only (`css/components.css`).
 - **Found:** after "Password updated" on Mac Safari, two dark blocks sat under the angled header and cleared by themselves. The header reaches past its card's edges (full width); when a step hides its card, Safari repainted only the card's own area. **Fix:** `body.signin .signin-head` gets its own layer (`transform:translateZ(0)`), so Safari removes all of it. Applies to the ten sign-in pages; none has fixed-position content inside its headers.

@@ -134,8 +134,8 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
   set by hand stay) and re-derives SF / SAC (`gameSacrifice`) -- R3 A2. A batter who reaches on a play that put out an
   inherited runner takes his place (rule 9.16(g), R3 A3).
 - **Database (all on production Oct 21):** migrations `20261019000000_pitch_count_runs`, `20261020000000_live_game_r1`
-  (`pitches.hbp_swing`: unused, no longer written since R3 A; dropped with R3 Stage B), `20261021000000_live_game_r2`,
-  `20261022000000_runners_left`, then R3 Stage A `20261024000000_live_game_r3a` (staging Oct 21), each with a
+  (`pitches.hbp_swing`: dropped by R3 Stage B, Oct 22), `20261021000000_live_game_r2`,
+  `20261022000000_runners_left`, then R3 `20261024000000_live_game_r3a` (production Oct 22) and `20261025000000_live_game_r3b` (production Oct 22), each with a
   down script in `supabase/rollback/` and a test in `supabase/tests/`. `compute_game_summary` returns `pitch_count`,
   `runs` (his), `er`, `ir`, `irs`, `bb_charged_prev`, `runners_left`; a two-strike foul bunt is a K.
 - **Game report:** WP / BK, ER, IR / IRS, SF / SAC in the pitching line; play notation, runner moves and runs in the at-bat

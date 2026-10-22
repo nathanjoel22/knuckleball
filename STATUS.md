@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-22 · no packet (the rest of the emails branded) · **production**
+- **Shipped by:** Joel ("brand the rest of the emails too", then "Ship them now" / "I'll let you apply them"); operator `Nathan <joelhauserman@gmail.com>`. Branch `branded-emails-2` from `main`. No site or cache change (the header images went out with v299).
+- **Built:** `brandedEmail()` now carries every Knuckleball email: the report link (the session's sport; a game says "Game report"), the removal notice (the team's sport), the email-change confirmation and the two account-deletion emails (the account's sport, read before a purge). Supabase Auth's own emails -- password reset, coach invite, sign-up confirmation -- get the same layout as templates (`supabase/templates/auth-*.html`, built by `supabase/templates/build.ts`), each choosing softball or baseball from the person's signup metadata (`intended_sport`; none -> baseball), with branded subjects.
+- **Deployed:** `send-session-report`, `send-removal-notice`, `request-email-change`, `delete-account` to staging, then production (from `main`). Auth templates: production only -- staging refuses custom templates (Supabase allows them only with a custom email sender; staging uses the built-in one).
+- **Checks:** `deno check` on all four; previews of the report (softball game), removal (baseball), deletion (softball), reset (softball) and invite (baseball) emails at 390.
+
 ## 2026-10-22 · P2-01 + P2-02 solo pitchers · **production**
 - **Shipped by:** Joel ("ship P2"); operator `Nathan <joelhauserman@gmail.com>`. Branch `p2-solo-pitchers` -> `main` (admin merge). **Cache:** v301. Packet `plans/p2-solo-pitchers.md`, decisions `plans/p2-preconditions.md`.
 - **Checked first:** production's `sync_session` = R3 Stage B's (md5 `653b3955...`); `team_id` NOT NULL; 29 policies; the branch's committed config points at production; nothing on `main` the branch lacked.

@@ -15,6 +15,13 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-22 · no packet (The spot as the app icon; install banner on) · **production**
+- **Shipped by:** Joel ("Ship it now", "Turn it on"); operator `Nathan <joelhauserman@gmail.com>`. Branch `app-icon-spot` from `main`. **Cache:** v302. Frontend only.
+- **Found:** the tab icon (favicon), home-screen icons and splash screens were still the Oct 15 "KB" placeholder -- Jordan's logo decision (The spot = app icon, favicon, splash, nav) never reached `assets/app-icon.svg`.
+- **Built:** `assets/app-icon.svg` = The spot (white cells, gold pocket, on brand green, ~70% of the square so the 32px tab icon reads); `node scripts/splash.js` redrew `icons/` (5) and `splash/` (40, the mark above the wordmark); the maskable icon stays inside Android's safe circle (drawn at 80%). The install banner is on (`KB_INSTALL_BANNER = true`), held off until now because iOS keeps the icon someone installed with. CLAUDE.md updated.
+- **Checks:** the 32px favicon enlarged and looked at; the 192 and maskable icons; a splash; the banner on Home at 390 ("Install Knuckleball ... Install / Not now").
+- **Note:** browsers cache tab icons hard -- an old tab may keep "KB" until a hard refresh; installed apps keep their old icon until reinstalled.
+
 ## 2026-10-22 · no packet (Cairn duplicates removed) · **production data**
 - **By:** Joel ("Yes, delete both" / "Delete that team too"); operator `Nathan <joelhauserman@gmail.com>`.
 - **Found:** login `560aa063…` (a coach who signed up Sept 30) never signed in after signup; the regular coach signup had made him head of his own empty "Cairn University Baseball" instead of joining Josh Knight's (the real team `7e1648c1…`: 19 pitchers, 3 coaches, 87 sessions). A third empty Cairn team (`dabfa9e9…`, Sept 11, head "Coach Knight") existed too.

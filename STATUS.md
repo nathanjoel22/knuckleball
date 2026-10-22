@@ -15,6 +15,15 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-22 · Live Game R3, Stage A · **production**
+- **Shipped by:** Joel ("ship stage A to production first, then build R3 Stage B"); operator `Nathan <joelhauserman@gmail.com>`. Branch `live-game-r3` → `main` (admin merge; also carries the R3 packet and preconditions). **Cache:** v282.
+- **Checked first:** production's `sync_session` identical to staging's pre-R3 copy (md5 `d85a1373…`), the old CHECK (-999..999), 0 negative `pitch_count_adjust`, 29 policies; `main` had nothing the branch lacked; the branch's committed config points at production.
+- **Backup first:** `~/knuckleball-backups/2026-10-22-0936-{schema,data}.sql` (29 policies; 123 sessions, 2,470 pitches).
+- **Database:** dry run listed only `20261024000000_live_game_r3a`; applied before the merge. After: CHECK 0..999; `sync_session` = staging's (md5 `8df74e48…`), grants unchanged; 29 policies; 123 sessions / 2,470 pitches unchanged by it. `supabase/schema/schema.sql` regenerated (diff = exactly the migration).
+- **Counts since Oct 21 (not the migration):** the daily A1 deletion job purged one login at 09:17 UTC Oct 22 (2 profiles, 8 sessions tombstoned, 100 pitches removed) and one bullpen (36 pitches) was saved -- 2,534 + 36 − 100 = 2,470.
+- **Function:** `send-session-report` not redeployed (the branch changes only two comments in it); production stays on version 41.
+- **Open:** Joel's phone check (+K then −K leaves the pitch count up; an error that scores, edited to a hit, becomes earned). `pitches.hbp_swing` is dropped with Stage B.
+
 ## 2026-10-21 · Live Game R3, Stage A · **staging**
 - **Packet:** `plans/live-game-r3-review.md` (Jordan's review of PR #6); preconditions `plans/live-game-r3-preconditions.md`, Joel "all yes" to its 8 decisions. Branch `live-game-r3`. **Cache:** v282 (local staging site). Migration `20261024000000_live_game_r3a` applied to **staging only**.
 - **Built:** A1 -- the app no longer sends, saves or reads `hbp_swing` (History's select included); `sync_session` stops writing it; the column is dropped with Stage B (decision 1). A2 -- the at-bat editor re-runs the runs from the edited play to the end of its inning (`gameReplayLedger`: the batter's error taint, would-be third outs, inherited / unearned splits) and re-derives SF / SAC (`gameSacrifice`, now shared with the play itself); earned runs set by hand stay; the + Ball-walk runner drags go through one helper (`gameLedgerDrags`) so a replay does the same. A3 -- a batter who reaches on a play that put out an inherited runner takes the inherited flag (9.16(g)). A4 -- only +K / +B count toward the pitch count; −K / −B and the top-bar Balls / Strikes move the count only. Database: `sessions_pitch_count_adjust_check` 0..999; `sync_session` stores `greatest(0, ...)` so an old app's queued negative adjustment saves as 0. `docs/cf-logo-mown.md` was fixed separately (PR #14). `.15` comments in `send-session-report/index.ts` now point to CLAUDE.md (comment only; not redeployed).

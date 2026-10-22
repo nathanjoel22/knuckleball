@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-22 · no packet (Cairn duplicates removed) · **production data**
+- **By:** Joel ("Yes, delete both" / "Delete that team too"); operator `Nathan <joelhauserman@gmail.com>`.
+- **Found:** login `560aa063…` (a coach who signed up Sept 30) never signed in after signup; the regular coach signup had made him head of his own empty "Cairn University Baseball" instead of joining Josh Knight's (the real team `7e1648c1…`: 19 pitchers, 3 coaches, 87 sessions). A third empty Cairn team (`dabfa9e9…`, Sept 11, head "Coach Knight") existed too.
+- **Done:** the rows saved first to `~/knuckleball-backups/2026-10-22-cairn-strays-before-delete.json`; both empty teams deleted through `delete_team` as their own heads (no pitchers, no sessions; 9 old invites cascaded); the unused login's profile and auth user deleted. After: one Cairn team, unchanged (19 / 3 / 87).
+- **Open:** Josh sends that coach his **coach invite link** (Profile -> Invite links -> Coach link) and he signs up fresh, landing on the real team as an assistant. The "Coach Knight" login still exists, now with no team (it sees "You don't have a team yet").
+
 ## 2026-10-22 · no packet (the rest of the emails branded) · **production**
 - **Shipped by:** Joel ("brand the rest of the emails too", then "Ship them now" / "I'll let you apply them"); operator `Nathan <joelhauserman@gmail.com>`. Branch `branded-emails-2` from `main`. No site or cache change (the header images went out with v299).
 - **Built:** `brandedEmail()` now carries every Knuckleball email: the report link (the session's sport; a game says "Game report"), the removal notice (the team's sport), the email-change confirmation and the two account-deletion emails (the account's sport, read before a purge). Supabase Auth's own emails -- password reset, coach invite, sign-up confirmation -- get the same layout as templates (`supabase/templates/auth-*.html`, built by `supabase/templates/build.ts`), each choosing softball or baseball from the person's signup metadata (`intended_sport`; none -> baseball), with branded subjects.

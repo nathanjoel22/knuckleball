@@ -2,7 +2,8 @@
 // Requires these secrets set on your Supabase project (see SETUP.md):
 //   RESEND_API_KEY, REPORT_FROM_EMAIL, SUPABASE_URL, SUPABASE_ANON_KEY,
 //   SUPABASE_SERVICE_ROLE_KEY (platform-injected, not set by hand)
-// Optional: REPORT_SITE_ORIGIN (staging only: http://192.168.1.15:8000, the local staging site on Joel's Wi-Fi; unset = live site)
+// Optional: REPORT_SITE_ORIGIN (staging only: the local staging site on Joel's Wi-Fi, http://<the Mac's address>:8000 -- see
+// CLAUDE.md "Staging report links"; unset = live site)
 //
 // U4/U4b: PDF generation is retired. This function now builds a frozen,
 // self-contained HTML report (buildReportHtml, in template.ts) and uploads
@@ -52,7 +53,7 @@ const corsHeaders = {
 const MAX_RECIPIENTS = 3
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // Where the emailed report link opens. Production leaves this unset (the live
-// site). Staging sets REPORT_SITE_ORIGIN=http://192.168.1.15:8000 (Oct 14; was localhost:8080) so its report
+// site). Staging sets REPORT_SITE_ORIGIN to the Mac's address on Joel's Wi-Fi (CLAUDE.md "Staging report links") so its report
 // links open on the local staging site, which reads staging's storage --
 // the live site only reads production's, so staging links there were always
 // "Report not available".

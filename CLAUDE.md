@@ -93,7 +93,8 @@ the field now), "+ Out / + Strike / + Ball under the field" (gone), "new games l
 again), "runner_advances NULL on new games" (kept on every play), and the Outs shown counting each out as it's called.
 Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full log is STATUS.md (Oct 19–21).
 - **Under the chart:** K · backwards K · B · F · IP (cell-sized), then ‹ Back (undoes the last tap or action; there is no
-  Undo) and More: +K / −K / +B / −B (a missed pitch: ±1 pitch count, saved as `sessions.pitch_count_adjust`), Hit by
+  Undo) and More: +K / +B (a missed pitch: +1 pitch count, saved as `sessions.pitch_count_adjust`, never negative) / −K / −B
+  (the count only -- R3 A4: a correction never removes a pitch; nor do the top bar's Balls / Strikes), Hit by
   pitch, Rare plays ▸ (Dropped 3rd, Intentional walk, Interference → Catcher's / Batter's, Violations → Clock ball /
   Clock strike (no pitch, not in the count), Foul bunt, Balk / softball Illegal pitch), New batter, New inning. Tapping
   Inning / Outs / Count in the top bar adjusts it. The top bar also shows **Runs** (his own; inherited runs scored as
@@ -114,9 +115,13 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
   `sessions.runners_left` (on base when he came out). Sacrifices (SF / SAC) are derived. Fielders in `fielder` /
   `fielders` ('SS-1B'; the same fielder twice = unassisted, 6U-3).
 - **During a game, before saving:** "edit" on any pitch in the log (type, velocity, contact, Hit / Error / FC, fielders,
-  earned runs, Move location); anything that changes outs, the count or the runners still needs Back.
+  earned runs, Move location); anything that changes outs, the count or the runners still needs Back. Changing Hit /
+  Error / FC or the contact re-runs the runs from that play to the end of its inning (`gameReplayLedger`; earned runs
+  set by hand stay) and re-derives SF / SAC (`gameSacrifice`) -- R3 A2. A batter who reaches on a play that put out an
+  inherited runner takes his place (rule 9.16(g), R3 A3).
 - **Database (all on production Oct 21):** migrations `20261019000000_pitch_count_runs`, `20261020000000_live_game_r1`
-  (`pitches.hbp_swing`, now unused by the app), `20261021000000_live_game_r2`, `20261022000000_runners_left`, each with a
+  (`pitches.hbp_swing`: unused, no longer written since R3 A; dropped with R3 Stage B), `20261021000000_live_game_r2`,
+  `20261022000000_runners_left`, then R3 Stage A `20261024000000_live_game_r3a` (staging Oct 21), each with a
   down script in `supabase/rollback/` and a test in `supabase/tests/`. `compute_game_summary` returns `pitch_count`,
   `runs` (his), `er`, `ir`, `irs`, `bb_charged_prev`, `runners_left`; a two-strike foul bunt is a K.
 - **Game report:** WP / BK, ER, IR / IRS, SF / SAC in the pitching line; play notation, runner moves and runs in the at-bat

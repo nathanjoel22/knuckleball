@@ -204,6 +204,8 @@ As the packet lists, plus: a reliever synced before his starter (`relieved_not_s
 
 ## Decisions for Joel
 
+**Joel, Oct 21 2026: "all yes" -- all eight accepted as written.**
+
 1. **A1:** drop `hbp_swing` in Stage B's migration, not Stage A's (old apps' History). 
 2. **A4:** `sync_session` clamps an old queued negative adjustment to 0 instead of refusing it.
 3. **B1:** keep `runners_left` as the shipped count; add `left_owners` and per-run `charged_runs`.

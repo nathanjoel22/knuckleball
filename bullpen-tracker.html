@@ -5631,7 +5631,6 @@ async function syncOutbox(){
       spray_box: (p.sprayBox === undefined) ? null : p.sprayBox,            // G5
       spray_field: (p.sprayField === undefined) ? null : p.sprayField,
       runners_after: (p.runnersAfter === undefined) ? null : p.runnersAfter,
-      hbp_swing: p.hbpSwing === true ? true : null,   // Oct 20 (games only)
       // Oct 21 (games only): of this play's runs, how many were unearned for this pitcher / the previous pitcher's
       // inherited runners; a walk charged to the previous pitcher
       unearned_runs: item.kind === 'game' && Number.isInteger(p.unearnedRuns) ? p.unearnedRuns : null,
@@ -5870,7 +5869,7 @@ async function loadSessionsForCurrentSelection(){
   if(!pitcherId || !teamId){ state.sessions = []; state.deletedSessions = []; return; }
   const { data, error } = await supabaseClient
     .from('sessions')
-    .select('id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, pitch_count_adjust, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, accuracy_hit_kind, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, runs_scored, hbp_swing, unearned_runs, inherited_runs, charged_prev, fielders, batter_to, runner_advances, outs_on_play, sacrifice), game_events(event_type, balls_before, strikes_before, runs_scored, unearned_runs, inherited_runs, charged_prev), session_notes(id, author_id, author_name, body, created_at)')
+    .select('id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, pitch_count_adjust, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, accuracy_hit_kind, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, runs_scored, unearned_runs, inherited_runs, charged_prev, fielders, batter_to, runner_advances, outs_on_play, sacrifice), game_events(event_type, balls_before, strikes_before, runs_scored, unearned_runs, inherited_runs, charged_prev), session_notes(id, author_id, author_name, body, created_at)')
     .eq('pitcher_id', pitcherId)
     .order('started_at', { ascending: false });   // R4: every team -- RLS decides what this viewer sees
   if(error){ console.error(error); state.sessions = []; state.deletedSessions = []; return; }
@@ -5942,7 +5941,6 @@ async function loadSessionsForCurrentSelection(){
       sprayField: p.spray_field || null,
       runnersAfter: (p.runners_after === null || p.runners_after === undefined) ? null : p.runners_after,
       runsScored: p.runs_scored || 0,   // Oct 20: History's game card shows R
-      hbpSwing: p.hbp_swing === true,
       unearnedRuns: p.unearned_runs === null || p.unearned_runs === undefined ? null : p.unearned_runs,   // Oct 21
       inheritedRuns: p.inherited_runs || 0, chargedPrev: p.charged_prev === true,
       fielders: p.fielders || null,
@@ -7139,8 +7137,7 @@ window.recordGameResult = async function(result, extra){
     // applyGameResultProgression's return value just below, once it's run.
     batterTo: null, runnerAdvances: null, outsOnPlay: 0, runsScored: 0,
     sacrifice: extra.sacrifice || null,   // Release 2 (C2)
-    sprayBox: extra.sprayBox || null, sprayField: extra.sprayField || null, runnersAfter: null,   // G5
-    hbpSwing: extra.hbpSwing ? true : null   // Oct 20: hit by the pitch he swung at (a swinging strike)
+    sprayBox: extra.sprayBox || null, sprayField: extra.sprayField || null, runnersAfter: null   // G5
   });
   const pushedPitch = s.pitches[s.pitches.length - 1];
   const atBatBefore = s.atBatIndex;
@@ -7267,13 +7264,13 @@ window.gameMinusCount = async function(kind){
 };
 // Adjust from the top bar (Joel, Oct 19): tap Inning, Outs or Count and the result row becomes up / the number / down
 // (in the backwards-K / B / F cells) with the prompt reading "Adjust Balls" and so on. A correction: no walk, strikeout
-// or third out from here (balls 0-3, strikes 0-2, outs 0-2, inning 1 up). Balls and strikes move the pitch count the
-// same as +B / -B (Joel, Oct 19); inning and outs don't. Each tap is its own Back step.
+// or third out from here (balls 0-3, strikes 0-2, outs 0-2, inning 1 up). None of them moves the pitch count (R3, A4:
+// a correction changes the count shown, never removes a pitch). Each tap is its own Back step.
 const GAME_ADJUST = {
   inning: { label: 'Inning', min: 1, max: 99, key: 'inning' },
   outs: { label: 'Outs', min: 0, max: 2, key: 'outs' },
-  balls: { label: 'Balls', min: 0, max: 3, key: 'balls', pc: 1 },
-  strikes: { label: 'Strikes', min: 0, max: 2, key: 'strikes', pc: 1 }
+  balls: { label: 'Balls', min: 0, max: 3, key: 'balls' },
+  strikes: { label: 'Strikes', min: 0, max: 2, key: 'strikes' }
 };
 window.gameAdjustOpen = function(what){
   const s = state.activeSession;
@@ -7290,7 +7287,6 @@ window.gameAdjustStep = async function(dir){
   const v = s[a.key] + dir;
   if(v < a.min || v > a.max) return;
   recordManualAct(s, 'adjust_' + state.gameAdjust);
-  s.manualActs[s.manualActs.length - 1].pc = a.pc ? dir : 0;
   s[a.key] = v;
   // Oct 20: moving the inning isn't outs this pitcher got -- the outs before it move with it, so his outs recorded
   // (and IP) stay his own
@@ -7688,7 +7684,6 @@ function gameResultText(pt){
   if(pt.result === 'foul' && pt.bbType === 'bunt' && pt.strikesBefore === 2) return 'Strike three foul (bunt)';   // Oct 19: "Strike Three Foul?"
   // Oct 20 (Rare plays): bunt attempts and a hit-by-pitch on a swing
   if(pt.result === 'foul' && pt.bbType === 'bunt') return 'Foul bunt';
-  if(pt.result === 'strike_swinging' && pt.hbpSwing) return 'Strike (swinging, hit by pitch)';
   if(pt.result === 'strike_swinging' && pt.bbType === 'bunt') return 'Strike (missed bunt)';
   return GAME_RESULT_LABELS[pt.result] || pt.result;
 }
@@ -7744,12 +7739,12 @@ function gameHistoryTypeTable(p, pitches){
     <tbody>${rows}</tbody>
   </table>` : '';
 }
-// Joel, Oct 19: +K / +B add one to the pitch count and -K / -B take one off; the pitches charted stay as they are.
-// Read from the draft's own +K / +B events and -K / -B acts, so Back undoes the count with them.
+// Joel, Oct 19: +K / +B add one to the pitch count (a pitch thrown but not charted). R3 (A4, Jordan + Joel, Oct 21):
+// -K / -B and the top bar's Balls / Strikes change the count shown only -- a correction never removes a pitch, so this
+// is never negative. Read from the draft's own +K / +B events, so Back undoes the count with them.
 function gamePitchCountAdj(s){
   if(!s) return 0;
-  return (s.events || []).filter(e => e.pitchCountAdj).length
-    + (s.manualActs || []).reduce((n, a) => n + (a.kind === 'minus_strike' || a.kind === 'minus_ball' ? -1 : (a.pc || 0)), 0);
+  return (s.events || []).filter(e => e.pitchCountAdj).length;
 }
 // Oct 20: the last inning anything happened in (a pitch or an event). After a third out the live inning has already
 // moved on to the next one, which this pitcher never pitched in; with nothing charted, the inning shown.
@@ -7793,7 +7788,11 @@ function gameLedger(s, rec, before, o){
     else if(a.to >= 1 && a.to <= 3) next[a.to] = meta;
   });
   [1, 2, 3].forEach(b => { if(!movedFrom[b] && m0[b] && !next[b]) next[b] = m0[b]; });
-  const bt = o.batterTo !== undefined ? o.batterTo : rec.batterTo, bm = { u: !!o.batterTaint, i: !!o.batterInherited };
+  const bt = o.batterTo !== undefined ? o.batterTo : rec.batterTo;
+  // R3 (A3, rule 9.16(g)): a batter who reaches on a play that put out an inherited runner takes that runner's place
+  // -- his run would be the previous pitcher's. One batter replaces one runner; his own taint (u) stays his.
+  const replaced = bt >= 1 && bt <= 4 && adv.some(a => a.from >= 1 && a.from <= 3 && a.to === 0 && m0[a.from] && m0[a.from].i);
+  const bm = { u: !!o.batterTaint, i: !!(o.batterInherited || replaced) };
   if(bt >= 1 && bt <= 3) next[bt] = bm; else if(bt === 4) scored.push(bm);
   [1, 2, 3].forEach(b => { if(!s.runners[b]) next[b] = null; else if(!next[b]) next[b] = { u: false, i: false }; });
   const runs = rec.runsScored || 0;
@@ -7804,9 +7803,71 @@ function gameLedger(s, rec, before, o){
   rec.inheritedRuns = counted.filter(x => x.i).length;
   rec.unearnedRuns = counted.filter(x => !x.i && (x.u || ended || o.allUnearned)).length;
   rec.ledgerBefore = before;
+  rec.ledgerOpts = o;   // R3 (A2): client only, so an edit can replay this play
   s.runnerMeta = next;
   if(s.inning !== before.inning){ s.phantomOuts = 0; s.phantomInning = s.inning; }
   else { s.phantomOuts = phantomNow + (o.phantom || 0); s.phantomInning = s.inning; }
+}
+// The runners dragged on after a + Ball walk (g5CloseWalkEvent), with whose runs they are; kept on the event
+// (walkDrags, client only) so a replay does the same.
+function gameLedgerDrags(s, ev){
+  const m = Object.assign({ 1: null, 2: null, 3: null }, s.runnerMeta || {}), nm = Object.assign({}, m);
+  ev.walkDrags.forEach(a => { nm[a.from] = null; });
+  ev.walkDrags.forEach(a => {
+    const who = m[a.from] || { u: false, i: false };
+    if(a.to >= 1 && a.to <= 3) nm[a.to] = who;
+    else if(a.to === 4){ if(who.i) ev.inheritedRuns = (ev.inheritedRuns || 0) + 1; else if(who.u) ev.unearnedRuns = (ev.unearnedRuns || 0) + 1; }
+  });
+  s.runnerMeta = nm;
+}
+// R3 (A2, Jordan + Joel, Oct 21): after the at-bat editor changes a play, re-run the ledger from that play to the end
+// of its inning (a new inning clears the bases, so nothing later depends on it). Each play keeps its own stored outs
+// and inning; whose runners are on base and the would-be outs come from the replay. A play whose earned runs were set
+// by hand keeps them. Plays charted before this version have no stored options: then nothing is replayed.
+function gameReplayLedger(s, fromRec){
+  const recs = (s.pitches || []).concat(s.events || []).filter(r => Number.isInteger(r.seq)).sort((a, b) => a.seq - b.seq);
+  const innOf = r => r.eventType ? r.inningBefore : r.inning;
+  const start = recs.indexOf(fromRec);
+  if(start < 0 || !fromRec.ledgerBefore) return false;
+  const run = [];
+  for(let k = start; k < recs.length && innOf(recs[k]) === innOf(fromRec); k++) run.push(k);
+  if(run.some(k => recs[k].ledgerBefore && !recs[k].ledgerOpts && recs[k].eventType !== 'tiebreak_runner')) return false;
+  const live = { runners: s.runners, inning: s.inning, meta: s.runnerMeta, phantom: s.phantomOuts, phantomInning: s.phantomInning };
+  let chain = { meta: fromRec.ledgerBefore.meta, phantom: fromRec.ledgerBefore.phantom, phantomInning: fromRec.ledgerBefore.phantomInning };
+  run.forEach(k => {
+    const r = recs[k], nx = recs[k + 1];
+    if(!r.ledgerOpts) return;
+    // the bases and inning right after this play: the next play's "before", or the live game after the last one
+    s.inning = nx ? innOf(nx) : live.inning;
+    s.runners = nx ? (innOf(nx) === innOf(r) ? runnersFromBitmask(nx.runnersBefore || 0) : { 1: false, 2: false, 3: false }) : live.runners;
+    s.runnerMeta = chain.meta; s.phantomOuts = chain.phantom; s.phantomInning = chain.phantomInning;
+    const before = Object.assign({}, r.ledgerBefore, JSON.parse(JSON.stringify(chain)));
+    let o = r.ledgerOpts;
+    if(!r.eventType){   // a pitch: the batter's taint follows its result as it is now
+      const free = r.result === 'interference' || (r.result === 'in_play' && r.inPlayOutcome === 'error');
+      o = Object.assign({}, o, { batterTaint: free, phantom: free ? 1 : 0 });
+    }
+    const drags = r.walkDrags && r.walkDrags.length, dragRuns = r.walkDragRuns || 0;
+    if(drags) r.runsScored -= dragRuns;
+    gameLedger(s, r, before, o);
+    if(drags){ r.runsScored += dragRuns; gameLedgerDrags(s, r); }
+    if(Number.isInteger(r.erHand)) r.unearnedRuns = Math.max(0, (r.runsScored || 0) - (r.inheritedRuns || 0) - r.erHand);
+    chain = { meta: s.runnerMeta, phantom: s.phantomOuts, phantomInning: s.phantomInning };
+  });
+  s.runners = live.runners; s.inning = live.inning;
+  if(run[run.length - 1] === recs.length - 1 && innOf(fromRec) === live.inning){   // the edit's inning is still going
+    s.runnerMeta = chain.meta; s.phantomOuts = chain.phantom; s.phantomInning = chain.phantomInning;
+  } else { s.runnerMeta = live.meta; s.phantomOuts = live.phantom; s.phantomInning = live.phantomInning; }
+  return true;
+}
+// C2: a sacrifice, fewer than two out -- a fly ball or line drive caught with a runner scoring (SF), or a bunt out that
+// moved a runner up with no runner out (SAC). The play and the at-bat editor both use this (R3, A2).
+function gameSacrifice(outsBefore, bbType, adv){
+  adv = adv || [];
+  if(outsBefore >= 2) return null;
+  if((bbType === 'fly' || bbType === 'line') && adv.some(a => a.to === 4)) return 'SF';
+  if(bbType === 'bunt' && adv.some(a => a.to > a.from) && !adv.some(a => a.to === 0)) return 'SAC';
+  return null;
 }
 // Joel, Oct 19: total runs while this pitcher was in -- every play's and event's runs_scored.
 /* ---------- Fixing an earlier at-bat (Release 2, F5, Joel, Oct 20) ----------
@@ -7827,6 +7888,7 @@ function parseFielders(text){
   const seq = parts.map(t => POSITION_BY_NUMBER[t] || (POSITION_SCOREBOOK_NUMBER[t.toUpperCase()] ? t.toUpperCase() : null));
   return seq.some(x => !x) || seq.length > 5 ? null : seq;
 }
+function gameEditEr(pt){ return (pt.runsScored || 0) - (pt.inheritedRuns || 0) - (Number.isInteger(pt.unearnedRuns) ? pt.unearnedRuns : 0); }
 window.startEditGameRow = function(idx){ state.editGameRow = idx; state.editGameLoc = null; state.editGameError = ''; render(); };
 window.cancelEditGameRow = function(){ state.editGameRow = null; state.editGameLoc = null; state.editGameError = ''; render(); };
 window.editGameMoveLocation = function(idx){ state.editGameLoc = idx; state.hint = 'Tap the chart where that pitch went'; render(); };
@@ -7874,16 +7936,22 @@ window.saveEditGameRow = async function(idx){
   }
   if(val('edit-game-type')) pt.type = val('edit-game-type');
   if(velo !== null) pt.velo = v;
-  if(val('edit-game-bb')) pt.bbType = val('edit-game-bb');
-  const oc = val('edit-game-outcome');
+  const bb = val('edit-game-bb'), oc = val('edit-game-outcome');
+  const redo = (bb && bb !== pt.bbType) || (oc && oc !== pt.inPlayOutcome);   // R3 (A2): what the runs depend on
+  if(bb) pt.bbType = bb;
   if(oc && oc !== pt.inPlayOutcome){
     pt.inPlayOutcome = oc;
     // a hit is the base the batter reached (the runners don't move); an error or FC has no hit type
     pt.hitType = oc === 'hit' ? (pt.batterTo === 4 ? 'HR' : ['', '1B', '2B', '3B'][pt.batterTo] || '1B') : null;
   }
   if(seq){ pt.fielder = seq[0] || null; pt.fielders = seq.length > 1 ? seq.slice(1).join('-') : null; }
-  const er = val('edit-game-er');
-  if(er !== null){ const charged = (pt.runsScored || 0) - (pt.inheritedRuns || 0); pt.unearnedRuns = Math.max(0, charged - Number(er)); }
+  const er = val('edit-game-er'), erBefore = gameEditEr(pt);
+  if(er !== null && Number(er) !== erBefore) pt.erHand = Number(er);   // set by hand: a replay keeps it
+  if(redo){
+    if(pt.result === 'in_play' && pt.inPlayOutcome === 'out') pt.sacrifice = gameSacrifice(pt.outsBefore, pt.bbType, pt.runnerAdvances);
+    gameReplayLedger(s, pt);
+  }
+  if(Number.isInteger(pt.erHand)) pt.unearnedRuns = Math.max(0, (pt.runsScored || 0) - (pt.inheritedRuns || 0) - pt.erHand);
   state.editGameRow = null; state.editGameLoc = null; state.editGameError = '';
   await storSet(draftKey(), s);
   render();
@@ -9419,17 +9487,8 @@ window.g5Next = async function(){
 async function g5CloseWalkEvent(){
   const s = state.activeSession, g = s.g5;
   const ev = (s.events || [])[(s.events || []).length - 1];
-  if(g.runs && ev) ev.runsScored = Math.min(4, (ev.runsScored || 0) + g.runs);   // runners sent home after a + Ball walk
-  if(ev && g.advances && g.advances.length){   // Release 2: the runners dragged on, with whose runs they are
-    const m = Object.assign({ 1: null, 2: null, 3: null }, s.runnerMeta || {}), nm = Object.assign({}, m);
-    g.advances.forEach(a => { nm[a.from] = null; });
-    g.advances.forEach(a => {
-      const who = m[a.from] || { u: false, i: false };
-      if(a.to >= 1 && a.to <= 3) nm[a.to] = who;
-      else if(a.to === 4){ if(who.i) ev.inheritedRuns = (ev.inheritedRuns || 0) + 1; else if(who.u) ev.unearnedRuns = (ev.unearnedRuns || 0) + 1; }
-    });
-    s.runnerMeta = nm;
-  }
+  if(g.runs && ev){ ev.runsScored = Math.min(4, (ev.runsScored || 0) + g.runs); ev.walkDragRuns = g.runs; }   // runners sent home after a + Ball walk
+  if(ev && g.advances && g.advances.length){ ev.walkDrags = g.advances.slice(); gameLedgerDrags(s, ev); }   // Release 2: the runners dragged on
   state.g5LastFace = g5FieldFace();
   s.runners = runnersFromBitmask(g.bases || 0);
   defaultGameDelivery(s);
@@ -9544,13 +9603,7 @@ async function g5Commit(result){
     extra.g5BatterTo = g.entry === 'O' ? 0 : (g.batterTo === undefined ? null : g.batterTo);   // Oct 20: where the batter ended up
     const seq = g.fielderSeq || [];                                                            // Release 2: who fielded it
     extra.fielder = seq[0] || null; extra.fielders = seq.length > 1 ? seq.slice(1).join('-') : null;
-    // C2: a sacrifice, fewer than two out -- a fly ball or line drive caught with a runner scoring (SF), or a bunt out
-    // that moved a runner up with no runner out (SAC)
-    const adv = g.advances || [];
-    if(g.entry === 'O' && s.outs < 2){
-      if((g.bbType === 'fly' || g.bbType === 'line') && adv.some(a => a.to === 4)) extra.sacrifice = 'SF';
-      else if(g.bbType === 'bunt' && adv.some(a => a.to > a.from) && !adv.some(a => a.to === 0)) extra.sacrifice = 'SAC';
-    }
+    if(g.entry === 'O') extra.sacrifice = gameSacrifice(s.outs, g.bbType, g.advances);   // C2
   } else if(g.walk) extra.g5BatterTo = g.batterTo === undefined ? 1 : g.batterTo;
   if(g.step === 'bases' && g5ProjectedOuts(g) < 3) extra.runnersAfter = g.bases || 0;
   // Oct 19: an out's runner moves and why; Oct 20: every play's (hits, errors, FC, walks -- forced moves included)

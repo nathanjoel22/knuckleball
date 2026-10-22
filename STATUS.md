@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-22 · no packet (password-reset link opened the sport picker) · **production**
+- **Shipped by:** Joel ("Ship it now"); operator `Nathan <joelhauserman@gmail.com>`. Branch `fix-reset-link` from `main`. **Cache:** v290. Frontend only (`signin.html`).
+- **Found:** Joel's reset email opened "Which sport?". The reset page asks Supabase to return to `reset-password.html?sport=…`; when Supabase doesn't use that address it falls back to the Site URL, which since Oct 21 is `signin.html` (the picker), and the picker ignored the token. **Fix:** the picker hands any `#…type=recovery` link to `reset-password.html` (query and token kept) before anything else, signed in or not; the landing page's forwarder already passes tokens to the picker. Production's reset template uses `{{ .ConfirmationURL }}` (implicit flow, token in the hash).
+- **Checks (local):** picker + recovery link -> reset form (signed out and signed in); `/` + recovery link -> reset form; a signup token and a plain visit unchanged; signed-in plain visit -> the app.
+- **Open:** Joel's dashboard step -- add `https://knuckleballonline.com/**` to production's Redirect URLs so Supabase uses the reset page's own address (with `?sport=`) and never falls back. The picker's branding (fonts, artwork, "The spot" per sport) is being redone separately.
+
 ## 2026-10-22 · no packet (Live Game: No read, "Record Velocity"; the session menu is the mark) · **production**
 - **Shipped by:** Joel ("ship these UI changes to production now"); operator `Nathan <joelhauserman@gmail.com>`. Branch `ui-noread-mark` from `main` (only the UI half of `live-game-r3`'s commits 9a34cdc..bb194c3, applied to `bullpen-tracker.html`; R3 Stage B stays on its branch). **Cache:** v289 (above every version `live-game-r3` used). Frontend only; no database or function change.
 - **Live:** in a Live Game's velocity step, "No read" over the chart's top-right two cells (brand mid green, white text) clears any speed and moves on; Next pitch spans the full last row; the prompt says "Record Velocity" while the speeds are up (phones too). An untouched bar still saves no reading. The phone session menu button is the main mark ("The spot"): white cells like the names on that line, the bottom-right pocket gold (rally pink in softball), no lighter square.

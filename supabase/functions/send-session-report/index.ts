@@ -35,6 +35,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { takeRateLimit } from '../_shared/rate_limit.ts'
+import { brandedEmail } from '../_shared/email.ts'
 import { buildReportHtml, type ReportPayload } from './template.ts'
 import { escapeHtml, useSportPalette, asSport } from './helpers.ts'
 import type { Pitch, HistoryEntry } from './compute.ts'
@@ -477,16 +478,22 @@ Deno.serve(async (req) => {
     }
 
     const dateStr = body.date ? new Date(body.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+    const isGame = session.kind === 'game'
     const resendRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: fromEmail,
         to: emails,
-        subject: `Bullpen Session Report — ${pitcherName}${dateStr ? ' — ' + dateStr : ''}`,
-        html: `<p>The bullpen session report for ${escapeHtml(pitcherName)}${dateStr ? ' (' + escapeHtml(dateStr) + ')' : ''} is ready.</p>` +
-          `<p><a href="${reportUrl}">View the report</a></p>` +
-          `<p style="color:#7C8C82;font-size:12px">This link works for anyone it's shared with -- there's no login required to view it.</p>`
+        subject: `${isGame ? 'Game Report' : 'Bullpen Session Report'} — ${pitcherName}${dateStr ? ' — ' + dateStr : ''}`,
+        // Branded emails (Joel, Oct 22): the session's sport; a game says so
+        html: brandedEmail({
+          sport: session.sport,
+          title: isGame ? 'Your game report is ready' : 'Your bullpen report is ready',
+          paragraphs: [`The ${isGame ? 'game' : 'bullpen session'} report for <strong>${escapeHtml(pitcherName)}</strong>${dateStr ? ' (' + escapeHtml(dateStr) + ')' : ''} is ready.`],
+          button: { href: reportUrl, label: 'View the report' },
+          footnote: "This link works for anyone it's shared with -- there's no login required to view it.",
+        })
       })
     })
 

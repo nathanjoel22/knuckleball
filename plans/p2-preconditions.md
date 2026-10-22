@@ -181,3 +181,11 @@ writable only by the pitcher. A solo pitcher's pen is visible to no coach. Stage
 6. One migration for Stage 1 (`20261026000000_p2_01_team_optional`): NOT NULL dropped, G3 NULL early return,
    `sync_session` (NULL team for the pitcher's own pens; the relief-link fix), `is_pitcher_report_eligible` without the
    team clause. Policies unchanged (29).
+
+## Joel's answers (Oct 22)
+
+1. Independent pens are readable by his current coaches (R4) -- yes.
+2. Filing default = last used, locked after pitch 1 -- yes.
+3. Extra innings: **the pitcher is asked his level at signup**; it's his assumed level (independent games' first extra
+   inning) until he changes it in Profile settings. -> new `profiles.level` (same values as `teams.level`, per sport).
+4. Notes: none on independent pens; a coach charting always files under his team; only the pitcher files Independent -- yes.

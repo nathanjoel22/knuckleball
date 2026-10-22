@@ -208,15 +208,15 @@ Deno.serve(async (req) => {
     // H1: name the actual reason (P1-10 added age and guardian conditions the old text didn't
     // mention). pitcher_report_block answers only for the pitcher or their coach.
     const { data: block } = await callerClient.rpc('pitcher_report_block', { p_pitcher_id: pitcherId })
-    const reason = typeof block === 'string' ? block : 'not_on_team'
+    const reason = typeof block === 'string' ? block : 'not_eligible'   // P2: a team is no longer required
     const REASONS: Record<string, string> = {
       unverified: 'No report can be sent until this player\'s account email is verified.',
       age_not_answered: 'No report can be sent until this player answers the one-time age question in the app.',
       guardian_pending: 'No report can be sent until this player\'s parent or guardian approves their account.',
       consent_missing: 'No report can be sent for this player until their parent\'s consent is recorded.',
-      not_on_team: 'No report can be sent until this player is on a team.'
+      not_eligible: 'No report can be sent for this player yet.'
     }
-    return new Response(JSON.stringify({ error: REASONS[reason] || REASONS.not_on_team, code: reason }), { status: 403, headers: corsHeaders })
+    return new Response(JSON.stringify({ error: REASONS[reason] || REASONS.not_eligible, code: reason }), { status: 403, headers: corsHeaders })
   }
 
   // Design principle (CLAUDE.md): "Reports are never generated from an

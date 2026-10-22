@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-22 · no packet (staging email links opened stale pre-rebrand pages) · **staging settings**
+- **Found:** Joel's staging guardian-approval and verify emails (new branded emails) opened the old pre-D2 pages with the pre-Oct 17 wording. Staging's `VERIFY_REDIRECT_URL` (verify + guardian links) and `INVITE_REDIRECT_URL` still pointed at `http://localhost:8080/...` (set Sept 19 / Aug 26 -- matched by fingerprint); nothing serves there now, and the Mac's browser had an old service worker for that origin serving its cached copies. Production's links point at knuckleballonline.com (verify) and the GitHub Pages address (invites, which redirects to knuckleballonline.com) -- real parents get the current pages.
+- **Changed (staging only):** `VERIFY_REDIRECT_URL`, `INVITE_REDIRECT_URL` and `REPORT_SITE_ORIGIN` -> `http://Users-MacBook-Neo.local:8000/...` (the Mac's Bonjour name: stable across Wi-Fi address changes). CLAUDE.md updated.
+- **Open (Joel):** clear `localhost:8080`'s site data in the Mac's browser; add `http://Users-MacBook-Neo.local:8000/**` to staging's Auth Redirect URLs (Supabase's own invite emails); optionally point production's `INVITE_REDIRECT_URL` straight at `https://knuckleballonline.com/accept-invite.html`.
+
 ## 2026-10-22 · no packet (branded emails; The spot on the sign-in pages) · **production**
 - **Shipped by:** Joel ("Ship it now"); operator `Nathan <joelhauserman@gmail.com>`. Branch `branded-emails` from `main`. **Cache:** v299. Site first, then `send-verification-email` and `send-guardian-consent` to production.
 - **Found:** Joel: the parent approval and the verify email used the old look. Both pages were already on the D2 brand (checked live, both sports); the emails were plain unbranded text, and the ten sign-in pages showed the wordmark without the mark the landing page and picker now carry.

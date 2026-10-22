@@ -1686,9 +1686,9 @@
   .g5-velo-row.gg-velo .velo-arrow:last-child{ right:0; }
   .g5-reset{ flex:0 0 calc((100% - 12px) / 5); padding:0 4px; /* geometry: the Live Game field overlay math */ }
   .g5-nextpitch{ flex:1; }
-  /* Joel, Oct 22: "No read" sits alone over the chart's top-right cell -- a full cell (a real tap target) in the brand's
+  /* Joel, Oct 22: "No read" sits alone over the chart's top-right two cells -- full cells (a real tap target) in the brand's
      dark, far from the speeds and Next pitch so a stray thumb doesn't hit it. */
-  .g5-noread{ position:absolute; z-index:6; top:3px; right:3px; width:calc((100% - 18px) / 5); height:calc((100% - 18px) / 5);
+  .g5-noread{ position:absolute; z-index:6; top:3px; right:3px; width:calc((100% - 18px) / 5 * 2 + 3px); height:calc((100% - 18px) / 5);   /* two cells (Joel, Oct 22) */
     min-height:0; padding:0 2px; border:0; border-radius:var(--radius-cell); background:var(--brand-mid); color:var(--on-dark);
     font-size:13px; font-weight:700; line-height:1.15; white-space:normal; /* geometry: the Live Game field overlay math */ }
   .g5-noread:focus-visible{ outline:3px solid var(--btn-accent); outline-offset:2px; }

@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-22 · no packet (Mac Safari left pieces of the sign-in header behind) · **production**
+- **Shipped by:** Joel ("ship it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `fix-safari-repaint` from `main`. **Cache:** v293. Frontend only (`css/components.css`).
+- **Found:** after "Password updated" on Mac Safari, two dark blocks sat under the angled header and cleared by themselves. The header reaches past its card's edges (full width); when a step hides its card, Safari repainted only the card's own area. **Fix:** `body.signin .signin-head` gets its own layer (`transform:translateZ(0)`), so Safari removes all of it. Applies to the ten sign-in pages; none has fixed-position content inside its headers.
+- **Checks:** Chrome renders unchanged (the done screen at 390 / 584). Not reproducible outside Safari here -- Joel to say if it ever recurs.
+
 ## 2026-10-22 · no packet (sport picker branding) · **production**
 - **Shipped by:** Joel ("Ship it now"); operator `Nathan <joelhauserman@gmail.com>`. Branch `signin-brand` from `main`. **Cache:** v291. Frontend only (`signin.html`, `css/components.css` -- rules scoped to `body.landing`, the picker).
 - **Built:** "The spot" beside the KNUCKLEBALL wordmark (pocket in the sport's accent), and each sport's card shows its own mark (white cells, gold / rally-pink pocket) instead of a drawn ball. Fonts unchanged: they were already the brand set (Black Ops One, Big Shoulders Display, Archivo) -- `docs/design/DESIGN.md` still lists the pre-D2 fonts.

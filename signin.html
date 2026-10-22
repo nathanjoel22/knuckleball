@@ -77,6 +77,10 @@
 <title>Knuckleball</title>
 <meta name="robots" content="noindex">   <!-- L1: the landing page (/) is the public entry -->
 <script>
+  // A password-reset link that landed here (Supabase uses the Site URL, this page, when it can't use the address the
+  // reset page asked for -- Joel, Oct 22): hand it to the reset page with its token, before anything else runs.
+  var kbRecoveryLink = /(^#|&)type=recovery(&|$)/.test(location.hash || '');
+  if(kbRecoveryLink) location.replace('reset-password.html' + location.search + location.hash);
   // Already signed in on this device? Go straight to the tracker -- don't
   // make a logged-in charter walk back through the role picker and login
   // form, which is a dead end with no network (P1-01). This is a purely
@@ -85,6 +89,7 @@
   // so the validity check here mirrors its readPersistedSessionRaw() to
   // avoid a redirect loop if the stored blob is malformed.
   (function(){
+    if(kbRecoveryLink) return;   // the reset page first, even when signed in
     try{
       for(var i = 0; i < localStorage.length; i++){
         var k = localStorage.key(i);

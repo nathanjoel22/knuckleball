@@ -20,6 +20,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { takeRateLimit } from '../_shared/rate_limit.ts'
+import { brandedEmail } from '../_shared/email.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -55,9 +56,11 @@ async function sendEmail(to: string[], subject: string, html: string): Promise<b
   return res.ok
 }
 
-const emailShell = (body: string) =>
-  `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#07140F;max-width:520px">` +
-  `<p style="font-weight:700;letter-spacing:0.04em;margin:0 0 16px">KNUCKLEBALL</p>${body}</div>`
+// Branded emails (Joel, Oct 22): the account's sport (read before anything is purged)
+async function accountSport(admin: any, accountId: string): Promise<string | null> {
+  const { data } = await admin.from('profiles').select('sport').eq('account_id', accountId).not('sport', 'is', null).limit(1).maybeSingle()
+  return data ? data.sport : null
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -118,12 +121,17 @@ Deno.serve(async (req) => {
       const limit = await takeRateLimit(user.id, 'account_deletion', to)
       if (limit.ok) {
         const due = fmtDate(data.due_at)
-        emailed = await sendEmail(to, `Your Knuckleball account will be deleted on ${due}`, emailShell(
-          `<p>We received a request to delete this Knuckleball account. It will be deleted for good on <strong>${escapeHtml(due)}</strong>, ` +
-          `along with every profile on it, the sessions pitched on it and their reports.</p>` +
-          `<p>Changed your mind? Sign in before then and choose <strong>Restore my account</strong>.</p>` +
-          `<p><a href="${SITE}/login.html" style="color:#16593D;font-weight:700">Sign in to Knuckleball</a></p>` +
-          `<p style="color:#56645C;font-size:13px">If you didn't ask for this, sign in and restore the account, then change your password.</p>`))
+        emailed = await sendEmail(to, `Your Knuckleball account will be deleted on ${due}`, brandedEmail({
+          sport: await accountSport(admin, user.id),
+          title: 'Your account is scheduled for deletion',
+          paragraphs: [
+            `We received a request to delete this Knuckleball account. It will be deleted for good on <strong>${escapeHtml(due)}</strong>, ` +
+              `along with every profile on it, the sessions pitched on it and their reports.`,
+            `Changed your mind? Sign in before then and choose <strong>Restore my account</strong>.`,
+          ],
+          button: { href: `${SITE}/login.html`, label: 'Sign in to Knuckleball' },
+          footnote: "If you didn't ask for this, sign in and restore the account, then change your password.",
+        }))
       }
     }
     return json({ ...data, emailed })
@@ -183,6 +191,7 @@ async function purgeLogin(admin: any, accountId: string) {
   if (uErr || !u || !u.user) throw new Error('login not loadable, left for the next run: ' + (uErr?.message || 'not found'))
   const email = u.user.email || null
   const { data: prim } = await admin.from('profiles').select('age_attestation, guardian_email').eq('id', accountId).maybeSingle()
+  const sport = await accountSport(admin, accountId)
   const to = [email].filter(Boolean) as string[]
   if (prim && prim.age_attestation === 'minor_13_17' && prim.guardian_email) to.push(prim.guardian_email)
 
@@ -211,9 +220,12 @@ async function purgeLogin(admin: any, accountId: string) {
   const { error: delErr } = await admin.auth.admin.deleteUser(accountId)
   if (delErr) throw new Error('auth delete: ' + delErr.message)
   // the completion confirmation (Apple), only once the login is really gone (its sending-limit slot was taken above)
-  if (sendOk) await sendEmail(to, 'Your Knuckleball account has been deleted', emailShell(
-    `<p>Your Knuckleball account has been deleted, as you asked: every profile on it, the sessions pitched on it and their reports.</p>` +
-    `<p style="color:#56645C;font-size:13px">Copies in our backups are removed within 7 days. Thanks for charting with us.</p>`))
+  if (sendOk) await sendEmail(to, 'Your Knuckleball account has been deleted', brandedEmail({
+    sport,
+    title: 'Your account has been deleted',
+    paragraphs: ['Your Knuckleball account has been deleted, as you asked: every profile on it, the sessions pitched on it and their reports.'],
+    footnote: 'Copies in our backups are removed within 7 days. Thanks for charting with us.',
+  }))
   await admin.from('account_deletion_log').insert({ kind: 'login', profiles: nprof, tombstoned: tomb, pitches, notes, files })
   return { kind: 'login', ok: true }
 }

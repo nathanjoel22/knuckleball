@@ -26,6 +26,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { takeRateLimit } from '../_shared/rate_limit.ts'
+import { brandedEmail } from '../_shared/email.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -101,14 +102,15 @@ Deno.serve(async (req) => {
     return json({ error: 'email_unavailable' }, 400)
   }
 
-  const html =
-    `<p>Hello,</p>` +
-    `<p>Someone asked to change the email address on a Knuckleball account to this address. ` +
-    `If that was you, confirm it here:</p>` +
-    `<p><a href="${escapeHtml(actionLink)}">Confirm my new email</a></p>` +
-    `<p>Until you do, the account keeps its current email address. ` +
-    `If you didn't ask for this, ignore this email and nothing will change.</p>` +
-    `<p>Knuckleball LLC</p>`
+  // Branded emails (Joel, Oct 22): in the account's sport
+  const { data: sportRow } = await callerClient.from('profiles').select('sport').eq('account_id', user.id).not('sport', 'is', null).limit(1).maybeSingle()
+  const html = brandedEmail({
+    sport: sportRow ? (sportRow as { sport: string }).sport : null,
+    title: 'Confirm your new email',
+    paragraphs: ['Hello,', 'Someone asked to change the email address on a Knuckleball account to this address. If that was you, confirm it here:'],
+    button: { href: actionLink, label: 'Confirm my new email' },
+    footnote: "Until you do, the account keeps its current email address. If you didn't ask for this, ignore this email and nothing will change.<br>Knuckleball LLC",
+  })
 
   const resendRes = await fetch('https://api.resend.com/emails', {
     method: 'POST',

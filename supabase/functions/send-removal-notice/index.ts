@@ -19,6 +19,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { takeRateLimit } from '../_shared/rate_limit.ts'
+import { brandedEmail } from '../_shared/email.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -84,6 +85,7 @@ Deno.serve(async (req) => {
   if (!resendApiKey || !fromEmail) {
     return new Response(JSON.stringify({ error: 'Server email config missing' }), { status: 500, headers: corsHeaders })
   }
+  const { data: teamRow } = await callerClient.from('teams').select('sport').eq('id', teamId).maybeSingle()
 
   const resendRes = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -92,7 +94,12 @@ Deno.serve(async (req) => {
       from: fromEmail,
       to: [toEmail],
       subject: `Removed from ${teamName}`,
-      html: `<p>This email serves to notify you that you have been removed from the ${escapeHtml(teamName)} team. We can't wait to see you back out there soon!</p>`
+      html: brandedEmail({   // Branded emails (Joel, Oct 22): in the team's sport
+        sport: teamRow ? (teamRow as { sport: string }).sport : null,
+        title: `Removed from ${teamName}`,   // brandedEmail escapes the title
+        paragraphs: [`This email serves to notify you that you have been removed from the ${escapeHtml(teamName)} team. We can't wait to see you back out there soon!`],
+        footnote: 'Your own sessions stay yours in the app.',
+      })
     })
   })
 

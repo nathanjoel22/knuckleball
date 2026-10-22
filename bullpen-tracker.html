@@ -168,8 +168,9 @@
   .sess-num{ font-size:14px; color:var(--on-dark-dim); flex:none; }
   .sess-offline{ flex:none; width:9px; height:9px; border-radius:var(--radius-circle); background:var(--accent-bright); }   /* offline: a dot, so the name keeps its room */
   .sess-more{ font-size:24px; }
+  .btn-icon.on-dark.sess-more{ background:transparent; }   /* Joel, Oct 22: the mark sits on the header's own dark, like the names beside it */
   /* Joel, Oct 22: the session menu button is the main mark, "The spot" (Jordan + Joel, Oct 21; index.html's kb-mark):
-     the slanted strike zone, cells in white, the low-away pocket lit in the sport's accent (gold; rally pink). */
+     the slanted strike zone, every cell in the header's white like the text beside it (Joel, Oct 22: no gold here). */
   .kb-mark-btn{ width:24px; height:24px; color:var(--on-dark); display:block; }
   .ph-layout .controls-panel.ph-controls{ padding:var(--s-6); gap:var(--s-8); border:0; box-shadow:none; background:transparent; }
   .ph-layout{ gap:var(--s-12) !important; }
@@ -6686,10 +6687,10 @@ function renderStartQuestions(p){
 // never saved, an accepted small loss. Still fire-and-forget from the
 // onclick attributes that call them (none of those await), same as every
 // other async handler in this file.
-// The main mark, drawn as index.html's kb-mark (keep the two the same).
+// The main mark, drawn as index.html's kb-mark (keep the shape the same); one colour here, the header's text colour.
 const KB_MARK_SVG = `<svg class="kb-mark-btn" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><g transform="translate(50 50) skewX(-14) translate(-38 -38)">`
   + [[0, 0], [27, 0], [54, 0], [0, 27], [27, 27], [54, 27], [0, 54], [27, 54], [54, 54]]
-    .map(([x, y], i) => `<rect x="${x}" y="${y}" width="22" height="22" rx="2" fill="${i === 8 ? 'var(--accent)' : 'currentColor'}"/>`).join('')
+    .map(([x, y]) => `<rect x="${x}" y="${y}" width="22" height="22" rx="2" fill="currentColor"/>`).join('')
   + `</g></svg>`;
 window.handleGameZoneTap = async function(row, col){
   // Release 2 (F5): "Move location" in the at-bat editor -- this tap is that pitch's new spot, not a new pitch

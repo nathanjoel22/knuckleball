@@ -15,6 +15,13 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-22 · no packet (branded emails; The spot on the sign-in pages) · **production**
+- **Shipped by:** Joel ("Ship it now"); operator `Nathan <joelhauserman@gmail.com>`. Branch `branded-emails` from `main`. **Cache:** v299. Site first, then `send-verification-email` and `send-guardian-consent` to production.
+- **Found:** Joel: the parent approval and the verify email used the old look. Both pages were already on the D2 brand (checked live, both sports); the emails were plain unbranded text, and the ten sign-in pages showed the wordmark without the mark the landing page and picker now carry.
+- **Built:** `supabase/functions/_shared/email.ts` `brandedEmail()` -- tables and inline styles, the sport's colours (css/tokens.css values), a brand-dark header with the lockup image, an accent stripe, an uppercase title, one accent button with the link written out under it, a footnote and the Privacy / Terms footer. The lockups (`email/lockup-baseball.png`, `email/lockup-softball.png`, 1200x200 shown at 300x50, alt "KNUCKLEBALL") are drawn by `node scripts/email-art.js` with this Mac's Chrome and the self-hosted Black Ops One. The verify email (sport from the login's profile; a parent login: baseball) and the guardian approval email (the player's sport) use it, wording unchanged. `css/components.css`: "The spot" beside the wordmark in the shared sign-in header (white cells, pocket in the sport's accent) -- one rule for the ten pages.
+- **Checks:** the four emails rendered (verify + guardian, baseball + softball, 390 and 800 wide); the guardian, verify and login pages with the mark in both sports; `deno check` both functions; staging deploy of both.
+- **Open:** the other emails (report link, removal notice, account deletion, email change) and Supabase Auth's own templates (password reset, invites) still use the plain look -- they can move to `brandedEmail()` / a matching template next.
+
 ## 2026-10-22 · no packet (relative-accuracy painter jumped to the top) · **production**
 - **Shipped by:** Joel ("Ship it now"); operator `Nathan <joelhauserman@gmail.com>`. Branch `fix-zone-save-scroll` from `main`. **Cache:** v297. Frontend only.
 - **Found:** in the setup window, Save cells (and opening / closing the painter) snapped the window to the top: it scrolls inside `.modal-panel`, and `renderKeepScroll` only kept the page's scroll. **Fix:** `renderKeepScroll` also keeps `.modal-panel`'s scroll; open / close use it too.

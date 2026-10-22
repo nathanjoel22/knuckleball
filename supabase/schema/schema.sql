@@ -2795,7 +2795,7 @@ begin
             (p_session ->> 'game_outs_recorded')::smallint,
             coalesce((p_session ->> 'ra_on')::boolean, false),   -- U14
             case when coalesce(nullif(p_session ->> 'kind', ''), 'bullpen') = 'game'
-                 then coalesce((p_session ->> 'pitch_count_adjust')::smallint, 0) else 0 end,   -- Oct 19: + / - pitch count
+                 then greatest(0, least(999, coalesce((p_session ->> 'pitch_count_adjust')::int, 0))) else 0 end,   -- R3 (A4): never negative; an old app's -K / -B saves as 0
             case when coalesce(nullif(p_session ->> 'kind', ''), 'bullpen') = 'game'
                  then (p_session ->> 'inherited_runners')::smallint end,   -- Oct 21: runners on when a reliever started
             case when coalesce(nullif(p_session ->> 'kind', ''), 'bullpen') = 'game'
@@ -2806,7 +2806,7 @@ begin
          accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, kind, result, in_play_outcome,
          hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, bb_type,
          bb_x, bb_y, fielders, runners_before, batter_to, runner_advances, outs_on_play, runs_scored, sacrifice,
-         bb_from_position, time_to_plate, spray_box, runners_after, spray_field, accuracy_hit_kind, hbp_swing,
+         bb_from_position, time_to_plate, spray_box, runners_after, spray_field, accuracy_hit_kind,
          unearned_runs, inherited_runs, charged_prev)
   select r.id, v_id, r.type, r.velo, coalesce(r.ts, now()), r.target_row, r.target_col,
          coalesce(r.actual_row, 0), coalesce(r.actual_col, 0),
@@ -2815,7 +2815,7 @@ begin
          r.hit_type, r.fielder, r.delivery, r.inning, r.outs_before, r.balls_before, r.strikes_before, r.at_bat_index,
          r.bb_type, r.bb_x, r.bb_y, r.fielders, r.runners_before, r.batter_to, r.runner_advances, r.outs_on_play,
          r.runs_scored, r.sacrifice, r.bb_from_position, r.time_to_plate, r.spray_box, r.runners_after, r.spray_field,
-         r.accuracy_hit_kind, r.hbp_swing,   -- Oct 20
+         r.accuracy_hit_kind,
          r.unearned_runs, r.inherited_runs, r.charged_prev   -- Oct 21
     from jsonb_populate_recordset(null::public.pitches, coalesce(p_pitches, '[]'::jsonb)) r
    where r.id is not null
@@ -3457,7 +3457,7 @@ CREATE TABLE IF NOT EXISTS "public"."sessions" (
     CONSTRAINT "sessions_inherited_runners_check" CHECK ((("inherited_runners" IS NULL) OR (("kind" = 'game'::"text") AND (("inherited_runners" >= 0) AND ("inherited_runners" <= 3))))),
     CONSTRAINT "sessions_kind_check" CHECK (("kind" = ANY (ARRAY['bullpen'::"text", 'game'::"text"]))),
     CONSTRAINT "sessions_opponent_length" CHECK ((("opponent" IS NULL) OR ("char_length"("opponent") <= 60))),
-    CONSTRAINT "sessions_pitch_count_adjust_check" CHECK (((("pitch_count_adjust" >= '-999'::integer) AND ("pitch_count_adjust" <= 999)) AND (("kind" = 'game'::"text") OR ("pitch_count_adjust" = 0)))),
+    CONSTRAINT "sessions_pitch_count_adjust_check" CHECK (((("pitch_count_adjust" >= 0) AND ("pitch_count_adjust" <= 999)) AND (("kind" = 'game'::"text") OR ("pitch_count_adjust" = 0)))),
     CONSTRAINT "sessions_pitcher_unless_tombstone" CHECK ((("pitcher_id" IS NOT NULL) OR ("deleted_at" IS NOT NULL))),
     CONSTRAINT "sessions_runners_left_check" CHECK ((("runners_left" IS NULL) OR (("kind" = 'game'::"text") AND (("runners_left" >= 0) AND ("runners_left" <= 3))))),
     CONSTRAINT "sessions_sport_check" CHECK (("sport" = ANY (ARRAY['baseball'::"text", 'softball'::"text"])))

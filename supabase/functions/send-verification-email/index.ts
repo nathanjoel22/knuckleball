@@ -13,6 +13,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { takeRateLimit } from '../_shared/rate_limit.ts'
+import { brandedEmail } from '../_shared/email.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,14 +21,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 }
 
-function escapeHtml(str: string): string {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -70,6 +63,15 @@ Deno.serve(async (req) => {
 
   const verifyLink = `${redirectBase}?t=${encodeURIComponent(token)}`
   const toEmail = user.email!
+  // Branded emails (Joel, Oct 22): in the account's sport (a profile on this login with one; a parent login: baseball)
+  const { data: sportRow } = await callerClient.from('profiles').select('sport').eq('account_id', user.id).not('sport', 'is', null).limit(1).maybeSingle()
+  const html = brandedEmail({
+    sport: sportRow ? (sportRow as { sport: string }).sport : null,
+    title: 'Verify your email',
+    paragraphs: ['Tap the button below to verify your Knuckleball account email.'],
+    button: { href: verifyLink, label: 'Verify email' },
+    footnote: "If you didn't create a Knuckleball account, you can ignore this email.",
+  })
 
   const resendRes = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -78,7 +80,7 @@ Deno.serve(async (req) => {
       from: fromEmail,
       to: [toEmail],
       subject: 'Verify your Knuckleball email',
-      html: `<p>Click the link below to verify your Knuckleball account email.</p><p><a href="${escapeHtml(verifyLink)}">${escapeHtml(verifyLink)}</a></p><p>If you didn't create a Knuckleball account, you can ignore this email.</p>`
+      html
     })
   })
 

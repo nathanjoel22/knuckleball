@@ -11578,7 +11578,7 @@ window.openZonePaint = function(type){
   if(!p) return;
   state.zonePaint = { pitcherId: p.id, type, side: 'R', cells: (zoneCellsFor(p.id, type, 'R') || []).slice() };
   state.zoneMsg = '';
-  render();
+  renderKeepScroll();   // Oct 22: stay put (the setup window too)
 };
 window.zonePaintSide = function(side){
   const zp = state.zonePaint;
@@ -11607,15 +11607,19 @@ window.paintZoneCell = function(row, col){
 // "n of 4 cells" line) redraw the page but put the scroll position back.
 function renderKeepScroll(){
   const y = window.scrollY || window.pageYOffset || 0;
+  // Joel, Oct 22: the setup window scrolls inside its own panel -- keep that place too (Save cells jumped to the top)
+  const panel = document.querySelector('.modal-panel'), py = panel ? panel.scrollTop : 0;
   render();
   try{ window.scrollTo(0, y); }catch(e){}
+  const again = document.querySelector('.modal-panel');
+  if(again && py) again.scrollTop = py;
 }
 function refreshZonePainter(){
   const el = document.querySelector('.zone-paint');
   if(el){ el.outerHTML = renderZonePainter(); return; }
   renderKeepScroll();
 }
-window.cancelZonePaint = function(){ state.zonePaint = null; state.zoneMsg = ''; render(); };
+window.cancelZonePaint = function(){ state.zonePaint = null; state.zoneMsg = ''; renderKeepScroll(); };   // Oct 22: stay put
 function setLocalZone(pitcherId, type, side, cells){
   const byType = (state.zones[pitcherId] = state.zones[pitcherId] || {});
   const bySide = (byType[type] = byType[type] || {});

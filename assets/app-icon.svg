@@ -1,8 +1,16 @@
-<!-- P2-05: the app icon's ONE source -- "KB" from the KNUCKLEBALL wordmark (Black Ops One, white on --brand-bg), Joel
-     Oct 15 2026, standing in until his logo. Every icon size and every iOS splash image is rendered from this by
-     scripts/splash.js -- replace this file, re-run the script, bump CACHE_VERSION. Square, full bleed (no transparency:
-     iOS fills it black); the letters stay inside the middle 80% so the Android "maskable" crop never cuts them. -->
+<!-- The app icon's ONE source (P2-05; Joel, Oct 22 2026: the main logo, "The spot" -- the slanted 3x3 zone with the
+     low-away pocket lit, index.html's kb-mark -- replaces the Oct 15 "KB" placeholder). White cells, the gold pocket, on
+     --brand-bg. Every icon size and every iOS splash image is rendered from this by scripts/splash.js -- replace this
+     file, re-run the script, bump CACHE_VERSION. Square, full bleed (no transparency: iOS fills it black). The mark fills
+     ~70% so the 32px tab icon reads; the "maskable" icon is drawn at 80% of this (scripts/splash.js), which keeps the
+     mark inside Android's safe circle. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <rect width="1024" height="1024" fill="#061A12"/>
-  <text x="512" y="660" text-anchor="middle" font-family="Black Ops One" font-size="430" letter-spacing="8" fill="#FFFFFF">KB</text>
+  <svg x="162" y="162" width="700" height="700" viewBox="0 0 100 100">
+    <g transform="translate(50 50) skewX(-14) translate(-38 -38)">
+      <rect x="0" y="0" width="22" height="22" rx="2" fill="#FFFFFF"/><rect x="27" y="0" width="22" height="22" rx="2" fill="#FFFFFF"/><rect x="54" y="0" width="22" height="22" rx="2" fill="#FFFFFF"/>
+      <rect x="0" y="27" width="22" height="22" rx="2" fill="#FFFFFF"/><rect x="27" y="27" width="22" height="22" rx="2" fill="#FFFFFF"/><rect x="54" y="27" width="22" height="22" rx="2" fill="#FFFFFF"/>
+      <rect x="0" y="54" width="22" height="22" rx="2" fill="#FFFFFF"/><rect x="27" y="54" width="22" height="22" rx="2" fill="#FFFFFF"/><rect x="54" y="54" width="22" height="22" rx="2" fill="#FFB81C"/>
+    </g>
+  </svg>
 </svg>

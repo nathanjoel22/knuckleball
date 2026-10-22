@@ -98,9 +98,9 @@
   // Offline app shell (P0-06) -- lets this page load with no network.
   // Never blocks page load: registration happens after the page's own
   // load event, and any failure is just logged, not surfaced to the user.
-  // P2-05 (Joel, Oct 15): the install banner stays OFF until the real logo replaces the placeholder icon (iOS keeps the
-  // icon a person installed with). Turn on by setting this to true.
-  window.KB_INSTALL_BANNER = false;
+  // P2-05 (Joel, Oct 15): the install banner stayed OFF until the real logo replaced the placeholder icon (iOS keeps the
+  // icon a person installed with). Joel, Oct 22: on -- the icon is "The spot" now.
+  window.KB_INSTALL_BANNER = true;
   if('serviceWorker' in navigator){
     // P2-05: an installed app is rarely reloaded, so a new version that has taken over says so (the app shows a quiet
     // "A new version is ready" bar, never on the charting screen). Only when this page was ALREADY run by a worker --

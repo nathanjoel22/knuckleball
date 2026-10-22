@@ -15,10 +15,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-10-22 · no packet (Live Game velocity: No read, "Record Velocity") · **staging (local), branch**
-- **Asked by:** Joel. Branch `live-game-r3` (rides with R3 Stage B). **Cache:** v284.
-- **Built:** the velocity step's last row is "No read" (two cells, left) and "Next pitch ›" (three cells); No read clears any speed (an accidental touch of the bar) and moves on. While the speeds are up, the prompt under the chart says "Record Velocity" (was "Tap where the pitch landed"; phones showed nothing). Unchanged: an untouched bar records nothing -- only a tap, the ‹ › arrows or a swipe save a speed.
-- **Checks:** headless at 390 / 820 / 1180: 8/8 each (prompt, button sizes and order, untouched = no reading, tap 88 then No read = none, Next pitch keeps a tapped speed). r1, r4, r5, glitchfix pass.
+## 2026-10-22 · no packet (Live Game velocity: No read, "Record Velocity"; the session menu is the mark) · **staging (local), branch**
+- **Asked by:** Joel. Branch `live-game-r3` (rides with R3 Stage B). **Cache:** v285 (v284 had No read beside Next pitch; Joel moved it).
+- **Built:** "No read" is one full cell over the chart's top-right corner in the brand's mid green (`--brand-mid`, white text: away from the speeds and Next pitch, still a 44px+ target); Next pitch spans the whole last row again. No read clears any speed (an accidental touch of the bar) and moves on. While the velocity step is up, that one corner cell can't be tapped as the next pitch's location (No read or Next pitch first). The phone session menu button's 9 dots are now the main mark, "The spot" (index.html's `kb-mark`: white cells, the pocket lit in the sport's accent), same label and tap target. While the speeds are up, the prompt under the chart says "Record Velocity" (was "Tap where the pitch landed"; phones showed nothing). Unchanged: an untouched bar records nothing -- only a tap, the ‹ › arrows or a swipe save a speed.
+- **Checks:** headless at 390 / 820 / 1180: 11/11 each (prompt, No read fills the top-right cell and is what a tap there hits, brand mid with white text, Next pitch full width, untouched = no reading, tap 88 then No read = none, Next pitch keeps a tapped speed); the menu mark 5/5 (nine cells, gold pocket, label, 44px target, opens the sheet). r1, r4, r5, glitchfix pass.
 - **Open:** ships with Stage B unless Joel wants it sooner.
 
 ## 2026-10-22 · Live Game R3, Stage B · **staging**

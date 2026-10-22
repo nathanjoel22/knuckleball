@@ -114,6 +114,20 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
   inherited runs out; the starter's saved game never changes. `sessions.inherited_runners` (IR) and
   `sessions.runners_left` (on base when he came out). Sacrifices (SF / SAC) are derived. Fielders in `fielder` /
   `fielders` ('SS-1B'; the same fielder twice = unassisted, 6U-3).
+- **A pitcher's line stays open for the runners he left (R3 Stage B, Jordan + Joel, Oct 21-22; `plans/live-game-r3-*`).**
+  Pitches lock at save (`sealed_at`); his runs / ER / walks can still grow until `sessions.final_at` (the full lock: set
+  at save if no runner of his own is left on; else by the next pitcher's save once none of his runners is on base; else
+  6 hours after his save, pg_cron `r3-final-lock` -> `r3_finalize_stale()`). Each runner carries its owner (the game he
+  came from: `runnerMeta[b].s`); the hand-off and "Starting mid-game?" -> "Who was pitching?" (this device's games from
+  the last 6 hours, plus the team's open games when online, or "Not charted") set the reliever's `relieved_session_id`.
+  The reliever's rows carry `charged_runs` ([{s, u}] per inherited run) and `charged_prev_session`; his `sync_session`
+  runs `r3_apply_relief` (server only, up the relief chain, capped at the runners each one left plus his charged walk)
+  into the earlier pitchers' `exit_runs` / `exit_er` / `exit_bb`. Linking needs the same team, another pitcher, saved
+  before and within 6 hours, and the caller a coach of the team or that game's own charter; a starter not saved yet ->
+  `relieved_not_saved` (stays queued; after a day it saves unlinked). The H1 lock: `relieved_session_id` / `left_owners`
+  never change; `final_at` / `exit_*` only by the server, never once final. `compute_game_summary` adds `exit_*` and
+  returns `provisional`; a game with an open line has no report yet ("Line open" in History; `send-session-report`
+  refuses with 409 `line_open`); its report says how many of the runners he left scored after he left.
 - **During a game, before saving:** "edit" on any pitch in the log (type, velocity, contact, Hit / Error / FC, fielders,
   earned runs, Move location); anything that changes outs, the count or the runners still needs Back. Changing Hit /
   Error / FC or the contact re-runs the runs from that play to the end of its inning (`gameReplayLedger`; earned runs

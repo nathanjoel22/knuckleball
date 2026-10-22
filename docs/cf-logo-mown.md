@@ -22,23 +22,19 @@ Mark: design #1 from Jordan's Knuckleball Mark Concepts ("Strikeout" — home pl
     <rect y="7" width="14" height="7" fill="var(--gg-stripe-b)"/>
   </pattern>
 
-  <!-- the mark (design #2), in a 100×100 box -->
-  <symbol id="kb-spot" viewBox="0 0 100 100">
-    <g transform="translate(50 50) skewX(-14) translate(-38 -38)">
-      <rect x="0"  y="0"  width="22" height="22" rx="2"/><rect x="27" y="0"  width="22" height="22" rx="2"/><rect x="54" y="0"  width="22" height="22" rx="2"/>
-      <rect x="0"  y="27" width="22" height="22" rx="2"/><rect x="27" y="27" width="22" height="22" rx="2"/><rect x="54" y="27" width="22" height="22" rx="2"/>
-      <rect x="0"  y="54" width="22" height="22" rx="2"/><rect x="27" y="54" width="22" height="22" rx="2"/><rect x="54" y="54" width="22" height="22" rx="2"/>
-    </g>
-  </symbol>
-  <symbol id="kb-spot-lit" viewBox="0 0 100 100">
-    <g transform="translate(50 50) skewX(-14) translate(-38 -38)">
-      <rect x="54" y="54" width="22" height="22" rx="2"/>
-    </g>
-  </symbol>
+<!-- the secondary mark, Strikeout: home plate (true 17-inch proportions) cut as a band, the K inside -->
+<symbol id="kb-plate" viewBox="0 0 100 100">
+  <path fill-rule="evenodd" d="M2 2H98V50L50 98L2 50Z M9 9H91V47.1L50 88.1L9 47.1Z"/>
+  <path transform="translate(26 16) scale(0.03466)" d="M0 0H442V1327H0Z M510 1139V494L820 0H1280Z M823 1327L673 1018L935 625L1301 1327Z"/>
+</symbol>
+<!-- the spot, "cut shorter" -->
+<symbol id="kb-plate-lit" viewBox="0 0 100 100">
+  <circle cx="67.9" cy="38.2" r="5.6"/>
+</symbol>
 
   <mask id="kb-cf-mask">
     <rect width="100%" height="100%" fill="#000"/>
-    <use href="#kb-spot" x="LX" y="LY" width="LSIZE" height="LSIZE" fill="#fff"
+    <use href="#kb-plate" x="LX" y="LY" width="LSIZE" height="LSIZE" fill="#fff"
          transform="rotate(45 CX CY)"/>
   </mask>
 </defs>
@@ -48,9 +44,9 @@ Mark: design #1 from Jordan's Knuckleball Mark Concepts ("Strikeout" — home pl
   <rect width="100%" height="100%" fill="url(#gg-stripes-x)"/>
   <rect width="100%" height="100%" fill="rgba(0,0,0,.05)"/>
 </g>
-<use href="#kb-spot" x="LX" y="LY" width="LSIZE" height="LSIZE" transform="rotate(45 CX CY)"
+<use href="#kb-plate" x="LX" y="LY" width="LSIZE" height="LSIZE" transform="rotate(45 CX CY)"
      fill="none" stroke="rgba(0,0,0,.10)" stroke-width="1"/>
-<use href="#kb-spot-lit" x="LX" y="LY" width="LSIZE" height="LSIZE" transform="rotate(45 CX CY)"
+<use href="#kb-plate-lit" x="LX" y="LY" width="LSIZE" height="LSIZE" transform="rotate(45 CX CY)"
      fill="rgba(255,255,255,.22)"/>
 ```
 

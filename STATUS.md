@@ -15,6 +15,15 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-22 · P2-01 + P2-02 solo pitchers · **production**
+- **Shipped by:** Joel ("ship P2"); operator `Nathan <joelhauserman@gmail.com>`. Branch `p2-solo-pitchers` -> `main` (admin merge). **Cache:** v301. Packet `plans/p2-solo-pitchers.md`, decisions `plans/p2-preconditions.md`.
+- **Checked first:** production's `sync_session` = R3 Stage B's (md5 `653b3955...`); `team_id` NOT NULL; 29 policies; the branch's committed config points at production; nothing on `main` the branch lacked.
+- **Backup first:** `~/knuckleball-backups/2026-10-22-1548-{schema,data}.sql` (29 policies; 125 sessions, 2,497 pitches, 68 events, 56 profiles).
+- **Database:** `p2_rls_matrix.sql` BEFORE on production (rolled back) = staging's BEFORE. Dry run listed only `20261026000000_p2_01_team_optional`; applied. After: `team_id` nullable, `profiles.level`, 29 policies, counts unchanged; `sync_session`, `is_pitcher_report_eligible`, `sessions_g3_team_check` identical to staging's (md5 `5de5c177...`, `561354b7...`, `61b368d4...`). AFTER matrix differs from BEFORE only in the three expected places (an independent pen saves; it's read with its real 4 pitches; the pitcher on no team is report-eligible). `p2_stage1.sql` on production: all as on staging. No test rows left. `supabase/schema/schema.sql` regenerated.
+- **Site, then function:** v301 live; `send-session-report` deployed to production after the site (its no-team refusal text).
+- **Joel's staging pass:** independent signup, player and guardian verification, joining a team -- worked; the solo pitcher's report and an Independent game into extra innings not tried by hand (covered by the automated checks).
+- **Open:** the 13 team-less pitchers on production now reach the app as Independent instead of the "No team yet" wall.
+
 ## 2026-10-22 · no packet (staging email links opened stale pre-rebrand pages) · **staging settings**
 - **Found:** Joel's staging guardian-approval and verify emails (new branded emails) opened the old pre-D2 pages with the pre-Oct 17 wording. Staging's `VERIFY_REDIRECT_URL` (verify + guardian links) and `INVITE_REDIRECT_URL` still pointed at `http://localhost:8080/...` (set Sept 19 / Aug 26 -- matched by fingerprint); nothing serves there now, and the Mac's browser had an old service worker for that origin serving its cached copies. Production's links point at knuckleballonline.com (verify) and the GitHub Pages address (invites, which redirects to knuckleballonline.com) -- real parents get the current pages.
 - **Changed (staging only):** `VERIFY_REDIRECT_URL`, `INVITE_REDIRECT_URL` and `REPORT_SITE_ORIGIN` -> `http://Users-MacBook-Neo.local:8000/...` (the Mac's Bonjour name: stable across Wi-Fi address changes). CLAUDE.md updated.

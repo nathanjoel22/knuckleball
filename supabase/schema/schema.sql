@@ -1624,8 +1624,8 @@ CREATE OR REPLACE FUNCTION "public"."is_pitcher_report_eligible"("p_pitcher_id" 
                      and (acct.age_attestation = 'adult' or acct.guardian_consented_at is not null)
                      and (pr.managed_by is null or pr.guardian_consented_at is not null)
                 from public.profiles pr join public.profiles acct on acct.id = pr.account_id
-               where pr.id = p_pitcher_id), false)
-    and exists (select 1 from public.pitcher_teams where pitcher_id = p_pitcher_id);
+               where pr.id = p_pitcher_id), false);
+  -- P2-01 (Joel, Oct 22): no longer requires a team (Amendment 11's temporary restriction retired).
 $$;
 
 
@@ -2654,6 +2654,11 @@ begin
     end if;
     return new;
   end if;
+  -- P2-01 (Joel, Oct 22): no team = an independent session (the pitcher's own); nothing to check against a team.
+  -- Every rule below for a session filed to a team is unchanged.
+  if new.team_id is null then
+    return new;
+  end if;
   -- P1-09: an archived team takes no new sessions (also inside sync_session).
   if public.is_team_archived(new.team_id) then
     raise exception 'team_archived' using errcode = 'check_violation', detail = 'This team is archived; it can''t take new sessions.';
@@ -2863,7 +2868,7 @@ begin
   exception when others then
     return jsonb_build_object('ok', false, 'error', 'invalid_session');
   end;
-  if v_id is null or v_pitcher is null or v_team is null or v_logged is null
+  if v_id is null or v_pitcher is null or v_logged is null   -- P2-01: v_team may be NULL (an independent pen)
      or jsonb_typeof(coalesce(p_pitches, '[]'::jsonb)) <> 'array'
      or jsonb_typeof(coalesce(p_events, '[]'::jsonb)) <> 'array' then
     return jsonb_build_object('ok', false, 'error', 'invalid_session');
@@ -2900,7 +2905,9 @@ begin
           return jsonb_build_object('ok', false, 'error', 'relieved_not_saved');
         end if;
         v_rel := null; v_link := 'not_found';
-      elsif not (v_owner.kind = 'game' and v_owner.team_id = v_team and v_owner.pitcher_id is distinct from v_pitcher
+      -- P2-01: relief linking stays between games of one team; written NULL-safe so a missing team refuses (fails closed)
+      elsif not (v_owner.kind = 'game' and v_team is not null and v_owner.team_id is not distinct from v_team
+                 and v_owner.pitcher_id is distinct from v_pitcher
                  and v_owner.deleted_at is null and v_owner.ended_at is not null
                  and v_owner.ended_at <= (p_session ->> 'started_at')::timestamptz + interval '5 minutes'
                  and (p_session ->> 'started_at')::timestamptz - v_owner.ended_at <= interval '6 hours'
@@ -3375,10 +3382,12 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "deletion_requested_at" timestamp with time zone,
     "deletion_due_at" timestamp with time zone,
     "terms_agreed_at" timestamp with time zone,
+    "level" "text",
     CONSTRAINT "profiles_age_attestation_check" CHECK (("age_attestation" = ANY (ARRAY['adult'::"text", 'minor_13_17'::"text"]))),
     CONSTRAINT "profiles_attested_via_check" CHECK (("attested_via" = ANY (ARRAY['signup'::"text", 'catchup'::"text"]))),
     CONSTRAINT "profiles_consent_via_check" CHECK (("consent_via" = ANY (ARRAY['guardian_email'::"text", 'parent_created'::"text"]))),
     CONSTRAINT "profiles_full_name_not_blank" CHECK (("btrim"("full_name") <> ''::"text")),
+    CONSTRAINT "profiles_level_check" CHECK ((("level" IS NULL) OR (("role" = 'pitcher'::"text") AND ((("sport" = 'baseball'::"text") AND ("level" = ANY (ARRAY['little_league'::"text", 'high_school'::"text", 'college'::"text"]))) OR (("sport" = 'softball'::"text") AND ("level" = ANY (ARRAY['little_league'::"text", 'high_school_up'::"text"]))))))),
     CONSTRAINT "profiles_role_check" CHECK (("role" = ANY (ARRAY['coach'::"text", 'pitcher'::"text", 'parent'::"text"]))),
     CONSTRAINT "profiles_sport_check" CHECK (((("role" = 'parent'::"text") AND ("sport" IS NULL)) OR (("role" <> 'parent'::"text") AND ("sport" = ANY (ARRAY['baseball'::"text", 'softball'::"text"]))))),
     CONSTRAINT "profiles_throws_check" CHECK (("throws" = ANY (ARRAY['L'::"text", 'R'::"text"])))
@@ -3479,6 +3488,10 @@ COMMENT ON COLUMN "public"."profiles"."terms_agreed_at" IS 'Terms agreement (Oct
 
 
 
+COMMENT ON COLUMN "public"."profiles"."level" IS 'P2-01: a pitcher''s level of play (asked at signup, changed in Profile). Decides the first extra inning of his independent games; team games use teams.level.';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."rate_limit_config" (
     "key" "text" NOT NULL,
     "window_seconds" integer NOT NULL,
@@ -3565,7 +3578,7 @@ COMMENT ON TABLE "public"."session_opened" IS 'U10 (3): which sessions each view
 CREATE TABLE IF NOT EXISTS "public"."sessions" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "pitcher_id" "uuid",
-    "team_id" "uuid" NOT NULL,
+    "team_id" "uuid",
     "started_at" timestamp with time zone NOT NULL,
     "ended_at" timestamp with time zone,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
@@ -3610,6 +3623,10 @@ CREATE TABLE IF NOT EXISTS "public"."sessions" (
 
 
 ALTER TABLE "public"."sessions" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."sessions"."team_id" IS 'The team the session was filed to (the recording team, R4). NULL = independent (P2-01): the pitcher''s own; his current coaches read it under R4.';
+
 
 
 COMMENT ON COLUMN "public"."sessions"."pitch_count" IS 'Pitch-count snapshot taken at soft-delete time; NULL for live sessions (count them from public.pitches).';
@@ -5034,6 +5051,10 @@ GRANT SELECT("consent_via") ON TABLE "public"."profiles" TO "authenticated";
 
 
 GRANT SELECT("terms_agreed_at") ON TABLE "public"."profiles" TO "authenticated";
+
+
+
+GRANT SELECT("level"),UPDATE("level") ON TABLE "public"."profiles" TO "authenticated";
 
 
 

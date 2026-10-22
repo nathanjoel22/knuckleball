@@ -12487,15 +12487,14 @@ function renderPitcherProfileView(){
 function renderSetupView(){
   const p = currentPitcher();
   if(!p) return '';
-  const uniformRows = state.teams.map(t => uniformRowHtml(t.id, state.profile.id, 'Uniform # · ' + t.name)).join('')
-    || '<p class="profile-note">Join a team to set a uniform number.</p>';
+  const uniformRows = state.teams.map(t => uniformRowHtml(t.id, state.profile.id, 'Uniform # · ' + t.name)).join('');   // P2: none with no team
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
   return `<div class="profile-page setup-page">
     <h2 class="display" style="margin:0 0 var(--s-2);">Welcome, ${escHtml(p.name)}</h2>
     <p class="profile-note" style="margin:0 0 var(--s-12);">A few quick things so charting works well for you. Skip it and come back anytime from Profile.</p>
     ${msg}
     ${renderSetupHeadshot(p)}
-    <div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>
+    ${uniformRows ? `<div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>` : ''}
     ${renderThrowsSection(p)}
     ${renderPitchMixSection(p)}
     ${renderRelAccuracySection(p)}

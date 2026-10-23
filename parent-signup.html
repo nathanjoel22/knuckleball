@@ -69,7 +69,7 @@
 
     <div class="field">
       <label class="field-label" for="full-name">Your name</label>
-      <input class="text-input" id="full-name" placeholder="Parent or guardian's name" autofocus>
+      <input class="text-input" id="full-name" placeholder="Parent or guardian's name"><script>/* the first box takes focus only with a mouse or trackpad: on a phone or iPad it would raise the keyboard at once and set the page scrolling (Joel, Oct 23 2026) */if(window.matchMedia&&matchMedia('(hover:hover) and (pointer:fine)').matches)document.getElementById('full-name').focus();</script>
     </div>
     <div class="field">
       <label class="field-label" for="email">Your email</label>

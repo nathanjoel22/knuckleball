@@ -17,6 +17,12 @@
    and inside the iOS / Android store apps, which draw the page under the status bar but aren't "standalone". A normal
    browser tab reports 0 at the top, so there the padding and the strip are both 0px tall. */
 :root{ padding-top:env(safe-area-inset-top, 0px); }
+/* One screen's height (Joel, Oct 23 2026: a page with nothing below shouldn't scroll). The top inset above is padding on
+   :root, so a page that is min-height:100vh came out one status bar taller than the screen inside the apps and always
+   scrolled. Full-height pages use var(--kb-screen, 100vh): the visible screen (dvh: Safari's toolbar is left out too)
+   minus that inset. Browsers without dvh keep the vh line; a browser tab has a 0 inset, so there it is just the screen. */
+:root{ --kb-screen:calc(100vh - env(safe-area-inset-top, 0px)); }
+@supports (height:100dvh){ :root{ --kb-screen:calc(100dvh - env(safe-area-inset-top, 0px)); } }
 body::before{
   content:''; position:fixed; z-index:2147483000; top:0; left:0; right:0;
   height:env(safe-area-inset-top, 0px); background:var(--brand-bg, #061A12);   /* the sport's brand color behind the status bar */

@@ -51,7 +51,7 @@
    its last word in the accent. The form sits below on --bg.
    ========================================================================== */
 body.signin{
-  margin:0; min-height:100vh; overflow-x:hidden;
+  margin:0; min-height:var(--kb-screen, 100vh); overflow-x:hidden;   /* one screen, no phantom scroll (css/standalone.css) */
   display:flex; flex-direction:column; align-items:center; gap:var(--s-12);
   background:var(--bg); color:var(--ink); font-family:var(--font-sans);
 }
@@ -162,7 +162,7 @@ body.signin .signin-head a{ color:var(--on-dark); font-weight:600; text-decorati
    sport's own colors (tokens --bb-* / --sb-*), side by side, whatever the page's sport.
    ========================================================================== */
 body.landing{
-  margin:0; min-height:100vh; padding:var(--s-24); overflow-x:hidden;
+  margin:0; min-height:var(--kb-screen, 100vh); padding:var(--s-24); overflow-x:hidden; box-sizing:border-box;   /* the padding sits inside the screen, not below it */
   display:flex; align-items:center; justify-content:center;
   background:var(--card); color:var(--ink); font-family:var(--font-sans);
 }

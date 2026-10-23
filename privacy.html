@@ -40,7 +40,7 @@
 <style>
   @import url('vendor/fonts/fonts.css');
   /* Colors: css/tokens.css (baseball); the #softball view takes the fixed --sb-* colors (D2, Oct 13 2026). */
-  .page{ min-height:100vh; background:var(--bg); color:var(--ink); }
+  .page{ min-height:var(--kb-screen, 100vh); background:var(--bg); color:var(--ink); }
   #softball:target{
     --ink:var(--sb-brand); --ink-dim:var(--sb-ink-dim); --ink-faint:var(--sb-ink-faint); --bg:var(--sb-bg);
     --surface-border:var(--sb-surface-border); --accent:var(--sb-accent); --brand-bg:var(--sb-brand);

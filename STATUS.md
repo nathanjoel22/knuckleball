@@ -15,6 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-23 · no packet (The spot in the app's sidebar header) · **production**
+- **Shipped by:** Joel ("add the spot to the app's sidebar header too", "Ship it now"); operator `Nathan <joelhauserman@gmail.com>`. Branch `sidebar-spot` from `main`. **Cache:** v304. Frontend only.
+- **Built:** the sidebar's brand block (and the no-team screen's) shows The spot before KNUCKLEBALL (`KB_MARK_SVG`: white cells, the pocket in the sport's accent), as on the landing, sign-in and help pages. In the laptop sidebar (over 860px, 207px inside) the mark is 20px and the wordmark 22px so the lockup fits (26 + 24px would overflow by 17px).
+- **Checks:** fits at 390 / 820 / 900 / 1180 / 1440; baseball gold and softball pink pockets; r1, mark, noread, p2app (solo) pass.
+
 ## 2026-10-23 · P2-06 getting started + help page · **production**
 - **Shipped by:** Joel ("support address has been created. ship it"); operator `Nathan <joelhauserman@gmail.com>`. **Packet:** `plans/p2-06-help-page.md`; preconditions `plans/p2-06-preconditions.md`; copy as approved by Joel (Oct 23) `plans/p2-06-copy.md`. Branch `p2-06-help` -> `main` (admin merge). **Cache:** v303. Frontend only. support@ created in Cloudflare Email Routing by Joel.
 - **Built:** `help.html` -- the lockup band, Big Shoulders headings, 65-character measure, the sport's theme (`?sport=` or the device's last sport); Coach / Pitcher / Parent tray (remembered as `kb:helpTrack`; `#coach` / `#pitcher` / `#parent` and step anchors -- `#start #invite #bullpen #game #reports #notes`, `#pitcher-*`, `#parent-*`, `#offline #fix #install #password #data #softball #support` -- pick their track); "Everyone" always shows; the support address as selectable text with a Copy button (clipboard, then the old copy command). Help links: landing footer, sign-in page footer, the app's account menu ("Help & getting started"), privacy / terms footers (link only). `sw.js` precaches `/help.html`. The store-app link handler on 14 pages treats help.html like privacy / terms (opens in the browser sheet). SETUP.md: the support@ Email Routing steps.

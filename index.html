@@ -34,6 +34,13 @@
     transition:opacity .35s ease; }
   #kb-splash video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   #kb-splash.out{ opacity:0; }
+  /* iPad: always the wide film, so it reads as "turn me sideways" -- held upright it plays letterboxed on black,
+     sideways it fills the screen. Turning the iPad mid-film switches between the two. */
+  html.kb-splash-pad #kb-splash{ background-color:#000; }
+  @media (orientation:portrait){
+    html.kb-splash-pad #kb-splash{ background-size:contain; }
+    html.kb-splash-pad #kb-splash video{ object-fit:contain; }
+  }
   /* after the film: a quick fade to black, then The spot and the wordmark, front and center */
   #kb-splash .kb-black{ position:absolute; inset:0; background:#000; opacity:0; transition:opacity .4s ease; }
   #kb-splash .kb-logo{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -41,6 +48,9 @@
   #kb-splash .kb-logo svg{ width:min(30vw,128px); height:auto; }
   #kb-splash .kb-logo span{ font-family:'Black Ops One', var(--font-wordmark, sans-serif); font-size:min(9.5vw,44px);
     letter-spacing:.02em; line-height:1; white-space:nowrap; }
+  html.kb-splash-pad #kb-splash .kb-logo{ gap:26px; }
+  html.kb-splash-pad #kb-splash .kb-logo svg{ width:180px; }
+  html.kb-splash-pad #kb-splash .kb-logo span{ font-size:64px; }
   #kb-splash.black .kb-black, #kb-splash.logo .kb-black, #kb-splash.logo .kb-logo{ opacity:1; }
 </style>
 <title>Knuckleball — Pitch charting for baseball and softball</title>
@@ -361,12 +371,14 @@ img{max-width:100%}
 <body>
 <div id="kb-splash" aria-hidden="true"></div>
 <script>
-/* The iPhone app's opening film: about 3.5 seconds from when it starts playing, a quick fade to black, The spot and the
+/* The iPhone and iPad app's opening film: about 3.5 seconds from when it starts playing, a quick fade to black, The spot and the
    KNUCKLEBALL wordmark held 1.5 seconds (Joel, Oct 23 2026), then a fade to "Which sport?". With no signal the film
    can't load (it's never cached), so after 4.5 seconds it goes on regardless. */
 (function(){
   var root=document.documentElement; if(root.className.indexOf('kb-app-splash')<0) return;
-  var el=document.getElementById('kb-splash'), tall=innerHeight>=innerWidth, done=false;
+  /* an iPad (its short side is 600+ points; every iPhone's is under 500) always gets the wide film */
+  var pad=Math.min(screen.width,screen.height)>=600; if(pad) root.className+=' kb-splash-pad';
+  var el=document.getElementById('kb-splash'), tall=!pad && innerHeight>=innerWidth, done=false;
   el.style.backgroundImage='url(media/'+(tall?'hero-poster-4x5.jpg':'hero-poster.jpg')+')';
   var v=document.createElement('video'); v.muted=true; v.autoplay=true; v.playsInline=true; v.setAttribute('playsinline','');
   v.preload='auto'; v.src='media/'+(tall?'hero-4x5.mp4':'hero-1080p.mp4'); el.appendChild(v);

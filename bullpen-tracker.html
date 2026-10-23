@@ -99,8 +99,9 @@
   // Never blocks page load: registration happens after the page's own
   // load event, and any failure is just logged, not surfaced to the user.
   // P2-05 (Joel, Oct 15): the install banner stayed OFF until the real logo replaced the placeholder icon (iOS keeps the
-  // icon a person installed with). Joel, Oct 22: on -- the icon is "The spot" now.
-  window.KB_INSTALL_BANNER = true;
+  // icon a person installed with). Joel, Oct 22: on -- the icon is "The spot" now. Joel, Oct 23: off for good ("I don't
+  // like or want it there").
+  window.KB_INSTALL_BANNER = false;
   if('serviceWorker' in navigator){
     // P2-05: an installed app is rarely reloaded, so a new version that has taken over says so (the app shows a quiet
     // "A new version is ready" bar, never on the charting screen). Only when this page was ALREADY run by a worker --
@@ -118,10 +119,9 @@
       }).catch(err => console.error('SW registration failed', err));
     });
   }
-  // P2-05: Android Chrome offers installing through beforeinstallprompt; kept for the app's own Install button. Only
-  // held back from Chrome's own prompt while the app's banner is switched on (KB_INSTALL_BANNER).
+  // P2-05: Android Chrome offers installing through beforeinstallprompt; kept for the app's own Install button. Always
+  // held back, so Chrome shows no install prompt of its own either (Joel, Oct 23: no home-screen notice).
   window.addEventListener('beforeinstallprompt', function(e){
-    if(window.KB_INSTALL_BANNER === false) return;
     e.preventDefault();
     window.__kbInstallEvt = e;
     if(window.kbOnAppEvent) window.kbOnAppEvent();

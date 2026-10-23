@@ -54,3 +54,19 @@ routed through Resend's Knuckleball sending domain, not Supabase's default maile
 
 Toggle "Enable Custom SMTP" back off in the same dashboard screen to return to Supabase's
 default auth mailer.
+
+## Support address (P2-06, Oct 23 2026)
+
+`support@knuckleballonline.com` is the help page's contact and the App Store / Google Play support address. It's a
+Cloudflare **Email Routing** alias, not a mailbox: mail to it is forwarded to the inbox Joel reads. Email Routing is
+already on for knuckleballonline.com (MX `route1/2/3.mx.cloudflare.net`, SPF `include:_spf.mx.cloudflare.net` -- the
+same routing that delivers nate@).
+
+To add it (Joel, once):
+1. Cloudflare dashboard -> **knuckleballonline.com** -> **Email** -> **Email Routing** -> **Routing rules**.
+2. **Create address** -> Custom address: `support` -> Action: **Send to an email** -> Destination: the inbox Joel
+   reads (already a verified destination for nate@; a new one must be verified from the email Cloudflare sends).
+3. **Save**. Then send a test email to support@knuckleballonline.com and confirm it arrives.
+
+When Jordan takes support (SC0 / P1-11), add his address as a second destination (or a second rule) the same way.
+The help page promises an answer within two business days.

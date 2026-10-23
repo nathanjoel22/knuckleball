@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-23 · no packet (install banner off) · **production**
+- **Asked by:** Joel ("the put knuckleball on your home screen notice needs to be taken away. I don't like or want it there"); operator `Nathan <joelhauserman@gmail.com>`. Branch `no-install-banner` -> `main` (admin merge). **Cache:** v307. Frontend only.
+- **Built:** `KB_INSTALL_BANNER = false` in the tracker: the Home banner (iOS "Share -> Add to Home Screen", Android Install) never shows, on any device. Chrome's own `beforeinstallprompt` is now always held back, so Android Chrome shows no install prompt of its own in its place. Help page's install step: Android now says Chrome menu (⋮) -> **Add to Home screen** (the banner it mentioned is gone). CLAUDE.md updated.
+- **Checks:** pretend signed-in pitcher on Home at 390 px: flag false, `renderInstallBanner()` empty, no install text; r1 suite 47/47.
+- **Open:** none. Turning it back on = `KB_INSTALL_BANNER = true` (and the handler's old early return).
+
 ## 2026-10-23 · no packet (app opening: logo card after the film; iPad wide film) · **production**
 - **Asked by:** Joel ("run the video at the beginning ... then quick fade to black and put the knuckleball logo. both spot and branded knuckleball word, front and center, hold for 1.5 seconds and then go into the app"; "it should work the same way for the ipad ... putting the opening video in landscape will cause most people to switch automatically"). Shipped by Joel ("yes"); operator `Nathan <joelhauserman@gmail.com>`. Branch `app-splash-logo` -> `main` (admin merge). **Cache:** v306. Frontend only (`index.html`, `sw.js`).
 - **Built:** after the film (~3.5 s from playing; 4.5 s if it never starts) a 0.4 s fade to black, The spot (white cells, gold pocket) above the KNUCKLEBALL wordmark (Black Ops One, white) fades in centered, holds 1.5 s, then the 0.35 s fade to `signin.html` (~6.3 s in all). The logo is in the page from the start (hidden) so the font is loaded before it shows. iPad (short side 600+ points) always gets the wide 1080p film: upright it plays letterboxed on black (`contain`), sideways it fills the screen; turning mid-film switches; the logo card is larger there.

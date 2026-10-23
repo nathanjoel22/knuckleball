@@ -34,6 +34,14 @@
     transition:opacity .35s ease; }
   #kb-splash video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   #kb-splash.out{ opacity:0; }
+  /* after the film: a quick fade to black, then The spot and the wordmark, front and center */
+  #kb-splash .kb-black{ position:absolute; inset:0; background:#000; opacity:0; transition:opacity .4s ease; }
+  #kb-splash .kb-logo{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px; color:#fff; opacity:0; transition:opacity .35s ease; }
+  #kb-splash .kb-logo svg{ width:min(30vw,128px); height:auto; }
+  #kb-splash .kb-logo span{ font-family:'Black Ops One', var(--font-wordmark, sans-serif); font-size:min(9.5vw,44px);
+    letter-spacing:.02em; line-height:1; white-space:nowrap; }
+  #kb-splash.black .kb-black, #kb-splash.logo .kb-black, #kb-splash.logo .kb-logo{ opacity:1; }
 </style>
 <title>Knuckleball — Pitch charting for baseball and softball</title>
 <meta name="description" content="Chart every bullpen or live game from your phone. Heat maps, velocity spreads and reports for baseball and softball pitchers. Charting is free.">
@@ -353,15 +361,27 @@ img{max-width:100%}
 <body>
 <div id="kb-splash" aria-hidden="true"></div>
 <script>
-/* The iPhone app's opening film: about 3.5 seconds from when it starts playing, then a fade to "Which sport?". With no
-   signal the film can't load (it's never cached), so after 4.5 seconds it goes on regardless. */
+/* The iPhone app's opening film: about 3.5 seconds from when it starts playing, a quick fade to black, The spot and the
+   KNUCKLEBALL wordmark held 1.5 seconds (Joel, Oct 23 2026), then a fade to "Which sport?". With no signal the film
+   can't load (it's never cached), so after 4.5 seconds it goes on regardless. */
 (function(){
   var root=document.documentElement; if(root.className.indexOf('kb-app-splash')<0) return;
   var el=document.getElementById('kb-splash'), tall=innerHeight>=innerWidth, done=false;
   el.style.backgroundImage='url(media/'+(tall?'hero-poster-4x5.jpg':'hero-poster.jpg')+')';
   var v=document.createElement('video'); v.muted=true; v.autoplay=true; v.playsInline=true; v.setAttribute('playsinline','');
   v.preload='auto'; v.src='media/'+(tall?'hero-4x5.mp4':'hero-1080p.mp4'); el.appendChild(v);
-  function go(){ if(done) return; done=true; el.className='out'; setTimeout(function(){ location.replace('signin.html'); },350); }
+  /* the logo is in the page from the start (hidden), so the wordmark's font is loaded before it shows */
+  var logo=document.createElement('div'); logo.className='kb-logo';
+  logo.innerHTML='<svg viewBox="0 0 100 100" aria-hidden="true"><g transform="translate(50 50) skewX(-14) translate(-38 -38)" fill="currentColor">'
+    +'<rect x="0" y="0" width="22" height="22" rx="2"/><rect x="27" y="0" width="22" height="22" rx="2"/><rect x="54" y="0" width="22" height="22" rx="2"/>'
+    +'<rect x="0" y="27" width="22" height="22" rx="2"/><rect x="27" y="27" width="22" height="22" rx="2"/><rect x="54" y="27" width="22" height="22" rx="2"/>'
+    +'<rect x="0" y="54" width="22" height="22" rx="2"/><rect x="27" y="54" width="22" height="22" rx="2"/><rect x="54" y="54" width="22" height="22" rx="2" fill="#FFB81C"/>'
+    +'</g></svg><span>KNUCKLEBALL</span>';
+  var black=document.createElement('div'); black.className='kb-black'; el.appendChild(black); el.appendChild(logo);
+  function go(){ if(done) return; done=true; el.className='black';
+    setTimeout(function(){ try{ v.pause(); }catch(e){} el.className='logo'; },450);
+    setTimeout(function(){ el.className='logo out'; },450+350+1500);
+    setTimeout(function(){ location.replace('signin.html'); },450+350+1500+350); }
   var t=setTimeout(go,4500);
   v.addEventListener('playing',function(){ clearTimeout(t); t=setTimeout(go,3500); },{once:true});
   /* the hidden landing page's own film: emptied once it's parsed (kept in the page, which its own script expects), so

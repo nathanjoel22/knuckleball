@@ -15,6 +15,13 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-23 · no packet (sign-in pages don't scroll on iPad: no keyboard on open) · **production**
+- **Asked by:** Joel ("when the knuckleball login screen is in landscape mode on an ipad, it can be scrolled up and down. i want it to lock into place"); operator `Nathan <joelhauserman@gmail.com>`. Branch `no-touch-autofocus` -> `main` (admin merge). **Cache:** v308. Frontend only.
+- **Cause (measured in the iPad Air 11" Simulator, real app, local probe build):** with no keyboard login.html fits exactly (scrollHeight 820 = screen 820). Its email box had `autofocus`, so the keyboard came up on open, the visible area shrank to 751 and iOS let the page scroll (scrollY 27).
+- **Built:** `autofocus` replaced on the 8 pages that had it (login, reset-password, coach / pitcher / parent sign-up, join, join-coach, accept-invite): the first box takes focus only on a mouse or trackpad device (`(hover:hover) and (pointer:fine)`), so phones and iPads open with no keyboard and the page sits still until a box is tapped. With the keyboard up the page can still scroll (iOS needs it to reach the boxes behind the keyboard).
+- **Checks:** iPad Simulator after a clean reinstall: nothing focused, no keyboard, visible 820 = page 820, scrollY 0 (screenshot). Headless: mouse -> login / reset / sign-ups focus their first box; touch at 1180x820 -> nothing focused. Real app put back on the iPad Simulator.
+- **Open:** none.
+
 ## 2026-10-23 · no packet (install banner off) · **production**
 - **Asked by:** Joel ("the put knuckleball on your home screen notice needs to be taken away. I don't like or want it there"); operator `Nathan <joelhauserman@gmail.com>`. Branch `no-install-banner` -> `main` (admin merge). **Cache:** v307. Frontend only.
 - **Built:** `KB_INSTALL_BANNER = false` in the tracker: the Home banner (iOS "Share -> Add to Home Screen", Android Install) never shows, on any device. Chrome's own `beforeinstallprompt` is now always held back, so Android Chrome shows no install prompt of its own in its place. Help page's install step: Android now says Chrome menu (⋮) -> **Add to Home screen** (the banner it mentioned is gone). CLAUDE.md updated.

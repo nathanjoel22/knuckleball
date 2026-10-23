@@ -25,7 +25,7 @@
       var a = e.target && e.target.closest && e.target.closest('a[href]');
       if(!a) return;
       var u; try{ u = new URL(a.getAttribute('href'), location.href); }catch(x){ return; }
-      if(u.origin !== location.origin || !/\/(report|privacy|terms|delete-account)\.html$/.test(u.pathname)) return;
+      if(u.origin !== location.origin || !/\/(report|privacy|terms|delete-account|help)\.html$/.test(u.pathname)) return;
       var B = cap.Plugins && cap.Plugins.Browser;
       if(!B || !B.open) return;
       e.preventDefault();
@@ -191,7 +191,7 @@
     <p>If we change this policy, we'll update this page and its version and effective date, and tell account holders
       by email or in the app when the change matters to them.</p>
   </main>
-  <footer>Knuckleball LLC 2026 &middot; <a href="terms.html">Terms</a> &middot; <a href="/">knuckleballonline.com</a></footer>
+  <footer>Knuckleball LLC 2026 &middot; <a href="terms.html">Terms</a> &middot; <a href="help.html">Help</a> &middot; <a href="/">knuckleballonline.com</a></footer>
 </div></div>
 </body>
 </html>

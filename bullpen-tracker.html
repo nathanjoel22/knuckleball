@@ -25,7 +25,7 @@
       var a = e.target && e.target.closest && e.target.closest('a[href]');
       if(!a) return;
       var u; try{ u = new URL(a.getAttribute('href'), location.href); }catch(x){ return; }
-      if(u.origin !== location.origin || !/\/(report|privacy|terms|delete-account)\.html$/.test(u.pathname)) return;
+      if(u.origin !== location.origin || !/\/(report|privacy|terms|delete-account|help)\.html$/.test(u.pathname)) return;
       var B = cap.Plugins && cap.Plugins.Browser;
       if(!B || !B.open) return;
       e.preventDefault();
@@ -3462,6 +3462,7 @@ function renderAccountButton(){
       ${sportsToAdd().map(sp => `<button type="button" class="btn btn-secondary btn-sm acct-add" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')">+ Add ${sp}</button>`).join('')}
       ${canAddPlayer() ? `<button type="button" class="btn btn-secondary btn-sm acct-add" onclick="openAddPlayer()">+ Add a player</button>` : ''}
       ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
+      <a class="btn btn-tertiary btn-sm acct-help" role="menuitem" href="help.html">Help &amp; getting started</a>   <!-- P2-06 -->
     </div>` : '';
   return `<div class="acct-wrap">
     <button type="button" class="btn btn-secondary btn-sm acct-btn" aria-haspopup="menu" aria-expanded="${state.acctOpen ? 'true' : 'false'}" onclick="toggleAcctMenu()" title="Your profiles">

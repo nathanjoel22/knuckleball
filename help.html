@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- P2-06 (Joel, Oct 23 2026; plans/p2-06-help-page.md, copy approved in plans/p2-06-copy.md): getting started and
+     help, one page, three tracks. Precached by sw.js so it opens with no signal. No third-party loads. -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#061A12">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Knuckleball">
+<meta name="description" content="Getting started with Knuckleball: coaches, pitchers and parents, plus help and support.">
+<link rel="stylesheet" href="css/standalone.css">
+<title>Help · Knuckleball</title>
+<script>
+  // The sport theme before first paint: ?sport= (kept), else this device's last sport, else baseball.
+  (function(){
+    var sp = 'baseball';
+    try{
+      var q = new URLSearchParams(location.search).get('sport');
+      if(q === 'baseball' || q === 'softball'){ sp = q; localStorage.setItem('kb:sport', q); }
+      else if(localStorage.getItem('kb:sport') === 'softball') sp = 'softball';
+    }catch(e){}
+    document.documentElement.setAttribute('data-sport', sp);
+  })();
+</script>
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="buttons.css">
+<style>
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  html{ scroll-behavior:smooth; }
+  @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } }
+  body{ background:var(--bg); color:var(--ink); font-family:var(--font-sans); line-height:1.6; }
+  .band{ background:var(--brand-bg); color:var(--on-dark); padding:var(--s-16) var(--s-20); }
+  .lockup{ display:inline-flex; align-items:center; gap:10px; color:var(--on-dark); text-decoration:none; }
+  .lockup svg{ width:26px; height:26px; flex:none; }
+  .lockup .wm{ font-family:var(--font-wordmark); font-size:24px; letter-spacing:0.02em; white-space:nowrap; }
+  main{ max-width:760px; margin:0 auto; padding:var(--s-24) var(--s-20) var(--s-48); }
+  .measure{ max-width:65ch; }
+  h1{ font-family:var(--font-display); font-weight:800; text-transform:uppercase; letter-spacing:var(--tr-display); font-size:44px; line-height:1.05; margin:var(--s-8) 0 var(--s-12); }
+  h2{ font-family:var(--font-display); font-weight:800; text-transform:uppercase; letter-spacing:var(--tr-display); font-size:30px; line-height:1.1; margin:var(--s-32) 0 var(--s-12); border-bottom:2px solid var(--surface-border); padding-bottom:var(--s-4); }
+  p{ font-size:16px; color:var(--ink-dim); margin:0 0 var(--s-16); }
+  .step{ scroll-margin-top:var(--s-16); }
+  .step strong:first-child{ color:var(--ink); }
+  b{ color:var(--ink); font-weight:700; }
+  .lede{ font-size:18px; color:var(--ink); }
+  .pick{ margin:var(--s-20) 0 var(--s-8); }
+  .pick .label{ display:block; font-size:12px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:var(--s-8); }
+  .pick .tray{ max-width:420px; }
+  .track[hidden]{ display:none; }
+  .support{ background:var(--card); border:1px solid var(--surface-border); border-radius:var(--radius-control); padding:var(--s-16); }
+  .addr-row{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--s-12); margin:0 0 var(--s-12); }
+  .addr{ font-size:18px; font-weight:700; color:var(--ink); user-select:all; -webkit-user-select:all; overflow-wrap:anywhere; }
+  .copied{ font-size:14px; color:var(--ink-faint); min-height:1em; }
+  a{ color:var(--brand-mid); }
+  footer{ max-width:760px; margin:0 auto; padding:0 var(--s-20) var(--s-32); font-size:12px; color:var(--ink-faint); }
+  footer a{ color:var(--ink-faint); }
+</style>
+</head>
+<body>
+  <div class="band">
+    <a class="lockup" href="/" aria-label="Knuckleball home"><svg viewBox="0 0 100 100" aria-hidden="true"><g transform="translate(50 50) skewX(-14) translate(-38 -38)">
+      <rect x="0" y="0" width="22" height="22" rx="2" fill="currentColor"/><rect x="27" y="0" width="22" height="22" rx="2" fill="currentColor"/><rect x="54" y="0" width="22" height="22" rx="2" fill="currentColor"/>
+      <rect x="0" y="27" width="22" height="22" rx="2" fill="currentColor"/><rect x="27" y="27" width="22" height="22" rx="2" fill="currentColor"/><rect x="54" y="27" width="22" height="22" rx="2" fill="currentColor"/>
+      <rect x="0" y="54" width="22" height="22" rx="2" fill="currentColor"/><rect x="27" y="54" width="22" height="22" rx="2" fill="currentColor"/><rect x="54" y="54" width="22" height="22" rx="2" fill="var(--accent)"/>
+    </g></svg><span class="wm">KNUCKLEBALL</span></a>
+  </div>
+  <main>
+    <a class="standalone-back" href="bullpen-tracker.html">&lsaquo; Back to Knuckleball</a>   <!-- shown only in the installed app -->
+    <div class="measure">
+      <h1 id="start" class="step">Getting started with Knuckleball</h1>
+      <p class="lede">Knuckleball charts pitches. In a bullpen it records where you meant to throw and where it went. In a game it records where it went and what happened. Every saved session becomes a report you can open on any phone.</p>
+
+      <div class="pick">
+        <span class="label" id="pick-label">Pick who you are</span>
+        <div class="tray" role="group" aria-labelledby="pick-label">
+          <button type="button" class="seg" data-track="coach" aria-pressed="false">Coach</button>
+          <button type="button" class="seg" data-track="pitcher" aria-pressed="false">Pitcher</button>
+          <button type="button" class="seg" data-track="parent" aria-pressed="false">Parent</button>
+        </div>
+      </div>
+
+      <section class="track" id="coach" aria-label="Coach">
+        <h2>Coach</h2>
+        <p class="step"><strong>1. Make your team.</strong> Go to knuckleballonline.com, tap <b>Sign in</b>, choose your sport, tap <b>Coach</b>, then <b>New coach? Create an account</b>. Enter your name, email, password and your <b>Team / program name</b>. Then open <b>Profile</b> and set the team's <b>Level of play</b> (Little League, High school, College; softball: Little League, High school &amp; up) &mdash; it decides when the extra-inning rule starts.</p>
+        <p class="step" id="invite"><strong>2. Invite your pitchers.</strong> In <b>Profile</b>, under <b>Invite links</b>, tap <b>Copy</b> next to the <b>Pitcher invite link</b> and send it any way you like: text, GroupMe, a QR code on the iPad. A pitcher who opens it signs up and lands on your roster. Coaches on your staff use the <b>Coach invite link</b> the same way. Assistants chart and view; the head coach manages the team (invite links, level, the roster, deleting sessions).</p>
+        <p class="step" id="bullpen"><strong>3. Chart a bullpen.</strong> Tap a pitcher on the roster, then <b>Charting</b>, then <b>Bullpen</b>. Answer the two questions (radar gun, Relative Accuracy) and tap <b>Start bullpen</b>. Pick the pitch type, tap the target, then tap where it landed. Set <b>Charting perspective</b> (behind the catcher or behind the pitcher) before the first pitch. If you use a radar gun, the velocity strip opens after each pitch.</p>
+        <p class="step" id="game"><strong>4. Chart a game.</strong> Tap the pitcher, then <b>Charting</b>, then <b>Live Game</b>, then <b>Start game</b>. Pick the pitch type, tap where the pitch landed, then what happened: <b>K</b> (swinging), the backwards K (looking), <b>B</b>, <b>F</b> or <b>IP</b>. On <b>IP</b> the chart turns into the field and asks the play, the contact, where it went, who fielded it and where the runners are. Outs, counts and innings keep themselves. <b>Back</b> undoes the last tap; <b>More</b> holds the rare plays.</p>
+        <p class="step" id="reports"><strong>5. Save and send.</strong> Tap <b>End session &amp; save</b>. The session opens in <b>History</b>: <b>View report</b> opens it, <b>Send report</b> emails the link to the pitcher's report contacts and his own account email.</p>
+        <p class="step" id="notes"><strong>6. Add a note.</strong> On a saved session in <b>History</b>, write a note and tap <b>Save note</b> (online, once it has synced). The pitcher sees it, and so does anyone with the report link.</p>
+      </section>
+
+      <section class="track" id="pitcher" aria-label="Pitcher">
+        <h2>Pitcher</h2>
+        <p class="step" id="pitcher-join"><strong>1. Join or go solo.</strong> If your coach sent a link, open it and tap <b>Create account &amp; join</b> &mdash; you'll be on the roster. No team? Go to knuckleballonline.com, tap <b>Sign in</b>, choose your sport, tap <b>Pitcher</b>, then <b>New pitcher? Create an account</b>, and start charting on your own. You can join a team later with a coach's link and keep everything.</p>
+        <p class="step" id="pitcher-profile"><strong>2. Set up your profile.</strong> In <b>Profile</b>: your <b>Pitch mix</b>, which hand you <b>Throw</b> with, and under <b>Contacts</b> the people your reports go to (a coach email and one more; your own email always gets them). For Relative Accuracy, open <b>Relative accuracy</b> and tap <b>Mark cells</b> to mark up to four extra cells per pitch, for each batter side.</p>
+        <p class="step" id="pitcher-bullpen"><strong>3. Chart a bullpen.</strong> <b>Charting</b>, then <b>Bullpen</b>. If you're on a team, the app first asks <b>Which team is this for?</b> &mdash; pick the team, or <b>Independent</b> (yours alone: your coaches can read it, only you can send its report or delete it). Then pick a pitch, tap the target, tap where it landed.</p>
+        <p class="step" id="pitcher-game"><strong>4. Chart a game.</strong> Same as a coach (<a href="#game" data-goto="coach">step 4 above</a>).</p>
+        <p class="step" id="pitcher-reports"><strong>5. Your reports.</strong> After <b>End session &amp; save</b>, <b>View report</b> opens it; <b>Send report</b> emails the link to your contacts and to you. A report is frozen when it's made: a report someone already has never changes.</p>
+        <p class="step" id="pitcher-visibility"><strong>6. Who can see your charts.</strong> You, always. Coaches of every team you're currently on can see your sessions; only the team a session was charted for can add notes or send its report. If a coach removes you from a team, that team keeps the sessions charted while you were there, and nothing after.</p>
+      </section>
+
+      <section class="track" id="parent" aria-label="Parent">
+        <h2>Parent</h2>
+        <p class="step" id="parent-account"><strong>1. Make the account.</strong> Go to knuckleballonline.com, tap <b>Sign in</b>, choose your player's sport, tap <b>Pitcher</b>, then <b>Parent or guardian? Set up your player</b>. You sign up; your player doesn't need an email or a login.</p>
+        <p class="step" id="parent-player"><strong>2. Add your player.</strong> Open the account menu (your initials, top right) and tap <b>+ Add a player</b>. One account can hold a son in baseball and a daughter in softball.</p>
+        <p class="step" id="parent-join"><strong>3. Join a team.</strong> Open the coach's invite link and choose which player is joining.</p>
+        <p class="step" id="parent-chart"><strong>4. Chart and read.</strong> Charting works the same as for a coach (<a href="#bullpen" data-goto="coach">above</a>). Reports come to your email.</p>
+        <p class="step" id="parent-guardian"><strong>5. If your player is 13 to 17 and signed up alone,</strong> they'll have named you as their parent or guardian. You get an email with an approval link; until you approve, they can chart but can't view or send reports.</p>
+      </section>
+
+      <section id="everyone" aria-label="Everyone">
+        <h2>Everyone</h2>
+        <p class="step" id="offline"><strong>Working with no signal.</strong> The app keeps working in the bullpen with no signal. Sessions save on the phone and sync when you're back online; <b>Pending sync</b> on a session means it hasn't reached the server yet. Don't delete the app or clear its data while something is pending.</p>
+        <p class="step" id="fix"><strong>Fixing a pitch.</strong> During a bullpen, each pitch in <b>Recent pitches</b> has <b>edit</b> (pitch type, speed) and <b>&#10005;</b> (remove it &mdash; to move a location, remove it and chart it again). In a game, <b>edit</b> also has <b>Move location</b>, and <b>Back</b> undoes the last action. Once a session is saved it can't be edited; you can delete it (<b>Delete this session</b>, then type DELETE &mdash; a &ldquo;deleted&rdquo; marker stays in History) and chart again.</p>
+        <p class="step" id="install"><strong>Install it like an app.</strong> iPhone and iPad: in Safari, tap <b>Share</b>, then <b>Add to Home Screen</b>. Android: tap <b>Install</b> when the banner appears, or use the browser menu.</p>
+        <p class="step" id="password"><strong>Password.</strong> Forgot it? On the sign-in screen (after choosing your sport and role) tap <b>Forgot password?</b>; the reset email lands you on the reset form. To change your email or password later, open <b>Profile</b> (<b>Email</b>, <b>Password</b>).</p>
+        <p class="step" id="data"><strong>Your data.</strong> <b>Profile</b> &rarr; <b>Your data</b> has <b>Download my data</b> (everything, as a ZIP) and <b>Delete my account</b> (seven days to change your mind). What Knuckleball keeps and why is on the <a href="privacy.html">privacy page</a>.</p>
+        <p class="step" id="softball"><strong>Softball.</strong> Same app, same steps. No Set/Windup; an illegal pitch is under <b>More</b> &rarr; <b>Rare plays</b>; extra innings begin in the 8th.</p>
+        <div class="support step" id="support">
+          <p><strong>Still stuck?</strong> Email us:</p>
+          <div class="addr-row">
+            <span class="addr" id="support-addr">support@knuckleballonline.com</span>
+            <button type="button" class="btn btn-secondary btn-sm" id="copy-addr">Copy</button>
+            <span class="copied" id="copied" role="status" aria-live="polite"></span>
+          </div>
+          <p>We answer within two business days. Say which sport, which screen, and what you expected to happen.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+  <footer>Knuckleball LLC 2026 &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a> &middot; <a href="/">knuckleballonline.com</a></footer>
+<script>
+  // The track picker: Coach / Pitcher / Parent. Remembered on this device (kb:helpTrack); #coach / #pitcher / #parent
+  // or a link to a step inside a track (#invite, #pitcher-join ...) picks that track. "Everyone" always shows.
+  (function(){
+    var TRACKS = ['coach', 'pitcher', 'parent'];
+    var segs = document.querySelectorAll('.seg[data-track]');
+    function show(t, keepScroll){
+      if(TRACKS.indexOf(t) < 0) t = 'coach';
+      for(var i = 0; i < TRACKS.length; i++) document.getElementById(TRACKS[i]).hidden = TRACKS[i] !== t;
+      for(var j = 0; j < segs.length; j++) segs[j].setAttribute('aria-pressed', segs[j].getAttribute('data-track') === t ? 'true' : 'false');
+      try{ localStorage.setItem('kb:helpTrack', t); }catch(e){}
+    }
+    function trackFor(id){
+      if(TRACKS.indexOf(id) >= 0) return id;
+      var el = id ? document.getElementById(id) : null;
+      var sec = el && el.closest ? el.closest('.track') : null;
+      return sec ? sec.id : null;
+    }
+    function fromHash(){
+      var id = decodeURIComponent((location.hash || '').slice(1));
+      var t = trackFor(id);
+      if(t){ show(t); var el = document.getElementById(id); if(el && el.scrollIntoView) el.scrollIntoView(); return true; }
+      return false;
+    }
+    if(!fromHash()){
+      var saved = null;
+      try{ saved = localStorage.getItem('kb:helpTrack'); }catch(e){}
+      show(saved || 'coach');
+    }
+    window.addEventListener('hashchange', fromHash);
+    for(var k = 0; k < segs.length; k++) segs[k].addEventListener('click', function(){ show(this.getAttribute('data-track')); });
+    // links from one track to another's step ("same as a coach")
+    var gotos = document.querySelectorAll('a[data-goto]');
+    for(var g = 0; g < gotos.length; g++) gotos[g].addEventListener('click', function(){ show(this.getAttribute('data-goto')); });
+
+    // Copy the support address: the clipboard when allowed, else the old copy command (installed apps, non-HTTPS)
+    var btn = document.getElementById('copy-addr'), out = document.getElementById('copied');
+    var addr = document.getElementById('support-addr').textContent;
+    function fallback(){
+      var ta = document.createElement('textarea'); ta.value = addr; ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+      var ok = false; try{ ok = document.execCommand('copy'); }catch(e){}
+      document.body.removeChild(ta); return ok;
+    }
+    btn.addEventListener('click', function(){
+      function done(ok){ out.textContent = ok ? 'Copied.' : 'Select the address and copy it.'; }
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(addr).then(function(){ done(true); }, function(){ done(fallback()); }); }
+      else done(fallback());
+    });
+  })();
+</script>
+</body>
+</html>

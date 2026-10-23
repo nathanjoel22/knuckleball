@@ -25,7 +25,7 @@
       var a = e.target && e.target.closest && e.target.closest('a[href]');
       if(!a) return;
       var u; try{ u = new URL(a.getAttribute('href'), location.href); }catch(x){ return; }
-      if(u.origin !== location.origin || !/\/(report|privacy|terms|delete-account)\.html$/.test(u.pathname)) return;
+      if(u.origin !== location.origin || !/\/(report|privacy|terms|delete-account|help)\.html$/.test(u.pathname)) return;
       var B = cap.Plugins && cap.Plugins.Browser;
       if(!B || !B.open) return;
       e.preventDefault();
@@ -187,7 +187,7 @@
     </div>
     </div>
 
-    <div class="foot">Knuckleball LLC 2026 &middot; <a class="policy-link" href="privacy.html">Privacy</a> &middot; <a class="policy-link" href="terms.html">Terms</a></div>
+    <div class="foot">Knuckleball LLC 2026 &middot; <a class="policy-link" href="privacy.html">Privacy</a> &middot; <a class="policy-link" href="terms.html">Terms</a> &middot; <a class="policy-link" href="help.html">Help</a></div>
   </div>
 <script>
   // S1: Baseball / Softball first, then Pitcher / Coach. The choice is kept

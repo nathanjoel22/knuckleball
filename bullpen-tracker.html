@@ -314,6 +314,14 @@
   .brand h1.brand-word{ font-size:24px; }   /* Black Ops One runs wide: KNUCKLEBALL fits the sidebar's brand block */
   .boot-screen .brand h1.brand-word{ font-size:24px; }
   .brand span{ color:var(--accent); }
+  /* Joel, Oct 23: The spot beside the wordmark in the sidebar header, as on the landing and sign-in pages */
+  .brand.brand-lockup{ align-items:center; gap:10px; }
+  .brand.brand-lockup .kb-mark-btn{ width:26px; height:26px; flex:none; }
+  @media (min-width: 861px){   /* the laptop sidebar's header is 207px inside: mark + wordmark at 26 + 24px don't fit */
+    .sidebar .brand.brand-lockup{ gap:8px; }
+    .sidebar .brand.brand-lockup .kb-mark-btn{ width:20px; height:20px; }
+    .sidebar .brand.brand-lockup h1.brand-word{ font-size:22px; }
+  }
   .tagline{ font-size:10px; text-transform:uppercase; letter-spacing:var(--tr-tag); color:var(--on-dark-faint); font-weight:700; font-stretch:90%;}
 
   .role-badge{ margin-top:var(--s-6); }   /* D2: the role badge is a .slant-tag (css/components.css) */
@@ -12983,7 +12991,7 @@ function render(){
         : `<p>You haven't joined a team yet. Ask your coach for their team's invite link.</p>`;
     app.innerHTML = `
       <div class="sidebar">
-        <div class="brand-block"><div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div><span class="tagline">Always a Step Ahead</span>${renderOfflinePill()}</div>
+        <div class="brand-block"><div class="brand brand-lockup">${KB_MARK_SVG}<h1 class="display brand-word">KNUCKLEBALL</h1></div><span class="tagline">Always a Step Ahead</span>${renderOfflinePill()}</div>
         ${renderOutboxBadge()}
         <button class="btn btn-secondary sign-out-btn" onclick="signOut()">Sign out</button>
       </div>
@@ -13063,7 +13071,7 @@ function render(){
   const sidebar = `
     <div class="sidebar">
       <div class="brand-block">
-        <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+        <div class="brand brand-lockup">${KB_MARK_SVG}<h1 class="display brand-word">KNUCKLEBALL</h1></div>
         <span class="tagline">Always a Step Ahead</span>
         <span class="role-badge slant-tag">${isCoach() ? 'Coach' : 'Pitcher'}</span>
         ${renderOfflinePill()}

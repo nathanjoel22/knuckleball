@@ -17,9 +17,24 @@
         || /(^|[?&])(sport|role|choose)=/.test(q);   /* L1.1: an old picker link or bookmark (/?sport=, /?choose=1) */
     if(!go){ for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(/^sb-.+-auth-token$/.test(k)&&localStorage.getItem(k)){ go=true; break; } } }
     if(go) location.replace('signin.html'+q+h);
+    /* The iPhone app's opening (Joel, Oct 23 2026): signed out, the app shows the film full screen for a few seconds,
+       then "Which sport?" -- never this marketing page. Signed in, the lines above already left for the app. The
+       Capacitor bridge is on the page before this script runs (iOS store app only; a browser has no window.Capacitor). */
+    else if(window.Capacitor && Capacitor.getPlatform && Capacitor.getPlatform()==='ios') document.documentElement.className+=' kb-app-splash';
   }catch(e){}
 })();
 </script>
+<style>
+  /* The iPhone app's opening film (see the script above): only #kb-splash shows, full screen, under the status bar too. */
+  #kb-splash{ display:none; }
+  html.kb-app-splash, html.kb-app-splash body{ overflow:hidden; height:100%; background:#061A12; }
+  html.kb-app-splash body > :not(#kb-splash){ display:none !important; }
+  html.kb-app-splash body::before{ display:none; }
+  html.kb-app-splash #kb-splash{ display:block; position:fixed; inset:0; z-index:2147483600; background:#061A12 center/cover no-repeat;
+    transition:opacity .35s ease; }
+  #kb-splash video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  #kb-splash.out{ opacity:0; }
+</style>
 <title>Knuckleball — Pitch charting for baseball and softball</title>
 <meta name="description" content="Chart every bullpen or live game from your phone. Heat maps, velocity spreads and reports for baseball and softball pitchers. Charting is free.">
 <link rel="canonical" href="https://knuckleballonline.com/">
@@ -336,6 +351,26 @@ img{max-width:100%}
 </style>
 </head>
 <body>
+<div id="kb-splash" aria-hidden="true"></div>
+<script>
+/* The iPhone app's opening film: about 3.5 seconds from when it starts playing, then a fade to "Which sport?". With no
+   signal the film can't load (it's never cached), so after 4.5 seconds it goes on regardless. */
+(function(){
+  var root=document.documentElement; if(root.className.indexOf('kb-app-splash')<0) return;
+  var el=document.getElementById('kb-splash'), tall=innerHeight>=innerWidth, done=false;
+  el.style.backgroundImage='url(media/'+(tall?'hero-poster-4x5.jpg':'hero-poster.jpg')+')';
+  var v=document.createElement('video'); v.muted=true; v.autoplay=true; v.playsInline=true; v.setAttribute('playsinline','');
+  v.preload='auto'; v.src='media/'+(tall?'hero-4x5.mp4':'hero-1080p.mp4'); el.appendChild(v);
+  function go(){ if(done) return; done=true; el.className='out'; setTimeout(function(){ location.replace('signin.html'); },350); }
+  var t=setTimeout(go,4500);
+  v.addEventListener('playing',function(){ clearTimeout(t); t=setTimeout(go,3500); },{once:true});
+  /* the hidden landing page's own film: emptied once it's parsed (kept in the page, which its own script expects), so
+     it stops downloading in the app */
+  document.addEventListener('DOMContentLoaded',function(){ var h=document.getElementById('hero'); if(!h) return;
+    h.pause(); h.removeAttribute('autoplay'); h.removeAttribute('poster'); h.preload='none';
+    var ss=h.querySelectorAll('source'); for(var i=0;i<ss.length;i++) ss[i].parentNode.removeChild(ss[i]); h.load(); });
+})();
+</script>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
   <!-- The main mark, "The spot" (Jordan + Joel, Oct 21): the strike zone slanted like the brand tags, one pocket lit.
@@ -608,6 +643,7 @@ img{max-width:100%}
 
 <script>
 (function(){
+  if(document.documentElement.className.indexOf('kb-app-splash')>=0) return;   /* the iPhone app's opening film: this page stays hidden */
   /* ---------- Hero film: DELIVERY.md logic (plays once, holds its last frame), pause-stays-paused, off-screen pause ---------- */
   var hero=document.getElementById('hero'), band=document.getElementById('heroBand');
   var btn=document.getElementById('pauseBtn'), txt=document.getElementById('pauseTxt'), icon=document.getElementById('pauseIcon');

@@ -270,7 +270,7 @@
     background:var(--bg);
     color:var(--ink);
     font-family:var(--font-sans);
-    min-height:100vh;
+    min-height:var(--kb-screen, 100vh);   /* one screen, no phantom scroll (css/standalone.css) */
   }
   ::selection{ background:var(--accent); color:var(--ink); }
   button{ font-family:inherit; cursor:pointer; }
@@ -286,7 +286,7 @@
   .display{ font-family:var(--font-display); font-weight:800; letter-spacing:var(--tr-display); text-transform:uppercase; }   /* D2: Teko 600 -> Big Shoulders 800, caps */
   .mono{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-weight:700; }   /* D2: Plex Mono -> Archivo 700, tabular figures */
 
-  #app{ display:flex; min-height:100vh; max-width:1320px; margin:0 auto; }
+  #app{ display:flex; min-height:var(--kb-screen, 100vh); max-width:1320px; margin:0 auto; }
 
   /* SIDEBAR */
   .sidebar{
@@ -336,7 +336,7 @@
     content:''; width:6px; height:6px; border-radius:var(--radius-circle); background:var(--accent-bright); flex-shrink:0;
   }
   .boot-screen{
-    min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:var(--kb-screen, 100vh); box-sizing:border-box; display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:var(--s-12); text-align:center; padding:var(--s-32) var(--s-24);
   }
   .boot-screen .brand h1{ font-size:32px; }

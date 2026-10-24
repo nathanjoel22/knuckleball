@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-24 · no packet (sign-in page: New pitcher link under New coach) · **production**
+- **Asked by:** Joel ("on the sign in/signup page, move the new pitcher link directly under the new coach link"); operator `Nathan <joelhauserman@gmail.com>`. Branch `signup-links-stack` -> `main` (admin merge). **Cache:** v309. Frontend only (`login.html`, `css/components.css`).
+- **Built:** login.html's foot row keeps "<- Back" on the left; "New coach? Create an account" and "New pitcher? Create an account" now sit stacked on the right, pitcher directly under coach (they were side by side). With a role in the link only that role's link shows, as before.
+- **Checks:** screenshots at 390 and 1180 with no role and with role=pitcher; no extra scroll.
+- **Open:** none.
+
 ## 2026-10-23 · no packet (sign-in pages don't scroll on iPad: no keyboard on open) · **production**
 - **Asked by:** Joel ("when the knuckleball login screen is in landscape mode on an ipad, it can be scrolled up and down. i want it to lock into place"); operator `Nathan <joelhauserman@gmail.com>`. Branch `no-touch-autofocus` -> `main` (admin merge). **Cache:** v308. Frontend only.
 - **Cause (measured in the iPad Air 11" Simulator, real app, local probe build):** with no keyboard login.html fits exactly (scrollHeight 820 = screen 820). Its email box had `autofocus`, so the keyboard came up on open, the visible area shrank to 751 and iOS let the page scroll (scrollY 27).

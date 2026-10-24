@@ -124,6 +124,7 @@ body.signin .info-msg{
 body.signin .spinner-msg{ font-size:var(--t-14); color:var(--ink-dim); text-align:center; }
 body.signin .forgot-link{ align-self:flex-end; font-size:var(--t-12); }
 body.signin .foot-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--s-8); }
+body.signin .foot-row .signup-links{ display:flex; flex-direction:column; align-items:flex-end; gap:var(--s-8); text-align:right; }
 body.signin .site-footer{ font-size:var(--t-12); color:var(--ink-faint); text-align:center; margin:0 0 var(--s-24); }
 body.signin .site-footer a{ font-size:var(--t-12); font-weight:400; color:var(--ink-faint); text-decoration:underline; }
 

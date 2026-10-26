@@ -15,6 +15,14 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-26 · no packet (Trends tab) · **production**
+- **Asked by:** Joel ("add a section next New Session and History called Trends ... strike percentage of each individual pitch type, peak velocity of each pitch type every time you log a session ... show each pitch type and where every pitch lands ... from the perspective of the pitcher. No need to create a report"); operator `Nathan <joelhauserman@gmail.com>`. Branch `trends-tab` -> `main` (admin merge). **Cache:** v310. Frontend only (`bullpen-tracker.html`, `sw.js`).
+- **Built:** a **Trends** tab after History (pitchers and coaches; `renderTrendsView`). For the selected pitcher, every saved session History has (including ones still waiting to sync, so it updates the moment a session is saved, offline too), with an All / Bullpen / Live Game filter: a per-type table (pitches, strike %, top velo); **Strike % by pitch type** and **Peak velocity by pitch type**, line charts with one point per session in the pitch-type colors; **Where every pitch landed**, one 5x5 plot per pitch type, pitcher's view, both batter sides mixed (`renderHistoryPlot` with options). Strikes count as History's cards do: a bullpen by where it landed, a game by the call. Velocity skips the old default 65 readings. A type that's left the mix gets an unused palette color. No report, no network, no schema change.
+- **Also:** on phones (<=500px) the New Session tab reads **New**, so six tabs (with Leaderboard) fit at 375px.
+- **Checks:** headless at 390 / 1180 with 9 sample sessions (322 pitches): every pitch drawn once (322 dots), both charts, 4 plots, no sideways scroll; tab bar at 375 / 390 for coach and pitcher with Leaderboard: no clipped tab; empty state; no console errors.
+- **Deviation:** a coach sees every session of the pitcher that History shows him (R4: other teams' too); Trends isn't per team. Leaderboards and reports are unchanged.
+- **Open:** Joel to look at it on a real account. Not on the Home tiles or the coach dock yet (say if wanted).
+
 ## 2026-10-24 · no packet (sign-in page: New pitcher link under New coach) · **production**
 - **Asked by:** Joel ("on the sign in/signup page, move the new pitcher link directly under the new coach link"); operator `Nathan <joelhauserman@gmail.com>`. Branch `signup-links-stack` -> `main` (admin merge). **Cache:** v309. Frontend only (`login.html`, `css/components.css`).
 - **Built:** login.html's foot row keeps "<- Back" on the left; "New coach? Create an account" and "New pitcher? Create an account" now sit stacked on the right, pitcher directly under coach (they were side by side). With a role in the link only that role's link shows, as before.

@@ -1128,6 +1128,23 @@
   .hp-key{ display:inline-flex; align-items:center; gap:var(--s-4); }
   .hp-dot{ width:10px; height:10px; border-radius:var(--radius-circle); display:inline-block; }
   .hp-caption{ text-transform:none; letter-spacing:0; font-size:12px; line-height:1.4; text-align:center; }
+  /* Trends (Joel, Oct 26) */
+  .tr-wrap{ display:flex; flex-direction:column; gap:var(--s-16); max-width:640px; }
+  .tr-span{ margin:0; }
+  .tr-table{ width:100%; }
+  .tr-card{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-control); padding:var(--s-16); display:flex; flex-direction:column; gap:var(--s-8); }
+  .tr-card h3{ margin:0; font-size:15px; }
+  .tr-card .profile-note{ margin:0; }
+  .tr-legend{ justify-content:flex-start; }
+  .tr-chart{ display:block; width:100%; height:auto; }
+  .tr-chart .tr-grid{ stroke:var(--border); stroke-width:1; }
+  .tr-chart .tr-ax{ fill:var(--ink-dim); font-size:9px; font-family:inherit; }
+  .tr-chart .tr-line{ fill:none; stroke-width:2.2; stroke-linejoin:round; stroke-linecap:round; }
+  .tr-chart circle{ stroke:var(--card); stroke-width:1.2; }
+  .tr-plots{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:var(--s-20) var(--s-16); }
+  .tr-plot{ display:flex; flex-direction:column; align-items:center; gap:var(--s-6); }
+  .tr-plot-head{ display:flex; align-items:center; gap:var(--s-6); flex-wrap:wrap; justify-content:center; font-size:14px; }
+  .tr-plot-sub{ color:var(--ink-dim); font-size:12px; }
   .persp-plate{ display:block; width:100%; height:auto; overflow:visible; }
   .zone-grid.heat-grid{ margin-bottom:0 !important; }   /* no batter-pill band under a heat map */
   .home-plate-overlay{
@@ -2023,6 +2040,7 @@ let state = {
   // G1: which kind of session History shows -- 'all' | 'bullpen' | 'game'.
   // Purely a display filter; never affects what's loaded or synced.
   historyFilter: 'all',
+  trendsFilter: 'all',   // Trends (Oct 26): All / Bullpen / Live Game
   // G1: the profile-setup modal's own visibility, separate from
   // state.view -- it now overlays whatever view is underneath rather
   // than replacing it (see finishInit's comment on where this gets set
@@ -6199,8 +6217,12 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
 // pitch type's color, in the pitcher's view (draw-time mirror only), both batter sides mixed, so no zone numbers
 // and no heat shading. The strike zone is a cloudy light cream, the cells around it a grey translucent ring; a
 // home plate in perspective sits below. Dots overlapping in a cell spiral out (the report's drawDots).
-function renderHistoryPlot(session, p){
-  const N = GRID_SIZE, cell = 100;
+// Trends (Joel, Oct 26) draws one per pitch type with `o`: its own colors, aria label and caption, no legend, and
+// smaller dots (always, so every type's plot reads the same).
+function renderHistoryPlot(session, p, o){
+  o = o || {};
+  const N = GRID_SIZE, cell = 100, colorOf = o.colorOf || (t => colorForType(p, t));
+  const many = o.small || (session.pitches || []).length > 60, dotR = many ? 7 : 11, haloR = many ? 14 : 22;
   let cells = '';
   for(let r = 0; r < N; r++) for(let c = 0; c < N; c++){
     const zone = isStrikeCell(r, c);
@@ -6215,22 +6237,22 @@ function renderHistoryPlot(session, p){
     seen[key] = idx + 1;
     const angle = idx * 137.508 * Math.PI / 180, rad = idx === 0 ? 0 : Math.min(cell * 0.32, 8 + idx * 6);
     const x = (c * cell + cell / 2 + rad * Math.cos(angle)).toFixed(1), y = (r * cell + cell / 2 + rad * Math.sin(angle)).toFixed(1);
-    const color = colorForType(p, pt.type);
-    halos += `<circle cx="${x}" cy="${y}" r="22" fill="${color}"/>`;
-    dots += `<circle cx="${x}" cy="${y}" r="11" fill="${color}" stroke="#FFFFFF" stroke-width="2.5"/>`;
+    const color = colorOf(pt.type);
+    halos += `<circle cx="${x}" cy="${y}" r="${haloR}" fill="${color}"/>`;
+    dots += `<circle cx="${x}" cy="${y}" r="${dotR}" fill="${color}" stroke="#FFFFFF" stroke-width="${many ? 1.5 : 2.5}"/>`;
   });
   const types = [];
   (session.pitches || []).forEach(pt => { if(types.indexOf(pt.type) < 0) types.push(pt.type); });
-  const legend = types.map(t => `<span class="hp-key"><span class="hp-dot" style="background:${colorForType(p, t)}"></span>${escHtml(pitchLabel(t))}</span>`).join('');
+  const legend = o.legend === false ? '' : types.map(t => `<span class="hp-key"><span class="hp-dot" style="background:${colorOf(t)}"></span>${escHtml(pitchLabel(t))}</span>`).join('');
   const what = (session.kind || 'bullpen') === 'game' ? 'game' : 'pen';
   return `<div class="hp-wrap">
-    <svg class="hp-plot" viewBox="0 0 ${N * cell} ${N * cell}" role="img" aria-label="Every pitch this ${what}, pitcher's view">
+    <svg class="hp-plot" viewBox="0 0 ${N * cell} ${N * cell}" role="img" aria-label="${o.aria || `Every pitch this ${what}, pitcher's view`}">
       <defs><radialGradient id="hpCream" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#FFFBF0"/><stop offset="0.6" stop-color="#F6EEDC"/><stop offset="1" stop-color="#EFE4CC"/></radialGradient></defs>
       ${cells}<g opacity="0.28">${halos}</g>${dots}
     </svg>
     ${renderPerspectivePlate()}
-    <div class="hp-legend">${legend}</div>
-    <div class="zone-caption hp-caption">Every pitch this ${what} · ${REPORT_VIEW_NAME} · both batter sides mixed. Numbers and directional words like "inside" depend on who's hitting, so this plot uses neither.</div>
+    ${legend ? `<div class="hp-legend">${legend}</div>` : ''}
+    ${o.caption !== undefined ? o.caption : `<div class="zone-caption hp-caption">Every pitch this ${what} · ${REPORT_VIEW_NAME} · both batter sides mixed. Numbers and directional words like "inside" depend on who's hitting, so this plot uses neither.</div>`}
   </div>`;
 }
 // A drawn home plate in perspective from the mound (Joel's ballpark photo, turned around): wide front edge at
@@ -11667,6 +11689,123 @@ window.paintZoneCell = function(row, col){
 // Joel, Oct 15: a tap in the painter redrew the whole page and threw the phone back to the top. Only the painter
 // itself changes on a tap, so only it is redrawn and the page stays where it was; Save / Clear (which also change the
 // "n of 4 cells" line) redraw the page but put the scroll position back.
+/* ---------- TRENDS (Joel, Oct 26) ----------
+   Every saved session of the selected pitcher, added up, rebuilt from History's own data on every render (so a
+   session shows here the moment it's saved, even while it waits to sync): strike % and peak velocity per pitch type,
+   one point per session, then every pitch of each type on the 5x5 in the pitcher's view. Strikes count the way each
+   History card does -- a bullpen by where it landed, a game by the call (GAME_STRIKE_RESULTS). No report, no network. */
+window.setTrendsFilter = function(f){
+  state.trendsFilter = f;
+  render();
+};
+// A type that's left his mix keeps a color of its own: the next palette color his mix doesn't use.
+function trendsColors(p, types){
+  const mix = pitchTypesFor(p), used = new Set(mix.map(t => colorForType(p, t))), map = {};
+  const spare = TYPE_PALETTE.filter(c => !used.has(c));
+  let n = 0;
+  types.forEach(t => { map[t] = mix.indexOf(t) >= 0 ? colorForType(p, t) : (spare[n++] || TYPE_PALETTE[(mix.length + n++) % TYPE_PALETTE.length]); });
+  return t => map[t] || TYPE_PALETTE[0];
+}
+function trendsIsStrike(s, pt){
+  return (s.kind || 'bullpen') === 'game' ? GAME_STRIKE_RESULTS.has(pt.result) : isStrikeCell(pt.actualRow, pt.actualCol);
+}
+// One line per pitch type across the sessions, oldest left; a type a session didn't throw has no point there.
+function trendsLineChart(rows, types, colorOf, o){
+  const W = 360, H = 190, L = 34, R = 10, T = 10, B = 26, pw = W - L - R, ph = H - T - B;
+  const x = i => (L + (rows.length === 1 ? pw / 2 : i * pw / (rows.length - 1))).toFixed(1);
+  const y = v => (T + ph - (v - o.min) / (o.max - o.min) * ph).toFixed(1);
+  let grid = '';
+  o.ticks.forEach(v => { grid += `<line class="tr-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="tr-ax" x="${L - 5}" y="${y(v)}" dy="3" text-anchor="end">${v}${o.unit}</text>`; });
+  const every = Math.max(1, Math.ceil(rows.length / 5));
+  rows.forEach((r, i) => {
+    if(i % every && i !== rows.length - 1) return;
+    if(i !== rows.length - 1 && rows.length - 1 - i < every / 2) return;   // keep the last date clear of its neighbour
+    grid += `<text class="tr-ax" x="${x(i)}" y="${H - 8}" text-anchor="${rows.length === 1 ? 'middle' : i === 0 ? 'start' : i === rows.length - 1 ? 'end' : 'middle'}">${new Date(r.date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}</text>`;
+  });
+  let lines = '';
+  types.forEach(t => {
+    const pts = [];
+    rows.forEach((r, i) => { if(r.v[t] !== undefined) pts.push([x(i), y(r.v[t]), r.v[t], r.date]); });
+    if(!pts.length) return;
+    const c = colorOf(t);
+    if(pts.length > 1) lines += `<polyline class="tr-line" points="${pts.map(q => q[0] + ',' + q[1]).join(' ')}" style="stroke:${c}"/>`;
+    lines += pts.map(q => `<circle cx="${q[0]}" cy="${q[1]}" r="3.6" style="fill:${c}"><title>${escHtml(pitchLabel(t))} · ${new Date(q[3]).toLocaleDateString()} · ${q[2]}${o.unit}</title></circle>`).join('');
+  });
+  return `<svg class="tr-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.aria}">${grid}${lines}</svg>`;
+}
+function renderTrendsView(){
+  const p = currentPitcher();
+  if(!p){ return `<div class="empty-hist">No pitcher selected.</div>`; }
+  const opts = [{ key: 'all', label: 'All' }, { key: 'bullpen', label: 'Bullpen' }, { key: 'game', label: 'Live Game' }];
+  const tray = `<div class="chip-row" style="margin-bottom:var(--s-16);">${segTray(opts.map(o => ({ label: o.label, selected: state.trendsFilter === o.key, onclick: `setTrendsFilter('${o.key}')` })), { key: 'tfilter', label: 'Show', cls: 'history-tray' })}</div>`;
+  const sessions = pendingSessionsForCurrentSelection().concat(state.sessions)
+    .filter(s => (s.pitches || []).length && (state.trendsFilter === 'all' || (s.kind || 'bullpen') === state.trendsFilter))
+    .sort((a, b) => a.date - b.date);
+  if(!sessions.length){
+    return `${tray}<div class="empty-hist">No saved sessions yet for ${escHtml(p.name)}${state.trendsFilter === 'all' ? '' : ' of this kind'}. Trends fill in as sessions are saved.</div>`;
+  }
+  // Per type: totals, plus one row per session for each chart.
+  const all = {}, strikeRows = [], veloRows = [];
+  sessions.forEach(s => {
+    const per = {};
+    s.pitches.forEach(pt => {
+      const t = per[pt.type] || (per[pt.type] = { n: 0, k: 0, top: null });
+      const a = all[pt.type] || (all[pt.type] = { n: 0, k: 0, top: null, pitches: [] });
+      const k = trendsIsStrike(s, pt) ? 1 : 0, v = (pt.velo !== null && pt.velo !== undefined && !isDefaultVeloReading(pt)) ? pt.velo : null;
+      t.n++; t.k += k; a.n++; a.k += k; a.pitches.push(pt);
+      if(v !== null){ if(t.top === null || v > t.top) t.top = v; if(a.top === null || v > a.top) a.top = v; }
+    });
+    const sv = {}, vv = {};
+    Object.keys(per).forEach(t => { sv[t] = Math.round(100 * per[t].k / per[t].n); if(per[t].top !== null) vv[t] = per[t].top; });
+    strikeRows.push({ date: s.date, v: sv });
+    if(Object.keys(vv).length) veloRows.push({ date: s.date, v: vv });
+  });
+  const mix = pitchTypesFor(p);
+  const types = Object.keys(all).sort((a, b) => {
+    const ia = mix.indexOf(a), ib = mix.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || all[b].n - all[a].n;
+  });
+  const colorOf = trendsColors(p, types);
+  const legend = `<div class="hp-legend tr-legend">${types.map(t => `<span class="hp-key"><span class="hp-dot" style="background:${colorOf(t)}"></span>${escHtml(pitchLabel(t))}</span>`).join('')}</div>`;
+  const total = types.reduce((n, t) => n + all[t].n, 0);
+  const table = `<table class="breakdown-table tr-table">
+    <thead><tr><th>Type</th><th>Pitches</th><th>Strike%</th><th>Top velo</th></tr></thead>
+    <tbody>${types.map(t => `<tr><td><span class="plr-dot" style="background:${colorOf(t)}"></span>${escHtml(pitchLabel(t))}</td><td class="mono">${all[t].n}</td><td class="mono">${Math.round(100 * all[t].k / all[t].n)}%</td><td class="mono">${all[t].top !== null ? all[t].top + ' mph' : '—'}</td></tr>`).join('')}</tbody>
+  </table>`;
+  let velo;
+  if(veloRows.length){
+    const vs = [];
+    veloRows.forEach(r => Object.keys(r.v).forEach(t => vs.push(r.v[t])));
+    let lo = Math.floor((Math.min(...vs) - 2) / 5) * 5, hi = Math.ceil((Math.max(...vs) + 2) / 5) * 5;
+    if(hi - lo < 10) hi = lo + 10;
+    const step = (hi - lo) > 30 ? 10 : 5, ticks = [];
+    for(let v = lo; v <= hi; v += step) ticks.push(v);
+    velo = trendsLineChart(veloRows, types, colorOf, { min: lo, max: hi, ticks, unit: '', aria: 'Peak velocity per pitch type, by session' });
+  } else {
+    velo = `<p class="profile-note">No velocities recorded yet. They show here once a session is charted with the radar gun on.</p>`;
+  }
+  const plots = types.map(t => {
+    const st = all[t];
+    return `<div class="tr-plot">
+      <div class="tr-plot-head"><span class="hp-dot" style="background:${colorOf(t)}"></span><b>${escHtml(pitchLabel(t))}</b><span class="tr-plot-sub">${st.n} pitch${st.n === 1 ? '' : 'es'} · ${Math.round(100 * st.k / st.n)}% strikes</span></div>
+      ${renderHistoryPlot({ kind: 'bullpen', pitches: st.pitches }, p, { colorOf, legend: false, caption: '', small: true, aria: `Every ${escHtml(pitchLabel(t))} thrown, pitcher's view` })}
+    </div>`;
+  }).join('');
+  const span = sessions.length === 1 ? '1 session' : `${sessions.length} sessions · ${new Date(sessions[0].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} – ${new Date(sessions[sessions.length - 1].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  return `${tray}
+    <div class="tr-wrap">
+      <p class="profile-note tr-span">${span} · ${total} pitches</p>
+      ${table}
+      <div class="tr-card"><h3>Strike % by pitch type</h3>${legend}
+        ${trendsLineChart(strikeRows, types, colorOf, { min: 0, max: 100, ticks: [0, 25, 50, 75, 100], unit: '%', aria: 'Strike percentage per pitch type, by session' })}
+        <p class="profile-note">One point per session. Bullpens count strikes by where the pitch landed; games by the call (swinging, looking, foul, in play).</p></div>
+      <div class="tr-card"><h3>Peak velocity by pitch type</h3>${veloRows.length ? legend : ''}${velo}
+        ${veloRows.length ? '<p class="profile-note">The fastest reading of each pitch type in each session, in mph.</p>' : ''}</div>
+      <div class="tr-card"><h3>Where every pitch landed</h3>
+        <p class="profile-note">${REPORT_VIEW_NAME} · both batter sides mixed.</p>
+        <div class="tr-plots">${plots}</div></div>
+    </div>`;
+}
 function renderKeepScroll(){
   const y = window.scrollY || window.pageYOffset || 0;
   // Joel, Oct 22: the setup window scrolls inside its own panel -- keep that place too (Save cells jumped to the top)
@@ -12000,9 +12139,10 @@ function renderTabs(){
     : { label: 'Profile', selected: state.view === 'profile', onclick: "setView('profile')" };
   // P1-09: a coach has no New Session on an archived team (a pitcher keeps the tab, which explains).
   const sessionTab = (isCoach() && currentTeamArchived()) ? null :
-    { label: state.draftAvailable ? 'Resume' : 'New Session', selected: state.view === 'session', onclick: "setView('session')" };
+    { label: state.draftAvailable ? 'Resume' : '<span class="tab-label-full">New Session</span><span class="tab-label-short">New</span>', selected: state.view === 'session', onclick: "setView('session')" };
   const tabs = [{ label: 'Home', selected: state.view === 'home', onclick: "setView('home')" }, sessionTab,
     { label: 'History' + (!isCoach() && state.profile && hasRosterDot(state.profile.id) ? '<span class="tab-dot" aria-label="New session"></span>' : ''), selected: state.view === 'history', onclick: "setView('history')" },
+    { label: 'Trends', selected: state.view === 'trends', onclick: "setView('trends')" },
     hasLeaderboard() ? { label: '<span class="tab-label-full">Leaderboard</span><span class="tab-label-short">Leaders</span>', selected: state.view === 'leaderboard', onclick: "setView('leaderboard')" } : null,
     fourthTab].filter(Boolean);
   return `${renderArchivedBanner()}${segTray(tabs.map(t => Object.assign({ cls: 'tab-btn' }, t)), { key: 'tabs', label: 'Pages', cls: 'tabs' })}`;
@@ -13183,6 +13323,7 @@ function render(){
         : state.view === 'profile' ? renderProfileView()
         : state.view === 'leaderboard' ? renderLeaderboardView()
         : state.view === 'pitcherProfile' ? renderPitcherProfileView()
+        : state.view === 'trends' ? renderTrendsView()
         : renderHistoryView()}
     `;
   }

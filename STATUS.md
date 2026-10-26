@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-26 · no packet (Home boxes fill the space on iPad / laptop) · **production**
+- **Asked by:** Joel ("i need these four boxes to take up the bulk of this space, like how the previous five boxes did it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `home-tiles-fill` -> `main`. **Cache:** v311. Frontend only (`bullpen-tracker.html`, `sw.js`).
+- **Built:** on iPad and laptop (>500px) the four Home boxes drop v310's 560px cap and fill the whole area beside the roster, two by two, each the 5:3 shape the old Charting / History tiles had. Phones keep the squares.
+- **Checks:** box sizes 173x173 (390 phone), 386x232 (iPad portrait 820), 403x242 (1180), 480x288 (1366); screenshot at 1180.
+- **Open:** none.
+
 ## 2026-10-26 · no packet (Trends tab) · **production**
 - **Asked by:** Joel ("add a section next New Session and History called Trends ... strike percentage of each individual pitch type, peak velocity of each pitch type every time you log a session ... show each pitch type and where every pitch lands ... from the perspective of the pitcher. No need to create a report"); operator `Nathan <joelhauserman@gmail.com>`. Branch `trends-tab` -> `main` (admin merge). **Cache:** v310. Frontend only (`bullpen-tracker.html`, `sw.js`, `vendor/icons/trends.svg`).
 - **Built:** a **Trends** tab after History (pitchers and coaches; `renderTrendsView`). For the selected pitcher, every saved session History has (including ones still waiting to sync, so it updates the moment a session is saved, offline too), with an All / Bullpen / Live Game filter: a per-type table (pitches, strike %, top velo); **Strike % by pitch type** and **Peak velocity by pitch type**, line charts with one point per session in the pitch-type colors; **Where every pitch landed**, one 5x5 plot per pitch type, pitcher's view, both batter sides mixed (`renderHistoryPlot` with options). Strikes count as History's cards do: a bullpen by where it landed, a game by the call. Velocity skips the old default 65 readings. A type that's left the mix gets an unused palette color. No report, no network, no schema change.

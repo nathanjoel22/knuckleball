@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-26 · no packet (Trends, Live Game: by batter side and by windup / stretch) · **production**
+- **Asked by:** Joel ("in the live game section, let's add the same charts, with the same concentrated ring but break it down vs left handed batter and right handed batter and then all pitches from the windup vs from the stretch"); operator `Nathan <joelhauserman@gmail.com>`. Branch `trends-game-splits` -> `main`. **Cache:** v313. Frontend only.
+- **Built:** with Trends set to **Live Game**, two more cards after "Where every pitch landed": **vs left- and right-handed batters** (each pitch type: vs LHB | vs RHB side by side) and, baseball only (softball has no delivery), **From the windup and the stretch** (Windup | Stretch, stored `delivery` 'windup' / 'set'). Each small chart: pitch count, strike % (by the call), every pitch in the pitcher's view, and its own gold ring on its busiest 2x2 block. Pitches with no side / delivery recorded sit out that split and the card says how many.
+- **Checks:** sample games: 16 split charts, every ring on the block an independent count picks; 390 / 1180, no sideways scroll; All / Bullpen views unchanged.
+- **Open:** none.
+
 ## 2026-10-26 · no packet (Trends: gold ring on the busiest cells) · **production**
 - **Asked by:** Joel ("draw a yellow circle, using the branded yellow ... around the four cells in the 5x5 that have the highest concentration of pitches ... redrawn after every outing ... it should say yellow circle around highest concentration of pitches"; "that should be for every device"); operator `Nathan <joelhauserman@gmail.com>`. Branch `trends-hot-ring` -> `main`. **Cache:** v312. Frontend only.
 - **Built:** each per-type plot in Trends ("Where every pitch landed") gets a ring in the brand gold (#FFB81C, with a thin dark edge so it reads around gold 4-seam dots) around the 2x2 block of cells holding the most pitches of that type; a tie goes to the block nearest the middle of the strike zone. Worked out on every render, so it moves as sessions are saved. Every width. The caption reads "Pitcher's view · yellow circle around the highest concentration of pitches." (kept "Pitcher's view": Amendment 16 captions every after-the-fact grid as such).

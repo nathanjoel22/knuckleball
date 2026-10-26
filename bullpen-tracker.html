@@ -1157,6 +1157,10 @@
   .tr-plot{ display:flex; flex-direction:column; align-items:center; gap:var(--s-6); }
   .tr-plot-head{ display:flex; align-items:center; gap:var(--s-6); flex-wrap:wrap; justify-content:center; font-size:14px; }
   .tr-plot-sub{ color:var(--ink-dim); font-size:12px; }
+  .tr-split-row{ display:flex; flex-direction:column; gap:var(--s-8); padding-top:var(--s-12); border-top:1px solid var(--border); }
+  .tr-split-row > .tr-plot-head{ justify-content:flex-start; }
+  .tr-pair{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:var(--s-12); }
+  .tr-pair .tr-plot-head{ font-size:13px; }
   .persp-plate{ display:block; width:100%; height:auto; overflow:visible; }
   .zone-grid.heat-grid{ margin-bottom:0 !important; }   /* no batter-pill band under a heat map */
   .home-plate-overlay{
@@ -11823,6 +11827,31 @@ function renderTrendsView(){
       ${renderHistoryPlot({ kind: 'bullpen', pitches: st.pitches }, p, { colorOf, legend: false, caption: '', small: true, hotRing: true, aria: `Every ${escHtml(pitchLabel(t))} thrown, pitcher's view` })}
     </div>`;
   }).join('');
+  // Live Game only (Joel, Oct 26): the same plots split two ways -- vs left- / right-handed batters, then from the
+  // windup / the stretch (baseball; softball has no delivery). Each type gets a pair side by side, each with its own
+  // ring. A pitch with no batter side or no delivery recorded sits out that split (the card says how many).
+  const splitPlot = (t, label, pts) => {
+    const k = pts.filter(pt => GAME_STRIKE_RESULTS.has(pt.result)).length;
+    return `<div class="tr-plot">
+      <div class="tr-plot-head"><b>${label}</b><span class="tr-plot-sub">${pts.length ? `${pts.length} · ${Math.round(100 * k / pts.length)}% strikes` : 'none yet'}</span></div>
+      ${renderHistoryPlot({ kind: 'game', pitches: pts }, p, { colorOf, legend: false, caption: '', small: true, hotRing: true, aria: `Every ${escHtml(pitchLabel(t))} ${label}, pitcher's view` })}
+    </div>`;
+  };
+  const splitCard = (title, key, a, b) => {
+    let left = 0;
+    const rows = types.map(t => {
+      const pa = all[t].pitches.filter(pt => pt[key] === a.v), pb = all[t].pitches.filter(pt => pt[key] === b.v);
+      left += all[t].pitches.length - pa.length - pb.length;
+      return `<div class="tr-split-row"><div class="tr-plot-head"><span class="hp-dot" style="background:${colorOf(t)}"></span><b>${escHtml(pitchLabel(t))}</b></div>
+        <div class="tr-pair">${splitPlot(t, a.label, pa)}${splitPlot(t, b.label, pb)}</div></div>`;
+    }).join('');
+    return `<div class="tr-card"><h3>${title}</h3>
+      <p class="profile-note">${REPORT_VIEW_NAME} · yellow circle around the highest concentration of pitches.${left ? ` ${left} pitch${left === 1 ? '' : 'es'} with no ${key === 'batterSide' ? 'batter side' : 'windup / stretch'} recorded ${left === 1 ? "isn't" : "aren't"} shown.` : ''}</p>
+      ${rows}</div>`;
+  };
+  const splits = state.trendsFilter !== 'game' ? ''
+    : splitCard('vs left- and right-handed batters', 'batterSide', { v: 'L', label: 'vs LHB' }, { v: 'R', label: 'vs RHB' })
+      + (sportCfg().hasDelivery ? splitCard('From the windup and the stretch', 'delivery', { v: 'windup', label: 'Windup' }, { v: 'set', label: 'Stretch' }) : '');
   const span = sessions.length === 1 ? '1 session' : `${sessions.length} sessions · ${new Date(sessions[0].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} – ${new Date(sessions[sessions.length - 1].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
   return `${tray}
     <div class="tr-wrap">
@@ -11836,6 +11865,7 @@ function renderTrendsView(){
       <div class="tr-card"><h3>Where every pitch landed</h3>
         <p class="profile-note">${REPORT_VIEW_NAME} · yellow circle around the highest concentration of pitches.</p>
         <div class="tr-plots">${plots}</div></div>
+      ${splits}
     </div>`;
 }
 function renderKeepScroll(){

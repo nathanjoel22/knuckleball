@@ -6260,12 +6260,27 @@ function renderHistoryPlot(session, p, o){
   });
   const types = [];
   (session.pitches || []).forEach(pt => { if(types.indexOf(pt.type) < 0) types.push(pt.type); });
+  // Trends (Joel, Oct 26): a ring in the brand gold around the busiest 2x2 block of cells (most pitches; a tie goes to
+  // the block nearest the middle of the strike zone). Recomputed on every render, so it moves as sessions are saved.
+  let ring = '';
+  if(o.hotRing && (session.pitches || []).length){
+    let best = null;
+    for(let r = 0; r < N - 1; r++) for(let c = 0; c < N - 1; c++){
+      const n = (seen[r + '-' + c] || 0) + (seen[r + '-' + (c + 1)] || 0) + (seen[(r + 1) + '-' + c] || 0) + (seen[(r + 1) + '-' + (c + 1)] || 0);
+      const d = Math.abs(r + 1 - N / 2) + Math.abs(c + 1 - N / 2);
+      if(!best || n > best.n || (n === best.n && d < best.d)) best = { n, d, cx: (c + 1) * cell, cy: (r + 1) * cell };
+    }
+    const rad = 1.3 * cell;   // just around the four cells (their rounded outer corners sit right on it)
+    ring = `<circle cx="${best.cx}" cy="${best.cy}" r="${rad.toFixed(1)}" fill="none" stroke="rgba(7,20,15,0.3)" stroke-width="11"/>
+      <circle cx="${best.cx}" cy="${best.cy}" r="${rad.toFixed(1)}" fill="none" stroke="#FFB81C" stroke-width="7"/>`;
+  }
+  const pad = o.hotRing ? 40 : 0;   // room for a ring around an edge block
   const legend = o.legend === false ? '' : types.map(t => `<span class="hp-key"><span class="hp-dot" style="background:${colorOf(t)}"></span>${escHtml(pitchLabel(t))}</span>`).join('');
   const what = (session.kind || 'bullpen') === 'game' ? 'game' : 'pen';
   return `<div class="hp-wrap">
-    <svg class="hp-plot" viewBox="0 0 ${N * cell} ${N * cell}" role="img" aria-label="${o.aria || `Every pitch this ${what}, pitcher's view`}">
+    <svg class="hp-plot" viewBox="${-pad} ${-pad} ${N * cell + 2 * pad} ${N * cell + 2 * pad}" role="img" aria-label="${o.aria || `Every pitch this ${what}, pitcher's view`}">
       <defs><radialGradient id="hpCream" cx="0.35" cy="0.3" r="0.9"><stop offset="0" stop-color="#FFFBF0"/><stop offset="0.6" stop-color="#F6EEDC"/><stop offset="1" stop-color="#EFE4CC"/></radialGradient></defs>
-      ${cells}<g opacity="0.28">${halos}</g>${dots}
+      ${cells}<g opacity="0.28">${halos}</g>${dots}${ring}
     </svg>
     ${renderPerspectivePlate()}
     ${legend ? `<div class="hp-legend">${legend}</div>` : ''}
@@ -11805,7 +11820,7 @@ function renderTrendsView(){
     const st = all[t];
     return `<div class="tr-plot">
       <div class="tr-plot-head"><span class="hp-dot" style="background:${colorOf(t)}"></span><b>${escHtml(pitchLabel(t))}</b><span class="tr-plot-sub">${st.n} pitch${st.n === 1 ? '' : 'es'} · ${Math.round(100 * st.k / st.n)}% strikes</span></div>
-      ${renderHistoryPlot({ kind: 'bullpen', pitches: st.pitches }, p, { colorOf, legend: false, caption: '', small: true, aria: `Every ${escHtml(pitchLabel(t))} thrown, pitcher's view` })}
+      ${renderHistoryPlot({ kind: 'bullpen', pitches: st.pitches }, p, { colorOf, legend: false, caption: '', small: true, hotRing: true, aria: `Every ${escHtml(pitchLabel(t))} thrown, pitcher's view` })}
     </div>`;
   }).join('');
   const span = sessions.length === 1 ? '1 session' : `${sessions.length} sessions · ${new Date(sessions[0].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} – ${new Date(sessions[sessions.length - 1].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
@@ -11819,7 +11834,7 @@ function renderTrendsView(){
       <div class="tr-card"><h3>Peak velocity by pitch type</h3>${veloRows.length ? legend : ''}${velo}
         ${veloRows.length ? '<p class="profile-note">The fastest reading of each pitch type in each session, in mph.</p>' : ''}</div>
       <div class="tr-card"><h3>Where every pitch landed</h3>
-        <p class="profile-note">${REPORT_VIEW_NAME} · both batter sides mixed.</p>
+        <p class="profile-note">${REPORT_VIEW_NAME} · yellow circle around the highest concentration of pitches.</p>
         <div class="tr-plots">${plots}</div></div>
     </div>`;
 }

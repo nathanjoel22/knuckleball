@@ -374,7 +374,10 @@
     // caller's own session, not a shared secret.
     try {
       const { data: { session: s } } = await supabaseClient.auth.getSession();
-      if(s && typeof VERIFY_EMAIL_URL !== 'undefined' && VERIFY_EMAIL_URL.indexOf('YOUR_') !== 0){
+      // Joel, Oct 26: an account that's already verified (e.g. re-opening an old invite link) gets no email.
+      const { data: ver } = s ? await supabaseClient.rpc('my_verification_status') : { data: null };
+      const alreadyVerified = Array.isArray(ver) && ver[0] && ver[0].email_confirmed === true;
+      if(s && !alreadyVerified && typeof VERIFY_EMAIL_URL !== 'undefined' && VERIFY_EMAIL_URL.indexOf('YOUR_') !== 0){
         await fetch(VERIFY_EMAIL_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }

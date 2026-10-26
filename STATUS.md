@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-26 · no packet (invite links: no verify email for an already-verified account) · **production**
+- **Asked by:** Joel ("yes fix both pages"), after a needless "verify your email" to nate.j.pugh+coachnate (production, read-only look: sent 21:36 UTC by that login itself; it was already verified -- it made reports Oct 22-23, which the server allows only for a verified coach; Joel had re-opened an old September coach invite link). Operator `Nathan <joelhauserman@gmail.com>`. Branch `invite-skip-verified` -> `main`. **Cache:** v314. Frontend only (`join.html`, `join-coach.html`, `sw.js`).
+- **Built:** both invite pages used to send the verification email to whoever ended up signed in, every time. They now ask `my_verification_status()` first and skip the email when the account is already verified. New sign-ups are unchanged; if the status check returns an error the email still goes (old behavior).
+- **Checks:** the changed block run in Node with a stubbed sign-in: verified -> 0 emails, unverified -> 1, status error -> 1, network throw -> 0 (as before; Resend in the app recovers), for both pages.
+- **Open:** none. (Auth-flow change approved by Joel in this request.)
+
 ## 2026-10-26 · no packet (Trends, Live Game: by batter side and by windup / stretch) · **production**
 - **Asked by:** Joel ("in the live game section, let's add the same charts, with the same concentrated ring but break it down vs left handed batter and right handed batter and then all pitches from the windup vs from the stretch"); operator `Nathan <joelhauserman@gmail.com>`. Branch `trends-game-splits` -> `main`. **Cache:** v313. Frontend only.
 - **Built:** with Trends set to **Live Game**, two more cards after "Where every pitch landed": **vs left- and right-handed batters** (each pitch type: vs LHB | vs RHB side by side) and, baseball only (softball has no delivery), **From the windup and the stretch** (Windup | Stretch, stored `delivery` 'windup' / 'set'). Each small chart: pitch count, strike % (by the call), every pitch in the pitcher's view, and its own gold ring on its busiest 2x2 block. Pitches with no side / delivery recorded sit out that split and the card says how many.

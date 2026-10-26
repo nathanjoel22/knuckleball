@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-26 · no packet (phone bar: History button; Charts opens the charting question) · **production**
+- **Asked by:** Joel ("on phone, there needs to be a fifth category between charts and trends called history. history should obviously link to history and charts should lead to the new pen/live game question screen"); operator `Nathan <joelhauserman@gmail.com>`. Branch `dock-history` (stacked on `invite-skip-verified`) -> `main`. **Cache:** v315. Frontend only.
+- **Built:** the phone bottom bar gets **History** (a clock-turning-back icon) between Charts and Trends: pitchers Home · Charts · History · Trends · Profile (5), coaches Home · Charts · History · Trends · Roster · Profile (6 -- Roster kept). **Charts** now opens "What will we be charting today?" (Bullpen / Live Game), or Resume when a session is in progress -- the same as the New Session tab; a coach on an archived team (no New Session) goes to History. History opens History.
+- **Checks:** 375 and 390, coach and pitcher: no clipped label; every button opens its screen, lights itself and moves the highlight to its slot; Charts shows the charting question. Close-ups of both bars.
+- **Open:** none.
+
 ## 2026-10-26 · no packet (invite links: no verify email for an already-verified account) · **production**
 - **Asked by:** Joel ("yes fix both pages"), after a needless "verify your email" to nate.j.pugh+coachnate (production, read-only look: sent 21:36 UTC by that login itself; it was already verified -- it made reports Oct 22-23, which the server allows only for a verified coach; Joel had re-opened an old September coach invite link). Operator `Nathan <joelhauserman@gmail.com>`. Branch `invite-skip-verified` -> `main`. **Cache:** v314. Frontend only (`join.html`, `join-coach.html`, `sw.js`).
 - **Built:** both invite pages used to send the verification email to whoever ended up signed in, every time. They now ask `my_verification_status()` first and skip the email when the account is already verified. New sign-ups are unchanged; if the status check returns an error the email still goes (old behavior).

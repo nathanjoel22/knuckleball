@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-26 · no packet (Trends: gold ring on the busiest cells) · **production**
+- **Asked by:** Joel ("draw a yellow circle, using the branded yellow ... around the four cells in the 5x5 that have the highest concentration of pitches ... redrawn after every outing ... it should say yellow circle around highest concentration of pitches"; "that should be for every device"); operator `Nathan <joelhauserman@gmail.com>`. Branch `trends-hot-ring` -> `main`. **Cache:** v312. Frontend only.
+- **Built:** each per-type plot in Trends ("Where every pitch landed") gets a ring in the brand gold (#FFB81C, with a thin dark edge so it reads around gold 4-seam dots) around the 2x2 block of cells holding the most pitches of that type; a tie goes to the block nearest the middle of the strike zone. Worked out on every render, so it moves as sessions are saved. Every width. The caption reads "Pitcher's view · yellow circle around the highest concentration of pitches." (kept "Pitcher's view": Amendment 16 captions every after-the-fact grid as such).
+- **Checks:** 9 sample sessions: each of the 4 rings sits on the block an independent count picks (21 / 18 / 20 / 11 pitches); 390 and 1180 screenshots, ring whole at the grid's edge.
+- **Open:** none.
+
 ## 2026-10-26 · no packet (Home boxes fill the space on iPad / laptop) · **production**
 - **Asked by:** Joel ("i need these four boxes to take up the bulk of this space, like how the previous five boxes did it"); operator `Nathan <joelhauserman@gmail.com>`. Branch `home-tiles-fill` -> `main`. **Cache:** v311. Frontend only (`bullpen-tracker.html`, `sw.js`).
 - **Built:** on iPad and laptop (>500px) the four Home boxes drop v310's 560px cap and fill the whole area beside the roster, two by two, each the 5:3 shape the old Charting / History tiles had. Phones keep the squares.

@@ -638,9 +638,11 @@
   .ic-graph{ -webkit-mask-image:url(vendor/icons/graph.png); mask-image:url(vendor/icons/graph.png); }
   .ic-gear{ -webkit-mask-image:url(vendor/icons/gear.png); mask-image:url(vendor/icons/gear.png); }
   .ic-trends{ -webkit-mask-image:url(vendor/icons/trends.svg); mask-image:url(vendor/icons/trends.svg); }   /* Joel's rising line chart (Oct 26), redrawn as our own vector */
-  /* Oct 26 (Joel): four squares, two by two, on every width; no wider than the 5x5 chart */
-  .home-tiles.home-four{ grid-template-columns:repeat(2, minmax(0, 1fr)); max-width:560px; }
-  .home-tiles.home-four .home-tile{ grid-column:auto; aspect-ratio:1 / 1; min-height:0; }
+  /* Oct 26 (Joel): four boxes, two by two. Phones: squares. iPad / laptop: they fill the whole area beside the
+     roster, each the shape the old Charting / History tiles had (Joel: "take up the bulk of this space"). */
+  .home-tiles.home-four{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  .home-tiles.home-four .home-tile{ grid-column:auto; aspect-ratio:5 / 3; min-height:0; }
+  @media (max-width:500px){ .home-tiles.home-four .home-tile{ aspect-ratio:1 / 1; } }
   @media (max-width:500px){
     .home-tiles.home-four{ gap:var(--s-12); }
     .home-tiles.home-four .home-ic .ic-img{ width:56px; height:56px; }

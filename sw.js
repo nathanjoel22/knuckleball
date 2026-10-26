@@ -50,6 +50,7 @@ const PRECACHE_URLS = [
   '/vendor/icons/scatter.png',
   '/vendor/icons/graph.png',
   '/vendor/icons/gear.png',
+  '/vendor/icons/trends.svg',
   '/vendor/fonts/BlackOpsOne-Regular.ttf',   // the KNUCKLEBALL wordmark, offline too (Oct 8)
   // D2 Stage B (Oct 13): the two faces, precached so the first offline open already has them
   '/vendor/fonts/Archivo-var-latin.woff2',

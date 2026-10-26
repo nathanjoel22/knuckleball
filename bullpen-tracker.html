@@ -637,6 +637,16 @@
   .ic-scatter{ -webkit-mask-image:url(vendor/icons/scatter.png); mask-image:url(vendor/icons/scatter.png); }   /* a clipboard holding a pitch chart (Joel, Oct 12: vendor/scatter.png) */
   .ic-graph{ -webkit-mask-image:url(vendor/icons/graph.png); mask-image:url(vendor/icons/graph.png); }
   .ic-gear{ -webkit-mask-image:url(vendor/icons/gear.png); mask-image:url(vendor/icons/gear.png); }
+  .ic-trends{ -webkit-mask-image:url(vendor/icons/trends.svg); mask-image:url(vendor/icons/trends.svg); }   /* Joel's rising line chart (Oct 26), redrawn as our own vector */
+  /* Oct 26 (Joel): four squares, two by two, on every width; no wider than the 5x5 chart */
+  .home-tiles.home-four{ grid-template-columns:repeat(2, minmax(0, 1fr)); max-width:560px; }
+  .home-tiles.home-four .home-tile{ grid-column:auto; aspect-ratio:1 / 1; min-height:0; }
+  @media (max-width:500px){
+    .home-tiles.home-four{ gap:var(--s-12); }
+    .home-tiles.home-four .home-ic .ic-img{ width:56px; height:56px; }
+    .home-tiles.home-four .home-lbl{ font-size:20px; }
+  }
+  @media (min-width:501px){ .home-tiles.home-four .home-ic .ic-img{ width:80px; height:80px; } .home-tiles.home-four .home-lbl{ font-size:28px; } }
   .home-lbl{ font-size:16px; font-weight:700; line-height:1.15; }
   .home-note{ font-size:12px; font-weight:600; color:var(--ink-faint); }
   .home-soon{ cursor:default; }
@@ -1110,7 +1120,7 @@
   .dock-btn.on svg{ fill:currentColor; fill-opacity:.16; stroke-width:2.2; }   /* the icon fills with the accent */
   .dock-btn:focus-visible{ outline:3px solid var(--on-dark); outline-offset:-3px; border-radius:var(--radius-control); }
   /* the highlight pill: one button wide, glides under the finger, snaps with a short ease */
-  .dock-pill{ position:absolute; z-index:0; left:8px; top:6px; bottom:6px; width:calc((100% - 16px) / 4); border-radius:var(--radius-control);
+  .dock-pill{ position:absolute; z-index:0; left:8px; top:6px; bottom:6px; width:calc((100% - 16px) / var(--dock-n, 4)); border-radius:var(--radius-control);
     background:rgba(255,255,255,.85); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
     box-shadow:var(--shadow-segment), var(--ring-select);
     transition:transform 300ms cubic-bezier(.34,1.56,.64,1), box-shadow 150ms ease; transform-origin:center; will-change:transform; }
@@ -3856,28 +3866,32 @@ function rosterCanCollapse(){
   return window.matchMedia('(max-width:860px)').matches;
 }
 /* ---------- COACH DOCK (Joel, Oct 8 2026) ----------
-   Phones, coach accounts, outside the charting screen: a translucent bar fixed to the bottom with Home (New
-   Session -- "What will we be charting today?"), Charts (History), Roster (opens the pitcher list and scrolls to
-   its top) and Profile. It slides away while scrolling down and comes back on scrolling up. */
+   Phones, outside the charting screen: a translucent bar fixed to the bottom with Home (New
+   Session -- "What will we be charting today?"), Charts (History), Trends, Roster (opens the pitcher list and scrolls to
+   its top) and Profile. It slides away while scrolling down and comes back on scrolling up.
+   Oct 26 (Joel): Trends added, and pitchers get the bar too -- Home, Charts, Trends, Profile (no Roster). */
 const DOCK_ICONS = {
   home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.2 12 4l9 7.2"/><path d="M5.5 9.6V20h4.8v-5.4h3.4V20h4.8V9.6"/></svg>',
   charts: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="M8.5 10h7M8.5 13.5h7M8.5 17h4.5"/></svg>',
+  trends: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3V21H21M7.2 15.7L8.6 13.9M11.7 13.6L13.1 14.8M15.7 14.2L18.5 8.2"/><circle cx="5.8" cy="17.4" r="1.3"/><circle cx="10" cy="12.2" r="1.3"/><circle cx="14.8" cy="16.2" r="1.3"/><circle cx="19.4" cy="6.2" r="1.3"/></svg>',   // Joel's rising-line chart (Oct 26), redrawn small
   roster: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20.5c.8-4 3.6-6.3 7.2-6.3s6.4 2.3 7.2 6.3"/></svg>',
   profile: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.6"/></svg>'
 };
-function coachDockShown(phoneSession){ return isCoach() && isPhoneWidth() && !phoneSession && !!state.profile; }
-const DOCK_KEYS = ['home', 'charts', 'roster', 'profile'];
+function coachDockShown(phoneSession){ return !!state.profile && (isCoach() || state.profile.role === 'pitcher') && isPhoneWidth() && !phoneSession; }
+function dockKeys(){ return isCoach() ? ['home', 'charts', 'trends', 'roster', 'profile'] : ['home', 'charts', 'trends', 'profile']; }
+const DOCK_LABELS = { home: 'Home', charts: 'Charts', trends: 'Trends', roster: 'Roster', profile: 'Profile' };
 function dockActiveIndex(){
-  if(state.dockRoster && !state.rosterCollapsed) return 2;   // Roster stays lit while its list is open
+  const keys = dockKeys();
+  if(isCoach() && state.dockRoster && !state.rosterCollapsed) return keys.indexOf('roster');   // Roster stays lit while its list is open
   const v = state.view;
-  return v === 'home' ? 0 : v === 'history' ? 1 : v === 'profile' ? 3 : -1;   // Oct 12: Home is the Home screen
+  return keys.indexOf(v === 'home' ? 'home' : v === 'history' ? 'charts' : v === 'trends' ? 'trends' : v === 'profile' ? 'profile' : '');   // Oct 12: Home is the Home screen
 }
 function renderCoachDock(){
-  const idx = dockActiveIndex();
+  const idx = dockActiveIndex(), keys = dockKeys();
   const btn = (k, label, i) => `<button type="button" role="tab" class="dock-btn${idx === i ? ' on' : ''}" data-go="${k}" aria-selected="${idx === i ? 'true' : 'false'}" tabindex="${(idx === i || (idx < 0 && i === 0)) ? '0' : '-1'}" onclick="dockTap('${k}')" aria-label="${label}">${DOCK_ICONS[k]}<span>${label}</span></button>`;
-  return `<nav class="coach-dock${state.dockHidden ? ' dock-hidden' : ''}" role="tablist" aria-label="Coach shortcuts">
+  return `<nav class="coach-dock${state.dockHidden ? ' dock-hidden' : ''}" role="tablist" aria-label="Shortcuts" style="--dock-n:${keys.length}">
     <span class="dock-pill${idx < 0 ? ' off' : ''}" aria-hidden="true" style="transform:translateX(${Math.max(idx, 0) * 100}%)"></span>
-    ${btn('home', 'Home', 0)}${btn('charts', 'Charts', 1)}${btn('roster', 'Roster', 2)}${btn('profile', 'Profile', 3)}
+    ${keys.map((k, i) => btn(k, DOCK_LABELS[k], i)).join('')}
   </nav>`;
 }
 /* The bottom menu tray (U13, Joel Oct 10; plans/u13-segmented-buttons-2.md) -- the one draggable tray, after
@@ -3892,7 +3906,7 @@ function dockReduced(){ return !!(window.matchMedia && window.matchMedia('(prefe
 function dockPillX(){
   const dock = document.querySelector('.coach-dock'), pill = dock && dock.querySelector('.dock-pill');
   if(!pill) return null;
-  return pill.getBoundingClientRect().left + pill.getBoundingClientRect().width / 2 - dock.getBoundingClientRect().left - 8 - (dock.getBoundingClientRect().width - 16) / 8;
+  return pill.getBoundingClientRect().left + pill.getBoundingClientRect().width / 2 - dock.getBoundingClientRect().left - 8 - (dock.getBoundingClientRect().width - 16) / (2 * dockKeys().length);
 }
 window.dockTap = function(k){
   if(Date.now() - dockGestureAt < 600) return;   // already handled by the pointer gesture
@@ -3909,7 +3923,7 @@ window.dockGo = function(where){
     return;
   }
   state.rosterCollapsed = rosterCanCollapse();   // Joel, Oct 8: any other button rolls the roster back up
-  setView(where === 'home' ? 'home' : where === 'charts' ? 'history' : 'profile');
+  setView(where === 'home' ? 'home' : where === 'charts' ? 'history' : where === 'trends' ? 'trends' : 'profile');
   // ...and lands with the box holding the pitcher's name at the top of the screen (Profile has no pitcher
   // box -- it lands at the top of the page's content).
   const anchor = document.querySelector('.pitcher-header') || document.querySelector('.main');
@@ -3929,7 +3943,8 @@ function attachCoachDock(){
   const pill = dock.querySelector('.dock-pill');
   const btns = () => dock.querySelectorAll('.dock-btn');
   const reduce = dockReduced();
-  const geo = () => { const b = dock.getBoundingClientRect(); return { left: b.left + 8, w: (b.width - 16) / 4 }; };
+  const n = dockKeys().length, last = n - 1;
+  const geo = () => { const b = dock.getBoundingClientRect(); return { left: b.left + 8, w: (b.width - 16) / n }; };
   const setPill = (x, lifted, animate) => {
     pill.style.transition = (animate && !reduce) ? DOCK_SPRING : 'none';
     pill.style.transform = `translateX(${x}px)` + ((lifted && !reduce) ? ' scale(1.06)' : '');
@@ -3944,9 +3959,9 @@ function attachCoachDock(){
   }
   dockPillFrom = null;
   let g0 = null, hold = 0, lifted = false, startX = 0, x = 0, pid = null;
-  const pillXFor = cx => Math.max(0, Math.min(3 * g0.w, cx - g0.left - g0.w / 2));
-  const nearest = px => Math.max(0, Math.min(3, Math.round(px / g0.w)));
-  const tabAt = cx => Math.max(0, Math.min(3, Math.floor((cx - g0.left) / g0.w)));
+  const pillXFor = cx => Math.max(0, Math.min(last * g0.w, cx - g0.left - g0.w / 2));
+  const nearest = px => Math.max(0, Math.min(last, Math.round(px / g0.w)));
+  const tabAt = cx => Math.max(0, Math.min(last, Math.floor((cx - g0.left) / g0.w)));
   const pickUp = () => { lifted = true; pill.classList.remove('off'); setPill(pillXFor(x), true, true); preview(nearest(pillXFor(x))); };
   dock.addEventListener('pointerdown', e => {
     if(e.pointerType === 'mouse' && e.button !== 0) return;
@@ -3976,7 +3991,7 @@ function attachCoachDock(){
     const i = wasLifted ? nearest(pillXFor(x)) : tabAt(startX);
     dockPillFrom = wasLifted ? pillXFor(x) : Math.max(cur, 0) * g0.w;
     setPill(i * g0.w, false, true); preview(i);
-    dockGo(DOCK_KEYS[i]);                // the page switches once, on release
+    dockGo(dockKeys()[i]);                // the page switches once, on release
   };
   dock.addEventListener('pointerup', e => end(e, false));
   dock.addEventListener('pointercancel', e => end(e, true));
@@ -12115,6 +12130,7 @@ function renderLeaderboardView(){
    size (Joel, Oct 12). Icons: all five are Joel's own drawings (vendor/icons/, from his vendor/brain-arm.png,
    vendor/clipboard-graph-gear.png and vendor/scatter.png), filled with the tile's color through a mask. The whole block is no wider than the 5x5 chart (340px on phones, 560px on iPad/laptop). */
 const HOME_ICONS = {
+  trends: '<span class="ic-img ic-trends" aria-hidden="true"></span>',
   charting: '<span class="ic-img ic-scatter" aria-hidden="true"></span>',
   history: '<span class="ic-img ic-graph" aria-hidden="true"></span>',
   armcare: '<span class="ic-img ic-arm" aria-hidden="true"></span>',
@@ -12125,12 +12141,13 @@ function renderHomeTiles(){
   const archived = isCoach() && currentTeamArchived();   // P1-09: no New Session on an archived team
   const tile = (key, label, onclick, note, off, big) => `<button type="button" class="btn btn-secondary home-tile ${big ? 'home-big' : 'home-small'}${off ? ' home-soon' : ''}" ${onclick ? `onclick="${onclick}"` : 'aria-disabled="true"'} ${off && !onclick ? 'tabindex="-1"' : ''}>
       <span class="home-ic">${HOME_ICONS[key]}</span><span class="home-lbl">${label}</span>${note ? `<span class="home-note">${note}</span>` : ''}</button>`;
-  return `<div class="home-tiles" role="navigation" aria-label="Home">
+  // Oct 26 (Joel): four equal squares -- Charting, History, Trends, Profile. Armcare and Mental Game stay planned
+  // (their icons and the tile('armcare' / 'mental', ..., 'Coming soon', true) pattern are kept) but aren't shown.
+  return `<div class="home-tiles home-four" role="navigation" aria-label="Home">
     ${tile('charting', 'Charting', archived ? '' : "setView('session')", archived ? 'Archived team' : (state.draftAvailable ? 'Resume' : ''), archived, true)}
     ${tile('history', 'History', "setView('history')", '', false, true)}
-    ${tile('armcare', 'Armcare', '', 'Coming soon', true)}
-    ${tile('mental', 'Mental Game', '', 'Coming soon', true)}
-    ${tile('profile', 'Profile', "setView('profile')")}
+    ${tile('trends', 'Trends', "setView('trends')", '', false, true)}
+    ${tile('profile', 'Profile', "setView('profile')", '', false, true)}
   </div>`;
 }
 function renderTabs(){

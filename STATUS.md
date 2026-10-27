@@ -15,6 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-27 · no packet (Trends: line charts moved to the bottom) · **production**
+- **Asked by:** Joel ("move peak velocity by pitch time under trends onto the bottom of that page and move strike percentage graph below that"); operator `Nathan <joelhauserman@gmail.com>`. Branch `trends-order` -> `main`. **Cache:** v316. Frontend only.
+- **Built:** Trends now reads: the summary table, Where every pitch landed, (Live Game) the LHB / RHB and windup / stretch splits, then Peak velocity by pitch type, then Strike % by pitch type last. Nothing else changed.
+- **Checks:** All / Bullpen / Live Game at 390 and 1200: card order as above, no sideways scroll; the split rings still match an independent count (16 of 16).
+- **Open:** none.
+
 ## 2026-10-26 · no packet (phone bar: History button; Charts opens the charting question) · **production**
 - **Asked by:** Joel ("on phone, there needs to be a fifth category between charts and trends called history. history should obviously link to history and charts should lead to the new pen/live game question screen"); operator `Nathan <joelhauserman@gmail.com>`. Branch `dock-history` (stacked on `invite-skip-verified`) -> `main`. **Cache:** v315. Frontend only.
 - **Built:** the phone bottom bar gets **History** (a clock-turning-back icon) between Charts and Trends: pitchers Home · Charts · History · Trends · Profile (5), coaches Home · Charts · History · Trends · Roster · Profile (6 -- Roster kept). **Charts** now opens "What will we be charting today?" (Bullpen / Live Game), or Resume when a session is in progress -- the same as the New Session tab; a coach on an archived team (no New Session) goes to History. History opens History.

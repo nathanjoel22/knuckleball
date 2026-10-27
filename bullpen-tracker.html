@@ -11861,15 +11861,15 @@ function renderTrendsView(){
     <div class="tr-wrap">
       <p class="profile-note tr-span">${span} · ${total} pitches</p>
       ${table}
-      <div class="tr-card"><h3>Strike % by pitch type</h3>${legend}
-        ${trendsLineChart(strikeRows, types, colorOf, { min: 0, max: 100, ticks: [0, 25, 50, 75, 100], unit: '%', aria: 'Strike percentage per pitch type, by session' })}
-        <p class="profile-note">One point per session. Bullpens count strikes by where the pitch landed; games by the call (swinging, looking, foul, in play).</p></div>
-      <div class="tr-card"><h3>Peak velocity by pitch type</h3>${veloRows.length ? legend : ''}${velo}
-        ${veloRows.length ? '<p class="profile-note">The fastest reading of each pitch type in each session, in mph.</p>' : ''}</div>
       <div class="tr-card"><h3>Where every pitch landed</h3>
         <p class="profile-note">${REPORT_VIEW_NAME} · yellow circle around the highest concentration of pitches.</p>
         <div class="tr-plots">${plots}</div></div>
       ${splits}
+      <div class="tr-card"><h3>Peak velocity by pitch type</h3>${veloRows.length ? legend : ''}${velo}
+        ${veloRows.length ? '<p class="profile-note">The fastest reading of each pitch type in each session, in mph.</p>' : ''}</div>
+      <div class="tr-card"><h3>Strike % by pitch type</h3>${legend}
+        ${trendsLineChart(strikeRows, types, colorOf, { min: 0, max: 100, ticks: [0, 25, 50, 75, 100], unit: '%', aria: 'Strike percentage per pitch type, by session' })}
+        <p class="profile-note">One point per session. Bullpens count strikes by where the pitch landed; games by the call (swinging, looking, foul, in play).</p></div>
     </div>`;
 }
 function renderKeepScroll(){

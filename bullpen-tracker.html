@@ -2610,8 +2610,9 @@ async function init(){
     // ---- Fast path: paint the real charting UI from the last context we
     //      saw online. No network awaited before charting is usable. ----
     applyCachedContext(cached);
-    state.sessions = [];        // server history isn't reachable offline; queued sessions still show via the outbox
-    state.deletedSessions = []; // (P1-15) tombstones come from the server too
+    // SC1-B: History as this device last saw it, for the pitchers it keeps (his own, ones opened here); otherwise
+    // empty until the online load. Queued sessions still show via the outbox.
+    await loadSessionsFromDevice();
     await refreshDraftState();
     state.loaded = true;
     finishInit();
@@ -2685,6 +2686,7 @@ async function resolveOnline(alreadyPainted){
     if(isOnline() && !readPersistedSessionRaw()){
       // Genuine revocation. Any in-progress charting is already in the
       // localStorage draft, so nothing is lost by redirecting now.
+      try{ await histCacheClear(); }catch(e){}   // SC1-B
       try{ await supabaseClient.auth.signOut(); }catch(e){}
       window.location.replace(loginUrl());
       return;
@@ -3383,8 +3385,7 @@ window.switchProfile = async function(id){
   state.expandedSessionId = null; state.sessionSheetOpen = false; state.sessionDiscardArmed = false;
   state.showSetupModal = false; state.setupNeeded = null; state.pendingTarget = null; state.hint = '';
   applyCachedContext(next);          // also re-themes (applySport)
-  state.sessions = [];
-  state.deletedSessions = [];
+  await loadSessionsFromDevice();    // SC1-B: this profile's kept History, if any
   await refreshDraftState();
   state.loaded = true;
   render();
@@ -3647,6 +3648,7 @@ async function saveLastKnownContext(){
 }
 
 window.signOut = async function(){
+  try{ await histCacheClear(); }catch(e){}   // SC1-B: this login's History copy leaves the device with it
   try{ await supabaseClient.auth.signOut(); } catch(e){ console.error('Sign out error', e); }
   window.location.href = loginUrl();
 };
@@ -4050,7 +4052,7 @@ window.selectPitcher = async function(pitcherId){
   state.expandedSessionId = null;
   state.oldTombstonesExpanded = false;
   clearDeleteState();
-  await loadSessionsForCurrentSelection();
+  await loadSessionsForCurrentSelection(true);   // SC1-B: a tap opens him -- his newest sessions come with pitches here
   await refreshDraftState();
   await saveLastKnownContext();
   render();
@@ -5940,19 +5942,189 @@ function workloadBanner(){
   const w = workloadParts(p.id);
   return w ? `<p class="workload-banner">${w.last} · ${w.windows}</p>` : '';
 }
-async function loadSessionsForCurrentSelection(){
-  const pitcherId = state.currentPitcherId;
-  const teamId = state.currentTeamId;
-  if(!pitcherId || (!teamId && isCoach())){ state.sessions = []; state.deletedSessions = []; return; }   // P2: a pitcher's History needs no team
-  const { data, error } = await supabaseClient
-    .from('sessions')
-    .select('id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, pitch_count_adjust, final_at, exit_runs, exit_er, exit_bb, pitches(type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, accuracy_hit_kind, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, runs_scored, unearned_runs, inherited_runs, charged_prev, fielders, batter_to, runner_advances, outs_on_play, sacrifice), game_events(event_type, balls_before, strikes_before, runs_scored, unearned_runs, inherited_runs, charged_prev), session_notes(id, author_id, author_name, body, created_at)')
-    .eq('pitcher_id', pitcherId)
-    .order('started_at', { ascending: false });   // R4: every team -- RLS decides what this viewer sees
-  if(error){ console.error(error); state.sessions = []; state.deletedSessions = []; return; }
-  await loadSessionTeamNames(pitcherId, data || []);
-  loadWorkload([pitcherId]);   // R4: pitch counts across teams (background)
-  const all = (data || []).map(s => ({
+// SC1-B (Joel, Oct 28 2026; plans/sc1b-scope.md, option C): every session's numbers come from its session_stats row
+// (counts written by the server at save; STATS_VERSION is the only version this app reads -- any other row is ignored
+// and that session's numbers come from its pitches). Pitch rows are fetched only for the newest HISTORY_PREFETCH_N
+// sessions of the signed-in pitcher's own History and of pitchers this viewer has OPENED on this device (tapped in the
+// roster) -- never for a roster pitcher who was only selected automatically -- and for single sessions when a report
+// needs them. Those prefetched pitchers' History is kept on the device so History and Trends open offline: in
+// IndexedDB, never localStorage (the outbox and drafts live there and must not run out of room), at most
+// HISTORY_CACHE_MAX sessions with pitches device-wide, the least recently opened pitcher's oldest sessions dropped
+// first. Signing out clears this login's copy.
+const STATS_VERSION = 2;
+const HISTORY_PREFETCH_N = 20;
+const HISTORY_CACHE_MAX = 200;
+const SESSION_COLS = 'id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, pitch_count_adjust, final_at, exit_runs, exit_er, exit_bb';
+const PITCH_COLS = 'type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, accuracy_hit_kind, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, runs_scored, unearned_runs, inherited_runs, charged_prev, fielders, batter_to, runner_advances, outs_on_play, sacrifice';
+const EVENT_COLS = 'event_type, balls_before, strikes_before, runs_scored, unearned_runs, inherited_runs, charged_prev';
+const STATS_COLS = 'stats_version, pitches, pitch_count, strikes, hits, exact_hits, ra_hits, zone_total, zone_hits, velo_n, velo_sum, velo_min, velo_max, ttp_n, ttp_sum, by_type, game';
+
+// The device copy: one IndexedDB store, a record per login | profile | pitcher. Every call resolves null on any
+// failure (private mode, storage off), so History just loads from the network as before.
+let histDbOpen = null;
+function histDb(){
+  if(!histDbOpen) histDbOpen = new Promise(resolve => {
+    try{
+      const req = indexedDB.open('kb-history', 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore('h'); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+      req.onblocked = () => resolve(null);
+    }catch(e){ resolve(null); }
+  });
+  return histDbOpen;
+}
+function histTx(mode, fn){
+  return histDb().then(db => db && new Promise(resolve => {
+    try{
+      const tx = db.transaction('h', mode);
+      let out = null;
+      const req = fn(tx.objectStore('h'));
+      if(req) req.onsuccess = () => { out = req.result === undefined ? null : req.result; };
+      tx.oncomplete = () => resolve(out);
+      tx.onerror = () => resolve(null);
+      tx.onabort = () => resolve(null);
+    }catch(e){ resolve(null); }
+  })).catch(() => null);
+}
+function histKey(pitcherId){
+  return (state.session && state.profile && pitcherId) ? state.session.user.id + '|' + state.profile.id + '|' + pitcherId : null;
+}
+function histEach(fn){   // every record on the device: fn(key, value)
+  return histTx('readonly', st => {
+    const c = st.openCursor();
+    c.onsuccess = () => { const cur = c.result; if(cur){ fn(cur.key, cur.value); cur.continue(); } };
+    return null;
+  });
+}
+function histCacheGet(pitcherId){ const k = histKey(pitcherId); return k ? histTx('readonly', st => st.get(k)) : Promise.resolve(null); }
+async function histCachePut(pitcherId, rows, names){
+  const key = histKey(pitcherId);
+  if(!key) return;
+  await histTx('readwrite', st => st.put({ at: Date.now(), rows, names }, key));
+  // The ceiling: count every session holding pitches on the device; drop the least recently opened pitcher's oldest
+  // first (the one just written goes last), and a pitcher's whole record once none of his sessions has pitches.
+  const all = [];
+  await histEach((k, v) => all.push({ k, v }));
+  const held = v => (v.rows || []).filter(r => r.pitches).length;
+  let total = all.reduce((n, r) => n + held(r.v), 0);
+  if(total <= HISTORY_CACHE_MAX) return;
+  all.sort((a, b) => ((a.k === key) - (b.k === key)) || (a.v.at - b.v.at));
+  for(const r of all){
+    if(total <= HISTORY_CACHE_MAX) break;
+    const withPitches = (r.v.rows || []).filter(x => x.pitches).sort((a, b) => new Date(a.started_at) - new Date(b.started_at));
+    for(const x of withPitches){
+      if(total <= HISTORY_CACHE_MAX) break;
+      delete x.pitches; delete x.game_events; total--;
+    }
+    if((r.v.rows || []).some(x => x.pitches)) await histTx('readwrite', st => st.put(r.v, r.k));
+    else await histTx('readwrite', st => st.delete(r.k));
+  }
+}
+// Sign-out (and a revoked login): this login's copy goes, and its list of opened pitchers.
+async function histCacheClear(){
+  const uid = state.session && state.session.user && state.session.user.id;
+  if(!uid) return;
+  const keys = [];
+  await histEach(k => { if(String(k).indexOf(uid + '|') === 0) keys.push(k); });
+  for(const k of keys) await histTx('readwrite', st => st.delete(k));
+  try{
+    for(let i = localStorage.length - 1; i >= 0; i--){
+      const k = localStorage.key(i);
+      if(k && k.indexOf('kb:histOpened:' + uid + ':') === 0) localStorage.removeItem(k);
+    }
+  }catch(e){}
+}
+// Pitchers this viewer has opened here (per login and profile): a tap on the roster, or his own History.
+function histOpenedKey(){ return (state.session && state.profile) ? 'kb:histOpened:' + state.session.user.id + ':' + state.profile.id : null; }
+function histOpenedList(){ const k = histOpenedKey(); try{ return (k && JSON.parse(lsGet(k) || '{}')) || {}; }catch(e){ return {}; } }
+function histMarkOpened(pitcherId){
+  const k = histOpenedKey();
+  if(!k || !pitcherId) return;
+  const o = histOpenedList();
+  o[pitcherId] = Date.now();
+  const ids = Object.keys(o).sort((a, b) => o[b] - o[a]).slice(0, 500);
+  lsSet(k, JSON.stringify(ids.reduce((m, id) => { m[id] = o[id]; return m; }, {})));
+}
+function historyPrefetches(pitcherId){ return isMine(pitcherId) || !!histOpenedList()[pitcherId]; }
+
+function statsRowOf(raw){
+  const r = Array.isArray(raw) ? raw[0] : raw;
+  return (r && r.stats_version === STATS_VERSION) ? r : null;
+}
+function mapPitchRow(p){
+  return {
+    type: p.type, velo: p.velo,
+    targetRow: p.target_row, targetCol: p.target_col,
+    actualRow: p.actual_row, actualCol: p.actual_col,
+    accuracyMode: p.accuracy_mode || null,
+    inAccuracyZone: (p.in_accuracy_zone === true || p.in_accuracy_zone === false) ? p.in_accuracy_zone : null,
+    accuracyZoneCells: p.accuracy_zone_cells || null,
+    accuracyHitKind: p.accuracy_hit_kind || null,   // U14
+    // U2a: NULL on legacy pitches, on purpose (no default, no backfill --
+    // see the migration). isRelativelyAccurate falls back to 'R' itself
+    // when this is absent, so legacy sessions keep reporting exactly as
+    // they did before this shipped.
+    batterSide: p.batter_side || null,
+    ts: new Date(p.ts).getTime(),
+    // G1: meaningful only on a game pitch (null on every bullpen pitch,
+    // per the migration's shape constraint).
+    result: p.result || null,
+    inPlayOutcome: p.in_play_outcome || null,
+    hitType: p.hit_type || null,
+    fielder: p.fielder || null,
+    delivery: p.delivery || null,
+    timeToPlate: (p.time_to_plate === null || p.time_to_plate === undefined) ? null : Number(p.time_to_plate),   // U11 (7)
+    inning: p.inning === null || p.inning === undefined ? null : p.inning,
+    outsBefore: p.outs_before === null || p.outs_before === undefined ? null : p.outs_before,
+    ballsBefore: p.balls_before === null || p.balls_before === undefined ? null : p.balls_before,
+    strikesBefore: p.strikes_before === null || p.strikes_before === undefined ? null : p.strikes_before,
+    atBatIndex: p.at_bat_index === null || p.at_bat_index === undefined ? null : p.at_bat_index,
+    // G5: the game report's field sections (spray box, how it was hit, bases before / after)
+    bbType: p.bb_type || null,
+    runnersBefore: (p.runners_before === null || p.runners_before === undefined) ? null : p.runners_before,
+    sprayBox: (p.spray_box === null || p.spray_box === undefined) ? null : p.spray_box,
+    sprayField: p.spray_field || null,
+    runnersAfter: (p.runners_after === null || p.runners_after === undefined) ? null : p.runners_after,
+    runsScored: p.runs_scored || 0,   // Oct 20: History's game card shows R
+    unearnedRuns: p.unearned_runs === null || p.unearned_runs === undefined ? null : p.unearned_runs,   // Oct 21
+    inheritedRuns: p.inherited_runs || 0, chargedPrev: p.charged_prev === true,
+    fielders: p.fielders || null,
+    // Release 2 (E6): the play itself, for the report's at-bat log and the game editor
+    batterTo: p.batter_to === null || p.batter_to === undefined ? null : p.batter_to,
+    runnerAdvances: p.runner_advances || null, outsOnPlay: p.outs_on_play || 0, sacrifice: p.sacrifice || null
+  };
+}
+// Oct 20: the game card counts what the report counts -- IBB / auto ball four as BB, auto strike three as K, runs
+function mapEventRow(e){
+  return { eventType: e.event_type, ballsBefore: e.balls_before, strikesBefore: e.strikes_before, runsScored: e.runs_scored || 0,
+    unearnedRuns: e.unearned_runs === null || e.unearned_runs === undefined ? null : e.unearned_runs, inheritedRuns: e.inherited_runs || 0, chargedPrev: e.charged_prev === true };
+}
+// Pitches and events for some sessions (RLS decides), keyed by session id.
+async function fetchSessionPitchRows(ids){
+  const out = {};
+  for(let i = 0; i < ids.length; i += 50){
+    const { data, error } = await netTimeout(supabaseClient.from('sessions')
+      .select(`id, pitches(${PITCH_COLS}), game_events(${EVENT_COLS})`).in('id', ids.slice(i, i + 50)), 15000);
+    if(error) throw error;
+    (data || []).forEach(r => { out[r.id] = r; });
+  }
+  return out;
+}
+// A report (or a session with no stats row) needs the pitches themselves: fetch the ones not here yet.
+async function ensureSessionPitches(list){
+  const need = Array.from(new Set((list || []).filter(s => s && !s.pending && !s.pitches)));
+  if(!need.length) return;
+  if(!isOnline()) throw new Error("Connect to the internet first: this needs the session's pitches.");
+  const got = await fetchSessionPitchRows(need.map(s => s.id));
+  need.forEach(s => {
+    const g = got[s.id];
+    if(g){ s.pitches = (g.pitches || []).map(mapPitchRow); s.events = (g.game_events || []).map(mapEventRow); }
+  });
+  if(need.some(s => !s.pitches)) throw new Error("Couldn't load this session's pitches. Try again.");
+}
+function mapSessionRow(s, teamId){
+  return {
     id: s.id,
     teamId: s.team_id,
     // R4: charted for another team -- a coach reads it but only that team acts on it.
@@ -5988,57 +6160,70 @@ async function loadSessionsForCurrentSelection(){
     // one -- History/the report both render "Game · <date>" in that case.
     opponent: s.opponent || null,
     notes: mapSessionNotes(s.session_notes),   // S3: coaches' notes (RLS decides who sees them)
-    pitches: (s.pitches || []).map(p => ({
-      type: p.type, velo: p.velo,
-      targetRow: p.target_row, targetCol: p.target_col,
-      actualRow: p.actual_row, actualCol: p.actual_col,
-      accuracyMode: p.accuracy_mode || null,
-      inAccuracyZone: (p.in_accuracy_zone === true || p.in_accuracy_zone === false) ? p.in_accuracy_zone : null,
-      accuracyZoneCells: p.accuracy_zone_cells || null,
-      accuracyHitKind: p.accuracy_hit_kind || null,   // U14
-      // U2a: NULL on legacy pitches, on purpose (no default, no backfill --
-      // see the migration). isRelativelyAccurate falls back to 'R' itself
-      // when this is absent, so legacy sessions keep reporting exactly as
-      // they did before this shipped.
-      batterSide: p.batter_side || null,
-      ts: new Date(p.ts).getTime(),
-      // G1: meaningful only on a game pitch (null on every bullpen pitch,
-      // per the migration's shape constraint).
-      result: p.result || null,
-      inPlayOutcome: p.in_play_outcome || null,
-      hitType: p.hit_type || null,
-      fielder: p.fielder || null,
-      delivery: p.delivery || null,
-      timeToPlate: (p.time_to_plate === null || p.time_to_plate === undefined) ? null : Number(p.time_to_plate),   // U11 (7)
-      inning: p.inning === null || p.inning === undefined ? null : p.inning,
-      outsBefore: p.outs_before === null || p.outs_before === undefined ? null : p.outs_before,
-      ballsBefore: p.balls_before === null || p.balls_before === undefined ? null : p.balls_before,
-      strikesBefore: p.strikes_before === null || p.strikes_before === undefined ? null : p.strikes_before,
-      atBatIndex: p.at_bat_index === null || p.at_bat_index === undefined ? null : p.at_bat_index,
-      // G5: the game report's field sections (spray box, how it was hit, bases before / after)
-      bbType: p.bb_type || null,
-      runnersBefore: (p.runners_before === null || p.runners_before === undefined) ? null : p.runners_before,
-      sprayBox: (p.spray_box === null || p.spray_box === undefined) ? null : p.spray_box,
-      sprayField: p.spray_field || null,
-      runnersAfter: (p.runners_after === null || p.runners_after === undefined) ? null : p.runners_after,
-      runsScored: p.runs_scored || 0,   // Oct 20: History's game card shows R
-      unearnedRuns: p.unearned_runs === null || p.unearned_runs === undefined ? null : p.unearned_runs,   // Oct 21
-      inheritedRuns: p.inherited_runs || 0, chargedPrev: p.charged_prev === true,
-      fielders: p.fielders || null,
-      // Release 2 (E6): the play itself, for the report's at-bat log and the game editor
-      batterTo: p.batter_to === null || p.batter_to === undefined ? null : p.batter_to,
-      runnerAdvances: p.runner_advances || null, outsOnPlay: p.outs_on_play || 0, sacrifice: p.sacrifice || null
-    })),
-    // Oct 20: the game card counts what the report counts -- IBB / auto ball four as BB, auto strike three as K, runs
-    events: (s.game_events || []).map(e => ({ eventType: e.event_type, ballsBefore: e.balls_before, strikesBefore: e.strikes_before, runsScored: e.runs_scored || 0,
-      unearnedRuns: e.unearned_runs === null || e.unearned_runs === undefined ? null : e.unearned_runs, inheritedRuns: e.inherited_runs || 0, chargedPrev: e.charged_prev === true }))
-  }));
+    stats: statsRowOf(s.session_stats),         // SC1-B: the numbers (null: computed from pitches)
+    // SC1-B: null until fetched -- only the newest sessions of a prefetched pitcher come with them
+    pitches: s.pitches ? s.pitches.map(mapPitchRow) : null,
+    events: s.pitches ? (s.game_events || []).map(mapEventRow) : null
+  };
+}
+function applySessionRows(rows, teamId){
+  const all = (rows || []).map(s => mapSessionRow(s, teamId));
   // P1-15: soft-deleted sessions never enter state.sessions, so every existing
   // calc (stats, trends, report history) excludes them for free. They render
   // only as tombstones in the history view.
   state.sessions = all.filter(s => !s.deletedAt);
-  rebuildVeloHistory(state.sessions).catch(e => console.error('velo history cache failed', e));
   state.deletedSessions = all.filter(s => s.deletedAt);
+}
+// Offline start / profile switch: the device's copy of this pitcher's History, if he's one it keeps.
+async function loadSessionsFromDevice(){
+  state.sessions = []; state.deletedSessions = [];
+  const pid = state.currentPitcherId;
+  if(!pid || !historyPrefetches(pid)) return;
+  const c = await histCacheGet(pid);
+  if(c && pid === state.currentPitcherId){
+    applySessionRows(c.rows, state.currentTeamId);
+    if(c.names) state.sessionTeamNames = c.names;
+  }
+}
+// opened: the viewer tapped this pitcher (the roster) -- from now on his newest sessions come with their pitches here.
+async function loadSessionsForCurrentSelection(opened){
+  const pitcherId = state.currentPitcherId;
+  const teamId = state.currentTeamId;
+  if(!pitcherId || (!teamId && isCoach())){ state.sessions = []; state.deletedSessions = []; return; }   // P2: a pitcher's History needs no team
+  if(opened) histMarkOpened(pitcherId);
+  const prefetch = historyPrefetches(pitcherId);
+  let rows;
+  try{
+    if(!isOnline()) throw new Error('offline');
+    const { data, error } = await supabaseClient
+      .from('sessions')
+      .select(`${SESSION_COLS}, session_stats(${STATS_COLS}), session_notes(id, author_id, author_name, body, created_at)`)
+      .eq('pitcher_id', pitcherId)
+      .order('started_at', { ascending: false });   // R4: every team -- RLS decides what this viewer sees
+    if(error) throw error;
+    rows = data || [];
+    if(prefetch){
+      const ids = rows.filter(s => !s.deleted_at).slice(0, HISTORY_PREFETCH_N).map(s => s.id);
+      const got = ids.length ? await fetchSessionPitchRows(ids) : {};
+      rows.forEach(s => { const g = got[s.id]; if(g){ s.pitches = g.pitches || []; s.game_events = g.game_events || []; } });
+    }
+  }catch(e){
+    if(e && e.message !== 'offline') console.error(e);
+    if(pitcherId !== state.currentPitcherId) return;
+    await loadSessionsFromDevice();   // offline or a failed load: what this device kept, else nothing
+    return;
+  }
+  if(pitcherId !== state.currentPitcherId) return;   // another pitcher was picked while this loaded
+  await loadSessionTeamNames(pitcherId, rows);
+  loadWorkload([pitcherId]);   // R4: pitch counts across teams (background)
+  applySessionRows(rows, teamId);
+  if(prefetch){
+    histCachePut(pitcherId, rows, state.sessionTeamNames).catch(e => console.error('history cache failed', e));
+    rebuildVeloHistory(state.sessions).catch(e => console.error('velo history cache failed', e));
+  }
+  // A session with no usable stats row and no pitches (its stats failed): fetch its pitches in the background.
+  const orphans = state.sessions.filter(s => !s.stats && !s.pitches);
+  if(orphans.length) ensureSessionPitches(orphans).then(() => render()).catch(e => console.error('pitches for sessions without stats', e));
 }
 
 /* ---------- NAV ---------- */
@@ -6069,11 +6254,128 @@ window.toggleSessionExpand = function(id){
 
 /* ---------- STATS HELPERS ---------- */
 // U11 (7): History shows the average time to home when any pitch was timed.
-function avgTimeToPlateMeta(pitches){
-  const ts = (pitches || []).map(p => p.timeToPlate).filter(v => typeof v === 'number');
-  if(!ts.length) return '';
-  const avg = ts.reduce((a, b) => a + b, 0) / ts.length;
-  return `<div class="meta-item"><span class="meta-num mono">${avg.toFixed(2)}</span><span class="meta-lbl">Time to home (${ts.length})</span></div>`;
+function avgTimeToPlateMeta(s){
+  const t = sessionTtp(s);
+  if(!t.n) return '';
+  return `<div class="meta-item"><span class="meta-num mono">${(t.sum / t.n).toFixed(2)}</span><span class="meta-lbl">Time to home (${t.n})</span></div>`;
+}
+
+// SC1-B: a session's numbers from its stats row (counts saved at save), in the same shapes sessionStats and gameStats
+// return, so History, Trends and the reports read either one. A pending (outbox) session, or one without a usable row,
+// uses its pitches. scripts/sc1b-compare.js checks every number agrees.
+function statsPct(a, b){ return b ? Math.round((a / b) * 100) : 0; }
+function rowHasStats(s){ return !!(s && s.stats && !s.pending); }
+function sessionPitchTotal(s){ return rowHasStats(s) ? s.stats.pitches : (s.pitches || []).length; }
+function sessionTtp(s){
+  if(rowHasStats(s)) return { n: s.stats.ttp_n, sum: Number(s.stats.ttp_sum) };
+  const ts = (s.pitches || []).map(p => p.timeToPlate).filter(v => typeof v === 'number');
+  return { n: ts.length, sum: ts.reduce((a, b) => a + b, 0) };
+}
+function penStatsFromRow(st){
+  const byType = {};
+  Object.keys(st.by_type || {}).forEach(t => {
+    const b = st.by_type[t], hasVelo = b.velo_n > 0;
+    byType[t] = {
+      count: b.n, hasVelo, avgVelo: hasVelo ? Math.round(b.velo_sum / b.velo_n) : null,
+      minVelo: hasVelo ? b.velo_min : null, maxVelo: hasVelo ? b.velo_max : null,
+      strikePct: statsPct(b.strikes, b.n), accuracyPct: statsPct(b.hits, b.n),
+      // History's "Relative Acc%" column. Without a pre-U7 accuracy mode it's the exact-target share (isAccurate):
+      // the hits that weren't RA. A pen charted in a pre-U7 mode isn't stored that way (Joel, Oct 28: dropped).
+      relativeAccuracyPct: statsPct(b.hits - (b.ra || 0), b.n),
+      hasZone: b.zone_total > 0, zoneTotal: b.zone_total, zoneAccuracyPct: b.zone_total ? statsPct(b.zone_hits, b.zone_total) : null
+    };
+  });
+  const hasVelo = st.velo_n > 0;
+  return {
+    total: st.pitches, strikes: st.strikes, strikePct: statsPct(st.strikes, st.pitches),
+    accurate: st.hits, accuracyPct: statsPct(st.hits, st.pitches), exactHits: st.exact_hits, raHits: st.ra_hits,
+    hasZone: st.zone_total > 0, zoneTotal: st.zone_total, zoneHits: st.zone_hits,
+    zoneAccuracyPct: st.zone_total ? statsPct(st.zone_hits, st.zone_total) : null,
+    hasVelo, avgVelo: hasVelo ? Math.round(st.velo_sum / st.velo_n) : null,
+    minVelo: hasVelo ? st.velo_min : null, maxVelo: hasVelo ? st.velo_max : null, byType
+  };
+}
+// A pen's numbers (History card, its type table, the report's pen history); null until its pitches arrive.
+function penCardStats(s){
+  if(rowHasStats(s)) return penStatsFromRow(s.stats);
+  return s.pitches ? sessionStats(s.pitches) : null;
+}
+// A game's card line. Joel (decision 4, Oct 28): compute_game_summary's numbers, as saved in the row; innings is the
+// card's own (the highest inning a pitch was thrown in, stats v2).
+function gameCardStats(s){
+  if(rowHasStats(s)){
+    const G = s.stats.game || {};
+    return { total: s.stats.pitch_count, k: G.k || 0, bb: G.bb || 0, h: G.h || 0, r: G.runs == null ? 0 : G.runs,
+      er: G.er == null ? null : G.er, strikePct: G.strike_pct == null ? 0 : G.strike_pct, innings: G.innings || 1 };
+  }
+  if(!s.pitches) return null;
+  const st = gameStats(s.pitches, s.pitchCountAdjust, s.events);
+  st.r += s.exitRuns || 0; st.bb += s.exitBb || 0;   // R3 (B6): charged after he left
+  if(st.er !== null) st.er += s.exitEr || 0;
+  return st;
+}
+// Average velocity over the session (the report's game trend); null when none was recorded.
+function sessionAvgVelo(s){
+  if(rowHasStats(s)) return s.stats.velo_n ? Math.round(s.stats.velo_sum / s.stats.velo_n) : null;
+  const velos = (s.pitches || []).filter(p => !isDefaultVeloReading(p)).map(p => p.velo).filter(v => v !== null && v !== undefined);
+  return velos.length ? Math.round(velos.reduce((a, b) => a + b, 0) / velos.length) : null;
+}
+// Per pitch type: n, strikes (trendsIsStrike: where it landed for a pen, the call for a game), top velocity, velocity
+// n / sum / min, cells ('row-col', catcher frame), and the same split by batter side and by delivery.
+function sessionTypeAgg(s){
+  const out = {};
+  if(rowHasStats(s)){
+    const split = (cells, ks) => {
+      const o = {};
+      Object.keys(cells || {}).forEach(v => {
+        const c = cells[v] || {};
+        o[v] = { cells: c, n: Object.keys(c).reduce((a, x) => a + c[x], 0), k: (ks || {})[v] || 0 };
+      });
+      return o;
+    };
+    Object.keys(s.stats.by_type || {}).forEach(t => {
+      const b = s.stats.by_type[t];
+      out[t] = { n: b.n, k: b.strikes, top: b.velo_n > 0 ? b.velo_max : null, veloN: b.velo_n, veloSum: b.velo_sum,
+        veloMin: b.velo_n > 0 ? b.velo_min : null, cells: b.cells || {},
+        side: split(b.side_cells, b.side_strikes), delivery: split(b.delivery_cells, b.delivery_strikes) };
+    });
+    return out;
+  }
+  (s.pitches || []).forEach(pt => {
+    const t = out[pt.type] || (out[pt.type] = { n: 0, k: 0, top: null, veloN: 0, veloSum: 0, veloMin: null, cells: {}, side: {}, delivery: {} });
+    const k = trendsIsStrike(s, pt) ? 1 : 0, v = (pt.velo !== null && pt.velo !== undefined && !isDefaultVeloReading(pt)) ? pt.velo : null;
+    const cell = (pt.actualRow === null || pt.actualRow === undefined || pt.actualCol === null || pt.actualCol === undefined) ? null : pt.actualRow + '-' + pt.actualCol;
+    t.n++; t.k += k;
+    if(v !== null){ t.veloN++; t.veloSum += v; if(t.top === null || v > t.top) t.top = v; if(t.veloMin === null || v < t.veloMin) t.veloMin = v; }
+    if(cell) t.cells[cell] = (t.cells[cell] || 0) + 1;
+    const add = (o, key) => { const x = o[key] || (o[key] = { cells: {}, n: 0, k: 0 }); x.n++; x.k += k; if(cell) x.cells[cell] = (x.cells[cell] || 0) + 1; };
+    add(t.side, pt.batterSide || 'none'); add(t.delivery, pt.delivery || 'none');
+  });
+  return out;
+}
+// Pitch types in the pitcher's own order (his mix), then the most thrown.
+function orderPitchTypes(p, types, countOf){
+  const mix = pitchTypesFor(p);
+  return types.slice().sort((a, b) => {
+    const ia = mix.indexOf(a), ib = mix.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (countOf ? countOf(b) - countOf(a) : 0);
+  });
+}
+// Dots for a plot from counted cells (Joel approved, Oct 28: same boxes; inside a box grouped by type, not throw order).
+function pitchesFromCells(type, cells, out){
+  out = out || [];
+  Object.keys(cells || {}).forEach(k => {
+    const rc = k.split('-'), row = Number(rc[0]), col = Number(rc[1]);
+    for(let i = 0; i < cells[k]; i++) out.push({ type, actualRow: row, actualCol: col });
+  });
+  return out;
+}
+// What History's plot draws: the pitches when they're here, else the stats row's cells in the pitcher's type order.
+function plotSessionOf(s, p){
+  if(s.pitches) return s;
+  const by = (s.stats && s.stats.by_type) || {}, out = [];
+  orderPitchTypes(p, Object.keys(by), t => by[t].n).forEach(t => pitchesFromCells(t, by[t].cells, out));
+  return { kind: s.kind, pitches: out };
 }
 function sessionStats(pitches){
   const total = pitches.length;
@@ -7949,18 +8251,12 @@ const GAME_STRIKE_RESULTS = new Set(['strike_looking', 'strike_swinging', 'foul'
 // Joel, Oct 8: an expanded Live Game in History shows the same heat map a bullpen does, and this table --
 // per pitch type: count, velocity, and strikes by RESULT (called, swinging, foul, in play), like the game's
 // own strike %; no accuracy columns (game pitches have no target).
-function gameHistoryTypeTable(p, pitches){
-  const by = {};
-  pitches.forEach(pt => {
-    const t = by[pt.type] || (by[pt.type] = { count: 0, strikes: 0, velos: [] });
-    t.count++;
-    if(GAME_STRIKE_RESULTS.has(pt.result)) t.strikes++;
-    if(pt.velo !== null && pt.velo !== undefined && !isDefaultVeloReading(pt)) t.velos.push(pt.velo);
-  });
-  const rows = Object.entries(by).map(([type, t]) => {
-    const has = t.velos.length > 0;
-    const avg = has ? Math.round(t.velos.reduce((a, b) => a + b, 0) / t.velos.length) : null;
-    return `<tr><td><span class="plr-dot" style="background:${colorForType(p, type)}"></span>${escHtml(pitchLabel(type))}</td><td class="mono">${t.count}</td><td class="mono">${has ? avg + ' mph' : '—'}</td><td class="mono">${has ? Math.min(...t.velos) + '–' + Math.max(...t.velos) : '—'}</td><td class="mono">${Math.round(100 * t.strikes / t.count)}%</td></tr>`;
+function gameHistoryTypeTable(p, s){
+  const by = sessionTypeAgg(s);   // SC1-B: from the stats row, or the pitches
+  const rows = orderPitchTypes(p, Object.keys(by), t => by[t].n).map(type => {
+    const t = by[type], has = t.veloN > 0;
+    const avg = has ? Math.round(t.veloSum / t.veloN) : null;
+    return `<tr><td><span class="plr-dot" style="background:${colorForType(p, type)}"></span>${escHtml(pitchLabel(type))}</td><td class="mono">${t.n}</td><td class="mono">${has ? avg + ' mph' : '—'}</td><td class="mono">${has ? t.veloMin + '–' + t.top : '—'}</td><td class="mono">${Math.round(100 * t.k / t.n)}%</td></tr>`;
   }).join('');
   return rows ? `<table class="breakdown-table">
     <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th></tr></thead>
@@ -11445,9 +11741,7 @@ function renderHistoryView(){
     if(!s.tombstone && (s.kind || 'bullpen') === 'game'){
       const dateStr = new Date(s.date).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
       const oppLabel = s.opponent ? `vs ${escHtml(s.opponent)} · ${dateStr}` : `Game · ${dateStr}`;
-      const stats = gameStats(s.pitches, s.pitchCountAdjust, s.events);
-      stats.r += s.exitRuns || 0; stats.bb += s.exitBb || 0;   // R3 (B6): charged after he left
-      if(stats.er !== null) stats.er += s.exitEr || 0;
+      const stats = gameCardStats(s);   // SC1-B: the stats row (R3's runs after he left included), or the pitches
       const lineOpen = gameLineOpen(s);
       const expanded = state.expandedSessionId === s.id;
       const pendingTag = s.pending ? ` <span class="coach-logged-tag pending-tag">Pending sync${s.lastError ? ' · retrying' : ''}</span>` : '';
@@ -11497,7 +11791,7 @@ function renderHistoryView(){
       const deleteZone = (s.pending || s.otherTeam || !canDeleteSessions()) ? '' : (!isOnline() ? `
         <div class="delete-zone"><button class="btn btn-danger btn-sm" disabled title="Deleting requires a connection">Connect to delete</button></div>` : (state.deletingSessionId === s.id ? `
         <div class="delete-zone">
-          <p class="delete-warn">This permanently removes the ${s.pitches.length} pitch${s.pitches.length === 1 ? "" : "es"} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
+          <p class="delete-warn">This permanently removes the ${sessionPitchTotal(s)} pitch${sessionPitchTotal(s) === 1 ? "" : "es"} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
           ${state.deleteError ? `<p class="report-status report-status-error" style="margin:0 0 var(--s-8);">${state.deleteError}</p>` : ''}
           <div class="delete-row">
             <input id="delete-confirm-input" class="text-input" style="max-width:150px;" placeholder="Type DELETE"
@@ -11511,7 +11805,7 @@ function renderHistoryView(){
         <div class="session-card">
           <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
             <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${lineOpen ? ' <span class="coach-logged-tag">Line open</span>' : ''}${pendingTag}</div>
-            <div class="session-meta">
+            <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
               <div class="meta-item"><span class="meta-num mono">${stats.innings}</span><span class="meta-lbl">Innings</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.k}</span><span class="meta-lbl">K</span></div>
@@ -11520,14 +11814,14 @@ function renderHistoryView(){
               <div class="meta-item"><span class="meta-num mono">${stats.r}</span><span class="meta-lbl">R</span></div>
               ${stats.er !== null ? `<div class="meta-item"><span class="meta-num mono">${stats.er}</span><span class="meta-lbl">ER</span></div>` : ''}
               <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
-              ${avgTimeToPlateMeta(s.pitches)}
+              ${avgTimeToPlateMeta(s)}`}
             </div>
           </div>
           ${expanded ? `
           <div class="session-card-body">
-            <div class="zone-wrap">${renderHistoryPlot(s, p)}</div>
+            <div class="zone-wrap">${renderHistoryPlot(plotSessionOf(s, p), p)}</div>
             <div style="flex:1;min-width:220px;">
-              ${gameHistoryTypeTable(p, s.pitches)}
+              ${gameHistoryTypeTable(p, s)}
               ${renderSessionNotes(s)}${reportPanel}
               ${deleteZone}
             </div>
@@ -11565,11 +11859,12 @@ function renderHistoryView(){
         </div>`;
     }
 
-    const stats = sessionStats(s.pitches);
+    const stats = penCardStats(s);   // SC1-B: the stats row, or the pitches (null until they arrive)
     const expanded = state.expandedSessionId === s.id;
-    const typeRows = Object.entries(stats.byType).map(([type, t]) => {
-      const color = colorForType(p, type);
-      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${escHtml(type)}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${t.strikePct}%</td><td class="mono">${t.accuracyPct}%</td><td class="mono">${stats.hasZone ? (t.hasZone ? t.zoneAccuracyPct + '% (' + t.zoneTotal + ')' : '—') : t.relativeAccuracyPct + '%'}</td></tr>`;
+    const byType = stats ? stats.byType : {};
+    const typeRows = orderPitchTypes(p, Object.keys(byType), t => byType[t].count).map(type => {
+      const t = byType[type], color = colorForType(p, type);
+      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${escHtml(type)}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${t.strikePct}%</td><td class="mono">${t.accuracyPct}%</td><td class="mono">${stats.hasZone ? (t.hasZone ? t.zoneAccuracyPct + '% (' + t.zoneTotal + ')' : '—') : (t.relativeAccuracyPct === null ? '—' : t.relativeAccuracyPct + '%')}</td></tr>`;
     }).join('');
 
     const contacts = p.contactEmails || {};
@@ -11632,7 +11927,7 @@ function renderHistoryView(){
     const deleteZone = (s.pending || s.otherTeam || !canDeleteSessions()) ? '' : (!isOnline() ? `
       <div class="delete-zone"><button class="btn btn-danger btn-sm" disabled title="Deleting requires a connection">Connect to delete</button></div>` : (state.deletingSessionId === s.id ? `
       <div class="delete-zone">
-        <p class="delete-warn">This permanently removes the ${s.pitches.length} pitch${s.pitches.length === 1 ? "" : "es"} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
+        <p class="delete-warn">This permanently removes the ${sessionPitchTotal(s)} pitch${sessionPitchTotal(s) === 1 ? "" : "es"} from the ${dateStr} session. A "deleted" marker stays in history. This can't be undone.</p>
         ${state.deleteError ? `<p class="report-status report-status-error" style="margin:0 0 var(--s-8);">${state.deleteError}</p>` : ''}
         <div class="delete-row">
           <input id="delete-confirm-input" class="text-input" style="max-width:150px;" placeholder="Type DELETE"
@@ -11647,7 +11942,7 @@ function renderHistoryView(){
       <div class="session-card">
         <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
           <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${teamChipHtml(s)}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${pendingTag}</div>
-          <div class="session-meta">
+          <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
             <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
             ${stats.hasZone
@@ -11655,12 +11950,12 @@ function renderHistoryView(){
                  <div class="meta-item"><span class="meta-num mono">${stats.accuracyPct}%</span><span class="meta-lbl">Exact hit</span></div>`
               : `<div class="meta-item"><span class="meta-num mono">${stats.accuracyPct}%</span><span class="meta-lbl">Accuracy</span></div>`}
             <div class="meta-item"><span class="meta-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="meta-lbl">Avg mph</span></div>
-            ${avgTimeToPlateMeta(s.pitches)}
+            ${avgTimeToPlateMeta(s)}`}
           </div>
         </div>
         ${expanded ? `
         <div class="session-card-body">
-          <div class="zone-wrap">${renderHistoryPlot(s, p)}</div>
+          <div class="zone-wrap">${renderHistoryPlot(plotSessionOf(s, p), p)}</div>
           <div style="flex:1;min-width:220px;">
             <table class="breakdown-table">
               <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th><th>Relative Acc%</th></tr></thead>
@@ -11779,32 +12074,33 @@ function renderTrendsView(){
   const opts = [{ key: 'all', label: 'All' }, { key: 'bullpen', label: 'Bullpen' }, { key: 'game', label: 'Live Game' }];
   const tray = `<div class="chip-row" style="margin-bottom:var(--s-16);">${segTray(opts.map(o => ({ label: o.label, selected: state.trendsFilter === o.key, onclick: `setTrendsFilter('${o.key}')` })), { key: 'tfilter', label: 'Show', cls: 'history-tray' })}</div>`;
   const sessions = pendingSessionsForCurrentSelection().concat(state.sessions)
-    .filter(s => (s.pitches || []).length && (state.trendsFilter === 'all' || (s.kind || 'bullpen') === state.trendsFilter))
+    .filter(s => sessionPitchTotal(s) && (state.trendsFilter === 'all' || (s.kind || 'bullpen') === state.trendsFilter))
     .sort((a, b) => a.date - b.date);
   if(!sessions.length){
     return `${tray}<div class="empty-hist">No saved sessions yet for ${escHtml(p.name)}${state.trendsFilter === 'all' ? '' : ' of this kind'}. Trends fill in as sessions are saved.</div>`;
   }
-  // Per type: totals, plus one row per session for each chart.
+  // Per type: totals, plus one row per session for each chart. SC1-B: each session's per-type counts and cells come
+  // from its stats row (sessionTypeAgg), or its pitches when it's still in the outbox or has no row.
   const all = {}, strikeRows = [], veloRows = [];
+  const addCells = (to, from) => Object.keys(from || {}).forEach(c => { to[c] = (to[c] || 0) + from[c]; });
+  const addSplit = (to, from) => Object.keys(from || {}).forEach(v => {
+    const x = to[v] || (to[v] = { cells: {}, n: 0, k: 0 });
+    x.n += from[v].n; x.k += from[v].k; addCells(x.cells, from[v].cells);
+  });
   sessions.forEach(s => {
-    const per = {};
-    s.pitches.forEach(pt => {
-      const t = per[pt.type] || (per[pt.type] = { n: 0, k: 0, top: null });
-      const a = all[pt.type] || (all[pt.type] = { n: 0, k: 0, top: null, pitches: [] });
-      const k = trendsIsStrike(s, pt) ? 1 : 0, v = (pt.velo !== null && pt.velo !== undefined && !isDefaultVeloReading(pt)) ? pt.velo : null;
-      t.n++; t.k += k; a.n++; a.k += k; a.pitches.push(pt);
-      if(v !== null){ if(t.top === null || v > t.top) t.top = v; if(a.top === null || v > a.top) a.top = v; }
+    const per = sessionTypeAgg(s);
+    Object.keys(per).forEach(t => {
+      const x = per[t], a = all[t] || (all[t] = { n: 0, k: 0, top: null, cells: {}, side: {}, delivery: {} });
+      a.n += x.n; a.k += x.k;
+      if(x.top !== null && (a.top === null || x.top > a.top)) a.top = x.top;
+      addCells(a.cells, x.cells); addSplit(a.side, x.side); addSplit(a.delivery, x.delivery);
     });
     const sv = {}, vv = {};
     Object.keys(per).forEach(t => { sv[t] = Math.round(100 * per[t].k / per[t].n); if(per[t].top !== null) vv[t] = per[t].top; });
     strikeRows.push({ date: s.date, v: sv });
     if(Object.keys(vv).length) veloRows.push({ date: s.date, v: vv });
   });
-  const mix = pitchTypesFor(p);
-  const types = Object.keys(all).sort((a, b) => {
-    const ia = mix.indexOf(a), ib = mix.indexOf(b);
-    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || all[b].n - all[a].n;
-  });
+  const types = orderPitchTypes(p, Object.keys(all), t => all[t].n);
   const colorOf = trendsColors(p, types);
   const legend = `<div class="hp-legend tr-legend">${types.map(t => `<span class="hp-key"><span class="hp-dot" style="background:${colorOf(t)}"></span>${escHtml(pitchLabel(t))}</span>`).join('')}</div>`;
   const total = types.reduce((n, t) => n + all[t].n, 0);
@@ -11828,24 +12124,24 @@ function renderTrendsView(){
     const st = all[t];
     return `<div class="tr-plot">
       <div class="tr-plot-head"><span class="hp-dot" style="background:${colorOf(t)}"></span><b>${escHtml(pitchLabel(t))}</b><span class="tr-plot-sub">${st.n} pitch${st.n === 1 ? '' : 'es'} · ${Math.round(100 * st.k / st.n)}% strikes</span></div>
-      ${renderHistoryPlot({ kind: 'bullpen', pitches: st.pitches }, p, { colorOf, legend: false, caption: '', small: true, hotRing: true, aria: `Every ${escHtml(pitchLabel(t))} thrown, pitcher's view` })}
+      ${renderHistoryPlot({ kind: 'bullpen', pitches: pitchesFromCells(t, st.cells) }, p, { colorOf, legend: false, caption: '', small: true, hotRing: true, aria: `Every ${escHtml(pitchLabel(t))} thrown, pitcher's view` })}
     </div>`;
   }).join('');
   // Live Game only (Joel, Oct 26): the same plots split two ways -- vs left- / right-handed batters, then from the
   // windup / the stretch (baseball; softball has no delivery). Each type gets a pair side by side, each with its own
   // ring. A pitch with no batter side or no delivery recorded sits out that split (the card says how many).
-  const splitPlot = (t, label, pts) => {
-    const k = pts.filter(pt => GAME_STRIKE_RESULTS.has(pt.result)).length;
+  const splitPlot = (t, label, x) => {   // x: { cells, n, k } for one side / delivery of one type
     return `<div class="tr-plot">
-      <div class="tr-plot-head"><b>${label}</b><span class="tr-plot-sub">${pts.length ? `${pts.length} · ${Math.round(100 * k / pts.length)}% strikes` : 'none yet'}</span></div>
-      ${renderHistoryPlot({ kind: 'game', pitches: pts }, p, { colorOf, legend: false, caption: '', small: true, hotRing: true, aria: `Every ${escHtml(pitchLabel(t))} ${label}, pitcher's view` })}
+      <div class="tr-plot-head"><b>${label}</b><span class="tr-plot-sub">${x.n ? `${x.n} · ${Math.round(100 * x.k / x.n)}% strikes` : 'none yet'}</span></div>
+      ${renderHistoryPlot({ kind: 'game', pitches: pitchesFromCells(t, x.cells) }, p, { colorOf, legend: false, caption: '', small: true, hotRing: true, aria: `Every ${escHtml(pitchLabel(t))} ${label}, pitcher's view` })}
     </div>`;
   };
   const splitCard = (title, key, a, b) => {
     let left = 0;
+    const none = { cells: {}, n: 0, k: 0 };
     const rows = types.map(t => {
-      const pa = all[t].pitches.filter(pt => pt[key] === a.v), pb = all[t].pitches.filter(pt => pt[key] === b.v);
-      left += all[t].pitches.length - pa.length - pb.length;
+      const by = all[t][key === 'batterSide' ? 'side' : 'delivery'], pa = by[a.v] || none, pb = by[b.v] || none;
+      left += all[t].n - pa.n - pb.n;
       return `<div class="tr-split-row"><div class="tr-plot-head"><span class="hp-dot" style="background:${colorOf(t)}"></span><b>${escHtml(pitchLabel(t))}</b></div>
         <div class="tr-pair">${splitPlot(t, a.label, pa)}${splitPlot(t, b.label, pb)}</div></div>`;
     }).join('');
@@ -12895,7 +13191,7 @@ function buildReportPayload(session, p){
     .filter(s => s.id !== session.id && (s.kind || 'bullpen') === 'bullpen' && sameReportTeam(s, tid))
     .slice().sort((a,b) => a.date - b.date)
     .map(s => {
-      const sStats = sessionStats(s.pitches);
+      const sStats = penCardStats(s);   // SC1-B: the stats row's numbers (identical to sessionStats on its pitches)
       return {
         date: s.date,
         dateLabel: new Date(s.date).toLocaleDateString(undefined, { month:'numeric', day:'numeric' }),
@@ -13014,15 +13310,15 @@ async function buildGameTrendEntries(gameSessions){
   for(const s of gameSessions){
     const { data, error } = await supabaseClient.rpc('compute_game_summary', { p_session_id: s.id });
     if(error || !data || data.error) continue; // skip a session RLS/RPC can't resolve rather than fail the whole trend
-    const velos = s.pitches.filter(p => !isDefaultVeloReading(p)).map(p => p.velo).filter(v => v !== null && v !== undefined);
+    const avgVelo = sessionAvgVelo(s);   // SC1-B: from the stats row, or the pitches
     entries.push({
       date: s.date,
       dateLabel: new Date(s.date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' }),
       strikePct: data.strike_pct,
       firstPitchStrikePct: data.first_pitch_strike_pct,
       k: data.k, bb: data.bb, h: data.h,
-      hasVelo: velos.length > 0,
-      avgVelo: velos.length ? Math.round(velos.reduce((a, b) => a + b, 0) / velos.length) : null,
+      hasVelo: avgVelo !== null,
+      avgVelo,
       pitches: data.pitches
     });
   }
@@ -13085,6 +13381,17 @@ async function callSendReportFunction(payload){
 // 6 hours after his); its report waits, so the frozen report has his final runs.
 const GAME_LINE_OPEN_TEXT = 'His line is still open: runners he left on base can still score. The report is ready once they\'re out or home (within 6 hours of the save).';
 function gameLineOpen(s){ return !!s && (s.kind || 'bullpen') === 'game' && !s.pending && !s.tombstone && !s.finalAt; }
+// SC1-B: the sessions whose pitches a report is built from -- the session itself, a game's last 5 pens ("Bullpen to
+// game"), and any of the team's sessions without a stats row (its numbers come from pitches).
+function reportPitchSessions(session){
+  const tid = reportTeamId(session), list = [session];
+  if((session.kind || 'bullpen') === 'game'){
+    state.sessions.filter(s => !s.deletedAt && (s.kind || 'bullpen') === 'bullpen' && s.date < session.date && sameReportTeam(s, tid))
+      .sort((a, b) => b.date - a.date).slice(0, 5).forEach(s => list.push(s));
+  }
+  state.sessions.forEach(s => { if(!s.stats && sameReportTeam(s, tid)) list.push(s); });
+  return list;
+}
 window.sendSessionReport = async function(sessionId){
   const p = currentPitcher();
   const session = state.sessions.find(s => s.id === sessionId);
@@ -13108,6 +13415,7 @@ window.sendSessionReport = async function(sessionId){
   state.reportStatus = { sessionId, status: 'sending', message: 'Sending…' };
   render();
   try{
+    await ensureSessionPitches(reportPitchSessions(session));   // SC1-B
     // G2 approach (g): a game session builds the game-shaped payload
     // (approach e/f's recentPens/gameTrend included); a bullpen keeps
     // using buildReportPayload exactly as before -- untouched, so a
@@ -13140,6 +13448,7 @@ window.viewSessionReport = async function(sessionId){
   state.reportStatus = { sessionId, status: 'sending', message: 'Generating report…' };
   render();
   try{
+    await ensureSessionPitches(reportPitchSessions(session));   // SC1-B
     const payload = (session.kind === 'game') ? await buildGameReportPayload(session, p) : buildReportPayload(session, p);
     const body = await callSendReportFunction(Object.assign({ emails: [] }, payload));
     if(body.reportPath) session.reportPath = body.reportPath;

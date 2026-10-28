@@ -15,6 +15,50 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-28 · SC1-B (switch the reads to session_stats) · **staging**
+- **Asked by:** Joel ("lets do C", then: the stats-cell plot, keep History on the device, today's innings via v2, the
+  v2 migration). Operator `Nathan <joelhauserman@gmail.com>`. Branch `sc1b-reads`. **Cache:** v317.
+- **Built:**
+  - **Migration `20261029000000_sc1b_stats_v2`, on staging:**
+    - stats v2: a game's card `innings`, and per-type `side_strikes` / `delivery_strikes`;
+    - `pitcher_workload` sums the rows;
+    - all 86 rows recomputed, 0 failures, policies 30.
+  - **The tracker reads the rows:**
+    - History cards, type tables and old-session plots (from cells);
+    - Trends;
+    - the reports' pen history and game-trend velocity.
+  - **Pitch rows:** only the newest 20 sessions of the signed-in pitcher and of pitchers opened (tapped) on this
+    device, plus per session when a report needs them.
+  - **Device copy:** History is kept in IndexedDB (200-session ceiling, least recently opened pitcher first) so
+    History and Trends open offline. Sign-out clears it.
+- **Checks (staging):** details in `plans/sc1b-scope.md` "As built".
+  - **Network log:** no pitch rows before a tap; exactly 20 sessions' pitches after tapping a 33-session pitcher.
+  - **`scripts/sc1b-compare.js`:** 793 checks, 0 differences. The 4 known differences are Joel's decisions 3 / 4.
+    All 4 planted errors were caught.
+  - **Offline reload:** History and Trends came from the device, with no requests.
+  - **Reports:** payloads identical from rows and from pitches (old pen, old game, recent pen).
+  - **Roster counts:** identical overall, and as each of 5 coaches.
+- **Deviations:**
+  - **Device copy:** IndexedDB, not localStorage (room for the outbox).
+  - **"Relative Acc%" column:** kept as hits minus RA. Only pre-U7 accuracy-mode pens lose it (3 on staging, 0 on
+    production).
+  - **Pen and game type tables:** now listed in the pitcher's pitch order, not first-thrown.
+  - **Velocity strip:** a roster pitcher who was only auto-selected no longer rebuilds the strip's velocity history
+    from the server. It still has the device's own history.
+- **Open:**
+  - **Production, steps 1-4 done Oct 28 (Joel: "run the backup and apply v2 to production"):**
+    1. **Backup:** `~/knuckleball-backups/2026-10-28-1448-*`, matching live (130 sessions, 2,557 pitches, 115 stats
+       rows).
+    2. **`db push`:** applied `20261029000000_sc1b_stats_v2`. 115 rows now at version 2, 0 failures, policies 30.
+    3. **Checks:**
+       - roster counts identical for all 42 pitchers;
+       - `sc1b_workload_rls.sql`: 0 differences as each of the 9 coaches;
+       - `scripts/sc1b-compare.js`: 1,496 checks, 0 differences, 0 known;
+       - `scripts/sc1-compare.js`: 4,312 checks, 0 differences.
+    4. **`schema.sql`:** regenerated (the v2 function edits only).
+  - **Still open:** merge PR #45 (v317) once Joel has checked on his phone.
+  - **Phone check:** Joel on a phone: History and Trends, and an offline start after opening a pitcher.
+
 ## 2026-10-28 · SC1-A (session stats at save) · **production**
 - **Shipped by:** Joel ("apply it"). Operator `Nathan <joelhauserman@gmail.com>`. Branch `sc1-session-stats` (PR #44).
   **Cache:** unchanged at v316. There was no site deploy; the migration is the only production change.

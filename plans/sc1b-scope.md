@@ -87,3 +87,77 @@ someone to be able to view when offline". The two conflict, because these all ne
   - a number can't be matched from the counts;
   - Joel prefers A or B;
   - the plot drawn from cells isn't acceptable.
+
+## Joel's decisions (Oct 28 2026)
+
+- **Option C.** Scope changes from the review, approved by Joel:
+  - prefetch only for the signed-in pitcher's own History and pitchers opened on this device, 20 each;
+  - a device-wide ceiling of 200 sessions, oldest evicted first;
+  - a roster never prefetches pitchers who were never opened.
+- **Correction (mine):** History was never kept on the device. An offline start showed only queued sessions. Joel:
+  yes, keep the prefetched History on the device (new: History and Trends open offline).
+- **The plot from stats cells:** approved (side-by-side image, staging bullpen 96b7c30a).
+- **Game card innings:** today's number, via stats v2.
+- **Stats v2 migration:** yes.
+
+## As built (staging, Oct 28 2026; branch `sc1b-reads`, v317)
+
+- **Migration `20261029000000_sc1b_stats_v2`:**
+  - a game's `innings`, plus per type `side_strikes` / `delivery_strikes`;
+  - pitches with no location left out of the cells;
+  - `pitcher_workload` sums `session_stats.pitch_count`;
+  - every row recomputed at version 2 (staging: 86 rows, 0 failures; policies 30).
+- **"Relative Acc%" column:** History's pen table showed `isRelativelyAccurate`. With no pre-U7 accuracy mode that
+  is the exact-target share, so from the row it's `(hits - ra) / n`. Only pens charted in a pre-U7 mode lose it
+  (Joel's decision 3: staging has 3, production has 0).
+- **Device copy:** IndexedDB, not localStorage. Up to 200 sessions of pitches (~10 MB at 60 pitches a pen) would
+  crowd out the outbox and drafts in localStorage, which is Safari's ~5 MB.
+
+### Acceptance results (staging)
+
+1. **No pitch rows past N.** Recorded with Chrome's network log, signed in as the Staging Knights head coach:
+   - Team load with nobody tapped: one `sessions` request with stats rows (17 sessions, 5.5 KB) and no pitch rows.
+   - Opening that pitcher's History, an old pen, a game and Trends (Live Game splits): 0 pitch requests.
+   - Tapping Staging Pitcher (33 sessions): a stats request, then one pitch request for exactly his newest 20 session
+     ids.
+2. **Same numbers.** `scripts/sc1b-compare.js` ran the app's functions on all 86 staging sessions, rows against
+   pitches: 793 checks, **0 differences**.
+   - **Known (Joel's decisions):** 3 pre-U7 accuracy mode pens (decision 3) and the interference game's strike %
+     (decision 4).
+   - **Planted errors:** 4 planted errors (card strike count, a Trends split, a game's innings, a plot box) were all
+     caught.
+3. **Offline.** With the network cut, the app was reloaded:
+   - History came from the device: 33 sessions (20 with pitches), all with stats;
+   - the oldest game opened (plot from cells, numbers from the row);
+   - Trends showed 32 sessions and 147 pitches;
+   - no request to Supabase was tried;
+   - a roster pitcher never opened had nothing kept;
+   - charting code is unchanged.
+4. **Reports.** The payload was built twice, from rows and from pitches, for an old pen, an old game and a recent
+   pen: **identical** in all three.
+   - A report for an old session fetched exactly that 1 session's pitches first.
+   - Nothing was sent or generated.
+5. **Roster.** `pitcher_workload` matched before and after for all 30 staging pitchers. As each of the 5 staging
+   coaches (RLS on) it matched the old pitch-count formula: 0 differences
+   (`supabase/tests/sc1b_workload_rls.sql`).
+6. **Release.** CACHE_VERSION v317; STATUS.md entry.
+
+- **Sign-out:** the clear left 0 records on the device and emptied the opened list.
+- **Sizes, Staging Pitcher (33 sessions, 147 pitches):**
+  - today: 125 KB on every load;
+  - v317, not opened: 47 KB;
+  - v317, opened: 47 KB + 62 KB of pitches.
+  - Small test pens (4.5 pitches each) make the stats rows look large. At 60 pitches a session the full history is
+    ~30x the rows.
+
+### Production order (Joel's)
+
+1. Take a backup.
+2. Apply `20261029000000_sc1b_stats_v2` (the v316 site ignores the stats, so the database can go first).
+3. Run `scripts/sc1b-compare.js` on production, then `supabase/tests/sc1b_workload_rls.sql`.
+4. Regenerate `schema.sql`.
+5. Merge (v317).
+6. Check that v317 is live.
+
+If v317 were somehow live before v2, it would fall back to pitches for every v1 row, so it would be correct, just
+slower.

@@ -217,10 +217,25 @@ There are 30 RLS policies (production and staging, Oct 28 2026 after SC1: + the 
 - **A stats error never stops a save** (`sc1_try_finalize` catches it and logs it to `session_stats_failures`;
   re-run `select public.sc1_try_finalize(id)`).
 - One read policy, the same as `pitches`; no client writes.
-- **Nothing in the app reads it yet**: History, Trends, reports and the leaderboard still compute from pitches.
+- **The app reads it (SC1-B, Joel, Oct 28 2026, option C; `plans/sc1b-scope.md`; staging, v317):** History's cards,
+  type tables and plots, Trends, the reports' pen history and game-trend velocity, and the roster's pitch-count line
+  (`pitcher_workload`) come from the row; the app reads only `stats_version` 2 (`STATS_VERSION`) and otherwise uses
+  that session's pitches. v2 adds a game's `innings` (the card's number: the highest inning a pitch was thrown in, NOT
+  the summary's `final_inning`) and per type `side_strikes` / `delivery_strikes` (Trends' splits).
+- **Pitch rows** are fetched only for the newest 20 (`HISTORY_PREFETCH_N`) sessions of the signed-in pitcher's own
+  History and of pitchers this viewer has opened (tapped) on this device (`kb:histOpened:<uid>:<profile>`) -- never
+  for a roster pitcher who was only auto-selected -- and per session when a report needs them
+  (`ensureSessionPitches` / `reportPitchSessions`). Older History plots are drawn from the row's cells (Joel approved:
+  same boxes, grouped by type inside a box).
+- **Offline History:** those prefetched pitchers' History is kept in **IndexedDB** (`kb-history`), never localStorage
+  (the outbox and drafts live there and must never run out of room), at most 200 sessions with pitches device-wide
+  (`HISTORY_CACHE_MAX`), the least recently opened pitcher's oldest first. Sign-out (and a revoked login) clears this
+  login's copy (`histCacheClear`).
 - Any change to how a stat is computed changes the app AND `finalize_session_stats` together (bump
-  `stats_version`, recompute). Then `scripts/sc1-compare.js` must show 0 differences.
+  `stats_version` in both, recompute). Then `scripts/sc1-compare.js` and `scripts/sc1b-compare.js` must show 0
+  differences.
 - Rollback: `supabase/rollback/20261028000000_sc1_session_stats_down.sql`; test: `supabase/tests/sc1_session_stats.sql`.
+  SC1-B: rollback `supabase/rollback/20261029000000_sc1b_stats_v2_down.sql`; test `supabase/tests/sc1b_workload_rls.sql`.
 
 **Sending limits (H1 Part 2).** Every function that sends email or writes a report file calls `takeRateLimit()` (`supabase/functions/_shared/rate_limit.ts`) before sending: per-user, per-recipient and a daily circuit breaker at 90% of `RESEND_DAILY_QUOTA` (Resend free plan: 100/day, 3,000/month), with one alert email to `ALERT_EMAIL` per day when it trips. Limits live in `public.rate_limit_config` (tune there, no deploy); events in `public.rate_limit_events` (pruned after 7 days). Neither table nor `rate_limit_take()` is reachable by clients -- the functions call it with the service role, passing the caller's verified id; that RPC is the service role's only use in those functions besides the existing report upload and `generateLink`. Over a limit -> HTTP 429 `{ error: <human message>, code: 'rate_limited' }`, shown in the UI as-is. Generating or viewing a report without emailing never counts against email limits. Not limited, on purpose: the anon token lookups (long random tokens). Supabase Auth's own limits are set by Joel in the dashboard, never `supabase config push`. CAPTCHA (Turnstile) is the recorded next step if signups are abused.
 

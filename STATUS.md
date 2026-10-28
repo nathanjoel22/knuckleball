@@ -15,7 +15,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-10-28 · SC1-B (switch the reads to session_stats) · **staging**
+## 2026-10-28 · SC1-B (switch the reads to session_stats) · **production**
 - **Asked by:** Joel ("lets do C", then: the stats-cell plot, keep History on the device, today's innings via v2, the
   v2 migration). Operator `Nathan <joelhauserman@gmail.com>`. Branch `sc1b-reads`. **Cache:** v317.
 - **Built:**
@@ -56,7 +56,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
        - `scripts/sc1b-compare.js`: 1,496 checks, 0 differences, 0 known;
        - `scripts/sc1-compare.js`: 4,312 checks, 0 differences.
     4. **`schema.sql`:** regenerated (the v2 function edits only).
-  - **Still open:** merge PR #45 (v317) once Joel has checked on his phone.
+  - **Shipped:** merged Oct 28 (Joel: "ship it"), PR #45, merge `79b30dc`. v317 confirmed live on knuckleballonline.com.
+  - **Still open:** Joel's phone check on production: History and Trends, then an offline start after tapping a
+    pitcher.
   - **Phone check:** Joel on a phone: History and Trends, and an offline start after opening a pitcher.
 
 ## 2026-10-28 · SC1-A (session stats at save) · **production**

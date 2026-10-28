@@ -190,3 +190,23 @@ check.
 5. History: load pitches lazily when a card is opened, or keep loading them and use the row only for the numbers (5).
 6. Leaderboard: velocity stays on pitches; strike / accuracy from the row, windows by session start (5).
 7. Timing: the packet put SC1 at 1,000–20,000 accounts; production has 57 profiles and 2,557 pitches.
+
+## Joel's answers (Oct 28 2026)
+
+1. Yes, the Oct 1 `scale-track.md` is the packet.
+2. **Save anyway**: a stats error never stops a save. The row is missing, the failure is logged, and a re-run fills it.
+3. Drop the pre-U7 relative accuracy number; don't store it. Reports are untouched.
+4. Yes: `compute_game_summary`'s rules everywhere (game strike % without interference / other; ER not floored).
+5. History keeps loading pitches (offline viewing); the row would give only the numbers.
+6. The leaderboard stays out of SC1 (hidden since Oct 10).
+7. **The smaller version for now:** the database half only. That is the table, the save-time stats, the R3 / delete
+   handling, the backfill and the check against today's app numbers. No screen reads it yet.
+
+### As built (staging, Oct 28)
+- The hook is an AFTER trigger on `sessions` (`sessions_sc1_stats`), not a call inside `sync_session`, so
+  `sync_session` is unchanged. The trigger fires when:
+  - `sealed_at` is set, which `sync_session` does after the pitches and events are in, in the same transaction;
+  - R3 changes a game's `exit_*` / `final_at`;
+  - the session becomes a tombstone (`deleted_at`), which removes the row.
+- One deviation from the packet: the session's pitches no longer need to "land" before the stats. Since H1, the
+  save and its pitches arrive in one call.

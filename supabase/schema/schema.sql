@@ -1041,7 +1041,10 @@ begin
       'h_1b', (select count(*) from public.pitches x where x.session_id = p_session and x.result = 'in_play' and x.in_play_outcome = 'hit' and x.hit_type = '1B'),
       'h_2b', (select count(*) from public.pitches x where x.session_id = p_session and x.result = 'in_play' and x.in_play_outcome = 'hit' and x.hit_type = '2B'),
       'h_3b', (select count(*) from public.pitches x where x.session_id = p_session and x.result = 'in_play' and x.in_play_outcome = 'hit' and x.hit_type = '3B'),
-      'h_hr', (select count(*) from public.pitches x where x.session_id = p_session and x.result = 'in_play' and x.in_play_outcome = 'hit' and x.hit_type = 'HR'));
+      'h_hr', (select count(*) from public.pitches x where x.session_id = p_session and x.result = 'in_play' and x.in_play_outcome = 'hit' and x.hit_type = 'HR'),
+      -- v2: History's game card innings (gameStats: the highest inning a pitch was thrown in, at least 1) -- not the
+      -- summary's final_inning, which counts the inning the counter moved on to after his last out
+      'innings', (select greatest(1, coalesce(max(x.inning), 1)) from public.pitches x where x.session_id = p_session));
   end if;
 
   with p as (
@@ -1081,14 +1084,18 @@ begin
              || case when s.kind = 'game' then jsonb_build_object('pct_n', bt.pct_n) else '{}'::jsonb end
              || jsonb_build_object(
                'cells', (select jsonb_object_agg(c.cell, c.n)
-                           from (select cell, count(*) as n from p where p.t = bt.t group by cell) c),
+                           from (select cell, count(*) as n from p where p.t = bt.t and cell is not null group by cell) c),
+               'side_strikes', (select jsonb_object_agg(sk.side, sk.k)
+                                  from (select side, count(*) filter (where k) as k from p where p.t = bt.t group by side) sk),
+               'delivery_strikes', (select jsonb_object_agg(dk.dl, dk.k)
+                                      from (select dl, count(*) filter (where k) as k from p where p.t = bt.t group by dl) dk),
                'side_cells', (select jsonb_object_agg(sd.side, sd.cells)
                                 from (select side, jsonb_object_agg(cell, n) as cells
-                                        from (select side, cell, count(*) as n from p where p.t = bt.t group by side, cell) y
+                                        from (select side, cell, count(*) as n from p where p.t = bt.t and cell is not null group by side, cell) y
                                        group by side) sd),
                'delivery_cells', (select jsonb_object_agg(dd.dl, dd.cells)
                                     from (select dl, jsonb_object_agg(cell, n) as cells
-                                            from (select dl, cell, count(*) as n from p where p.t = bt.t group by dl, cell) y
+                                            from (select dl, cell, count(*) as n from p where p.t = bt.t and cell is not null group by dl, cell) y
                                            group by dl) dd)))
         from (select t, count(*) as n, count(*) filter (where k) as strikes, count(*) filter (where hit) as hits,
                      count(*) filter (where accuracy_hit_kind = 'exact') as exact_hits,
@@ -1103,7 +1110,7 @@ begin
       select jsonb_object_agg(bs.side, jsonb_build_object('n', bs.n, 'strikes', bs.strikes, 'hits', bs.hits))
         from (select side, count(*) as n, count(*) filter (where k) as strikes, count(*) filter (where hit) as hits
                 from p group by side) bs), '{}'::jsonb) as by_side,
-    coalesce((select jsonb_object_agg(c.cell, c.n) from (select cell, count(*) as n from p group by cell) c), '{}'::jsonb) as cells
+    coalesce((select jsonb_object_agg(c.cell, c.n) from (select cell, count(*) as n from p where cell is not null group by cell) c), '{}'::jsonb) as cells
   into r;
 
   insert into public.session_stats (session_id, pitcher_id, team_id, sport, kind, started_at, pitches, pitch_count,
@@ -1113,7 +1120,7 @@ begin
           r.n, greatest(0, r.n + case when s.kind = 'game' then coalesce(s.pitch_count_adjust, 0) else 0 end),
           r.strikes, r.hits, r.exact_hits, r.ra_hits, r.zone_total, r.zone_hits,
           r.velo_n, r.velo_sum, r.velo_min, r.velo_max, r.ttp_n, r.ttp_sum,
-          r.by_type, r.by_side, r.cells, v_game, s.kind = 'game' and s.final_at is null, 1, now())
+          r.by_type, r.by_side, r.cells, v_game, s.kind = 'game' and s.final_at is null, 2, now())
   on conflict (session_id) do update set
     pitcher_id = excluded.pitcher_id, team_id = excluded.team_id, sport = excluded.sport, kind = excluded.kind,
     started_at = excluded.started_at, pitches = excluded.pitches, pitch_count = excluded.pitch_count,
@@ -2081,7 +2088,10 @@ CREATE OR REPLACE FUNCTION "public"."pitcher_workload"("p_profiles" "uuid"[]) RE
     AS $$
   with ss as (
     select s.id, s.pitcher_id, s.kind, s.started_at,
-           greatest(0, (select count(*) from public.pitches p where p.session_id = s.id) + s.pitch_count_adjust)::int as n   -- Oct 19: + / - pitch count
+           -- SC1-B: the session's stats row (the same pitch count, saved at save); counted from pitches only for a
+           -- session whose stats failed. Runs as the caller, so the stats row is read under the same rule as pitches.
+           coalesce((select st.pitch_count from public.session_stats st where st.session_id = s.id),
+                    greatest(0, (select count(*) from public.pitches p where p.session_id = s.id) + s.pitch_count_adjust))::int as n   -- Oct 19: + / - pitch count
       from public.sessions s
      where s.pitcher_id = any(p_profiles) and s.deleted_at is null and s.ended_at is not null
   ), last as (

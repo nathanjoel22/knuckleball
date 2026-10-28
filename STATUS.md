@@ -46,12 +46,17 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - **Velocity strip:** a roster pitcher who was only auto-selected no longer rebuilds the strip's velocity history
     from the server. It still has the device's own history.
 - **Open:**
-  - **Production (Joel's):**
-    1. backup;
-    2. `db push` (v2);
-    3. `scripts/sc1b-compare.js` and `supabase/tests/sc1b_workload_rls.sql` on production;
-    4. `schema.sql`;
-    5. merge (v317).
+  - **Production, steps 1-4 done Oct 28 (Joel: "run the backup and apply v2 to production"):**
+    1. **Backup:** `~/knuckleball-backups/2026-10-28-1448-*`, matching live (130 sessions, 2,557 pitches, 115 stats
+       rows).
+    2. **`db push`:** applied `20261029000000_sc1b_stats_v2`. 115 rows now at version 2, 0 failures, policies 30.
+    3. **Checks:**
+       - roster counts identical for all 42 pitchers;
+       - `sc1b_workload_rls.sql`: 0 differences as each of the 9 coaches;
+       - `scripts/sc1b-compare.js`: 1,496 checks, 0 differences, 0 known;
+       - `scripts/sc1-compare.js`: 4,312 checks, 0 differences.
+    4. **`schema.sql`:** regenerated (the v2 function edits only).
+  - **Still open:** merge PR #45 (v317) once Joel has checked on his phone.
   - **Phone check:** Joel on a phone: History and Trends, and an offline start after opening a pitcher.
 
 ## 2026-10-28 · SC1-A (session stats at save) · **production**

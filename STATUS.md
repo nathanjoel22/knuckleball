@@ -47,7 +47,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   stays untouched). Nothing reads the table yet (Joel: the smaller version). Acceptance 3 / 7 / 8 (screens, offline,
   cache) don't apply. Old-style relative accuracy isn't stored.
 - **Open:**
-  - A real save from the app on staging (phone or laptop), then check its row.
+  - ~~A real save from the app on staging~~ Done Oct 28 on Joel's phone (hotspot): two online pens (7 and 10 pitches, saved 0-1 s after End session) and one offline pen (7 pitches; ended 17:51:08, synced 17:51:45 on reconnect, 37 s later). Each row was written in the same transaction as its pitches (created_at = sealed_at = computed_at), 0 failures logged, and `sc1-compare.js` showed 0 differences (82 checks). No velocity was typed on these pens; velocity is covered by the backfill comparison only.
   - **Production is Joel's:** backup, `db push`, then the comparison script on production's 115 sessions and the
     test's policy check. Regenerate `supabase/schema/schema.sql`.
 

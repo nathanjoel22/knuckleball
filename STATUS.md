@@ -15,6 +15,62 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-28 · SC1-A (session stats at save) · **production**
+- **Shipped by:** Joel ("apply it"). Operator `Nathan <joelhauserman@gmail.com>`. Branch `sc1-session-stats` (PR #44).
+  **Cache:** unchanged at v316. There was no site deploy; the migration is the only production change.
+- **Order:**
+  1. Backup `~/knuckleball-backups/2026-10-28-1355-{schema,data}.sql`. Its rows match live: 130 sessions,
+     2,557 pitches, 68 game_events, 57 profiles.
+  2. The dry run listed only `20261028000000_sc1_session_stats.sql`.
+  3. `supabase db push --project-ref fkgccjhuimkkbupbanxp` applied it.
+- **Checks (production):**
+  - **Backfill:** 115 rows for 115 saved, live sessions (47 games, none provisional); 0 failures.
+  - **Policies:** 29 → 30. The new one is "Session stats: read where the session's pitches are read".
+  - **Counts unchanged:** 130 sessions, 2,557 pitches.
+  - **Comparison:** `scripts/sc1-compare.js` on all 115 sessions: 4,312 checks, **0 differences**, 0 explained (no
+    interference games on production).
+  - **`supabase/schema/schema.sql`** regenerated: 295 lines added, none removed (only SC1's objects). Before the
+    push it matched the backup's schema dump exactly.
+- **Open:**
+  - **SC1-B:** switch History / Trends / the roster count to read `session_stats`; scope in `plans/sc1b-scope.md`.
+    It needs Joel's choice first: option A, B or C (C recommended).
+  - **Velocity on a fresh app save:** not yet checked. It is covered on the backfilled sessions (staging and production).
+
+## 2026-10-28 · SC1 (server half: session stats at save) · **staging**
+- **Asked by:** Joel. He asked for the SC1 preconditions report (`plans/sc1-preconditions.md`, from the Oct 1
+  `scale-track.md` in GitHub's history; it isn't on main). Then his answers: save anyway, drop the old relative
+  accuracy, `compute_game_summary`'s rules, History keeps loading pitches, no leaderboard, "the smaller version for
+  now". Operator `Nathan <joelhauserman@gmail.com>`. Branch `sc1-session-stats`. **Cache:** unchanged (no app change).
+- **Built:** migration `20261028000000_sc1_session_stats`, **on staging only**:
+  - **Tables:** `session_stats` and `session_stats_failures`.
+  - **Functions:** `finalize_session_stats` / `sc1_try_finalize`, plus the AFTER trigger `sessions_sc1_stats` on
+    `sessions`. It fires on the seal, on R3's `exit_*` / `final_at`, and on a tombstone.
+  - **Read policy** like `pitches`; no client writes.
+  - **Backfill:** `sync_session` itself is unchanged. Rollback: `supabase/rollback/20261028000000_sc1_session_stats_down.sql`.
+- **Checks (staging):**
+  - **Backfill:** 83 rows for 83 saved sessions; 0 failures.
+  - **Policies:** 29 → 30, and the diff is exactly the new rule.
+  - **Counts unchanged:** 85 sessions, 495 pitches.
+  - **Comparison:** `scripts/sc1-compare.js` (rows from `supabase/tests/sc1_compare_rows.sql`) ran the app's own
+    functions, lifted unchanged from the tracker, against every row. 1,795 checks, **0 differences**, 1 explained:
+    a test game with 2 interference pitches, where the strike % follows the summary's rule (Joel's decision 4).
+    Three planted errors were all caught.
+  - **`supabase/tests/sc1_session_stats.sql`** (rolled back):
+    - save → row in the same call;
+    - insert / update / delete / function calls / failure log all refused for a user;
+    - head coach sees the row; another pitcher doesn't;
+    - game row: K 1, one WP for two runners, provisional;
+    - `delete_session` → row gone, tombstone kept;
+    - the server closing the line → runs 1, not provisional;
+    - stats function broken → the pen still saves and seals with its pitch, no row, the error logged.
+  - Staging was identical after the test.
+- **Deviations:** the hook is a trigger, not a call inside `sync_session` (same transaction, and the saving function
+  stays untouched). Nothing reads the table yet (Joel: the smaller version). Acceptance 3 / 7 / 8 (screens, offline,
+  cache) don't apply. Old-style relative accuracy isn't stored.
+- **Open:**
+  - ~~A real save from the app on staging~~ Done Oct 28 on Joel's phone (hotspot): two online pens (7 and 10 pitches, saved 0-1 s after End session) and one offline pen (7 pitches; ended 17:51:08, synced 17:51:45 on reconnect, 37 s later). Each row was written in the same transaction as its pitches (created_at = sealed_at = computed_at), 0 failures logged, and `sc1-compare.js` showed 0 differences (82 checks). No velocity was typed on these pens; velocity is covered by the backfill comparison only.
+  - ~~Production is Joel's~~ Done Oct 28: see the entry above.
+
 ## 2026-10-27 · no packet (Trends: line charts moved to the bottom) · **production**
 - **Asked by:** Joel ("move peak velocity by pitch time under trends onto the bottom of that page and move strike percentage graph below that"); operator `Nathan <joelhauserman@gmail.com>`. Branch `trends-order` -> `main`. **Cache:** v316. Frontend only.
 - **Built:** Trends now reads: the summary table, Where every pitch landed, (Live Game) the LHB / RHB and windup / stretch splits, then Peak velocity by pitch type, then Strike % by pitch type last. Nothing else changed.

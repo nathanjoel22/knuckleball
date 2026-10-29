@@ -22,8 +22,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - `<link rel="canonical">` (bare path, no query) on signin, help, privacy and terms. `index.html` already had
     `https://knuckleballonline.com/`.
   - `<meta name="robots" content="noindex, nofollow">` on the 13 app and private pages.
-  - `robots.txt`: allows `/` and the five public pages, disallows the 13 pages, and gives the sitemap.
-  - `sitemap.xml`: the five public pages.
+  - `robots.txt`: allows everything and gives the sitemap. No `Disallow` (Joel, Oct 29): crawlers must be able to
+    fetch the 13 pages to read their `noindex`.
+  - `sitemap.xml`: home, help, privacy and terms. `signin.html` stays `noindex` and is left out (Joel, Oct 29); it
+    keeps its self-referencing canonical.
   - Head tags only. `privacy.html` / `terms.html` text is unchanged.
 - **Checks:**
   - **`report.html`'s inline script:** its SHA-256 is still `1d1xsDiJ…` and matches its CSP, before and after (the
@@ -36,12 +38,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
     the path and query, for http and https.
   - **Found:** `http://knuckleballonline.com/` answers **200** over plain http, with no redirect to https. GitHub
     Pages' "Enforce HTTPS" (repo Settings → Pages) would fix it. Not changed.
-- **Open, Joel's decisions:**
-  - **`signin.html`** has carried `noindex` since L1, yet the packet makes it public: canonical, allowed, in the
-    sitemap. Left as `noindex` for now. Either drop the noindex, or take it out of the sitemap and robots allow list.
-  - **robots.txt + noindex:** disallowing the 13 pages in robots.txt means crawlers never fetch them, so they never
-    see their `noindex` tag. A URL linked from elsewhere can still be listed without its content. Google's advice is
-    to let noindex pages be crawled. Built as the packet asked.
+- **Deviations (Joel, Oct 29):** robots.txt has no `Disallow` lines, so crawlers can read the `noindex` tags.
+  `signin.html` stays `noindex` and is not in the sitemap.
+- **Open:**
+  - Joel: Google Search Console (Domain property, TXT record in Cloudflare), then submit `sitemap.xml` once merged
+    and request indexing of the home page.
+  - Turn on "Enforce HTTPS" in Settings → Pages.
 
 ## 2026-10-28 · SC1-B (switch the reads to session_stats) · **production**
 - **Asked by:** Joel ("lets do C", then: the stats-cell plot, keep History on the device, today's innings via v2, the

@@ -1,22 +1,6 @@
-# Knuckleball (knuckleballonline.com). Public pages may be crawled; the app and private pages may not.
+# Knuckleball (knuckleballonline.com). Everything may be crawled: the app and private pages carry
+# <meta name="robots" content="noindex, nofollow">, which crawlers must be able to read to obey (so no Disallow).
 User-agent: *
 Allow: /
-Allow: /signin.html
-Allow: /help.html
-Allow: /privacy.html
-Allow: /terms.html
-Disallow: /bullpen-tracker.html
-Disallow: /report.html
-Disallow: /join.html
-Disallow: /join-coach.html
-Disallow: /accept-invite.html
-Disallow: /verify-email.html
-Disallow: /reset-password.html
-Disallow: /guardian-consent.html
-Disallow: /delete-account.html
-Disallow: /login.html
-Disallow: /coach-signup.html
-Disallow: /pitcher-signup.html
-Disallow: /parent-signup.html
 
 Sitemap: https://knuckleballonline.com/sitemap.xml

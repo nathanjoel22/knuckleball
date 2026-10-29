@@ -2,7 +2,7 @@
 -- scripts/sc1-compare.js reads. Run:
 --   supabase db query --linked --project-ref <ref> -o json -f supabase/tests/sc1_compare_rows.sql > /tmp/sc1_rows.json
 --   node scripts/sc1-compare.js bullpen-tracker.html /tmp/sc1_rows.json
-select s.id, s.kind, s.sport, s.pitch_count_adjust, s.exit_runs, s.exit_er, s.exit_bb, s.final_at,
+select s.id, s.kind, s.sport, s.pitch_count_adjust, s.exit_runs, s.exit_er, s.exit_bb, s.final_at, s.game_outs_recorded,
  coalesce((select json_agg(json_build_object('type',p.type,'velo',p.velo,'ts',(extract(epoch from p.ts)*1000)::bigint,'targetRow',p.target_row,'targetCol',p.target_col,'actualRow',p.actual_row,'actualCol',p.actual_col,'accuracyMode',p.accuracy_mode,'inAccuracyZone',p.in_accuracy_zone,'accuracyHitKind',p.accuracy_hit_kind,'batterSide',p.batter_side,'delivery',p.delivery,'timeToPlate',p.time_to_plate,'result',p.result,'inPlayOutcome',p.in_play_outcome,'hitType',p.hit_type,'strikesBefore',p.strikes_before,'ballsBefore',p.balls_before,'bbType',p.bb_type,'runsScored',coalesce(p.runs_scored,0),'unearnedRuns',p.unearned_runs,'inheritedRuns',coalesce(p.inherited_runs,0),'chargedPrev',p.charged_prev is true,'inning',p.inning,'sacrifice',p.sacrifice) order by p.ts, p.id) from public.pitches p where p.session_id=s.id),'[]') pitches,
  coalesce((select json_agg(json_build_object('eventType',e.event_type,'ballsBefore',e.balls_before,'strikesBefore',e.strikes_before,'inningBefore',e.inning_before,'atBatIndex',e.at_bat_index,'runsScored',coalesce(e.runs_scored,0),'unearnedRuns',e.unearned_runs,'inheritedRuns',coalesce(e.inherited_runs,0),'chargedPrev',e.charged_prev is true)) from public.game_events e where e.session_id=s.id),'[]') events,
  to_json(st) stats

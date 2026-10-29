@@ -95,6 +95,9 @@ async function buildExport(admin: any, user: { id: string; email?: string }) {
     events = events.concat(await all(() => admin.from('game_events').select('*').in('session_id', c)))
   }
   const notes = await all(() => admin.from('session_notes').select('*').in('author_id', ids))
+  // F1-C1 (decision D): the chat messages this login wrote (a deleted one included -- it's still theirs)
+  const chat = await all(() => admin.from('chat_messages').select('id, thread_id, author_name, author_role, body, created_at, deleted_at, pinned_at')
+    .eq('author_login', user.id).order('created_at'))
 
   const profileJson = {
     exported_at: new Date().toISOString(),
@@ -109,8 +112,9 @@ async function buildExport(admin: any, user: { id: string; email?: string }) {
     { name: 'pitches.csv', data: toCsv(pitches) },
     { name: 'game_events.csv', data: toCsv(events) },
     { name: 'notes.csv', data: toCsv(notes) },
+    { name: 'chat_messages.csv', data: toCsv(chat) },
     { name: 'reports.txt', data: (reports.length ? reports.join('\n') : 'No reports.') + '\n' },
-    { name: 'README.txt', data: README(sessions.length, pitches.length, events.length, notes.length) }
+    { name: 'README.txt', data: README(sessions.length, pitches.length, events.length, notes.length, chat.length) }
   ]
 }
 
@@ -125,7 +129,7 @@ function toCsv(rows: any[]): string {
   return [cols.join(','), ...rows.map((r) => cols.map((c) => cell(r[c])).join(','))].join('\r\n') + '\r\n'
 }
 
-const README = (ns: number, np: number, ne: number, nn: number) => `Knuckleball -- your data
+const README = (ns: number, np: number, ne: number, nn: number, nc: number) => `Knuckleball -- your data
 Exported ${new Date().toISOString()}. Everything Knuckleball holds about this login.
 
 profile.json     Every profile on this login (a login can hold several: a coach, a pitcher, a parent's players):
@@ -140,6 +144,7 @@ pitches.csv      ${np} pitches, every stored column. Coordinates are the CATCHER
                  spray_box / runners_after for games.
 game_events.csv  ${ne} Live Game events that aren't pitches (steals, balks, automatic balls/strikes, ...).
 notes.csv        ${nn} notes you wrote on sessions.
+chat_messages.csv ${nc} chat messages you wrote at a training facility (body is the text; deleted_at marks one you deleted).
 reports.txt      Links to the session reports. Anyone with a link can open it; links stop working when the
                  session or the account is deleted.
 

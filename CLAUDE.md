@@ -267,6 +267,30 @@ There are 30 RLS policies on production (32 on staging since F1-A, Oct 29 2026: 
 - Rollback `supabase/rollback/20261030000000_f1a_facilities_down.sql` (refuses while facility sessions exist); tests
   `supabase/tests/f1a_acceptance.sql`, `f1a_rls_matrix.sql`; load test `plans/f1a-load-test.md`.
 
+**Chat (F1-C1, Joel, Oct 29 2026; `plans/f1c1-preconditions.md`; staging, v322).** Only inside a training facility.
+- **Threads:** `facility` (one per organization; only the manager posts; every coach, pitcher and parent there reads)
+  and `private` (one open per pitcher per coach group: the group's coach and the family post; the side's manager reads).
+  "Family" = the login the pitcher's profile sits on: the pitcher themself, or the parent who created the player
+  (`chat_family_ok`; a 13-17 login needs the guardian's approval first). **No guardian link yet** (decision B: its own
+  stage, F1-G).
+- **Access is computed, not stored:** `chat_access(thread)` from today's groups, so moving a pitcher
+  (`move_between_groups`) takes the open thread to the new coach, who reads its history; leaving a group closes it
+  (family keeps read-only). The four chat tables have no client grant and no policy (policies stay 32); the app uses
+  only the `chat_*` functions.
+- **Rules:** 2,000 characters, text only; YouTube links open in the browser (`chatBodyHtml`, escaped first). Author
+  deletes their own message (text kept for the manager); pins up to 5 (the thread's coach, or the manager on the
+  facility thread); Report reaches the manager (Resolved clears it); a coach's "Close this chat" = read-only, the
+  manager reads it for 90 days, then pg_cron `f1c1-chat-clear` deletes it (`chat_clear_archived`).
+- **Account deletion:** `a1_purge_profile` blanks their messages to "Deleted account" and closes private threads
+  about them; Download my data has `chat_messages.csv`.
+- **App:** a Chat tab after Trends and a Chat button after Analysis on the phone bar, only when `chat_summary()` says
+  the login has a facility (cached per login, `kb:chatOn:<uid>`); the count = unread (a manager: the facility thread
+  and their own trainees) + open reports. Polling, not real time (decision F): 30 s for the count, 5 s in an open
+  thread. Online only; never on or over the charting screen.
+- **Policy text:** the DRAFT 2026-10-30 additions on `privacy.html` / `terms.html` await Joel's approval;
+  `TERMS_VERSION` is unchanged (bumping it shows every login the "I agree" box -- Joel's call at approval).
+- Rollback `supabase/rollback/20261031000000_f1c1_chat_down.sql`; test `supabase/tests/f1c1_chat_acceptance.sql`.
+
 **Sending limits (H1 Part 2).** Every function that sends email or writes a report file calls `takeRateLimit()` (`supabase/functions/_shared/rate_limit.ts`) before sending: per-user, per-recipient and a daily circuit breaker at 90% of `RESEND_DAILY_QUOTA` (Resend free plan: 100/day, 3,000/month), with one alert email to `ALERT_EMAIL` per day when it trips. Limits live in `public.rate_limit_config` (tune there, no deploy); events in `public.rate_limit_events` (pruned after 7 days). Neither table nor `rate_limit_take()` is reachable by clients -- the functions call it with the service role, passing the caller's verified id; that RPC is the service role's only use in those functions besides the existing report upload and `generateLink`. Over a limit -> HTTP 429 `{ error: <human message>, code: 'rate_limited' }`, shown in the UI as-is. Generating or viewing a report without emailing never counts against email limits. Not limited, on purpose: the anon token lookups (long random tokens). Supabase Auth's own limits are set by Joel in the dashboard, never `supabase config push`. CAPTCHA (Turnstile) is the recorded next step if signups are abused.
 
 **Report recipients (H1 Part 3b).** `send-session-report` emails only addresses saved in the player's report contacts (`profiles.contact_emails`, edited only by the owning login -- the pitcher, or the parent for a parent-created player). Anything else -> 400, nothing sent. Coaches send to those contacts and can't add others.

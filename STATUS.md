@@ -15,7 +15,18 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-10-29 · History game cards show innings pitched · **branch, PR open (not merged)**
+## 2026-10-29 · Phone bar: History + Trends → Analysis · **branch, PR open (not merged)**
+- **Asked by:** Joel ("history and trends should be combined into one button that says Analysis... the icon you
+  currently have for history... have analysis take you to the history section"). Operator
+  `Nathan <joelhauserman@gmail.com>`. Branch `dock-analysis`. **Cache:** v320. No database change.
+- **Built:** the phone bottom bar (`dockKeys`) is Home · Charts · Analysis · Roster · Profile for coaches and Home ·
+  Charts · Analysis · Profile for pitchers. Analysis uses History's clock icon, opens History, and stays lit on
+  History and Trends. Trends is still in the page's tabs and the Home tile.
+- **Checks:** staging test browser at 390 px as the Staging Knights coach: the bar shows the five buttons; Analysis
+  opens History and is lit there and on Trends.
+- **Open:** Joel's "ship it".
+
+## 2026-10-29 · History game cards show innings pitched · **production** (PR #47, merged Oct 29)
 - **Asked by:** Joel ("lets switch it to innings pitched", written like the report's IP column). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `history-ip`. **Cache:** v319. No database change.
 - **Why:** the card's "Innings" was the highest inning he threw a pitch in, so a reliever who got 2 outs in the 5th
@@ -33,7 +44,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
     count was caught.
   - Staging, test browser as the Staging Knights coach: 12 game cards show IP equal to their outs (0.0 to 7.0); a
     queued game (4 outs) shows 1.1; a game with no row and no outs shows "–".
-- **Open:** Joel's "ship it".
+- **Live:** v319 confirmed on knuckleballonline.com.
 
 ## 2026-10-29 · SEO / privacy hygiene (canonical, noindex, robots.txt, sitemap) · **production** (PR #46, merged Oct 29)
 - **Asked by:** Joel (the pasted packet). Operator `Nathan <joelhauserman@gmail.com>`. Branch `seo-canonical`.

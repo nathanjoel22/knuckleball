@@ -15,7 +15,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-10-29 · F1-A (training facilities: organizations, manager, coach groups) · **staging**, branch, PR open (not merged)
+## 2026-10-29 · F1-A (training facilities: organizations, manager, coach groups) · **database on production** (Oct 29); site: PR #49 open (not merged)
 - **Asked by:** Joel (the pasted F1 v2 packet, `plans/f1-training-facilities.md`; answers A–G in
   `plans/f1a-preconditions.md`). Operator `Nathan <joelhauserman@gmail.com>`. Branch `f1a-facilities`. **Cache:** v321.
 - **Database (staging only):** migration `20261030000000_f1a_facilities`.
@@ -65,6 +65,16 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
     staging pitchers to the facility directly in SQL.
   - `report.html` is unchanged: a facility session can't get notes, so its live notes section never appears.
 - **Open:**
+  - **Production, Oct 29 (Joel):**
+    - backup `~/knuckleball-backups/2026-10-29-1618` (row counts equal to the live database);
+    - `db push` of `20261030000000_f1a_facilities` (dry run listed only it);
+    - **every-login matrix on production:** 55 logins, every table and visibility function identical before and after.
+      The only field that moved was `pitcher_workload` for 8 logins, because two sessions left the 7- and 30-day
+      windows between the runs (none saved in between). Recomputed with "now" pinned to the "before" run, all 55 match
+      exactly.
+    - policies 32;
+    - `schema.sql` regenerated.
+    - Left: merge (v321) on Joel's "ship it".
   - **Joel's production apply order:**
     1. backup (BACKUPS.md);
     2. `supabase db push --project-ref fkgccjhuimkkbupbanxp` (this one migration; dry-run first);

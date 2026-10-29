@@ -5560,6 +5560,7 @@ function pendingSessionsForCurrentSelection(){
       raOn: item.raOn === true,   // U14
       pitchCountAdjust: item.pitchCountAdjust || 0,   // Oct 19
       events: item.events || [],   // Oct 20: the game card's K / BB / R
+      outsRecorded: item.gameOutsRecorded == null ? null : item.gameOutsRecorded,   // History's IP
       pending: true,
       lastError: item.lastError
     }));
@@ -5955,7 +5956,7 @@ function workloadBanner(){
 const STATS_VERSION = 2;
 const HISTORY_PREFETCH_N = 20;
 const HISTORY_CACHE_MAX = 200;
-const SESSION_COLS = 'id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, pitch_count_adjust, final_at, exit_runs, exit_er, exit_bb';
+const SESSION_COLS = 'id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, pitch_count_adjust, final_at, exit_runs, exit_er, exit_bb, game_outs_recorded';
 const PITCH_COLS = 'type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, accuracy_hit_kind, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, runs_scored, unearned_runs, inherited_runs, charged_prev, fielders, batter_to, runner_advances, outs_on_play, sacrifice';
 const EVENT_COLS = 'event_type, balls_before, strikes_before, runs_scored, unearned_runs, inherited_runs, charged_prev';
 const STATS_COLS = 'stats_version, pitches, pitch_count, strikes, hits, exact_hits, ra_hits, zone_total, zone_hits, velo_n, velo_sum, velo_min, velo_max, ttp_n, ttp_sum, by_type, game';
@@ -6157,6 +6158,7 @@ function mapSessionRow(s, teamId){
     // to him after he left come from the relief games' saves
     finalAt: s.final_at ? new Date(s.final_at).getTime() : null,
     exitRuns: s.exit_runs || 0, exitEr: s.exit_er || 0, exitBb: s.exit_bb || 0,
+    outsRecorded: s.game_outs_recorded == null ? null : s.game_outs_recorded,   // a game's own outs (History's IP)
     // G2 approach (b): null for every bullpen and for a game saved without
     // one -- History/the report both render "Game · <date>" in that case.
     opponent: s.opponent || null,
@@ -6301,16 +6303,22 @@ function penCardStats(s){
   if(rowHasStats(s)) return penStatsFromRow(s.stats);
   return s.pitches ? sessionStats(s.pitches) : null;
 }
-// A game's card line. Joel (decision 4, Oct 28): compute_game_summary's numbers, as saved in the row; innings is the
-// card's own (the highest inning a pitch was thrown in, stats v2).
+// A game's card line. Joel (decision 4, Oct 28): compute_game_summary's numbers, as saved in the row. Innings pitched
+// (Joel, Oct 29): his own outs as the report counts them (`outs_recorded`), shown like the report's IP (8 outs = 2.2);
+// with no row, the outs saved with the session (null for a game from before that column: shown as a dash).
+function gameIpText(outs){
+  return outs == null ? '–' : Math.floor(outs / 3) + '.' + (outs % 3);
+}
 function gameCardStats(s){
   if(rowHasStats(s)){
     const G = s.stats.game || {};
     return { total: s.stats.pitch_count, k: G.k || 0, bb: G.bb || 0, h: G.h || 0, r: G.runs == null ? 0 : G.runs,
-      er: G.er == null ? null : G.er, strikePct: G.strike_pct == null ? 0 : G.strike_pct, innings: G.innings || 1 };
+      er: G.er == null ? null : G.er, strikePct: G.strike_pct == null ? 0 : G.strike_pct,
+      outs: G.outs_recorded == null ? (s.outsRecorded == null ? null : s.outsRecorded) : G.outs_recorded };
   }
   if(!s.pitches) return null;
   const st = gameStats(s.pitches, s.pitchCountAdjust, s.events);
+  st.outs = s.outsRecorded == null ? null : s.outsRecorded;
   st.r += s.exitRuns || 0; st.bb += s.exitBb || 0;   // R3 (B6): charged after he left
   if(st.er !== null) st.er += s.exitEr || 0;
   return st;
@@ -11807,7 +11815,7 @@ function renderHistoryView(){
           <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
             <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${lineOpen ? ' <span class="coach-logged-tag">Line open</span>' : ''}${pendingTag}</div>
             <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
-              <div class="meta-item"><span class="meta-num mono">${stats.innings}</span><span class="meta-lbl">Innings</span></div>
+              <div class="meta-item"><span class="meta-num mono">${gameIpText(stats.outs)}</span><span class="meta-lbl">IP</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.k}</span><span class="meta-lbl">K</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.bb}</span><span class="meta-lbl">BB</span></div>

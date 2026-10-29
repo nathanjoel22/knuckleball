@@ -220,8 +220,9 @@ There are 30 RLS policies (production and staging, Oct 28 2026 after SC1: + the 
 - **The app reads it (SC1-B, Joel, Oct 28 2026, option C; `plans/sc1b-scope.md`; staging, v317):** History's cards,
   type tables and plots, Trends, the reports' pen history and game-trend velocity, and the roster's pitch-count line
   (`pitcher_workload`) come from the row; the app reads only `stats_version` 2 (`STATS_VERSION`) and otherwise uses
-  that session's pitches. v2 adds a game's `innings` (the card's number: the highest inning a pitch was thrown in, NOT
-  the summary's `final_inning`) and per type `side_strikes` / `delivery_strikes` (Trends' splits).
+  that session's pitches. v2 adds a game's `innings` (the highest inning a pitch was thrown in; no longer shown) and per
+  type `side_strikes` / `delivery_strikes` (Trends' splits). The game card shows **innings pitched** (Joel, Oct 29): the
+  summary's `outs_recorded` as innings.outs, like the report's IP (`gameIpText`).
 - **Pitch rows** are fetched only for the newest 20 (`HISTORY_PREFETCH_N`) sessions of the signed-in pitcher's own
   History and of pitchers this viewer has opened (tapped) on this device (`kb:histOpened:<uid>:<profile>`) -- never
   for a roster pitcher who was only auto-selected -- and per session when a report needs them

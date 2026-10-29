@@ -15,7 +15,27 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-10-29 · SEO / privacy hygiene (canonical, noindex, robots.txt, sitemap) · **branch, PR open (not merged)**
+## 2026-10-29 · History game cards show innings pitched · **branch, PR open (not merged)**
+- **Asked by:** Joel ("lets switch it to innings pitched", written like the report's IP column). Operator
+  `Nathan <joelhauserman@gmail.com>`. Branch `history-ip`. **Cache:** v319. No database change.
+- **Why:** the card's "Innings" was the highest inning he threw a pitch in, so a reliever who got 2 outs in the 5th
+  showed "5".
+- **Built:**
+  - The game card's first number is **IP**: `outs_recorded` from the stats row's game summary (what the report's IP
+    uses: the outs saved with the game, or for the 14 older games without them, outs worked out from the pitches),
+    written as innings.outs (8 outs = 2.2; `gameIpText`).
+  - With no stats row: the session's own saved outs (`game_outs_recorded`, now in `SESSION_COLS`; a queued game uses
+    its outbox item's `gameOutsRecorded`); none at all shows "–".
+  - Stats v2's `innings` stays in the row, unused by the card.
+- **Checks:**
+  - `scripts/sc1b-compare.js` (now comparing IP from the row against the saved outs): production 129 sessions, 1,729
+    checks, 0 differences; staging 86 sessions, 819 checks, 0 differences (4 known, unchanged). A planted wrong out
+    count was caught.
+  - Staging, test browser as the Staging Knights coach: 12 game cards show IP equal to their outs (0.0 to 7.0); a
+    queued game (4 outs) shows 1.1; a game with no row and no outs shows "–".
+- **Open:** Joel's "ship it".
+
+## 2026-10-29 · SEO / privacy hygiene (canonical, noindex, robots.txt, sitemap) · **production** (PR #46, merged Oct 29)
 - **Asked by:** Joel (the pasted packet). Operator `Nathan <joelhauserman@gmail.com>`. Branch `seo-canonical`.
   **Cache:** v318. No database change.
 - **Built:**
@@ -40,10 +60,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
     Pages' "Enforce HTTPS" (repo Settings → Pages) would fix it. Not changed.
 - **Deviations (Joel, Oct 29):** robots.txt has no `Disallow` lines, so crawlers can read the `noindex` tags.
   `signin.html` stays `noindex` and is not in the sitemap.
-- **Open:**
-  - Joel: Google Search Console (Domain property, TXT record in Cloudflare), then submit `sitemap.xml` once merged
-    and request indexing of the home page.
-  - Turn on "Enforce HTTPS" in Settings → Pages.
+- **Done after merge (Joel, Oct 29):** "Enforce HTTPS" on (http now 301s to https); Google Search Console set up,
+  `sitemap.xml` submitted and the home page's indexing requested; imported into Bing Webmaster Tools.
+- **Open:** Search Console's Sitemaps should turn to Success (4 pages); check `site:knuckleballonline.com` in a week
+  or two.
 
 ## 2026-10-28 · SC1-B (switch the reads to session_stats) · **production**
 - **Asked by:** Joel ("lets do C", then: the stats-cell plot, keep History on the device, today's innings via v2, the

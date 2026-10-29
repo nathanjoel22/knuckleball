@@ -17,11 +17,11 @@ const src = [...['GRID_SIZE', 'U6_CUTOFF_TS', 'GAME_STRIKE_RESULTS', 'STATS_VERS
   ...['isStrikeCell', 'isAccurate', 'isRelativelyAccurate', 'isHit', 'isDefaultVeloReading', 'sessionStats', 'gameIsK', 'gameStats',
     'trendsIsStrike', 'statsRowOf', 'statsPct', 'rowHasStats', 'sessionPitchTotal', 'sessionTtp', 'avgTimeToPlateMeta', 'penStatsFromRow',
     'penCardStats', 'gameCardStats', 'sessionAvgVelo', 'sessionTypeAgg', 'orderPitchTypes', 'pitchesFromCells', 'plotSessionOf',
-    'gameHistoryTypeTable', 'mirrorCol', 'perspectiveCol', 'escHtml', 'renderHistoryPlot', 'renderPerspectivePlate'].map(lift),
+    'gameHistoryTypeTable', 'gameIpText', 'mirrorCol', 'perspectiveCol', 'escHtml', 'renderHistoryPlot', 'renderPerspectivePlate'].map(lift),
   // stand-ins for the page's pitcher lookups (colors and labels don't change any number)
   'function pitchTypesFor(p){ return p.mix; }', 'function colorForType(p, t){ return "#" + (p.mix.indexOf(t) + 10); }',
   'function pitchLabel(n){ return String(n).toUpperCase(); }'].join('\n');
-const ctx = {}; vm.createContext(ctx); vm.runInContext(src + '\n;this.A = { statsRowOf, penCardStats, gameCardStats, sessionAvgVelo, sessionTypeAgg, avgTimeToPlateMeta, gameHistoryTypeTable, renderHistoryPlot, plotSessionOf, pitchesFromCells, sessionPitchTotal };', ctx);
+const ctx = {}; vm.createContext(ctx); vm.runInContext(src + '\n;this.A = { statsRowOf, gameIpText, penCardStats, gameCardStats, sessionAvgVelo, sessionTypeAgg, avgTimeToPlateMeta, gameHistoryTypeTable, renderHistoryPlot, plotSessionOf, pitchesFromCells, sessionPitchTotal };', ctx);
 const A = ctx.A;
 const d = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
 let rows = d.rows || d; if(rows.length && rows[0].rows) rows = rows[0].rows;
@@ -37,7 +37,7 @@ const boxes = pts => { const o = {}; pts.forEach(p => { const k = p.actualRow + 
 for(const r of rows){
   const stats = A.statsRowOf(r.stats);
   if(!stats){ noRow++; diffs.push(`${r.id.slice(0, 8)} no version-${ctx.STATS_VERSION || 2} stats row`); continue; }
-  const base = { id: r.id, kind: r.kind, pitchCountAdjust: r.pitch_count_adjust || 0, exitRuns: r.exit_runs || 0, exitEr: r.exit_er || 0, exitBb: r.exit_bb || 0 };
+  const base = { id: r.id, kind: r.kind, outsRecorded: r.game_outs_recorded == null ? null : r.game_outs_recorded, pitchCountAdjust: r.pitch_count_adjust || 0, exitRuns: r.exit_runs || 0, exitEr: r.exit_er || 0, exitBb: r.exit_bb || 0 };
   const P = Object.assign({}, base, { stats: null, pitches: r.pitches.map(p => Object.assign({}, p, { timeToPlate: p.timeToPlate === null ? null : Number(p.timeToPlate) })), events: r.events });
   const R = Object.assign({}, base, { stats, pitches: null, events: null });
   const mix = []; P.pitches.forEach(p => { if(!mix.includes(p.type)) mix.push(p.type); });
@@ -54,7 +54,10 @@ for(const r of rows){
     dots(A.renderHistoryPlot({ kind: 'bullpen', pitches: A.pitchesFromCells(t, stats.by_type[t].cells) }, pitcher, { small: true, hotRing: true, legend: false, caption: '' }))));
   if(r.kind === 'game'){
     const g = A.gameCardStats(P), G = A.gameCardStats(R);
-    eq(r, 'game card pitches / K / BB / H / innings', [g.total, g.k, g.bb, g.h, g.innings], [G.total, G.k, G.bb, G.h, G.innings]);
+    eq(r, 'game card pitches / K / BB / H', [g.total, g.k, g.bb, g.h], [G.total, G.k, G.bb, G.h]);
+    // IP (Joel, Oct 29): the row's outs_recorded against the outs saved with the game; a game from before that column
+    // has none to compare (its row derives them from the pitches, as the report does)
+    if(r.game_outs_recorded != null) eq(r, 'game card IP', A.gameIpText(g.outs), A.gameIpText(G.outs));
     const interf = P.pitches.filter(p => p.result === 'interference' || p.result === 'other').length;
     eq(r, 'game card strike %', g.strikePct, G.strikePct, interf ? `decision 4: ${interf} interference / other pitch(es) out of the summary's denominator` : null);
     eq(r, 'game card R / ER', [g.r, g.er], [G.r, G.er]);

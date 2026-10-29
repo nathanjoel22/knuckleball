@@ -184,6 +184,19 @@
         <div class="option-title">Coach</div>
         <div class="option-desc">Manage your roster and review every pitcher's session history.</div>
       </a>
+
+      <!-- F1-A (Joel, Oct 29 2026): the third login area, after Pitcher and Coach. Facility accounts are set up by
+           Knuckleball, so the card always opens the facility sign-in (which says how to get a signup link). -->
+      <a class="option-card" data-role="facility" href="login.html?role=facility&sport=baseball">
+        <div class="option-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3.5 20.5V9.5L12 4l8.5 5.5v11" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M2.5 20.5h19M9 20.5v-6h6v6M8 11h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="option-title">Training facility</div>
+        <div class="option-desc">Run your facility: every pitcher and pitching coach, both sports.</div>
+      </a>
     </div>
     </div>
     </div>
@@ -202,7 +215,8 @@
     var signup = location.hash === '#signup';
     document.querySelectorAll('#frame-role a.option-card').forEach(function(a){
       var role = a.getAttribute('data-role');
-      a.setAttribute('href', signup ? (role === 'coach' ? 'coach-signup.html' : 'pitcher-signup.html') + '?sport=' + sp : 'login.html?role=' + role + '&sport=' + sp);
+      // F1-A: the facility card has no self-serve signup; it always goes to its sign-in (which explains how to get one)
+      a.setAttribute('href', (signup && role !== 'facility') ? (role === 'coach' ? 'coach-signup.html' : 'pitcher-signup.html') + '?sport=' + sp : 'login.html?role=' + role + '&sport=' + sp);
     });
     document.querySelectorAll('a.policy-link').forEach(function(a){ a.setAttribute('href', a.getAttribute('href').split('#')[0] + '#' + sp); });   // P1-10
   }

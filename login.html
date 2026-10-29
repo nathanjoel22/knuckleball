@@ -166,6 +166,8 @@
       </div>
     </div>
     <a href="parent-signup.html" id="parent-signup-link" style="text-align:center;">Parent or guardian? Set up your player</a>
+    <!-- F1-A (Joel, Oct 29 2026): no self-serve facility signup and no form -- just the address, as text to copy. -->
+    <p class="facility-contact" id="facility-contact" hidden>Facility accounts are set up by Knuckleball. Contact us for your signup link: <span class="facility-email">nate@knuckleballonline.com</span></p>
   </form>
 
 <script src="supabase-config.js"></script>
@@ -174,7 +176,8 @@
   const role = params.get('role');
   const roleTag = document.getElementById('role-tag');
   const sportName = (window.KB_SPORT === 'softball') ? 'Softball' : 'Baseball';
-  if(role === 'coach'){ roleTag.textContent = sportName + ' · Coach sign in'; }
+  if(role === 'facility'){ roleTag.textContent = 'Training facility sign in'; }
+  else if(role === 'coach'){ roleTag.textContent = sportName + ' · Coach sign in'; }
   else if(role === 'pitcher'){ roleTag.textContent = sportName + ' · Pitcher sign in'; }
   else { roleTag.textContent = sportName + ' sign in'; }
 
@@ -209,6 +212,38 @@
       return;
     }
 
+    // F1-A, decision A (Joel, Oct 29): the facility card signs in only a login that manages a facility, and the Pitcher
+    // and Coach cards refuse one. Checked here, right after sign-in, and signed straight out on a mismatch -- what
+    // anyone can read is still decided by the server. A facility signup that couldn't finish (email confirmation)
+    // finishes here: its link is kept on this device until the facility exists.
+    if(role === 'facility' || role === 'coach' || role === 'pitcher'){
+      let facility = false;
+      try{
+        let pending = null; try{ pending = localStorage.getItem('kb:facilityToken'); }catch(e){}
+        if(role === 'facility' && pending){
+          const made = await supabaseClient.rpc('create_facility', { p_token: pending });
+          if(made.data && made.data.ok){ try{ localStorage.removeItem('kb:facilityToken'); }catch(e){} }
+        }
+        const res = await supabaseClient.rpc('is_facility_login');
+        if(res.error) throw res.error;
+        facility = res.data === true;
+      }catch(e){
+        await supabaseClient.auth.signOut();
+        errorEl.textContent = "Can't reach the server — check your connection and try again.";
+        submitBtn.disabled = false; submitBtn.textContent = 'Log in';
+        return;
+      }
+      const wrong = role === 'facility' ? !facility : facility;
+      if(wrong){
+        await supabaseClient.auth.signOut();
+        errorEl.textContent = role === 'facility'
+          ? "This sign-in is for training facility accounts. Use the Pitcher or Coach sign-in instead."
+          : "This is a training facility account. Sign in on the Training facility card.";
+        submitBtn.disabled = false; submitBtn.textContent = 'Log in';
+        return;
+      }
+    }
+
     // S4 A8 (Joel, Oct 2): one login can own a baseball AND a softball
     // profile, so sign-in never refuses for sport or role any more. It just
     // tells the app which side the person came in on; the app opens the
@@ -217,7 +252,9 @@
     try{
       const chosen = localStorage.getItem('kb:sport');
       if(chosen === 'baseball' || chosen === 'softball') localStorage.setItem('kb:signinSport', chosen);
-      if(role === 'coach' || role === 'pitcher') localStorage.setItem('kb:signinRole', role); else localStorage.removeItem('kb:signinRole');
+      if(role === 'coach' || role === 'pitcher') localStorage.setItem('kb:signinRole', role);
+      else if(role === 'facility') localStorage.setItem('kb:signinRole', 'coach');   // F1-A: the manager's profiles are coach profiles
+      else localStorage.removeItem('kb:signinRole');
     }catch(e){}
 
     window.location.href = 'bullpen-tracker.html';
@@ -236,7 +273,11 @@
   // P1-10: show the signup link for the side this sign-in page is for.
   (function(){ var r = new URLSearchParams(location.search).get('role');
     if(r === 'coach'){ var x = document.getElementById('pitcher-signup-link'); if(x) x.style.display = 'none'; var z = document.getElementById('parent-signup-link'); if(z) z.style.display = 'none'; }
-    if(r === 'pitcher'){ var y = document.getElementById('coach-signup-link'); if(y) y.style.display = 'none'; } })();
+    if(r === 'pitcher'){ var y = document.getElementById('coach-signup-link'); if(y) y.style.display = 'none'; }
+    if(r === 'facility'){   // F1-A: no signup links; the contact line instead
+      ['coach-signup-link', 'pitcher-signup-link', 'parent-signup-link'].forEach(function(id){ var e = document.getElementById(id); if(e) e.style.display = 'none'; });
+      var c = document.getElementById('facility-contact'); if(c) c.hidden = false;
+    } })();
 </script>
 <p class="site-footer">Knuckleball LLC 2026 &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></p>
 <script>

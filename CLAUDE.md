@@ -181,7 +181,7 @@ Source of truth: `supabase/schema/schema.sql` (live production dump, 2026-08-25)
 
 The real tables (from the dump): `profiles` (incl. `contact_emails jsonb`), `teams` (`coach_id` → auth.users), `pitcher_teams` (`pitcher_id` → **profiles**, not auth.users — required for the PostgREST embeds the roster code uses; keep it that way), `invites`, `sessions` (`pitcher_id` → auth.users NOT NULL; `team_id` → teams, nullable since P2-01 (NULL = independent); `logged_by` → auth.users — the person who charted, which may be a coach or teammate rather than the pitcher), `pitches` (`session_id` → sessions; `target_row/col` + `actual_row/col`; `accuracy_mode` with a check constraint matching the relative-accuracy modes).
 
-There are 30 RLS policies (production and staging, Oct 28 2026 after SC1: + the `session_stats` read rule; 29 after the H1 grace close, Oct 21 2026 -- 34 before it, Oct 5 after the teams hotfix; S3 session_notes: coaches add, author deletes, author/pitcher/current coaches read via `is_coach_of_session`; the report page reads notes through `get_report_notes(token)`). Since H1 nobody holds FOR ALL on sessions, pitches or game_events: see "Saved sessions and sync (H1)" below. Decision D3 is settled and built: sessions belong to the pitcher, team affiliation is optional (`team_id` nullable since P2-01, migration `20261026000000_p2_01_team_optional`).
+There are 30 RLS policies on production (32 on staging since F1-A, Oct 29 2026: + the two facility group read rules) (production and staging, Oct 28 2026 after SC1: + the `session_stats` read rule; 29 after the H1 grace close, Oct 21 2026 -- 34 before it, Oct 5 after the teams hotfix; S3 session_notes: coaches add, author deletes, author/pitcher/current coaches read via `is_coach_of_session`; the report page reads notes through `get_report_notes(token)`). Since H1 nobody holds FOR ALL on sessions, pitches or game_events: see "Saved sessions and sync (H1)" below. Decision D3 is settled and built: sessions belong to the pitcher, team affiliation is optional (`team_id` nullable since P2-01, migration `20261026000000_p2_01_team_optional`).
 
 **Profiles vs logins (S4 Stage A, Oct 2 2026).** A login (auth user) owns one or more profiles (`profiles.account_id`); its primary profile has `id = account_id` and holds email verification. Profiles no longer reference `auth.users`; `sessions.pitcher_id/logged_by/deleted_by`, `teams.coach_id` and `invites.invited_by` reference `profiles`. Every policy and function checks ownership with `is_my_profile(p)` (team helpers: "the caller owns a profile in that row"); functions acting as the caller take an optional profile id and otherwise use the login's only profile (`my_single_profile()`), refusing with `profile_required` when the login has several -- never `auth.uid()` as a profile id. "Add a sport" = `add_sport_profile(sport)`. Report eligibility reads verification through the profile's login. The app runs one ACTIVE profile at a time (`kb:activeProfile:<uid>`, per-profile offline snapshots `lastKnownContext:<uid>:<profile>`), switches in place without a reload, and sign-in never refuses for sport or role. Down migration: `supabase/rollback/20261002020000_s4a_profiles_down.sql`. RLS proof: `supabase/tests/s4_rls_matrix.sql` (identical before/after on staging).
 
@@ -237,6 +237,35 @@ There are 30 RLS policies (production and staging, Oct 28 2026 after SC1: + the 
   differences.
 - Rollback: `supabase/rollback/20261028000000_sc1_session_stats_down.sql`; test: `supabase/tests/sc1_session_stats.sql`.
   SC1-B: rollback `supabase/rollback/20261029000000_sc1b_stats_v2_down.sql`; test `supabase/tests/sc1b_workload_rls.sql`.
+
+**Training facilities (F1-A, Joel, Oct 29 2026; `plans/f1-training-facilities.md` v2, decisions in
+`plans/f1a-preconditions.md`; staging, v321).** A third login area beside Pitcher and Coach.
+- **Model:** an `organizations` row (`manager_login`) owns two teams, `teams.kind = 'facility'`, one per sport, ALWAYS
+  both (decision B). The **Facility Manager is plain head of both** (`teams.coach_id`; two coach profiles on one login),
+  so every head rule works unchanged. "Facility login" = a login that owns an organization (`is_facility_login()`); its
+  profiles are ordinary `coach` profiles.
+- **Signup:** Joel writes a `facility_invites` row (SQL; no client access); `facility-signup.html?t=<token>` makes the
+  login, then `create_facility(token)` makes everything, once (wrong email / used / expired refused; same login again
+  returns the same org). No self-serve signup and no inquiry form: the facility card shows
+  nate@knuckleballonline.com as text (decision E).
+- **Cards (decision A):** `login.html?role=facility` signs in only facility logins; the Pitcher and Coach cards refuse
+  them. Browser-side only (sign straight out, plain message); the server's read rules still decide all access.
+- **Groups:** `coach_groups` (one per coach per facility team, made by trigger when a coach joins; `join_token` is
+  F1-B's QR, never granted) and `coach_group_members` (`flagged_new`). Actions only through `add_to_group`,
+  `remove_from_group` (the last group on a side takes the pitcher off it, departure logged), `move_between_groups`
+  (manager only) and `clear_new_flag`; a coach acts on their own group only.
+- **Narrowed R4 inside a facility (decision D):** `coach_sees_pitcher(team, pitcher)` replaced `is_team_coach(team)`
+  wherever a pitcher is involved (the sessions / pitches / game_events / session_stats / pitcher_teams / profiles read
+  rules, the report-link write, `is_current_coach_of_pitcher`, `is_coach_of_pitcher`, `is_coach_of_session_team`,
+  `sync_session`'s charting check, the roster functions). It equals `is_team_coach` on `kind = 'team'` (proven by
+  `supabase/tests/f1a_rls_matrix.sql`: every login, every table, before = after). On a facility team a pitching coach
+  sees, charts and reports only their group's pitchers; the manager sees all. Coaches of the pitcher's other teams
+  still read lesson pens (R4 stands).
+- **No notes and no leaderboard on facility teams** (`is_coach_of_session` refuses; `get_team_leaderboard` raises
+  `facility_team`; the tracker hides both). `handoff_facility(new_manager)` = the R6 handoff on both sides at once
+  (the new manager must already coach both; decision C).
+- Rollback `supabase/rollback/20261030000000_f1a_facilities_down.sql` (refuses while facility sessions exist); tests
+  `supabase/tests/f1a_acceptance.sql`, `f1a_rls_matrix.sql`; load test `plans/f1a-load-test.md`.
 
 **Sending limits (H1 Part 2).** Every function that sends email or writes a report file calls `takeRateLimit()` (`supabase/functions/_shared/rate_limit.ts`) before sending: per-user, per-recipient and a daily circuit breaker at 90% of `RESEND_DAILY_QUOTA` (Resend free plan: 100/day, 3,000/month), with one alert email to `ALERT_EMAIL` per day when it trips. Limits live in `public.rate_limit_config` (tune there, no deploy); events in `public.rate_limit_events` (pruned after 7 days). Neither table nor `rate_limit_take()` is reachable by clients -- the functions call it with the service role, passing the caller's verified id; that RPC is the service role's only use in those functions besides the existing report upload and `generateLink`. Over a limit -> HTTP 429 `{ error: <human message>, code: 'rate_limited' }`, shown in the UI as-is. Generating or viewing a report without emailing never counts against email limits. Not limited, on purpose: the anon token lookups (long random tokens). Supabase Auth's own limits are set by Joel in the dashboard, never `supabase config push`. CAPTCHA (Turnstile) is the recorded next step if signups are abused.
 

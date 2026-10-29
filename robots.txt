@@ -1,0 +1,6 @@
+# Knuckleball (knuckleballonline.com). Everything may be crawled: the app and private pages carry
+# <meta name="robots" content="noindex, nofollow">, which crawlers must be able to read to obey (so no Disallow).
+User-agent: *
+Allow: /
+
+Sitemap: https://knuckleballonline.com/sitemap.xml

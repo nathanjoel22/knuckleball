@@ -40,8 +40,9 @@ accuracy_zones=36 game_events=408 invites=32 pitcher_teams=115 pitches=13729 pro
 session_notes=30 session_opened=122 session_stats=590 sessions=628 team_coaches=29 teams=42
 ```
 
-**Production after:** Joel runs the same file after applying the migration. Every one of the 55 lines must be identical,
-with policies=32.
+**Production after:** the same file is run after the migration is applied. Every one of the 55 lines must be identical,
+with policies=32. The full per-login "before" is kept off this public repo, because it lists login ids. It's compared on
+the operator's Mac.
 
 ## 2. The write and visibility matrices from R4 and P2 (staging, after)
 

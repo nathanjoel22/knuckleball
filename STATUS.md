@@ -69,8 +69,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
     1. backup (BACKUPS.md);
     2. `supabase db push --project-ref fkgccjhuimkkbupbanxp` (this one migration; dry-run first);
     3. no Edge Function to deploy;
-    4. run `supabase/tests/f1a_rls_matrix.sql` on production and compare with the "before" in `plans/f1a-rls-matrix.md`
-       (55 logins identical);
+    4. run `supabase/tests/f1a_rls_matrix.sql` on production; Claude compares it with the production "before" captured
+       Oct 29 (kept off the public repo because it lists login ids; totals in `plans/f1a-rls-matrix.md`): all 55
+       logins identical;
     5. policy count 32;
     6. regenerate `supabase/schema/schema.sql`;
     7. merge (v321).

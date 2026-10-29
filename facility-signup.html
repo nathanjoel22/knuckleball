@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<!-- P2-05: installable app (manifest, icons, iOS home-screen tags); css/standalone.css handles safe areas -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#061A12">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Knuckleball">
+<link rel="stylesheet" href="css/standalone.css">
+<script>
+  // W1 (Oct 15 2026): inside the Knuckleball iOS / Android app (Capacitor), same-site pages that aren't the app itself
+  // -- privacy, terms, reports, the account-deletion page -- open in the phone's own browser sheet (Done / close button),
+  // so the app never navigates away from itself. In a browser, or a home-screen install, this does nothing.
+  (function(){
+    var cap = window.Capacitor;
+    if(!cap || !cap.isNativePlatform || !cap.isNativePlatform()) return;
+    document.documentElement.classList.add('kb-native');
+    document.addEventListener('click', function(e){
+      var a = e.target && e.target.closest && e.target.closest('a[href]');
+      if(!a) return;
+      var u; try{ u = new URL(a.getAttribute('href'), location.href); }catch(x){ return; }
+      if(u.origin !== location.origin || !/\/(report|privacy|terms|delete-account|help)\.html$/.test(u.pathname)) return;
+      var B = cap.Plugins && cap.Plugins.Browser;
+      if(!B || !B.open) return;
+      e.preventDefault();
+      B.open({ url: u.href });
+    }, true);
+  })();
+</script>
+<title>Facility sign up · Knuckleball</title>
+<script src="vendor/supabase.js"></script>
+<script>
+  // S1: theme before first paint. A ?sport= on the URL wins (every link to
+  // sign-in / signup carries one) and is remembered; otherwise this device's
+  // remembered choice. Join pages re-theme from the team's sport.
+  (function(){
+    var sp = null;
+    try{
+      var q = new URLSearchParams(location.search).get('sport');
+      if(q === 'baseball' || q === 'softball'){ sp = q; localStorage.setItem('kb:sport', q); }
+      else sp = localStorage.getItem('kb:sport');
+    }catch(e){}
+    window.KB_SPORT_KNOWN = (sp === 'baseball' || sp === 'softball');
+    window.KB_SPORT = sp === 'softball' ? 'softball' : 'baseball';
+    document.documentElement.setAttribute('data-sport', window.KB_SPORT);
+  })();
+</script>
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<link rel="stylesheet" href="css/tokens.css">   <!-- D1: the design tokens, every page (Oct 13 2026) -->
+<link rel="stylesheet" href="buttons.css">   <!-- U13: shared button shapes (Joel, Oct 9 2026) -->
+<link rel="stylesheet" href="css/components.css">   <!-- D2 Stage C: the shared sign-in look (Oct 13 2026) -->
+</head>
+<body class="signin">
+  <!-- F1-A (Joel, Oct 29 2026): a facility's one-time signup link, issued by Knuckleball (facility_invites). It makes
+       the manager's login, then create_facility(token) makes the facility: a baseball and a softball side, the manager
+       head of both. A used, expired or unknown link shows a plain message. -->
+  <div class="card" id="link-card">
+    <header class="signin-head"><div class="brand-block">
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <h2 class="display">Facility <span class="last">signup</span></h2></header>
+    <div class="info-msg" id="link-msg">Checking your signup link…</div>
+    <a href="login.html?role=facility" id="link-signin" class="step-hidden">Go to the facility sign-in &rarr;</a>
+  </div>
+
+  <form class="card step-hidden" id="signup-form" autocomplete="off">
+    <header class="signin-head"><div class="brand-block">
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <div>
+      <span class="role-tag slant-tag">Training facility</span>
+      <h2 class="display">Set up <span class="last" id="facility-name">your facility</span></h2>
+      <p class="sub">You'll run a baseball side and a softball side, and invite your pitching coaches to each.</p>
+    </div></header>
+
+    <div class="field">
+      <label class="field-label" for="full-name">Your name</label>
+      <input class="text-input" id="full-name" placeholder="Your name" autocomplete="name">
+    </div>
+    <div class="field">
+      <label class="field-label" for="email">Email</label>
+      <input class="text-input" id="email" type="email" readonly autocomplete="email">
+    </div>
+    <div class="field">
+      <label class="field-label" for="password">Password</label>
+      <input class="text-input" id="password" type="password" placeholder="At least 8 characters" autocomplete="new-password">
+    </div>
+
+    <label class="terms-check"><input type="checkbox" id="terms-ok"> <span>I am 18 or older and I agree to the <a href="terms.html" target="_blank" class="policy-link">Terms</a> and <a href="privacy.html" target="_blank" class="policy-link">Privacy Policy</a>.</span></label>
+    <div class="error-msg" id="error-msg"></div>
+    <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Create facility</button>
+    <div class="foot-row">
+      <a href="login.html?role=facility">Already set up? Sign in</a>
+    </div>
+  </form>
+
+  <div class="card step-hidden" id="confirm-card">
+    <header class="signin-head"><div class="brand-block">
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <h2 class="display">Check your <span class="last">email</span></h2></header>
+    <div class="info-msg">We sent a confirmation link to your email. Click it, then sign in on the Training facility card on this device to finish setting up your facility.</div>
+    <a href="login.html?role=facility">Go to the facility sign-in &rarr;</a>
+  </div>
+
+<script src="supabase-config.js"></script>
+<script>
+  var TERMS_VERSION = '2026-10-17';
+  function kbPolicyLinks(sport){
+    var sp = sport === 'softball' ? 'softball' : 'baseball';
+    document.querySelectorAll('a.policy-link, .site-footer a[href^="privacy.html"], .site-footer a[href^="terms.html"]').forEach(function(a){
+      a.setAttribute('href', a.getAttribute('href').split('#')[0] + '#' + sp);
+    });
+  }
+  var token = new URLSearchParams(location.search).get('t') || '';
+  var form = document.getElementById('signup-form');
+  var errorEl = document.getElementById('error-msg');
+  var submitBtn = document.getElementById('submit-btn');
+  var CONTACT = 'Contact nate@knuckleballonline.com for a new one.';
+  var LINK_MSGS = {
+    not_found: "This signup link isn't valid. Check that you copied all of it, or " + CONTACT.charAt(0).toLowerCase() + CONTACT.slice(1),
+    used: 'This signup link has already been used. If your facility is set up, sign in on the Training facility card. Otherwise ' + CONTACT.charAt(0).toLowerCase() + CONTACT.slice(1),
+    done: 'Your facility is set up.',
+    expired: 'This signup link has expired. ' + CONTACT
+  };
+  var CREATE_ERRORS = {
+    wrong_email: 'This link is for a different email address.',
+    login_in_use: 'This account is already a coach or pitcher on a team, so it can\'t also run a facility. ' + CONTACT,
+    already_manager: 'This account already runs a facility.',
+    not_a_coach_login: 'This account is a pitcher or parent account, so it can\'t run a facility. ' + CONTACT,
+    name_required: 'Enter your name.',
+    used: LINK_MSGS.used, expired: LINK_MSGS.expired, not_found: LINK_MSGS.not_found
+  };
+  function showLinkMessage(msg, signin){
+    form.classList.add('step-hidden');
+    document.getElementById('link-card').classList.remove('step-hidden');
+    document.getElementById('link-msg').textContent = msg;
+    document.getElementById('link-signin').classList.toggle('step-hidden', !signin);
+  }
+  (async function(){
+    if(!token){ showLinkMessage(LINK_MSGS.not_found, false); return; }
+    var res;
+    try{ res = await supabaseClient.rpc('facility_invite_info', { p_token: token }); }catch(e){ res = { error: e }; }
+    if(res.error || !res.data){ showLinkMessage("Can't reach the server — check your connection and reload this page.", false); return; }
+    var d = res.data;
+    if(d.status === 'done'){   // this login already made it: straight into the app
+      var go = document.getElementById('link-signin'); go.href = 'bullpen-tracker.html'; go.innerHTML = 'Open Knuckleball &rarr;';
+    }
+    if(d.status !== 'ok'){ showLinkMessage(LINK_MSGS[d.status] || LINK_MSGS.not_found, d.status === 'used' || d.status === 'done'); return; }
+    document.getElementById('facility-name').textContent = d.facility_name;
+    document.getElementById('email').value = d.manager_email;
+    document.getElementById('link-card').classList.add('step-hidden');
+    form.classList.remove('step-hidden');
+  })();
+
+  async function finish(){
+    // the profile exists (signup trigger; ensure_account_setup is the safety net), then the 18+ answer, then the facility
+    await supabaseClient.rpc('ensure_account_setup');
+    var att = await supabaseClient.rpc('record_attestation', { p_status: 'adult', p_terms_version: TERMS_VERSION, p_guardian_email: null, p_via: 'signup' });
+    if(att.error || !att.data || !att.data.ok) return { error: "Couldn't save your answer. Check your connection and try again." };
+    var made = await supabaseClient.rpc('create_facility', { p_token: token });
+    if(made.error) return { error: "Couldn't set up your facility. Check your connection and try again." };
+    if(!made.data || !made.data.ok) return { error: CREATE_ERRORS[made.data && made.data.error] || 'Something went wrong: ' + ((made.data && made.data.error) || 'unknown') };
+    return { ok: true };
+  }
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    errorEl.textContent = '';
+    var fullName = document.getElementById('full-name').value.trim();
+    var email = document.getElementById('email').value.trim();
+    var password = document.getElementById('password').value;
+    if(!fullName || !password){ errorEl.textContent = 'Fill in every field to continue.'; return; }
+    if(password.length < 8){ errorEl.textContent = 'Password should be at least 8 characters.'; return; }
+    if(!document.getElementById('terms-ok').checked){ errorEl.textContent = "Confirm you're 18 or older and agree to the Terms and Privacy Policy."; return; }
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Setting up…';
+    try{ localStorage.setItem('kb:facilityToken', token); }catch(x){}   // login.html finishes it if this page can't
+    var cur = null; try{ cur = (await supabaseClient.auth.getSession()).data.session; }catch(x){}
+    var up = (cur && cur.user && String(cur.user.email).toLowerCase() === email.toLowerCase())
+      ? { data: { session: cur } }   // a retry after the account was made: just finish
+      : await supabaseClient.auth.signUp({ email: email, password: password,
+      options: { data: { full_name: fullName, intended_role: 'coach', intended_sport: 'baseball' } } });
+    if(up.error){
+      errorEl.textContent = /already|registered|exists/i.test(up.error.message || '')
+        ? 'This email already has an account. Sign in on the Training facility card to finish setting up your facility.'
+        : up.error.message;
+      submitBtn.disabled = false; submitBtn.textContent = 'Create facility';
+      return;
+    }
+    if(!up.data.session){
+      form.classList.add('step-hidden');
+      document.getElementById('confirm-card').classList.remove('step-hidden');
+      return;
+    }
+    var r = await finish();
+    if(r.error){ errorEl.textContent = r.error; submitBtn.disabled = false; submitBtn.textContent = 'Try again'; return; }
+    try{
+      localStorage.removeItem('kb:facilityToken');
+      localStorage.setItem('kb:sport', 'baseball');
+      localStorage.setItem('kb:signinSport', 'baseball');
+      localStorage.setItem('kb:signinRole', 'coach');
+    }catch(x){}
+    window.location.href = 'bullpen-tracker.html';
+  });
+</script>
+<p class="site-footer">Knuckleball LLC 2026 &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></p>
+<script>kbPolicyLinks(window.KB_SPORT);</script>
+</body>
+</html>

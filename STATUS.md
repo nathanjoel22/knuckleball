@@ -15,7 +15,70 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-10-29 · Phone bar: History + Trends → Analysis · **branch, PR open (not merged)**
+## 2026-10-29 · F1-A (training facilities: organizations, manager, coach groups) · **staging**, branch, PR open (not merged)
+- **Asked by:** Joel (the pasted F1 v2 packet, `plans/f1-training-facilities.md`; answers A–G in
+  `plans/f1a-preconditions.md`). Operator `Nathan <joelhauserman@gmail.com>`. Branch `f1a-facilities`. **Cache:** v321.
+- **Database (staging only):** migration `20261030000000_f1a_facilities`.
+  - New: `organizations`, `facility_invites`, `coach_groups`, `coach_group_members`; `teams.org_id` / `teams.kind`.
+  - Helpers: `is_facility_team`, `is_org_manager`, `is_group_coach(pitcher, team)`, `coach_sees_pitcher`,
+    `is_facility_login`.
+  - Functions: `facility_invite_info`, `create_facility`, `my_facility`, `handoff_facility`, `add_to_group`,
+    `remove_from_group`, `move_between_groups`, `clear_new_flag`.
+  - Triggers that keep groups with the staff and roster.
+  - The narrowed R4 (decision D) across 7 read rules and 10 functions.
+  - `get_team_leaderboard` refuses facilities; no notes on facility sessions.
+  - Policies 30 -> 32.
+- **Pages:**
+  - `signin.html`: a third card, **Training facility**.
+  - `login.html?role=facility`: its sign-in, the contact address as text, and the card checks (decision A).
+  - New `facility-signup.html?t=` (precached).
+  - Tracker: team `kind`; a facility roster (the manager's grouped by coach and collapsible, with "No coach yet", "New"
+    with Clear / Remove, ⋯ with Move to coach / Remove from this coach / Remove from facility / Add to coach, and an
+    "N new" count; a pitching coach's own list); Notes and Leaders hidden on facility teams.
+  - `css/components.css`: the contact line.
+- **Checks (staging):** see `plans/f1a-rls-matrix.md` and `plans/f1a-load-test.md`.
+  - **Every-login matrix:** 32 logins, before = after, 0 differences.
+  - **R4 / P2 matrices:** unchanged.
+  - **Facility acceptance:** 0 hard fails. Covers packet checks 1 (server half), 3, 5, 6 and 9, plus charting, groups
+    and handoff.
+  - **Check 6 with real accounts:** the Staging Knights head reads coach A's lesson pen for Staging Pitcher; coach B
+    reads nothing.
+  - **Browser walkthrough (check 1):**
+    - the three cards;
+    - the facility sign-in with its contact line;
+    - a coach refused on the facility card;
+    - a bad link and a used link;
+    - a real signup through the link, giving two coach profiles and head of both;
+    - the manager refused on the Coach and Pitcher cards, then let in on the facility card.
+  - **Roster screenshots:** iPad and phone, 390 px with no sideways scroll; a real Clear.
+  - **Load test:** 100 pitchers × 20 sessions. Roster at most 1.7 s and History at most 1.1 s (phone, manager); every
+    case under 2 s.
+  - **Rollback:** proven in an aborted transaction.
+- **Deviations:**
+  - No `sessions.charted_by`: `logged_by` already is the charter (Q1).
+  - No inquiry form or Edge Function (Joel, E). Packet check 2 is dropped.
+  - `is_group_coach` takes `(pitcher, team)`.
+  - The facility card opens the sport picked on the sign-in page; a new facility opens on baseball.
+  - A coach's Remove of a pitcher's last group takes them off the facility **without** the removal email (that
+    function is head-only). The manager's "Remove from facility" sends it as before.
+  - The load-test seed needed 12 parent logins, not 1 (a login holds at most 10 profiles), and added the three real
+    staging pitchers to the facility directly in SQL.
+  - `report.html` is unchanged: a facility session can't get notes, so its live notes section never appears.
+- **Open:**
+  - **Joel's production apply order:**
+    1. backup (BACKUPS.md);
+    2. `supabase db push --project-ref fkgccjhuimkkbupbanxp` (this one migration; dry-run first);
+    3. no Edge Function to deploy;
+    4. run `supabase/tests/f1a_rls_matrix.sql` on production and compare with the "before" in `plans/f1a-rls-matrix.md`
+       (55 logins identical);
+    5. policy count 32;
+    6. regenerate `supabase/schema/schema.sql`;
+    7. merge (v321).
+  - The first real facility needs a `facility_invites` row written by Joel.
+  - The staging load-test data stays for F1-B / F1-C. Remove it with `f1a_loadtest_cleanup.sql` (set `dry_run` false).
+  - Watch `pitcher_workload` as facility histories grow (see the load-test file).
+
+## 2026-10-29 · Phone bar: History + Trends → Analysis · **production** (PR #48, merged Oct 29; v320 live)
 - **Asked by:** Joel ("history and trends should be combined into one button that says Analysis... the icon you
   currently have for history... have analysis take you to the history section"). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `dock-analysis`. **Cache:** v320. No database change.
@@ -24,7 +87,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   History and Trends. Trends is still in the page's tabs and the Home tile.
 - **Checks:** staging test browser at 390 px as the Staging Knights coach: the bar shows the five buttons; Analysis
   opens History and is lit there and on Trends.
-- **Open:** Joel's "ship it".
+- **Live:** v320 confirmed on knuckleballonline.com.
 
 ## 2026-10-29 · History game cards show innings pitched · **production** (PR #47, merged Oct 29)
 - **Asked by:** Joel ("lets switch it to innings pitched", written like the report's IP column). Operator

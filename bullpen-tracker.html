@@ -448,6 +448,19 @@
      never subject to that truncation regardless of name length. */
   .roster-verify-badge{ align-self:flex-start; margin-left:0; margin-top:1px; }
   .roster-item-remove{ flex-shrink:0; }
+  /* F1-A: a facility's roster -- coach groups, the "New" tag and its actions */
+  .fac-new-tag{ background:var(--accent); color:var(--on-accent, var(--ink)); border-color:transparent; }
+  .fac-new-count{ display:inline-block; margin-left:var(--s-6); padding:0 var(--s-6); border-radius:999px; background:var(--accent); color:var(--on-accent, var(--ink)); font-size:11px; font-weight:700; line-height:18px; }
+  .fac-group{ display:flex; flex-direction:column; gap:var(--s-6); }
+  .fac-group + .fac-group{ margin-top:var(--s-8); }
+  .fac-group-head{ display:flex; align-items:center; gap:var(--s-8); width:100%; padding:var(--s-6) var(--s-4); background:none; border:0; border-bottom:1px solid var(--surface-border); color:var(--ink); font:inherit; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; text-align:left; cursor:pointer; }
+  .fac-group-name{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fac-group-count{ color:var(--ink-faint); font-variant-numeric:tabular-nums; }
+  .fac-empty{ color:var(--ink-faint); font-size:12px; margin:0; padding:0 var(--s-4); }
+  .fac-row-actions{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--s-6); padding:0 var(--s-4) var(--s-8); }
+  .fac-row-actions .note-hint, .fac-row-actions .report-status{ flex-basis:100%; margin:0; }
+  .fac-move{ display:flex; align-items:center; gap:var(--s-6); font-size:12px; }
+  .fac-move .team-select{ max-width:180px; }
 
   /* R0: deferred-verification banner, shown to a pitcher whose account
      email isn't confirmed. Persistent, never a blocking modal (Joel's own
@@ -2147,6 +2160,11 @@ function isHeadOfTeam(teamId){
   return !!team && team.myRole === 'head';
 }
 function isHeadOfCurrentTeam(){ return isHeadOfTeam(state.currentTeamId); }
+// F1-A (Oct 29 2026): a training facility's side is a team with kind 'facility'; its head is the Facility Manager.
+// Inside a facility each pitching coach sees only their own group (the server decides; this only shapes the screen).
+function isFacilityTeam(teamId){ const t = (state.teams || []).find(x => x.id === teamId); return !!(t && t.kind === 'facility'); }
+function currentTeamIsFacility(){ return isFacilityTeam(state.currentTeamId); }
+function isFacilityManager(){ return currentTeamIsFacility() && isHeadOfCurrentTeam(); }
 // The pitch types New Session offers: exactly the pitcher's own mix. A pitcher who
 // hasn't added any pitches yet has none to chart until they do (Joel, Sept 21: no
 // fallback list) -- New Session shows a prompt pointing at Profile instead.
@@ -3285,12 +3303,12 @@ async function loadTeams(){
     // get_team_invite_links().
     const { data } = await supabaseClient
       .from('team_coaches')
-      .select('role, teams(id, name, level, archived_at)')
+      .select('role, teams(id, name, level, archived_at, kind)')
       .eq('coach_id', state.profile.id)
       .order('team_id');
     state.teams = sortTeamsActiveFirst((data || []).filter(r => r.teams).map(r => ({ ...r.teams, archived: !!r.teams.archived_at, myRole: r.role })));
   } else {
-    const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name, level, archived_at)').eq('pitcher_id', state.profile.id);
+    const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name, level, archived_at, kind)').eq('pitcher_id', state.profile.id);
     state.teams = sortTeamsActiveFirst((data || []).filter(r => r.teams).map(r => ({ ...r.teams, archived: !!r.teams.archived_at, uniform_number: r.uniform_number })));
   }
 }
@@ -3399,13 +3417,13 @@ window.switchProfile = async function(id){
 // live state the screen is drawing from.
 async function fetchTeamsFor(prof){
   if(prof.role === 'coach'){
-    const { data } = await supabaseClient.from('team_coaches').select('role, teams(id, name, level, archived_at)').eq('coach_id', prof.id).order('team_id');
+    const { data } = await supabaseClient.from('team_coaches').select('role, teams(id, name, level, archived_at, kind)').eq('coach_id', prof.id).order('team_id');
     return sortTeamsActiveFirst((data || []).filter(r => r.teams).map(r => ({ ...r.teams, archived: !!r.teams.archived_at, myRole: r.role })));
   }
-  const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name, level, archived_at)').eq('pitcher_id', prof.id);
+  const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name, level, archived_at, kind)').eq('pitcher_id', prof.id);
   return sortTeamsActiveFirst((data || []).filter(r => r.teams).map(r => ({ ...r.teams, archived: !!r.teams.archived_at, uniform_number: r.uniform_number })));
 }
-async function fetchRosterFor(teamId){
+async function fetchRosterFor(teamId, team){
   const { data, error } = await supabaseClient.from('pitcher_teams')
     .select('uniform_number, profiles(id, full_name, pitch_types, contact_emails, throws, relative_accuracy_enabled, uses_radar_gun, headshot_updated_at)')
     .eq('team_id', teamId);
@@ -3419,6 +3437,7 @@ async function fetchRosterFor(teamId){
   const ver = {}; (verRows || []).forEach(v => { ver[v.pitcher_id] = v; });
   roster.forEach(p => { const v = ver[p.id]; p.accountEmail = v ? v.email : null; p.emailConfirmed = v ? v.email_confirmed : false; p.guardianPending = !!(v && v.guardian_pending); p.ageAnswered = !!(v && v.age_answered); p.managed = !!(v && v.managed); });
   await applyRosterClosing(roster, teamId);
+  await applyFacilityGroups(roster, team);   // F1-A
   roster.sort((a, b) => {
     const an = a.uniformNumber, bn = b.uniformNumber;
     if(an !== null && bn !== null && an !== bn) return an - bn;
@@ -3438,7 +3457,7 @@ async function warmOtherProfiles(){
       if(await storGet(key)) continue;
       const teams = await fetchTeamsFor(prof);
       const team = teams[0] || null;
-      const roster = (prof.role === 'coach' && team) ? await fetchRosterFor(team.id) : [];
+      const roster = (prof.role === 'coach' && team) ? await fetchRosterFor(team.id, team) : [];
       const ids = prof.role === 'coach' ? roster.map(r => r.id) : [prof.id];
       const zones = {};
       if(ids.length){
@@ -3816,6 +3835,29 @@ async function loadRosterForTeam(teamId){
     p.ageAnswered = !!(v && v.age_answered);
   });
   await applyRosterClosing(state.roster, teamId);
+  await applyFacilityGroups(state.roster, (state.teams || []).find(t => t.id === teamId));   // F1-A
+}
+
+// F1-A: on a facility side, the side's coach groups (team.groups: [{ id, coachId, coachName }]) and each pitcher's
+// groups (p.groups: [{ id, isNew }]). Kept on the team and the roster, so the offline copy has them too. The server
+// decides what's visible: a pitching coach gets only their own pitchers (and those pitchers' other groups).
+async function applyFacilityGroups(roster, team){
+  if(!team || team.kind !== 'facility') return;
+  try{
+    // coach_groups reaches profiles two ways (coach_id, and through coach_group_members), so the embed names its key
+    const { data: groups, error } = await supabaseClient.from('coach_groups').select('id, coach_id, profiles!coach_groups_coach_id_fkey(full_name)').eq('team_id', team.id);
+    if(error) throw error;
+    team.groups = (groups || []).map(g => ({ id: g.id, coachId: g.coach_id, coachName: (g.profiles && g.profiles.full_name) || 'Coach' }))
+      .sort((a, b) => a.coachName.localeCompare(b.coachName));
+    const ids = team.groups.map(g => g.id);
+    const by = {};
+    if(ids.length){
+      const { data: members, error: mErr } = await supabaseClient.from('coach_group_members').select('group_id, pitcher_id, flagged_new').in('group_id', ids);
+      if(mErr) throw mErr;
+      (members || []).forEach(m => { (by[m.pitcher_id] = by[m.pitcher_id] || []).push({ id: m.group_id, isNew: !!m.flagged_new }); });
+    }
+    roster.forEach(p => { p.groups = by[p.id] || []; });
+  }catch(e){ console.error('applyFacilityGroups failed', e); }   // keep what the device had
 }
 
 // A1 (Joel, Oct 14): a pitcher in his 7-day deletion grace shows "Account closing <date>" on the roster.
@@ -4295,6 +4337,101 @@ window.confirmHandoff = async function(){
    first. The removal itself proceeds regardless of whether that call or
    the email send succeeds -- never block a coach's removal on a Resend
    hiccup. */
+/* ---------- F1-A: A FACILITY'S ROSTER (Oct 29 2026, plans/f1-training-facilities.md) ----------
+   The manager (head of the side) sees every pitcher, grouped under each pitching coach (collapsible), with "No coach
+   yet" last; a pitcher in two groups shows in both. A pitching coach sees only their own pitchers (the server's rule),
+   in one list. "New" marks a pitcher who joined through a coach's code (F1-B): Clear keeps them, Remove takes them out
+   of that group -- and off the facility when it was their last group. The ⋯ menu holds the rest. Online only. */
+function facilityGroups(){ const t = (state.teams || []).find(x => x.id === state.currentTeamId); return (t && t.groups) || []; }
+function myFacilityGroupIds(){ return facilityGroups().filter(g => isMine(g.coachId)).map(g => g.id); }
+function facilityNewCount(){
+  if(!currentTeamIsFacility()) return 0;
+  const mine = myFacilityGroupIds(), mgr = isFacilityManager();
+  return (state.roster || []).filter(p => (p.groups || []).some(g => g.isNew && (mgr || mine.includes(g.id)))).length;
+}
+function renderFacilityRoster(rosterRow, removeConfirm){
+  const groups = facilityGroups(), mgr = isFacilityManager(), mine = myFacilityGroupIds();
+  const readOnly = currentTeamArchived();
+  const row = (p, g) => {   // g: the group this row sits in (null: no coach yet)
+    const inG = g ? (p.groups || []).find(x => x.id === g.id) : null;
+    const isNew = !!(inG && inG.isNew);
+    const key = p.id + ':' + (g ? g.id : 'none');
+    const open = state.facMenu === key;
+    const canEdit = !readOnly && (mgr || !!(g && mine.includes(g.id)));
+    const tags = isNew ? '<span class="verify-badge roster-verify-badge fac-new-tag">New</span>' : '';
+    const right = canEdit ? `<button class="btn btn-icon btn-secondary btn-sm roster-item-remove" title="Options for ${escHtml(p.name)}" aria-label="Options for ${escHtml(p.name)}" aria-expanded="${open}" onclick="event.stopPropagation();toggleFacMenu('${key}')">⋯</button>` : '';
+    let panel = '';
+    if(canEdit && isNew && !open){
+      panel = `<div class="fac-row-actions"><button class="btn btn-secondary btn-sm" onclick="facAct('clear', '${g.id}', '${p.id}')">Clear</button><button class="btn btn-danger btn-sm" onclick="facAct('remove', '${g.id}', '${p.id}')">Remove</button></div>`;
+    }
+    if(open){
+      const others = groups.filter(x => !(p.groups || []).some(y => y.id === x.id));
+      const opts = others.map(x => `<option value="${x.id}">${escHtml(x.coachName)}</option>`).join('');
+      const last = !!g && (p.groups || []).length <= 1;
+      panel = `<div class="fac-row-actions">
+        ${isNew ? `<button class="btn btn-secondary btn-sm" onclick="facAct('clear', '${g.id}', '${p.id}')">Clear "New"</button>` : ''}
+        ${mgr && opts ? `<label class="fac-move"><span>${g ? 'Move to coach' : 'Add to coach'}</span><select class="team-select" onchange="facAct('${g ? 'move' : 'add'}', '${g ? g.id : ''}', '${p.id}', this.value)"><option value="">Choose…</option>${opts}</select></label>` : ''}
+        ${g ? `<button class="btn btn-secondary btn-sm" onclick="facAct('remove', '${g.id}', '${p.id}')">${mine.includes(g.id) ? 'Remove from my group' : 'Remove from this coach'}</button>` : ''}
+        ${mgr ? `<button class="btn btn-danger btn-sm" onclick="armRemoveRosterPitcher('${p.id}')">Remove from facility</button>` : ''}
+        ${last ? `<p class="note-hint">This is their only coach here, so removing them from the group also takes them off the facility.</p>` : ''}
+        ${state.facError ? `<p class="report-status report-status-error">${escHtml(state.facError)}</p>` : ''}
+      </div>${mgr && state.removeArmedPitcherId === p.id ? removeConfirm(p) : ''}`;
+    } else if(state.facError && state.facErrorKey === key){
+      panel += `<p class="report-status report-status-error fac-row-actions">${escHtml(state.facError)}</p>`;
+    }
+    return rosterRow(p, { tags, right, panel });
+  };
+  if(!mgr){
+    return (state.roster || []).map(p => row(p, groups.find(g => mine.includes(g.id) && (p.groups || []).some(y => y.id === g.id)) || null)).join('');
+  }
+  const shut = state.facCollapsed || {};
+  const section = (id, title, list) => {
+    const n = list.filter(p => (p.groups || []).some(y => y.isNew && y.id === id)).length;
+    return `<div class="fac-group">
+      <button type="button" class="fac-group-head" aria-expanded="${!shut[id]}" onclick="toggleFacGroup('${id}')"><span class="fac-group-name">${title}</span><span class="fac-group-count">${list.length}${n ? ` · <span class="fac-new-count">${n} new</span>` : ''}</span><span class="roster-chevron${shut[id] ? '' : ' open'}">▾</span></button>
+      ${shut[id] ? '' : (list.length ? list.map(p => row(p, groups.find(g => g.id === id) || null)).join('') : '<p class="fac-empty">No pitchers yet.</p>')}
+    </div>`;
+  };
+  const inGroup = id => (state.roster || []).filter(p => (p.groups || []).some(y => y.id === id));
+  const loose = (state.roster || []).filter(p => !(p.groups || []).length);
+  return groups.map(g => section(g.id, escHtml(g.coachName) + (mine.includes(g.id) ? ' (you)' : ''), inGroup(g.id))).join('')
+    + section('none', 'No coach yet', loose);
+}
+window.toggleFacMenu = function(key){ state.facMenu = state.facMenu === key ? null : key; state.facError = ''; state.removeArmedPitcherId = null; render(); };
+window.toggleFacGroup = function(id){ state.facCollapsed = Object.assign({}, state.facCollapsed, { [id]: !(state.facCollapsed || {})[id] }); render(); };
+const FAC_ERRORS = {
+  not_allowed: "Only the facility manager or this pitcher's own coach can do that.",
+  not_on_side: "That pitcher isn't on this side of the facility any more.",
+  not_in_group: "They're not in that group any more.",
+  team_archived: 'This facility is archived, so it is read only.',
+  other_side: 'Pick a coach on this side of the facility.',
+  not_found: 'That coach group is gone. Reload to see the current roster.'
+};
+window.facAct = async function(kind, groupId, pitcherId, toGroup){
+  if((kind === 'move' || kind === 'add') && !toGroup) return;
+  const key = pitcherId + ':' + (groupId || 'none');
+  state.facErrorKey = key;
+  if(!isOnline()){ state.facError = 'Changing groups needs a connection.'; render(); return; }
+  const call = kind === 'clear' ? ['clear_new_flag', { p_group: groupId, p_pitcher: pitcherId }]
+    : kind === 'remove' ? ['remove_from_group', { p_group: groupId, p_pitcher: pitcherId }]
+    : kind === 'move' ? ['move_between_groups', { p_pitcher: pitcherId, p_from: groupId, p_to: toGroup }]
+    : ['add_to_group', { p_group: toGroup, p_pitcher: pitcherId }];
+  state.facError = '';
+  let res;
+  try{ res = await netTimeout(supabaseClient.rpc(call[0], call[1]), 10000); }catch(e){ res = { error: e }; }
+  const data = res && res.data;
+  if(res.error || !data || !data.ok){
+    state.facError = (data && FAC_ERRORS[data.error]) || "Couldn't save that. Check your connection and try again.";
+    render();
+    return;
+  }
+  state.facMenu = null; state.facErrorKey = null;
+  await loadRosterForTeam(state.currentTeamId);
+  if(data.left_side && state.currentPitcherId === pitcherId) state.currentPitcherId = state.roster.length ? state.roster[0].id : null;
+  await saveLastKnownContext();
+  render();
+};
+
 window.armRemoveRosterPitcher = function(pitcherId){
   state.removeArmedPitcherId = pitcherId;
   render();
@@ -5800,6 +5937,7 @@ function myUid(){ return state.profile && state.profile.id; }
 function myProfileIds(){ return (state.myProfiles || []).map(p => p.id).concat(state.profile ? [state.profile.id] : []); }
 function isMine(id){ return !!id && myProfileIds().includes(id); }
 function renderSessionNotes(s){
+  if(isFacilityTeam(s.teamId)) return '';   // F1-A: no notes in a facility (Chat replaces them, F1-C)
   const notes = s.notes || [];
   const coach = isCoach() && !s.otherTeam;   // R4: only the recording team's coaches add notes
   if(!coach && !notes.length) return '';
@@ -12284,7 +12422,7 @@ function renderRelAccuracySection(p){
    "as of". None of this ever runs on the charting path. */
 const LB_WINDOWS = [['week', 'Week'], ['month', 'Month'], ['all', 'All-time']];
 const LB_CATS = [['velocity', 'Velocity'], ['accuracy', 'Accuracy'], ['strike', 'Strike %']];
-function hasLeaderboard(){ return activeTeams().length > 0 && !currentTeamArchived() && sportCfg().hasLeaderboard; }   // cached membership: works offline; never for softball (S1)
+function hasLeaderboard(){ return activeTeams().length > 0 && !currentTeamArchived() && !currentTeamIsFacility() && sportCfg().hasLeaderboard; }   // F1-A: never on a facility   // cached membership: works offline; never for softball (S1)
 function escHtml(v){
   return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 }
@@ -13544,7 +13682,14 @@ function render(){
     // an assistant (the server would refuse it anyway; see is_team_head),
     // never just disabled, so there's nothing there to explain.
     const canRemovePitcher = isHeadOfCurrentTeam() && !currentTeamArchived();   // P1-09: read-only
-    const rosterItems = state.roster.map((p, i) => `
+    const removeConfirm = p => `
+          <div class="invite-regen-warn" style="padding:0 var(--s-4) var(--s-8);">Removes ${escHtml(p.name)} from this ${currentTeamIsFacility() ? 'facility' : "team's roster"} and emails them to let them know. Their sessions and stats aren't deleted -- only this ${currentTeamIsFacility() ? 'facility' : "team"}'s view of them.</div>
+          <div class="invite-regen-confirm-row" style="padding:0 var(--s-4) var(--s-8);">
+            <button class="btn btn-danger" ${state.removeBusy ? 'disabled' : ''} onclick="confirmRemoveRosterPitcher('${p.id}')">${state.removeBusy ? 'Removing…' : 'Remove now'}</button>
+            <button class="btn btn-secondary" ${state.removeBusy ? 'disabled' : ''} onclick="cancelRemoveRosterPitcher()">Cancel</button>
+          </div>`;
+    // One roster row. x (F1-A, facility sides): tags after the name, the button on the right, and the panel under it.
+    const rosterRow = (p, x) => `
       <div class="roster-item-wrap">
         <div class="roster-item${p.id===state.currentPitcherId?' active':''}" style="display:flex;">
           ${hasRosterDot(p.id) ? '<span class="roster-dot" aria-label="New session"></span>' : ''}
@@ -13552,19 +13697,15 @@ function render(){
             <div class="roster-item-main">
               <span class="roster-item-name">${escHtml(p.name)}${p.throws ? `<span class="throws-tag">${p.throws}HP</span>` : ''}</span>${p.closingOn ? `<span class="closing-tag">Account closing ${escHtml(new Date(p.closingOn).toLocaleDateString(undefined, { month:'short', day:'numeric' }))}</span>` : ''}
               <span class="roster-item-types">${p.pitchTypes.map(pitchLabel).join(' · ') || 'No pitches set yet'}</span>${workloadRosterLine(p.id)}
-              ${p.emailConfirmed ? '' : '<span class="verify-badge roster-verify-badge">Unverified</span>'}${p.guardianPending ? '<span class="verify-badge roster-verify-badge">Guardian pending</span>' : ''}${p.managed ? '<span class="verify-badge roster-verify-badge parent-badge">Parent account</span>' : ''}
+              ${p.emailConfirmed ? '' : '<span class="verify-badge roster-verify-badge">Unverified</span>'}${p.guardianPending ? '<span class="verify-badge roster-verify-badge">Guardian pending</span>' : ''}${p.managed ? '<span class="verify-badge roster-verify-badge parent-badge">Parent account</span>' : ''}${x ? x.tags : ''}
             </div>
             <span class="roster-item-num">${p.uniformNumber === null ? '—' : p.uniformNumber}</span>
           </button>
-          ${canRemovePitcher ? `<button class="btn btn-icon btn-danger btn-sm roster-item-remove" title="Remove ${escHtml(p.name)} from this team" onclick="event.stopPropagation();armRemoveRosterPitcher('${p.id}')">✕</button>` : ''}
+          ${x ? x.right : (canRemovePitcher ? `<button class="btn btn-icon btn-danger btn-sm roster-item-remove" title="Remove ${escHtml(p.name)} from this team" onclick="event.stopPropagation();armRemoveRosterPitcher('${p.id}')">✕</button>` : '')}
         </div>
-        ${(canRemovePitcher && state.removeArmedPitcherId === p.id) ? `
-          <div class="invite-regen-warn" style="padding:0 var(--s-4) var(--s-8);">Removes ${escHtml(p.name)} from this team's roster and emails them to let them know. Their sessions and stats aren't deleted -- only this team's view of them.</div>
-          <div class="invite-regen-confirm-row" style="padding:0 var(--s-4) var(--s-8);">
-            <button class="btn btn-danger" ${state.removeBusy ? 'disabled' : ''} onclick="confirmRemoveRosterPitcher('${p.id}')">${state.removeBusy ? 'Removing…' : 'Remove now'}</button>
-            <button class="btn btn-secondary" ${state.removeBusy ? 'disabled' : ''} onclick="cancelRemoveRosterPitcher()">Cancel</button>
-          </div>` : ''}
-      </div>`).join('');
+        ${x ? x.panel : ((canRemovePitcher && state.removeArmedPitcherId === p.id) ? removeConfirm(p) : '')}
+      </div>`;
+    const rosterItems = currentTeamIsFacility() ? renderFacilityRoster(rosterRow, removeConfirm) : state.roster.map(p => rosterRow(p, null)).join('');
 
     // R6: the pitcher invite link (and the new coach invite link) moved
     // off the main page entirely, into the coach Profile tab's admin
@@ -13579,12 +13720,13 @@ function render(){
     const selectedForLabel = state.roster.find(x => x.id === state.currentPitcherId);
     const dottedCount = state.roster.filter(x => hasRosterDot(x.id)).length;   // U10 (3)
     const rosterLabel = collapsed && selectedForLabel ? `Roster · ${escHtml(selectedForLabel.name)}` : 'Roster';
+    const facNew = facilityNewCount();   // F1-A: the manager's dot for new joins
     sidebarBody = `
       <div class="team-line">${teamSelector}<button class="btn btn-secondary show-phone coach-profile-link" onclick="setView('profile')">Profile</button></div>
       ${canCollapse ? `<button class="btn btn-secondary roster-toggle-btn" onclick="toggleRosterCollapsed()" aria-expanded="${collapsed ? 'false' : 'true'}">
-        <span style="display:flex;align-items:center;min-width:0;"><span class="roster-label" style="margin:0;">${rosterLabel}</span>${collapsed && dottedCount ? `<span class="roster-dot-count" aria-label="${dottedCount} with new sessions">${dottedCount}</span>` : ''}</span>
+        <span style="display:flex;align-items:center;min-width:0;"><span class="roster-label" style="margin:0;">${rosterLabel}</span>${collapsed && dottedCount ? `<span class="roster-dot-count" aria-label="${dottedCount} with new sessions">${dottedCount}</span>` : ''}${facNew ? `<span class="fac-new-count" aria-label="${facNew} new">${facNew} new</span>` : ''}</span>
         <span class="roster-chevron${collapsed ? '' : ' open'}">▾</span>
-      </button>` : `<div class="roster-label" style="margin:0;">Roster</div>`}
+      </button>` : `<div class="roster-label" style="margin:0;">Roster${facNew ? ` <span class="fac-new-count" aria-label="${facNew} new">${facNew} new</span>` : ''}</div>`}
       <div class="roster-collapse${collapsed ? ' collapsed' : ''}">
         <div class="roster-list">${rosterItems || '<p style="color:var(--ink-faint);font-size:12px;">No pitchers on this team yet.</p>'}</div>
       </div>`;

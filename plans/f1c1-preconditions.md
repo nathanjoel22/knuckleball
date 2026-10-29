@@ -66,7 +66,7 @@ means a version bump, which Joel approves.
 6. **Account deletion and export (A1):**
    - `a1_purge_profile` deletes a person's notes today, and would need to handle chat (the H1-style single exception).
    - `export-account` (the ZIP) has no chat today.
-7. **Policy pages:** both are Version 2026-10-17 and approved by Joel. Any text change needs his re-approval.
+7. **Policy pages:** both are Version 2026-10-17 and approved by Joel. Any text change needs Joel's re-approval.
 
 ## Decisions needed
 

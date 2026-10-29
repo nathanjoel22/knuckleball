@@ -15,6 +15,34 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-29 · SEO / privacy hygiene (canonical, noindex, robots.txt, sitemap) · **branch, PR open (not merged)**
+- **Asked by:** Joel (the pasted packet). Operator `Nathan <joelhauserman@gmail.com>`. Branch `seo-canonical`.
+  **Cache:** v318. No database change.
+- **Built:**
+  - `<link rel="canonical">` (bare path, no query) on signin, help, privacy and terms. `index.html` already had
+    `https://knuckleballonline.com/`.
+  - `<meta name="robots" content="noindex, nofollow">` on the 13 app and private pages.
+  - `robots.txt`: allows `/` and the five public pages, disallows the 13 pages, and gives the sitemap.
+  - `sitemap.xml`: the five public pages.
+  - Head tags only. `privacy.html` / `terms.html` text is unchanged.
+- **Checks:**
+  - **`report.html`'s inline script:** its SHA-256 is still `1d1xsDiJ…` and matches its CSP, before and after (the
+    robots tag sits after the CSP meta).
+  - **Frozen report files** (the `reports` bucket) are already served by Supabase Storage with
+    `X-Robots-Tag: none`, `Content-Type: text/plain`, `CSP: default-src 'none'; sandbox` and
+    `Cache-Control: private, no-cache` (checked on one staging and one production file, headers only). Storage has
+    no per-object custom headers (upload sets only content type and cache control), so there's nothing to change.
+  - **`www.knuckleballonline.com`:** a CNAME to `nathanjoel22.github.io`. It answers **301** to the apex, keeping
+    the path and query, for http and https.
+  - **Found:** `http://knuckleballonline.com/` answers **200** over plain http, with no redirect to https. GitHub
+    Pages' "Enforce HTTPS" (repo Settings → Pages) would fix it. Not changed.
+- **Open, Joel's decisions:**
+  - **`signin.html`** has carried `noindex` since L1, yet the packet makes it public: canonical, allowed, in the
+    sitemap. Left as `noindex` for now. Either drop the noindex, or take it out of the sitemap and robots allow list.
+  - **robots.txt + noindex:** disallowing the 13 pages in robots.txt means crawlers never fetch them, so they never
+    see their `noindex` tag. A URL linked from elsewhere can still be listed without its content. Google's advice is
+    to let noindex pages be crawled. Built as the packet asked.
+
 ## 2026-10-28 · SC1-B (switch the reads to session_stats) · **production**
 - **Asked by:** Joel ("lets do C", then: the stats-cell plot, keep History on the device, today's innings via v2, the
   v2 migration). Operator `Nathan <joelhauserman@gmail.com>`. Branch `sc1b-reads`. **Cache:** v317.

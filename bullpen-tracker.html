@@ -3880,7 +3880,9 @@ function rosterCanCollapse(){
    its top) and Profile. It slides away while scrolling down and comes back on scrolling up.
    Oct 26 (Joel): Trends added, and pitchers get the bar too -- Home, Charts, Trends, Profile (no Roster).
    Later Oct 26 (Joel): History gets its own button between Charts and Trends, and Charts now opens the "What will
-   we be charting today?" question (Bullpen / Live Game) -- or Resume -- instead of History. */
+   we be charting today?" question (Bullpen / Live Game) -- or Resume -- instead of History.
+   Oct 29 (Joel): History and Trends are one button, Analysis (History's icon). It opens History and stays lit on
+   History and Trends; Trends is one tap away in the page's tabs. */
 const DOCK_ICONS = {
   home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.2 12 4l9 7.2"/><path d="M5.5 9.6V20h4.8v-5.4h3.4V20h4.8V9.6"/></svg>',
   charts: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="M8.5 10h7M8.5 13.5h7M8.5 17h4.5"/></svg>',
@@ -3890,13 +3892,13 @@ const DOCK_ICONS = {
   profile: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.6"/></svg>'
 };
 function coachDockShown(phoneSession){ return !!state.profile && (isCoach() || state.profile.role === 'pitcher') && isPhoneWidth() && !phoneSession; }
-function dockKeys(){ return isCoach() ? ['home', 'charts', 'history', 'trends', 'roster', 'profile'] : ['home', 'charts', 'history', 'trends', 'profile']; }
-const DOCK_LABELS = { home: 'Home', charts: 'Charts', history: 'History', trends: 'Trends', roster: 'Roster', profile: 'Profile' };
+function dockKeys(){ return isCoach() ? ['home', 'charts', 'history', 'roster', 'profile'] : ['home', 'charts', 'history', 'profile']; }
+const DOCK_LABELS = { home: 'Home', charts: 'Charts', history: 'Analysis', roster: 'Roster', profile: 'Profile' };
 function dockActiveIndex(){
   const keys = dockKeys();
   if(isCoach() && state.dockRoster && !state.rosterCollapsed) return keys.indexOf('roster');   // Roster stays lit while its list is open
   const v = state.view;
-  return keys.indexOf(v === 'home' ? 'home' : v === 'session' ? 'charts' : v === 'history' ? 'history' : v === 'trends' ? 'trends' : v === 'profile' ? 'profile' : '');   // Oct 12: Home is the Home screen
+  return keys.indexOf(v === 'home' ? 'home' : v === 'session' ? 'charts' : (v === 'history' || v === 'trends') ? 'history' : v === 'profile' ? 'profile' : '');   // Oct 12: Home is the Home screen
 }
 function renderCoachDock(){
   const idx = dockActiveIndex(), keys = dockKeys();
@@ -3936,7 +3938,7 @@ window.dockGo = function(where){
   }
   state.rosterCollapsed = rosterCanCollapse();   // Joel, Oct 8: any other button rolls the roster back up
   // Charts: the Bullpen / Live Game question (or Resume); a coach on an archived team has no New Session, so History
-  setView(where === 'home' ? 'home' : where === 'charts' ? ((isCoach() && currentTeamArchived()) ? 'history' : 'session') : where === 'history' ? 'history' : where === 'trends' ? 'trends' : 'profile');
+  setView(where === 'home' ? 'home' : where === 'charts' ? ((isCoach() && currentTeamArchived()) ? 'history' : 'session') : where === 'history' ? 'history' : 'profile');
   // ...and lands with the box holding the pitcher's name at the top of the screen (Profile has no pitcher
   // box -- it lands at the top of the page's content).
   const anchor = document.querySelector('.pitcher-header') || document.querySelector('.main');

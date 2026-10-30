@@ -98,6 +98,17 @@ async function buildExport(admin: any, user: { id: string; email?: string }) {
   // F1-C1 (decision D): the chat messages this login wrote (a deleted one included -- it's still theirs)
   const chat = await all(() => admin.from('chat_messages').select('id, thread_id, author_name, author_role, body, created_at, deleted_at, pinned_at')
     .eq('author_login', user.id).order('created_at'))
+  // F1-G: who is linked to the players this login created, and the players this login is linked to
+  const linksOnMine = await all(() => admin.from('player_links').select('player_id, login, role, created_at, profiles!player_links_player_id_fkey(full_name)').in('player_id', ids))
+  const names = new Map<string, string>()
+  for (const c of chunk([...new Set(linksOnMine.map((l: any) => l.login))], 150)) {
+    (await all(() => admin.from('profiles').select('id, full_name').in('id', c))).forEach((p: any) => names.set(p.id, p.full_name))
+  }
+  const linksIHave = await all(() => admin.from('player_links').select('player_id, role, created_at, profiles!player_links_player_id_fkey(full_name)').eq('login', user.id))
+  const links = [
+    ...linksOnMine.map((l: any) => ({ direction: 'has access to your player', player: l.profiles?.full_name ?? null, person: names.get(l.login) ?? null, role: l.role, since: l.created_at })),
+    ...linksIHave.map((l: any) => ({ direction: 'you have access to', player: l.profiles?.full_name ?? null, person: null, role: l.role, since: l.created_at }))
+  ]
 
   const profileJson = {
     exported_at: new Date().toISOString(),
@@ -113,8 +124,9 @@ async function buildExport(admin: any, user: { id: string; email?: string }) {
     { name: 'game_events.csv', data: toCsv(events) },
     { name: 'notes.csv', data: toCsv(notes) },
     { name: 'chat_messages.csv', data: toCsv(chat) },
+    { name: 'player_access.csv', data: toCsv(links) },
     { name: 'reports.txt', data: (reports.length ? reports.join('\n') : 'No reports.') + '\n' },
-    { name: 'README.txt', data: README(sessions.length, pitches.length, events.length, notes.length, chat.length) }
+    { name: 'README.txt', data: README(sessions.length, pitches.length, events.length, notes.length, chat.length, links.length) }
   ]
 }
 
@@ -129,7 +141,7 @@ function toCsv(rows: any[]): string {
   return [cols.join(','), ...rows.map((r) => cols.map((c) => cell(r[c])).join(','))].join('\r\n') + '\r\n'
 }
 
-const README = (ns: number, np: number, ne: number, nn: number, nc: number) => `Knuckleball -- your data
+const README = (ns: number, np: number, ne: number, nn: number, nc: number, nl: number) => `Knuckleball -- your data
 Exported ${new Date().toISOString()}. Everything Knuckleball holds about this login.
 
 profile.json     Every profile on this login (a login can hold several: a coach, a pitcher, a parent's players):
@@ -145,6 +157,8 @@ pitches.csv      ${np} pitches, every stored column. Coordinates are the CATCHER
 game_events.csv  ${ne} Live Game events that aren't pitches (steals, balks, automatic balls/strikes, ...).
 notes.csv        ${nn} notes you wrote on sessions.
 chat_messages.csv ${nc} chat messages you wrote at a training facility (body is the text; deleted_at marks one you deleted).
+player_access.csv ${nl} links: who else can see a player you created (a parent/guardian, the player's own sign-in, or
+                 friends and family), and the players you can see.
 reports.txt      Links to the session reports. Anyone with a link can open it; links stop working when the
                  session or the account is deleted.
 

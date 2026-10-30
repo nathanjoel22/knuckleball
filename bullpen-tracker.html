@@ -495,6 +495,13 @@
   .fac-new-tag{ background:var(--accent); color:var(--on-accent, var(--ink)); border-color:transparent; }
   .fac-new-count{ display:inline-block; margin-left:var(--s-6); padding:0 var(--s-6); border-radius:999px; background:var(--accent); color:var(--on-accent, var(--ink)); font-size:11px; font-weight:700; line-height:18px; }
   .fac-group{ display:flex; flex-direction:column; gap:var(--s-6); }
+  /* F1-G: who can see a parent-created player (the creator's Profile) */
+  .player-access .link-row{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--s-8); padding:var(--s-8) 0; border-top:1px solid var(--border); }
+  .player-access .link-who{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .player-access .link-who .profile-note{ margin:0; }
+  .player-access .link-pending .invite-link-panel{ flex:1 1 100%; min-width:0; }
+  .player-access .link-act{ display:flex; gap:var(--s-6); flex-wrap:wrap; }
+  .player-access .link-adds{ flex-wrap:wrap; gap:var(--s-8); margin-top:var(--s-8); }
   .fac-group + .fac-group{ margin-top:var(--s-8); }
   .fac-group-head{ display:flex; align-items:center; gap:var(--s-8); width:100%; padding:var(--s-6) var(--s-4); background:none; border:0; border-bottom:1px solid var(--surface-border); color:var(--ink); font:inherit; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; text-align:left; cursor:pointer; }
   .fac-group-name{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -2192,6 +2199,17 @@ function mapProfile(row){
   return { id: row.id, name: row.full_name, pitchTypes: row.pitch_types || [], contactEmails: row.contact_emails || {}, throws: row.throws || null, relativeAccuracy: !!row.relative_accuracy_enabled, usesRadarGun: !!row.uses_radar_gun, setupDismissedAt: row.setup_dismissed_at || null, uniformNumber: null, headshotUpdatedAt: row.headshot_updated_at || null, level: row.level || null };
 }
 function isCoach(){ return state.profile && state.profile.role === 'coach'; }
+// F1-G (Oct 29 2026): a player linked to this login by the parent who created them (my_linked_players): 'guardian'
+// (the second parent: charts, sees everything, chats), 'child' (the player's own sign-in, 13-17: the same) or 'family'
+// (friends and family: the charting history only). The row isn't this login's own, so the creator-only controls hide
+// (name, pitch mix, contacts, teams, deleting, links); the server refuses them anyway.
+function linkedRole(p){ return (p && p.linked_role) || null; }
+function activeLinked(){ return linkedRole(state.profile); }
+function viewOnlyLinked(){ return activeLinked() === 'family'; }
+// a parent's or a child sign-in's own primary profile: never charts, never shown in the switcher
+function isAccountOnlyProfile(p){ return !!p && (p.role === 'parent' || p.role === 'child'); }
+// the parent-created player on this login (the creator acts for them, and manages their links)
+function activePlayerIsMine(){ const me = state.profile; return !!(me && me.managed_by && !linkedRole(me) && state.session && me.id !== state.session.user.id); }
 // R6: UI-side mirror of is_team_head -- every admin control also hides
 // itself for an assistant (packet approach f: "the helper is the gate;
 // the UI is not" -- meaning the SERVER never trusts this, but a hidden
@@ -2241,6 +2259,7 @@ function currentPitcher(){
 // send-session-report is the real enforcement; this only drives what the
 // UI shows and sends -- see that function's own comment.
 function currentPitcherVerified(p){
+  if(activeLinked()) return true;   // F1-G: the creating parent's login is the player's; the server checks it and names the reason
   return isCoach() ? !!(p && p.emailConfirmed) : !!state.myVerification.emailConfirmed;
 }
 // U4b Phase 2, UI half: whether the currently-viewed pitcher currently has
@@ -2271,6 +2290,7 @@ function myGuardianPending(){ const a = myAccountProfile(); return !!(a && a.age
 function currentPitcherConsent(p){
   if(isCoach()) return !!(p && p.ageAnswered && !p.guardianPending);
   const a = myAccountProfile();
+  if(activeLinked()) return true;   // F1-G: the server checks the player's consent and names the reason
   if(state.profile && state.profile.managed_by && !state.profile.guardian_consented_at) return false;   // S4 B6
   return !!(a && (a.age_attestation === 'adult' || a.guardian_consented_at));
 }
@@ -2315,8 +2335,20 @@ async function sendGuardianEmail(){
   }), 15000);
   try{ return await res.json(); }catch(e){ return { error: 'bad_response' }; }
 }
+// S4 + F1-G: the profiles this login owns, then the players linked to it (my_linked_players). If the linked list can't
+// be fetched, the ones already known stay, so a slow call never drops the player being charted.
+async function fetchMyProfiles(uid){
+  const { data, error } = await netTimeout(supabaseClient.from('profiles').select(PROFILE_COLS).eq('account_id', uid), 10000);
+  if(error || !data) return { data, error };
+  let linked = (state.myProfiles || []).filter(p => p.linked_role);
+  try{
+    const r = await netTimeout(supabaseClient.rpc('my_linked_players'), 10000);
+    if(!r.error && Array.isArray(r.data)) linked = r.data;
+  }catch(e){ /* keep the known ones */ }
+  return { data: data.concat(linked), error: null };
+}
 async function reloadMyProfiles(){
-  const { data } = await netTimeout(supabaseClient.from('profiles').select(PROFILE_COLS).eq('account_id', state.session.user.id), 10000);
+  const { data } = await fetchMyProfiles(state.session.user.id);
   if(data && data.length){
     state.myProfiles = data;
     const act = data.find(x => x.id === state.profile.id);
@@ -2470,7 +2502,7 @@ function currentPitcherOnTeam(p){
 // currentPitcherVerified(p) already reads state.myVerification for that
 // case, since there p IS the caller.
 function currentCallerVerified(){
-  return isCoach() ? !!state.myVerification.emailConfirmed : true;
+  return (isCoach() || activeLinked()) ? !!state.myVerification.emailConfirmed : true;   // F1-G: a linked parent or child sends as themselves
 }
 function isStrikeCell(row, col){ return row >= 1 && row <= 3 && col >= 1 && col <= 3; }
 // Zone numbering protocol (D8, Sept 9 2026): 1/4/7 = inside, 2/5/8 = middle,
@@ -2813,7 +2845,7 @@ async function loadFullContextOnline(alreadyPainted){
   // S4: every profile this login owns; the ACTIVE one runs the app.
   let mine = [profile];
   try{
-    const { data: owned } = await netTimeout(supabaseClient.from('profiles').select(PROFILE_COLS).eq('account_id', session.user.id));
+    const { data: owned } = await fetchMyProfiles(session.user.id);
     if(owned && owned.length) mine = owned;
   }catch(e){ /* keep the primary alone */ }
   state.myProfiles = mine;
@@ -2840,7 +2872,7 @@ async function loadFullContextOnline(alreadyPainted){
   }catch(e){ /* keep whatever was cached */ }
 
   // S4 B2: a parent login with no players yet has nothing to chart -- it adds one.
-  if(state.profile.role === 'parent'){
+  if(isAccountOnlyProfile(state.profile)){   // F1-G: also a child sign-in no longer linked to a player
     state.teams = []; state.roster = [];
     state.setupNeeded = null;
     state.loaded = true;
@@ -2883,7 +2915,7 @@ async function loadFullContextOnline(alreadyPainted){
   // Bullpen/Live Game chooser needs to be reachable underneath it on a
   // brand-new pitcher's very first New Session too, which a full-page
   // takeover would have blocked.
-  if(!isCoach() && state.profile && !state.profile.setup_dismissed_at && !state.draftAvailable){
+  if(!isCoach() && state.profile && !state.profile.setup_dismissed_at && !state.draftAvailable && !activeLinked()){   // F1-G: the creator sets the profile up
     state.showSetupModal = true;
   }
   // Joel, Oct 1 (both sports): a brand-new coach -- head of a team with no
@@ -3403,12 +3435,12 @@ function pickActiveProfile(list, uid){
   lsDel('kb:signinSport'); lsDel('kb:signinRole');
   const stored = lsGet(activeProfileKey(uid));
   // S4 B2: a parent profile never charts -- only picked when the login has nothing else.
-  const chartable = list.filter(p => p.role !== 'parent');
+  const chartable = list.filter(p => !isAccountOnlyProfile(p));   // F1-G: nor a child sign-in's own
   const fallback = chartable.find(p => p.id === stored) || chartable.find(p => p.is_primary) || chartable[0]
     || list.find(p => p.id === stored) || list[0];
   let pick = fallback;
   if(signinSport){
-    const ofSport = list.filter(p => p.role !== 'parent' && p.sport === signinSport);
+    const ofSport = list.filter(p => !isAccountOnlyProfile(p) && p.sport === signinSport);
     const byRole = signinRole ? ofSport.filter(p => p.role === signinRole) : [];
     const pool = byRole.length ? byRole : ofSport;
     if(pool.length === 1) pick = pool[0];
@@ -3497,7 +3529,7 @@ async function warmOtherProfiles(){
   if(!state.session || !isOnline()) return;
   const uid = state.session.user.id;
   for(const prof of (state.myProfiles || [])){
-    if(!state.profile || prof.id === state.profile.id || prof.role === 'parent') continue;
+    if(!state.profile || prof.id === state.profile.id || isAccountOnlyProfile(prof)) continue;
     try{
       const key = lastKnownKey(uid) + ':' + prof.id;
       if(await storGet(key)) continue;
@@ -3530,7 +3562,7 @@ window.addSport = async function(sport){
   try{
     const { data: newId, error } = await netTimeout(supabaseClient.rpc('add_sport_profile', { p_sport: sport }), 10000);
     if(error) throw error;
-    const { data: owned, error: e2 } = await netTimeout(supabaseClient.from('profiles').select(PROFILE_COLS).eq('account_id', state.session.user.id), 10000);
+    const { data: owned, error: e2 } = await fetchMyProfiles(state.session.user.id);
     if(e2) throw e2;
     state.myProfiles = owned || state.myProfiles;
     state.addSportBanner = null;
@@ -3559,12 +3591,12 @@ function sportsToAdd(){
 function renderAccountButton(){
   if(!state.profile) return '';
   const all = state.myProfiles && state.myProfiles.length ? state.myProfiles : [state.profile];
-  const list = all.filter(p => p.role !== 'parent');   // a parent profile never charts (S4 B2)
+  const list = all.filter(p => !isAccountOnlyProfile(p));   // a parent profile never charts (S4 B2), nor a child sign-in's own (F1-G)
   const menu = state.acctOpen ? `<div class="acct-menu" role="menu">
       ${state.myVerification && state.myVerification.email ? `<div class="acct-email">${escHtml(state.myVerification.email)}</div>` : ''}
       ${list.map(p => `<button type="button" class="btn btn-tertiary acct-item${p.id === state.profile.id ? ' is-selected' : ''}" role="menuitem" onclick="switchProfile('${p.id}')">
           <span class="acct-avatar">${escHtml(initialsOf(p.full_name))}</span>
-          <span class="acct-who"><span class="acct-name">${escHtml(p.full_name)}${p.managed_by ? ' <span class="acct-badge">Player</span>' : ''}</span>
+          <span class="acct-who"><span class="acct-name">${escHtml(p.full_name)}${p.linked_role ? (p.linked_role === 'child' ? '' : ` <span class="acct-badge">${p.linked_role === 'family' ? 'View only' : 'Parent'}</span>`) : p.managed_by ? ' <span class="acct-badge">Player</span>' : ''}</span>
             <span class="acct-meta">${profileChip(p)} ${ROLE_NAME[p.role] || ''}</span></span>
           ${p.id === state.profile.id ? '<span class="acct-check" aria-label="Active">✓</span>' : ''}
         </button>`).join('')}
@@ -3658,7 +3690,7 @@ window.submitAddPlayer = async function(){
       render();
       return;
     }
-    const { data: owned } = await netTimeout(supabaseClient.from('profiles').select(PROFILE_COLS).eq('account_id', state.session.user.id), 10000);
+    const { data: owned } = await fetchMyProfiles(state.session.user.id);
     if(owned && owned.length) state.myProfiles = owned;
     state.addPlayerBusy = false; state.addPlayerOpen = false; state.addPlayer = null;
     await switchProfile(data.id);
@@ -3982,7 +4014,7 @@ const DOCK_ICONS = {
 };
 function coachDockShown(phoneSession){ return !!state.profile && (isCoach() || state.profile.role === 'pitcher') && isPhoneWidth() && !phoneSession; }
 // F1-C1 (Joel, A): Chat after Analysis, only for someone with a facility (a facility coach's bar is then six buttons).
-function dockKeys(){ const chat = chatEnabled() ? ['chat'] : []; return isCoach() ? ['home', 'charts', 'history', ...chat, 'roster', 'profile'] : ['home', 'charts', 'history', ...chat, 'profile']; }
+function dockKeys(){ const chat = chatEnabled() ? ['chat'] : []; const charts = viewOnlyLinked() ? [] : ['charts']; return isCoach() ? ['home', 'charts', 'history', ...chat, 'roster', 'profile'] : ['home', ...charts, 'history', ...chat, 'profile']; }
 const DOCK_LABELS = { home: 'Home', charts: 'Charts', history: 'Analysis', chat: 'Chat', roster: 'Roster', profile: 'Profile' };
 function dockActiveIndex(){
   const keys = dockKeys();
@@ -4610,7 +4642,7 @@ async function confirmEmailChangeFromLink(){
     const { data } = await netTimeout(supabaseClient.rpc('confirm_email_change'), 10000);
     if(data && data.ok){
       state.emailChangeNotice = { ok: true, email: data.email };
-      const profs = await netTimeout(supabaseClient.from('profiles').select(PROFILE_COLS).eq('account_id', state.session.user.id), 10000);
+      const profs = await fetchMyProfiles(state.session.user.id);
       if(profs && profs.data && profs.data.length){
         state.myProfiles = profs.data;
         const act = profs.data.find(x => x.id === state.profile.id);
@@ -6099,7 +6131,7 @@ function teamChipHtml(s){
 function otherTeamReportPanel(s){
   const name = (state.sessionTeamNames || {})[s.teamId] || 'its team';
   return `<div class="report-panel"><div class="field-label">Report</div>
-    <p class="report-recipients">${s.teamId ? `Charted for ${escHtml(name)}. Only that team's coaches and the pitcher can create or send its report` : 'An Independent session: only the pitcher can create or send its report'}${s.reportPath ? '.' : ' (none yet).'}</p>
+    <p class="report-recipients">${viewOnlyLinked() ? `${escHtml((state.profile && state.profile.full_name) || 'The player')}'s parents send reports. You can open one once it's made${s.reportPath ? '' : ' (none yet)'}` : s.teamId ? `Charted for ${escHtml(name)}. Only that team's coaches and the pitcher can create or send its report` : 'An Independent session: only the pitcher can create or send its report'}${viewOnlyLinked() ? '.' : s.reportPath ? '.' : ' (none yet).'}</p>
     ${s.reportPath ? `<div class="report-actions"><a class="btn btn-secondary" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>${shareReportBtn(s.reportPath)}</div>` : ''}</div>`;
 }
 window.setHistoryTeam = function(v){ state.historyTeam = v; render(); };
@@ -6429,6 +6461,7 @@ function clearDeleteState(){
 }
 window.setView = function(v){
   if(v === 'leaderboard' && !hasLeaderboard()) v = 'session';
+  if(v === 'session' && viewOnlyLinked()) v = 'history';   // F1-G: friends and family don't chart
   if(v !== 'chat') chatStopThreadPoll();   // F1-C1
   state.historyLandingNoClear = null;   // U10 (3)
   state.view = v; state.profileMsg = ''; state.uniformEditKey = null; state.lbExcludeOpen = null; clearDeleteState(); render();
@@ -6437,6 +6470,7 @@ window.setView = function(v){
   // head-only, its invite links) fresh every time Profile is opened -- a
   // handoff or removal since the last visit must never show stale data.
   if(v === 'profile' && isCoach()) loadCoachAdminData(state.currentTeamId).then(render);
+  if(v === 'profile' && activePlayerIsMine()) loadPlayerAccess();   // F1-G
 };
 window.toggleSessionExpand = function(id){
   state.expandedSessionId = state.expandedSessionId === id ? null : id;
@@ -11600,7 +11634,7 @@ async function a1LoadStatus(){
     state.a1Pending = (data && data.due_at) ? { due: data.due_at } : null;
     // a parent's player that's scheduled (the dates aren't client-readable columns; this function returns them)
     const me = state.profile;
-    if(me && me.managed_by && me.id !== state.session.user.id){
+    if(me && me.managed_by && !linkedRole(me) && me.id !== state.session.user.id){
       const { data: pd } = await supabaseClient.rpc('account_deletion_status', { p_profile: me.id });
       state.a1PlayerDue = (pd && pd.due_at) || null;
     } else state.a1PlayerDue = null;
@@ -11682,7 +11716,7 @@ window.a1KeepScheduled = async function(){ state.a1Pending = null; await signOut
 
 function renderDataSection(){
   const me = state.profile || {};
-  const isPlayer = !!me.managed_by && me.id !== (state.session && state.session.user.id);
+  const isPlayer = !!me.managed_by && !linkedRole(me) && me.id !== (state.session && state.session.user.id);
   const msg = state.a1Msg ? `<p class="profile-note a1-msg">${escHtml(state.a1Msg)}</p>` : '';
   const offline = !isOnline() ? '<p class="profile-note">Downloading or deleting needs an internet connection.</p>' : '';
   const due = isPlayer && state.a1PlayerDue;
@@ -11893,7 +11927,7 @@ function renderHistoryFilter(){
 // R6: a pitcher can always delete their own sessions, unchanged; a coach
 // needs to be the ACTIVE team's head (Joel: assistants cannot delete team
 // sessions -- narrows delete_session's coach branch to is_team_head).
-function canDeleteSessions(){ return !isCoach() || isHeadOfCurrentTeam(); }
+function canDeleteSessions(){ if(activeLinked()) return false; return !isCoach() || isHeadOfCurrentTeam(); }   // F1-G: only the creator deletes a linked player's sessions
 function renderHistoryView(){
   const p = currentPitcher();
   if(!p){ return `<div class="empty-hist">No pitcher selected.</div>`; }
@@ -11958,7 +11992,7 @@ function renderHistoryView(){
       const viewControl = s.reportPath
         ? `<a class="btn btn-secondary" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>${shareReportBtn(s.reportPath)}`
         : (pEligible ? `<button class="btn btn-secondary" onclick="viewSessionReport('${s.id}')">View report</button>` : '');
-      const reportPanel = s.otherTeam ? otherTeamReportPanel(s) : s.pending ? `
+      const reportPanel = (s.otherTeam || viewOnlyLinked()) ? otherTeamReportPanel(s) : s.pending ? `
         <div class="report-panel">
           <div class="field-label">Email this report</div>
           <p class="report-recipients">Available once this session has synced.</p>
@@ -12093,7 +12127,7 @@ function renderHistoryView(){
     const viewControl = s.reportPath
       ? `<a class="btn btn-secondary" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>${shareReportBtn(s.reportPath)}`
       : (pEligible ? `<button class="btn btn-secondary" onclick="viewSessionReport('${s.id}')">View report</button>` : '');
-    const reportPanel = s.otherTeam ? otherTeamReportPanel(s) : s.pending ? `
+    const reportPanel = (s.otherTeam || viewOnlyLinked()) ? otherTeamReportPanel(s) : s.pending ? `
       <div class="report-panel">
         <div class="field-label">Email this report</div>
         <p class="report-recipients">Available once this session has synced.</p>
@@ -12473,7 +12507,7 @@ function renderRelAccuracySection(p){
    "as of". None of this ever runs on the charting path. */
 const LB_WINDOWS = [['week', 'Week'], ['month', 'Month'], ['all', 'All-time']];
 const LB_CATS = [['velocity', 'Velocity'], ['accuracy', 'Accuracy'], ['strike', 'Strike %']];
-function hasLeaderboard(){ return activeTeams().length > 0 && !currentTeamArchived() && !currentTeamIsFacility() && sportCfg().hasLeaderboard; }   // F1-A: never on a facility   // cached membership: works offline; never for softball (S1)
+function hasLeaderboard(){ return !viewOnlyLinked() && activeTeams().length > 0 && !currentTeamArchived() && !currentTeamIsFacility() && sportCfg().hasLeaderboard; }   // F1-A: never on a facility   // cached membership: works offline; never for softball (S1)
 function escHtml(v){
   return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 }
@@ -12691,7 +12725,7 @@ function renderHomeTiles(){
   // Oct 26 (Joel): four equal squares -- Charting, History, Trends, Profile. Armcare and Mental Game stay planned
   // (their icons and the tile('armcare' / 'mental', ..., 'Coming soon', true) pattern are kept) but aren't shown.
   return `<div class="home-tiles home-four" role="navigation" aria-label="Home">
-    ${tile('charting', 'Charting', archived ? '' : "setView('session')", archived ? 'Archived team' : (state.draftAvailable ? 'Resume' : ''), archived, true)}
+    ${tile('charting', 'Charting', (archived || viewOnlyLinked()) ? '' : "setView('session')", archived ? 'Archived team' : viewOnlyLinked() ? 'View only' : (state.draftAvailable ? 'Resume' : ''), archived || viewOnlyLinked(), true)}
     ${tile('history', 'History', "setView('history')", '', false, true)}
     ${tile('trends', 'Trends', "setView('trends')", '', false, true)}
     ${tile('profile', 'Profile', "setView('profile')", '', false, true)}
@@ -12907,7 +12941,7 @@ function renderTabs(){
     ? { label: '<span class="tab-label-full">Player Profile</span><span class="tab-label-short">Player</span>', selected: state.view === 'pitcherProfile', onclick: "setView('pitcherProfile')" }
     : { label: 'Profile', selected: state.view === 'profile', onclick: "setView('profile')" };
   // P1-09: a coach has no New Session on an archived team (a pitcher keeps the tab, which explains).
-  const sessionTab = (isCoach() && currentTeamArchived()) ? null :
+  const sessionTab = ((isCoach() && currentTeamArchived()) || viewOnlyLinked()) ? null :   // F1-G: friends and family only look
     { label: state.draftAvailable ? 'Resume' : '<span class="tab-label-full">New Session</span><span class="tab-label-short">New</span>', selected: state.view === 'session', onclick: "setView('session')" };
   const tabs = [{ label: 'Home', selected: state.view === 'home', onclick: "setView('home')" }, sessionTab,
     { label: 'History' + (!isCoach() && state.profile && hasRosterDot(state.profile.id) ? '<span class="tab-dot" aria-label="New session"></span>' : ''), selected: state.view === 'history', onclick: "setView('history')" },
@@ -13340,6 +13374,7 @@ function renderProfileView(){
   if(isCoach()){
     return `<div class="profile-page">${msg}${renderNameSection(mapProfile(state.profile), true)}${renderEmailSection()}${renderPasswordSection()}${renderCoachTeamAdmin()}${renderDataSection()}</div>`;
   }
+  if(activeLinked()) return renderLinkedProfileView(msg);   // F1-G
   const p = currentPitcher();
   const uniformRows = state.teams.map(t => uniformRowHtml(t.id, state.profile.id, 'Uniform # · ' + t.name)).join('');
   return `<div class="profile-page">
@@ -13352,10 +13387,147 @@ function renderProfileView(){
     ${renderRelAccuracySection(p)}
     ${renderRadarGunSection(p, true)}
     ${renderNameSection(p, true)}
+    ${activePlayerIsMine() ? renderPlayerAccessSection() : ''}
     ${renderEmailSection()}
     ${renderPasswordSection()}
     ${renderDataSection()}
   </div>`;
+}
+/* ---------- F1-G: LINKED SIGN-INS (Joel, Oct 29 2026; plans/f1g-preconditions.md) ----------
+   The parent who created a player can give one-time links (7 days) to: the player's own sign-in (13-17), a second
+   parent or guardian (two parents in all), and up to 5 friends and family. The player then shows in the linked
+   person's switcher. Parents and the child chart, see everything and chat; friends and family see the charting
+   history only. Only the creator removes people, changes the profile or deletes the player; anyone linked can leave.
+   Making, removing and leaving need a connection; charting a linked player works offline like any profile. */
+const LINK_ROLE_NAME = { guardian: 'Parent or guardian', child: 'Their own sign-in', family: 'Friends & family' };
+function playerAccessState(){ return state.playerAccess || (state.playerAccess = { playerId: null, links: null, pending: [], busy: null, error: '', armed: null, copied: null }); }
+async function loadPlayerAccess(){
+  const a = playerAccessState(), me = state.profile;
+  if(!me || !isOnline()) return;
+  if(a.playerId !== me.id){ state.playerAccess = null; }
+  const b = playerAccessState(); b.playerId = me.id;
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('player_access', { p_player: me.id }), 10000);
+    if(error || !data || !data.ok) throw new Error((data && data.error) || (error && error.message) || 'failed');
+    b.links = data.links || []; b.pending = data.pending || []; b.error = '';
+  }catch(e){ b.error = "Couldn't load who can see this player. Check your connection."; }
+  if(state.view === 'profile') render();
+}
+function playerLinkUrl(token){ return new URL('player-link.html?t=' + encodeURIComponent(token), location.href).href; }
+window.makePlayerLink = async function(role){
+  const a = playerAccessState();
+  if(!isOnline()){ a.error = 'Making a link needs a connection.'; render(); return; }
+  a.busy = role; a.error = ''; render();
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('create_player_link', { p_player: state.profile.id, p_role: role }), 10000);
+    if(error || !data || !data.ok) a.error = (data && data.error === 'limit_reached') ? 'That role is already full.' : "Couldn't make the link. Try again.";
+  }catch(e){ a.error = "Couldn't make the link. Try again."; }
+  a.busy = null;
+  await loadPlayerAccess();
+};
+window.copyPlayerLink = async function(token){
+  const a = playerAccessState(), url = playerLinkUrl(token);
+  let ok = false;
+  try{ await navigator.clipboard.writeText(url); ok = true; }catch(e){ ok = copyTextFallback(url); }
+  a.copied = ok ? token : 'error:' + token; render();
+  setTimeout(() => { if(playerAccessState().copied && playerAccessState().copied.indexOf(token) >= 0){ playerAccessState().copied = null; render(); } }, 2500);
+};
+window.sharePlayerLink = async function(token){
+  const name = (state.profile && state.profile.full_name) || 'my player';
+  try{ await navigator.share({ title: 'Knuckleball', text: 'Follow ' + name + ' on Knuckleball', url: playerLinkUrl(token) }); }catch(e){ /* closed the sheet */ }
+};
+window.cancelPlayerLink = async function(role){
+  const a = playerAccessState();
+  try{ await netTimeout(supabaseClient.rpc('cancel_player_link', { p_player: state.profile.id, p_role: role }), 10000); }catch(e){ a.error = "Couldn't cancel the link. Try again."; }
+  await loadPlayerAccess();
+};
+window.armPlayerAccess = function(key){ playerAccessState().armed = key; render(); };
+window.removePlayerLink = async function(login){
+  const a = playerAccessState();
+  if(!isOnline()){ a.error = 'Removing someone needs a connection.'; render(); return; }
+  a.busy = 'remove'; render();
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('remove_player_link', { p_player: state.profile.id, p_login: login }), 10000);
+    if(error || !data || !data.ok) a.error = "Couldn't remove them. Try again.";
+  }catch(e){ a.error = "Couldn't remove them. Try again."; }
+  a.busy = null; a.armed = null;
+  await loadPlayerAccess();
+};
+function renderPlayerAccessSection(){
+  const a = playerAccessState(), name = escHtml(state.profile.full_name || 'this player');
+  if(!isOnline() && !a.links) return `<div class="profile-section"><h3>Who can see ${name}</h3><p class="profile-note">Connect to the internet to see or change who can see ${name}.</p></div>`;
+  if(!a.links) return `<div class="profile-section"><h3>Who can see ${name}</h3><p class="profile-note">${a.error ? escHtml(a.error) : 'Loading…'}</p></div>`;
+  const count = r => a.links.filter(l => l.role === r).length + a.pending.filter(x => x.role === r).length;
+  const linkRow = l => `<div class="link-row">
+      <div class="link-who"><strong>${escHtml(l.name || 'Someone')}</strong><span class="profile-note">${LINK_ROLE_NAME[l.role] || ''}</span></div>
+      ${a.armed === 'rm:' + l.login
+        ? `<span class="link-act"><button class="btn btn-danger btn-sm" ${a.busy ? 'disabled' : ''} onclick="removePlayerLink('${l.login}')">Remove</button><button class="btn btn-secondary btn-sm" onclick="armPlayerAccess(null)">Keep</button></span>`
+        : `<button class="btn btn-secondary btn-sm" onclick="armPlayerAccess('rm:${l.login}')">Remove</button>`}
+    </div>`;
+  const pendRow = x => {
+    const copied = a.copied === x.token ? 'Copied!' : a.copied === 'error:' + x.token ? 'Copy failed' : 'Copy';
+    return `<div class="link-row link-pending">
+      <div class="link-who"><strong>${LINK_ROLE_NAME[x.role]} · unused link</strong><span class="profile-note">Works once, until ${escHtml(new Date(x.expires_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}</span></div>
+      <div class="invite-link-panel"><div class="invite-link-row"><span class="invite-link-text">${escHtml(playerLinkUrl(x.token))}</span>
+        <button class="btn btn-secondary btn-sm invite-link-copy-btn" onclick="copyPlayerLink('${x.token}')">${copied}</button></div></div>
+      <span class="link-act">${navigator.share ? `<button class="btn btn-secondary btn-sm" onclick="sharePlayerLink('${x.token}')">Share</button>` : ''}<button class="btn btn-tertiary btn-sm" onclick="cancelPlayerLink('${x.role}')">Cancel link</button></span>
+    </div>`;
+  };
+  // one unused link per role at a time (a new one would replace it)
+  const add = (role, label, max) => count(role) < max && !a.pending.some(x => x.role === role)
+    ? `<button class="btn btn-secondary btn-sm" ${a.busy || !isOnline() ? 'disabled' : ''} onclick="makePlayerLink('${role}')">${a.busy === role ? 'Making…' : label}</button>` : '';
+  const adds = [add('child', `+ ${name}'s own sign-in (13–17)`, 1), add('guardian', '+ A parent or guardian', 1), add('family', '+ Friends & family', 5)].filter(Boolean).join('');
+  return `<div class="profile-section player-access"><h3>Who can see ${name}</h3>
+    <p class="profile-note">Give a link to ${name} (13–17) to sign in themselves, to a second parent or guardian, or to friends and family who'd like to follow along. Parents and ${name} can chart and chat with the coach; friends and family see the charting history only. Each link works once and lasts 7 days.</p>
+    ${a.links.length ? a.links.map(linkRow).join('') : `<p class="profile-note">Only you, for now.</p>`}
+    ${a.pending.map(pendRow).join('')}
+    ${adds ? `<div class="profile-row link-adds">${adds}</div>` : ''}
+    ${a.error ? `<p class="profile-note a1-msg">${escHtml(a.error)}</p>` : ''}
+  </div>`;
+}
+// A linked player's Profile: who made it, what you can do, the player's mix (read only), and Leave.
+function renderLinkedProfileView(msg){
+  const me = state.profile, role = activeLinked(), name = escHtml(me.full_name || 'This player'), by = escHtml(me.creator_name || 'their parent');
+  const what = role === 'child' ? `This is your player profile. ${by} manages it: your name, pitch mix, teams and who gets your reports.`
+    : role === 'guardian' ? `You're a parent or guardian of ${name}: you can chart, see everything and chat with ${name}'s coach. ${by} manages ${name}'s profile.`
+    : `You can see ${name}'s charting history. ${by} manages ${name}'s profile.`;
+  const a = playerAccessState();
+  const leave = role === 'child' ? '' : `<div class="profile-section"><h3>Stop following ${name}</h3>
+      <p class="profile-note">${name} leaves your list. ${by} can send you a new link later.</p>
+      ${a.armed === 'leave' ? `<div class="profile-row"><button class="btn btn-danger" ${a.busy ? 'disabled' : ''} onclick="leaveLinkedPlayer()">Stop following</button><button class="btn btn-secondary" onclick="armPlayerAccess(null)">Keep</button></div>`
+        : `<button class="btn btn-secondary" ${isOnline() ? '' : 'disabled'} onclick="armPlayerAccess('leave')">Stop following ${name}</button>`}
+      ${a.error ? `<p class="profile-note a1-msg">${escHtml(a.error)}</p>` : ''}</div>`;
+  return `<div class="profile-page">
+    ${msg}
+    <div class="profile-section"><h3>${name}</h3><p class="profile-note">${what}</p></div>
+    <div class="profile-section"><h3>Throws</h3><p class="profile-note">${me.throws === 'L' ? 'Left' : me.throws === 'R' ? 'Right' : 'Not set'}</p></div>
+    <div class="profile-section"><h3>Pitch mix</h3><p class="profile-note">${(me.pitch_types || []).map(pitchLabel).join(' · ') || 'No pitches set yet'}</p></div>
+    ${leave}
+    ${renderEmailSection()}
+    ${renderPasswordSection()}
+    ${renderDataSection()}
+  </div>`;
+}
+window.leaveLinkedPlayer = async function(){
+  const a = playerAccessState(), id = state.profile && state.profile.id;
+  if(!id || !isOnline()){ a.error = 'Stopping needs a connection.'; render(); return; }
+  a.busy = 'leave'; render();
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('leave_player', { p_player: id }), 10000);
+    if(error || !data || !data.ok) throw new Error('failed');
+  }catch(e){ a.busy = null; a.error = "Couldn't stop following. Try again."; render(); return; }
+  state.playerAccess = null;
+  const { data } = await fetchMyProfiles(state.session.user.id);
+  if(data && data.length) state.myProfiles = data;
+  const next = (state.myProfiles || []).find(p => !isAccountOnlyProfile(p)) || (state.myProfiles || []).find(p => p.is_primary);
+  if(next) await switchProfile(next.id);
+};
+// A child's sign-in whose link the parent removed.
+function renderChildUnlinkedScreen(){
+  return `<div class="main"><div class="acct-row">${renderAccountButton()}</div><div class="empty-state" style="max-width:440px;margin:0 auto;">
+    <div class="display">No player here</div>
+    <p>This sign-in isn't linked to a player any more. Ask your parent for a new link from your profile in their Knuckleball.</p>
+    <button class="btn btn-secondary" onclick="signOut()">Sign out</button></div></div>`;
 }
 // Coach editing a rostered pitcher (U9 adds name to what was already here:
 // pitch mix, throws, this team's uniform number, radar gun). Never email or
@@ -13901,6 +14073,10 @@ function render(){
     app.innerHTML = renderAccountSetupScreen();
     return;
   }
+  if(state.profile && state.profile.role === 'child'){   // F1-G: the parent removed this sign-in's link
+    app.innerHTML = renderChildUnlinkedScreen();
+    return;
+  }
   if(state.addPlayerOpen || (state.profile && state.profile.role === 'parent')){
     app.innerHTML = renderAddPlayerScreen();   // S4 B2
     return;
@@ -14046,7 +14222,7 @@ function render(){
     // Read-only here; the ONLY way to change it is the verify banner's
     // Change Email action above, which is the actual account email change.
     const myEmail = state.myVerification.email || '';
-    const contactsPanel = (!isCoach() && state.contactsOpen) ? `
+    const contactsPanel = (!isCoach() && !activeLinked() && state.contactsOpen) ? `
       <div class="contacts-panel">
         <div class="field"><span class="field-label">Coach email</span><input class="text-input" id="contact-coach" value="${escHtml(coachFieldValue)}" placeholder="coach@example.com"></div>
         <div class="field"><span class="field-label">Additional contact (optional)</span><input class="text-input" id="contact-pitching-coach" value="${escHtml(contacts.pitchingCoach||'')}" placeholder="e.g. pitching coach"></div>
@@ -14066,7 +14242,8 @@ function render(){
     // R0 item (e): persistent banner, never a blocking modal -- a pitcher
     // can look around while unverified. Item (f): Change Email is one tap
     // from here, not a separate settings hunt.
-    const verifyBanner = (!isCoach() && !state.myVerification.emailConfirmed) ? `
+    // F1-G: friends and family send no reports, so no banner for them
+    const verifyBanner = (!isCoach() && !viewOnlyLinked() && !state.myVerification.emailConfirmed) ? `
       <div class="verify-banner">
         <p>Verify your email so we can send you your reports. ${state.verifyResendStatus === 'sent' ? 'Verification email sent — check your inbox.' : ''}${state.verifyResendStatus === 'error' ? escHtml(state.verifyResendMsg || 'Could not resend — try again in a moment.') : ''}</p>
         <div class="verify-banner-actions">
@@ -14092,6 +14269,7 @@ function render(){
           ${renderBackToChooserBtn()}
           ${isCoach()
             ? `<button class="btn btn-secondary hide-phone" onclick="setView('profile')">Profile</button>`
+            : activeLinked() ? ''   // F1-G: report contacts are the creating parent's
             : `<button class="btn btn-secondary" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>`}
           ${acctInHeader ? `<div class="acct-row acct-inline">${renderAccountButton()}</div>` : ''}
         </div>

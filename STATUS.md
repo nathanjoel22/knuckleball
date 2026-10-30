@@ -15,16 +15,17 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-10-29 · F1-G (linked sign-ins for a parent's player) · **staging**, branch, PR open (not merged)
+## 2026-10-29 · F1-G (linked sign-ins for a parent's player) · **production database + functions**; site waits on PR #52 merge (v323)
 - **Asked by:** Joel ("let's do F1-G next"; answers A–L in `plans/f1g-preconditions.md`). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `f1g-player-links`. **Cache:** v323.
-- **Database (staging only):** migration `20261101000000_f1g_player_links`.
+- **Database:** migration `20261101000000_f1g_player_links` (staging, then production Oct 29 after backup `2026-10-29-2303`;
+  Joel ran the `db push`).
   - New tables: `player_links` and `player_link_invites`.
   - Profiles get the role `child`.
   - New helpers `is_linked_to` and `can_chart_for`, and the link functions.
   - 10 read rules edited; policies stay 32.
   - `sync_session`, the leaderboard, the report-reason function, the join functions and 5 chat functions updated.
-- **Edge Functions (staging):** `send-session-report` (a linked parent or the child may send to the saved contacts)
+- **Edge Functions (staging, then production Oct 29):** `send-session-report` (a linked parent or the child may send to the saved contacts)
   and `export-account` (`player_access.csv`).
 - **App:**
   - `player-link.html`: the child makes their own sign-in, and an adult signs in to or makes a parent account.
@@ -32,8 +33,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - A linked player's Profile is read-only and has "Stop following".
   - The creator's Profile has "Who can see <player>": links, Copy / Share, Cancel, Remove.
   - Friends and family get no Charts, Chat, Leaderboard, Contacts or delete.
-- **Policy pages:** DRAFT additions on `privacy.html` and `terms.html` (linked sign-ins), marked DRAFT until Joel
-  approves the words.
+- **Policy pages:** linked sign-ins additions on `privacy.html` and `terms.html`, approved by Joel Oct 29 ("yes") as a
+  quiet update: Version 2026-10-29, `TERMS_VERSION` stays 2026-10-17.
 - **Checks (staging):**
   - **F1-G acceptance:** 0 hard fails. Covered:
     - who can make links;
@@ -71,16 +72,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - friends and family also read coach notes;
   - adults need a parent account;
   - one unused link per role.
+- **Production checks (Oct 29):** structure identical to staging except `session_dots_since` (by design); policies 32;
+  no client grants on the two link tables; `schema.sql` regenerated.
 - **Open:**
-  - **Joel approves the DRAFT policy text.** That includes whether to bump `TERMS_VERSION`.
-  - **Then the production order:**
-    1. backup;
-    2. `db push` (dry run first);
-    3. deploy `send-session-report` and `export-account`;
-    4. structure check and policies 32;
-    5. regenerate `schema.sql`;
-    6. remove the DRAFT markers;
-    7. merge (v323).
+  - Merge PR #52 on "ship it" (v323), then check the live `sw.js`.
   - **Known:** a removed person's device keeps its cached copy of the player until it next loads online or signs out.
   - **Staging test data:** links on LoadTest 001, plus logins `f1g-family@example.com` and `f1g-child@example.com`.
 

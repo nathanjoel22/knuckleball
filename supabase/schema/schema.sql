@@ -205,6 +205,58 @@ $$;
 ALTER FUNCTION "public"."abandon_email_change"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."accept_player_link"("p_token" "text", "p_terms_version" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare i public.player_link_invites%rowtype; v_uid uuid := auth.uid(); v_prim public.profiles%rowtype; v_player public.profiles%rowtype;
+begin
+  if v_uid is null then return jsonb_build_object('ok', false, 'error', 'not_authenticated'); end if;
+  select * into i from public.player_link_invites where token = p_token for update;
+  if not found then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+  if i.used_at is not null then
+    if i.used_by = v_uid then return jsonb_build_object('ok', true, 'player_id', i.player_id, 'role', i.role, 'status', 'done'); end if;
+    return jsonb_build_object('ok', false, 'error', 'used');
+  end if;
+  if i.expires_at < now() then return jsonb_build_object('ok', false, 'error', 'expired'); end if;
+  select * into v_player from public.profiles where id = i.player_id;
+  if v_player.account_id = v_uid then return jsonb_build_object('ok', false, 'error', 'already_yours'); end if;
+  if exists (select 1 from public.player_links where player_id = i.player_id and login = v_uid) then
+    return jsonb_build_object('ok', false, 'error', 'already_linked');
+  end if;
+  perform pg_advisory_xact_lock(hashtext('f1g:' || i.player_id::text));
+  if (select count(*) from public.player_links where player_id = i.player_id and role = i.role) >= public.f1g_role_cap(i.role) then
+    return jsonb_build_object('ok', false, 'error', 'limit_reached');
+  end if;
+  select * into v_prim from public.profiles where id = v_uid;
+  if i.role = 'child' then
+    if p_terms_version is null or btrim(p_terms_version) = '' then return jsonb_build_object('ok', false, 'error', 'terms_required'); end if;
+    if exists (select 1 from public.profiles where account_id = v_uid and role <> 'child')
+       or exists (select 1 from public.player_links where login = v_uid) then
+      return jsonb_build_object('ok', false, 'error', 'login_in_use');
+    end if;
+    if v_prim.id is null then
+      insert into public.profiles (id, account_id, role, full_name) values (v_uid, v_uid, 'child', v_player.full_name);
+    end if;
+    update public.profiles
+       set age_attestation = 'minor_13_17', attested_at = now(), attested_via = 'signup', terms_version = p_terms_version,
+           guardian_consented_at = now(), consent_via = 'parent_link',
+           guardian_email = null, guardian_consent_token = null, guardian_consent_sent_at = null
+     where id = v_uid;
+  else
+    if v_prim.id is null or v_prim.role <> 'parent' then return jsonb_build_object('ok', false, 'error', 'not_a_parent_login'); end if;
+    if v_prim.age_attestation is distinct from 'adult' then return jsonb_build_object('ok', false, 'error', 'adult_required'); end if;
+  end if;
+  insert into public.player_links (player_id, login, role) values (i.player_id, v_uid, i.role);
+  update public.player_link_invites set used_at = now(), used_by = v_uid where token = p_token;
+  return jsonb_build_object('ok', true, 'player_id', i.player_id, 'role', i.role, 'sport', v_player.sport);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."accept_player_link"("p_token" "text", "p_terms_version" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."account_deletion_status"("p_profile" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -450,6 +502,18 @@ $_$;
 ALTER FUNCTION "public"."begin_email_change"("p_email" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."can_chart_for"("p_player" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select public.is_my_profile(p_player)
+      or exists (select 1 from public.player_links l where l.player_id = p_player and l.login = auth.uid() and l.role in ('guardian', 'child'));
+$$;
+
+
+ALTER FUNCTION "public"."can_chart_for"("p_player" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."can_see_group_member"("p_group" "uuid", "p_pitcher" "uuid") RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -496,6 +560,21 @@ $$;
 
 
 ALTER FUNCTION "public"."cancel_account_deletion"("p_profile" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."cancel_player_link"("p_player" "uuid", "p_role" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if not public.f1g_is_creator(p_player) then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
+  delete from public.player_link_invites where player_id = p_player and role = p_role and used_at is null;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."cancel_player_link"("p_player" "uuid", "p_role" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."chat_access"("p_thread" "uuid") RETURNS "text"
@@ -583,7 +662,8 @@ CREATE OR REPLACE FUNCTION "public"."chat_compose_targets"() RETURNS "jsonb"
       from public.profiles p join public.coach_group_members m on m.pitcher_id = p.id
       join public.coach_groups g on g.id = m.group_id join public.profiles cp on cp.id = g.coach_id
       join public.teams tm on tm.id = g.team_id
-     where p.account_id = auth.uid() and p.role = 'pitcher' and tm.kind = 'facility' and tm.archived_at is null
+     where public.chat_is_family(p.id) and p.role = 'pitcher'   -- F1-G
+       and tm.kind = 'facility' and tm.archived_at is null
        and public.chat_family_ok(p.id)
   ) s;
 $$;
@@ -612,16 +692,25 @@ CREATE OR REPLACE FUNCTION "public"."chat_family_ok"("p_pitcher" "uuid") RETURNS
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select coalesce((
-    select p.account_id = auth.uid()
-           and acct.age_attestation is not null
-           and (acct.age_attestation = 'adult' or acct.guardian_consented_at is not null)
-      from public.profiles p join public.profiles acct on acct.id = p.account_id
-     where p.id = p_pitcher), false);
+  select public.chat_is_family(p_pitcher) and coalesce((
+    select acct.age_attestation is not null and (acct.age_attestation = 'adult' or acct.guardian_consented_at is not null)
+      from public.profiles acct where acct.id = auth.uid()), false);
 $$;
 
 
 ALTER FUNCTION "public"."chat_family_ok"("p_pitcher" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_is_family"("p_pitcher" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select exists (select 1 from public.profiles p where p.id = p_pitcher and p.account_id = auth.uid())
+      or exists (select 1 from public.player_links l where l.player_id = p_pitcher and l.login = auth.uid() and l.role in ('guardian', 'child'));
+$$;
+
+
+ALTER FUNCTION "public"."chat_is_family"("p_pitcher" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."chat_mark_read"("p_thread" "uuid") RETURNS "jsonb"
@@ -650,9 +739,9 @@ CREATE OR REPLACE FUNCTION "public"."chat_my_orgs"() RETURNS SETOF "uuid"
    where pr.account_id = auth.uid() and tt.org_id is not null
   union
   select tt.org_id from public.pitcher_teams pt join public.profiles p on p.id = pt.pitcher_id join public.teams tt on tt.id = pt.team_id
-   where p.account_id = auth.uid() and tt.org_id is not null and public.chat_family_ok(pt.pitcher_id)
+   where tt.org_id is not null and public.chat_family_ok(pt.pitcher_id)   -- F1-G
   union   -- a departed family still reads its closed threads
-  select t.org_id from public.chat_threads t join public.profiles p on p.id = t.pitcher_id where p.account_id = auth.uid();
+  select t.org_id from public.chat_threads t join public.profiles p on p.id = t.pitcher_id where public.chat_is_family(p.id);   -- F1-G
 $$;
 
 
@@ -681,7 +770,7 @@ begin
     i_manage := t.manager_login = v_uid;
     if t.kind = 'facility' then
       title := 'Everyone at ' || t.org_name; subtitle := null;
-    elsif t.pitcher_id is not null and exists (select 1 from public.profiles x where x.id = t.pitcher_id and x.account_id = v_uid) then
+    elsif t.pitcher_id is not null and public.chat_is_family(t.pitcher_id) then   -- F1-G
       title := coalesce(t.coach_name, 'Former coach'); subtitle := t.pitcher_name;    -- the family sees the coach
     else
       title := coalesce(t.pitcher_name, 'Deleted account'); subtitle := coalesce(t.coach_name, 'No coach');
@@ -794,6 +883,8 @@ begin
     select g.coach_id into v_prof from public.coach_groups g join public.profiles pr on pr.id = g.coach_id
      where g.id = t.group_id and pr.account_id = auth.uid();
     if v_prof is not null then v_role := 'coach';
+    elsif public.player_link_role(t.pitcher_id) = 'guardian' then v_prof := auth.uid(); v_role := 'parent';   -- F1-G: the second parent
+    elsif public.player_link_role(t.pitcher_id) = 'child' then v_prof := auth.uid(); v_role := 'pitcher';    -- F1-G: the child's sign-in (its own profile, named as the player)
     else
       select case when p.managed_by is null then p.id else p.managed_by end, case when p.managed_by is null then 'pitcher' else 'parent' end
         into v_prof, v_role from public.profiles p where p.id = t.pitcher_id;
@@ -1324,6 +1415,30 @@ $$;
 ALTER FUNCTION "public"."create_facility"("p_token" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."create_player_link"("p_player" "uuid", "p_role" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare v_token text; v_exp timestamptz;
+begin
+  if auth.uid() is null then return jsonb_build_object('ok', false, 'error', 'not_authenticated'); end if;
+  if p_role not in ('guardian', 'family', 'child') then return jsonb_build_object('ok', false, 'error', 'invalid_role'); end if;
+  if not public.f1g_is_creator(p_player) then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
+  perform pg_advisory_xact_lock(hashtext('f1g:' || p_player::text));
+  if (select count(*) from public.player_links where player_id = p_player and role = p_role) >= public.f1g_role_cap(p_role) then
+    return jsonb_build_object('ok', false, 'error', 'limit_reached');
+  end if;
+  delete from public.player_link_invites where player_id = p_player and role = p_role and used_at is null;
+  insert into public.player_link_invites (player_id, role, created_by) values (p_player, p_role, auth.uid())
+    returning token, expires_at into v_token, v_exp;
+  return jsonb_build_object('ok', true, 'token', v_token, 'expires_at', v_exp);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."create_player_link"("p_player" "uuid", "p_role" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."create_team"("p_name" "text", "p_profile" "uuid" DEFAULT NULL::"uuid") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -1623,6 +1738,41 @@ $$;
 
 
 ALTER FUNCTION "public"."f1c1_close_on_leave"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."f1g_is_creator"("p_player" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select exists (select 1 from public.profiles p where p.id = p_player and p.account_id = auth.uid()
+                    and p.managed_by is not null and p.id <> p.account_id);
+$$;
+
+
+ALTER FUNCTION "public"."f1g_is_creator"("p_player" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."f1g_linked_team"("p_team" "uuid", "p_family" boolean) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select exists (select 1 from public.pitcher_teams pt join public.player_links l on l.player_id = pt.pitcher_id
+                  where pt.team_id = p_team and l.login = auth.uid() and (p_family or l.role in ('guardian', 'child')));
+$$;
+
+
+ALTER FUNCTION "public"."f1g_linked_team"("p_team" "uuid", "p_family" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."f1g_role_cap"("p_role" "text") RETURNS integer
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$
+  select case p_role when 'guardian' then 1 when 'child' then 1 when 'family' then 5 else 0 end;
+$$;
+
+
+ALTER FUNCTION "public"."f1g_role_cap"("p_role" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."facility_invite_info"("p_token" "text") RETURNS "jsonb"
@@ -1976,7 +2126,7 @@ begin
   end if;
 
   v_is_coach := public.is_team_coach(p_team_id);
-  if not (v_is_coach or public.is_team_member(p_team_id)) then
+  if not (v_is_coach or public.is_team_member(p_team_id) or public.f1g_linked_team(p_team_id, false)) then   -- F1-G: + linked parent / child
     raise exception 'not allowed';
   end if;
 
@@ -2076,7 +2226,7 @@ begin
     'velocity', coalesce((
       select jsonb_agg(jsonb_build_object(
                'rank', v.rk, 'name', v.full_name, 'number', v.uniform_number,
-               'value', v.velo, 'pitch_count', v.n, 'is_me', public.is_my_profile(v.pitcher_id),
+               'value', v.velo, 'pitch_count', v.n, 'is_me', public.can_chart_for(v.pitcher_id),
                'peak_pitch_id', case when v_is_coach then v.pitch_id end,
                'peak_pitch_ts', case when v_is_coach then v.ts end
              ) order by v.rk, v.full_name)
@@ -2085,14 +2235,14 @@ begin
       select jsonb_agg(jsonb_build_object(
                'rank', x.rk, 'name', x.full_name, 'number', x.uniform_number,
                'value', x.val, 'pitch_count', x.n, 'qualified', x.qualified,
-               'is_me', public.is_my_profile(x.pitcher_id)
+               'is_me', public.can_chart_for(x.pitcher_id)
              ) order by x.qualified desc, x.rk, x.n desc, x.full_name)
         from acc x), '[]'::jsonb),
     'strike', coalesce((
       select jsonb_agg(jsonb_build_object(
                'rank', x.rk, 'name', x.full_name, 'number', x.uniform_number,
                'value', x.val, 'pitch_count', x.n, 'qualified', x.qualified,
-               'is_me', public.is_my_profile(x.pitcher_id)
+               'is_me', public.can_chart_for(x.pitcher_id)
              ) order by x.qualified desc, x.rk, x.n desc, x.full_name)
         from stk x), '[]'::jsonb),
     'excluded', case when v_is_coach then coalesce((
@@ -2445,6 +2595,17 @@ $$;
 ALTER FUNCTION "public"."is_head_of_pitcher"("p_pitcher_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."is_linked_to"("p_player" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select exists (select 1 from public.player_links l where l.player_id = p_player and l.login = auth.uid());
+$$;
+
+
+ALTER FUNCTION "public"."is_linked_to"("p_player" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."is_my_headshot"("p_object_name" "text") RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -2599,7 +2760,7 @@ begin
   end if;
 
   select role into v_role from public.profiles where id = v_prof;
-  if v_role = 'pitcher' then
+  if v_role in ('pitcher', 'child') then   -- F1-G
     return jsonb_build_object('error', 'pitcher_cannot_join');
   end if;
 
@@ -2660,7 +2821,7 @@ begin
   end if;
 
   select role into v_role from public.profiles where id = v_prof;
-  if v_role in ('coach', 'parent') then
+  if v_role in ('coach', 'parent', 'child') then   -- F1-G: the creating parent joins the player, never the child's sign-in
     return jsonb_build_object('error', 'coach_cannot_join');
   end if;
 
@@ -2696,6 +2857,21 @@ $$;
 
 
 ALTER FUNCTION "public"."leaderboard_exclusions_stamp"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."leave_player"("p_player" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  delete from public.player_links where player_id = p_player and login = auth.uid();
+  if not found then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."leave_player"("p_player" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."move_between_groups"("p_pitcher" "uuid", "p_from" "uuid", "p_to" "uuid") RETURNS "jsonb"
@@ -2750,6 +2926,26 @@ $$;
 
 
 ALTER FUNCTION "public"."my_guardian_status"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."my_linked_players"() RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id', p.id, 'account_id', p.account_id, 'is_primary', false, 'managed_by', p.managed_by, 'role', p.role,
+      'sport', p.sport, 'full_name', p.full_name, 'pitch_types', p.pitch_types, 'created_at', p.created_at,
+      'contact_emails', case when l.role = 'family' then null else p.contact_emails end,
+      'throws', p.throws, 'relative_accuracy_enabled', p.relative_accuracy_enabled, 'uses_radar_gun', p.uses_radar_gun,
+      'setup_dismissed_at', p.setup_dismissed_at, 'headshot_updated_at', p.headshot_updated_at, 'level', p.level,
+      'linked_role', l.role, 'creator_name', m.full_name) order by p.full_name), '[]'::jsonb)
+    from public.player_links l join public.profiles p on p.id = l.player_id
+    left join public.profiles m on m.id = p.managed_by
+   where l.login = auth.uid();
+$$;
+
+
+ALTER FUNCTION "public"."my_linked_players"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."my_single_profile"() RETURNS "uuid"
@@ -2817,7 +3013,7 @@ CREATE OR REPLACE FUNCTION "public"."pitcher_report_block"("p_pitcher_id" "uuid"
   end
     from public.profiles pr join public.profiles acct on acct.id = pr.account_id
    where pr.id = p_pitcher_id
-     and (public.is_my_profile(p_pitcher_id) or public.is_coach_of_pitcher(p_pitcher_id));
+     and (public.can_chart_for(p_pitcher_id) or public.is_coach_of_pitcher(p_pitcher_id));   -- F1-G
 $$;
 
 
@@ -2883,6 +3079,60 @@ $$;
 
 
 ALTER FUNCTION "public"."pitcher_workload"("p_profiles" "uuid"[]) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."player_access"("p_player" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if not public.f1g_is_creator(p_player) then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
+  return jsonb_build_object('ok', true,
+    'links', coalesce((select jsonb_agg(jsonb_build_object('login', l.login, 'role', l.role, 'name', pr.full_name, 'since', l.created_at)
+                                         order by l.role, l.created_at)
+                         from public.player_links l left join public.profiles pr on pr.id = l.login
+                        where l.player_id = p_player), '[]'::jsonb),
+    'pending', coalesce((select jsonb_agg(jsonb_build_object('role', i.role, 'token', i.token, 'expires_at', i.expires_at) order by i.created_at)
+                           from public.player_link_invites i
+                          where i.player_id = p_player and i.used_at is null and i.expires_at > now()), '[]'::jsonb));
+end;
+$$;
+
+
+ALTER FUNCTION "public"."player_access"("p_player" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."player_link_info"("p_token" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare i public.player_link_invites%rowtype; v_player text; v_sport text; v_from text;
+begin
+  select * into i from public.player_link_invites where token = p_token;
+  if not found then return jsonb_build_object('status', 'not_found'); end if;
+  if i.used_at is not null then
+    return jsonb_build_object('status', case when i.used_by = auth.uid() then 'done' else 'used' end);
+  end if;
+  if i.expires_at < now() then return jsonb_build_object('status', 'expired'); end if;
+  select p.full_name, p.sport, m.full_name into v_player, v_sport, v_from
+    from public.profiles p left join public.profiles m on m.id = p.managed_by where p.id = i.player_id;
+  return jsonb_build_object('status', 'ok', 'role', i.role, 'player_name', v_player, 'sport', v_sport, 'from_name', v_from);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."player_link_info"("p_token" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."player_link_role"("p_player" "uuid") RETURNS "text"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select l.role from public.player_links l where l.player_id = p_player and l.login = auth.uid();
+$$;
+
+
+ALTER FUNCTION "public"."player_link_role"("p_player" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."profiles_s4_cap"() RETURNS "trigger"
@@ -3244,6 +3494,22 @@ $$;
 ALTER FUNCTION "public"."remove_from_group"("p_group" "uuid", "p_pitcher" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."remove_player_link"("p_player" "uuid", "p_login" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if not public.f1g_is_creator(p_player) then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
+  delete from public.player_links where player_id = p_player and login = p_login;
+  if not found then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."remove_player_link"("p_player" "uuid", "p_login" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."rename_team"("p_team_id" "uuid", "p_name" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -3439,7 +3705,7 @@ declare
 begin
   if tg_op = 'INSERT' then
     new.account_id := coalesce(new.account_id, new.id);
-    if new.role = 'parent' then
+    if new.role in ('parent', 'child') then   -- F1-G: a child's sign-in, like a parent's, has no sport
       return new;   -- S4: parents never chart; sport stays null (CHECK)
     end if;
     if new.sport is null then
@@ -3862,7 +4128,7 @@ begin
 
   select * into v_existing from public.sessions where id = v_id;
   if found then
-    if not (public.is_my_profile(v_existing.pitcher_id) or public.coach_sees_pitcher(v_existing.team_id, v_existing.pitcher_id)) then
+    if not (public.can_chart_for(v_existing.pitcher_id) or public.coach_sees_pitcher(v_existing.team_id, v_existing.pitcher_id)) then   -- F1-G: + linked parent / child
       return jsonb_build_object('ok', false, 'error', 'not_entitled');
     end if;
     if v_existing.sealed_at is not null then
@@ -3872,7 +4138,10 @@ begin
   else
     -- The caller is this pitcher, or a coach of the session's team, charting as one of
     -- their own profiles.
-    if not (public.is_my_profile(v_pitcher) or public.coach_sees_pitcher(v_team, v_pitcher)) or not public.is_my_profile(v_logged) then   -- F1-A: a facility assistant charts only their group
+    if not (public.can_chart_for(v_pitcher) or public.coach_sees_pitcher(v_team, v_pitcher))
+       or not (public.is_my_profile(v_logged) or (v_logged = v_pitcher and public.can_chart_for(v_pitcher))) then
+      -- F1-G: a linked parent or the child's sign-in charts AS the player (logged_by = the player, as when the
+      -- creating parent charts), so History never calls it "Logged by coach"   -- F1-A: a facility assistant charts only their group
       return jsonb_build_object('ok', false, 'error', 'not_entitled');
     end if;
     v_kind := coalesce(nullif(p_session ->> 'kind', ''), 'bullpen');
@@ -4450,6 +4719,34 @@ COMMENT ON COLUMN "public"."pitches"."spray_field" IS 'G5: IF or OF -- where a b
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."player_link_invites" (
+    "token" "text" DEFAULT ("replace"(("gen_random_uuid"())::"text", '-'::"text", ''::"text") || "replace"(("gen_random_uuid"())::"text", '-'::"text", ''::"text")) NOT NULL,
+    "player_id" "uuid" NOT NULL,
+    "role" "text" NOT NULL,
+    "created_by" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "expires_at" timestamp with time zone DEFAULT ("now"() + '7 days'::interval) NOT NULL,
+    "used_at" timestamp with time zone,
+    "used_by" "uuid",
+    CONSTRAINT "player_link_invites_role_check" CHECK (("role" = ANY (ARRAY['guardian'::"text", 'family'::"text", 'child'::"text"])))
+);
+
+
+ALTER TABLE "public"."player_link_invites" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."player_links" (
+    "player_id" "uuid" NOT NULL,
+    "login" "uuid" NOT NULL,
+    "role" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "player_links_role_check" CHECK (("role" = ANY (ARRAY['guardian'::"text", 'family'::"text", 'child'::"text"])))
+);
+
+
+ALTER TABLE "public"."player_links" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "id" "uuid" NOT NULL,
     "role" "text" NOT NULL,
@@ -4488,11 +4785,11 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "level" "text",
     CONSTRAINT "profiles_age_attestation_check" CHECK (("age_attestation" = ANY (ARRAY['adult'::"text", 'minor_13_17'::"text"]))),
     CONSTRAINT "profiles_attested_via_check" CHECK (("attested_via" = ANY (ARRAY['signup'::"text", 'catchup'::"text"]))),
-    CONSTRAINT "profiles_consent_via_check" CHECK (("consent_via" = ANY (ARRAY['guardian_email'::"text", 'parent_created'::"text"]))),
+    CONSTRAINT "profiles_consent_via_check" CHECK (("consent_via" = ANY (ARRAY['guardian_email'::"text", 'parent_created'::"text", 'parent_link'::"text"]))),
     CONSTRAINT "profiles_full_name_not_blank" CHECK (("btrim"("full_name") <> ''::"text")),
     CONSTRAINT "profiles_level_check" CHECK ((("level" IS NULL) OR (("role" = 'pitcher'::"text") AND ((("sport" = 'baseball'::"text") AND ("level" = ANY (ARRAY['little_league'::"text", 'high_school'::"text", 'college'::"text"]))) OR (("sport" = 'softball'::"text") AND ("level" = ANY (ARRAY['little_league'::"text", 'high_school_up'::"text"]))))))),
-    CONSTRAINT "profiles_role_check" CHECK (("role" = ANY (ARRAY['coach'::"text", 'pitcher'::"text", 'parent'::"text"]))),
-    CONSTRAINT "profiles_sport_check" CHECK (((("role" = 'parent'::"text") AND ("sport" IS NULL)) OR (("role" <> 'parent'::"text") AND ("sport" = ANY (ARRAY['baseball'::"text", 'softball'::"text"]))))),
+    CONSTRAINT "profiles_role_check" CHECK (("role" = ANY (ARRAY['coach'::"text", 'pitcher'::"text", 'parent'::"text", 'child'::"text"]))),
+    CONSTRAINT "profiles_sport_check" CHECK (((("role" = ANY (ARRAY['parent'::"text", 'child'::"text"])) AND ("sport" IS NULL)) OR (("role" <> ALL (ARRAY['parent'::"text", 'child'::"text"])) AND ("sport" = ANY (ARRAY['baseball'::"text", 'softball'::"text"]))))),
     CONSTRAINT "profiles_throws_check" CHECK (("throws" = ANY (ARRAY['L'::"text", 'R'::"text"])))
 );
 
@@ -5022,6 +5319,16 @@ ALTER TABLE ONLY "public"."pitches"
 
 
 
+ALTER TABLE ONLY "public"."player_link_invites"
+    ADD CONSTRAINT "player_link_invites_pkey" PRIMARY KEY ("token");
+
+
+
+ALTER TABLE ONLY "public"."player_links"
+    ADD CONSTRAINT "player_links_pkey" PRIMARY KEY ("player_id", "login");
+
+
+
 ALTER TABLE ONLY "public"."profiles"
     ADD CONSTRAINT "profiles_email_verify_token_key" UNIQUE ("email_verify_token");
 
@@ -5126,6 +5433,14 @@ CREATE INDEX "coach_group_members_pitcher" ON "public"."coach_group_members" USI
 
 
 CREATE INDEX "pitcher_team_departures_idx" ON "public"."pitcher_team_departures" USING "btree" ("pitcher_id", "team_id");
+
+
+
+CREATE INDEX "player_link_invites_player" ON "public"."player_link_invites" USING "btree" ("player_id");
+
+
+
+CREATE INDEX "player_links_login" ON "public"."player_links" USING "btree" ("login");
 
 
 
@@ -5410,6 +5725,31 @@ ALTER TABLE ONLY "public"."pitches"
 
 
 
+ALTER TABLE ONLY "public"."player_link_invites"
+    ADD CONSTRAINT "player_link_invites_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."player_link_invites"
+    ADD CONSTRAINT "player_link_invites_player_id_fkey" FOREIGN KEY ("player_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."player_link_invites"
+    ADD CONSTRAINT "player_link_invites_used_by_fkey" FOREIGN KEY ("used_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."player_links"
+    ADD CONSTRAINT "player_links_login_fkey" FOREIGN KEY ("login") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."player_links"
+    ADD CONSTRAINT "player_links_player_id_fkey" FOREIGN KEY ("player_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."profiles"
     ADD CONSTRAINT "profiles_account_id_fkey" FOREIGN KEY ("account_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
@@ -5564,7 +5904,7 @@ CREATE POLICY "Coaches view their teams' coaching staff" ON "public"."team_coach
 
 CREATE POLICY "Game events: read by the pitcher, the recording team's coaches " ON "public"."game_events" FOR SELECT USING ((EXISTS ( SELECT 1
    FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "game_events"."session_id") AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."coach_sees_pitcher"("s"."team_id", "s"."pitcher_id") OR "public"."is_current_coach_of_pitcher"("s"."pitcher_id", "s"."started_at"))))));
+  WHERE (("s"."id" = "game_events"."session_id") AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_linked_to"("s"."pitcher_id") OR "public"."coach_sees_pitcher"("s"."team_id", "s"."pitcher_id") OR "public"."is_current_coach_of_pitcher"("s"."pitcher_id", "s"."started_at"))))));
 
 
 
@@ -5582,13 +5922,13 @@ CREATE POLICY "Invited person views invite addressed to their email" ON "public"
 
 CREATE POLICY "Notes readable by author, pitcher, the recording team's coaches" ON "public"."session_notes" FOR SELECT USING (("public"."is_my_profile"("author_id") OR (EXISTS ( SELECT 1
    FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "session_notes"."session_id") AND "public"."is_my_profile"("s"."pitcher_id")))) OR "public"."is_coach_of_session_team"("session_id") OR (EXISTS ( SELECT 1
+  WHERE (("s"."id" = "session_notes"."session_id") AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_linked_to"("s"."pitcher_id"))))) OR "public"."is_coach_of_session_team"("session_id") OR (EXISTS ( SELECT 1
    FROM "public"."sessions" "s"
   WHERE (("s"."id" = "session_notes"."session_id") AND "public"."is_current_coach_of_pitcher"("s"."pitcher_id", "s"."started_at"))))));
 
 
 
-CREATE POLICY "Pitcher or their coach manages zones" ON "public"."accuracy_zones" USING (("public"."is_my_profile"("pitcher_id") OR "public"."is_coach_of_pitcher"("pitcher_id"))) WITH CHECK (("public"."is_my_profile"("pitcher_id") OR "public"."is_coach_of_pitcher"("pitcher_id")));
+CREATE POLICY "Pitcher or their coach manages zones" ON "public"."accuracy_zones" USING (("public"."can_chart_for"("pitcher_id") OR "public"."is_coach_of_pitcher"("pitcher_id"))) WITH CHECK (("public"."can_chart_for"("pitcher_id") OR "public"."is_coach_of_pitcher"("pitcher_id")));
 
 
 
@@ -5600,31 +5940,31 @@ CREATE POLICY "Pitchers accept invite by inserting own membership" ON "public"."
 
 
 
-CREATE POLICY "Pitchers view own memberships" ON "public"."pitcher_teams" FOR SELECT USING ("public"."is_my_profile"("pitcher_id"));
+CREATE POLICY "Pitchers view own memberships" ON "public"."pitcher_teams" FOR SELECT USING (("public"."is_my_profile"("pitcher_id") OR "public"."is_linked_to"("pitcher_id")));
 
 
 
-CREATE POLICY "Pitchers view teams they belong to" ON "public"."teams" FOR SELECT USING ("public"."is_team_member"("id"));
+CREATE POLICY "Pitchers view teams they belong to" ON "public"."teams" FOR SELECT USING (("public"."is_team_member"("id") OR "public"."f1g_linked_team"("id", true)));
 
 
 
 CREATE POLICY "Pitches: read by the pitcher, the recording team's coaches and " ON "public"."pitches" FOR SELECT USING ((EXISTS ( SELECT 1
    FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "pitches"."session_id") AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."coach_sees_pitcher"("s"."team_id", "s"."pitcher_id") OR "public"."is_current_coach_of_pitcher"("s"."pitcher_id", "s"."started_at"))))));
+  WHERE (("s"."id" = "pitches"."session_id") AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_linked_to"("s"."pitcher_id") OR "public"."coach_sees_pitcher"("s"."team_id", "s"."pitcher_id") OR "public"."is_current_coach_of_pitcher"("s"."pitcher_id", "s"."started_at"))))));
 
 
 
 CREATE POLICY "Session stats: read where the session's pitches are read" ON "public"."session_stats" FOR SELECT USING ((EXISTS ( SELECT 1
    FROM "public"."sessions" "s"
-  WHERE (("s"."id" = "session_stats"."session_id") AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."coach_sees_pitcher"("s"."team_id", "s"."pitcher_id") OR "public"."is_current_coach_of_pitcher"("s"."pitcher_id", "s"."started_at"))))));
+  WHERE (("s"."id" = "session_stats"."session_id") AND ("public"."is_my_profile"("s"."pitcher_id") OR "public"."is_linked_to"("s"."pitcher_id") OR "public"."coach_sees_pitcher"("s"."team_id", "s"."pitcher_id") OR "public"."is_current_coach_of_pitcher"("s"."pitcher_id", "s"."started_at"))))));
 
 
 
-CREATE POLICY "Sessions: read by the pitcher, the recording team's coaches and" ON "public"."sessions" FOR SELECT USING (("public"."is_my_profile"("pitcher_id") OR "public"."coach_sees_pitcher"("team_id", "pitcher_id") OR "public"."is_current_coach_of_pitcher"("pitcher_id", "started_at")));
+CREATE POLICY "Sessions: read by the pitcher, the recording team's coaches and" ON "public"."sessions" FOR SELECT USING (("public"."is_my_profile"("pitcher_id") OR "public"."is_linked_to"("pitcher_id") OR "public"."coach_sees_pitcher"("team_id", "pitcher_id") OR "public"."is_current_coach_of_pitcher"("pitcher_id", "started_at")));
 
 
 
-CREATE POLICY "Sessions: report link written by the pitcher and the team's coa" ON "public"."sessions" FOR UPDATE USING (("public"."is_my_profile"("pitcher_id") OR "public"."coach_sees_pitcher"("team_id", "pitcher_id"))) WITH CHECK (("public"."is_my_profile"("pitcher_id") OR "public"."coach_sees_pitcher"("team_id", "pitcher_id")));
+CREATE POLICY "Sessions: report link written by the pitcher and the team's coa" ON "public"."sessions" FOR UPDATE USING (("public"."can_chart_for"("pitcher_id") OR "public"."coach_sees_pitcher"("team_id", "pitcher_id"))) WITH CHECK (("public"."can_chart_for"("pitcher_id") OR "public"."coach_sees_pitcher"("team_id", "pitcher_id")));
 
 
 
@@ -5636,7 +5976,7 @@ CREATE POLICY "Users update own profile" ON "public"."profiles" FOR UPDATE USING
 
 
 
-CREATE POLICY "Users view own profile" ON "public"."profiles" FOR SELECT USING (("account_id" = "auth"."uid"()));
+CREATE POLICY "Users view own profile" ON "public"."profiles" FOR SELECT USING ((("account_id" = "auth"."uid"()) OR ("public"."player_link_role"("id") = ANY (ARRAY['guardian'::"text", 'child'::"text"]))));
 
 
 
@@ -5706,6 +6046,12 @@ ALTER TABLE "public"."pitcher_teams" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."pitches" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."player_link_invites" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."player_links" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
@@ -5779,6 +6125,12 @@ GRANT ALL ON FUNCTION "public"."abandon_email_change"() TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."accept_player_link"("p_token" "text", "p_terms_version" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."accept_player_link"("p_token" "text", "p_terms_version" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."accept_player_link"("p_token" "text", "p_terms_version" "text") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."account_deletion_status"("p_profile" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."account_deletion_status"("p_profile" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."account_deletion_status"("p_profile" "uuid") TO "service_role";
@@ -5827,6 +6179,12 @@ GRANT ALL ON FUNCTION "public"."begin_email_change"("p_email" "text") TO "servic
 
 
 
+REVOKE ALL ON FUNCTION "public"."can_chart_for"("p_player" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."can_chart_for"("p_player" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."can_chart_for"("p_player" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."can_see_group_member"("p_group" "uuid", "p_pitcher" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."can_see_group_member"("p_group" "uuid", "p_pitcher" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."can_see_group_member"("p_group" "uuid", "p_pitcher" "uuid") TO "service_role";
@@ -5842,6 +6200,12 @@ GRANT ALL ON FUNCTION "public"."can_view_headshot"("p_object_name" "text") TO "s
 REVOKE ALL ON FUNCTION "public"."cancel_account_deletion"("p_profile" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."cancel_account_deletion"("p_profile" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."cancel_account_deletion"("p_profile" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."cancel_player_link"("p_player" "uuid", "p_role" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."cancel_player_link"("p_player" "uuid", "p_role" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cancel_player_link"("p_player" "uuid", "p_role" "text") TO "service_role";
 
 
 
@@ -5877,6 +6241,12 @@ GRANT ALL ON FUNCTION "public"."chat_delete_message"("p_message" "uuid") TO "ser
 REVOKE ALL ON FUNCTION "public"."chat_family_ok"("p_pitcher" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."chat_family_ok"("p_pitcher" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."chat_family_ok"("p_pitcher" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_is_family"("p_pitcher" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_is_family"("p_pitcher" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_is_family"("p_pitcher" "uuid") TO "service_role";
 
 
 
@@ -6012,6 +6382,12 @@ GRANT ALL ON FUNCTION "public"."create_facility"("p_token" "text") TO "service_r
 
 
 
+REVOKE ALL ON FUNCTION "public"."create_player_link"("p_player" "uuid", "p_role" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."create_player_link"("p_player" "uuid", "p_role" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_player_link"("p_player" "uuid", "p_role" "text") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."create_team"("p_name" "text", "p_profile" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."create_team"("p_name" "text", "p_profile" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_team"("p_name" "text", "p_profile" "uuid") TO "service_role";
@@ -6063,6 +6439,24 @@ GRANT ALL ON FUNCTION "public"."f1a_my_coach_profile"("p_team" "uuid") TO "servi
 
 REVOKE ALL ON FUNCTION "public"."f1c1_close_on_leave"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."f1c1_close_on_leave"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."f1g_is_creator"("p_player" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."f1g_is_creator"("p_player" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."f1g_is_creator"("p_player" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."f1g_linked_team"("p_team" "uuid", "p_family" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."f1g_linked_team"("p_team" "uuid", "p_family" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."f1g_linked_team"("p_team" "uuid", "p_family" boolean) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."f1g_role_cap"("p_role" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."f1g_role_cap"("p_role" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."f1g_role_cap"("p_role" "text") TO "service_role";
 
 
 
@@ -6224,6 +6618,12 @@ GRANT ALL ON FUNCTION "public"."is_head_of_pitcher"("p_pitcher_id" "uuid") TO "s
 
 
 
+REVOKE ALL ON FUNCTION "public"."is_linked_to"("p_player" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."is_linked_to"("p_player" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_linked_to"("p_player" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."is_my_headshot"("p_object_name" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."is_my_headshot"("p_object_name" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."is_my_headshot"("p_object_name" "text") TO "authenticated";
@@ -6299,6 +6699,12 @@ GRANT ALL ON FUNCTION "public"."leaderboard_exclusions_stamp"() TO "service_role
 
 
 
+REVOKE ALL ON FUNCTION "public"."leave_player"("p_player" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."leave_player"("p_player" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."leave_player"("p_player" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."move_between_groups"("p_pitcher" "uuid", "p_from" "uuid", "p_to" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."move_between_groups"("p_pitcher" "uuid", "p_from" "uuid", "p_to" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."move_between_groups"("p_pitcher" "uuid", "p_from" "uuid", "p_to" "uuid") TO "service_role";
@@ -6314,6 +6720,12 @@ GRANT ALL ON FUNCTION "public"."my_facility"() TO "service_role";
 REVOKE ALL ON FUNCTION "public"."my_guardian_status"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."my_guardian_status"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."my_guardian_status"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."my_linked_players"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."my_linked_players"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."my_linked_players"() TO "service_role";
 
 
 
@@ -6360,6 +6772,24 @@ GRANT ALL ON FUNCTION "public"."pitcher_teams_g3_departure"() TO "service_role";
 REVOKE ALL ON FUNCTION "public"."pitcher_workload"("p_profiles" "uuid"[]) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."pitcher_workload"("p_profiles" "uuid"[]) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."pitcher_workload"("p_profiles" "uuid"[]) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."player_access"("p_player" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."player_access"("p_player" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."player_access"("p_player" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."player_link_info"("p_token" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."player_link_info"("p_token" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."player_link_info"("p_token" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."player_link_role"("p_player" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."player_link_role"("p_player" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."player_link_role"("p_player" "uuid") TO "service_role";
 
 
 
@@ -6410,6 +6840,12 @@ GRANT ALL ON FUNCTION "public"."remove_coach"("p_team_id" "uuid", "p_coach_id" "
 REVOKE ALL ON FUNCTION "public"."remove_from_group"("p_group" "uuid", "p_pitcher" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."remove_from_group"("p_group" "uuid", "p_pitcher" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."remove_from_group"("p_group" "uuid", "p_pitcher" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."remove_player_link"("p_player" "uuid", "p_login" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."remove_player_link"("p_player" "uuid", "p_login" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."remove_player_link"("p_player" "uuid", "p_login" "uuid") TO "service_role";
 
 
 
@@ -6667,6 +7103,14 @@ GRANT ALL ON TABLE "public"."pitcher_teams" TO "service_role";
 GRANT ALL ON TABLE "public"."pitches" TO "anon";
 GRANT ALL ON TABLE "public"."pitches" TO "authenticated";
 GRANT ALL ON TABLE "public"."pitches" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."player_link_invites" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."player_links" TO "service_role";
 
 
 

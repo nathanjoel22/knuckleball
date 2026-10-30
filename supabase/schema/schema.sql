@@ -148,6 +148,13 @@ begin
   -- which would then block the profile delete (the CLAUDE.md "deleting a team with a rostered pitcher" landmine)
   delete from public.pitcher_teams where pitcher_id = p_profile;
   delete from public.pitcher_team_departures where pitcher_id = p_profile;
+  -- F1-C1 (decision D): their chat messages read "Deleted account" with the text blanked; private threads about them
+  -- close (and clear 90 days on, like any closed thread)
+  update public.chat_messages set body = '', author_name = 'Deleted account', author_deleted = true, author_profile_id = null,
+         pinned_at = null, pinned_by = null
+   where author_profile_id = p_profile;
+  update public.chat_threads set archived_at = coalesce(archived_at, now()), clear_after = coalesce(clear_after, now() + interval '90 days')
+   where pitcher_id = p_profile;
   -- the profile itself; staff rows, red-dot state, accuracy zones and managed players cascade
   delete from public.profiles where id = p_profile;
   return jsonb_build_object('ok', true, 'reports', to_jsonb(coalesce(v_reports, '{}')), 'tombstoned', v_tombstoned,
@@ -489,6 +496,399 @@ $$;
 
 
 ALTER FUNCTION "public"."cancel_account_deletion"("p_profile" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_access"("p_thread" "uuid") RETURNS "text"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare t public.chat_threads%rowtype; v_uid uuid := auth.uid();
+begin
+  if v_uid is null then return null; end if;
+  select * into t from public.chat_threads where id = p_thread;
+  if not found then return null; end if;
+  if t.kind = 'facility' then
+    if exists (select 1 from public.organizations o where o.id = t.org_id and o.manager_login = v_uid) then return 'post'; end if;
+    if exists (select 1 from public.team_coaches tc join public.profiles pr on pr.id = tc.coach_id join public.teams tt on tt.id = tc.team_id
+                where tt.org_id = t.org_id and pr.account_id = v_uid) then return 'read'; end if;
+    if exists (select 1 from public.pitcher_teams pt join public.teams tt on tt.id = pt.team_id
+                where tt.org_id = t.org_id and public.chat_family_ok(pt.pitcher_id)) then return 'read'; end if;
+    return null;
+  end if;
+  if t.archived_at is null and exists (select 1 from public.coach_groups g join public.profiles pr on pr.id = g.coach_id
+                                        where g.id = t.group_id and pr.account_id = v_uid) then return 'post'; end if;
+  if public.is_org_manager(t.team_id) then return 'read'; end if;
+  if t.pitcher_id is null or not public.chat_family_ok(t.pitcher_id) then return null; end if;
+  if t.archived_at is not null then return 'read'; end if;
+  if exists (select 1 from public.coach_group_members m where m.group_id = t.group_id and m.pitcher_id = t.pitcher_id) then return 'post'; end if;
+  return 'read';
+end;
+$$;
+
+
+ALTER FUNCTION "public"."chat_access"("p_thread" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_clear_archived"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare n int;
+begin
+  delete from public.chat_threads where clear_after is not null and clear_after < now();
+  get diagnostics n = row_count;
+  return n;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."chat_clear_archived"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_close"("p_thread" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if not coalesce((public.chat_thread(p_thread, 1) ->> 'can_close')::boolean, false) then
+    return jsonb_build_object('ok', false, 'error', 'not_allowed');
+  end if;
+  update public.chat_threads set archived_at = now(), archived_by = auth.uid(), clear_after = now() + interval '90 days'
+   where id = p_thread and archived_at is null;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."chat_close"("p_thread" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_compose_targets"() RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(jsonb_agg(x order by x ->> 'sort'), '[]'::jsonb) from (
+    select jsonb_build_object('kind', 'facility', 'org_id', o.id, 'label', 'Everyone at ' || o.name, 'sort', '0' || o.name) x
+      from public.organizations o where o.manager_login = auth.uid()
+    union all
+    select jsonb_build_object('kind', 'private', 'group_id', g.id, 'pitcher_id', p.id, 'label', p.full_name,
+                              'detail', 'Family of ' || p.full_name, 'sport', tm.sport, 'sort', '1' || p.full_name)
+      from public.coach_groups g join public.profiles cp on cp.id = g.coach_id and cp.account_id = auth.uid()
+      join public.coach_group_members m on m.group_id = g.id join public.profiles p on p.id = m.pitcher_id
+      join public.teams tm on tm.id = g.team_id
+     where tm.kind = 'facility' and tm.archived_at is null
+    union all
+    select jsonb_build_object('kind', 'private', 'group_id', g.id, 'pitcher_id', p.id, 'label', cp.full_name,
+                              'detail', 'Coach for ' || p.full_name, 'sport', tm.sport, 'sort', '2' || cp.full_name)
+      from public.profiles p join public.coach_group_members m on m.pitcher_id = p.id
+      join public.coach_groups g on g.id = m.group_id join public.profiles cp on cp.id = g.coach_id
+      join public.teams tm on tm.id = g.team_id
+     where p.account_id = auth.uid() and p.role = 'pitcher' and tm.kind = 'facility' and tm.archived_at is null
+       and public.chat_family_ok(p.id)
+  ) s;
+$$;
+
+
+ALTER FUNCTION "public"."chat_compose_targets"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_delete_message"("p_message" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  update public.chat_messages set deleted_at = now(), pinned_at = null, pinned_by = null
+   where id = p_message and author_login = auth.uid() and deleted_at is null and not author_deleted;
+  if not found then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."chat_delete_message"("p_message" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_family_ok"("p_pitcher" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce((
+    select p.account_id = auth.uid()
+           and acct.age_attestation is not null
+           and (acct.age_attestation = 'adult' or acct.guardian_consented_at is not null)
+      from public.profiles p join public.profiles acct on acct.id = p.account_id
+     where p.id = p_pitcher), false);
+$$;
+
+
+ALTER FUNCTION "public"."chat_family_ok"("p_pitcher" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_mark_read"("p_thread" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if public.chat_access(p_thread) is null then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
+  insert into public.chat_reads (thread_id, login, last_read_at) values (p_thread, auth.uid(), now())
+    on conflict (thread_id, login) do update set last_read_at = excluded.last_read_at;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."chat_mark_read"("p_thread" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_my_orgs"() RETURNS SETOF "uuid"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select o.id from public.organizations o where o.manager_login = auth.uid()
+  union
+  select tt.org_id from public.team_coaches tc join public.profiles pr on pr.id = tc.coach_id join public.teams tt on tt.id = tc.team_id
+   where pr.account_id = auth.uid() and tt.org_id is not null
+  union
+  select tt.org_id from public.pitcher_teams pt join public.profiles p on p.id = pt.pitcher_id join public.teams tt on tt.id = pt.team_id
+   where p.account_id = auth.uid() and tt.org_id is not null and public.chat_family_ok(pt.pitcher_id)
+  union   -- a departed family still reads its closed threads
+  select t.org_id from public.chat_threads t join public.profiles p on p.id = t.pitcher_id where p.account_id = auth.uid();
+$$;
+
+
+ALTER FUNCTION "public"."chat_my_orgs"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_my_threads"() RETURNS TABLE("thread_id" "uuid", "kind" "text", "team_id" "uuid", "sport" "text", "title" "text", "subtitle" "text", "access" "text", "archived" boolean, "last_at" timestamp with time zone, "last_preview" "text", "last_author" "text", "unread" integer, "i_manage" boolean)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare t record; v_access text; v_uid uuid := auth.uid();
+begin
+  for t in select th.*, o.name as org_name, o.manager_login,
+                  tm.sport as t_sport, p.full_name as pitcher_name, cp.full_name as coach_name
+             from public.chat_threads th join public.organizations o on o.id = th.org_id
+             left join public.teams tm on tm.id = th.team_id
+             left join public.profiles p on p.id = th.pitcher_id
+             left join public.coach_groups g on g.id = th.group_id
+             left join public.profiles cp on cp.id = g.coach_id
+            where th.org_id in (select public.chat_my_orgs()) loop
+    v_access := public.chat_access(t.id);
+    continue when v_access is null;
+    continue when t.last_message_at is null and not (t.kind = 'facility' and v_access = 'post');
+    thread_id := t.id; kind := t.kind; team_id := t.team_id; sport := t.t_sport; access := v_access;
+    archived := t.archived_at is not null; last_at := t.last_message_at;
+    i_manage := t.manager_login = v_uid;
+    if t.kind = 'facility' then
+      title := 'Everyone at ' || t.org_name; subtitle := null;
+    elsif t.pitcher_id is not null and exists (select 1 from public.profiles x where x.id = t.pitcher_id and x.account_id = v_uid) then
+      title := coalesce(t.coach_name, 'Former coach'); subtitle := t.pitcher_name;    -- the family sees the coach
+    else
+      title := coalesce(t.pitcher_name, 'Deleted account'); subtitle := coalesce(t.coach_name, 'No coach');
+    end if;
+    select case when m.deleted_at is not null then 'This message was deleted' when m.author_deleted then 'Deleted account'
+                else left(m.body, 140) end, m.author_name
+      into last_preview, last_author
+      from public.chat_messages m where m.thread_id = t.id order by m.created_at desc limit 1;
+    select count(*) into unread from public.chat_messages m
+     where m.thread_id = t.id and m.author_login is distinct from v_uid and m.deleted_at is null
+       and m.created_at > coalesce((select r.last_read_at from public.chat_reads r where r.thread_id = t.id and r.login = v_uid), '-infinity');
+    return next;
+  end loop;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."chat_my_threads"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_open"("p_kind" "text", "p_org" "uuid", "p_group" "uuid", "p_pitcher" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare v_id uuid; v_team uuid; v_org uuid;
+begin
+  if auth.uid() is null then return jsonb_build_object('ok', false, 'error', 'not_authenticated'); end if;
+  if p_kind = 'facility' then
+    if not exists (select 1 from public.organizations o where o.id = p_org and o.manager_login = auth.uid()) then
+      return jsonb_build_object('ok', false, 'error', 'not_allowed');
+    end if;
+    insert into public.chat_threads (org_id, kind) values (p_org, 'facility') on conflict do nothing;
+    select id into v_id from public.chat_threads where org_id = p_org and kind = 'facility';
+    return jsonb_build_object('ok', true, 'thread_id', v_id);
+  end if;
+  select g.team_id, tm.org_id into v_team, v_org from public.coach_groups g join public.teams tm on tm.id = g.team_id
+   where g.id = p_group and tm.kind = 'facility';
+  if v_team is null then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+  if not exists (select 1 from public.coach_group_members m where m.group_id = p_group and m.pitcher_id = p_pitcher) then
+    return jsonb_build_object('ok', false, 'error', 'not_in_group');
+  end if;
+  if not (exists (select 1 from public.coach_groups g join public.profiles pr on pr.id = g.coach_id where g.id = p_group and pr.account_id = auth.uid())
+          or public.chat_family_ok(p_pitcher)) then
+    return jsonb_build_object('ok', false, 'error', 'not_allowed');
+  end if;
+  insert into public.chat_threads (org_id, kind, team_id, group_id, pitcher_id) values (v_org, 'private', v_team, p_group, p_pitcher)
+    on conflict (group_id, pitcher_id) where kind = 'private' and archived_at is null do nothing;
+  select id into v_id from public.chat_threads where kind = 'private' and group_id = p_group and pitcher_id = p_pitcher and archived_at is null;
+  return jsonb_build_object('ok', true, 'thread_id', v_id);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."chat_open"("p_kind" "text", "p_org" "uuid", "p_group" "uuid", "p_pitcher" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_open_reports"() RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(jsonb_agg(jsonb_build_object('id', r.id, 'thread_id', m.thread_id, 'message_id', m.id, 'author', m.author_name,
+           'body', case when m.author_deleted then null else m.body end, 'deleted', m.deleted_at is not null, 'at', m.created_at,
+           'reported_at', r.created_at) order by r.created_at desc), '[]'::jsonb)
+    from public.chat_reports r join public.chat_messages m on m.id = r.message_id
+    join public.chat_threads th on th.id = m.thread_id join public.organizations o on o.id = th.org_id
+   where r.resolved_at is null and o.manager_login = auth.uid();
+$$;
+
+
+ALTER FUNCTION "public"."chat_open_reports"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_pin"("p_message" "uuid", "p_on" boolean) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare v_thread uuid; v jsonb;
+begin
+  select thread_id into v_thread from public.chat_messages where id = p_message and deleted_at is null and not author_deleted;
+  if v_thread is null then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+  v := public.chat_thread(v_thread, 1);
+  if not coalesce((v ->> 'can_pin')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
+  if p_on and (select count(*) from public.chat_messages where thread_id = v_thread and pinned_at is not null and id <> p_message) >= 5 then
+    return jsonb_build_object('ok', false, 'error', 'pin_limit');
+  end if;
+  update public.chat_messages set pinned_at = case when p_on then coalesce(pinned_at, now()) end,
+                                  pinned_by = case when p_on then auth.uid() end
+   where id = p_message;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."chat_pin"("p_message" "uuid", "p_on" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_post"("p_thread" "uuid", "p_body" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare t public.chat_threads%rowtype; v_body text := btrim(coalesce(p_body, '')); v_prof uuid; v_role text; v_name text; v_id uuid;
+begin
+  if public.chat_access(p_thread) is distinct from 'post' then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
+  if char_length(v_body) < 1 or char_length(v_body) > 2000 then return jsonb_build_object('ok', false, 'error', 'invalid_length'); end if;
+  select * into t from public.chat_threads where id = p_thread;
+  if t.kind = 'facility' then
+    select tm.coach_id into v_prof from public.teams tm where tm.org_id = t.org_id order by tm.sport limit 1;
+    v_role := 'manager';
+  else
+    select g.coach_id into v_prof from public.coach_groups g join public.profiles pr on pr.id = g.coach_id
+     where g.id = t.group_id and pr.account_id = auth.uid();
+    if v_prof is not null then v_role := 'coach';
+    else
+      select case when p.managed_by is null then p.id else p.managed_by end, case when p.managed_by is null then 'pitcher' else 'parent' end
+        into v_prof, v_role from public.profiles p where p.id = t.pitcher_id;
+    end if;
+  end if;
+  select full_name into v_name from public.profiles where id = v_prof;
+  insert into public.chat_messages (thread_id, author_profile_id, author_login, author_name, author_role, body)
+    values (p_thread, v_prof, auth.uid(), coalesce(v_name, 'Someone'), v_role, v_body) returning id into v_id;
+  update public.chat_threads set last_message_at = now() where id = p_thread;
+  insert into public.chat_reads (thread_id, login, last_read_at) values (p_thread, auth.uid(), now())
+    on conflict (thread_id, login) do update set last_read_at = excluded.last_read_at;
+  return jsonb_build_object('ok', true, 'id', v_id);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."chat_post"("p_thread" "uuid", "p_body" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_report"("p_message" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare v_thread uuid;
+begin
+  select thread_id into v_thread from public.chat_messages where id = p_message;
+  if v_thread is null or public.chat_access(v_thread) is null then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
+  insert into public.chat_reports (message_id, reported_by) values (p_message, auth.uid()) on conflict do nothing;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."chat_report"("p_message" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_resolve_report"("p_report" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  update public.chat_reports r set resolved_at = now(), resolved_by = auth.uid()
+    from public.chat_messages m, public.chat_threads th, public.organizations o
+   where r.id = p_report and m.id = r.message_id and th.id = m.thread_id and o.id = th.org_id and o.manager_login = auth.uid()
+     and r.resolved_at is null;
+  if not found then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."chat_resolve_report"("p_report" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_summary"() RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select jsonb_build_object(
+    'enabled', exists (select public.chat_my_orgs()),
+    'unread', coalesce((select sum(t.unread) from public.chat_my_threads() t where t.access = 'post' or not t.i_manage), 0),
+    'reports', (select count(*) from public.chat_reports r join public.chat_messages m on m.id = r.message_id
+                  join public.chat_threads th on th.id = m.thread_id join public.organizations o on o.id = th.org_id
+                 where r.resolved_at is null and o.manager_login = auth.uid()));
+$$;
+
+
+ALTER FUNCTION "public"."chat_summary"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."chat_thread"("p_thread" "uuid", "p_limit" integer DEFAULT 200) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare v_access text := public.chat_access(p_thread); v_mgr boolean; t public.chat_threads%rowtype; v_coach boolean;
+begin
+  if v_access is null then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
+  select * into t from public.chat_threads where id = p_thread;
+  v_mgr := exists (select 1 from public.organizations o where o.id = t.org_id and o.manager_login = auth.uid());
+  -- pins: the thread's coach (private) or the manager (facility), while they can post
+  v_coach := v_access = 'post' and (t.kind = 'facility' or exists (select 1 from public.coach_groups g join public.profiles pr on pr.id = g.coach_id
+                                                                     where g.id = t.group_id and pr.account_id = auth.uid()));
+  return jsonb_build_object('ok', true, 'access', v_access, 'kind', t.kind, 'archived', t.archived_at is not null,
+    'clear_after', t.clear_after, 'can_pin', v_coach, 'can_close', v_coach and t.kind = 'private',
+    'messages', coalesce((select jsonb_agg(jsonb_build_object(
+        'id', m.id, 'author', m.author_name, 'role', m.author_role, 'mine', m.author_login = auth.uid(),
+        'body', case when m.author_deleted then null when m.deleted_at is not null and not v_mgr then null else m.body end,
+        'deleted', m.deleted_at is not null, 'author_deleted', m.author_deleted,
+        'pinned', m.pinned_at is not null, 'at', m.created_at) order by m.created_at)
+      from (select * from public.chat_messages where thread_id = p_thread order by created_at desc limit greatest(1, least(p_limit, 500))) m), '[]'::jsonb));
+end;
+$$;
+
+
+ALTER FUNCTION "public"."chat_thread"("p_thread" "uuid", "p_limit" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."claim_guardian_send"() RETURNS "jsonb"
@@ -1208,6 +1608,21 @@ $$;
 
 
 ALTER FUNCTION "public"."f1a_my_coach_profile"("p_team" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."f1c1_close_on_leave"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  update public.chat_threads set archived_at = now(), clear_after = now() + interval '90 days'
+   where kind = 'private' and group_id = old.group_id and pitcher_id = old.pitcher_id and archived_at is null;
+  return old;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."f1c1_close_on_leave"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."facility_invite_info"("p_token" "text") RETURNS "jsonb"
@@ -2294,6 +2709,11 @@ begin
   if v_team is null or v_to_team is null then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
   if v_team <> v_to_team then return jsonb_build_object('ok', false, 'error', 'other_side'); end if;
   if not public.is_org_manager(v_team) then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
+  -- F1-C1: the open private thread goes with the pitcher (unless one with the new coach is already open), before the
+  -- membership row goes -- the leave trigger then finds nothing to close
+  update public.chat_threads set group_id = p_to
+   where kind = 'private' and group_id = p_from and pitcher_id = p_pitcher and archived_at is null
+     and not exists (select 1 from public.chat_threads x where x.kind = 'private' and x.group_id = p_to and x.pitcher_id = p_pitcher and x.archived_at is null);
   delete from public.coach_group_members where group_id = p_from and pitcher_id = p_pitcher;
   if not found then return jsonb_build_object('ok', false, 'error', 'not_in_group'); end if;
   insert into public.coach_group_members (group_id, pitcher_id, added_by, flagged_new)
@@ -3661,6 +4081,70 @@ CREATE TABLE IF NOT EXISTS "public"."accuracy_zones" (
 ALTER TABLE "public"."accuracy_zones" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."chat_messages" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "thread_id" "uuid" NOT NULL,
+    "author_profile_id" "uuid",
+    "author_login" "uuid",
+    "author_name" "text" NOT NULL,
+    "author_role" "text" NOT NULL,
+    "body" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "deleted_at" timestamp with time zone,
+    "pinned_at" timestamp with time zone,
+    "pinned_by" "uuid",
+    "author_deleted" boolean DEFAULT false NOT NULL,
+    CONSTRAINT "chat_messages_body_length" CHECK (("author_deleted" OR (("char_length"("btrim"("body")) >= 1) AND ("char_length"("btrim"("body")) <= 2000)))),
+    CONSTRAINT "chat_messages_role_check" CHECK (("author_role" = ANY (ARRAY['manager'::"text", 'coach'::"text", 'pitcher'::"text", 'parent'::"text"])))
+);
+
+
+ALTER TABLE "public"."chat_messages" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."chat_reads" (
+    "thread_id" "uuid" NOT NULL,
+    "login" "uuid" NOT NULL,
+    "last_read_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."chat_reads" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."chat_reports" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "message_id" "uuid" NOT NULL,
+    "reported_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "resolved_at" timestamp with time zone,
+    "resolved_by" "uuid"
+);
+
+
+ALTER TABLE "public"."chat_reports" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."chat_threads" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "org_id" "uuid" NOT NULL,
+    "kind" "text" NOT NULL,
+    "team_id" "uuid",
+    "group_id" "uuid",
+    "pitcher_id" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "last_message_at" timestamp with time zone,
+    "archived_at" timestamp with time zone,
+    "archived_by" "uuid",
+    "clear_after" timestamp with time zone,
+    CONSTRAINT "chat_threads_facility_shape" CHECK ((("kind" = 'private'::"text") OR (("team_id" IS NULL) AND ("group_id" IS NULL) AND ("pitcher_id" IS NULL)))),
+    CONSTRAINT "chat_threads_kind_check" CHECK (("kind" = ANY (ARRAY['facility'::"text", 'private'::"text"])))
+);
+
+
+ALTER TABLE "public"."chat_threads" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."coach_group_members" (
     "group_id" "uuid" NOT NULL,
     "pitcher_id" "uuid" NOT NULL,
@@ -4458,6 +4942,31 @@ ALTER TABLE ONLY "public"."accuracy_zones"
 
 
 
+ALTER TABLE ONLY "public"."chat_messages"
+    ADD CONSTRAINT "chat_messages_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."chat_reads"
+    ADD CONSTRAINT "chat_reads_pkey" PRIMARY KEY ("thread_id", "login");
+
+
+
+ALTER TABLE ONLY "public"."chat_reports"
+    ADD CONSTRAINT "chat_reports_message_id_reported_by_key" UNIQUE ("message_id", "reported_by");
+
+
+
+ALTER TABLE ONLY "public"."chat_reports"
+    ADD CONSTRAINT "chat_reports_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."chat_threads"
+    ADD CONSTRAINT "chat_threads_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."coach_group_members"
     ADD CONSTRAINT "coach_group_members_pkey" PRIMARY KEY ("group_id", "pitcher_id");
 
@@ -4588,6 +5097,30 @@ ALTER TABLE ONLY "public"."teams"
 
 
 
+CREATE INDEX "chat_messages_author" ON "public"."chat_messages" USING "btree" ("author_login");
+
+
+
+CREATE INDEX "chat_messages_thread" ON "public"."chat_messages" USING "btree" ("thread_id", "created_at");
+
+
+
+CREATE UNIQUE INDEX "chat_threads_one_facility" ON "public"."chat_threads" USING "btree" ("org_id") WHERE ("kind" = 'facility'::"text");
+
+
+
+CREATE UNIQUE INDEX "chat_threads_one_open_private" ON "public"."chat_threads" USING "btree" ("group_id", "pitcher_id") WHERE (("kind" = 'private'::"text") AND ("archived_at" IS NULL));
+
+
+
+CREATE INDEX "chat_threads_org" ON "public"."chat_threads" USING "btree" ("org_id");
+
+
+
+CREATE INDEX "chat_threads_pitcher" ON "public"."chat_threads" USING "btree" ("pitcher_id");
+
+
+
 CREATE INDEX "coach_group_members_pitcher" ON "public"."coach_group_members" USING "btree" ("pitcher_id");
 
 
@@ -4625,6 +5158,10 @@ CREATE UNIQUE INDEX "team_coaches_one_head_per_team" ON "public"."team_coaches" 
 
 
 CREATE OR REPLACE TRIGGER "accuracy_zones_stamp" BEFORE INSERT OR UPDATE ON "public"."accuracy_zones" FOR EACH ROW EXECUTE FUNCTION "public"."accuracy_zones_stamp"();
+
+
+
+CREATE OR REPLACE TRIGGER "coach_group_members_f1c1_chat" AFTER DELETE ON "public"."coach_group_members" FOR EACH ROW EXECUTE FUNCTION "public"."f1c1_close_on_leave"();
 
 
 
@@ -4715,6 +5252,61 @@ ALTER TABLE ONLY "public"."accuracy_zones"
 
 ALTER TABLE ONLY "public"."accuracy_zones"
     ADD CONSTRAINT "accuracy_zones_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."chat_messages"
+    ADD CONSTRAINT "chat_messages_author_login_fkey" FOREIGN KEY ("author_login") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."chat_messages"
+    ADD CONSTRAINT "chat_messages_author_profile_id_fkey" FOREIGN KEY ("author_profile_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."chat_messages"
+    ADD CONSTRAINT "chat_messages_thread_id_fkey" FOREIGN KEY ("thread_id") REFERENCES "public"."chat_threads"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."chat_reads"
+    ADD CONSTRAINT "chat_reads_login_fkey" FOREIGN KEY ("login") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."chat_reads"
+    ADD CONSTRAINT "chat_reads_thread_id_fkey" FOREIGN KEY ("thread_id") REFERENCES "public"."chat_threads"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."chat_reports"
+    ADD CONSTRAINT "chat_reports_message_id_fkey" FOREIGN KEY ("message_id") REFERENCES "public"."chat_messages"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."chat_reports"
+    ADD CONSTRAINT "chat_reports_reported_by_fkey" FOREIGN KEY ("reported_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."chat_threads"
+    ADD CONSTRAINT "chat_threads_group_id_fkey" FOREIGN KEY ("group_id") REFERENCES "public"."coach_groups"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."chat_threads"
+    ADD CONSTRAINT "chat_threads_org_id_fkey" FOREIGN KEY ("org_id") REFERENCES "public"."organizations"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."chat_threads"
+    ADD CONSTRAINT "chat_threads_pitcher_id_fkey" FOREIGN KEY ("pitcher_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."chat_threads"
+    ADD CONSTRAINT "chat_threads_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
 
 
 
@@ -5074,6 +5666,18 @@ ALTER TABLE "public"."account_deletion_log" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."accuracy_zones" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."chat_messages" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."chat_reads" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."chat_reports" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."chat_threads" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."coach_group_members" ENABLE ROW LEVEL SECURITY;
 
 
@@ -5241,6 +5845,107 @@ GRANT ALL ON FUNCTION "public"."cancel_account_deletion"("p_profile" "uuid") TO 
 
 
 
+REVOKE ALL ON FUNCTION "public"."chat_access"("p_thread" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_access"("p_thread" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_access"("p_thread" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_clear_archived"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_clear_archived"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_close"("p_thread" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_close"("p_thread" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_close"("p_thread" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_compose_targets"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_compose_targets"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_compose_targets"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_delete_message"("p_message" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_delete_message"("p_message" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_delete_message"("p_message" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_family_ok"("p_pitcher" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_family_ok"("p_pitcher" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_family_ok"("p_pitcher" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_mark_read"("p_thread" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_mark_read"("p_thread" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_mark_read"("p_thread" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_my_orgs"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_my_orgs"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_my_orgs"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_my_threads"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_my_threads"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_my_threads"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_open"("p_kind" "text", "p_org" "uuid", "p_group" "uuid", "p_pitcher" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_open"("p_kind" "text", "p_org" "uuid", "p_group" "uuid", "p_pitcher" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_open"("p_kind" "text", "p_org" "uuid", "p_group" "uuid", "p_pitcher" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_open_reports"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_open_reports"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_open_reports"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_pin"("p_message" "uuid", "p_on" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_pin"("p_message" "uuid", "p_on" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_pin"("p_message" "uuid", "p_on" boolean) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_post"("p_thread" "uuid", "p_body" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_post"("p_thread" "uuid", "p_body" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_post"("p_thread" "uuid", "p_body" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_report"("p_message" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_report"("p_message" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_report"("p_message" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_resolve_report"("p_report" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_resolve_report"("p_report" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_resolve_report"("p_report" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_summary"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_summary"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_summary"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."chat_thread"("p_thread" "uuid", "p_limit" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."chat_thread"("p_thread" "uuid", "p_limit" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."chat_thread"("p_thread" "uuid", "p_limit" integer) TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."claim_guardian_send"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."claim_guardian_send"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."claim_guardian_send"() TO "service_role";
@@ -5353,6 +6058,11 @@ GRANT ALL ON FUNCTION "public"."f1a_may_edit_group"("p_group" "uuid") TO "servic
 
 REVOKE ALL ON FUNCTION "public"."f1a_my_coach_profile"("p_team" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."f1a_my_coach_profile"("p_team" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."f1c1_close_on_leave"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."f1c1_close_on_leave"() TO "service_role";
 
 
 
@@ -5858,6 +6568,22 @@ GRANT ALL ON SEQUENCE "public"."account_deletion_log_id_seq" TO "service_role";
 
 GRANT ALL ON TABLE "public"."accuracy_zones" TO "authenticated";
 GRANT ALL ON TABLE "public"."accuracy_zones" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."chat_messages" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."chat_reads" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."chat_reports" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."chat_threads" TO "service_role";
 
 
 

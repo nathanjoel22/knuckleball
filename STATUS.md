@@ -15,25 +15,27 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-10-29 · F1-C1 (Chat inside training facilities) · **staging**, branch, PR open (not merged)
+## 2026-10-29 · F1-C1 (Chat inside training facilities) · **production database + function**; site waits on PR #50 merge (v322)
 - **Asked by:** Joel ("let's do chat next"; answers A–F in `plans/f1c1-preconditions.md`). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `f1c1-chat`. **Cache:** v322.
-- **Database (staging only):** migration `20261031000000_f1c1_chat`.
+- **Database:** migration `20261031000000_f1c1_chat` (staging, then production Oct 29 after backup
+  `2026-10-29-2030`; Joel ran the `db push`).
   - New tables: `chat_threads`, `chat_messages`, `chat_reads`, `chat_reports`. No client grants and no policies, so
     the policy count stays 32.
   - 18 `chat_*` functions.
   - `move_between_groups`: the open thread moves with the pitcher.
   - `a1_purge_profile`: the person's messages become "Deleted account" with the text blanked.
   - pg_cron `f1c1-chat-clear` (daily, 09:41 UTC).
-- **Edge Function:** `export-account` adds `chat_messages.csv` (deployed to staging).
+- **Edge Function:** `export-account` adds `chat_messages.csv` (staging, then production Oct 29; Joel deployed).
 - **App:**
   - a Chat tab and a Chat bar button with a count, only for logins with a facility;
   - the thread list (the manager also gets Reported messages);
   - the compose (pen) button;
   - a thread: pinned shelf, messages, Pin / Delete / Report, Close this chat, a 2,000-character box;
   - polling at 30 s / 5 s.
-- **Policy pages:** DRAFT additions on `privacy.html` (what we collect, "At a training facility", keeping and deleting)
-  and `terms.html` ("Chat at training facilities"). Both are marked DRAFT until Joel approves the words.
+- **Policy pages:** additions on `privacy.html` (what we collect, "At a training facility", keeping and deleting)
+  and `terms.html` ("Chat at training facilities"). Joel approved the words Oct 29 ("approved, update quietly without
+  the I agree box"): Version 2026-10-29; `TERMS_VERSION` stays 2026-10-17, so no "I agree" box.
 - **Checks (staging):**
   - **Structure vs production:** only the 18 new functions, 4 tables, the clear job and the two intended function
     changes differ. (`session_dots_since` differs on its own: a timestamp from Oct 1.)
@@ -64,17 +66,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - On a purge the message text is blanked, not kept for the manager (decision D).
   - A manager's count covers only the facility thread, their own trainees' threads and open reports, not every family
     thread.
+- **Production checks (Oct 29):** structure vs staging identical except `session_dots_since` (by design); policies
+  32; 4 chat tables with no client grants; `f1c1-chat-clear` scheduled; `schema.sql` regenerated.
 - **Open:**
-  - **Joel approves the policy text.** That includes whether to bump `TERMS_VERSION`, which would show everyone the
-    "I agree" box.
-  - **Then the production order:**
-    1. backup;
-    2. `db push` (dry run first);
-    3. `supabase functions deploy export-account --project-ref fkgccjhuimkkbupbanxp`;
-    4. structure check (same as staging) and policies 32;
-    5. regenerate `schema.sql`;
-    6. remove the DRAFT markers and set the policy version;
-    7. merge (v322).
+  - Merge PR #50 on "ship it" (v322), then check the live `sw.js`.
+  - F1-G (guardian link and roles), F1-D, F1-B, F1-C2 to come.
 
 ## 2026-10-29 · F1-A (training facilities: organizations, manager, coach groups) · **production** (database and site; PR #49 merged Oct 29, v321 live)
 - **Asked by:** Joel (the pasted F1 v2 packet, `plans/f1-training-facilities.md`; answers A–G in

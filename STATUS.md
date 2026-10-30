@@ -15,6 +15,75 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-29 · F1-G (linked sign-ins for a parent's player) · **staging**, branch, PR open (not merged)
+- **Asked by:** Joel ("let's do F1-G next"; answers A–L in `plans/f1g-preconditions.md`). Operator
+  `Nathan <joelhauserman@gmail.com>`. Branch `f1g-player-links`. **Cache:** v323.
+- **Database (staging only):** migration `20261101000000_f1g_player_links`.
+  - New tables: `player_links` and `player_link_invites`.
+  - Profiles get the role `child`.
+  - New helpers `is_linked_to` and `can_chart_for`, and the link functions.
+  - 10 read rules edited; policies stay 32.
+  - `sync_session`, the leaderboard, the report-reason function, the join functions and 5 chat functions updated.
+- **Edge Functions (staging):** `send-session-report` (a linked parent or the child may send to the saved contacts)
+  and `export-account` (`player_access.csv`).
+- **App:**
+  - `player-link.html`: the child makes their own sign-in, and an adult signs in to or makes a parent account.
+  - Linked players appear in the switcher ("Parent" or "View only" badge).
+  - A linked player's Profile is read-only and has "Stop following".
+  - The creator's Profile has "Who can see <player>": links, Copy / Share, Cancel, Remove.
+  - Friends and family get no Charts, Chat, Leaderboard, Contacts or delete.
+- **Policy pages:** DRAFT additions on `privacy.html` and `terms.html` (linked sign-ins), marked DRAFT until Joel
+  approves the words.
+- **Checks (staging):**
+  - **F1-G acceptance:** 0 hard fails. Covered:
+    - who can make links;
+    - link info shown before sign-in;
+    - accepting by role, including wrong login kinds, used and expired links;
+    - the limits (2 parents, 1 child, 5 friends and family);
+    - reads per role;
+    - charting (the second parent and the child save; friends and family, a stranger, or charting as someone else
+      are refused);
+    - creator-only actions refused for the others;
+    - direct table reads denied;
+    - chat per role;
+    - leave and remove;
+    - account purges.
+  - **Regressions:** F1-C1 chat test 0 hard fails; F1-A test 0 hard fails; A1 deletion test 21 checks, same
+    outcomes.
+  - **Every-login read matrix (47 staging logins):**
+    - Straight after the migration, 0 differences apart from the two new tables, which every login is denied.
+    - After the browser test, 4 logins differ. All of it is the new 3-pitch pen: the creator, coach A and the manager
+      each see +1 session, +3 pitches, +1 stats row. Parent 02's change is their own History "seen" mark.
+  - **Rollback:** the down script restored staging's structure exactly (function, policy, column, trigger and cron
+    hashes), and the migration was then re-applied.
+  - **Browser at 390 px:**
+    - the creator makes three links;
+    - parent 02 joins through the link and charts a 3-pitch pen, which is saved, sealed, with stats, charted as the
+      player;
+    - a new friends-and-family account sees History only;
+    - a new child sign-in lands on the player with the coach's chat;
+    - the creator removes friends and family;
+    - parent 02 stops following.
+
+    No sideways scroll at 390 or 360 px.
+- **Deviations:** see "Choices made while building" in `plans/f1g-preconditions.md`. In short:
+  - linked parents and the child chart as the player;
+  - friends and family also read coach notes;
+  - adults need a parent account;
+  - one unused link per role.
+- **Open:**
+  - **Joel approves the DRAFT policy text.** That includes whether to bump `TERMS_VERSION`.
+  - **Then the production order:**
+    1. backup;
+    2. `db push` (dry run first);
+    3. deploy `send-session-report` and `export-account`;
+    4. structure check and policies 32;
+    5. regenerate `schema.sql`;
+    6. remove the DRAFT markers;
+    7. merge (v323).
+  - **Known:** a removed person's device keeps its cached copy of the player until it next loads online or signs out.
+  - **Staging test data:** links on LoadTest 001, plus logins `f1g-family@example.com` and `f1g-child@example.com`.
+
 ## 2026-10-29 · F1-C1 (Chat inside training facilities) · **production database + function**; site waits on PR #50 merge (v322)
 - **Asked by:** Joel ("let's do chat next"; answers A–F in `plans/f1c1-preconditions.md`). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `f1c1-chat`. **Cache:** v322.

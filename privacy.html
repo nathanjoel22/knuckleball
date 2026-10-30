@@ -69,7 +69,7 @@
   <main>
     <a class="standalone-back" href="bullpen-tracker.html">&lsaquo; Back to Knuckleball</a>   <!-- P2-05: shown only in the installed app -->
     <h1>Privacy Policy</h1>
-    <p class="meta">Knuckleball LLC &middot; Effective October 29, 2026 &middot; Version 2026-10-29</p>
+    <p class="meta">Knuckleball LLC &middot; Effective October 29, 2026 &middot; Version 2026-10-29 &middot; <strong>DRAFT 2026-10-30 additions (linked sign-ins for a parent&rsquo;s player) awaiting approval</strong></p>
 
     <p>Knuckleball is a pitch-charting app for baseball and softball pitchers and their coaches. It is run by
       Knuckleball LLC (&ldquo;we&rdquo;). This page explains what we store, who can see it, where it lives, and how
@@ -79,7 +79,8 @@
     <ul>
       <li><strong>Account details:</strong> name, email address, password (handled by our sign-in provider; we never see it), and your sport and role (pitcher, coach, or parent).</li>
       <li><strong>Age bracket:</strong> whether you told us you're 18 or older, or 13 to 17, and when. We never ask for or store a date of birth. For 13&ndash;17 players: a parent or guardian's email address and whether they approved.</li>
-      <li><strong>Players added by a parent:</strong> the player's name, sport, and throwing hand, plus the parent's consent and when it was given. We store no email address, login, or age for a player added this way.</li>
+      <li><strong>Players added by a parent:</strong> the player's name, sport, and throwing hand, plus the parent's consent and when it was given. We store no email address, login, or age for a player added this way &mdash; unless the parent gives a player who is 13 to 17 their own sign-in: then we also store that sign-in's email address and that the player is 13 to 17.</li>
+      <li><strong>Linked sign-ins:</strong> who the parent who added a player has linked to that player (a second parent or guardian, the player's own sign-in, or friends and family), and when.</li>
       <li><strong>Player details:</strong> jersey number, throwing hand, pitch types, whether you use a radar gun, an optional profile photo, and up to three email addresses that reports can be sent to.</li>
       <li><strong>Charting data:</strong> every pitch charted &mdash; pitch type, target and location, velocity, result, delivery, time to plate &mdash; plus, for live games, counts, outs, runners and plays; session dates; and who charted each session.</li>
       <li><strong>Coach notes</strong> written on a session.</li>
@@ -90,6 +91,12 @@
     <h2>Who can see it</h2>
     <ul>
       <li><strong>You</strong> see everything in your own account, including any players you've added.</li>
+      <li><strong>People a parent links to a player.</strong> The parent who added a player can give a one-time link to
+        a second parent or guardian, to the player (13 to 17) for their own sign-in, and to up to five friends and
+        family. A second parent or guardian and the player's own sign-in see everything about the player, can chart for
+        them, and can chat with the player's coach at a training facility. Friends and family see the player's charting
+        history only &mdash; sessions, their reports and coach notes &mdash; with no chat, contact details or charting. The parent who added the player can remove
+        anyone at any time, and anyone linked can leave.</li>
       <li><strong>Your coaches</strong> &mdash; the head and assistant coaches of any team you're on &mdash; see your player details and the sessions you've charted since you joined their team &mdash; including sessions charted for your other teams &mdash; with their notes. Only the team a session was charted for can add notes to it, create or send its report, or delete it. If you leave a team, its coaches keep the sessions charted for that team while you were on it, but stop seeing anything else; coaches of an archived team stop seeing your new sessions too. For a player added by a parent, they also see that the player is on a parent account.</li>
       <li><strong>Teammates</strong> on a baseball team see the team leaderboard, which shows rankings (peak velocity, accuracy, strike percentage) and pitch counts &mdash; never anyone's sessions, pitch charts, or notes. Softball has no leaderboard.</li>
       <li><strong>Teams, organizations and analytics partners that license Knuckleball data.</strong> We may license
@@ -105,7 +112,8 @@
       <li><strong>Coaches of your other teams</strong> also see sessions charted at the facility (lessons), the same way
         they see sessions charted for any of your teams.</li>
       <li><strong>Chat.</strong> A private chat is between a pitcher's coach at the facility and the pitcher &mdash; or,
-        for a player added by a parent, that parent. Messages to everyone at the facility come only from the facility
+        for a player added by a parent, that parent, a second parent or guardian they linked, and the player's own sign-in.
+        Messages to everyone at the facility come only from the facility
         manager. <strong>The facility manager can read every chat at the facility</strong>, including closed chats and the
         text of deleted messages. Coaches of your other teams never see facility chats.</li>
     </ul>
@@ -151,7 +159,7 @@
     <ul>
       <li>You must be 13 or older to create your own account.</li>
       <li>If you're 13 to 17, a parent or guardian must approve your account by an emailed link. Until they do, you can chart, but you can't view or send reports.</li>
-      <li>A parent or legal guardian can create a parent account and add their child as a player, at any age, including under 13. The parent holds the account and its login, gives consent when adding the player, and receives the player's reports. The child gets no email address or login of their own.</li>
+      <li>A parent or legal guardian can create a parent account and add their child as a player, at any age, including under 13. The parent holds the account and its login, gives consent when adding the player, and receives the player's reports. The child gets no email address or login of their own, unless the parent gives a player who is 13 to 17 a sign-in link: that sign-in is approved by the parent, and the parent can remove it. A player under 13 never gets a sign-in.</li>
       <li>Players under 13 can use Knuckleball only through a parent account.</li>
       <li>Coaches and parents must be 18 or older.</li>
     </ul>
@@ -172,6 +180,9 @@
         and again when it's done &mdash; and your parent or guardian too, if they approved your account. A head coach
         hands off or archives their teams first.</li>
       <li>A parent can delete a player they added the same way, from that player's profile.</li>
+      <li><strong>Linked sign-ins:</strong> a linked person's access ends when the parent who added the player removes
+        them, when they leave, or when the player or their own account is deleted. Download my data lists who can see the
+        players you added, and the players you can see.</li>
       <li><strong>Chat:</strong> a deleted message shows as deleted to everyone; its text is kept for the facility manager
         until the chat is cleared. A coach can close a chat: it becomes read only, and the facility manager can read it for
         90 days, after which it is deleted automatically. A chat also closes when the pitcher stops training with that

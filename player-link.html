@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<!-- P2-05: installable app (manifest, icons, iOS home-screen tags); css/standalone.css handles safe areas -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#061A12">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Knuckleball">
+<link rel="stylesheet" href="css/standalone.css">
+<script>
+  // W1 (Oct 15 2026): inside the Knuckleball iOS / Android app (Capacitor), same-site pages that aren't the app itself
+  // -- privacy, terms, reports, the account-deletion page -- open in the phone's own browser sheet (Done / close button),
+  // so the app never navigates away from itself. In a browser, or a home-screen install, this does nothing.
+  (function(){
+    var cap = window.Capacitor;
+    if(!cap || !cap.isNativePlatform || !cap.isNativePlatform()) return;
+    document.documentElement.classList.add('kb-native');
+    document.addEventListener('click', function(e){
+      var a = e.target && e.target.closest && e.target.closest('a[href]');
+      if(!a) return;
+      var u; try{ u = new URL(a.getAttribute('href'), location.href); }catch(x){ return; }
+      if(u.origin !== location.origin || !/\/(report|privacy|terms|delete-account|help)\.html$/.test(u.pathname)) return;
+      var B = cap.Plugins && cap.Plugins.Browser;
+      if(!B || !B.open) return;
+      e.preventDefault();
+      B.open({ url: u.href });
+    }, true);
+  })();
+</script>
+<title>Join a player · Knuckleball</title>
+<script src="vendor/supabase.js"></script>
+<script>
+  // S1: theme before first paint. A ?sport= on the URL wins (every link to
+  // sign-in / signup carries one) and is remembered; otherwise this device's
+  // remembered choice. Join pages re-theme from the team's sport.
+  (function(){
+    var sp = null;
+    try{
+      var q = new URLSearchParams(location.search).get('sport');
+      if(q === 'baseball' || q === 'softball'){ sp = q; localStorage.setItem('kb:sport', q); }
+      else sp = localStorage.getItem('kb:sport');
+    }catch(e){}
+    window.KB_SPORT_KNOWN = (sp === 'baseball' || sp === 'softball');
+    window.KB_SPORT = sp === 'softball' ? 'softball' : 'baseball';
+    document.documentElement.setAttribute('data-sport', window.KB_SPORT);
+  })();
+</script>
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<link rel="stylesheet" href="css/tokens.css">   <!-- D1: the design tokens, every page (Oct 13 2026) -->
+<link rel="stylesheet" href="buttons.css">   <!-- U13: shared button shapes (Joel, Oct 9 2026) -->
+<link rel="stylesheet" href="css/components.css">   <!-- D2 Stage C: the shared sign-in look (Oct 13 2026) -->
+</head>
+<body class="signin">
+  <!-- F1-G (Joel, Oct 29 2026): a one-time link from the parent who created a player (player_link_invites). The
+       player's own sign-in (13-17) makes a new login here; a second parent or guardian, or friends and family, sign in
+       to (or make) a parent account. Then accept_player_link(token) links the login to the player, once. -->
+  <div class="card" id="link-card">
+    <header class="signin-head"><div class="brand-block">
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <h2 class="display">Join <span class="last" id="link-title">a player</span></h2></header>
+    <div class="info-msg" id="link-msg">Checking your link…</div>
+    <a href="bullpen-tracker.html" id="link-open" class="step-hidden">Open Knuckleball &rarr;</a>
+  </div>
+
+  <!-- signed in already: continue as this login, or sign out first -->
+  <div class="card step-hidden" id="current-card">
+    <header class="signin-head"><div class="brand-block">
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <div><span class="role-tag slant-tag" id="current-role">Join</span>
+      <h2 class="display"><span id="current-player">A player</span></h2>
+      <p class="sub" id="current-sub"></p></div></header>
+    <div class="error-msg" id="current-error"></div>
+    <button type="button" class="btn btn-primary btn-block" id="current-go">Continue</button>
+    <div class="foot-row"><a href="#" id="current-signout">Not you? Sign out</a></div>
+  </div>
+
+  <!-- the player's own sign-in (13-17): a new login -->
+  <form class="card step-hidden" id="child-form" autocomplete="off">
+    <header class="signin-head"><div class="brand-block">
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <div><span class="role-tag slant-tag">Your own sign-in</span>
+      <h2 class="display"><span class="last child-name">Your profile</span></h2>
+      <p class="sub"><span class="from-name">Your parent</span> set up your profile and sent you this link. Pick an email and password so you can sign in and chart yourself.</p></div></header>
+    <div class="field"><label class="field-label" for="c-email">Your email</label>
+      <input class="text-input" id="c-email" type="email" autocomplete="email" placeholder="you@example.com"></div>
+    <div class="field"><label class="field-label" for="c-password">Password</label>
+      <input class="text-input" id="c-password" type="password" placeholder="At least 8 characters" autocomplete="new-password"></div>
+    <label class="terms-check"><input type="checkbox" id="c-terms"> <span>I'm 13 to 17, my parent sent me this link, and I agree to the <a href="terms.html" target="_blank" class="policy-link">Terms</a> and <a href="privacy.html" target="_blank" class="policy-link">Privacy Policy</a>.</span></label>
+    <div class="error-msg" id="c-error"></div>
+    <button type="submit" class="btn btn-primary btn-block" id="c-submit">Create my sign-in</button>
+  </form>
+
+  <!-- a second parent or guardian, or friends and family: a parent account -->
+  <form class="card step-hidden" id="adult-form" autocomplete="off">
+    <header class="signin-head"><div class="brand-block">
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <div><span class="role-tag slant-tag" id="a-role">Parent or guardian</span>
+      <h2 class="display">Follow <span class="last child-name">a player</span></h2>
+      <p class="sub" id="a-sub"></p></div></header>
+    <div class="ap-choices" role="radiogroup" aria-label="Your account">
+      <label class="attest-opt"><input type="radio" name="a-mode" value="new" checked> I'm new to Knuckleball</label>
+      <label class="attest-opt"><input type="radio" name="a-mode" value="signin"> I have a parent account</label>
+    </div>
+    <div class="field" id="a-name-field"><label class="field-label" for="a-name">Your name</label>
+      <input class="text-input" id="a-name" placeholder="First and last name" autocomplete="name"></div>
+    <div class="field"><label class="field-label" for="a-email">Email</label>
+      <input class="text-input" id="a-email" type="email" autocomplete="email"></div>
+    <div class="field"><label class="field-label" for="a-password">Password</label>
+      <input class="text-input" id="a-password" type="password" placeholder="At least 8 characters" autocomplete="current-password"></div>
+    <label class="terms-check" id="a-terms-row"><input type="checkbox" id="a-terms"> <span>I am 18 or older and I agree to the <a href="terms.html" target="_blank" class="policy-link">Terms</a> and <a href="privacy.html" target="_blank" class="policy-link">Privacy Policy</a>.</span></label>
+    <div class="error-msg" id="a-error"></div>
+    <button type="submit" class="btn btn-primary btn-block" id="a-submit">Create account and follow</button>
+  </form>
+
+  <div class="card step-hidden" id="confirm-card">
+    <header class="signin-head"><div class="brand-block">
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <h2 class="display">Check your <span class="last">email</span></h2></header>
+    <div class="info-msg">We sent a confirmation link to your email. Click it, then open this same link again and sign in to finish joining.</div>
+    <a href="#" id="confirm-again">Back to the link &rarr;</a>
+  </div>
+
+<script src="supabase-config.js"></script>
+<script>
+  var TERMS_VERSION = '2026-10-17';
+  function kbPolicyLinks(sport){
+    var sp = sport === 'softball' ? 'softball' : 'baseball';
+    document.querySelectorAll('a.policy-link, .site-footer a[href^="privacy.html"], .site-footer a[href^="terms.html"]').forEach(function(a){
+      a.setAttribute('href', a.getAttribute('href').split('#')[0] + '#' + sp);
+    });
+  }
+  var token = new URLSearchParams(location.search).get('t') || '';
+  var info = null;
+  var ROLE_TAG = { guardian: 'Parent or guardian', family: 'Friends & family', child: 'Your own sign-in' };
+  var LINK_MSGS = {
+    not_found: "This link isn't valid. Check that you copied all of it, or ask for a new one.",
+    used: 'This link has already been used. Ask for a new one if you still need it.',
+    expired: 'This link has expired (links last 7 days). Ask for a new one.',
+    done: "You've joined. Open Knuckleball to see the player."
+  };
+  var ACCEPT_ERRORS = {
+    not_a_parent_login: "This account isn't a parent account. Use a different email to make a parent account for following players.",
+    adult_required: 'Answer the age question in Knuckleball first (parents are 18 or older), then open this link again.',
+    login_in_use: 'This account already has profiles of its own. Your own sign-in needs a new email address.',
+    already_yours: 'This player is already on your account.',
+    already_linked: 'You already follow this player.',
+    limit_reached: 'This player already has everyone that kind of link allows. Ask for a different link.',
+    used: LINK_MSGS.used, expired: LINK_MSGS.expired, not_found: LINK_MSGS.not_found
+  };
+  function show(id){ ['link-card', 'current-card', 'child-form', 'adult-form', 'confirm-card'].forEach(function(c){ document.getElementById(c).classList.toggle('step-hidden', c !== id); }); }
+  function showMessage(msg, open){ show('link-card'); document.getElementById('link-msg').textContent = msg; document.getElementById('link-open').classList.toggle('step-hidden', !open); }
+  document.getElementById('confirm-again').href = location.href;
+  // a signup that needed its email confirmed comes back here: the same email and password then sign in
+  async function signInInstead(email, password){
+    var si = await supabaseClient.auth.signInWithPassword({ email: email, password: password });
+    return !si.error;
+  }
+  // a parent account made here, maybe across an email confirmation: its profile, then its 18+ answer
+  async function finishParent(name){
+    await supabaseClient.rpc('ensure_account_setup', name ? { p_role: 'parent', p_full_name: name } : {});
+    var stash = null; try{ stash = JSON.parse(sessionStorage.getItem('kb:pendingAttest') || 'null') || JSON.parse(localStorage.getItem('kb:pendingParentAttest') || 'null'); }catch(x){}
+    if(name || stash){
+      var att = await supabaseClient.rpc('record_attestation', { p_status: 'adult', p_terms_version: TERMS_VERSION, p_guardian_email: null, p_via: 'signup' });
+      if(att.error || !att.data || !att.data.ok) return false;
+      try{ sessionStorage.removeItem('kb:pendingAttest'); localStorage.removeItem('kb:pendingParentAttest'); }catch(x){}
+    }
+    return true;
+  }
+  // into the app on the player just joined (the app opens a login's last active profile)
+  async function goToApp(playerId){
+    try{
+      if(info && info.sport) localStorage.setItem('kb:sport', info.sport);
+      var s = (await supabaseClient.auth.getSession()).data.session;
+      if(s && playerId) localStorage.setItem('kb:activeProfile:' + s.user.id, playerId);
+    }catch(x){}
+    window.location.href = 'bullpen-tracker.html';
+  }
+  async function accept(){
+    var r = await supabaseClient.rpc('accept_player_link', { p_token: token, p_terms_version: TERMS_VERSION });
+    if(r.error) return { error: "Couldn't finish joining. Check your connection and try again." };
+    if(!r.data || !r.data.ok) return { error: ACCEPT_ERRORS[r.data && r.data.error] || 'Something went wrong: ' + ((r.data && r.data.error) || 'unknown') };
+    return { ok: true, playerId: r.data.player_id };
+  }
+  function fill(){
+    var who = info.player_name || 'the player', from = info.from_name || 'Their parent';
+    document.getElementById('link-title').textContent = who;
+    document.querySelectorAll('.child-name').forEach(function(e){ e.textContent = who; });
+    document.querySelectorAll('.from-name').forEach(function(e){ e.textContent = from; });
+    document.getElementById('a-role').textContent = ROLE_TAG[info.role] || 'Follow';
+    document.getElementById('a-sub').textContent = info.role === 'guardian'
+      ? from + ' invited you as ' + who + "'s other parent or guardian: you'll chart, see everything and chat with " + who + "'s coach."
+      : from + ' invited you to follow ' + who + "'s charting history.";
+  }
+  (async function(){
+    if(!token){ showMessage(LINK_MSGS.not_found, false); return; }
+    var res;
+    try{ res = await supabaseClient.rpc('player_link_info', { p_token: token }); }catch(e){ res = { error: e }; }
+    if(res.error || !res.data){ showMessage("Can't reach the server — check your connection and reload this page.", false); return; }
+    info = res.data;
+    if(info.status !== 'ok'){ showMessage(LINK_MSGS[info.status] || LINK_MSGS.not_found, info.status === 'done'); return; }
+    if(info.sport){ document.documentElement.setAttribute('data-sport', info.sport); kbPolicyLinks(info.sport); }
+    fill();
+    var cur = null; try{ cur = (await supabaseClient.auth.getSession()).data.session; }catch(x){}
+    if(cur && cur.user){
+      document.getElementById('current-role').textContent = ROLE_TAG[info.role] || 'Join';
+      document.getElementById('current-player').textContent = info.player_name || 'A player';
+      document.getElementById('current-sub').textContent = info.role === 'child'
+        ? "You're signed in as " + cur.user.email + '. Your own sign-in needs a new email address: sign out first.'
+        : "You're signed in as " + cur.user.email + '. Continue to follow ' + (info.player_name || 'this player') + ' with this account.';
+      document.getElementById('current-go').classList.toggle('step-hidden', info.role === 'child');
+      show('current-card');
+      return;
+    }
+    show(info.role === 'child' ? 'child-form' : 'adult-form');
+  })();
+
+  document.getElementById('current-go').addEventListener('click', async function(){
+    var btn = this; btn.disabled = true;
+    var r = await accept();
+    if(r.error){ document.getElementById('current-error').textContent = r.error; btn.disabled = false; return; }
+    goToApp(r.playerId);
+  });
+  document.getElementById('current-signout').addEventListener('click', async function(e){
+    e.preventDefault();
+    try{ await supabaseClient.auth.signOut(); }catch(x){}
+    location.reload();
+  });
+
+  // the player's own sign-in
+  document.getElementById('child-form').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var err = document.getElementById('c-error'), btn = document.getElementById('c-submit');
+    err.textContent = '';
+    var email = document.getElementById('c-email').value.trim(), password = document.getElementById('c-password').value;
+    if(!email || !password){ err.textContent = 'Fill in every field to continue.'; return; }
+    if(password.length < 8){ err.textContent = 'Password should be at least 8 characters.'; return; }
+    if(!document.getElementById('c-terms').checked){ err.textContent = 'Confirm the statement and agree to the Terms and Privacy Policy.'; return; }
+    btn.disabled = true; btn.textContent = 'Setting up…';
+    var up = await supabaseClient.auth.signUp({ email: email, password: password,
+      options: { data: { full_name: info.player_name, intended_role: 'child', intended_sport: info.sport } } });
+    if(up.error){
+      var known = /already|registered|exists/i.test(up.error.message || '');
+      if(!(known && await signInInstead(email, password))){   // back after confirming the email: same email and password
+        err.textContent = known ? 'This email already has an account. Your own sign-in needs a new email address.' : up.error.message;
+        btn.disabled = false; btn.textContent = 'Create my sign-in'; return;
+      }
+    } else if(!up.data.session){ show('confirm-card'); return; }
+    var r = await accept();
+    if(r.error){ err.textContent = r.error; btn.disabled = false; btn.textContent = 'Try again'; return; }
+    goToApp(r.playerId);
+  });
+
+  // a parent account: new or existing
+  function adultMode(){ var r = document.querySelector('input[name="a-mode"]:checked'); return r ? r.value : 'new'; }
+  document.querySelectorAll('input[name="a-mode"]').forEach(function(r){
+    r.addEventListener('change', function(){
+      var signin = adultMode() === 'signin';
+      document.getElementById('a-name-field').classList.toggle('step-hidden', signin);
+      document.getElementById('a-terms-row').classList.toggle('step-hidden', signin);
+      document.getElementById('a-submit').textContent = signin ? 'Sign in and follow' : 'Create account and follow';
+      document.getElementById('a-password').setAttribute('autocomplete', signin ? 'current-password' : 'new-password');
+    });
+  });
+  document.getElementById('adult-form').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var err = document.getElementById('a-error'), btn = document.getElementById('a-submit'), label = btn.textContent;
+    err.textContent = '';
+    var signin = adultMode() === 'signin';
+    var name = document.getElementById('a-name').value.trim(), email = document.getElementById('a-email').value.trim(), password = document.getElementById('a-password').value;
+    if(!email || !password || (!signin && !name)){ err.textContent = 'Fill in every field to continue.'; return; }
+    if(!signin && password.length < 8){ err.textContent = 'Password should be at least 8 characters.'; return; }
+    if(!signin && !document.getElementById('a-terms').checked){ err.textContent = "Confirm you're 18 or older and agree to the Terms and Privacy Policy."; return; }
+    btn.disabled = true; btn.textContent = signin ? 'Signing in…' : 'Setting up…';
+    if(signin){
+      var si = await supabaseClient.auth.signInWithPassword({ email: email, password: password });
+      if(si.error){ err.textContent = /confirm/i.test(si.error.message || '') ? 'Confirm your email first (check your inbox), then sign in.' : 'That email and password didn’t match.'; btn.disabled = false; btn.textContent = label; return; }
+      if(!(await finishParent(null))){ err.textContent = "Couldn't finish setting up your account. Try again."; btn.disabled = false; btn.textContent = label; return; }
+    } else {
+      var up = await supabaseClient.auth.signUp({ email: email, password: password,
+        options: { data: { full_name: name, intended_role: 'parent' } } });
+      if(up.error){
+        if(!(/already|registered|exists/i.test(up.error.message || '') && await signInInstead(email, password))){
+          err.textContent = /already|registered|exists/i.test(up.error.message || '') ? 'This email already has an account. Choose "I have a parent account" and sign in.' : up.error.message;
+          btn.disabled = false; btn.textContent = label; return;
+        }
+      } else if(!up.data.session){ try{ localStorage.setItem('kb:pendingParentAttest', '{"status":"adult"}'); }catch(x){} show('confirm-card'); return; }
+      if(!(await finishParent(name))){ err.textContent = "Couldn't save your answer. Check your connection and try again."; btn.disabled = false; btn.textContent = 'Try again'; return; }
+    }
+    var r = await accept();
+    if(r.error){ err.textContent = r.error; btn.disabled = false; btn.textContent = 'Try again'; return; }
+    goToApp(r.playerId);
+  });
+</script>
+<p class="site-footer">Knuckleball LLC 2026 &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></p>
+<script>kbPolicyLinks(window.KB_SPORT);</script>
+</body>
+</html>

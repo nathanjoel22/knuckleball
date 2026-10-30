@@ -254,7 +254,7 @@ Deno.serve(async (req) => {
   // Checked before anything is generated, so a refused caller leaves no orphaned file.
   {
     const [{ data: ownsIt }, { data: recording }] = await Promise.all([
-      callerClient.rpc('is_my_profile', { p: pitcherId }),
+      callerClient.rpc('can_chart_for', { p_player: pitcherId }),   // F1-G: the player's own login, a second parent or the child's sign-in
       callerClient.rpc('is_coach_of_session_team', { p_session_id: sessionId })
     ])
     if (ownsIt !== true && recording !== true) {

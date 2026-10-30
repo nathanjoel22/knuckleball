@@ -15,6 +15,28 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-29 · F1-D (one "‹ Back"; the bar stays) · **staging** (frontend only), branch, PR open (not merged)
+- **Asked by:** Joel ("let's do F1-D next"; answers A–C in `plans/f1d-preconditions.md`). Operator
+  `Nathan <joelhauserman@gmail.com>`. Branch `f1d-back`. **Cache:** v324. No database or function change.
+- **Built:** one "‹ Back" at the top left of the page that goes to the section's first screen. It shows on:
+  - the start questions (→ the chooser);
+  - an opened History session (→ the list, on that card);
+  - a chat thread (→ the list);
+  - the accuracy painter or Add a player (→ the top of Profile);
+  - a coach's Player Profile (→ the roster).
+
+  It never shows on the charting screen or on a section's first screen. Removed: the chooser's two "‹ Back" placements
+  (header and phone brand strip), the start questions' in-form "‹ Back", and the chat thread's "‹ Chats".
+- **Checks (browser, staging logins):** Back present / absent and where it lands, for each screen above:
+  - at 390 px as a pitcher (the child's sign-in at the facility);
+  - at 390 px as a parent;
+  - at 390 px and 1180 px as a coach.
+
+  On the charting screen, 0 Back buttons, even before the first pitch. No sideways scroll.
+- **Deviations from the packet:** the packet's five-segment bar is not built. Joel's later decisions (Home, Analysis)
+  stand, so decision A leaves the bar as it is.
+- **Open:** merge PR on "ship it" (frontend only: no backup or migration needed).
+
 ## 2026-10-29 · F1-G (linked sign-ins for a parent's player) · **production database + functions**; site waits on PR #52 merge (v323)
 - **Asked by:** Joel ("let's do F1-G next"; answers A–L in `plans/f1g-preconditions.md`). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `f1g-player-links`. **Cache:** v323.

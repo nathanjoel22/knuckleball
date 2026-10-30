@@ -15,7 +15,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-10-29 · F1-D (one "‹ Back"; the bar stays) · **staging** (frontend only), branch, PR open (not merged)
+## 2026-10-29 · F1-D (one "‹ Back"; the bar stays) · **production** (PR #54 merged Oct 29, v324 live)
 - **Asked by:** Joel ("let's do F1-D next"; answers A–C in `plans/f1d-preconditions.md`). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `f1d-back`. **Cache:** v324. No database or function change.
 - **Built:** one "‹ Back" at the top left of the page that goes to the section's first screen. It shows on:
@@ -35,7 +35,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   On the charting screen, 0 Back buttons, even before the first pitch. No sideways scroll.
 - **Deviations from the packet:** the packet's five-segment bar is not built. Joel's later decisions (Home, Analysis)
   stand, so decision A leaves the bar as it is.
-- **Open:** merge PR on "ship it" (frontend only: no backup or migration needed).
+- **Shipped:** merged Oct 29 (fd1f0af); live `sw.js` shows v324.
 
 ## 2026-10-29 · F1-G (linked sign-ins for a parent's player) · **production database + functions**; site waits on PR #52 merge (v323)
 - **Asked by:** Joel ("let's do F1-G next"; answers A–L in `plans/f1g-preconditions.md`). Operator

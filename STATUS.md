@@ -15,7 +15,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-10-29 · F1-G (linked sign-ins for a parent's player) · **production database + functions**; site waits on PR #52 merge (v323)
+## 2026-10-29 · F1-G (linked sign-ins for a parent's player) · **production** (database, functions and site; PR #52 merged Oct 29, v323 live)
 - **Asked by:** Joel ("let's do F1-G next"; answers A–L in `plans/f1g-preconditions.md`). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `f1g-player-links`. **Cache:** v323.
 - **Database:** migration `20261101000000_f1g_player_links` (staging, then production Oct 29 after backup `2026-10-29-2303`;
@@ -75,7 +75,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Production checks (Oct 29):** structure identical to staging except `session_dots_since` (by design); policies 32;
   no client grants on the two link tables; `schema.sql` regenerated.
 - **Open:**
-  - Merge PR #52 on "ship it" (v323), then check the live `sw.js`.
+  - Merged Oct 29 (ab38bae); live `sw.js` shows v323, `player-link.html` serves, the privacy page has the new text.
   - **Known:** a removed person's device keeps its cached copy of the player until it next loads online or signs out.
   - **Staging test data:** links on LoadTest 001, plus logins `f1g-family@example.com` and `f1g-child@example.com`.
 

@@ -415,6 +415,49 @@
     vertical-align:1px;
   }
   .tab-dot{ margin-left:var(--s-6); }
+  /* F1-C1: Chat -- the count on the tab and the bar, the thread list, a thread */
+  .tab-count, .dock-badge{ display:inline-block; min-width:18px; padding:0 5px; border-radius:999px; background:var(--accent); color:var(--on-accent, var(--ink));
+    font-size:11px; font-weight:700; font-style:normal; line-height:18px; text-align:center; font-variant-numeric:tabular-nums; }
+  .tab-count{ margin-left:var(--s-6); }
+  .dock-btn{ position:relative; }
+  .dock-badge{ position:absolute; top:2px; left:calc(50% + 4px); }
+  .chat-wrap{ display:flex; flex-direction:column; gap:var(--s-12); max-width:760px; }
+  .chat-head{ display:flex; align-items:center; gap:var(--s-8); }
+  .chat-title{ flex:1; font-size:28px; line-height:1; }
+  .chat-thread-title{ flex:1; min-width:0; font-weight:700; font-size:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chat-compose-btn svg, .chat-compose-btn{ width:44px; height:44px; }
+  .chat-compose-btn svg{ width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+  .chat-compose, .chat-reports, .chat-pins{ display:flex; flex-direction:column; gap:var(--s-6); padding:var(--s-12); border:1px solid var(--surface-border); border-radius:var(--radius-card, 14px); background:var(--surface); }
+  .chat-target{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; width:100%; padding:var(--s-8) var(--s-12); border:1px solid var(--surface-border);
+    border-radius:var(--radius-control); background:var(--surface-raised, #fff); color:var(--ink); font:inherit; text-align:left; cursor:pointer; }
+  .chat-target-label{ font-weight:700; } .chat-target-detail{ font-size:12px; color:var(--ink-faint); }
+  .chat-list{ display:flex; flex-direction:column; gap:var(--s-8); }
+  .chat-thread-row{ position:relative; display:flex; flex-direction:column; gap:2px; width:100%; padding:var(--s-12) var(--s-16); padding-right:48px; border:1px solid var(--surface-border);
+    border-radius:var(--radius-card, 14px); background:var(--surface-raised, #fff); color:var(--ink); font:inherit; text-align:left; cursor:pointer; }
+  .chat-thread-row.unread .chat-row-title, .chat-thread-row.unread .chat-row-preview{ font-weight:700; color:var(--ink); }
+  .chat-row-top{ display:flex; align-items:center; gap:var(--s-6); }
+  .chat-row-title{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chat-row-when{ margin-left:auto; font-size:12px; color:var(--ink-faint); flex-shrink:0; }
+  .chat-row-sub{ font-size:12px; color:var(--ink-faint); }
+  .chat-row-preview{ font-size:13px; color:var(--ink-faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chat-thread-row .chat-badge{ position:absolute; right:var(--s-12); top:50%; transform:translateY(-50%); min-width:22px; padding:0 6px; border-radius:999px;
+    background:var(--accent); color:var(--on-accent, var(--ink)); font-size:12px; font-weight:700; line-height:22px; text-align:center; }
+  .chat-messages{ display:flex; flex-direction:column; gap:var(--s-8); max-height:60vh; overflow-y:auto; padding:var(--s-4) 0; }
+  .chat-msg{ align-self:flex-start; max-width:86%; padding:var(--s-8) var(--s-12); border-radius:14px; background:var(--surface); border:1px solid var(--surface-border); }
+  .chat-msg.mine{ align-self:flex-end; background:var(--brand-soft, var(--surface)); }
+  .chat-pins .chat-msg{ max-width:100%; align-self:stretch; }
+  .chat-msg.gone .chat-msg-body{ color:var(--ink-faint); }
+  .chat-msg-meta{ font-size:11px; color:var(--ink-faint); margin-bottom:2px; }
+  .chat-msg-body{ font-size:15px; line-height:1.4; overflow-wrap:anywhere; }
+  .chat-link{ color:var(--link, var(--brand-mid)); text-decoration:underline; overflow-wrap:anywhere; }
+  .chat-msg-actions{ display:flex; gap:var(--s-8); margin-top:var(--s-4); }
+  .chat-act{ background:none; border:0; padding:var(--s-4) 0; font:inherit; font-size:12px; color:var(--ink-faint); text-decoration:underline; cursor:pointer; }
+  .chat-confirm{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--s-6); margin-top:var(--s-6); font-size:13px; }
+  .chat-report-item{ padding:var(--s-8) 0; border-top:1px solid var(--surface-border); }
+  .chat-input-row{ display:flex; flex-direction:column; gap:var(--s-6); }
+  .chat-input{ min-height:64px; resize:vertical; font-size:16px; }   /* 16px: iOS doesn't zoom on focus */
+  .chat-closed{ margin:0; }
+  .chat-close-btn{ align-self:flex-start; }
   .session-dot{ margin-right:var(--s-8); }
 
   /* R0: invite LINK panel, replacing the old email-invite box. */
@@ -2212,7 +2255,9 @@ function currentPitcherVerified(p){
    The login's age bracket lives on its PRIMARY profile. New accounts answer
    on the signup form; existing ones answer once, in a box shown the next
    time they're online (never offline). 13-17s need a parent or guardian's
-   emailed approval before reports unlock; charting is never gated. */
+   emailed approval before reports unlock; charting is never gated.
+   The policy pages' Version 2026-10-29 (facilities and chat) was a quiet update
+   (Joel, Oct 29): this stays 2026-10-17 so nobody is asked to agree again. */
 const TERMS_VERSION = '2026-10-17';
 function myAccountProfile(){
   const list = state.myProfiles || [];
@@ -2856,6 +2901,7 @@ async function loadFullContextOnline(alreadyPainted){
   state.loaded = true;
   await saveLastKnownContext();   // so the next cold start has a fresh cache to paint from
   warmOtherProfiles();            // S4: every other profile gets an offline snapshot too (background)
+  chatStartPolling();             // F1-C1: the Chat tab's count (only shows with a facility)
   loadGuardianStatus().then(() => { if(state.guardianStatus) render(); });   // P1-10
   finishInit();
 }
@@ -3930,21 +3976,24 @@ const DOCK_ICONS = {
   charts: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="M8.5 10h7M8.5 13.5h7M8.5 17h4.5"/></svg>',
   trends: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3V21H21M7.2 15.7L8.6 13.9M11.7 13.6L13.1 14.8M15.7 14.2L18.5 8.2"/><circle cx="5.8" cy="17.4" r="1.3"/><circle cx="10" cy="12.2" r="1.3"/><circle cx="14.8" cy="16.2" r="1.3"/><circle cx="19.4" cy="6.2" r="1.3"/></svg>',   // Joel's rising-line chart (Oct 26), redrawn small
   history: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 12a8.4 8.4 0 1 0 2.5-6"/><path d="M3.4 3.8v4.1h4.1"/><path d="M12 7.4V12l3.2 2.1"/></svg>',   // a clock turning back
+  chat: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h15v10h-8.5l-4.5 3.8v-3.8h-2z"/><path d="M8 9.5h8M8 12.3h5"/></svg>',   // F1-C1: a speech bubble
   roster: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20.5c.8-4 3.6-6.3 7.2-6.3s6.4 2.3 7.2 6.3"/></svg>',
   profile: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.6"/></svg>'
 };
 function coachDockShown(phoneSession){ return !!state.profile && (isCoach() || state.profile.role === 'pitcher') && isPhoneWidth() && !phoneSession; }
-function dockKeys(){ return isCoach() ? ['home', 'charts', 'history', 'roster', 'profile'] : ['home', 'charts', 'history', 'profile']; }
-const DOCK_LABELS = { home: 'Home', charts: 'Charts', history: 'Analysis', roster: 'Roster', profile: 'Profile' };
+// F1-C1 (Joel, A): Chat after Analysis, only for someone with a facility (a facility coach's bar is then six buttons).
+function dockKeys(){ const chat = chatEnabled() ? ['chat'] : []; return isCoach() ? ['home', 'charts', 'history', ...chat, 'roster', 'profile'] : ['home', 'charts', 'history', ...chat, 'profile']; }
+const DOCK_LABELS = { home: 'Home', charts: 'Charts', history: 'Analysis', chat: 'Chat', roster: 'Roster', profile: 'Profile' };
 function dockActiveIndex(){
   const keys = dockKeys();
   if(isCoach() && state.dockRoster && !state.rosterCollapsed) return keys.indexOf('roster');   // Roster stays lit while its list is open
   const v = state.view;
-  return keys.indexOf(v === 'home' ? 'home' : v === 'session' ? 'charts' : (v === 'history' || v === 'trends') ? 'history' : v === 'profile' ? 'profile' : '');   // Oct 12: Home is the Home screen
+  return keys.indexOf(v === 'home' ? 'home' : v === 'session' ? 'charts' : (v === 'history' || v === 'trends') ? 'history' : v === 'chat' ? 'chat' : v === 'profile' ? 'profile' : '');   // Oct 12: Home is the Home screen
 }
 function renderCoachDock(){
   const idx = dockActiveIndex(), keys = dockKeys();
-  const btn = (k, label, i) => `<button type="button" role="tab" class="dock-btn${idx === i ? ' on' : ''}" data-go="${k}" aria-selected="${idx === i ? 'true' : 'false'}" tabindex="${(idx === i || (idx < 0 && i === 0)) ? '0' : '-1'}" onclick="dockTap('${k}')" aria-label="${label}">${DOCK_ICONS[k]}<span>${label}</span></button>`;
+  const chatN = chatEnabled() ? chatState().unread + chatState().reports : 0;
+  const btn = (k, label, i) => `<button type="button" role="tab" class="dock-btn${idx === i ? ' on' : ''}" data-go="${k}" aria-selected="${idx === i ? 'true' : 'false'}" tabindex="${(idx === i || (idx < 0 && i === 0)) ? '0' : '-1'}" onclick="dockTap('${k}')" aria-label="${label}">${DOCK_ICONS[k]}<span>${label}</span>${k === 'chat' && chatN ? `<i class="dock-badge" aria-hidden="true">${chatN}</i>` : ''}</button>`;
   return `<nav class="coach-dock${state.dockHidden ? ' dock-hidden' : ''}" role="tablist" aria-label="Shortcuts" style="--dock-n:${keys.length}">
     <span class="dock-pill${idx < 0 ? ' off' : ''}" aria-hidden="true" style="transform:translateX(${Math.max(idx, 0) * 100}%)"></span>
     ${keys.map((k, i) => btn(k, DOCK_LABELS[k], i)).join('')}
@@ -3980,6 +4029,7 @@ window.dockGo = function(where){
   }
   state.rosterCollapsed = rosterCanCollapse();   // Joel, Oct 8: any other button rolls the roster back up
   // Charts: the Bullpen / Live Game question (or Resume); a coach on an archived team has no New Session, so History
+  if(where === 'chat'){ openChat(); dockScroll(0); return; }   // F1-C1
   setView(where === 'home' ? 'home' : where === 'charts' ? ((isCoach() && currentTeamArchived()) ? 'history' : 'session') : where === 'history' ? 'history' : 'profile');
   // ...and lands with the box holding the pitcher's name at the top of the screen (Profile has no pitcher
   // box -- it lands at the top of the page's content).
@@ -6379,6 +6429,7 @@ function clearDeleteState(){
 }
 window.setView = function(v){
   if(v === 'leaderboard' && !hasLeaderboard()) v = 'session';
+  if(v !== 'chat') chatStopThreadPoll();   // F1-C1
   state.historyLandingNoClear = null;   // U10 (3)
   state.view = v; state.profileMsg = ''; state.uniformEditKey = null; state.lbExcludeOpen = null; clearDeleteState(); render();
   if(v === 'leaderboard') loadLeaderboard();
@@ -12646,6 +12697,211 @@ function renderHomeTiles(){
     ${tile('profile', 'Profile', "setView('profile')", '', false, true)}
   </div>`;
 }
+/* ---------- F1-C1: CHAT (Oct 29 2026, plans/f1-training-facilities.md; decisions in plans/f1c1-preconditions.md) ----------
+   Only inside a training facility. Two kinds of thread: the facility's (the manager posts to everyone there) and a
+   private one per pitcher per coach (the coach and the pitcher, or the parent who created the player). The server
+   decides who reads and posts (chat_access); the screen only follows it. Online only -- charting never waits on it.
+   Refresh by polling (Joel, F): the tab's count every 30 s while the app is in front, an open thread every 5 s.
+   Text only, 2,000 characters; YouTube links open in the browser, nothing is embedded; every message is escaped. */
+const CHAT_MAX = 2000;
+function chatState(){ return state.chat || (state.chat = { enabled: lsGet(chatOnKey()) === '1', unread: 0, reports: 0, threads: null, reportsList: null,
+  threadId: null, thread: null, title: '', compose: false, targets: null, drafts: {}, error: '', busy: false, armed: null }); }
+function chatOnKey(){ return 'kb:chatOn:' + (state.session ? state.session.user.id : ''); }
+function chatEnabled(){ return !!state.session && chatState().enabled; }
+let chatSummaryTimer = null, chatThreadTimer = null;
+async function chatRefreshSummary(){
+  if(!state.session || !isOnline()) return;
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('chat_summary'), 8000);
+    if(error || !data) return;
+    const c = chatState(), before = c.enabled + ':' + c.unread + ':' + c.reports;
+    c.enabled = !!data.enabled; c.unread = data.unread || 0; c.reports = data.reports || 0;
+    lsSet(chatOnKey(), c.enabled ? '1' : '0');
+    if(before !== c.enabled + ':' + c.unread + ':' + c.reports && state.view !== 'session') chatRender();
+  }catch(e){ /* the count just stays */ }
+}
+function chatStartPolling(){
+  if(chatSummaryTimer) return;
+  chatSummaryTimer = setInterval(() => { if(document.visibilityState === 'visible') chatRefreshSummary(); }, 30000);
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') chatRefreshSummary(); });
+  chatRefreshSummary();
+}
+// Re-render without losing the reply being typed (focus and caret).
+function chatRender(){
+  const el = document.activeElement, typing = el && el.id === 'chat-input';
+  const pos = typing ? el.selectionStart : 0;
+  render();
+  if(typing){ const n = document.getElementById('chat-input'); if(n){ n.focus(); try{ n.setSelectionRange(pos, pos); }catch(e){} } }
+}
+async function chatLoadThreads(){
+  const c = chatState();
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('chat_my_threads'), 10000);
+    if(error) throw error;
+    c.threads = data || []; c.error = '';
+    if(c.threads.some(t => t.i_manage)){
+      const r = await netTimeout(supabaseClient.rpc('chat_open_reports'), 10000);
+      c.reportsList = (r && r.data) || [];
+    } else c.reportsList = null;
+  }catch(e){ c.error = "Couldn't load your chats. Check your connection."; }
+  chatRender();
+}
+async function chatLoadThread(quiet){
+  const c = chatState(), id = c.threadId;
+  if(!id) return;
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('chat_thread', { p_thread: id, p_limit: 200 }), 10000);
+    if(error || !data || !data.ok) throw error || new Error('not_allowed');
+    if(c.threadId !== id) return;
+    const sig = m => (m || []).map(x => x.id + (x.deleted ? 'd' : '') + (x.pinned ? 'p' : '')).join(',');
+    const changed = !c.thread || sig(c.thread.messages) !== sig(data.messages) || c.thread.archived !== data.archived;
+    c.thread = data;
+    if(changed || !quiet){
+      supabaseClient.rpc('chat_mark_read', { p_thread: id }).then(() => chatRefreshSummary());
+      chatRender();
+      const list = document.querySelector('.chat-messages'); if(list && changed) list.scrollTop = list.scrollHeight;
+    }
+  }catch(e){ if(!quiet){ c.error = "Couldn't open this chat."; chatRender(); } }
+}
+function chatStopThreadPoll(){ if(chatThreadTimer){ clearInterval(chatThreadTimer); chatThreadTimer = null; } }
+window.openChat = function(){ const c = chatState(); c.threadId = null; c.thread = null; c.compose = false; c.armed = null; chatStopThreadPoll(); setView('chat'); chatLoadThreads(); };
+window.chatOpenThread = function(id, title){
+  const c = chatState();
+  c.threadId = id; c.thread = null; c.title = title || ''; c.compose = false; c.armed = null; c.error = '';
+  chatRender(); chatLoadThread(false);
+  chatStopThreadPoll();
+  chatThreadTimer = setInterval(() => {
+    if(state.view !== 'chat' || chatState().threadId !== id){ chatStopThreadPoll(); return; }
+    if(document.visibilityState === 'visible' && isOnline()) chatLoadThread(true);
+  }, 5000);
+};
+window.chatBack = function(){ const c = chatState(); c.threadId = null; c.thread = null; c.armed = null; chatStopThreadPoll(); chatRender(); chatLoadThreads(); };
+window.chatToggleCompose = async function(){
+  const c = chatState(); c.compose = !c.compose; chatRender();
+  if(c.compose){
+    try{ const { data } = await netTimeout(supabaseClient.rpc('chat_compose_targets'), 10000); c.targets = data || []; }catch(e){ c.targets = []; }
+    chatRender();
+  }
+};
+window.chatStart = async function(i){
+  const c = chatState(), t = (c.targets || [])[i];
+  if(!t) return;
+  const { data, error } = await supabaseClient.rpc('chat_open', { p_kind: t.kind, p_org: t.org_id || null, p_group: t.group_id || null, p_pitcher: t.pitcher_id || null });
+  if(error || !data || !data.ok){ c.error = "Couldn't start that chat."; chatRender(); return; }
+  // the title the list would give it: a coach sees the pitcher; a family sees "Coach · pitcher"
+  chatOpenThread(data.thread_id, /^Coach for /.test(t.detail || '') ? t.label + ' · ' + t.detail.replace(/^Coach for /, '') : t.label);
+};
+window.chatInput = function(el){
+  const c = chatState(); c.drafts[c.threadId] = el.value;
+  const n = document.getElementById('chat-count'); if(n) n.textContent = el.value.length + ' / ' + CHAT_MAX;
+};
+window.chatSend = async function(){
+  const c = chatState(), id = c.threadId, body = (c.drafts[id] || '').trim();
+  if(!body || c.busy) return;
+  if(!isOnline()){ c.error = 'Chat needs a connection.'; chatRender(); return; }
+  c.busy = true; c.error = ''; chatRender();
+  let res; try{ res = await netTimeout(supabaseClient.rpc('chat_post', { p_thread: id, p_body: body.slice(0, CHAT_MAX) }), 10000); }catch(e){ res = { error: e }; }
+  c.busy = false;
+  if(res.error || !res.data || !res.data.ok){ c.error = "Couldn't send. Check your connection and try again."; chatRender(); return; }
+  c.drafts[id] = '';
+  await chatLoadThread(false);
+};
+const CHAT_ERRORS = { pin_limit: 'Up to 5 pinned messages. Unpin one first.', not_allowed: "You can't do that here." };
+window.chatAct = async function(kind, id){
+  const c = chatState();
+  if(kind !== 'arm' && kind !== 'cancel' && !isOnline()){ c.error = 'Chat needs a connection.'; chatRender(); return; }
+  if(kind === 'arm'){ c.armed = id; chatRender(); return; }
+  if(kind === 'cancel'){ c.armed = null; chatRender(); return; }
+  const call = kind === 'delete' ? ['chat_delete_message', { p_message: id }] : kind === 'report' ? ['chat_report', { p_message: id }]
+    : kind === 'pin' ? ['chat_pin', { p_message: id, p_on: true }] : kind === 'unpin' ? ['chat_pin', { p_message: id, p_on: false }]
+    : kind === 'resolve' ? ['chat_resolve_report', { p_report: id }] : ['chat_close', { p_thread: c.threadId }];
+  const { data, error } = await supabaseClient.rpc(call[0], call[1]);
+  c.armed = null;
+  if(error || !data || !data.ok){ c.error = (data && CHAT_ERRORS[data.error]) || "Couldn't do that. Check your connection."; chatRender(); return; }
+  c.error = kind === 'report' ? 'Reported to the facility manager.' : '';
+  if(kind === 'resolve'){ await chatLoadThreads(); chatRefreshSummary(); return; }
+  if(kind === 'close'){ chatBack(); return; }
+  await chatLoadThread(false);
+};
+// Escaped text; only a YouTube address becomes a link (opened in the browser, never embedded).
+const CHAT_YT = /\bhttps?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/)|youtu\.be\/)[A-Za-z0-9_-]{6,}(?:\?[A-Za-z0-9_=.%-]*|&amp;[A-Za-z0-9_=.%-]*)*/g;   // after escaping, & is &amp;
+function chatBodyHtml(text){
+  return escHtml(text).replace(CHAT_YT, u => `<a href="${u}" target="_blank" rel="noopener noreferrer" class="chat-link">${u}</a>`).replace(/\n/g, '<br>');
+}
+function chatWhen(ts){
+  const d = new Date(ts), now = new Date();
+  return d.toDateString() === now.toDateString() ? d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+const CHAT_ROLE = { manager: 'Facility manager', coach: 'Coach', pitcher: 'Pitcher', parent: 'Parent' };
+const CHAT_COMPOSE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/><path d="M14 20h6"/></svg>';
+function renderChatView(){
+  const c = chatState();
+  if(!isOnline()) return `<div class="chat-wrap"><div class="empty-hist">Chat needs a connection. Charting works offline as always.</div></div>`;
+  return `<div class="chat-wrap">${c.threadId ? renderChatThread(c) : renderChatList(c)}</div>`;
+}
+function renderChatList(c){
+  const head = `<div class="chat-head"><div class="display chat-title">Chat</div>
+    <button type="button" class="btn btn-icon btn-secondary chat-compose-btn" aria-label="New message" title="New message" aria-expanded="${c.compose}" onclick="chatToggleCompose()">${CHAT_COMPOSE_SVG}</button></div>`;
+  const compose = !c.compose ? '' : `<div class="chat-compose">
+    <div class="field-label">Write to</div>
+    ${c.targets === null ? '<p class="note-hint">Loading…</p>' : !c.targets.length ? '<p class="note-hint">There is no one to write to yet.</p>'
+      : c.targets.map((t, i) => `<button type="button" class="chat-target" onclick="chatStart(${i})"><span class="chat-target-label">${escHtml(t.label)}</span>${t.detail ? `<span class="chat-target-detail">${escHtml(t.detail)}</span>` : ''}</button>`).join('')}
+  </div>`;
+  const reports = (c.reportsList && c.reportsList.length) ? `<div class="chat-reports"><div class="field-label">Reported messages</div>${c.reportsList.map(r => `
+      <div class="chat-report-item">
+        <div class="note-meta"><strong>${escHtml(r.author)}</strong> · ${escHtml(chatWhen(r.at))}${r.deleted ? ' · deleted' : ''}</div>
+        <div class="note-body">${r.body == null ? '<em>Deleted account</em>' : chatBodyHtml(r.body)}</div>
+        <div class="chat-msg-actions"><button class="btn btn-secondary btn-sm" onclick="chatOpenThread('${r.thread_id}', '')">Open chat</button><button class="btn btn-secondary btn-sm" onclick="chatAct('resolve', '${r.id}')">Resolved</button></div>
+      </div>`).join('')}</div>` : '';
+  const list = c.threads === null ? '<p class="note-hint">Loading…</p>'
+    : !c.threads.length ? '<div class="empty-hist">No messages yet. Tap the pen to write one.</div>'
+    : [...c.threads].sort((a, b) => (b.kind === 'facility') - (a.kind === 'facility') || String(b.last_at || '').localeCompare(String(a.last_at || '')))
+        .map(t => `<button type="button" class="chat-thread-row${t.unread ? ' unread' : ''}" onclick="chatOpenThread('${t.thread_id}', ${escHtml(JSON.stringify(t.title + (t.subtitle ? ' · ' + t.subtitle : '')))})">
+          <span class="chat-row-top"><span class="chat-row-title">${escHtml(t.title)}</span>${t.archived ? '<span class="throws-tag">CLOSED</span>' : ''}<span class="chat-row-when">${t.last_at ? escHtml(chatWhen(t.last_at)) : ''}</span></span>
+          ${t.subtitle ? `<span class="chat-row-sub">${escHtml(t.subtitle)}</span>` : ''}
+          <span class="chat-row-preview">${t.last_preview ? escHtml((t.last_author ? t.last_author + ': ' : '') + t.last_preview) : 'No messages yet'}</span>
+          ${t.unread ? `<span class="chat-badge" aria-label="${t.unread} unread">${t.unread}</span>` : ''}
+        </button>`).join('');
+  return head + compose + (c.error ? `<p class="report-status">${escHtml(c.error)}</p>` : '') + reports + `<div class="chat-list">${list}</div>`;
+}
+function renderChatThread(c){
+  const t = c.thread;
+  const top = `<div class="chat-head"><button type="button" class="btn btn-tertiary chat-back" onclick="chatBack()">‹ Chats</button><div class="chat-thread-title">${escHtml(c.title)}</div></div>`;
+  if(!t) return top + (c.error ? `<p class="report-status report-status-error">${escHtml(c.error)}</p>` : '<p class="note-hint">Loading…</p>');
+  const msgHtml = (m, inShelf) => {
+    const body = m.author_deleted ? '<em>Deleted account</em>'
+      : m.deleted ? (m.body != null ? `<em>Deleted:</em> ${chatBodyHtml(m.body)}` : '<em>This message was deleted</em>') : chatBodyHtml(m.body);
+    const acts = (inShelf || m.deleted || m.author_deleted || t.archived) ? '' : [
+      t.can_pin ? `<button class="chat-act" onclick="chatAct('${m.pinned ? 'unpin' : 'pin'}', '${m.id}')">${m.pinned ? 'Unpin' : 'Pin'}</button>` : '',
+      m.mine ? `<button class="chat-act" onclick="chatAct('arm', 'del:${m.id}')">Delete</button>` : `<button class="chat-act" onclick="chatAct('arm', 'rep:${m.id}')">Report</button>`
+    ].join('');
+    const confirm = c.armed === 'del:' + m.id ? `<div class="chat-confirm">Delete this message? Everyone will see "This message was deleted".
+        <button class="btn btn-danger btn-sm" onclick="chatAct('delete', '${m.id}')">Delete</button><button class="btn btn-secondary btn-sm" onclick="chatAct('cancel')">Keep</button></div>`
+      : c.armed === 'rep:' + m.id ? `<div class="chat-confirm">Report this message to the facility manager?
+        <button class="btn btn-danger btn-sm" onclick="chatAct('report', '${m.id}')">Report</button><button class="btn btn-secondary btn-sm" onclick="chatAct('cancel')">Cancel</button></div>` : '';
+    return `<div class="chat-msg${m.mine ? ' mine' : ''}${m.deleted || m.author_deleted ? ' gone' : ''}">
+      <div class="chat-msg-meta"><strong>${escHtml(m.author)}</strong> · ${escHtml(CHAT_ROLE[m.role] || '')} · ${escHtml(chatWhen(m.at))}${m.pinned && !inShelf ? ' · 📌' : ''}</div>
+      <div class="chat-msg-body">${body}</div>
+      ${acts ? `<div class="chat-msg-actions">${acts}</div>` : ''}${confirm}
+    </div>`;
+  };
+  const pinned = t.messages.filter(m => m.pinned && !m.deleted);
+  const shelf = pinned.length ? `<div class="chat-pins"><div class="field-label">Pinned</div>${pinned.map(m => msgHtml(m, true)).join('')}</div>` : '';
+  const closed = t.archived ? `<p class="note-hint chat-closed">This chat is closed and read only.${t.clear_after ? ` It will be cleared on ${escHtml(new Date(t.clear_after).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }))}.` : ''}</p>` : '';
+  const draft = c.drafts[c.threadId] || '';
+  const box = (t.access === 'post' && !t.archived) ? `<div class="chat-input-row">
+      <textarea id="chat-input" class="text-input chat-input" rows="2" maxlength="${CHAT_MAX}" placeholder="Message" oninput="chatInput(this)">${escHtml(draft)}</textarea>
+      <div class="note-add-row"><span class="note-count" id="chat-count">${draft.length} / ${CHAT_MAX}</span>
+        <button type="button" class="btn btn-primary" ${c.busy ? 'disabled' : ''} onclick="chatSend()">${c.busy ? 'Sending…' : 'Send'}</button></div>
+    </div>` : (t.archived ? '' : `<p class="note-hint">${t.kind === 'facility' ? 'Only the facility manager posts here.' : 'You can read this chat.'}</p>`);
+  const close = t.can_close ? (c.armed === 'close' ? `<div class="chat-confirm">Close this chat? It disappears from your list and becomes read only; the facility manager can still read it for 90 days, then it's cleared.
+        <button class="btn btn-danger btn-sm" onclick="chatAct('close')">Close chat</button><button class="btn btn-secondary btn-sm" onclick="chatAct('cancel')">Keep</button></div>`
+      : `<button type="button" class="btn btn-tertiary btn-sm chat-close-btn" onclick="chatAct('arm', 'close')">Close this chat</button>`) : '';
+  return top + shelf + closed + `<div class="chat-messages">${t.messages.length ? t.messages.map(m => msgHtml(m, false)).join('') : '<p class="note-hint">No messages yet.</p>'}</div>`
+    + (c.error ? `<p class="report-status">${escHtml(c.error)}</p>` : '') + box + close;
+}
+
 function renderTabs(){
   const fourthTab = isCoach()
     ? { label: '<span class="tab-label-full">Player Profile</span><span class="tab-label-short">Player</span>', selected: state.view === 'pitcherProfile', onclick: "setView('pitcherProfile')" }
@@ -12656,6 +12912,7 @@ function renderTabs(){
   const tabs = [{ label: 'Home', selected: state.view === 'home', onclick: "setView('home')" }, sessionTab,
     { label: 'History' + (!isCoach() && state.profile && hasRosterDot(state.profile.id) ? '<span class="tab-dot" aria-label="New session"></span>' : ''), selected: state.view === 'history', onclick: "setView('history')" },
     { label: 'Trends', selected: state.view === 'trends', onclick: "setView('trends')" },
+    chatEnabled() ? { label: 'Chat' + (chatState().unread + chatState().reports ? `<span class="tab-count" aria-label="${chatState().unread + chatState().reports} unread">${chatState().unread + chatState().reports}</span>` : ''), selected: state.view === 'chat', onclick: 'openChat()' } : null,   // F1-C1
     hasLeaderboard() ? { label: '<span class="tab-label-full">Leaderboard</span><span class="tab-label-short">Leaders</span>', selected: state.view === 'leaderboard', onclick: "setView('leaderboard')" } : null,
     fourthTab].filter(Boolean);
   return `${renderArchivedBanner()}${segTray(tabs.map(t => Object.assign({ cls: 'tab-btn' }, t)), { key: 'tabs', label: 'Pages', cls: 'tabs' })}`;
@@ -13757,6 +14014,8 @@ function render(){
   let main;
   if(phoneSession){
     main = renderSessionHeader(p) + renderSessionView();
+  } else if(!p && state.view === 'chat'){
+    main = `<div class="acct-row">${renderAccountButton()}</div>${renderTabs()}${renderChatView()}`;   // F1-C1
   } else if(!p){
     // U9: 'pitcherProfile' with no pitcher selected has its own message
     // ("Select a pitcher to see his profile," not this generic one) --
@@ -13846,7 +14105,7 @@ function render(){
       ${verifyBanner}
       ${guardianBanner}
       ${setupReminderBanner}
-      ${(state.view === 'profile' || state.view === 'leaderboard') ? '' : headerHtml}
+      ${(state.view === 'profile' || state.view === 'leaderboard' || state.view === 'chat') ? '' : headerHtml}
       ${state.view === 'home' ? '' : tabs}
       ${state.view === 'home' ? renderHomeTiles()
         : state.view === 'session' ? renderSessionView()
@@ -13854,6 +14113,7 @@ function render(){
         : state.view === 'leaderboard' ? renderLeaderboardView()
         : state.view === 'pitcherProfile' ? renderPitcherProfileView()
         : state.view === 'trends' ? renderTrendsView()
+        : state.view === 'chat' ? renderChatView()
         : renderHistoryView()}
     `;
   }

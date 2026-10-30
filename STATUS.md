@@ -15,7 +15,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-10-29 · F1-C1 (Chat inside training facilities) · **production database + function**; site waits on PR #50 merge (v322)
+## 2026-10-29 · F1-C1 (Chat inside training facilities) · **production** (database, function and site; PR #50 merged Oct 29, v322 live)
 - **Asked by:** Joel ("let's do chat next"; answers A–F in `plans/f1c1-preconditions.md`). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `f1c1-chat`. **Cache:** v322.
 - **Database:** migration `20261031000000_f1c1_chat` (staging, then production Oct 29 after backup
@@ -69,7 +69,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Production checks (Oct 29):** structure vs staging identical except `session_dots_since` (by design); policies
   32; 4 chat tables with no client grants; `f1c1-chat-clear` scheduled; `schema.sql` regenerated.
 - **Open:**
-  - Merge PR #50 on "ship it" (v322), then check the live `sw.js`.
+  - Merged Oct 29 (50ac6cf); live `sw.js` shows v322 and the policy pages Version 2026-10-29.
   - F1-G (guardian link and roles), F1-D, F1-B, F1-C2 to come.
 
 ## 2026-10-29 · F1-A (training facilities: organizations, manager, coach groups) · **production** (database and site; PR #49 merged Oct 29, v321 live)

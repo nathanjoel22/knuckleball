@@ -298,6 +298,19 @@ There are 32 RLS policies on production and staging (since F1-A, Oct 29 2026: + 
   by Joel on Oct 29 as a quiet update: `TERMS_VERSION` stays 2026-10-17, so no login is shown the "I agree" box.
 - Rollback `supabase/rollback/20261031000000_f1c1_chat_down.sql`; test `supabase/tests/f1c1_chat_acceptance.sql`.
 
+**QR join codes (F1-B, Joel, Oct 31 2026; `plans/f1b-preconditions.md`; staging, v325).** One code per coach per facility
+side (`coach_groups.join_token`) opens `join.html?c=<token>`: **parents first** (make a parent account or sign in on
+the page, then the "Join as:" picker: pick or add the player); one small link, "I'm 18 or older and pitch for myself",
+for adult pitchers (no 13-17 self-join from a code: `join_group_via_token` refuses a pitcher's own login under 18 with
+`adult_required`). A join adds the facility membership and the coach-group row flagged New; a pitcher already there
+joins the second coach's group too. A coach shows ("Show my join code": full screen, black on white, drawn on the device
+by `vendor/qrcodegen.js`, Nayuki MIT v1.5.0, from codes cached per login, so it works offline), shares, prints
+(`qr-print.html`: one black-and-white letter page per coach with the wordmark; the manager's "Print all codes") and
+regenerates (`rotate_group_code`; the old code stops at once, joined pitchers stay) their own code; the manager every
+code on their sides (`my_group_codes`). The migration also restored F1-A's intended column-only grants on
+`coach_groups` / `coach_group_members` (Supabase's default table-wide SELECT had let a side's coaches read every join
+code). Rollback `supabase/rollback/20261102000000_f1b_qr_join_down.sql`; test `supabase/tests/f1b_acceptance.sql`.
+
 **Linked sign-ins for a parent's player (F1-G, Joel, Oct 29 2026; `plans/f1g-preconditions.md`; staging, v323).**
 - **Who links:** only the parent who created a player (`profiles.managed_by`; the player sits on that parent's login)
   makes one-time links (7 days, one unused link per role), removes people and deletes the player. Roles

@@ -15,7 +15,7 @@
 // stale-while-revalidate fetch handler below is the offline/secondary
 // path -- it is not what ships a code change. This bump is a required
 // step in DEPLOY.md ("Frontend: deploy to production").
-const CACHE_VERSION = 'kb-shell-v324';
+const CACHE_VERSION = 'kb-shell-v325';
 
 const PRECACHE_URLS = [
   '/',
@@ -26,6 +26,7 @@ const PRECACHE_URLS = [
   '/coach-signup.html',
   '/facility-signup.html',
   '/player-link.html',
+  '/qr-print.html',
   '/accept-invite.html',
   '/join.html',
   '/join-coach.html',
@@ -43,6 +44,7 @@ const PRECACHE_URLS = [
   '/delete-account.html',   // W1: the public account-deletion page (Google Play's link)
   '/help.html',   // P2-06: getting started and help, offline too
   '/vendor/supabase.js',
+  '/vendor/qrcodegen.js',   // F1-B: join codes draw offline
   '/vendor/fonts/fonts.css',
   '/css/tokens.css',   // D1: the design tokens every page loads (Oct 13)
   '/css/components.css',   // D2 Stage C: the shared components and sign-in look (Oct 13)

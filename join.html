@@ -78,6 +78,29 @@
     <a href="signin.html">&larr; Back to Knuckleball</a>
   </div>
 
+  <!-- F1-B (Joel, Oct 31 2026): a coach's join code (join.html?c=). Parents first: make a parent account or sign in,
+       then pick or add the player. Adult pitchers have a small link of their own; no 13-17 self-join from a code. -->
+  <form class="card step-hidden" id="code-card" autocomplete="off">
+    <header class="signin-head"><div class="brand-block">
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <div>
+      <span class="role-tag slant-tag" id="code-facility">Training facility</span>
+      <h2 class="display">Join <span class="last" id="code-coach">a coach</span></h2>
+      <p class="sub">Parents: make your parent account (or sign in), then add your player. It takes a minute.</p>
+    </div></header>
+    <a href="parent-signup.html" class="btn btn-primary btn-block parent-link">Create a parent account</a>
+    <p class="sub" style="margin:var(--s-8) 0 0;">Already have a parent account? Sign in:</p>
+    <div class="field"><label class="field-label" for="code-email">Email</label>
+      <input class="text-input" id="code-email" type="email" autocomplete="email"></div>
+    <div class="field"><label class="field-label" for="code-password">Password</label>
+      <input class="text-input" id="code-password" type="password" autocomplete="current-password"></div>
+    <div class="error-msg" id="code-error"></div>
+    <button type="submit" class="btn btn-secondary btn-block" id="code-submit">Sign in &amp; join</button>
+    <a href="#" id="code-adult" style="text-align:center;">I'm 18 or older and pitch for myself</a>
+  </form>
+
   <form class="card step-hidden" id="attest-card" autocomplete="off">
     <header class="signin-head"><div class="brand-block">
       <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
@@ -294,13 +317,21 @@
 <script src="report-config.js"></script>
 <script>
   function showCard(id){
-    ['loading-card','invalid-card','join-form','confirm-card','joining-card','attest-card','joinas-card'].forEach(cid => {
+    ['loading-card','invalid-card','join-form','confirm-card','joining-card','attest-card','joinas-card','code-card'].forEach(cid => {
       document.getElementById(cid).classList.toggle('step-hidden', cid !== id);
     });
   }
 
   const params = new URLSearchParams(window.location.search);
   const token = (params.get('t') || '').trim();
+  // F1-B: a coach's join code at a training facility (join.html?c=) instead of a team link
+  const code = (params.get('c') || '').trim();
+  const coachMode = !token && !!code;
+  function joinRpc(profileId){
+    return coachMode
+      ? supabaseClient.rpc('join_group_via_token', profileId ? { p_token: code, p_profile: profileId } : { p_token: code })
+      : supabaseClient.rpc('join_team_via_invite', profileId ? { p_token: token, p_profile: profileId } : { p_token: token });
+  }
 
   const form = document.getElementById('join-form');
   const errorEl = document.getElementById('error-msg');
@@ -337,7 +368,7 @@
         btn.disabled = true; btn.textContent = 'Adding…';
         const { data: newId, error: addErr } = await supabaseClient.rpc('add_sport_profile', { p_sport: teamSport });
         if(addErr || !newId){ btn.disabled = false; btn.textContent = 'Couldn\'t add it — try again'; return; }
-        const { data: j, error: jErr } = await supabaseClient.rpc('join_team_via_invite', { p_token: token, p_profile: newId });
+        const { data: j, error: jErr } = await joinRpc(newId);
         if(jErr || !j || j.error){ btn.disabled = false; btn.textContent = 'Couldn\'t join — try again'; return; }
         try{
           const { data: { session: s } } = await supabaseClient.auth.getSession();
@@ -387,8 +418,9 @@
     } catch (e) { /* recoverable via Resend */ }
     // S4 B3: a login that manages players (or a parent login) picks who joins.
     if(await maybeShowJoinAs()) return;
-    const { data, error } = await supabaseClient.rpc('join_team_via_invite', { p_token: token });
+    const { data, error } = await joinRpc(null);
     if(error && /sport_mismatch/.test(error.message || '')){ showSportMismatch(); return; }
+    if(data && data.error === 'adult_required'){ showAdultOnly(); return; }   // F1-B: a code is for parents and adult pitchers
     // P1-10: an existing account that hasn't answered the age question yet.
     if(data && data.error === 'attestation_required'){ showCard('attest-card'); return; }
     // A coach opening a team link (e.g. testing it) is not a pitcher: nothing
@@ -408,7 +440,7 @@
   // S4 B: the parent signup link keeps this team's sport and comes back here.
   function setParentLinks(){
     document.querySelectorAll('a.parent-link').forEach(a => {
-      a.setAttribute('href', 'parent-signup.html?sport=' + (teamSport || 'baseball') + '&next=' + encodeURIComponent('join.html?t=' + token));
+      a.setAttribute('href', 'parent-signup.html?sport=' + (teamSport || 'baseball') + '&next=' + encodeURIComponent(coachMode ? 'join.html?c=' + code : 'join.html?t=' + token));
     });
   }
 
@@ -461,7 +493,7 @@
     const err = document.getElementById('joinas-error');
     err.textContent = '';
     document.querySelectorAll('#joinas-card button').forEach(b => { b.disabled = true; });
-    const { data, error } = await supabaseClient.rpc('join_team_via_invite', { p_token: token, p_profile: profileId });
+    const { data, error } = await joinRpc(profileId);
     if(data && data.error === 'attestation_required'){ showCard('attest-card'); return; }
     if(error || !data || data.error){
       document.querySelectorAll('#joinas-card button').forEach(b => { b.disabled = false; });
@@ -503,7 +535,47 @@
     card.querySelector('.info-msg').textContent = 'This team is no longer active. Ask the coach for a current invite link.';
     showCard('invalid-card');
   }
+  // F1-B: a pitcher's own login has to be 18 or older to join from a code; teens join through a parent.
+  function showAdultOnly(){
+    const card = document.getElementById('invalid-card');
+    card.querySelector('h2').textContent = 'Ask a parent';
+    card.querySelector('.info-msg').textContent = 'This code is for parents and for pitchers 18 or older. Ask your parent to scan it and add you as their player; they can then give you your own sign-in.';
+    showCard('invalid-card');
+  }
+  async function initCoachCode(){
+    let info = null;
+    try{ const r = await supabaseClient.rpc('group_join_info', { p_token: code }); info = r.data; }catch(e){}
+    if(!info || info.status === 'not_found'){ showCard('invalid-card'); return; }
+    applyTeamSport(info.sport);
+    teamName = info.coach_name || 'this coach';
+    if(info.status === 'archived'){ showTeamArchived(); return; }
+    document.getElementById('code-coach').textContent = info.coach_name || 'a coach';
+    document.getElementById('code-facility').textContent = (info.facility_name || 'Training facility') + ' · ' + (info.sport === 'softball' ? 'Softball' : 'Baseball');
+    document.getElementById('join-heading').textContent = 'Join ' + (info.coach_name || 'this coach');
+    // adult pitchers only on the self-join form: no 13-17 or under-13 answer here
+    const adult = document.querySelector('input[name="age"][value="adult"]');
+    if(adult){ adult.checked = true; adult.closest('.field').classList.add('step-hidden'); }
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if(session){ await completeJoin(); return; }
+    showCard('code-card');
+  }
+  document.getElementById('code-adult').addEventListener('click', function(e){ e.preventDefault(); showCard('join-form'); });
+  document.getElementById('code-card').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const err = document.getElementById('code-error'), btn = document.getElementById('code-submit');
+    err.textContent = '';
+    const email = document.getElementById('code-email').value.trim(), password = document.getElementById('code-password').value;
+    if(!email || !password){ err.textContent = 'Enter your email and password.'; return; }
+    btn.disabled = true; btn.textContent = 'Signing in…';
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if(error){
+      err.textContent = /confirm/i.test(error.message || '') ? 'Confirm your email first (check your inbox), then sign in.' : 'That email and password didn’t match.';
+      btn.disabled = false; btn.textContent = 'Sign in & join'; return;
+    }
+    await completeJoin();
+  });
   async function init(){
+    if(coachMode) return initCoachCode();
     if(!token){
       showCard('invalid-card');
       return;

@@ -77,6 +77,7 @@
 <link rel="apple-touch-startup-image" href="splash/splash-2048x1536.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)">
 <title>Knuckleball</title>
 <script src="vendor/supabase.js"></script>
+<script src="vendor/qrcodegen.js"></script>   <!-- F1-B: QR join codes, drawn on the device (MIT, vendor/qrcodegen.VERSION) -->
 <script src="supabase-config.js"></script>
 <script src="report-config.js"></script>
 <script>
@@ -495,6 +496,24 @@
   .fac-new-tag{ background:var(--accent); color:var(--on-accent, var(--ink)); border-color:transparent; }
   .fac-new-count{ display:inline-block; margin-left:var(--s-6); padding:0 var(--s-6); border-radius:999px; background:var(--accent); color:var(--on-accent, var(--ink)); font-size:11px; font-weight:700; line-height:18px; }
   .fac-group{ display:flex; flex-direction:column; gap:var(--s-6); }
+  /* F1-B: join codes -- black on white so any phone camera reads them */
+  .jc-bar{ display:flex; flex-wrap:wrap; gap:var(--s-8); margin:0 0 var(--s-8); }
+  .jc-overlay{ position:fixed; inset:0; z-index:1000; background:var(--scrim, rgba(0,0,0,.6)); display:flex; align-items:center; justify-content:center; padding:max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); overflow:auto; }
+  .jc-sheet{ background:#fff; color:#000; border-radius:16px; width:100%; max-width:440px; padding:var(--s-16); display:flex; flex-direction:column; gap:var(--s-8); max-height:100%; overflow:auto; }
+  .jc-sheet .profile-note{ color:#333; }
+  .jc-top{ display:flex; align-items:center; justify-content:space-between; gap:var(--s-8); }
+  .jc-title{ margin:0; font-size:24px; color:#000; }
+  .jc-brand{ font-family:'Black Ops One', var(--font-display, sans-serif); font-size:22px; letter-spacing:.04em; color:#000; }
+  .jc-code{ text-align:center; }
+  .jc-scan{ margin:0; font-weight:700; text-transform:uppercase; letter-spacing:.08em; font-size:13px; color:#000; }
+  .jc-coach{ margin:0; font-size:30px; color:#000; }
+  .jc-facility{ margin:0; color:#333; }
+  .jc-qr svg{ width:min(78vw, 320px); height:auto; display:block; margin:0 auto; }
+  .jc-url{ margin:0; font-size:12px; color:#333; word-break:break-all; }
+  .jc-actions{ display:flex; flex-wrap:wrap; gap:var(--s-8); justify-content:center; }
+  .jc-msg{ margin:0; font-size:13px; color:#333; }
+  .jc-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--s-8); padding:var(--s-6) 0; border-top:1px solid #ddd; }
+  .jc-row-name{ font-weight:600; }
   /* F1-G: who can see a parent-created player (the creator's Profile) */
   .player-access .link-row{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--s-8); padding:var(--s-8) 0; border-top:1px solid var(--border); }
   .player-access .link-who{ display:flex; flex-direction:column; gap:2px; min-width:0; }
@@ -3784,6 +3803,7 @@ window.onTeamChange = async function(teamId, skipRender){
   await refreshDraftState();
   await saveLastKnownContext();
   loadRosterDots();   // U10 (3): background
+  loadGroupCodes();   // F1-B: this side's join codes (background)
   if(!skipRender) render();
 };
 // On-device only (localStorage, no network): if the coach has an unfinished draft
@@ -4433,6 +4453,97 @@ function facilityNewCount(){
   const mine = myFacilityGroupIds(), mgr = isFacilityManager();
   return (state.roster || []).filter(p => (p.groups || []).some(g => g.isNew && (mgr || mine.includes(g.id)))).length;
 }
+/* ---------- F1-B: QR JOIN CODES (Joel, Oct 31 2026; plans/f1b-preconditions.md) ----------
+   One code per coach per facility side: join.html?c=<token>. A coach shows, shares, prints and regenerates their own
+   code; the manager every code on their sides. "Show code" fills the screen so a parent can scan it right there before
+   a lesson; it's drawn on the device (vendor/qrcodegen.js) from the last-loaded codes, so it also shows offline. */
+function groupCodesKey(){ return 'kb:groupCodes:' + (state.session ? state.session.user.id : ''); }
+function groupCodes(){
+  if(!state.groupCodes){ try{ state.groupCodes = JSON.parse(lsGet(groupCodesKey()) || 'null'); }catch(e){} }
+  return (state.groupCodes || []).filter(c => c.team_id === state.currentTeamId);
+}
+async function loadGroupCodes(){
+  if(!state.session || !isCoach() || !currentTeamIsFacility() || !isOnline()) return;
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('my_group_codes'), 8000);
+    if(error || !Array.isArray(data)) return;
+    state.groupCodes = data; lsSet(groupCodesKey(), JSON.stringify(data));
+    render();
+  }catch(e){ /* the last codes stay */ }
+}
+function groupCodeUrl(c){ return new URL('join.html?c=' + encodeURIComponent(c.token), location.href).href; }
+// The code as an SVG (black on white, the standard 4-module quiet zone).
+function qrSvg(text){
+  if(typeof qrcodegen === 'undefined') return '';
+  try{ return qrcodegen.QrCode.encodeText(text, qrcodegen.QrCode.Ecc.MEDIUM).toSvgString(4); }catch(e){ return ''; }
+}
+// At the top of the facility roster: the coach's own code (and, for the manager, everyone's).
+function renderJoinCodeBar(){
+  const codes = groupCodes();
+  if(!codes.length || currentTeamArchived()) return '';
+  const mine = codes.find(c => c.mine);
+  return `<div class="jc-bar">
+    ${mine ? `<button type="button" class="btn btn-primary btn-sm" onclick="showJoinCode('${mine.group_id}')">Show my join code</button>` : ''}
+    ${isFacilityManager() ? `<button type="button" class="btn btn-secondary btn-sm" onclick="showJoinCode('all')">All join codes</button>` : ''}
+  </div>`;
+}
+window.showJoinCode = function(id){ state.codeView = id; state.codeArmed = null; state.codeMsg = ''; render(); if(isOnline()) loadGroupCodes(); };
+window.closeJoinCode = function(){ state.codeView = null; state.codeArmed = null; state.codeMsg = ''; render(); };
+window.shareJoinCode = async function(id){
+  const c = groupCodes().find(x => x.group_id === id); if(!c) return;
+  const url = groupCodeUrl(c);
+  if(navigator.share){ try{ await navigator.share({ title: 'Knuckleball', text: 'Join ' + c.coach_name + ' at ' + c.facility_name + ' on Knuckleball', url }); return; }catch(e){ return; } }
+  let ok = false; try{ await navigator.clipboard.writeText(url); ok = true; }catch(e){ ok = copyTextFallback(url); }
+  state.codeMsg = ok ? 'Link copied.' : "Couldn't copy the link."; render();
+};
+window.printJoinCodes = function(which){
+  const q = which === 'all' ? 'side=' + encodeURIComponent(state.currentTeamId) : 'g=' + encodeURIComponent(which);
+  window.open('qr-print.html?' + q, '_blank', 'noopener');
+};
+window.armRegenCode = function(id){ state.codeArmed = id; state.codeMsg = ''; render(); };
+window.regenJoinCode = async function(id){
+  if(!isOnline()){ state.codeMsg = 'Making a new code needs a connection.'; render(); return; }
+  state.codeArmed = null; state.codeMsg = 'Making a new code…'; render();
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('rotate_group_code', { p_group: id }), 10000);
+    if(error || !data || !data.ok) throw new Error('failed');
+    state.codeMsg = 'New code ready. The old one no longer works; pitchers who joined with it stay.';
+  }catch(e){ state.codeMsg = "Couldn't make a new code. Try again."; }
+  await loadGroupCodes(); render();
+};
+function renderJoinCodeOverlay(){
+  const id = state.codeView; if(!id) return '';
+  const codes = groupCodes(), sideName = SPORT_NAME[currentSport()] || '';
+  const msg = state.codeMsg ? `<p class="jc-msg">${escHtml(state.codeMsg)}</p>` : '';
+  if(id === 'all'){
+    return `<div class="jc-overlay" role="dialog" aria-modal="true" aria-label="Join codes"><div class="jc-sheet">
+      <div class="jc-top"><h2 class="display jc-title">Join codes · ${escHtml(sideName)}</h2><button class="btn btn-icon btn-secondary" onclick="closeJoinCode()" aria-label="Close">✕</button></div>
+      <p class="profile-note">One code per coach. A parent scans it, signs in or makes an account, and the player joins that coach's group, marked New.</p>
+      ${codes.map(c => `<div class="jc-row"><span class="jc-row-name">${escHtml(c.coach_name)}${c.mine ? ' (you)' : ''}</span><button class="btn btn-secondary btn-sm" onclick="showJoinCode('${c.group_id}')">Show</button></div>`).join('')}
+      <div class="profile-row"><button class="btn btn-primary" onclick="printJoinCodes('all')">Print all codes</button></div>
+      ${msg}</div></div>`;
+  }
+  const c = codes.find(x => x.group_id === id);
+  if(!c) return '';
+  const url = groupCodeUrl(c);
+  return `<div class="jc-overlay" role="dialog" aria-modal="true" aria-label="Join code for ${escHtml(c.coach_name)}"><div class="jc-sheet jc-code">
+    <div class="jc-top"><span class="jc-brand">KNUCKLEBALL</span><button class="btn btn-icon btn-secondary" onclick="${isFacilityManager() && codes.length > 1 ? "showJoinCode('all')" : 'closeJoinCode()'}" aria-label="Close">✕</button></div>
+    <p class="jc-scan">Scan to join</p>
+    <h2 class="display jc-coach">${escHtml(c.coach_name)}</h2>
+    <p class="jc-facility">${escHtml(c.facility_name)} · ${escHtml(SPORT_NAME[c.sport] || '')}</p>
+    <div class="jc-qr" aria-label="QR code">${qrSvg(url)}</div>
+    <p class="jc-url">${escHtml(url)}</p>
+    <div class="jc-actions">
+      <button class="btn btn-secondary btn-sm" onclick="shareJoinCode('${c.group_id}')">${navigator.share ? 'Share link' : 'Copy link'}</button>
+      <button class="btn btn-secondary btn-sm" onclick="printJoinCodes('${c.group_id}')">Print</button>
+      ${state.codeArmed === c.group_id
+        ? `<button class="btn btn-danger btn-sm" onclick="regenJoinCode('${c.group_id}')">Yes, new code</button><button class="btn btn-tertiary btn-sm" onclick="armRegenCode(null)">Keep</button>`
+        : `<button class="btn btn-tertiary btn-sm" onclick="armRegenCode('${c.group_id}')">New code…</button>`}
+    </div>
+    ${state.codeArmed === c.group_id ? '<p class="jc-msg">A new code stops this one at once, including printed copies. Pitchers who already joined stay.</p>' : ''}
+    ${msg}
+  </div></div>`;
+}
 function renderFacilityRoster(rosterRow, removeConfirm){
   const groups = facilityGroups(), mgr = isFacilityManager(), mine = myFacilityGroupIds();
   const readOnly = currentTeamArchived();
@@ -4466,7 +4577,7 @@ function renderFacilityRoster(rosterRow, removeConfirm){
     return rosterRow(p, { tags, right, panel });
   };
   if(!mgr){
-    return (state.roster || []).map(p => row(p, groups.find(g => mine.includes(g.id) && (p.groups || []).some(y => y.id === g.id)) || null)).join('');
+    return renderJoinCodeBar() + (state.roster || []).map(p => row(p, groups.find(g => mine.includes(g.id) && (p.groups || []).some(y => y.id === g.id)) || null)).join('');
   }
   const shut = state.facCollapsed || {};
   const section = (id, title, list) => {
@@ -4478,7 +4589,7 @@ function renderFacilityRoster(rosterRow, removeConfirm){
   };
   const inGroup = id => (state.roster || []).filter(p => (p.groups || []).some(y => y.id === id));
   const loose = (state.roster || []).filter(p => !(p.groups || []).length);
-  return groups.map(g => section(g.id, escHtml(g.coachName) + (mine.includes(g.id) ? ' (you)' : ''), inGroup(g.id))).join('')
+  return renderJoinCodeBar() + groups.map(g => section(g.id, escHtml(g.coachName) + (mine.includes(g.id) ? ' (you)' : ''), inGroup(g.id))).join('')
     + section('none', 'No coach yet', loose);
 }
 window.toggleFacMenu = function(key){ state.facMenu = state.facMenu === key ? null : key; state.facError = ''; state.removeArmedPitcherId = null; render(); };
@@ -13275,6 +13386,15 @@ function renderCoachTeamAdmin(){
         </div>` : ''}
     </div>` : '';
 
+  // F1-B: at a facility, the join codes (every coach their own; the manager all of them)
+  const codesSection = (currentTeamIsFacility() && !team.archived && groupCodes().length) ? `
+    <div class="profile-section">
+      <h3>Join codes</h3>
+      <p class="profile-note">A parent scans a coach's code, signs in or makes an account, and the player joins that coach's group (marked New).</p>
+      ${renderJoinCodeBar()}
+      ${isFacilityManager() ? `<button class="btn btn-secondary btn-sm" onclick="printJoinCodes('all')">Print all codes</button>` : ''}
+    </div>` : '';
+
   const linksSection = (head && state.teamInviteLinks) ? `
     <div class="profile-section">
       <h3>Invite links</h3>
@@ -13351,6 +13471,7 @@ function renderCoachTeamAdmin(){
       ${staffRows}
     </div>
     ${handoffSection}
+    ${codesSection}
     ${linksSection}
     ${realHead ? renderTeamDangerSection(team) : ''}
     <div class="profile-section">
@@ -14316,7 +14437,7 @@ function render(){
 
   const policyFoot = phoneSession ? '' : `<div class="policy-foot">Knuckleball LLC 2026 &middot; <a href="${policyHref('privacy.html')}">Privacy</a> &middot; <a href="${policyHref('terms.html')}">Terms</a></div>`;   // P1-10
   const dockOn = coachDockShown(phoneSession);
-  app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}${policyFoot}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet() + (dockOn ? renderCoachDock() : '');
+  app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}${policyFoot}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet() + renderJoinCodeOverlay() + (dockOn ? renderCoachDock() : '');
   if(app.classList) app.classList.toggle('has-dock', dockOn);
   if(dockOn) attachCoachDock();
   placeTrayIndicators();   // U13

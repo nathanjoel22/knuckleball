@@ -15,6 +15,49 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-31 · F1-B (QR join codes) · **staging**, branch, PR open (not merged)
+- **Asked by:** Joel ("keep going"; answers A–E in `plans/f1b-preconditions.md`). Operator
+  `Nathan <joelhauserman@gmail.com>`. Branch `f1b-qr-join`. **Cache:** v325.
+- **Database (staging only):** migration `20261102000000_f1b_qr_join`.
+  - `group_join_info`, `join_group_via_token`, `my_group_codes` and `rotate_group_code`.
+  - **Security fix:** restores F1-A's intended column-only grants on `coach_groups` / `coach_group_members`.
+    Supabase's default table-wide SELECT had let a side's coaches read every coach's join code. Production has the same
+    gap until this migration runs.
+  - Policies stay 32.
+- **App:**
+  - `join.html?c=`: parents first (make a parent account or sign in, then "Join as:"), plus a small link for adult
+    pitchers; the self-join form has no age question.
+  - Tracker: "Show my join code" (full screen, black on white, works offline), "All join codes" for the manager,
+    Share link, Print, New code (confirm); a Join codes section on the coach Profile.
+  - `qr-print.html`: black and white, one letter page per coach, the wordmark and the coach's name.
+  - `vendor/qrcodegen.js`: Nayuki v1.5.0, MIT, unmodified; source and sha256 in `vendor/qrcodegen.VERSION`.
+  - `parent-signup.html` accepts `next=join.html?c=`.
+- **Checks (staging):**
+  - **F1-B acceptance:** 0 hard fails. Covered: code info before sign-in; who sees which codes; joins (a parent's
+    player, again, by a second coach's code, an adult pitcher, a 13–17 login refused, an unanswered age, a coach, the
+    wrong sport, a bad code, someone else's player); regenerate (who may; the old code stops; joined pitchers stay); the
+    token not directly readable; an archived side.
+  - **Regressions:** F1-A, F1-C1 and F1-G tests 0 hard fails each, after the grant change.
+  - **Browser:**
+    - Chrome's own barcode reader decoded the on-screen code to exactly the join address.
+    - A new parent went from the code to an account, picked their player in "Join as:", and the player joined Blake
+      Coach's group, marked New.
+    - An existing parent signed in on the code page and joined a player.
+    - The adult link hides the age question.
+    - The manager's print page has 3 sheets, and the top bar hides when printing.
+    - The coach's code shows offline.
+    - After a regenerate, the old address says "Link no longer valid" and the new one opens.
+    - No sideways scroll at 390 px.
+- **Deviations:**
+  - No coach photo on the join page.
+  - The encoder is about 42 KB with comments, not "~5 KB".
+  - The existing parent sign-up page waits on its verification email before going on; on staging that took over a
+    minute once. Unchanged by this work, noted.
+- **Open:**
+  - Production order: backup → `db push` (dry run first) → structure check and policies 32 → `schema.sql` → merge
+    (v325). No function deploy.
+  - Staging test data: `f1b-parent@example.com` with player "F1B Kid"; a LoadTest 019 join.
+
 ## 2026-10-29 · F1-D (one "‹ Back"; the bar stays) · **staging** (frontend only), branch, PR open (not merged)
 - **Asked by:** Joel ("let's do F1-D next"; answers A–C in `plans/f1d-preconditions.md`). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `f1d-back`. **Cache:** v324. No database or function change.

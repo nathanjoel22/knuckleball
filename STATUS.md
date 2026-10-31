@@ -15,6 +15,39 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-10-31 · Operator page for facility signup links · **staging**, branch, PR open (ships after F1-B)
+- **Asked by:** Joel ("yes, build the operator page after F1-B"), instead of pasting SQL when a facility emails.
+  Operator `Nathan <joelhauserman@gmail.com>`. Branch `operator-facility-links`. No cache bump: the page isn't in the
+  app shell.
+- **Built:**
+  - `operator.html`: sign in, then fill in facility name, manager's email and each side's level → the one-time link
+    with Copy and "Email it from my mail app" (a ready message). Recent links show as open / used / expired, with Copy,
+    Email and Cancel.
+  - Edge Function `facility-invites` (list / create / cancel). It refuses anyone not in OPERATOR_EMAILS and sends no
+    email.
+  - Migration `20261103000000_operator_facility_links`: `facility_email_status(email)`, service role only. It refuses
+    up front an email that already runs a facility, is on a team, or is a pitcher or parent login.
+  - Policies stay 32.
+- **Checks (staging browser at 390 px):**
+  - signed out shows the sign-in;
+  - a non-operator sees "operator only";
+  - an email on a team and an email that runs a facility are both refused with a plain reason;
+  - a new email gets its link, note and mail-app message;
+  - the list shows the three states;
+  - Cancel turns a link Expired.
+
+  To run as an operator, I briefly added a staging test login to staging's OPERATOR_EMAILS. It was restored straight
+  after; the value's hash matches the original.
+- **Open:**
+  - Production, after F1-B:
+    1. backup;
+    2. `db push`;
+    3. `supabase functions deploy facility-invites --project-ref fkgccjhuimkkbupbanxp`;
+    4. merge.
+
+    OPERATOR_EMAILS is already set on production.
+  - Staging test data: the cancelled "Operator Test Facility" link; Joel's open "Knuckleball Test Facility" link.
+
 ## 2026-10-29 · F1-D (one "‹ Back"; the bar stays) · **staging** (frontend only), branch, PR open (not merged)
 - **Asked by:** Joel ("let's do F1-D next"; answers A–C in `plans/f1d-preconditions.md`). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `f1d-back`. **Cache:** v324. No database or function change.

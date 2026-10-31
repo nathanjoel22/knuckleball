@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<!-- P2-05: installable app (manifest, icons, iOS home-screen tags); css/standalone.css handles safe areas -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#061A12">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Knuckleball">
+<link rel="stylesheet" href="css/standalone.css">
+<script>
+  // W1 (Oct 15 2026): inside the Knuckleball iOS / Android app (Capacitor), same-site pages that aren't the app itself
+  // -- privacy, terms, reports, the account-deletion page -- open in the phone's own browser sheet (Done / close button),
+  // so the app never navigates away from itself. In a browser, or a home-screen install, this does nothing.
+  (function(){
+    var cap = window.Capacitor;
+    if(!cap || !cap.isNativePlatform || !cap.isNativePlatform()) return;
+    document.documentElement.classList.add('kb-native');
+    document.addEventListener('click', function(e){
+      var a = e.target && e.target.closest && e.target.closest('a[href]');
+      if(!a) return;
+      var u; try{ u = new URL(a.getAttribute('href'), location.href); }catch(x){ return; }
+      if(u.origin !== location.origin || !/\/(report|privacy|terms|delete-account|help)\.html$/.test(u.pathname)) return;
+      var B = cap.Plugins && cap.Plugins.Browser;
+      if(!B || !B.open) return;
+      e.preventDefault();
+      B.open({ url: u.href });
+    }, true);
+  })();
+</script>
+<title>Operator · Knuckleball</title>
+<script src="vendor/supabase.js"></script>
+<script>
+  // S1: theme before first paint. A ?sport= on the URL wins (every link to
+  // sign-in / signup carries one) and is remembered; otherwise this device's
+  // remembered choice. Join pages re-theme from the team's sport.
+  (function(){
+    var sp = null;
+    try{
+      var q = new URLSearchParams(location.search).get('sport');
+      if(q === 'baseball' || q === 'softball'){ sp = q; localStorage.setItem('kb:sport', q); }
+      else sp = localStorage.getItem('kb:sport');
+    }catch(e){}
+    window.KB_SPORT_KNOWN = (sp === 'baseball' || sp === 'softball');
+    window.KB_SPORT = sp === 'softball' ? 'softball' : 'baseball';
+    document.documentElement.setAttribute('data-sport', window.KB_SPORT);
+  })();
+</script>
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<link rel="stylesheet" href="css/tokens.css">   <!-- D1: the design tokens, every page (Oct 13 2026) -->
+<link rel="stylesheet" href="buttons.css">   <!-- U13: shared button shapes (Joel, Oct 9 2026) -->
+<link rel="stylesheet" href="css/components.css">   <!-- D2 Stage C: the shared sign-in look (Oct 13 2026) -->
+</head>
+<style>
+  /* the operator page: wider than a sign-in card, plain */
+  body.signin .card.op-card{ max-width:560px; }
+  .op-levels{ display:flex; flex-wrap:wrap; gap:8px 16px; }
+  .op-link{ word-break:break-all; font-size:13px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--surface, #fff); }
+  .op-row{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .op-list{ display:flex; flex-direction:column; gap:0; }
+  .op-item{ border-top:1px solid var(--border); padding:10px 0; display:flex; flex-direction:column; gap:4px; }
+  .op-item strong{ font-size:15px; }
+  .op-meta{ font-size:13px; color:var(--ink-dim); }
+  .op-state{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+  .op-ok{ color:var(--success, #1a7f37); }
+</style>
+</head>
+<body class="signin">
+  <!-- Operator page (Joel, Oct 31 2026): facility signup links without pasting SQL. Only logins in OPERATOR_EMAILS get
+       past the facility-invites function; anyone else sees a plain refusal. Not linked from anywhere; bookmark it. -->
+  <form class="card op-card step-hidden" id="signin-card" autocomplete="off">
+    <header class="signin-head"><div class="brand-block">
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div><h2 class="display">Operator <span class="last">sign in</span></h2></header>
+    <div class="field"><label class="field-label" for="si-email">Email</label><input class="text-input" id="si-email" type="email" autocomplete="email"></div>
+    <div class="field"><label class="field-label" for="si-password">Password</label><input class="text-input" id="si-password" type="password" autocomplete="current-password"></div>
+    <div class="error-msg" id="si-error"></div>
+    <button type="submit" class="btn btn-primary btn-block" id="si-btn">Sign in</button>
+  </form>
+
+  <div class="card op-card step-hidden" id="refused-card">
+    <header class="signin-head"><div class="brand-block">
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div><h2 class="display">Operator <span class="last">only</span></h2></header>
+    <div class="info-msg" id="refused-msg">This page is for the Knuckleball operator only.</div>
+    <a href="#" id="signout-link">Sign out</a>
+  </div>
+
+  <form class="card op-card step-hidden" id="make-card" autocomplete="off">
+    <header class="signin-head"><div class="brand-block">
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div><div><span class="role-tag slant-tag">Operator</span>
+      <h2 class="display">Facility <span class="last">signup link</span></h2>
+      <p class="sub">For a facility that emailed you. The link works once, for 14 days, and only for the manager's email. They get a baseball side and a softball side.</p></div></header>
+    <div class="field"><label class="field-label" for="f-name">Facility name</label><input class="text-input" id="f-name" maxlength="60" placeholder="e.g. Diamond Pitching Lab"></div>
+    <div class="field"><label class="field-label" for="f-email">Manager's email</label><input class="text-input" id="f-email" type="email" placeholder="Must be new to Knuckleball"></div>
+    <div class="field"><span class="field-label">Baseball level</span><div class="op-levels">
+      <label class="age-opt"><input type="radio" name="bb" value="little_league"> Little League</label>
+      <label class="age-opt"><input type="radio" name="bb" value="high_school" checked> High School</label>
+      <label class="age-opt"><input type="radio" name="bb" value="college"> College</label></div></div>
+    <div class="field"><span class="field-label">Softball level</span><div class="op-levels">
+      <label class="age-opt"><input type="radio" name="sb" value="little_league"> Little League</label>
+      <label class="age-opt"><input type="radio" name="sb" value="high_school_up" checked> High School &amp; up</label></div>
+      <p class="age-note">The level only sets the first extra inning. The manager can change it later.</p></div>
+    <div class="error-msg" id="f-error"></div>
+    <button type="submit" class="btn btn-primary btn-block" id="f-btn">Make link</button>
+    <div class="step-hidden" id="made" style="display:flex;flex-direction:column;gap:8px;">
+      <p class="op-ok" id="made-title" style="margin:0;font-weight:700;"></p>
+      <div class="op-link" id="made-link"></div>
+      <div class="op-row">
+        <button type="button" class="btn btn-secondary btn-sm" id="made-copy">Copy link</button>
+        <a class="btn btn-secondary btn-sm" id="made-mail" href="#">Email it from my mail app</a>
+      </div>
+      <p class="age-note" id="made-note"></p>
+    </div>
+  </form>
+
+  <div class="card op-card step-hidden" id="list-card">
+    <h2 class="display" style="font-size:24px;margin:0;">Recent links</h2>
+    <div class="op-list" id="list"></div>
+    <div class="error-msg" id="list-error"></div>
+  </div>
+
+<script src="supabase-config.js"></script>
+<script>
+  var FN = SUPABASE_URL + '/functions/v1/facility-invites';
+  var LEVEL = { little_league: 'Little League', high_school: 'High School', college: 'College', high_school_up: 'High School & up' };
+  function show(ids){ ['signin-card', 'refused-card', 'make-card', 'list-card'].forEach(function(i){ document.getElementById(i).classList.toggle('step-hidden', ids.indexOf(i) < 0); }); }
+  function esc(t){ var d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+  function day(iso){ return iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''; }
+  async function call(body){
+    var s = (await supabaseClient.auth.getSession()).data.session;
+    if(!s) return { status: 401, data: { error: 'Sign in first.' } };
+    try{
+      var res = await fetch(FN, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: JSON.stringify(body) });
+      return { status: res.status, data: await res.json().catch(function(){ return {}; }) };
+    }catch(e){ return { status: 0, data: { error: "Can't reach Knuckleball. Check your connection." } }; }
+  }
+  async function copy(text, btn){
+    var ok = false; try{ await navigator.clipboard.writeText(text); ok = true; }catch(e){}
+    var was = btn.textContent; btn.textContent = ok ? 'Copied!' : 'Copy failed'; setTimeout(function(){ btn.textContent = was; }, 2000);
+  }
+  function mailto(email, name, link, expires){
+    var body = 'Hi,\n\nHere is the link to set up ' + name + ' on Knuckleball:\n\n' + link + '\n\n'
+      + 'Open it, choose a password, and your facility is ready, with a baseball side and a softball side. The link works once, '
+      + 'until ' + day(expires) + ', and only with this email address.\n\nThen, from Profile, invite your pitching coaches, and from Roster '
+      + 'show or print each coach\'s QR code for parents to scan.\n\nThe Knuckleball team';
+    return 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent('Your Knuckleball facility signup link') + '&body=' + encodeURIComponent(body);
+  }
+  async function loadList(){
+    var r = await call({ action: 'list' });
+    if(r.status === 403){ document.getElementById('refused-msg').textContent = r.data.error || 'This page is for the Knuckleball operator only.'; show(['refused-card']); return false; }
+    if(r.status !== 200){ document.getElementById('list-error').textContent = r.data.error || 'Could not load links.'; return true; }
+    var list = document.getElementById('list');
+    list.innerHTML = r.data.invites.length ? '' : '<p class="op-meta">No links yet.</p>';
+    r.data.invites.forEach(function(i){
+      var el = document.createElement('div'); el.className = 'op-item';
+      el.innerHTML = '<span class="op-state">' + esc(i.state === 'open' ? 'Open until ' + day(i.expires_at) : i.state === 'used' ? 'Used ' + day(i.used_at) : 'Expired') + '</span>'
+        + '<strong>' + esc(i.facility_name) + '</strong><span class="op-meta">' + esc(i.manager_email) + ' · made ' + esc(day(i.created_at)) + '</span>';
+      if(i.state === 'open'){
+        var row = document.createElement('div'); row.className = 'op-row';
+        var c = document.createElement('button'); c.type = 'button'; c.className = 'btn btn-secondary btn-sm'; c.textContent = 'Copy link';
+        c.addEventListener('click', function(){ copy(i.link, c); });
+        var m = document.createElement('a'); m.className = 'btn btn-secondary btn-sm'; m.textContent = 'Email it'; m.href = mailto(i.manager_email, i.facility_name, i.link, i.expires_at);
+        var x = document.createElement('button'); x.type = 'button'; x.className = 'btn btn-tertiary btn-sm'; x.textContent = 'Cancel link';
+        x.addEventListener('click', async function(){
+          if(x.dataset.armed !== '1'){ x.dataset.armed = '1'; x.textContent = 'Yes, cancel it'; return; }
+          x.disabled = true; await call({ action: 'cancel', token: i.token }); loadList();
+        });
+        row.appendChild(c); row.appendChild(m); row.appendChild(x); el.appendChild(row);
+      }
+      list.appendChild(el);
+    });
+    return true;
+  }
+  async function start(){
+    var s = (await supabaseClient.auth.getSession()).data.session;
+    if(!s){ show(['signin-card']); return; }
+    if(await loadList()) show(['make-card', 'list-card']);
+  }
+  document.getElementById('signin-card').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var err = document.getElementById('si-error'), btn = document.getElementById('si-btn'); err.textContent = '';
+    btn.disabled = true;
+    var r = await supabaseClient.auth.signInWithPassword({ email: document.getElementById('si-email').value.trim(), password: document.getElementById('si-password').value });
+    btn.disabled = false;
+    if(r.error){ err.textContent = 'That email and password didn’t match.'; return; }
+    start();
+  });
+  document.getElementById('signout-link').addEventListener('click', async function(e){ e.preventDefault(); await supabaseClient.auth.signOut(); location.reload(); });
+  document.getElementById('make-card').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var err = document.getElementById('f-error'), btn = document.getElementById('f-btn'); err.textContent = '';
+    var name = document.getElementById('f-name').value.trim(), email = document.getElementById('f-email').value.trim();
+    var bb = (document.querySelector('input[name=bb]:checked') || {}).value, sb = (document.querySelector('input[name=sb]:checked') || {}).value;
+    if(!name || !email){ err.textContent = 'Fill in the facility name and the manager\'s email.'; return; }
+    btn.disabled = true; btn.textContent = 'Making…';
+    var r = await call({ action: 'create', facility_name: name, manager_email: email, baseball_level: bb, softball_level: sb });
+    btn.disabled = false; btn.textContent = 'Make link';
+    if(r.status !== 200 || !r.data.ok){ err.textContent = r.data.error || 'Could not make the link.'; return; }
+    document.getElementById('made').classList.remove('step-hidden');
+    document.getElementById('made-title').textContent = 'Link for ' + name + ' (' + email + ')';
+    document.getElementById('made-link').textContent = r.data.link;
+    document.getElementById('made-mail').href = mailto(email, name, r.data.link, r.data.expires_at);
+    document.getElementById('made-copy').onclick = function(){ copy(r.data.link, this); };
+    document.getElementById('made-note').textContent = 'Works once, until ' + day(r.data.expires_at) + ', only with ' + email + '.'
+      + (r.data.existing_login ? ' This email already has a Knuckleball login with no team: they sign in with their existing password on the Training facility card.' : '');
+    loadList();
+  });
+  start();
+</script>
+<p class="site-footer">Knuckleball LLC 2026 &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></p>
+</body>
+</html>

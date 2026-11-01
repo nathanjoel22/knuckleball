@@ -2297,6 +2297,23 @@ $$;
 ALTER FUNCTION "public"."get_unopened_sessions"("p_team_id" "uuid", "p_viewer" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."group_join_info"("p_token" "text") RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce((
+    select jsonb_build_object('status', case when t.archived_at is not null then 'archived' else 'ok' end,
+             'facility_name', o.name, 'coach_name', cp.full_name, 'sport', t.sport, 'team_name', t.name)
+      from public.coach_groups g join public.teams t on t.id = g.team_id and t.kind = 'facility'
+      join public.organizations o on o.id = t.org_id
+      left join public.profiles cp on cp.id = g.coach_id
+     where g.join_token = p_token), jsonb_build_object('status', 'not_found'));
+$$;
+
+
+ALTER FUNCTION "public"."group_join_info"("p_token" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."h1_child_lock"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
@@ -2720,6 +2737,48 @@ $$;
 ALTER FUNCTION "public"."is_team_member"("check_team_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."join_group_via_token"("p_token" "text", "p_profile" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare v_group uuid; v_team uuid; v_sport text; v_name text; v_archived timestamptz; v_prof uuid; v_p public.profiles%rowtype;
+        v_block text; v_new boolean;
+begin
+  if auth.uid() is null then return jsonb_build_object('error', 'not_authenticated'); end if;
+  v_block := public.p1_10_join_block(false);
+  if v_block is not null then return jsonb_build_object('error', v_block); end if;
+  select g.id, t.id, t.sport, t.name, t.archived_at into v_group, v_team, v_sport, v_name, v_archived
+    from public.coach_groups g join public.teams t on t.id = g.team_id and t.kind = 'facility' where g.join_token = p_token;
+  if v_group is null then return jsonb_build_object('error', 'invalid_token'); end if;
+  if v_archived is not null then return jsonb_build_object('error', 'team_archived'); end if;
+  if p_profile is not null then
+    if not public.is_my_profile(p_profile) then return jsonb_build_object('error', 'not_your_profile'); end if;
+    v_prof := p_profile;
+  else
+    v_prof := (select pr.id from public.profiles pr where pr.account_id = auth.uid() and pr.managed_by is null
+                and pr.role = 'pitcher' and pr.sport = v_sport);
+    v_prof := coalesce(v_prof, public.my_single_profile());
+    if v_prof is null then return jsonb_build_object('error', 'profile_required'); end if;
+  end if;
+  select * into v_p from public.profiles where id = v_prof;
+  if v_p.role in ('coach', 'parent', 'child') then return jsonb_build_object('error', 'coach_cannot_join'); end if;
+  -- a code is for parents and adult pitchers: a pitcher's own login must be 18+ (decision A)
+  if v_p.managed_by is null and coalesce((select age_attestation from public.profiles where id = auth.uid()), '') <> 'adult' then
+    return jsonb_build_object('error', 'adult_required');
+  end if;
+  insert into public.pitcher_teams (pitcher_id, team_id) values (v_prof, v_team)
+    on conflict (pitcher_id, team_id) do nothing;   -- a cross-sport join raises sport_mismatch (S1 trigger)
+  insert into public.coach_group_members (group_id, pitcher_id, added_by, flagged_new) values (v_group, v_prof, null, true)
+    on conflict (group_id, pitcher_id) do nothing;
+  v_new := found;
+  return jsonb_build_object('ok', true, 'team_id', v_team, 'team_name', v_name, 'profile_id', v_prof, 'already', not v_new);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."join_group_via_token"("p_token" "text", "p_profile" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."join_team_as_coach"("p_token" "text", "p_profile" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -2914,6 +2973,23 @@ $$;
 
 
 ALTER FUNCTION "public"."my_facility"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."my_group_codes"() RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(jsonb_agg(jsonb_build_object('group_id', g.id, 'team_id', t.id, 'sport', t.sport, 'facility_name', o.name,
+           'coach_name', cp.full_name, 'token', g.join_token, 'mine', cp.account_id = auth.uid())
+           order by t.sport, (cp.account_id = auth.uid()) desc, cp.full_name), '[]'::jsonb)
+    from public.coach_groups g join public.teams t on t.id = g.team_id and t.kind = 'facility' and t.archived_at is null
+    join public.organizations o on o.id = t.org_id
+    join public.profiles cp on cp.id = g.coach_id
+   where cp.account_id = auth.uid() or public.is_org_manager(t.id);
+$$;
+
+
+ALTER FUNCTION "public"."my_group_codes"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."my_guardian_status"() RETURNS TABLE("guardian_email" "text", "sent_at" timestamp with time zone, "consented_at" timestamp with time zone)
@@ -3638,6 +3714,23 @@ $$;
 
 
 ALTER FUNCTION "public"."rotate_coach_invite"("p_team_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."rotate_group_code"("p_group" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare v_token text;
+begin
+  if not public.f1a_may_edit_group(p_group) then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
+  update public.coach_groups set join_token = replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '')
+   where id = p_group returning join_token into v_token;
+  return jsonb_build_object('ok', true, 'token', v_token);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."rotate_group_code"("p_group" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."rotate_team_invite"("p_team_id" "uuid") RETURNS "text"
@@ -6533,6 +6626,12 @@ GRANT ALL ON FUNCTION "public"."get_unopened_sessions"("p_team_id" "uuid", "p_vi
 
 
 
+GRANT ALL ON FUNCTION "public"."group_join_info"("p_token" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."group_join_info"("p_token" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."group_join_info"("p_token" "text") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."h1_child_lock"() TO "anon";
 GRANT ALL ON FUNCTION "public"."h1_child_lock"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."h1_child_lock"() TO "service_role";
@@ -6681,6 +6780,12 @@ GRANT ALL ON FUNCTION "public"."is_team_member"("check_team_id" "uuid") TO "serv
 
 
 
+REVOKE ALL ON FUNCTION "public"."join_group_via_token"("p_token" "text", "p_profile" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."join_group_via_token"("p_token" "text", "p_profile" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."join_group_via_token"("p_token" "text", "p_profile" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."join_team_as_coach"("p_token" "text", "p_profile" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."join_team_as_coach"("p_token" "text", "p_profile" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."join_team_as_coach"("p_token" "text", "p_profile" "uuid") TO "service_role";
@@ -6714,6 +6819,12 @@ GRANT ALL ON FUNCTION "public"."move_between_groups"("p_pitcher" "uuid", "p_from
 REVOKE ALL ON FUNCTION "public"."my_facility"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."my_facility"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."my_facility"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."my_group_codes"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."my_group_codes"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."my_group_codes"() TO "service_role";
 
 
 
@@ -6887,6 +6998,12 @@ GRANT ALL ON FUNCTION "public"."rotate_coach_invite"("p_team_id" "uuid") TO "ser
 
 
 
+REVOKE ALL ON FUNCTION "public"."rotate_group_code"("p_group" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."rotate_group_code"("p_group" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rotate_group_code"("p_group" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."rotate_team_invite"("p_team_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."rotate_team_invite"("p_team_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rotate_team_invite"("p_team_id" "uuid") TO "service_role";
@@ -7023,7 +7140,6 @@ GRANT ALL ON TABLE "public"."chat_threads" TO "service_role";
 
 
 
-GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."coach_group_members" TO "authenticated";
 GRANT ALL ON TABLE "public"."coach_group_members" TO "service_role";
 
 
@@ -7044,7 +7160,6 @@ GRANT SELECT("flagged_new") ON TABLE "public"."coach_group_members" TO "authenti
 
 
 
-GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."coach_groups" TO "authenticated";
 GRANT ALL ON TABLE "public"."coach_groups" TO "service_role";
 
 

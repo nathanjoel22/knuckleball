@@ -209,7 +209,7 @@
   const submitBtn = document.getElementById('submit-btn');
   // Back to a team invite link after signup -- only ever a join link on this site.
   const nextParam = new URLSearchParams(location.search).get('next') || '';
-  const NEXT = /^join\.html\?t=[A-Za-z0-9_-]+$/.test(nextParam) ? nextParam : null;
+  const NEXT = /^join\.html\?[tc]=[A-Za-z0-9_-]+$/.test(nextParam) ? nextParam : null;   // F1-B: a coach's join code (?c=) too
   (function(){
     var r = document.querySelector('input[name="sport"][value="' + (window.KB_SPORT || 'baseball') + '"]');
     if(r) r.checked = true;

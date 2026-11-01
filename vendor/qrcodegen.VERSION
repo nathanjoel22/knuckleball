@@ -1,0 +1,4 @@
+Nayuki QR Code generator library (JavaScript), v1.5.0, MIT License
+Source: https://raw.githubusercontent.com/nayuki/QR-Code-generator/v1.5.0/javascript/qrcodegen.js
+sha256: 99a61998d4cedf7b1d927ac8ae2f41e0c64a5c89d7de0a76bffd3cb4dda40e89
+Vendored unmodified for F1-B (Oct 31 2026): QR join codes, drawn on the device with no network.

@@ -15,10 +15,13 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-10-31 · F1-B (QR join codes) · **staging**, branch, PR open (not merged)
+## 2026-10-31 · F1-B (QR join codes) · **production database**; site waits on PR #56 merge (v325)
 - **Asked by:** Joel ("keep going"; answers A–E in `plans/f1b-preconditions.md`). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `f1b-qr-join`. **Cache:** v325.
-- **Database (staging only):** migration `20261102000000_f1b_qr_join`.
+- **Database:** migration `20261102000000_f1b_qr_join` (staging, then production Oct 31 after backup `2026-10-31-1445`;
+  Joel ran the `db push`). Production check: structure identical to staging except staging's operator-page function
+  (its own PR) and `session_dots_since` (by design); policies 32; `coach_groups` now client-readable only as id, team_id,
+  coach_id, created_at, with no table-wide grants left on either group table.
   - `group_join_info`, `join_group_via_token`, `my_group_codes` and `rotate_group_code`.
   - **Security fix:** restores F1-A's intended column-only grants on `coach_groups` / `coach_group_members`.
     Supabase's default table-wide SELECT had let a side's coaches read every coach's join code. Production has the same
@@ -54,8 +57,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - The existing parent sign-up page waits on its verification email before going on; on staging that took over a
     minute once. Unchanged by this work, noted.
 - **Open:**
-  - Production order: backup → `db push` (dry run first) → structure check and policies 32 → `schema.sql` → merge
-    (v325). No function deploy.
+  - Merge PR #56 on "ship it" (v325), then check the live `sw.js`.
   - Staging test data: `f1b-parent@example.com` with player "F1B Kid"; a LoadTest 019 join.
 
 ## 2026-10-29 · F1-D (one "‹ Back"; the bar stays) · **staging** (frontend only), branch, PR open (not merged)

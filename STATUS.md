@@ -15,7 +15,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-10-31 · Operator page for facility signup links · **staging**, branch, PR open (ships after F1-B)
+## 2026-10-31 · Operator page for facility signup links · **production database + function**; page waits on PR #57 merge
 - **Asked by:** Joel ("yes, build the operator page after F1-B"), instead of pasting SQL when a facility emails.
   Operator `Nathan <joelhauserman@gmail.com>`. Branch `operator-facility-links`. No cache bump: the page isn't in the
   app shell.
@@ -39,13 +39,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   To run as an operator, I briefly added a staging test login to staging's OPERATOR_EMAILS. It was restored straight
   after; the value's hash matches the original.
 - **Open:**
-  - Production, after F1-B:
-    1. backup;
-    2. `db push`;
-    3. `supabase functions deploy facility-invites --project-ref fkgccjhuimkkbupbanxp`;
-    4. merge.
-
-    OPERATOR_EMAILS is already set on production.
+  - **Production (Oct 31):** backup `2026-10-31-2158`, migration applied and `facility-invites` deployed (Joel asked me to
+    run both). Structure identical to staging except `session_dots_since` (by design); policies 32;
+    `facility_email_status` callable by neither anon nor authenticated; an unsigned call to the function gets 401.
+    `schema.sql` regenerated.
+  - Merge PR #57 on "ship it". Then Joel's first real use on production confirms the operator sign-in.
   - Staging test data: the cancelled "Operator Test Facility" link; Joel's open "Knuckleball Test Facility" link.
 ## 2026-10-31 · F1-B (QR join codes) · **production** (database and site; PR #56 merged Oct 31, v325 live)
 - **Asked by:** Joel ("keep going"; answers A–E in `plans/f1b-preconditions.md`). Operator

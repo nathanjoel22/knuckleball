@@ -15,7 +15,37 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-10-31 · F1-B (QR join codes) · **production database**; site waits on PR #56 merge (v325)
+## 2026-10-31 · Operator page for facility signup links · **production database + function**; page waits on PR #57 merge
+- **Asked by:** Joel ("yes, build the operator page after F1-B"), instead of pasting SQL when a facility emails.
+  Operator `Nathan <joelhauserman@gmail.com>`. Branch `operator-facility-links`. No cache bump: the page isn't in the
+  app shell.
+- **Built:**
+  - `operator.html`: sign in, then fill in facility name, manager's email and each side's level → the one-time link
+    with Copy and "Email it from my mail app" (a ready message). Recent links show as open / used / expired, with Copy,
+    Email and Cancel.
+  - Edge Function `facility-invites` (list / create / cancel). It refuses anyone not in OPERATOR_EMAILS and sends no
+    email.
+  - Migration `20261103000000_operator_facility_links`: `facility_email_status(email)`, service role only. It refuses
+    up front an email that already runs a facility, is on a team, or is a pitcher or parent login.
+  - Policies stay 32.
+- **Checks (staging browser at 390 px):**
+  - signed out shows the sign-in;
+  - a non-operator sees "operator only";
+  - an email on a team and an email that runs a facility are both refused with a plain reason;
+  - a new email gets its link, note and mail-app message;
+  - the list shows the three states;
+  - Cancel turns a link Expired.
+
+  To run as an operator, I briefly added a staging test login to staging's OPERATOR_EMAILS. It was restored straight
+  after; the value's hash matches the original.
+- **Open:**
+  - **Production (Oct 31):** backup `2026-10-31-2158`, migration applied and `facility-invites` deployed (Joel asked me to
+    run both). Structure identical to staging except `session_dots_since` (by design); policies 32;
+    `facility_email_status` callable by neither anon nor authenticated; an unsigned call to the function gets 401.
+    `schema.sql` regenerated.
+  - Merge PR #57 on "ship it". Then Joel's first real use on production confirms the operator sign-in.
+  - Staging test data: the cancelled "Operator Test Facility" link; Joel's open "Knuckleball Test Facility" link.
+## 2026-10-31 · F1-B (QR join codes) · **production** (database and site; PR #56 merged Oct 31, v325 live)
 - **Asked by:** Joel ("keep going"; answers A–E in `plans/f1b-preconditions.md`). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `f1b-qr-join`. **Cache:** v325.
 - **Database:** migration `20261102000000_f1b_qr_join` (staging, then production Oct 31 after backup `2026-10-31-1445`;
@@ -57,7 +87,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - The existing parent sign-up page waits on its verification email before going on; on staging that took over a
     minute once. Unchanged by this work, noted.
 - **Open:**
-  - Merge PR #56 on "ship it" (v325), then check the live `sw.js`.
+  - Merged Oct 31 (5de30d3); live `sw.js` shows v325, and `qr-print.html` and `vendor/qrcodegen.js` are served.
   - Staging test data: `f1b-parent@example.com` with player "F1B Kid"; a LoadTest 019 join.
 
 ## 2026-10-29 · F1-D (one "‹ Back"; the bar stays) · **staging** (frontend only), branch, PR open (not merged)

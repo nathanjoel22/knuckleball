@@ -1775,6 +1775,25 @@ $$;
 ALTER FUNCTION "public"."f1g_role_cap"("p_role" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."facility_email_status"("p_email" "text") RETURNS "text"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select case
+    when u.id is null then 'new'
+    when exists (select 1 from public.organizations o where o.manager_login = u.id) then 'facility'
+    when exists (select 1 from public.team_coaches tc join public.profiles pr on pr.id = tc.coach_id where pr.account_id = u.id)
+      or exists (select 1 from public.pitcher_teams pt join public.profiles pr on pr.id = pt.pitcher_id where pr.account_id = u.id) then 'in_use'
+    when exists (select 1 from public.profiles pr where pr.id = u.id and pr.role <> 'coach') then 'not_coach'
+    else 'free'
+  end
+  from (select 1) one left join auth.users u on lower(u.email) = lower(btrim(p_email));
+$$;
+
+
+ALTER FUNCTION "public"."facility_email_status"("p_email" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."facility_invite_info"("p_token" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -6550,6 +6569,11 @@ GRANT ALL ON FUNCTION "public"."f1g_linked_team"("p_team" "uuid", "p_family" boo
 REVOKE ALL ON FUNCTION "public"."f1g_role_cap"("p_role" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."f1g_role_cap"("p_role" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."f1g_role_cap"("p_role" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."facility_email_status"("p_email" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."facility_email_status"("p_email" "text") TO "service_role";
 
 
 

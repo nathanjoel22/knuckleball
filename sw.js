@@ -15,7 +15,7 @@
 // stale-while-revalidate fetch handler below is the offline/secondary
 // path -- it is not what ships a code change. This bump is a required
 // step in DEPLOY.md ("Frontend: deploy to production").
-const CACHE_VERSION = 'kb-shell-v325';
+const CACHE_VERSION = 'kb-shell-v326';
 
 const PRECACHE_URLS = [
   '/',
@@ -107,6 +107,24 @@ const PRECACHE_URLS = [
   '/splash/splash-828x1792.png'
 ];
 
+// Cloudflare Pages (Nov 4 2026): a host may 308-redirect /page.html to /page. A fetch that followed a redirect returns a
+// response marked `redirected`, and a browser refuses to show such a response for a page navigation ("Response served by
+// service worker has redirections" in Safari; Chrome likewise) -- so a shell cached that way can't open offline. Two
+// rules keep every host working (GitHub Pages serves /page.html, Cloudflare serves /page):
+//   1. never store or serve a redirected response: its body is copied into a fresh, unredirected Response first;
+//   2. /page and /page.html are one page: both are stored and looked up under /page.html (cacheKey).
+function cacheKey(url) {
+  const u = new URL(url, self.location.origin);
+  const last = u.pathname.split('/').pop();
+  if (last && !last.includes('.')) u.pathname += '.html';   // /bullpen-tracker -> /bullpen-tracker.html ('/' stays '/')
+  return u.href;
+}
+async function unredirected(res) {
+  if (!res || !res.redirected) return res;
+  const body = await res.blob();
+  return new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers });
+}
+
 self.addEventListener('install', (event) => {
   // Cache each URL independently rather than cache.addAll(), which fails
   // the whole install if even one asset 404s or blips -- that would
@@ -115,8 +133,8 @@ self.addEventListener('install', (event) => {
     const cache = await caches.open(CACHE_VERSION);
     await Promise.all(PRECACHE_URLS.map(async (url) => {
       try {
-        const res = await fetch(url, { cache: 'reload' });
-        if (res && (res.ok || res.type === 'opaque')) await cache.put(url, res);
+        const res = await unredirected(await fetch(url, { cache: 'reload' }));
+        if (res && (res.ok || res.type === 'opaque')) await cache.put(cacheKey(url), res);
       } catch (e) {
         // One flaky asset shouldn't block the rest of the shell from caching.
       }
@@ -175,13 +193,24 @@ self.addEventListener('fetch', (event) => {
     // the links (email verification, team invites) where reliability
     // matters most. Found via a real report: a verification email link
     // hit this offline page even though verify-email.html was precached.
-    const cached = await cache.match(req, { ignoreSearch: true });
+    // Cloudflare: /page and /page.html are looked up under one key, and nothing redirected is ever served (rules above).
+    const key = cacheKey(req.url);
+    const cached = await unredirected(await cache.match(key, { ignoreSearch: true }));
 
-    const networkFetch = fetch(req).then((res) => {
-      if (res && (res.ok || res.type === 'opaque')) {
-        cache.put(req, res.clone());
+    const networkFetch = fetch(req).then(async (res) => {
+      // A navigation's own fetch doesn't follow redirects (an 'opaqueredirect' comes back, not ok): it's passed on
+      // for the browser to follow and never stored. Anything else that followed one is stored unredirected.
+      const clean = await unredirected(res);
+      if (clean && (clean.ok || clean.type === 'opaque')) {
+        cache.put(key, clean.clone());
+      } else if (clean && clean.type === 'opaqueredirect') {
+        // Keep the background refresh working on such a host: fetch the page itself (following the redirect) and store
+        // that copy, unredirected. The browser still gets the redirect to follow.
+        // (awaited, so event.waitUntil keeps the worker alive for it)
+        await fetch(req.url, { credentials: 'same-origin' }).then(unredirected)
+          .then((page) => { if (page && page.ok) return cache.put(key, page); }).catch(() => {});
       }
-      return res;
+      return clean;
     }).catch(() => null);
 
     if (cached) {

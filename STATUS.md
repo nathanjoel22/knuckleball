@@ -15,6 +15,36 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-04 · Service worker: no redirected responses (Cloudflare Pages offline fix) · branch, PR open (not merged)
+- **Asked by:** Joel. On knuckleball.pages.dev, reopening the app offline in Safari gave "Response served by service
+  worker has redirections" for /bullpen-tracker. Operator `Nathan <joelhauserman@gmail.com>`. Branch
+  `sw-no-redirected-responses`. **Cache:** v326.
+- **Cause, reproduced locally:** Cloudflare 308-redirects /page.html to /page. The install's fetch followed it and
+  stored the redirected response under /page.html. Browsers refuse a redirected response for a page open. With a local
+  server that redirects like Cloudflare, v325 stored /bullpen-tracker.html, /login.html and /index.html as REDIRECTED.
+  Offline, /bullpen-tracker.html failed (Chrome net::ERR_FAILED) and /bullpen-tracker said "Offline and not yet cached".
+- **Changed (sw.js only):**
+  - nothing redirected is ever stored or served: the body is copied into a fresh response (`unredirected`);
+  - /page and /page.html share one stored copy under /page.html (`cacheKey`);
+  - when a page open comes back as a redirect, the page itself is fetched in the background and stored, so the
+    stale-while-revalidate refresh still works on Cloudflare;
+  - v325 → v326.
+
+  No change to what is precached, to Supabase / media bypasses, or to drafts and the outbox (which live in
+  localStorage / IndexedDB, not in the cache).
+- **Tests (Chrome, local server):**
+  - **Upgrade v325 → v326 on the Cloudflare-style server:** a signed-in staging test pitcher had a saved pen held in
+    the outbox (database blocked) and a 2-pitch draft. After the upgrade, the old cache was gone, every page was
+    stored clean, and the outbox (3 pitches) and draft (2 pitches) were intact.
+  - **Offline (server down, database blocked):** /bullpen-tracker(.html), /login(.html), /, /index.html, /join?t=…,
+    /privacy.html and /help all opened, with the draft offered and the outbox kept.
+  - **Back online:** the pen synced and the draft stayed.
+  - **Fresh install** on the GitHub-style (no redirects) and the Cloudflare-style server: everything stored clean and
+    opened offline both ways.
+  - **Background refresh:** a page changed on the redirecting server was picked up after one online visit to its .html
+    address and shown offline.
+- **Open:** WebKit (see the PR); Joel's own iPhone check on pages.dev after merge.
+
 ## 2026-10-31 · Operator page for facility signup links · **production database + function**; page waits on PR #57 merge
 - **Asked by:** Joel ("yes, build the operator page after F1-B"), instead of pasting SQL when a facility emails.
   Operator `Nathan <joelhauserman@gmail.com>`. Branch `operator-facility-links`. No cache bump: the page isn't in the

@@ -1,3 +1,6 @@
 .DS_Store
 .claude/settings.local.json
 supabase/.temp/
+
+# Cloudflare Pages build output (scripts/build-site.sh)
+_site/

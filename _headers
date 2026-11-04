@@ -1,0 +1,141 @@
+# Cloudflare Pages header rules (copied into _site/ by scripts/build-site.sh).
+# The service worker and every page are revalidated on every request, so a deploy reaches devices on their next load
+# (sw.js must never sit in a cache: a stale worker strands installed apps on old code -- CLAUDE.md landmine 9).
+# Pages are listed one by one, with and without .html: Cloudflare Pages serves /page.html as /page by default.
+/sw.js
+  Cache-Control: no-cache
+
+/
+  Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache
+
+/index
+  Cache-Control: no-cache
+
+/signin.html
+  Cache-Control: no-cache
+
+/signin
+  Cache-Control: no-cache
+
+/login.html
+  Cache-Control: no-cache
+
+/login
+  Cache-Control: no-cache
+
+/bullpen-tracker.html
+  Cache-Control: no-cache
+
+/bullpen-tracker
+  Cache-Control: no-cache
+
+/report.html
+  Cache-Control: no-cache
+
+/report
+  Cache-Control: no-cache
+
+/coach-signup.html
+  Cache-Control: no-cache
+
+/coach-signup
+  Cache-Control: no-cache
+
+/pitcher-signup.html
+  Cache-Control: no-cache
+
+/pitcher-signup
+  Cache-Control: no-cache
+
+/parent-signup.html
+  Cache-Control: no-cache
+
+/parent-signup
+  Cache-Control: no-cache
+
+/facility-signup.html
+  Cache-Control: no-cache
+
+/facility-signup
+  Cache-Control: no-cache
+
+/player-link.html
+  Cache-Control: no-cache
+
+/player-link
+  Cache-Control: no-cache
+
+/accept-invite.html
+  Cache-Control: no-cache
+
+/accept-invite
+  Cache-Control: no-cache
+
+/join.html
+  Cache-Control: no-cache
+
+/join
+  Cache-Control: no-cache
+
+/join-coach.html
+  Cache-Control: no-cache
+
+/join-coach
+  Cache-Control: no-cache
+
+/verify-email.html
+  Cache-Control: no-cache
+
+/verify-email
+  Cache-Control: no-cache
+
+/reset-password.html
+  Cache-Control: no-cache
+
+/reset-password
+  Cache-Control: no-cache
+
+/guardian-consent.html
+  Cache-Control: no-cache
+
+/guardian-consent
+  Cache-Control: no-cache
+
+/privacy.html
+  Cache-Control: no-cache
+
+/privacy
+  Cache-Control: no-cache
+
+/terms.html
+  Cache-Control: no-cache
+
+/terms
+  Cache-Control: no-cache
+
+/help.html
+  Cache-Control: no-cache
+
+/help
+  Cache-Control: no-cache
+
+/delete-account.html
+  Cache-Control: no-cache
+
+/delete-account
+  Cache-Control: no-cache
+
+/qr-print.html
+  Cache-Control: no-cache
+
+/qr-print
+  Cache-Control: no-cache
+
+/operator.html
+  Cache-Control: no-cache
+
+/operator
+  Cache-Control: no-cache

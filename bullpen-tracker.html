@@ -1192,7 +1192,10 @@
     display:flex; gap:0; padding:6px 8px; border-radius:var(--radius-dock); overflow:hidden;
     background:var(--dock-bg); -webkit-backdrop-filter:blur(14px) saturate(140%); backdrop-filter:blur(14px) saturate(140%);
     box-shadow:var(--shadow-pop); transition:transform 260ms ease, opacity 260ms ease; /* geometry: the coach dock's measured layout */ }
-  .coach-dock.dock-hidden{ transform:translateY(calc(100% + 24px)); opacity:0; pointer-events:none; }
+  @media (min-width:501px){ .coach-dock{ left:50%; right:auto; width:min(560px, calc(100% - 20px)); transform:translateX(-50%); } }   /* iPads: centered */
+  .dock-soon{ position:absolute; top:2px; right:50%; transform:translateX(26px); font-style:normal; font-size:8px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; padding:1px 4px; border-radius:var(--radius-pill); background:var(--surface); color:var(--ink-faint); }
+  .brand-home, .ident-link{ cursor:pointer; }
+  .ident-link{ min-width:0; }
   .dock-btn{ flex:1; min-width:0; min-height:50px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
     background:none; border:0; border-radius:var(--radius-control); color:var(--dock-fg); font:inherit; font-size:10px; font-weight:700; letter-spacing:0.02em; cursor:pointer;
     -webkit-tap-highlight-color:transparent; /* geometry: the coach dock's measured layout */ }
@@ -3602,6 +3605,15 @@ window.addSport = async function(sport){
     render();
   }
 };
+// Nov 5 (Joel): the wordmark goes Home from anywhere (Home is off the bottom bar).
+window.goHome = function(){
+  state.dockRoster = false;
+  if(isCoach()) state.rosterCollapsed = rosterCanCollapse();
+  setView('home');
+  try{ window.scrollTo(0, 0); }catch(e){}
+};
+// ...and Profile is in the account menu.
+window.acctGoProfile = function(){ state.acctOpen = false; state.dockRoster = false; setView('profile'); try{ window.scrollTo(0, 0); }catch(e){} };
 window.toggleAcctMenu = function(){ state.acctOpen = !state.acctOpen; state.acctMsg = ''; render(); };
 window.dismissAddSport = function(){ state.addSportBanner = null; render(); };
 function initialsOf(name){ return String(name || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase(); }
@@ -3627,6 +3639,7 @@ function renderAccountButton(){
             <span class="acct-meta">${profileChip(p)} ${ROLE_NAME[p.role] || ''}</span></span>
           ${p.id === state.profile.id ? '<span class="acct-check" aria-label="Active">✓</span>' : ''}
         </button>`).join('')}
+      <button type="button" class="btn btn-tertiary acct-item acct-profile" role="menuitem" onclick="acctGoProfile()"><span class="acct-name">Profile</span></button>
       ${sportsToAdd().map(sp => `<button type="button" class="btn btn-secondary btn-sm acct-add" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')">+ Add ${sp}</button>`).join('')}
       ${canAddPlayer() ? `<button type="button" class="btn btn-secondary btn-sm acct-add" onclick="openAddPlayer()">+ Add a player</button>` : ''}
       ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
@@ -4042,9 +4055,21 @@ const DOCK_ICONS = {
   roster: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20.5c.8-4 3.6-6.3 7.2-6.3s6.4 2.3 7.2 6.3"/></svg>',
   profile: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.6"/></svg>'
 };
-function coachDockShown(phoneSession){ return !!state.profile && (isCoach() || state.profile.role === 'pitcher') && isPhoneWidth() && !phoneSession; }
+// Dock everywhere but computers (Joel, Nov 5 2026): phones and iPads (touch screens, or any window 500px wide or less)
+// always show the bottom bar, except on the charting screen; it no longer slides away. Computers keep the tab bar.
+function dockDevice(){
+  try{ return isPhoneWidth() || window.matchMedia('(hover: none) and (pointer: coarse)').matches; }catch(e){ return isPhoneWidth(); }
+}
+function coachDockShown(phoneSession){ return !!state.profile && (isCoach() || state.profile.role === 'pitcher') && dockDevice() && !phoneSession && !onChartingScreen(); }
 // F1-C1 (Joel, A): Chat after Analysis, only for someone with a facility (a facility coach's bar is then six buttons).
-function dockKeys(){ const chat = chatEnabled() ? ['chat'] : []; const charts = viewOnlyLinked() ? [] : ['charts']; return isCoach() ? ['home', 'charts', 'history', ...chat, 'roster', 'profile'] : ['home', ...charts, 'history', ...chat, 'profile']; }
+// Nov 5 (Joel): no Home or Profile on the bar (the wordmark goes Home; Profile is a Home tile and in the account menu).
+// Coaches: Charts, Analysis, Chat (in a facility), Roster. Players, parents and teens: Charts, Analysis, Chat (marked
+// "Soon" outside a facility). View-only friends and family: Analysis, Profile.
+function dockKeys(){
+  if(isCoach()) return ['charts', 'history', ...(chatEnabled() ? ['chat'] : []), 'roster'];
+  if(viewOnlyLinked()) return ['history', 'profile'];
+  return ['charts', 'history', 'chat'];
+}
 const DOCK_LABELS = { home: 'Home', charts: 'Charts', history: 'Analysis', chat: 'Chat', roster: 'Roster', profile: 'Profile' };
 function dockActiveIndex(){
   const keys = dockKeys();
@@ -4055,8 +4080,8 @@ function dockActiveIndex(){
 function renderCoachDock(){
   const idx = dockActiveIndex(), keys = dockKeys();
   const chatN = chatEnabled() ? chatState().unread + chatState().reports : 0;
-  const btn = (k, label, i) => `<button type="button" role="tab" class="dock-btn${idx === i ? ' on' : ''}" data-go="${k}" aria-selected="${idx === i ? 'true' : 'false'}" tabindex="${(idx === i || (idx < 0 && i === 0)) ? '0' : '-1'}" onclick="dockTap('${k}')" aria-label="${label}">${DOCK_ICONS[k]}<span>${label}</span>${k === 'chat' && chatN ? `<i class="dock-badge" aria-hidden="true">${chatN}</i>` : ''}</button>`;
-  return `<nav class="coach-dock${state.dockHidden ? ' dock-hidden' : ''}" role="tablist" aria-label="Shortcuts" style="--dock-n:${keys.length}">
+  const btn = (k, label, i) => `<button type="button" role="tab" class="dock-btn${idx === i ? ' on' : ''}" data-go="${k}" aria-selected="${idx === i ? 'true' : 'false'}" tabindex="${(idx === i || (idx < 0 && i === 0)) ? '0' : '-1'}" onclick="dockTap('${k}')" aria-label="${label}">${DOCK_ICONS[k]}<span>${label}</span>${k === 'chat' && chatN ? `<i class="dock-badge" aria-hidden="true">${chatN}</i>` : ''}${k === 'chat' && !chatEnabled() ? '<i class="dock-soon" aria-hidden="true">Soon</i>' : ''}</button>`;
+  return `<nav class="coach-dock" role="tablist" aria-label="Shortcuts" style="--dock-n:${keys.length}">
     <span class="dock-pill${idx < 0 ? ' off' : ''}" aria-hidden="true" style="transform:translateX(${Math.max(idx, 0) * 100}%)"></span>
     ${keys.map((k, i) => btn(k, DOCK_LABELS[k], i)).join('')}
   </nav>`;
@@ -4091,7 +4116,7 @@ window.dockGo = function(where){
   }
   state.rosterCollapsed = rosterCanCollapse();   // Joel, Oct 8: any other button rolls the roster back up
   // Charts: the Bullpen / Live Game question (or Resume); a coach on an archived team has no New Session, so History
-  if(where === 'chat'){ openChat(); dockScroll(0); return; }   // F1-C1
+  if(where === 'chat'){ if(chatEnabled()) openChat(); else setView('chat'); dockScroll(0); return; }   // F1-C1; "Soon" outside a facility
   setView(where === 'home' ? 'home' : where === 'charts' ? ((isCoach() && currentTeamArchived()) ? 'history' : 'session') : where === 'history' ? 'history' : 'profile');
   // ...and lands with the box holding the pitcher's name at the top of the screen (Profile has no pitcher
   // box -- it lands at the top of the page's content).
@@ -4177,19 +4202,6 @@ function attachCoachDock(){
     list[j].focus();
   });
 }
-// Down: away; up (or near the top): back. Moves the bar in place -- no re-render while scrolling.
-let dockLastY = 0;
-window.addEventListener('scroll', () => {
-  const y = window.pageYOffset || 0, dy = y - dockLastY;
-  if(Date.now() < dockQuietUntil){ dockLastY = y; return; }   // a dock jump, not the user
-  if(Math.abs(dy) < 6) return;
-  const hide = y > 40 && dy > 0;
-  dockLastY = y;
-  if(hide === !!state.dockHidden) return;
-  state.dockHidden = hide;
-  const dock = document.querySelector('.coach-dock');
-  if(dock) dock.classList.toggle('dock-hidden', hide);
-}, { passive: true });
 
 window.toggleRosterCollapsed = function(){
   state.rosterCollapsed = !state.rosterCollapsed;
@@ -11975,6 +11987,14 @@ window.setHistoryFilter = function(f){
   state.historyFilter = f;
   render();
 };
+// Nov 5 (Joel): with the tab bar gone on phones and iPads, History and Trends sit just above All / Bullpen / Live Game.
+function analysisTray(){
+  if(!state.tabsOff) return '';
+  const dot = !isCoach() && state.profile && hasRosterDot(state.profile.id) ? '<span class="tab-dot" aria-label="New session"></span>' : '';
+  return `<div class="chip-row" style="margin-bottom:var(--s-8);">${segTray([
+    { label: 'History' + dot, selected: state.view === 'history', onclick: "setView('history')" },
+    { label: 'Trends', selected: state.view === 'trends', onclick: "setView('trends')" }], { key: 'analysis', label: 'Analysis', cls: 'history-tray' })}</div>`;
+}
 function renderHistoryFilter(){
   const opts = [{ key: 'all', label: 'All' }, { key: 'bullpen', label: 'Bullpen' }, { key: 'game', label: 'Live Game' }];
   const chips = segTray(opts.map(o => ({ label: o.label, selected: state.historyFilter === o.key, onclick: `setHistoryFilter('${o.key}')` })), { key: 'hfilter', label: 'Show', cls: 'history-tray' });
@@ -11982,7 +12002,7 @@ function renderHistoryFilter(){
   const teamIds = Object.keys(state.sessionTeamNames || {});
   const teamSel = (!isCoach() && teamIds.length > 1) ? `<select class="text-input history-team-select" onchange="setHistoryTeam(this.value)">
       <option value="all">All teams</option>${teamIds.map(id => `<option value="${escHtml(id)}" ${state.historyTeam === id ? 'selected' : ''}>${escHtml(state.sessionTeamNames[id])}</option>`).join('')}</select>` : '';
-  return `${workloadBanner()}<div class="chip-row" style="margin-bottom:var(--s-16);">${chips}${teamSel}</div>`;
+  return `${workloadBanner()}${analysisTray()}<div class="chip-row" style="margin-bottom:var(--s-16);">${chips}${teamSel}</div>`;
 }
 // R6: a pitcher can always delete their own sessions, unchanged; a coach
 // needs to be the ACTIVE team's head (Joel: assistants cannot delete team
@@ -12379,7 +12399,7 @@ function renderTrendsView(){
   const p = currentPitcher();
   if(!p){ return `<div class="empty-hist">No pitcher selected.</div>`; }
   const opts = [{ key: 'all', label: 'All' }, { key: 'bullpen', label: 'Bullpen' }, { key: 'game', label: 'Live Game' }];
-  const tray = `<div class="chip-row" style="margin-bottom:var(--s-16);">${segTray(opts.map(o => ({ label: o.label, selected: state.trendsFilter === o.key, onclick: `setTrendsFilter('${o.key}')` })), { key: 'tfilter', label: 'Show', cls: 'history-tray' })}</div>`;
+  const tray = `${analysisTray()}<div class="chip-row" style="margin-bottom:var(--s-16);">${segTray(opts.map(o => ({ label: o.label, selected: state.trendsFilter === o.key, onclick: `setTrendsFilter('${o.key}')` })), { key: 'tfilter', label: 'Show', cls: 'history-tray' })}</div>`;
   const sessions = pendingSessionsForCurrentSelection().concat(state.sessions)
     .filter(s => sessionPitchTotal(s) && (state.trendsFilter === 'all' || (s.kind || 'bullpen') === state.trendsFilter))
     .sort((a, b) => a.date - b.date);
@@ -12944,6 +12964,7 @@ const CHAT_ROLE = { manager: 'Facility manager', coach: 'Coach', pitcher: 'Pitch
 const CHAT_COMPOSE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/><path d="M14 20h6"/></svg>';
 function renderChatView(){
   const c = chatState();
+  if(!chatEnabled()) return `<div class="chat-wrap"><div class="empty-hist"><b>Chat is coming soon.</b><br>Today it's available inside training facilities.</div></div>`;
   if(!isOnline()) return `<div class="chat-wrap"><div class="empty-hist">Chat needs a connection. Charting works offline as always.</div></div>`;
   return `<div class="chat-wrap">${c.threadId ? renderChatThread(c) : renderChatList(c)}</div>`;
 }
@@ -13010,6 +13031,7 @@ function renderChatThread(c){
 }
 
 function renderTabs(){
+  if(state.tabsOff) return renderArchivedBanner();   // Nov 5: no tab bar on phones and iPads (the dock), charting included
   const fourthTab = isCoach()
     ? { label: '<span class="tab-label-full">Player Profile</span><span class="tab-label-short">Player</span>', selected: state.view === 'pitcherProfile', onclick: "setView('pitcherProfile')" }
     : { label: 'Profile', selected: state.view === 'profile', onclick: "setView('profile')" };
@@ -13020,7 +13042,7 @@ function renderTabs(){
     { label: 'History' + (!isCoach() && state.profile && hasRosterDot(state.profile.id) ? '<span class="tab-dot" aria-label="New session"></span>' : ''), selected: state.view === 'history', onclick: "setView('history')" },
     { label: 'Trends', selected: state.view === 'trends', onclick: "setView('trends')" },
     chatEnabled() ? { label: 'Chat' + (chatState().unread + chatState().reports ? `<span class="tab-count" aria-label="${chatState().unread + chatState().reports} unread">${chatState().unread + chatState().reports}</span>` : ''), selected: state.view === 'chat', onclick: 'openChat()' } : null,   // F1-C1
-    hasLeaderboard() ? { label: '<span class="tab-label-full">Leaderboard</span><span class="tab-label-short">Leaders</span>', selected: state.view === 'leaderboard', onclick: "setView('leaderboard')" } : null,
+    // Leaderboard hidden for now (Joel, Nov 5 2026): renderLeaderboardView stays, nothing links to it.
     fourthTab].filter(Boolean);
   return `${renderArchivedBanner()}${segTray(tabs.map(t => Object.assign({ cls: 'tab-btn' }, t)), { key: 'tabs', label: 'Pages', cls: 'tabs' })}`;
 }
@@ -14480,7 +14502,7 @@ function render(){
   const sidebar = `
     <div class="sidebar">
       <div class="brand-block">
-        <div class="brand brand-lockup">${KB_MARK_SVG}<h1 class="display brand-word">KNUCKLEBALL</h1></div>
+        <div class="brand brand-lockup brand-home" role="link" tabindex="0" aria-label="Home" onclick="goHome()" onkeydown="if(event.key==='Enter'){goHome();}">${KB_MARK_SVG}<h1 class="display brand-word">KNUCKLEBALL</h1></div>
         <span class="tagline">Always a Step Ahead</span>
         <span class="role-badge slant-tag">${isCoach() ? 'Coach' : 'Pitcher'}</span>
         ${renderOfflinePill()}
@@ -14492,6 +14514,7 @@ function render(){
 
   const p = currentPitcher();
   const phoneSession = phoneSessionMode(p);   // G1b-r5
+  state.tabsOff = dockDevice();   // read by renderTabs / the History and Trends trays
   let main;
   if(phoneSession){
     main = renderSessionHeader(p) + renderSessionView();
@@ -14569,7 +14592,7 @@ function render(){
     const acctInHeader = !isPhoneWidth() && state.view !== 'profile' && state.view !== 'leaderboard';
     const headerHtml = `
       <div class="pitcher-header">
-        ${renderPlayerIdent(p, true, arsenalChips)}
+        ${isCoach() ? `<div class="ident-link" role="link" tabindex="0" title="Player Profile" onclick="setView('pitcherProfile')" onkeydown="if(event.key==='Enter'){setView('pitcherProfile');}">${renderPlayerIdent(p, true, arsenalChips)}</div>` : renderPlayerIdent(p, true, arsenalChips)}
         <div class="pitcher-header-actions">
           ${isCoach()
             ? `<button class="btn btn-secondary hide-phone" onclick="setView('profile')">Profile</button>`

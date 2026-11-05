@@ -15,10 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-05 · production v330)
+## Now and next (updated 2026-11-05 · production v330; v331 on a branch)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
+- Navigation: bottom bar on phones and iPads, no tab bar there, branch `dock-everywhere` (v331), PR open: see the Nov 5 entry.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -30,7 +31,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    - confirm a Cloudflare deploy;
    - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
-   is applied; still to do: finish the browser walkthrough and bump the cache past v330 (v331). Then: backup, production
+   is applied; still to do: finish the browser walkthrough and bump the cache past v331 (v332). Then: backup, production
    migration, checks, merge.
 
 **Waiting on Joel**
@@ -44,9 +45,33 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   `nate+chaoscoach@` / `nate+chaosparent@` from Resend's suppression list (or use Gmail plus addresses).
 - F1-C2's privacy sentence (DRAFT in `privacy.html` on the branch) needs approval.
 - Google Play store art upload (on hold).
-- When to remove the staging test coach `feed-coach-*@example.com` (on Staging Knights) and the 2 reports it made.
+- When to remove the staging test logins `feed-coach-*` (on Staging Knights, with the 2 reports it made) and
+  `feed-pitcher-*@example.com`.
 
 ---
+
+## 2026-11-05 · Navigation: the bottom bar on phones and iPads · **staging** (frontend only), branch `dock-everywhere`, PR open (not merged)
+- **Asked by:** Joel; answers A–F in the session (A wordmark goes Home; B Profile in the account menu; C coach taps the
+  name for Player Profile, Leaderboard hidden for now; D Chat on every player bar, "Soon" outside a facility; E the bar
+  always on phones and iPads, computers keep the tab bar; F parents and teens are players; view-only family: Analysis ·
+  Profile). Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v331.
+- **Built (`bullpen-tracker.html`):**
+  - Phones and iPads (`dockDevice()`: touch screen, or ≤500px): the bottom bar always shows (no more sliding away on
+    scroll), hidden only on the charting screen; iPads get it centered, 560px wide.
+  - Bar: coaches Charts · Analysis · Chat (facility only) · Roster; players / parents / teens Charts · Analysis ·
+    Chat ("Soon" badge and a coming-soon page outside a facility); view-only family Analysis · Profile. No Home or
+    Profile buttons.
+  - No tab bar under the pitcher's name on phones and iPads (the archived-team banner stays); History / Trends sit
+    above All / Bullpen / Live Game. Analysis opens History. Computers keep the tab bar, without Leaderboard.
+  - The KNUCKLEBALL wordmark goes Home; Profile added to the account menu; a coach taps the pitcher's name or photo
+    for Player Profile. Sign-in still lands on Home's four tiles.
+- **Tests (staging, Chrome):** coach at 390px (touch): Home with Charts · Analysis · Roster and no tab bar; Analysis →
+  History with the History / Trends tray; the bar still on screen after scrolling 2,500px; name → Player Profile;
+  wordmark → Home; account menu → Profile; Charts → the Bullpen / Live Game question. iPad 820px (touch): same bar,
+  centered; on the charting screen no bar and no tabs. Laptop 1280px (no touch): no bar; tabs Home · New Session ·
+  History · Trends · Player Profile (no Leaderboard). Pitcher at 390px: Charts · Analysis · Chat (Soon); Chat shows
+  "Chat is coming soon." No sideways scroll anywhere. Not run: a view-only family login (no F1-G link on staging now).
+- **Open:** merge on "ship it"; then check the live `sw.js` shows v331. Joel's check on an iPhone and an iPad.
 
 ## 2026-11-05 · History bars open and close their reports · **production** (PR #65 merged Nov 5, v330 live)
 - **Asked by:** Joel ("the bar that has the date, the number of pitches, strike percentage, accuracy percentage... should

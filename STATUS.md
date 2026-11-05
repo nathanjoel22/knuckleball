@@ -15,11 +15,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-05 · production v329; v330 on a branch)
+## Now and next (updated 2026-11-05 · production v330)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- History bars open and close their reports, branch `history-collapse` (v330), PR open: see the Nov 5 entry.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -35,19 +34,21 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    migration, checks, merge.
 
 **Waiting on Joel**
-- iPhone airplane-mode check on knuckleballonline.com (v327 on Cloudflare Pages): open online, close, airplane mode,
+- iPhone airplane-mode check on knuckleballonline.com (v330 on Cloudflare Pages): open online, close, airplane mode,
   open again.
 - Sign-in cards on production: a coach on the Pitcher card and a pitcher or parent on the Coach card should each be
   refused.
-- History feed on the phone; the first new pen's report should appear on its own.
+- History feed on the phone (tap a bar to close / open it); the first new pen's report should appear on its own.
+- Change Email: retry; the box now shows the server's real reason (v329).
 - Test emails to `nate+…@knuckleballonline.com` bounce: turn on Subaddressing in Cloudflare Email Routing and remove
   `nate+chaoscoach@` / `nate+chaosparent@` from Resend's suppression list (or use Gmail plus addresses).
 - F1-C2's privacy sentence (DRAFT in `privacy.html` on the branch) needs approval.
 - Google Play store art upload (on hold).
+- When to remove the staging test coach `feed-coach-*@example.com` (on Staging Knights) and the 2 reports it made.
 
 ---
 
-## 2026-11-05 · History bars open and close their reports · **staging** (frontend only), branch `history-collapse`, PR open (not merged)
+## 2026-11-05 · History bars open and close their reports · **production** (PR #65 merged Nov 5, v330 live)
 - **Asked by:** Joel ("the bar that has the date, the number of pitches, strike percentage, accuracy percentage... should
   be a collapsable bar"). Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v330.
 - **Built:** tapping or clicking a session's bar (or Enter / Space on it) closes or opens everything under it: the
@@ -57,7 +58,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Tests (staging, Chrome, 390 px):** a report card 3,602 px tall closes to its 118 px bar and reopens with the report
   already drawn; Enter closes it too; a card without a report closes; the arrow stays inside the bar; no sideways
   scroll.
-- **Open:** merge on "ship it"; then check the live `sw.js` shows v330.
+- **Shipped:** merged Nov 5 (7e6f8f8); live `sw.js` shows v330 with the change on knuckleballonline.com, www and
+  knuckleball.pages.dev, all on the production database.
+- **Open:** Joel's phone check.
 
 ## 2026-11-05 · Change-email box shows the real reason · **production** (PR #64 merged Nov 5, v329 live)
 - **Asked by:** Joel, after "Couldn't start the change. Check your connection and try again." on production. Operator

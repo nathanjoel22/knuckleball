@@ -15,11 +15,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-05 · production v335; v336 on a branch)
+## Now and next (updated 2026-11-05 · production v336)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- Nothing under a coach's open roster, branch `roster-blank` (v336), PR open: see the Nov 5 entry.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -35,13 +34,14 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    migration, checks, merge.
 
 **Waiting on Joel**
-- iPhone airplane-mode check on knuckleballonline.com (v335 on Cloudflare Pages): open online, close, airplane mode,
+- iPhone airplane-mode check on knuckleballonline.com (v336 on Cloudflare Pages): open online, close, airplane mode,
   open again.
 - Sign-in cards on production: a coach on the Pitcher card and a pitcher or parent on the Coach card should each be
   refused.
 - History feed on the phone (tap a bar to close / open it); the first new pen's report should appear on its own.
 - iPhone: scroll History fast, then back up to the banner; Chat from far down; the gear and the account button up top;
-  the bar hiding while typing in Chat; bar taps landing at the top; and whether he uses Safari or the home-screen app.
+  the bar hiding while typing in Chat; bar taps landing at the top; Roster showing only the list; and whether he
+  uses Safari or the home-screen app.
 - Change Email: retry; the box now shows the server's real reason (v329).
 - Test emails to `nate+…@knuckleballonline.com` bounce: turn on Subaddressing in Cloudflare Email Routing and remove
   `nate+chaoscoach@` / `nate+chaosparent@` from Resend's suppression list (or use Gmail plus addresses).
@@ -52,7 +52,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-05 · Nothing under a coach's open roster · **staging** (frontend only), branch `roster-blank`, PR open (not merged)
+## 2026-11-05 · Nothing under a coach's open roster · **production** (PR #73 merged Nov 5, v336 live)
 - **Asked by:** Joel: "when you tap on roster in the coach mode, there shouldn't be anything showing below the roster
   list. even if it's just one pitcher, it should be blank". Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v336.
 - **Built (`render`):** while a coach's roster list is open where it rolls up (phones and iPads up to 860px,
@@ -60,7 +60,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   stays. Picking a pitcher, or any bar button, brings the page back.
 - **Tests (staging, Chrome, 390px touch, coach):** Home shows; Roster → the list alone (2 pitchers), nothing below;
   pick a pitcher → Home again with header, footer and Sign out; Roster then Analysis → History.
-- **Open:** merge on "ship it".
+- **Shipped:** merged Nov 5 (84ae0d2); live `sw.js` shows v336 on knuckleballonline.com, www and
+  knuckleball.pages.dev, all on the production database.
+- **Open:** Joel's iPhone check.
 
 ## 2026-11-05 · Bar taps land at the top; no Chat under the roster · **production** (PR #71 merged Nov 5, v335 live)
 - **Asked by:** Joel: "every time you tap on a button on the docked bar on a phone, you should be sitting right at the

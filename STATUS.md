@@ -15,11 +15,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-05 · production v334; v335 on a branch)
+## Now and next (updated 2026-11-05 · production v335)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- Bar taps land at the top; no Chat under the roster, branch `dock-top` (v335), PR open: see the Nov 5 entry.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -35,13 +34,13 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    migration, checks, merge.
 
 **Waiting on Joel**
-- iPhone airplane-mode check on knuckleballonline.com (v330 on Cloudflare Pages): open online, close, airplane mode,
+- iPhone airplane-mode check on knuckleballonline.com (v335 on Cloudflare Pages): open online, close, airplane mode,
   open again.
 - Sign-in cards on production: a coach on the Pitcher card and a pitcher or parent on the Coach card should each be
   refused.
 - History feed on the phone (tap a bar to close / open it); the first new pen's report should appear on its own.
 - iPhone: scroll History fast, then back up to the banner; Chat from far down; the gear and the account button up top;
-  and whether he uses Safari or the home-screen app.
+  the bar hiding while typing in Chat; bar taps landing at the top; and whether he uses Safari or the home-screen app.
 - Change Email: retry; the box now shows the server's real reason (v329).
 - Test emails to `nate+…@knuckleballonline.com` bounce: turn on Subaddressing in Cloudflare Email Routing and remove
   `nate+chaoscoach@` / `nate+chaosparent@` from Resend's suppression list (or use Gmail plus addresses).
@@ -52,7 +51,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-05 · Bar taps land at the top; no Chat under the roster · **staging** (frontend only), branch `dock-top`, PR open (not merged)
+## 2026-11-05 · Bar taps land at the top; no Chat under the roster · **production** (PR #71 merged Nov 5, v335 live)
 - **Asked by:** Joel: "every time you tap on a button on the docked bar on a phone, you should be sitting right at the
   top of the page. the banner and logo should be seen"; "when I click on roster, no need for chat to show up below the
   roster on a phone". Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v335.
@@ -60,7 +59,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   at the top, which put the banner just off screen. Roster tapped while on Chat switches to Home under the opened list.
 - **Tests (staging, Chrome, 390px touch, coach):** from 1,500px down, Charts, Analysis, Roster and Charts again each
   land at 0 with the banner fully in view. Roster from Chat: the list open, Home under it, no chat on the page.
-- **Open:** merge on "ship it".
+- **Shipped:** merged Nov 5 (142a5b2); live `sw.js` shows v335 on knuckleballonline.com, www and
+  knuckleball.pages.dev, all on the production database.
+- **Open:** Joel's iPhone check.
 
 ## 2026-11-05 · The bar steps aside while the keyboard is up · **production** (PR #70 merged Nov 5, v334 live)
 - **Asked by:** Joel: "when you tap on the message button in the chat section of a phone, the docked bar should

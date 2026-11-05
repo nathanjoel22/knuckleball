@@ -21,7 +21,14 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
 
 **Next up, in order**
-1. Phase 5 (after the clean week ends Nov 11). Its plan isn't on GitHub yet.
+1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
+   - confirm DNS no longer points to GitHub;
+   - unpublish GitHub Pages;
+   - make the repo private;
+   - confirm Protect-Main;
+   - reconnect the Claude Project and confirm Sync;
+   - confirm a Cloudflare deploy;
+   - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
    is applied; still to do: finish the browser walkthrough and bump the cache past v326 (v327). Then: backup, production
    migration, checks, merge.
@@ -30,7 +37,6 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - iPhone airplane-mode check on knuckleballonline.com (v326 on Cloudflare Pages): open online, close, airplane mode,
   open again.
 - F1-C2's privacy sentence (DRAFT in `privacy.html` on the branch) needs approval.
-- Phase 5's plan, pushed to GitHub before work starts.
 - When to clean up staging test data (LoadTest facility, F1-G test logins, the sw-test / sw-safari test pitchers).
 - Google Play store art upload (on hold).
 

@@ -15,11 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-05 · production v333; v334 on a branch)
+## Now and next (updated 2026-11-05 · production v334; v335 on a branch)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- The bar steps aside while the keyboard is up, branch `dock-hide-typing` (v334), PR open: see the Nov 5 entry.
+- Bar taps land at the top; no Chat under the roster, branch `dock-top` (v335), PR open: see the Nov 5 entry.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -31,7 +31,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    - confirm a Cloudflare deploy;
    - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
-   is applied; still to do: finish the browser walkthrough and bump the cache past v334 (v335). Then: backup, production
+   is applied; still to do: finish the browser walkthrough and bump the cache past v335 (v336). Then: backup, production
    migration, checks, merge.
 
 **Waiting on Joel**
@@ -52,7 +52,17 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-05 · The bar steps aside while the keyboard is up · **staging** (frontend only), branch `dock-hide-typing`, PR open (not merged)
+## 2026-11-05 · Bar taps land at the top; no Chat under the roster · **staging** (frontend only), branch `dock-top`, PR open (not merged)
+- **Asked by:** Joel: "every time you tap on a button on the docked bar on a phone, you should be sitting right at the
+  top of the page. the banner and logo should be seen"; "when I click on roster, no need for chat to show up below the
+  roster on a phone". Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v335.
+- **Built (`dockGo`):** every bar button lands at scroll 0. Before, Charts and Analysis landed with the pitcher's name
+  at the top, which put the banner just off screen. Roster tapped while on Chat switches to Home under the opened list.
+- **Tests (staging, Chrome, 390px touch, coach):** from 1,500px down, Charts, Analysis, Roster and Charts again each
+  land at 0 with the banner fully in view. Roster from Chat: the list open, Home under it, no chat on the page.
+- **Open:** merge on "ship it".
+
+## 2026-11-05 · The bar steps aside while the keyboard is up · **production** (PR #70 merged Nov 5, v334 live)
 - **Asked by:** Joel: "when you tap on the message button in the chat section of a phone, the docked bar should
   disappear. it should reappear when the keyboard goes away". Operator `Nathan <joelhauserman@gmail.com>`.
   **Cache:** v334.
@@ -62,7 +72,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Tests (staging, Chrome, 390px touch):** the bar shows; focus a text box and it's hidden; a re-render while typing
   keeps it hidden; blur and it's back. Chat's own message box needs a facility login (none on staging now); it's the
   same focus rule.
-- **Open:** merge on "ship it"; then Joel's iPhone check in Chat.
+- **Shipped:** merged Nov 5 (896de44); live `sw.js` shows v334 on all three addresses.
+- **Open:** Joel's iPhone check in Chat.
 
 ## 2026-11-05 · Account button up top on phones; Profile becomes a gear beside the name · **production** (PR #69 merged Nov 5, v333 live)
 - **Asked by:** Joel: the profile switcher button ("JC" on Joel Chaos) moves up into the Team / Signed in as section, on

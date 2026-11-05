@@ -15,11 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-05 · production v331; v332 on a branch)
+## Now and next (updated 2026-11-05 · production v331; v332 and v333 on branches)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- Phone fixes (reach the top, the bar on Chat, Sign out at the bottom), branch `phone-scroll-fixes` (v332), PR open: see the Nov 5 entry.
+- Phone fixes (reach the top, the bar on Chat, Sign out at the bottom), branch `phone-scroll-fixes` (v332), PR #68 open.
+- Account button up top on phones + the Profile gear, branch `profile-gear` (v333, built on #68), PR open.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -31,7 +32,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    - confirm a Cloudflare deploy;
    - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
-   is applied; still to do: finish the browser walkthrough and bump the cache past v332 (v333). Then: backup, production
+   is applied; still to do: finish the browser walkthrough and bump the cache past v333 (v334). Then: backup, production
    migration, checks, merge.
 
 **Waiting on Joel**
@@ -49,6 +50,25 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   `feed-pitcher-*@example.com`.
 
 ---
+
+## 2026-11-05 · Account button up top on phones; Profile becomes a gear beside the name · **staging** (frontend only), branch `profile-gear` (on top of `phone-scroll-fixes`), PR open (not merged)
+- **Asked by:** Joel: the profile switcher button ("JC" on Joel Chaos) moves up into the Team / Signed in as section, on
+  the right, on phones; the tappable "Profile" button becomes a gear, right of the player's name. Operator
+  `Nathan <joelhauserman@gmail.com>`. **Cache:** v333.
+- **Built (`bullpen-tracker.html`):**
+  - Phones: the account button sits on the right of the Team / Signed in as section (the coach's team line, where the
+    phone-only Profile button was); the row above the pitcher's name keeps only "‹ Back". iPad and laptop are
+    unchanged.
+  - Every size: a gear right of the player's name opens Profile (the coach's own, or the player's). It replaces the
+    coach's Profile button and the account menu's Profile item, which stays only when no player is on screen (a coach
+    with an empty roster). A coach still taps the name or photo for Player Profile.
+- **Tests (staging, Chrome):**
+  - Phone (390px), coach and pitcher: one account button, inside the top section, 20px from the right edge; its menu
+    opens on screen; the gear sits right of the name and opens Profile.
+  - Laptop (1280px): the account button is where it was; the gear is there too.
+  - No sideways scroll.
+- **Note:** on a phone, a long name now shortens with "…" a little sooner, to make room for the gear.
+- **Open:** merge after #68 (it contains #68's commit); then check the live `sw.js` shows v333.
 
 ## 2026-11-05 · Phone fixes: reach the top, the bar on Chat, Sign out at the bottom · **staging** (frontend only), branch `phone-scroll-fixes`, PR open (not merged)
 - **Asked by:** Joel, on an iPhone with v331: "can't scroll all the way up ... to view the knuckleball banner and

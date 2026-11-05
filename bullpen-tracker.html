@@ -1419,6 +1419,15 @@
   .kb-back-row{ justify-content:flex-start; }
   .acct-row.acct-inline{ margin:0; align-self:center; }   /* Joel, Oct 7: in the pitcher header's row on iPad / laptop */
   .acct-wrap{ position:relative; }
+  /* Nov 5: phones -- the account button sits on the right of the Team / Signed in as section */
+  .sb-who{ display:flex; align-items:flex-start; justify-content:space-between; gap:var(--s-12); }
+  .sb-who-text{ min-width:0; flex:1 1 auto; display:flex; flex-direction:column; gap:var(--s-4); }
+  .acct-side{ flex:none; position:relative; z-index:20; align-self:center; }
+  /* the Profile gear right of the player's name */
+  .ident-name-row{ display:flex; align-items:center; gap:var(--s-8); min-width:0; }
+  .ident-name-row h2{ min-width:0; }
+  .gear-btn{ flex:none; width:36px; height:36px; min-height:36px; padding:0; display:inline-flex; align-items:center; justify-content:center; }
+  .gear-btn svg{ width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .acct-btn{ gap:var(--s-6); padding:0 var(--s-8) 0 var(--s-4); }
   .acct-avatar{ width:28px; height:28px; border-radius:var(--radius-circle); background:var(--surface); border:1px solid var(--surface-border); display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--ink); flex:0 0 auto; }
   .acct-caret{ font-size:10px; color:var(--ink-faint); }
@@ -3221,12 +3230,13 @@ function jerseyNumberOf(p){
 }
 // Photo + name + "#12". Used by the page header (coach after tapping a
 // player; the player on his own pages) and at the top of his Profile.
-function renderPlayerIdent(p, withChips, chipsHtml){
+function renderPlayerIdent(p, withChips, chipsHtml, afterName){
   const num = jerseyNumberOf(p);
+  const h2 = `<h2 class="display">${escHtml(p.name)}${(num === null || num === undefined) ? '' : `<span class="pitcher-num">#${escHtml(String(num))}</span>`}</h2>`;
   return `<div class="pitcher-ident">
       ${renderHeadshot(p)}
       <div class="pitcher-ident-text">
-        <h2 class="display">${escHtml(p.name)}${(num === null || num === undefined) ? '' : `<span class="pitcher-num">#${escHtml(String(num))}</span>`}</h2>
+        ${afterName ? `<div class="ident-name-row">${h2}${afterName}</div>` : h2}
         ${withChips ? `<div class="pitcher-sub">${chipsHtml}</div>` : ''}
       </div>
     </div>`;
@@ -3613,7 +3623,11 @@ window.goHome = function(){
   setView('home');
   try{ window.scrollTo(0, 0); }catch(e){}
 };
-// ...and Profile is in the account menu.
+// Nov 5 (Joel): Profile is the gear right of the player's name; the account menu keeps it only when no player is on
+// screen (a coach with an empty roster).
+function profileGearBtn(){
+  return `<button type="button" class="btn btn-icon btn-secondary gear-btn" aria-label="Profile" title="Profile" onclick="event.stopPropagation();acctGoProfile()">${DOCK_ICONS.profile}</button>`;
+}
 window.acctGoProfile = function(){ state.acctOpen = false; state.dockRoster = false; setView('profile'); try{ window.scrollTo(0, 0); }catch(e){} };
 window.toggleAcctMenu = function(){ state.acctOpen = !state.acctOpen; state.acctMsg = ''; render(); };
 window.dismissAddSport = function(){ state.addSportBanner = null; render(); };
@@ -3640,7 +3654,7 @@ function renderAccountButton(){
             <span class="acct-meta">${profileChip(p)} ${ROLE_NAME[p.role] || ''}</span></span>
           ${p.id === state.profile.id ? '<span class="acct-check" aria-label="Active">✓</span>' : ''}
         </button>`).join('')}
-      <button type="button" class="btn btn-tertiary acct-item acct-profile" role="menuitem" onclick="acctGoProfile()"><span class="acct-name">Profile</span></button>
+      ${currentPitcher() ? '' : `<button type="button" class="btn btn-tertiary acct-item acct-profile" role="menuitem" onclick="acctGoProfile()"><span class="acct-name">Profile</span></button>`}
       ${sportsToAdd().map(sp => `<button type="button" class="btn btn-secondary btn-sm acct-add" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')">+ Add ${sp}</button>`).join('')}
       ${canAddPlayer() ? `<button type="button" class="btn btn-secondary btn-sm acct-add" onclick="openAddPlayer()">+ Add a player</button>` : ''}
       ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
@@ -14496,7 +14510,7 @@ function render(){
     const rosterLabel = collapsed && selectedForLabel ? `Roster · ${escHtml(selectedForLabel.name)}` : 'Roster';
     const facNew = facilityNewCount();   // F1-A: the manager's dot for new joins
     sidebarBody = `
-      <div class="team-line">${teamSelector}<button class="btn btn-secondary show-phone coach-profile-link" onclick="setView('profile')">Profile</button></div>
+      <div class="team-line">${teamSelector}${isPhoneWidth() ? `<div class="acct-side">${renderAccountButton()}</div>` : ''}</div>
       ${canCollapse ? `<button class="btn btn-secondary roster-toggle-btn" onclick="toggleRosterCollapsed()" aria-expanded="${collapsed ? 'false' : 'true'}">
         <span style="display:flex;align-items:center;min-width:0;"><span class="roster-label" style="margin:0;">${rosterLabel}</span>${collapsed && dottedCount ? `<span class="roster-dot-count" aria-label="${dottedCount} with new sessions">${dottedCount}</span>` : ''}${facNew ? `<span class="fac-new-count" aria-label="${facNew} new">${facNew} new</span>` : ''}</span>
         <span class="roster-chevron${collapsed ? '' : ' open'}">▾</span>
@@ -14508,9 +14522,11 @@ function render(){
   } else {
     phoneFooter = `<div class="phone-footer"><button class="btn btn-secondary sign-out-btn" onclick="signOut()">Sign out</button></div>`;   // Nov 5: every phone, at the very bottom
     sidebarBody = `
+      <div class="sb-who"><div class="sb-who-text">
       ${teamSelector}
       <div class="roster-label">Signed in as</div>
-      <div style="font-size:14px;font-weight:600;">${escHtml(state.profile.full_name)}</div>`;
+      <div style="font-size:14px;font-weight:600;">${escHtml(state.profile.full_name)}</div></div>
+      ${isPhoneWidth() ? `<div class="acct-side">${renderAccountButton()}</div>` : ''}</div>`;
   }
 
   const sidebar = `
@@ -14533,12 +14549,12 @@ function render(){
   if(phoneSession){
     main = renderSessionHeader(p) + renderSessionView();
   } else if(!p && state.view === 'chat'){
-    main = `<div class="acct-row">${renderAccountButton()}</div>${renderTabs()}${renderChatView()}`;   // F1-C1
+    main = `${isPhoneWidth() ? '' : `<div class="acct-row">${renderAccountButton()}</div>`}${renderTabs()}${renderChatView()}`;   // F1-C1
   } else if(!p){
     // U9: 'pitcherProfile' with no pitcher selected has its own message
     // ("Select a pitcher to see his profile," not this generic one) --
     // renderPitcherProfileView() already handles p === null itself.
-    main = `<div class="acct-row">${renderAccountButton()}</div>` + renderAddSportBanner() + (state.view === 'home' ? '' : renderTabs()) + (state.view === 'home'
+    main = (isPhoneWidth() ? '' : `<div class="acct-row">${renderAccountButton()}</div>`) + renderAddSportBanner() + (state.view === 'home' ? '' : renderTabs()) + (state.view === 'home'
       ? renderHomeTiles()
       : state.view === 'profile'
       ? renderProfileView()
@@ -14606,10 +14622,10 @@ function render(){
     const acctInHeader = !isPhoneWidth() && state.view !== 'profile' && state.view !== 'leaderboard';
     const headerHtml = `
       <div class="pitcher-header">
-        ${isCoach() ? `<div class="ident-link" role="link" tabindex="0" title="Player Profile" onclick="setView('pitcherProfile')" onkeydown="if(event.key==='Enter'){setView('pitcherProfile');}">${renderPlayerIdent(p, true, arsenalChips)}</div>` : renderPlayerIdent(p, true, arsenalChips)}
+        ${isCoach() ? `<div class="ident-link" role="link" tabindex="0" title="Player Profile" onclick="if(!event.target.closest('.gear-btn')) setView('pitcherProfile')" onkeydown="if(event.key==='Enter' && !event.target.closest('.gear-btn')){setView('pitcherProfile');}">${renderPlayerIdent(p, true, arsenalChips, profileGearBtn())}</div>` : renderPlayerIdent(p, true, arsenalChips, profileGearBtn())}
         <div class="pitcher-header-actions">
           ${isCoach()
-            ? `<button class="btn btn-secondary hide-phone" onclick="setView('profile')">Profile</button>`
+            ? ''   // Nov 5: the gear beside the name replaces the Profile button
             : activeLinked() ? ''   // F1-G: report contacts are the creating parent's
             : `<button class="btn btn-secondary" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>`}
           ${acctInHeader ? `<div class="acct-row acct-inline">${renderAccountButton()}</div>` : ''}
@@ -14618,7 +14634,7 @@ function render(){
       ${contactsPanel}`;
 
     main = `
-      ${acctInHeader ? (renderHeaderBack() ? `<div class="acct-row kb-back-row">${renderHeaderBack()}</div>` : '') : `<div class="acct-row">${renderHeaderBack()}${renderAccountButton()}</div>`}
+      ${(acctInHeader || isPhoneWidth()) ? (renderHeaderBack() ? `<div class="acct-row kb-back-row">${renderHeaderBack()}</div>` : '') : `<div class="acct-row">${renderHeaderBack()}${renderAccountButton()}</div>`}
       ${renderAddSportBanner()}
       ${renderUpdateBar()}${renderInstallBanner()}
       ${verifyBanner}

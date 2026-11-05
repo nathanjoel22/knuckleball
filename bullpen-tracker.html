@@ -245,6 +245,7 @@
   .app-bar-actions{ display:flex; gap:var(--s-8); }
   .share-glyph{ vertical-align:-3px; color:var(--brand-mid); }
   html.charting, html.charting body{ overscroll-behavior-y:none; }
+  html{ overflow-anchor:none; }   /* Nov 5: the History feed keeps the reader's place itself (drawFeedSlots), same in every browser */
   .ra-pill{ display:inline-block; vertical-align:middle; padding:2px var(--s-8); border-radius:var(--radius-pill); border:1px solid var(--border-strong); color:var(--ink-faint); font-family:var(--font-sans); font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap; align-self:center; }   /* U14 */
   .ra-pill.on{ background:var(--brand-mid); border-color:var(--brand-mid); color:var(--on-dark); }
   .wide-left > .ra-pill{ align-self:flex-start; }
@@ -4107,6 +4108,9 @@ window.dockTap = function(k){
 };
 window.dockGo = function(where){
   state.dockHidden = false;
+  // Nov 5 (Joel: "the bar jumps up" on Chat): jump to the top before the page changes, never an animated scroll up a
+  // long page -- iPhone Safari takes that for the reader scrolling up and lifts its toolbar, and our bar with it.
+  try{ window.scrollTo(0, 0); }catch(e){}
   state.dockRoster = where === 'roster';
   if(where === 'roster'){
     state.rosterCollapsed = false;
@@ -4128,7 +4132,7 @@ let dockQuietUntil = 0;
 function dockScroll(top){
   dockQuietUntil = Date.now() + 900;
   state.dockHidden = false;
-  try{ window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); }catch(e){ window.scrollTo(0, Math.max(0, top)); }
+  window.scrollTo(0, Math.max(0, top));   // Nov 5: instant (see dockGo)
 }
 function attachCoachDock(){
   const dock = document.querySelector('.coach-dock');
@@ -14264,10 +14268,19 @@ function feedAutoMark(s, eligible){
      || !(s.date >= FEED_AUTO_FROM) || feedAutoTried.has(s.id)) return '';
   return `<span class="feed-auto" data-sid="${s.id}"></span>`;
 }
+// A report that draws ABOVE the screen would push everything down (iPhone Safari has no scroll anchoring, and the
+// page sets overflow-anchor:none so every browser behaves the same): the page scrolls by the height it added, so the
+// reader stays where they were and can always scroll back up to the top (Joel, Nov 5).
 function drawFeedSlots(path){
   document.querySelectorAll('.feed-report[data-rp="' + path + '"]').forEach(slot => {
     const host = feedHosts.get(path);
-    if(host){ slot.innerHTML = ''; slot.appendChild(host); slot.classList.add('is-drawn'); return; }
+    if(host){
+      const before = slot.getBoundingClientRect();
+      const above = before.bottom <= 0;
+      slot.innerHTML = ''; slot.appendChild(host); slot.classList.add('is-drawn');
+      if(above){ const grew = slot.getBoundingClientRect().height - before.height; if(grew) window.scrollBy(0, grew); }
+      return;
+    }
     const why = feedFailed.get(path);
     if(why) slot.innerHTML = `<p class="feed-report-wait">${why === 'gone' ? "This report isn't available any more." : 'This report opens once you\'re online.'}</p>`;
   });
@@ -14493,6 +14506,7 @@ function render(){
       </div>`;
     phoneFooter = `<div class="phone-footer"><button class="btn btn-secondary sign-out-btn" onclick="signOut()">Sign out</button></div>`;
   } else {
+    phoneFooter = `<div class="phone-footer"><button class="btn btn-secondary sign-out-btn" onclick="signOut()">Sign out</button></div>`;   // Nov 5: every phone, at the very bottom
     sidebarBody = `
       ${teamSelector}
       <div class="roster-label">Signed in as</div>
@@ -14509,7 +14523,7 @@ function render(){
       </div>
       ${sidebarBody}
       ${renderOutboxBadge()}
-      <button class="btn btn-secondary sign-out-btn${isCoach() ? ' hide-phone' : ''}" onclick="signOut()">Sign out</button>
+      <button class="btn btn-secondary sign-out-btn hide-phone" onclick="signOut()">Sign out</button>
     </div>`;
 
   const p = currentPitcher();

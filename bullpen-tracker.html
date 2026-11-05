@@ -14672,7 +14672,11 @@ function render(){
   // tab while this one still has the modal flagged on).
   const setupModalHtml = (state.showSetupModal && (isCoach() ? isHeadOfCurrentTeam() : !state.draftAvailable)) ? renderSetupModal() : '';
 
-  const policyFoot = phoneSession ? '' : `<div class="policy-foot">Knuckleball LLC 2026 &middot; <a href="${policyHref('privacy.html')}">Privacy</a> &middot; <a href="${policyHref('terms.html')}">Terms</a></div>`;   // P1-10
+  // Nov 5 (Joel): a coach's open roster list on a phone or iPad (where it rolls up) stands alone -- nothing below it,
+  // not the pitcher, the page, the footer or Sign out -- until a pitcher is picked or another button is tapped.
+  const rosterOnly = isCoach() && !phoneSession && rosterCanCollapse() && !state.rosterCollapsed;
+  if(rosterOnly){ main = ''; phoneFooter = ''; }
+  const policyFoot = (phoneSession || rosterOnly) ? '' : `<div class="policy-foot">Knuckleball LLC 2026 &middot; <a href="${policyHref('privacy.html')}">Privacy</a> &middot; <a href="${policyHref('terms.html')}">Terms</a></div>`;   // P1-10
   const dockOn = coachDockShown(phoneSession);
   app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}${policyFoot}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet() + renderJoinCodeOverlay() + (dockOn ? renderCoachDock() : '');
   if(app.classList) app.classList.toggle('has-dock', dockOn);

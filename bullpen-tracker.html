@@ -1217,6 +1217,7 @@
   @media (prefers-reduced-motion: reduce){ .coach-dock, .dock-pill, .dock-btn{ transition:none; } }
   #app.has-dock .main{ padding-bottom:calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
   #app.has-dock .phone-footer{ margin-bottom:calc(84px + env(safe-area-inset-bottom, 0px)); }
+  html.kb-typing .coach-dock{ display:none; }   /* Nov 5: the keyboard is up (typedFieldFocused) */
   .persp-plate-wrap{ width:calc(60% - 4px); margin:var(--s-2) auto 0; }
   .hp-wrap{ width:100%; max-width:320px; display:flex; flex-direction:column; align-items:center; gap:var(--s-6); }
   .hp-plot{ display:block; width:100%; height:auto; }
@@ -4148,6 +4149,19 @@ function dockScroll(top){
   state.dockHidden = false;
   window.scrollTo(0, Math.max(0, top));   // Nov 5: instant (see dockGo)
 }
+// Nov 5 (Joel): while the keyboard is up -- a chat message, or any text box -- the bar steps aside, and comes back when
+// the keyboard goes away. Focus on a field that types is the keyboard; the check waits a moment on focus-out, because
+// a re-render (the chat thread refreshes every 5 s) briefly drops focus and puts it back.
+function typedFieldFocused(){
+  const el = document.activeElement;
+  if(!el) return false;
+  if(el.tagName === 'TEXTAREA' || el.isContentEditable) return true;
+  if(el.tagName !== 'INPUT') return false;
+  return !/^(checkbox|radio|button|submit|reset|range|color|file|image|hidden)$/i.test(el.type || 'text');
+}
+function syncTypingClass(){ try{ document.documentElement.classList.toggle('kb-typing', typedFieldFocused()); }catch(e){} }
+document.addEventListener('focusin', syncTypingClass);
+document.addEventListener('focusout', () => setTimeout(syncTypingClass, 120));
 function attachCoachDock(){
   const dock = document.querySelector('.coach-dock');
   if(!dock || dock.dataset.drag) return;

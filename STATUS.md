@@ -15,12 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-05 · production v331; v332 and v333 on branches)
+## Now and next (updated 2026-11-05 · production v333; v334 on a branch)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- Phone fixes (reach the top, the bar on Chat, Sign out at the bottom), branch `phone-scroll-fixes` (v332), PR #68 open.
-- Account button up top on phones + the Profile gear, branch `profile-gear` (v333, built on #68), PR open.
+- The bar steps aside while the keyboard is up, branch `dock-hide-typing` (v334), PR open: see the Nov 5 entry.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -32,7 +31,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    - confirm a Cloudflare deploy;
    - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
-   is applied; still to do: finish the browser walkthrough and bump the cache past v333 (v334). Then: backup, production
+   is applied; still to do: finish the browser walkthrough and bump the cache past v334 (v335). Then: backup, production
    migration, checks, merge.
 
 **Waiting on Joel**
@@ -41,6 +40,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - Sign-in cards on production: a coach on the Pitcher card and a pitcher or parent on the Coach card should each be
   refused.
 - History feed on the phone (tap a bar to close / open it); the first new pen's report should appear on its own.
+- iPhone: scroll History fast, then back up to the banner; Chat from far down; the gear and the account button up top;
+  and whether he uses Safari or the home-screen app.
 - Change Email: retry; the box now shows the server's real reason (v329).
 - Test emails to `nate+…@knuckleballonline.com` bounce: turn on Subaddressing in Cloudflare Email Routing and remove
   `nate+chaoscoach@` / `nate+chaosparent@` from Resend's suppression list (or use Gmail plus addresses).
@@ -51,7 +52,19 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-05 · Account button up top on phones; Profile becomes a gear beside the name · **staging** (frontend only), branch `profile-gear` (on top of `phone-scroll-fixes`), PR open (not merged)
+## 2026-11-05 · The bar steps aside while the keyboard is up · **staging** (frontend only), branch `dock-hide-typing`, PR open (not merged)
+- **Asked by:** Joel: "when you tap on the message button in the chat section of a phone, the docked bar should
+  disappear. it should reappear when the keyboard goes away". Operator `Nathan <joelhauserman@gmail.com>`.
+  **Cache:** v334.
+- **Built (`bullpen-tracker.html`):** while a field that types has focus (a chat message, or any text box:
+  `typedFieldFocused`), `html.kb-typing` hides the bar; it shows again when focus leaves. Checkboxes, buttons and the like
+  don't count. The check waits 120ms on focus-out, so the chat thread's 5-second refresh doesn't flash the bar.
+- **Tests (staging, Chrome, 390px touch):** the bar shows; focus a text box and it's hidden; a re-render while typing
+  keeps it hidden; blur and it's back. Chat's own message box needs a facility login (none on staging now); it's the
+  same focus rule.
+- **Open:** merge on "ship it"; then Joel's iPhone check in Chat.
+
+## 2026-11-05 · Account button up top on phones; Profile becomes a gear beside the name · **production** (PR #69 merged Nov 5, v333 live)
 - **Asked by:** Joel: the profile switcher button ("JC" on Joel Chaos) moves up into the Team / Signed in as section, on
   the right, on phones; the tappable "Profile" button becomes a gear, right of the player's name. Operator
   `Nathan <joelhauserman@gmail.com>`. **Cache:** v333.
@@ -68,9 +81,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - Laptop (1280px): the account button is where it was; the gear is there too.
   - No sideways scroll.
 - **Note:** on a phone, a long name now shortens with "…" a little sooner, to make room for the gear.
-- **Open:** merge after #68 (it contains #68's commit); then check the live `sw.js` shows v333.
+- **Shipped:** merged Nov 5 (0349c49) after #68; live `sw.js` shows v333 on all three addresses.
+- **Open:** Joel's iPhone check.
 
-## 2026-11-05 · Phone fixes: reach the top, the bar on Chat, Sign out at the bottom · **staging** (frontend only), branch `phone-scroll-fixes`, PR open (not merged)
+## 2026-11-05 · Phone fixes: reach the top, the bar on Chat, Sign out at the bottom · **production** (PR #68 merged Nov 5, v332 live)
 - **Asked by:** Joel, on an iPhone with v331: "can't scroll all the way up ... to view the knuckleball banner and
   logo"; "when I tap chat, the bar jumps up about 1/4 the way up the screen"; "on all phones, the sign out button should
   be at the very bottom of the page". Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v332.
@@ -91,7 +105,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - The top is reachable: scroll 0 shows the banner.
   - Roster and Chat from 20,000px down land at 0 at once.
   - Pitcher: one Sign out, in the footer, at the bottom of the page.
-- **Open:** merge on "ship it"; then Joel's iPhone check of both. Whether he uses Safari or the home-screen app matters
+- **Shipped:** merged Nov 5 (c559561); live `sw.js` showed v332 on all three addresses.
+- **Open:** Joel's iPhone check of both. Whether he uses Safari or the home-screen app matters
   for the bar: Safari's own toolbar still comes and goes as you scroll.
 
 ## 2026-11-05 · Navigation: the bottom bar on phones and iPads · **production** (PR #67 merged Nov 5, v331 live)

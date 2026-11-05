@@ -1436,10 +1436,6 @@
   .note-meta{ font-size:12px; color:var(--ink-faint); display:flex; align-items:center; gap:var(--s-6); }
   .note-meta strong{ color:var(--ink); }
   .note-body{ font-size:14px; color:var(--ink); line-height:1.45; margin-top:var(--s-4); overflow-wrap:anywhere; }
-  .note-del{ margin-left:auto; }
-  .note-input{ width:100%; resize:vertical; font-family:inherit; min-height:72px; font-size:16px; line-height:1.4; }
-  .note-add-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--s-8); margin-top:var(--s-6); }
-  .note-count{ font-size:12px; color:var(--ink-faint); }
   .note-hint{ font-size:12px; color:var(--ink-faint); margin:0; }
   .report-panel{
     margin-top:var(--s-16); padding-top:var(--s-12); border-top:1px solid var(--border);
@@ -1451,6 +1447,14 @@
   .report-status-sending{ color:var(--ink-faint); }
   .report-status-sent{ color:var(--success); }
   .report-status-error{ color:var(--danger); }
+  /* History feed (Nov 5): the report drawn under its card; Back to top at the end of History and Trends on phones */
+  .feed-side{ flex:1; min-width:220px; }
+  .session-card-body.feed-body{ display:block; padding-left:0; padding-right:0; padding-top:0; }
+  .feed-body .feed-side{ padding:0 var(--s-20); margin-top:var(--s-12); }
+  .feed-report{ min-height:120px; }
+  .feed-report.is-drawn{ min-height:0; }
+  .feed-report-wait{ margin:0; padding:var(--s-24) var(--s-20); font-size:14px; color:var(--ink-faint); text-align:center; }
+  .back-top-row{ display:flex; justify-content:center; margin:var(--s-16) 0 var(--s-8); }
 
   /* PROFILE (U7) */
   .profile-page{ display:flex; flex-direction:column; gap:var(--s-20); max-width:560px; }
@@ -5771,7 +5775,6 @@ window.endSession = async function(){
   state.saving = false;
   await refreshOutboxState();
   state.view = 'history';
-  state.expandedSessionId = sessionId;
   state.historyLandingNoClear = state.currentPitcherId;   // U10 (3): the saver keeps his dots
   render();
 
@@ -6122,7 +6125,6 @@ async function syncOutbox(){
    report page shows the current notes live (get_report_notes). Never edited;
    the author can delete their own. Online only -- nothing queues. A new note
    re-dots the session for the pitcher (database trigger). */
-const NOTE_MAX = 2000;
 function mapSessionNotes(rows){
   return (rows || []).map(n => ({ id: n.id, authorId: n.author_id, authorName: n.author_name || 'Coach', body: n.body, createdAt: new Date(n.created_at).getTime() }))
     .sort((a, b) => a.createdAt - b.createdAt);
@@ -6132,88 +6134,23 @@ function myUid(){ return state.profile && state.profile.id; }
 function myProfileIds(){ return (state.myProfiles || []).map(p => p.id).concat(state.profile ? [state.profile.id] : []); }
 function isMine(id){ return !!id && myProfileIds().includes(id); }
 function renderSessionNotes(s){
+  // History feed (Joel, Nov 5 2026): no new notes -- Chat replaces them. Notes already written stay, read-only, here and
+  // on the report page (get_report_notes).
   if(isFacilityTeam(s.teamId)) return '';   // F1-A: no notes in a facility (Chat replaces them, F1-C)
   const notes = s.notes || [];
-  const coach = isCoach() && !s.otherTeam;   // R4: only the recording team's coaches add notes
-  if(!coach && !notes.length) return '';
+  if(!notes.length) return '';
   const list = notes.map(n => {
     const when = new Date(n.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-    const mine = isMine(n.authorId);
-    const armed = state.noteDeleteArmed === n.id;
     return `<div class="note-item">
-      <div class="note-meta"><strong>${escHtml(n.authorName)}</strong> · ${escHtml(when)}${mine && !armed ? ` <button type="button" class="btn btn-icon btn-danger note-del" ${isOnline() ? '' : 'disabled'} onclick="armDeleteNote('${n.id}')" aria-label="Delete this note">🗑</button>` : ''}</div>
+      <div class="note-meta"><strong>${escHtml(n.authorName)}</strong> · ${escHtml(when)}</div>
       <div class="note-body">${escHtml(n.body).replace(/\n/g, '<br>')}</div>
-      ${armed ? `<div class="delete-row" style="margin-top:var(--s-6);"><span class="delete-warn" style="margin:0;">Delete this note? The pitcher won't see it anymore.</span>
-        <button class="btn btn-danger" onclick="deleteSessionNote('${s.id}','${n.id}')">Delete</button>
-        <button class="btn btn-secondary" onclick="armDeleteNote(null)">Keep</button></div>` : ''}
     </div>`;
   }).join('');
-  let box = '';
-  if(coach){
-    const draft = (state.noteDrafts && state.noteDrafts[s.id]) || '';
-    const err = state.noteErrors && state.noteErrors[s.id];
-    const blocked = s.pending ? 'Notes open once this session syncs.' : (!isOnline() ? 'Notes need a connection.' : '');
-    box = `<div class="note-add">
-      <textarea id="note-input-${s.id}" class="text-input note-input" maxlength="${NOTE_MAX}" rows="3" placeholder="Add a note for ${escHtml((currentPitcher() || {}).name || 'the pitcher')}…" ${blocked ? 'disabled' : ''} oninput="onNoteInput('${s.id}', this)">${escHtml(draft)}</textarea>
-      <div class="note-add-row">
-        <span class="note-count" id="note-count-${s.id}">${draft.length} / ${NOTE_MAX}</span>
-        <button type="button" class="btn btn-primary" ${blocked || state.noteBusy === s.id ? 'disabled' : ''} onclick="saveSessionNote('${s.id}')">${state.noteBusy === s.id ? 'Saving…' : 'Save note'}</button>
-      </div>
-      <p class="note-hint">Visible to anyone with this session's report link.</p>
-      ${blocked ? `<p class="note-hint">${blocked}</p>` : ''}${err ? `<p class="report-status report-status-error">${escHtml(err)}</p>` : ''}
-    </div>`;
-  }
   return `<div class="notes-block">
     <div class="field-label">Coaches notes</div>
-    ${list || (coach ? '<p class="note-hint">No notes yet.</p>' : '')}
-    ${box}
+    ${list}
   </div>`;
 }
-window.onNoteInput = function(sessionId, el){
-  state.noteDrafts = state.noteDrafts || {};
-  state.noteDrafts[sessionId] = el.value;
-  const c = document.getElementById('note-count-' + sessionId);
-  if(c) c.textContent = el.value.length + ' / ' + NOTE_MAX;
-};
-async function reloadSessionNotes(sessionId){
-  const { data, error } = await supabaseClient.from('session_notes')
-    .select('id, author_id, author_name, body, created_at').eq('session_id', sessionId);
-  if(error) throw error;
-  const sess = state.sessions.find(x => x.id === sessionId);
-  if(sess) sess.notes = mapSessionNotes(data);
-}
-window.saveSessionNote = async function(sessionId){
-  const body = ((state.noteDrafts || {})[sessionId] || '').trim();
-  state.noteErrors = state.noteErrors || {};
-  if(!body){ state.noteErrors[sessionId] = 'Write something first.'; render(); return; }
-  if(!isOnline()){ state.noteErrors[sessionId] = 'Notes need a connection.'; render(); return; }
-  state.noteBusy = sessionId; state.noteErrors[sessionId] = null; render();
-  try{
-    const { error } = await netTimeout(supabaseClient.from('session_notes').insert({ session_id: sessionId, author_id: myUid(), body: body.slice(0, NOTE_MAX) }), 10000);
-    if(error) throw error;
-    state.noteDrafts[sessionId] = '';
-    await reloadSessionNotes(sessionId);
-  } catch(e){
-    console.error('save note failed', e);
-    state.noteErrors[sessionId] = "Couldn't save the note. Check your connection and try again.";
-  }
-  state.noteBusy = null;
-  render();
-};
-window.armDeleteNote = function(noteId){ state.noteDeleteArmed = noteId; render(); };
-window.deleteSessionNote = async function(sessionId, noteId){
-  state.noteErrors = state.noteErrors || {};
-  try{
-    const { error } = await netTimeout(supabaseClient.from('session_notes').delete().eq('id', noteId), 10000);
-    if(error) throw error;
-    await reloadSessionNotes(sessionId);
-  } catch(e){
-    console.error('delete note failed', e);
-    state.noteErrors[sessionId] = "Couldn't delete the note. Check your connection and try again.";
-  }
-  state.noteDeleteArmed = null;
-  render();
-};
 /* ---------- R4: CROSS-TEAM VISIBILITY (Joel, Oct 5) ----------
    Coaches of every non-archived team a pitcher is on read the sessions he
    charted since he joined their team, whichever team they were charted for.
@@ -6243,9 +6180,11 @@ function teamChipHtml(s){
 }
 function otherTeamReportPanel(s){
   const name = (state.sessionTeamNames || {})[s.teamId] || 'its team';
+  const rs = state.reportStatus && state.reportStatus.sessionId === s.id ? state.reportStatus : null;
   return `<div class="report-panel"><div class="field-label">Report</div>
     <p class="report-recipients">${viewOnlyLinked() ? `${escHtml((state.profile && state.profile.full_name) || 'The player')}'s parents send reports. You can open one once it's made${s.reportPath ? '' : ' (none yet)'}` : s.teamId ? `Charted for ${escHtml(name)}. Only that team's coaches and the pitcher can create or send its report` : 'An Independent session: only the pitcher can create or send its report'}${viewOnlyLinked() ? '.' : s.reportPath ? '.' : ' (none yet).'}</p>
-    ${s.reportPath ? `<div class="report-actions"><a class="btn btn-secondary" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>${shareReportBtn(s.reportPath)}</div>` : ''}</div>`;
+    ${s.reportPath ? `<div class="report-actions">${copyReportBtn(s)}${shareReportBtn(s.reportPath)}</div>` : ''}
+    ${rs ? `<p class="report-status report-status-${rs.status}">${rs.message}</p>` : ''}</div>`;
 }
 window.setHistoryTeam = function(v){ state.historyTeam = v; render(); };
 // Pitch counts across all the pitcher's teams that this viewer can see (pitcher_workload runs
@@ -6365,6 +6304,7 @@ async function histCacheClear(){
   const keys = [];
   await histEach(k => { if(String(k).indexOf(uid + '|') === 0) keys.push(k); });
   for(const k of keys) await histTx('readwrite', st => st.delete(k));
+  await repCacheClear(uid);   // History feed: the reports kept on this device
   try{
     for(let i = localStorage.length - 1; i >= 0; i--){
       const k = localStorage.key(i);
@@ -6584,13 +6524,6 @@ window.setView = function(v){
   // handoff or removal since the last visit must never show stale data.
   if(v === 'profile' && isCoach()) loadCoachAdminData(state.currentTeamId).then(render);
   if(v === 'profile' && activePlayerIsMine()) loadPlayerAccess();   // F1-G
-};
-window.toggleSessionExpand = function(id){
-  state.expandedSessionId = state.expandedSessionId === id ? null : id;
-  state.historyLandingNoClear = null;   // U10 (3): a tap in History is a real look
-  markSessionOpened(id);                // ...and tapping a session clears its own dot
-  clearDeleteState();
-  render();
 };
 
 /* ---------- STATS HELPERS ---------- */
@@ -7063,7 +6996,6 @@ function headerBackTarget(){
   if(!state.session || !state.profile || onChartingScreen()) return null;
   const v = state.view;
   if(v === 'session' && state.activeSession && state.activeSession.startQ && canGoBackToChooser()) return 'chooser';
-  if(v === 'history' && state.expandedSessionId) return 'history';
   if(v === 'chat' && state.chat && state.chat.threadId) return 'chat';
   if(v === 'profile' && state.zonePaint) return 'profile';
   if(v === 'pitcherProfile' && isCoach()) return 'roster';
@@ -7072,13 +7004,6 @@ function headerBackTarget(){
 window.headerBack = async function(){
   const t = headerBackTarget();
   if(t === 'chooser') return backToChooser();
-  if(t === 'history'){   // close the session and land on its card in the list
-    const id = state.expandedSessionId;
-    state.expandedSessionId = null; clearDeleteState(); render();
-    const card = document.querySelector('.session-card[data-sid="' + id + '"]');
-    if(card) try{ window.scrollTo(0, card.getBoundingClientRect().top + (window.pageYOffset || 0) - 80); }catch(e){}
-    return;
-  }
   if(t === 'chat') return chatBack();
   if(t === 'profile'){ cancelZonePaint(); try{ window.scrollTo(0, 0); }catch(e){} return; }
   if(t === 'roster'){   // the coach's Player Profile: back to the roster (the list opens; wide screens show it already)
@@ -12081,11 +12006,18 @@ function renderHistoryView(){
   const isOldTombstone = s => s.tombstone && s.deletedAt && (now - s.deletedAt) > OLD_TOMBSTONE_MS;
   const oldTombstoneCount = combined.filter(isOldTombstone).length;
   const visible = state.oldTombstonesExpanded ? combined : combined.filter(s => !isOldTombstone(s));
+  // The feed draws FEED_PAGE sessions at a time (each with its whole report); "Show older sessions" adds the next ones.
+  if(state.historyFeedFor !== p.id){ state.historyFeedFor = p.id; state.historyFeedN = FEED_PAGE; }
+  const shown = visible.slice(0, state.historyFeedN || FEED_PAGE);
+  const moreHtml = visible.length > shown.length ? `
+    <div class="deleted-summary-row">
+      <button class="btn btn-secondary btn-sm" onclick="showMoreHistory()">Show older sessions (${visible.length - shown.length})</button>
+    </div>` : '';
   const oldSummaryHtml = oldTombstoneCount ? `
     <div class="deleted-summary-row">
       <button class="btn btn-tertiary btn-sm" onclick="toggleOldTombstones()">${state.oldTombstonesExpanded ? 'Hide' : ''} ${oldTombstoneCount} deleted session${oldTombstoneCount === 1 ? '' : 's'}</button>
     </div>` : '';
-  return renderHistoryFilter() + visible.map(s => {
+  return renderHistoryFilter() + shown.map(s => {
     // G1/G2: a game session gets its own, much simpler card -- innings,
     // pitches, K/BB/H, strike% (gameStats -- the same function the live
     // charting screen uses; History's OWN display, unlike the report,
@@ -12101,7 +12033,6 @@ function renderHistoryView(){
       const oppLabel = s.opponent ? `vs ${escHtml(s.opponent)} · ${dateStr}` : `Game · ${dateStr}`;
       const stats = gameCardStats(s);   // SC1-B: the stats row (R3's runs after he left included), or the pitches
       const lineOpen = gameLineOpen(s);
-      const expanded = state.expandedSessionId === s.id;
       const pendingTag = s.pending ? ` <span class="coach-logged-tag pending-tag">Pending sync${s.lastError ? ' · retrying' : ''}</span>` : '';
 
       const contacts = p.contactEmails || {};
@@ -12114,8 +12045,8 @@ function renderHistoryView(){
         : [];
       const rs = state.reportStatus && state.reportStatus.sessionId === s.id ? state.reportStatus : null;
       const viewControl = s.reportPath
-        ? `<a class="btn btn-secondary" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>${shareReportBtn(s.reportPath)}`
-        : (pEligible ? `<button class="btn btn-secondary" onclick="viewSessionReport('${s.id}')">View report</button>` : '');
+        ? `${copyReportBtn(s)}${shareReportBtn(s.reportPath)}`
+        : (pEligible ? `<button class="btn btn-secondary" onclick="viewSessionReport('${s.id}')">Create report</button>` : '');
       const reportPanel = (s.otherTeam || viewOnlyLinked()) ? otherTeamReportPanel(s) : s.pending ? `
         <div class="report-panel">
           <div class="field-label">Email this report</div>
@@ -12161,7 +12092,7 @@ function renderHistoryView(){
         <div class="delete-zone"><button class="btn btn-danger btn-sm" onclick="startDeleteSession('${s.id}')">Delete this session</button></div>`));
       return `
         <div class="session-card" data-sid="${s.id}">
-          <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
+          <div class="session-card-head">
             <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${lineOpen ? ' <span class="coach-logged-tag">Line open</span>' : ''}${pendingTag}</div>
             <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
               <div class="meta-item"><span class="meta-num mono">${gameIpText(stats.outs)}</span><span class="meta-lbl">IP</span></div>
@@ -12175,15 +12106,14 @@ function renderHistoryView(){
               ${avgTimeToPlateMeta(s)}`}
             </div>
           </div>
-          ${expanded ? `
-          <div class="session-card-body">
-            <div class="zone-wrap">${renderHistoryPlot(plotSessionOf(s, p), p)}</div>
-            <div style="flex:1;min-width:220px;">
-              ${gameHistoryTypeTable(p, s)}
+          <div class="session-card-body${s.reportPath ? ' feed-body' : ''}">
+            ${s.reportPath ? feedReportSlot(s) : `<div class="zone-wrap">${renderHistoryPlot(plotSessionOf(s, p), p)}</div>`}
+            <div class="feed-side">
+              ${s.reportPath ? '' : gameHistoryTypeTable(p, s)}${feedAutoMark(s, pEligible)}
               ${renderSessionNotes(s)}${reportPanel}
               ${deleteZone}
             </div>
-          </div>` : ''}
+          </div>
         </div>`;
     }
     const dateStr = new Date(s.date).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
@@ -12218,7 +12148,6 @@ function renderHistoryView(){
     }
 
     const stats = penCardStats(s);   // SC1-B: the stats row, or the pitches (null until they arrive)
-    const expanded = state.expandedSessionId === s.id;
     const byType = stats ? stats.byType : {};
     const typeRows = orderPitchTypes(p, Object.keys(byType), t => byType[t].count).map(type => {
       const t = byType[type], color = colorForType(p, type);
@@ -12249,8 +12178,8 @@ function renderHistoryView(){
     // it's a button that generates one (gated on the same eligibility as
     // sending, since generating is the same server call either way).
     const viewControl = s.reportPath
-      ? `<a class="btn btn-secondary" href="report.html?r=${encodeURIComponent(s.reportPath)}" target="_blank" rel="noopener">View report</a>${shareReportBtn(s.reportPath)}`
-      : (pEligible ? `<button class="btn btn-secondary" onclick="viewSessionReport('${s.id}')">View report</button>` : '');
+      ? `${copyReportBtn(s)}${shareReportBtn(s.reportPath)}`
+      : (pEligible ? `<button class="btn btn-secondary" onclick="viewSessionReport('${s.id}')">Create report</button>` : '');
     const reportPanel = (s.otherTeam || viewOnlyLinked()) ? otherTeamReportPanel(s) : s.pending ? `
       <div class="report-panel">
         <div class="field-label">Email this report</div>
@@ -12298,7 +12227,7 @@ function renderHistoryView(){
 
     return `
       <div class="session-card" data-sid="${s.id}">
-        <div class="session-card-head" onclick="toggleSessionExpand('${s.id}')">
+        <div class="session-card-head">
           <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${teamChipHtml(s)}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${pendingTag}</div>
           <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
@@ -12311,21 +12240,21 @@ function renderHistoryView(){
             ${avgTimeToPlateMeta(s)}`}
           </div>
         </div>
-        ${expanded ? `
-        <div class="session-card-body">
-          <div class="zone-wrap">${renderHistoryPlot(plotSessionOf(s, p), p)}</div>
-          <div style="flex:1;min-width:220px;">
-            <table class="breakdown-table">
+        <div class="session-card-body${s.reportPath ? ' feed-body' : ''}">
+          ${s.reportPath ? feedReportSlot(s) : `<div class="zone-wrap">${renderHistoryPlot(plotSessionOf(s, p), p)}</div>`}
+          <div class="feed-side">
+            ${s.reportPath ? '' : `<table class="breakdown-table">
               <thead><tr><th>Type</th><th>Count</th><th>Avg</th><th>Range</th><th>Strike%</th><th>Accuracy%</th><th>Relative Acc%</th></tr></thead>
               <tbody>${typeRows}</tbody>
-            </table>
+            </table>`}${feedAutoMark(s, pEligible)}
             ${renderSessionNotes(s)}${reportPanel}
             ${deleteZone}
           </div>
-        </div>` : ''}
+        </div>
       </div>`;
-  }).join('') + oldSummaryHtml;
+  }).join('') + moreHtml + (shown.length === visible.length ? oldSummaryHtml : '') + backToTopHtml();
 }
+window.showMoreHistory = function(){ state.historyFeedN = (state.historyFeedN || FEED_PAGE) + FEED_PAGE; render(); };
 window.toggleOldTombstones = function(){
   state.oldTombstonesExpanded = !state.oldTombstonesExpanded;
   render();
@@ -12524,7 +12453,7 @@ function renderTrendsView(){
       <div class="tr-card"><h3>Strike % by pitch type</h3>${legend}
         ${trendsLineChart(strikeRows, types, colorOf, { min: 0, max: 100, ticks: [0, 25, 50, 75, 100], unit: '%', aria: 'Strike percentage per pitch type, by session' })}
         <p class="profile-note">One point per session. Bullpens count strikes by where the pitch landed; games by the call (swinging, looking, foul, in play).</p></div>
-    </div>`;
+    </div>${backToTopHtml()}`;
 }
 function renderKeepScroll(){
   const y = window.scrollY || window.pageYOffset || 0;
@@ -14171,6 +14100,229 @@ window.viewSessionReport = async function(sessionId){
   render();
 };
 
+/* ---------- History as a feed (Joel, Nov 5 2026; plans/hf1-preconditions.md) ----------
+   Every session's frozen report is drawn in place under its card as History scrolls: no "View report" tab. A report
+   is fetched from the public bucket the first time it nears the screen, kept on this device in IndexedDB
+   (`kb-reports`, never localStorage) so it opens offline after that, and drawn inside a shadow root, so its own styles
+   never touch the app's. Nothing in it can run: it is made inert exactly as report.html does (inertReport). Sessions
+   started from FEED_AUTO_FROM on get their report made the first time they are on screen (same call and gate as
+   "Create report"); older ones without a report keep the "Create report" button. "Copy Report URL" copies the link
+   only; Email report is unchanged. */
+const FEED_AUTO_FROM = Date.parse('2026-11-05T00:00:00');
+const FEED_PAGE = 20;
+const REPORT_CACHE_MAX = 100;   // reports kept on the device (~100 KB each), least recently opened dropped first
+const REPORT_TOKEN_RE = /^[0-9a-f]{64}\.html$/;   // must match report.html's TOKEN_RE
+const feedHosts = new Map();    // report path -> its drawn element, kept across renders
+const feedFailed = new Map();   // report path -> 'offline' | 'gone'
+const feedLoading = new Set();
+const feedAutoTried = new Set();
+let feedAutoBusy = false, feedObserver = null, feedSeenObserver = null;
+
+let repDbOpen = null;
+function repDb(){
+  if(!repDbOpen) repDbOpen = new Promise(resolve => {
+    try{
+      const req = indexedDB.open('kb-reports', 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore('r'); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+      req.onblocked = () => resolve(null);
+    }catch(e){ resolve(null); }
+  });
+  return repDbOpen;
+}
+function repTx(mode, fn){
+  return repDb().then(db => db && new Promise(resolve => {
+    try{
+      const tx = db.transaction('r', mode);
+      let out = null;
+      const req = fn(tx.objectStore('r'));
+      if(req) req.onsuccess = () => { out = req.result === undefined ? null : req.result; };
+      tx.oncomplete = () => resolve(out);
+      tx.onerror = () => resolve(null);
+      tx.onabort = () => resolve(null);
+    }catch(e){ resolve(null); }
+  })).catch(() => null);
+}
+function repKey(path){ return state.session ? state.session.user.id + '|' + path : null; }
+function repEach(fn){
+  return repTx('readonly', st => {
+    const c = st.openCursor();
+    c.onsuccess = () => { const cur = c.result; if(cur){ fn(cur.key, cur.value); cur.continue(); } };
+    return null;
+  });
+}
+async function repCacheGet(path){
+  const k = repKey(path);
+  const v = k ? await repTx('readonly', st => st.get(k)) : null;
+  if(v && v.text){ repTx('readwrite', st => st.put({ at: Date.now(), text: v.text }, k)); return v.text; }
+  return null;
+}
+async function repCachePut(path, text){
+  const k = repKey(path);
+  if(!k) return;
+  await repTx('readwrite', st => st.put({ at: Date.now(), text }, k));
+  const all = [];
+  await repEach((key, v) => all.push({ key, at: v.at || 0 }));
+  if(all.length <= REPORT_CACHE_MAX) return;
+  all.sort((a, b) => a.at - b.at);
+  for(const r of all.slice(0, all.length - REPORT_CACHE_MAX)) await repTx('readwrite', st => st.delete(r.key));
+}
+async function repCacheClear(uid){
+  const keys = [];
+  await repEach(k => { if(String(k).indexOf(uid + '|') === 0) keys.push(k); });
+  for(const k of keys) await repTx('readwrite', st => st.delete(k));
+}
+
+// The same two locks as report.html: drop anything that could run or navigate, and every on* / javascript: attribute.
+const FEED_DROP = 'script,iframe,frame,frameset,object,embed,applet,form,meta,base,link,noscript,template';
+const FEED_URL_ATTRS = ['href', 'xlink:href', 'src', 'action', 'formaction', 'data'];
+function feedInert(html){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll(FEED_DROP).forEach(el => el.parentNode.removeChild(el));
+  const all = doc.getElementsByTagName('*');
+  for(let j = 0; j < all.length; j++){
+    const el = all[j];
+    for(let k = el.attributes.length - 1; k >= 0; k--){
+      const name = el.attributes[k].name.toLowerCase();
+      const value = el.attributes[k].value.replace(/[\s\u0000-\u001f]/g, '').toLowerCase();
+      if(name.indexOf('on') === 0 || (FEED_URL_ATTRS.indexOf(name) >= 0 && /^(javascript|vbscript|data):/.test(value))){
+        el.removeAttribute(el.attributes[k].name);
+      }
+    }
+  }
+  return doc;
+}
+// The report's own <style> (its :root variables and body rule moved onto the shadow host) and its <body>.
+function feedReportHost(text){
+  const doc = feedInert(text);
+  const host = document.createElement('div');
+  host.className = 'feed-report-doc';
+  let root = host;
+  try{ if(host.attachShadow) root = host.attachShadow({ mode: 'open' }); }catch(e){}
+  if(root !== host){
+    const css = Array.prototype.map.call(doc.querySelectorAll('style'), st => st.textContent).join('\n')
+      .replace(/:root\b/g, ':host').replace(/(^|[\s,{}])body(?=\s*[{,])/g, '$1.kr-body');
+    const style = document.createElement('style');
+    style.textContent = css + '\n:host{ display:block; }';
+    root.appendChild(style);
+  }
+  const body = document.createElement('div');
+  body.className = 'kr-body';
+  Array.prototype.forEach.call(doc.body ? doc.body.childNodes : [], n => body.appendChild(document.importNode(n, true)));
+  root.appendChild(body);
+  return host;
+}
+function feedReportSlot(s){
+  return `<div class="feed-report" data-rp="${escHtml(s.reportPath)}"><p class="feed-report-wait">Loading report…</p></div>`;
+}
+// A session from FEED_AUTO_FROM on, with no report yet, that this viewer may create: a marker the feed watches.
+function feedAutoMark(s, eligible){
+  if(s.reportPath || s.pending || s.tombstone || s.otherTeam || viewOnlyLinked() || !eligible || gameLineOpen(s)
+     || !(s.date >= FEED_AUTO_FROM) || feedAutoTried.has(s.id)) return '';
+  return `<span class="feed-auto" data-sid="${s.id}"></span>`;
+}
+function drawFeedSlots(path){
+  document.querySelectorAll('.feed-report[data-rp="' + path + '"]').forEach(slot => {
+    const host = feedHosts.get(path);
+    if(host){ slot.innerHTML = ''; slot.appendChild(host); slot.classList.add('is-drawn'); return; }
+    const why = feedFailed.get(path);
+    if(why) slot.innerHTML = `<p class="feed-report-wait">${why === 'gone' ? "This report isn't available any more." : 'This report opens once you\'re online.'}</p>`;
+  });
+}
+async function loadFeedReport(path){
+  if(!REPORT_TOKEN_RE.test(path) || feedHosts.has(path) || feedLoading.has(path)) return;
+  feedLoading.add(path);
+  let text = null;
+  try{
+    text = await repCacheGet(path);
+    if(!text && isOnline()){
+      const res = await netTimeout(fetch(SUPABASE_URL + '/storage/v1/object/public/reports/' + path), 20000);
+      if(res.ok){ text = await res.text(); repCachePut(path, text); }
+      else feedFailed.set(path, 'gone');
+    }
+    if(text){ feedHosts.set(path, feedReportHost(text)); feedFailed.delete(path); }
+    else if(!feedFailed.has(path)) feedFailed.set(path, 'offline');
+  }catch(e){ if(!feedFailed.has(path)) feedFailed.set(path, 'offline'); }
+  feedLoading.delete(path);
+  drawFeedSlots(path);
+}
+async function autoCreateFeedReport(sid){
+  if(feedAutoBusy || feedAutoTried.has(sid) || !isOnline()) return;
+  const s = state.sessions.find(x => x.id === sid);
+  if(!s || s.reportPath) return;
+  feedAutoTried.add(sid);
+  feedAutoBusy = true;
+  try{ await window.viewSessionReport(sid); }finally{ feedAutoBusy = false; }
+  hydrateHistoryFeed();   // the next one on screen, if any
+}
+function onFeedSeen(entries){
+  entries.forEach(e => {
+    if(!e.isIntersecting) return;
+    feedObserver.unobserve(e.target);
+    const path = e.target.getAttribute('data-rp');
+    if(path) loadFeedReport(path);
+    else if(e.target.classList.contains('feed-auto')) autoCreateFeedReport(e.target.getAttribute('data-sid'));
+  });
+}
+// After every render: put back the reports already drawn (moving the element keeps its shadow root, so nothing is
+// parsed again) and watch the rest, loading each as it comes within ~900px of the screen.
+function hydrateHistoryFeed(){
+  if(feedObserver) feedObserver.disconnect();
+  if(feedSeenObserver) feedSeenObserver.disconnect();
+  if(state.view !== 'history') return;
+  // A row's "New" dot clears once its card is on screen (the feed has no tap to open it) -- not on the landing right
+  // after this viewer's own save (U10 (3)).
+  if('IntersectionObserver' in window && state.historyLandingNoClear !== state.currentPitcherId){
+    if(!feedSeenObserver) feedSeenObserver = new IntersectionObserver(entries => entries.forEach(e => {
+      if(!e.isIntersecting) return;
+      feedSeenObserver.unobserve(e.target);
+      markSessionOpened(e.target.getAttribute('data-sid'));
+    }), { threshold: 0.25 });
+    document.querySelectorAll('.session-card[data-sid]').forEach(card => { if(card.querySelector('.session-dot')) feedSeenObserver.observe(card); });
+  }
+  const slots = document.querySelectorAll('.feed-report[data-rp]');
+  const autos = document.querySelectorAll('.feed-auto[data-sid]');
+  if(!slots.length && !autos.length) return;
+  const io = 'IntersectionObserver' in window;
+  if(io && !feedObserver) feedObserver = new IntersectionObserver(onFeedSeen, { rootMargin: '900px 0px' });
+  slots.forEach(slot => {
+    const path = slot.getAttribute('data-rp');
+    if(feedFailed.get(path) === 'offline' && isOnline()) feedFailed.delete(path);
+    if(feedHosts.has(path) || feedFailed.has(path)){ drawFeedSlots(path); return; }
+    if(io) feedObserver.observe(slot); else loadFeedReport(path);
+  });
+  autos.forEach(el => { if(io) feedObserver.observe(el); else autoCreateFeedReport(el.getAttribute('data-sid')); });
+}
+window.addEventListener('online', () => { if(state.view === 'history') hydrateHistoryFeed(); });
+
+function copyReportBtn(s){
+  return `<button type="button" class="btn btn-secondary" onclick="copyReportUrl('${s.id}')">Copy Report URL</button>`;
+}
+// Copies the link only (it no longer opens the report). Pasted anywhere, it opens the same report page as before.
+window.copyReportUrl = async function(sessionId){
+  const s = state.sessions.find(x => x.id === sessionId);
+  if(!s || !s.reportPath) return;
+  const url = new URL('report.html?r=' + encodeURIComponent(s.reportPath), location.href).href;
+  let ok = false;
+  try{ if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(url); ok = true; } }catch(e){}
+  if(!ok){
+    try{
+      const ta = document.createElement('textarea');
+      ta.value = url; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, url.length);
+      ok = document.execCommand('copy'); ta.remove();
+    }catch(e){}
+  }
+  state.reportStatus = { sessionId, status: ok ? 'sent' : 'error', message: ok ? 'Report link copied.' : "Couldn't copy. The link: " + escHtml(url) };
+  render();
+};
+// Phones only (Joel): the end of History and Trends.
+function backToTopHtml(){
+  return isPhoneWidth() ? `<div class="back-top-row"><button type="button" class="btn btn-secondary" onclick="backToTop()">↑ Back to top</button></div>` : '';
+}
+window.backToTop = function(){ try{ window.scrollTo({ top: 0, behavior: 'smooth' }); }catch(e){ window.scrollTo(0, 0); } };
+
 /* ---------- MAIN RENDER ---------- */
 function render(){
   noteHistoryOnScreen();   // U10 (3): History on screen clears this viewer's dot
@@ -14447,6 +14599,7 @@ function render(){
   attachVeloStrip();
   attachGameVeloSlide();   // G1b-r3: no-op unless the Live Game velocity row is on screen
   attachGamePanelScroll();
+  hydrateHistoryFeed();    // History feed: draws the reports already on hand, watches for the rest
   state.g5Anim = null;     // G5: the flip plays once, on the render that starts it
 }
 

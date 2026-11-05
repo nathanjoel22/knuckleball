@@ -152,11 +152,21 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
 - **Trends (Joel, Oct 26 2026, v310):** a tab after History: the selected pitcher's saved sessions added up (All / Bullpen / Live Game) -- strike % and peak velocity per pitch type, one point per session, and one pitcher's-view 5x5 plot per pitch type of every pitch. Built on every render from History's data (`renderTrendsView`); no report, no network. Home (same day) is four squares -- Charting, History, Trends, Profile (Armcare / Mental Game kept as concepts, not shown) -- and the phone bottom bar is Home · Charts · History · Trends · Roster · Profile for coaches, Home · Charts · History · Trends · Profile for pitchers (`dockKeys()`); Charts opens the Bullpen / Live Game question (or Resume), History opens History. **Since Oct 29 (Joel), History and Trends share one button, Analysis** (History's icon): it opens History and stays lit on History and Trends, so the bar is Home · Charts · Analysis · Roster · Profile (coaches) / Home · Charts · Analysis · Profile (pitchers); Trends is in the page's tabs and on Home.
 - **One "‹ Back" (F1-D, Joel, Oct 29 2026; `plans/f1d-preconditions.md`; v324):** top left of the page (in the account
   row on phones; its own row when the account sits in the pitcher header), every size, browser and installed. It goes
-  to the section's first screen, never browser history: start questions → "Bullpen or Live Game?"; an opened History
-  session → the list, landing on that card; a chat thread → the chat list; the accuracy painter or Add a player → the
+  to the section's first screen, never browser history: start questions → "Bullpen or Live Game?"; (an opened History
+  session → the list: gone with the History feed, Nov 5); a chat thread → the chat list; the accuracy painter or Add a player → the
   top of Profile; a coach's Player Profile → the roster. **Never on the charting screen**, not even before the first
   pitch, and never on a section's first screen (`headerBackTarget` / `headerBack`). It replaced the chooser's own
   "‹ Back" buttons and the chat thread's "‹ Chats". The phone bar is unchanged (decision A).
+- **History is a feed (Joel, Nov 5 2026, v328; `plans/hf1-preconditions.md`):** no tap to open a session and no "View
+  report" tab. Every saved session's frozen report is drawn under its card as History scrolls (fetched as it nears the
+  screen, drawn inert in a shadow root, kept on the device in IndexedDB `kb-reports`, max 100, cleared at sign-out,
+  so it opens offline after that); 20 sessions at a time, "Show older sessions" for more. Sessions started from Nov 5
+  get their report made the first time they're on screen (same call and gate as before); older ones without a report
+  keep **Create report** (and the card's plot and table). **Copy Report URL** copies the link and opens nothing; the
+  link still opens `report.html` as before; Email report is unchanged; the installed app keeps Share. **No new coaches'
+  notes** (Chat is the direction): the comment box is gone; existing notes show read-only in History and on the report
+  page; `session_notes` is untouched. A row's "New" dot clears once its card is on screen. Phones get **↑ Back to
+  top** at the end of History and Trends.
 - **Roster on phones (v191, v194):** the list stays rolled up until Roster is tapped (dock or the Roster bar; team load and leaving a session start it rolled up); picking a pitcher or another dock button rolls it up. Open, it shows EVERY pitcher (no 220px inner scroll box at ≤860px) -- the page scrolls.
 
 ## Installable app (P2-05, Joel, Oct 15 2026; `plans/p2-05-pwa-install.md`, decisions in `plans/p2-05-preconditions.md`)

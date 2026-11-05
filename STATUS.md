@@ -15,10 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-05 · production v327)
+## Now and next (updated 2026-11-05 · production v327; v328 on a branch)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
+- History as a feed (HF1), branch `history-inline-report` (v328), PR open: see the Nov 5 entry.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -30,7 +31,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    - confirm a Cloudflare deploy;
    - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
-   is applied; still to do: finish the browser walkthrough and bump the cache past v327 (v328). Then: backup, production
+   is applied; still to do: finish the browser walkthrough and bump the cache past v328 (v329). Then: backup, production
    migration, checks, merge.
 
 **Waiting on Joel**
@@ -42,6 +43,32 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - Google Play store art upload (on hold).
 
 ---
+
+## 2026-11-05 · HF1 History as a feed · **staging** (frontend only), branch `history-inline-report`, PR open (not merged)
+- **Asked by:** Joel; answers A–F in `plans/hf1-preconditions.md`. Operator `Nathan <joelhauserman@gmail.com>`.
+  **Cache:** v328. No database, function or report change.
+- **Built (`bullpen-tracker.html`):**
+  - History is a feed: every saved session's frozen report is drawn under its card as you scroll (no tap, no "View
+    report" tab); 20 at a time, "Show older sessions" for more.
+  - Reports are fetched as they near the screen, made inert like `report.html` and drawn in a shadow root; a copy is
+    kept on the device (`kb-reports`, IndexedDB, max 100, cleared at sign-out) so it opens offline after that.
+  - Sessions started from Nov 5 get their report made the first time they're on screen; older ones without one keep
+    **Create report** (plus the card's plot and table).
+  - **Copy Report URL** replaces View report (copies only; the link opens the same report page). Email report
+    unchanged; Share kept in the installed app.
+  - The coaches' notes box is gone; existing notes show read-only (History and the report page). `session_notes`
+    untouched.
+  - A row's "New" dot clears once its card is on screen. Phones: **↑ Back to top** at the end of History and Trends.
+- **Tests (staging, Chrome, a throwaway coach on Staging Knights):**
+  - Phone (390 px): 17 cards, 11 reports drawn in place, no sideways scroll, no notes box, the existing note read-only,
+    Back to top shown and returns to the top. Laptop (1200 px): reports drawn, no Back to top.
+  - Report content inert: 0 script or handler elements in the drawn reports.
+  - Copy Report URL: "Report link copied."; no tab opened. Create report made the report and it appeared in place;
+    the automatic path made one too (its date gate checked by reading the code: no post-Nov 5 session on staging).
+  - Offline: after the pitcher was opened online, a reload with no network showed all 17 cards and all 11 reports.
+  - Sign-out clears the device copies (11 → 0).
+- **Open:** merge on "ship it"; then check the live `sw.js` shows v328. Joel's phone check. Staging test data: the
+  `feed-coach-*@example.com` login (on Staging Knights) and the 2 reports it created there.
 
 ## 2026-11-05 · Staging test data removed · **staging** (data only; no branch, no cache change)
 - **Asked by:** Joel ("clean up the staging test data"). Operator `Nathan <joelhauserman@gmail.com>`.

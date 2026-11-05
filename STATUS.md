@@ -15,11 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-05 · production v327; v328 on a branch)
+## Now and next (updated 2026-11-05 · production v328; v329 on a branch)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- History as a feed (HF1), branch `history-inline-report` (v328), PR open: see the Nov 5 entry.
+- Change-email box shows the server's real reason, branch `change-email-real-reason` (v329), PR open: see the Nov 5 entry.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -31,7 +31,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    - confirm a Cloudflare deploy;
    - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
-   is applied; still to do: finish the browser walkthrough and bump the cache past v328 (v329). Then: backup, production
+   is applied; still to do: finish the browser walkthrough and bump the cache past v329 (v330). Then: backup, production
    migration, checks, merge.
 
 **Waiting on Joel**
@@ -39,12 +39,31 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   open again.
 - Sign-in cards on production: a coach on the Pitcher card and a pitcher or parent on the Coach card should each be
   refused.
+- History feed on the phone; the first new pen's report should appear on its own.
+- Test emails to `nate+…@knuckleballonline.com` bounce: turn on Subaddressing in Cloudflare Email Routing and remove
+  `nate+chaoscoach@` / `nate+chaosparent@` from Resend's suppression list (or use Gmail plus addresses).
 - F1-C2's privacy sentence (DRAFT in `privacy.html` on the branch) needs approval.
 - Google Play store art upload (on hold).
 
 ---
 
-## 2026-11-05 · HF1 History as a feed · **staging** (frontend only), branch `history-inline-report`, PR open (not merged)
+## 2026-11-05 · Change-email box shows the real reason · **staging** (frontend only), branch `change-email-real-reason`, PR open (not merged)
+- **Asked by:** Joel, after "Couldn't start the change. Check your connection and try again." on production. Operator
+  `Nathan <joelhauserman@gmail.com>`. **Cache:** v329. No function change.
+- **Why:** that text was the catch-all for any answer the app didn't recognise (a 401, a 500, a non-JSON reply), so it
+  hid the cause. On production no change request was recorded, so it failed before the email step; the function's
+  logs aren't reachable from here.
+- **Built:** an unrecognised answer now shows "Couldn't start the change. The server said: <reason> (HTTP <status>)";
+  a 401 says the sign-in expired; "check your connection" only when no answer came back. Known codes keep their
+  messages.
+- **Tests (staging, Chrome):** 500 with JSON, 500 with plain text, 401, a known code (same_email), no network, and a
+  real call to staging's function with a bad token (a real 401, no email possible): each shows the right message.
+- **Found while looking (no code change):** the missing verification emails bounced at Cloudflare Email Routing
+  (`nate+chaoscoach@` / `nate+chaosparent@knuckleballonline.com`: "+" addresses have no route without
+  Subaddressing), and Resend then suppressed further sends to them. See Waiting on Joel.
+- **Open:** merge on "ship it"; then check the live `sw.js` shows v329. Joel's retry shows the real reason.
+
+## 2026-11-05 · HF1 History as a feed · **production** (PR #63 merged Nov 5, v328 live)
 - **Asked by:** Joel; answers A–F in `plans/hf1-preconditions.md`. Operator `Nathan <joelhauserman@gmail.com>`.
   **Cache:** v328. No database, function or report change.
 - **Built (`bullpen-tracker.html`):**
@@ -67,7 +86,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
     the automatic path made one too (its date gate checked by reading the code: no post-Nov 5 session on staging).
   - Offline: after the pitcher was opened online, a reload with no network showed all 17 cards and all 11 reports.
   - Sign-out clears the device copies (11 → 0).
-- **Open:** merge on "ship it"; then check the live `sw.js` shows v328. Joel's phone check. Staging test data: the
+- **Shipped:** merged Nov 5 (88f0e1a); live `sw.js` shows v328 with the feed on knuckleballonline.com, www and
+  knuckleball.pages.dev, all on the production database.
+- **Open:** Joel's phone check; the first post-Nov 5 session's automatic report. Staging test data: the
   `feed-coach-*@example.com` login (on Staging Knights) and the 2 reports it created there.
 
 ## 2026-11-05 · Staging test data removed · **staging** (data only; no branch, no cache change)

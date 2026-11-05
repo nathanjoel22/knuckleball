@@ -15,10 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-04 · production v326)
+## Now and next (updated 2026-11-05 · production v326; v327 on a branch)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
+- Sign-in cards by kind of login, branch `signin-card-roles` (v327), PR open: see the Nov 5 entry.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -30,7 +31,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    - confirm a Cloudflare deploy;
    - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
-   is applied; still to do: finish the browser walkthrough and bump the cache past v326 (v327). Then: backup, production
+   is applied; still to do: finish the browser walkthrough and bump the cache past v327 (v328). Then: backup, production
    migration, checks, merge.
 
 **Waiting on Joel**
@@ -42,6 +43,34 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-05 · Sign-in cards by kind of login · **staging** (frontend only), branch `signin-card-roles`, PR open (not merged)
+- **Asked by:** Joel ("coaches can currently log into knuckleball via the player link. that should not be"). Operator
+  `Nathan <joelhauserman@gmail.com>`. **Cache:** v327 (`login.html` is precached). No database or function change.
+- **Joel's rules:** only parents and their players, or players themselves, sign in on the Pitcher card; coaches on the
+  Coach card; facility managers on the Training facility card. A player a coach adds with no email of their own stays on
+  the coach's login and opens only from the Coach card; a player with their own email signs in only on the Pitcher card.
+- **Built (`login.html`):** after sign-in the card reads the login's own profile roles. Pitcher card + any coach profile
+  → "This is a coach account. Sign in on the Coach card." Coach card + no coach profile → "This is a pitcher or parent
+  account. Sign in on the Pitcher card." Both sign straight out. A login with no profile yet goes by its signup
+  `intended_role`, or is let through. The facility checks are unchanged. Browser-side, like F1-A's: the server's read
+  rules still decide access.
+- **Tests (staging, Chrome, the real `login.html`):** six throwaway logins x three cards, all as intended:
+
+  | Login | Pitcher card | Coach card | Facility card |
+  |---|---|---|---|
+  | coach | refused | signs in | refused |
+  | coach + a player they added | refused | signs in | refused |
+  | pitcher | signs in | refused | refused |
+  | parent | signs in | refused | refused |
+  | facility manager | refused | refused | signs in |
+  | no profile yet, made as a pitcher | signs in | refused | refused |
+
+  A refused login leaves no session on the device.
+- **Production:** one login has a coach profile plus a player the coach added; after this it signs in on the Coach card only.
+- **Not changed:** sign-ins inside other pages (`join.html`, `player-link.html`, `accept-invite.html`) keep their own checks.
+- **Open:** merge on "ship it"; then check the live `sw.js` shows v327. Staging test data: the `card-*@example.com`
+  logins, their two teams and "Card Test Facility".
+
 ## 2026-11-04 · Hosting move: knuckleballonline.com and www to Cloudflare Pages · **production** (v326)
 - **Done by:** Joel, Nov 4 (DNS and Cloudflare are Joel's; no Claude change). Built by `scripts/build-site.sh` (PR #58).
 - **Checked Nov 4:** `knuckleballonline.com` and `www.knuckleballonline.com` both answer from Cloudflare Pages
@@ -49,9 +78,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   redirect fix (PR #59).
 - **Fallback:** GitHub Pages stays on. The repo stays public until the clean week ends Nov 11.
 - **Open:**
-  - On the custom domains `sw.js` comes back `Cache-Control: max-age=14400`; on knuckleball.pages.dev it's `no-cache`
-    (from `_headers`). The browser's update check for `sw.js` skips the HTTP cache by default, so updates still arrive,
-    but the two hosts differ. Looks like a zone cache setting on the domain; not changed (Joel's call).
+  - ~~On the custom domains `sw.js` came back `Cache-Control: max-age=14400`~~ -- fixed Nov 5: `sw.js`, `/`, `/login`
+    and `/bullpen-tracker(.html)` all return `no-cache` on knuckleballonline.com, www and knuckleball.pages.dev.
   - Joel's iPhone airplane-mode check (see the sw entry below).
 
 ## 2026-11-04 · Cloudflare Pages build (allowlist) · **production** (PR #58 merged Nov 4; no cache bump)

@@ -15,11 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-05 · production v330; v331 on a branch)
+## Now and next (updated 2026-11-05 · production v331; v332 on a branch)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- Navigation: bottom bar on phones and iPads, no tab bar there, branch `dock-everywhere` (v331), PR open: see the Nov 5 entry.
+- Phone fixes (reach the top, the bar on Chat, Sign out at the bottom), branch `phone-scroll-fixes` (v332), PR open: see the Nov 5 entry.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -31,7 +31,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    - confirm a Cloudflare deploy;
    - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
-   is applied; still to do: finish the browser walkthrough and bump the cache past v331 (v332). Then: backup, production
+   is applied; still to do: finish the browser walkthrough and bump the cache past v332 (v333). Then: backup, production
    migration, checks, merge.
 
 **Waiting on Joel**
@@ -50,7 +50,31 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-05 · Navigation: the bottom bar on phones and iPads · **staging** (frontend only), branch `dock-everywhere`, PR open (not merged)
+## 2026-11-05 · Phone fixes: reach the top, the bar on Chat, Sign out at the bottom · **staging** (frontend only), branch `phone-scroll-fixes`, PR open (not merged)
+- **Asked by:** Joel, on an iPhone with v331: "can't scroll all the way up ... to view the knuckleball banner and
+  logo"; "when I tap chat, the bar jumps up about 1/4 the way up the screen"; "on all phones, the sign out button should
+  be at the very bottom of the page". Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v332.
+- **Cause (by reasoning; not reproducible in Chrome, and Safari in the iOS Simulator wouldn't accept automation):**
+  - History draws each report as it nears the screen. A report drawn ABOVE the reader (after a fast scroll down, then
+    back up) added ~3,000-8,000px above them; Chrome hides that with scroll anchoring, iPhone Safari has none, so the
+    top kept moving away.
+  - The bar's buttons did a long animated scroll up to the top. iPhone Safari takes an upward scroll as the reader's and
+    brings its own toolbar back, lifting our fixed bar above it.
+- **Built (`bullpen-tracker.html`):**
+  - A report that draws above the screen scrolls the page by the height it added, so the reader stays put.
+    `html{ overflow-anchor:none }`, so every browser does the same thing.
+  - The bar's buttons jump to the top at once, before the page changes; no more animated scrolls.
+  - Every phone: Sign out at the very bottom of the page, under Privacy / Terms. It was already there for coaches;
+    pitchers, parents and teens had it near the top. Wider screens are unchanged.
+- **Tests (staging, Chrome, 390px touch):**
+  - A 7,825px report drawn just above the screen: the card under it stayed at the same spot (−42px before and after).
+  - The top is reachable: scroll 0 shows the banner.
+  - Roster and Chat from 20,000px down land at 0 at once.
+  - Pitcher: one Sign out, in the footer, at the bottom of the page.
+- **Open:** merge on "ship it"; then Joel's iPhone check of both. Whether he uses Safari or the home-screen app matters
+  for the bar: Safari's own toolbar still comes and goes as you scroll.
+
+## 2026-11-05 · Navigation: the bottom bar on phones and iPads · **production** (PR #67 merged Nov 5, v331 live)
 - **Asked by:** Joel; answers A–F in the session (A wordmark goes Home; B Profile in the account menu; C coach taps the
   name for Player Profile, Leaderboard hidden for now; D Chat on every player bar, "Soon" outside a facility; E the bar
   always on phones and iPads, computers keep the tab bar; F parents and teens are players; view-only family: Analysis ·
@@ -71,7 +95,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   centered; on the charting screen no bar and no tabs. Laptop 1280px (no touch): no bar; tabs Home · New Session ·
   History · Trends · Player Profile (no Leaderboard). Pitcher at 390px: Charts · Analysis · Chat (Soon); Chat shows
   "Chat is coming soon." No sideways scroll anywhere. Not run: a view-only family login (no F1-G link on staging now).
-- **Open:** merge on "ship it"; then check the live `sw.js` shows v331. Joel's check on an iPhone and an iPad.
+- **Shipped:** merged Nov 5 (6822c28); live `sw.js` shows v331 on all three addresses.
+- **Open:** Joel's iPhone found two scrolling problems: see the next entry up.
 
 ## 2026-11-05 · History bars open and close their reports · **production** (PR #65 merged Nov 5, v330 live)
 - **Asked by:** Joel ("the bar that has the date, the number of pitches, strike percentage, accuracy percentage... should

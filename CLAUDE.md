@@ -158,7 +158,9 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
   above All / Bullpen / Live Game there (`analysisTray`). Computers keep the tab bar. **Leaderboard is hidden for now**
   (no tab; `renderLeaderboardView` kept). The KNUCKLEBALL wordmark goes Home (`goHome`); Profile is in the account menu
   (`acctGoProfile`) and a Home tile; a coach taps the pitcher's name or photo for Player Profile. Every bar button lands at the very top of the page (the
-  banner in view; v335); Roster opened from Chat shows Home under the list, not Chat.
+  banner in view; v335); A coach's open roster list (phones / iPads,
+  `rosterCanCollapse`) stands alone: nothing below it, not even the footer or Sign out, until a pitcher is picked or
+  another button is tapped (v336).
 - **One "‹ Back" (F1-D, Joel, Oct 29 2026; `plans/f1d-preconditions.md`; v324):** top left of the page (in the account
   row on phones; its own row when the account sits in the pitcher header), every size, browser and installed. It goes
   to the section's first screen, never browser history: start questions → "Bullpen or Live Game?"; (an opened History

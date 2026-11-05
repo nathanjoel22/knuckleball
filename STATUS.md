@@ -15,11 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-05 · production v328; v329 on a branch)
+## Now and next (updated 2026-11-05 · production v329; v330 on a branch)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- Change-email box shows the server's real reason, branch `change-email-real-reason` (v329), PR open: see the Nov 5 entry.
+- History bars open and close their reports, branch `history-collapse` (v330), PR open: see the Nov 5 entry.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -31,7 +31,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    - confirm a Cloudflare deploy;
    - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
-   is applied; still to do: finish the browser walkthrough and bump the cache past v329 (v330). Then: backup, production
+   is applied; still to do: finish the browser walkthrough and bump the cache past v330 (v331). Then: backup, production
    migration, checks, merge.
 
 **Waiting on Joel**
@@ -47,7 +47,19 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-05 · Change-email box shows the real reason · **staging** (frontend only), branch `change-email-real-reason`, PR open (not merged)
+## 2026-11-05 · History bars open and close their reports · **staging** (frontend only), branch `history-collapse`, PR open (not merged)
+- **Asked by:** Joel ("the bar that has the date, the number of pitches, strike percentage, accuracy percentage... should
+  be a collapsable bar"). Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v330.
+- **Built:** tapping or clicking a session's bar (or Enter / Space on it) closes or opens everything under it: the
+  report, or the plot and table, plus notes, Email / Copy Report URL and Delete. Open by default (the feed); an arrow
+  shows the state (› closed, ⌄ open); `aria-expanded` set. Closed ones stay closed for that page load; a drawn report is
+  kept, so reopening is instant.
+- **Tests (staging, Chrome, 390 px):** a report card 3,602 px tall closes to its 118 px bar and reopens with the report
+  already drawn; Enter closes it too; a card without a report closes; the arrow stays inside the bar; no sideways
+  scroll.
+- **Open:** merge on "ship it"; then check the live `sw.js` shows v330.
+
+## 2026-11-05 · Change-email box shows the real reason · **production** (PR #64 merged Nov 5, v329 live)
 - **Asked by:** Joel, after "Couldn't start the change. Check your connection and try again." on production. Operator
   `Nathan <joelhauserman@gmail.com>`. **Cache:** v329. No function change.
 - **Why:** that text was the catch-all for any answer the app didn't recognise (a 401, a 500, a non-JSON reply), so it
@@ -61,7 +73,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Found while looking (no code change):** the missing verification emails bounced at Cloudflare Email Routing
   (`nate+chaoscoach@` / `nate+chaosparent@knuckleballonline.com`: "+" addresses have no route without
   Subaddressing), and Resend then suppressed further sends to them. See Waiting on Joel.
-- **Open:** merge on "ship it"; then check the live `sw.js` shows v329. Joel's retry shows the real reason.
+- **Shipped:** merged Nov 5 (91e7d9b); live `sw.js` shows v329 with the new messages on all three addresses.
+- **Open:** Joel's retry shows the real reason.
 
 ## 2026-11-05 · HF1 History as a feed · **production** (PR #63 merged Nov 5, v328 live)
 - **Asked by:** Joel; answers A–F in `plans/hf1-preconditions.md`. Operator `Nathan <joelhauserman@gmail.com>`.

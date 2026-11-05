@@ -1333,6 +1333,9 @@
   .session-card{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-control); overflow:hidden; }
   .session-card-head{ display:flex; align-items:center; justify-content:space-between; padding:var(--s-16) var(--s-20); gap:var(--s-12); flex-wrap:wrap; cursor:pointer; }
   .session-card-head:hover{ background:var(--surface); }
+  .sc-chev{ width:10px; height:10px; flex:none; margin-left:auto; border-right:2px solid var(--ink-faint); border-bottom:2px solid var(--ink-faint); transform:rotate(45deg); transition:transform .2s; }
+  .session-card-head[aria-expanded="false"] .sc-chev{ transform:rotate(-45deg); }
+  .session-card-head:focus-visible{ outline:2px solid var(--brand-mid, currentColor); outline-offset:-2px; }
   .session-date{ font-weight:600; font-size:14px; }
   .coach-logged-tag{
     font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:var(--tr-label);
@@ -2140,6 +2143,7 @@ let state = {
   gamePendingOutcome: null,  // 'hit' | 'out' | 'error', while drilling into In Play
   gamePendingHitType: null,  // '1B'|'2B'|'3B'|'HR', while drilling into a Hit
   expandedSessionId: null,
+  collapsedSessions: {},     // History feed: sessions whose bar was tapped closed (Joel, Nov 5)
   // G1: which kind of session History shows -- 'all' | 'bullpen' | 'game'.
   // Purely a display filter; never affects what's loaded or synced.
   historyFilter: 'all',
@@ -12099,7 +12103,7 @@ function renderHistoryView(){
         <div class="delete-zone"><button class="btn btn-danger btn-sm" onclick="startDeleteSession('${s.id}')">Delete this session</button></div>`));
       return `
         <div class="session-card" data-sid="${s.id}">
-          <div class="session-card-head">
+          <div class="session-card-head" role="button" tabindex="0" aria-expanded="${state.collapsedSessions[s.id] ? 'false' : 'true'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
             <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${lineOpen ? ' <span class="coach-logged-tag">Line open</span>' : ''}${pendingTag}</div>
             <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
               <div class="meta-item"><span class="meta-num mono">${gameIpText(stats.outs)}</span><span class="meta-lbl">IP</span></div>
@@ -12112,15 +12116,16 @@ function renderHistoryView(){
               <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
               ${avgTimeToPlateMeta(s)}`}
             </div>
+            <span class="sc-chev" aria-hidden="true"></span>
           </div>
-          <div class="session-card-body${s.reportPath ? ' feed-body' : ''}">
+          ${state.collapsedSessions[s.id] ? '' : `<div class="session-card-body${s.reportPath ? ' feed-body' : ''}">
             ${s.reportPath ? feedReportSlot(s) : `<div class="zone-wrap">${renderHistoryPlot(plotSessionOf(s, p), p)}</div>`}
             <div class="feed-side">
               ${s.reportPath ? '' : gameHistoryTypeTable(p, s)}${feedAutoMark(s, pEligible)}
               ${renderSessionNotes(s)}${reportPanel}
               ${deleteZone}
             </div>
-          </div>
+          </div>`}
         </div>`;
     }
     const dateStr = new Date(s.date).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
@@ -12234,7 +12239,7 @@ function renderHistoryView(){
 
     return `
       <div class="session-card" data-sid="${s.id}">
-        <div class="session-card-head">
+        <div class="session-card-head" role="button" tabindex="0" aria-expanded="${state.collapsedSessions[s.id] ? 'false' : 'true'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
           <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${teamChipHtml(s)}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${pendingTag}</div>
           <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
@@ -12246,8 +12251,9 @@ function renderHistoryView(){
             <div class="meta-item"><span class="meta-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="meta-lbl">Avg mph</span></div>
             ${avgTimeToPlateMeta(s)}`}
           </div>
+          <span class="sc-chev" aria-hidden="true"></span>
         </div>
-        <div class="session-card-body${s.reportPath ? ' feed-body' : ''}">
+        ${state.collapsedSessions[s.id] ? '' : `<div class="session-card-body${s.reportPath ? ' feed-body' : ''}">
           ${s.reportPath ? feedReportSlot(s) : `<div class="zone-wrap">${renderHistoryPlot(plotSessionOf(s, p), p)}</div>`}
           <div class="feed-side">
             ${s.reportPath ? '' : `<table class="breakdown-table">
@@ -12257,10 +12263,17 @@ function renderHistoryView(){
             ${renderSessionNotes(s)}${reportPanel}
             ${deleteZone}
           </div>
-        </div>
+        </div>`}
       </div>`;
   }).join('') + moreHtml + (shown.length === visible.length ? oldSummaryHtml : '') + backToTopHtml();
 }
+// Joel, Nov 5: a session's bar (date, pitches, strikes, accuracy...) opens and closes its report. Open by default (the
+// feed); closed ones stay closed for this page load. A drawn report is kept (feedHosts), so reopening is instant.
+window.toggleSessionCollapse = function(id){
+  if(state.collapsedSessions[id]) delete state.collapsedSessions[id]; else state.collapsedSessions[id] = true;
+  clearDeleteState();
+  render();
+};
 window.showMoreHistory = function(){ state.historyFeedN = (state.historyFeedN || FEED_PAGE) + FEED_PAGE; render(); };
 window.toggleOldTombstones = function(){
   state.oldTombstonesExpanded = !state.oldTombstonesExpanded;

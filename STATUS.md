@@ -15,11 +15,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-05 · production v326; v327 on a branch)
+## Now and next (updated 2026-11-05 · production v327)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- Sign-in cards by kind of login, branch `signin-card-roles` (v327), PR open: see the Nov 5 entry.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -35,15 +34,29 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    migration, checks, merge.
 
 **Waiting on Joel**
-- iPhone airplane-mode check on knuckleballonline.com (v326 on Cloudflare Pages): open online, close, airplane mode,
+- iPhone airplane-mode check on knuckleballonline.com (v327 on Cloudflare Pages): open online, close, airplane mode,
   open again.
+- Sign-in cards on production: a coach on the Pitcher card and a pitcher or parent on the Coach card should each be
+  refused.
 - F1-C2's privacy sentence (DRAFT in `privacy.html` on the branch) needs approval.
-- When to clean up staging test data (LoadTest facility, F1-G test logins, the sw-test / sw-safari test pitchers).
 - Google Play store art upload (on hold).
 
 ---
 
-## 2026-11-05 · Sign-in cards by kind of login · **staging** (frontend only), branch `signin-card-roles`, PR open (not merged)
+## 2026-11-05 · Staging test data removed · **staging** (data only; no branch, no cache change)
+- **Asked by:** Joel ("clean up the staging test data"). Operator `Nathan <joelhauserman@gmail.com>`.
+- **Removed:** every throwaway `@example.com` test login (29) and what it owned: the "LoadTest Training Center" facility
+  (both teams, its sessions and chat), "Card Test Facility", the "Card Test Team" teams, "Coach Gate Test Team", and
+  the F1-G, F1-B, service-worker and sign-in-card test logins. In all: 2,004 sessions (pitches, events and stats with
+  them), 8 teams, 2 organizations, 3 chat threads, 1 player link, 106 roster rows, 3 facility links, 132 profiles. No
+  report files or headshots belonged to them.
+- **How:** one staging-only SQL block (refuses anywhere but staging), run as a dry run first (rolled back, no errors),
+  then for real. It extends `supabase/scripts/f1a_loadtest_cleanup.sql` to the later tables (chat, player links).
+- **Joel's own staging accounts kept:** 30 logins (`nate.j.pugh+…`, nate@knuckleballonline.com), 8 teams, 88
+  sessions, and the open "Knuckleball Test Facility" link. Four of his pitchers only left the LoadTest roster; one
+  session of his, charted by the LoadTest manager under that facility, went with it.
+
+## 2026-11-05 · Sign-in cards by kind of login · **production** (PR #61 merged Nov 5, v327 live)
 - **Asked by:** Joel ("coaches can currently log into knuckleball via the player link. that should not be"). Operator
   `Nathan <joelhauserman@gmail.com>`. **Cache:** v327 (`login.html` is precached). No database or function change.
 - **Joel's rules:** only parents and their players, or players themselves, sign in on the Pitcher card; coaches on the
@@ -68,8 +81,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   A refused login leaves no session on the device.
 - **Production:** one login has a coach profile plus a player the coach added; after this it signs in on the Coach card only.
 - **Not changed:** sign-ins inside other pages (`join.html`, `player-link.html`, `accept-invite.html`) keep their own checks.
-- **Open:** merge on "ship it"; then check the live `sw.js` shows v327. Staging test data: the `card-*@example.com`
-  logins, their two teams and "Card Test Facility".
+- **Shipped:** merged Nov 5 (d8c4322); live `sw.js` shows v327 and `login.html` has the new check on knuckleballonline.com,
+  www and knuckleball.pages.dev, all pointing at the production database.
+- **Open:** Joel's two checks on production (see Now and next). The staging test logins were removed the same day
+  (next entry up).
 
 ## 2026-11-04 · Hosting move: knuckleballonline.com and www to Cloudflare Pages · **production** (v326)
 - **Done by:** Joel, Nov 4 (DNS and Cloudflare are Joel's; no Claude change). Built by `scripts/build-site.sh` (PR #58).

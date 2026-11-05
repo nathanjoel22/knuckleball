@@ -216,8 +216,13 @@
     // and Coach cards refuse one. Checked here, right after sign-in, and signed straight out on a mismatch -- what
     // anyone can read is still decided by the server. A facility signup that couldn't finish (email confirmation)
     // finishes here: its link is kept on this device until the facility exists.
+    // Cards by login (Joel, Nov 5): the Pitcher card is for pitchers, parents (with their players) and teens' own
+    // sign-ins, so it refuses any login with a coach profile -- a player a coach added with no email of their own sits on
+    // the coach's login and opens from the Coach card. The Coach card refuses a login with no coach profile, so a player
+    // with their own email (their own login, even one a coach invited) signs in only on the Pitcher card. A login with no
+    // profile yet (Known landmine 3) goes by the account type chosen at signup, or is let through if there is none.
     if(role === 'facility' || role === 'coach' || role === 'pitcher'){
-      let facility = false;
+      let facility = false, roles = [];
       try{
         let pending = null; try{ pending = localStorage.getItem('kb:facilityToken'); }catch(e){}
         if(role === 'facility' && pending){
@@ -227,18 +232,29 @@
         const res = await supabaseClient.rpc('is_facility_login');
         if(res.error) throw res.error;
         facility = res.data === true;
+        if(!facility && role !== 'facility'){
+          const pr = await supabaseClient.from('profiles').select('role').eq('account_id', data.user.id);
+          if(pr.error) throw pr.error;
+          roles = (pr.data || []).map(function(r){ return r.role; });
+          // no profile yet: go by the account type chosen at signup, if any
+          const meant = data.user.user_metadata && data.user.user_metadata.intended_role;
+          if(!roles.length && meant) roles = [meant];
+        }
       }catch(e){
         await supabaseClient.auth.signOut();
         errorEl.textContent = "Can't reach the server — check your connection and try again.";
         submitBtn.disabled = false; submitBtn.textContent = 'Log in';
         return;
       }
-      const wrong = role === 'facility' ? !facility : facility;
+      const hasCoach = roles.indexOf('coach') !== -1;
+      let wrong = null;
+      if(role === 'facility'){ if(!facility) wrong = "This sign-in is for training facility accounts. Use the Pitcher or Coach sign-in instead."; }
+      else if(facility) wrong = "This is a training facility account. Sign in on the Training facility card.";
+      else if(role === 'pitcher' && hasCoach) wrong = "This is a coach account. Sign in on the Coach card.";
+      else if(role === 'coach' && roles.length && !hasCoach) wrong = "This is a pitcher or parent account. Sign in on the Pitcher card.";
       if(wrong){
         await supabaseClient.auth.signOut();
-        errorEl.textContent = role === 'facility'
-          ? "This sign-in is for training facility accounts. Use the Pitcher or Coach sign-in instead."
-          : "This is a training facility account. Sign in on the Training facility card.";
+        errorEl.textContent = wrong;
         submitBtn.disabled = false; submitBtn.textContent = 'Log in';
         return;
       }

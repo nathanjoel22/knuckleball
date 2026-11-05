@@ -15,7 +15,60 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-04 · Service worker: no redirected responses (Cloudflare Pages offline fix) · branch, PR open (not merged)
+## Now and next (updated 2026-11-04 · production v326)
+
+**In progress**
+- Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
+
+**Next up, in order**
+1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
+   - confirm DNS no longer points to GitHub;
+   - unpublish GitHub Pages;
+   - make the repo private;
+   - confirm Protect-Main;
+   - reconnect the Claude Project and confirm Sync;
+   - confirm a Cloudflare deploy;
+   - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
+2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
+   is applied; still to do: finish the browser walkthrough and bump the cache past v326 (v327). Then: backup, production
+   migration, checks, merge.
+
+**Waiting on Joel**
+- iPhone airplane-mode check on knuckleballonline.com (v326 on Cloudflare Pages): open online, close, airplane mode,
+  open again.
+- F1-C2's privacy sentence (DRAFT in `privacy.html` on the branch) needs approval.
+- When to clean up staging test data (LoadTest facility, F1-G test logins, the sw-test / sw-safari test pitchers).
+- Google Play store art upload (on hold).
+
+---
+
+## 2026-11-04 · Hosting move: knuckleballonline.com and www to Cloudflare Pages · **production** (v326)
+- **Done by:** Joel, Nov 4 (DNS and Cloudflare are Joel's; no Claude change). Built by `scripts/build-site.sh` (PR #58).
+- **Checked Nov 4:** `knuckleballonline.com` and `www.knuckleballonline.com` both answer from Cloudflare Pages
+  (`/bullpen-tracker.html` 308s to `/bullpen-tracker`, as on knuckleball.pages.dev); `sw.js` shows v326 with the
+  redirect fix (PR #59).
+- **Fallback:** GitHub Pages stays on. The repo stays public until the clean week ends Nov 11.
+- **Open:**
+  - On the custom domains `sw.js` comes back `Cache-Control: max-age=14400`; on knuckleball.pages.dev it's `no-cache`
+    (from `_headers`). The browser's update check for `sw.js` skips the HTTP cache by default, so updates still arrive,
+    but the two hosts differ. Looks like a zone cache setting on the domain; not changed (Joel's call).
+  - Joel's iPhone airplane-mode check (see the sw entry below).
+
+## 2026-11-04 · Cloudflare Pages build (allowlist) · **production** (PR #58 merged Nov 4; no cache bump)
+- **Asked by:** Joel, to prepare Knuckleball for Cloudflare Pages without changing app behavior. Operator
+  `Nathan <joelhauserman@gmail.com>`. Branch `cloudflare-pages-build`, merged Nov 4 (078d995). No served file changed.
+- **Built:**
+  - `scripts/build-site.sh`: copies an explicit allowlist (119 files: pages, sw.js, configs, manifest, styles, vendor
+    scripts and fonts, icons, splash, media, the email logos, robots.txt, sitemap.xml, `_headers`) into `_site/`. It
+    fails if a listed file is missing, if `sw.js` precaches a file the build doesn't copy, or if the configs point at
+    staging. Nothing from `plans/`, `supabase/`, scripts, docs or tests is copied.
+  - `_headers`: `Cache-Control: no-cache` for `/sw.js`, `/` and every page at both `/x.html` and `/x`.
+  - `.gitignore`: `_site/`.
+- **Checks before merge:** the configs hold only the public URL and anon key; all 87 `sw.js` entries are in `_site/`;
+  largest file 3.13 MB (limit 25 MB).
+- **Found after:** Cloudflare 308-redirects `/page.html` to `/page`, which broke offline opening; fixed by PR #59.
+
+## 2026-11-04 · Service worker: no redirected responses (Cloudflare Pages offline fix) · **production** (PR #59 merged Nov 4, v326 live)
 - **Asked by:** Joel. On knuckleball.pages.dev, reopening the app offline in Safari gave "Response served by service
   worker has redirections" for /bullpen-tracker. Operator `Nathan <joelhauserman@gmail.com>`. Branch
   `sw-no-redirected-responses`. **Cache:** v326.
@@ -43,9 +96,13 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
     opened offline both ways.
   - **Background refresh:** a page changed on the redirecting server was picked up after one online visit to its .html
     address and shown offline.
-- **Open:** WebKit (see the PR); Joel's own iPhone check on pages.dev after merge.
+- **Safari (real Safari via safaridriver, Cloudflare-style local server, staging only):** all 5 steps passed --
+  reproduce on v325, upgrade with draft and outbox kept, offline open at /page and /page.html, sync back online.
+- **Shipped:** merged Nov 4 (3919918); live `sw.js` shows v326 with the fix on knuckleballonline.com and
+  knuckleball.pages.dev.
+- **Open:** Joel's own iPhone airplane-mode check on the live site.
 
-## 2026-10-31 · Operator page for facility signup links · **production database + function**; page waits on PR #57 merge
+## 2026-10-31 · Operator page for facility signup links · **production** (database, function and page; PR #57 merged Oct 31)
 - **Asked by:** Joel ("yes, build the operator page after F1-B"), instead of pasting SQL when a facility emails.
   Operator `Nathan <joelhauserman@gmail.com>`. Branch `operator-facility-links`. No cache bump: the page isn't in the
   app shell.
@@ -73,8 +130,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
     run both). Structure identical to staging except `session_dots_since` (by design); policies 32;
     `facility_email_status` callable by neither anon nor authenticated; an unsigned call to the function gets 401.
     `schema.sql` regenerated.
-  - Merge PR #57 on "ship it". Then Joel's first real use on production confirms the operator sign-in.
+  - Merged Oct 31 (b6b1203); `operator.html` is live. Joel's first real use on production confirms the operator sign-in.
   - Staging test data: the cancelled "Operator Test Facility" link; Joel's open "Knuckleball Test Facility" link.
+
 ## 2026-10-31 · F1-B (QR join codes) · **production** (database and site; PR #56 merged Oct 31, v325 live)
 - **Asked by:** Joel ("keep going"; answers A–E in `plans/f1b-preconditions.md`). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `f1b-qr-join`. **Cache:** v325.
@@ -120,7 +178,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - Merged Oct 31 (5de30d3); live `sw.js` shows v325, and `qr-print.html` and `vendor/qrcodegen.js` are served.
   - Staging test data: `f1b-parent@example.com` with player "F1B Kid"; a LoadTest 019 join.
 
-## 2026-10-29 · F1-D (one "‹ Back"; the bar stays) · **staging** (frontend only), branch, PR open (not merged)
+## 2026-10-29 · F1-D (one "‹ Back"; the bar stays) · **production** (PR #54 merged Oct 29, v324 live)
 - **Asked by:** Joel ("let's do F1-D next"; answers A–C in `plans/f1d-preconditions.md`). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `f1d-back`. **Cache:** v324. No database or function change.
 - **Built:** one "‹ Back" at the top left of the page that goes to the section's first screen. It shows on:
@@ -140,9 +198,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   On the charting screen, 0 Back buttons, even before the first pitch. No sideways scroll.
 - **Deviations from the packet:** the packet's five-segment bar is not built. Joel's later decisions (Home, Analysis)
   stand, so decision A leaves the bar as it is.
-- **Open:** merge PR on "ship it" (frontend only: no backup or migration needed).
+- **Shipped:** merged Oct 29 (fd1f0af); live `sw.js` shows v324.
 
-## 2026-10-29 · F1-G (linked sign-ins for a parent's player) · **production database + functions**; site waits on PR #52 merge (v323)
+## 2026-10-29 · F1-G (linked sign-ins for a parent's player) · **production** (database, functions and site; PR #52 merged Oct 29, v323 live)
 - **Asked by:** Joel ("let's do F1-G next"; answers A–L in `plans/f1g-preconditions.md`). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `f1g-player-links`. **Cache:** v323.
 - **Database:** migration `20261101000000_f1g_player_links` (staging, then production Oct 29 after backup `2026-10-29-2303`;
@@ -202,11 +260,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Production checks (Oct 29):** structure identical to staging except `session_dots_since` (by design); policies 32;
   no client grants on the two link tables; `schema.sql` regenerated.
 - **Open:**
-  - Merge PR #52 on "ship it" (v323), then check the live `sw.js`.
+  - Merged Oct 29 (ab38bae); live `sw.js` shows v323, `player-link.html` serves, the privacy page has the new text.
   - **Known:** a removed person's device keeps its cached copy of the player until it next loads online or signs out.
   - **Staging test data:** links on LoadTest 001, plus logins `f1g-family@example.com` and `f1g-child@example.com`.
 
-## 2026-10-29 · F1-C1 (Chat inside training facilities) · **production database + function**; site waits on PR #50 merge (v322)
+## 2026-10-29 · F1-C1 (Chat inside training facilities) · **production** (database, function and site; PR #50 merged Oct 29, v322 live)
 - **Asked by:** Joel ("let's do chat next"; answers A–F in `plans/f1c1-preconditions.md`). Operator
   `Nathan <joelhauserman@gmail.com>`. Branch `f1c1-chat`. **Cache:** v322.
 - **Database:** migration `20261031000000_f1c1_chat` (staging, then production Oct 29 after backup
@@ -260,7 +318,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Production checks (Oct 29):** structure vs staging identical except `session_dots_since` (by design); policies
   32; 4 chat tables with no client grants; `f1c1-chat-clear` scheduled; `schema.sql` regenerated.
 - **Open:**
-  - Merge PR #50 on "ship it" (v322), then check the live `sw.js`.
+  - Merged Oct 29 (50ac6cf); live `sw.js` shows v322 and the policy pages Version 2026-10-29.
   - F1-G (guardian link and roles), F1-D, F1-B, F1-C2 to come.
 
 ## 2026-10-29 · F1-A (training facilities: organizations, manager, coach groups) · **production** (database and site; PR #49 merged Oct 29, v321 live)

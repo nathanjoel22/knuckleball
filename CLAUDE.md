@@ -73,7 +73,41 @@ storage.
 - Discard session sits beside End session & save on every non-phone width (same confirm and `discardActiveSession` as the phone sheet).
 - Pitch labels display in capitals everywhere; stored names are unchanged.
 - Live Game state: Set/Windup defaults from the bases and velocity "Reset" are live. G1b-r3's in-grid entry (scorebook, More, ADV, DP, fielders, in-grid velocity) was replaced by G5 below.
-- Live Game phones: Set/Windup sits in the status bar (the ⏱ clock was removed from Live Games Oct 14, Joel -- bullpens keep it; reports still show time to home); the pitch-type row is full width (Oct 8). iPad / laptop: the account button sits in the pitcher header's row (Oct 7).
+- Live Game phones: Set/Windup sits in the status bar (the ⏱ clock was removed from Live Games Oct 14, Joel, and from bullpens by U15, Nov 6; reports still show time to home); the pitch-type row is full width (Oct 8). iPad / laptop: the account button sits in the pitcher header's row (Oct 7).
+
+## Charting screen batch (U15, Joel, Nov 6 2026; `plans/u15-charting-phone-batch.md`, decisions in `plans/u15-preconditions.md`)
+
+Where this and the sections above differ, this wins.
+- **The Pitches bubble** (`renderArsenalSheet`) is the one editor for a pitcher's arsenal: each pitch with Edit accuracy (the
+  U14 painter, inline) and Remove (confirm), then Add a pitch from the sport's list. Ways in:
+  - the **"+"** (`renderArsenalPlus`), where the ⏱ was: right of Windup / Set on phones; beside the delivery control on
+    iPad / laptop; softball (no delivery) at the start of the pitch row on phones, beside "Pitch type" elsewhere;
+  - **holding a pitch chip** for 500 ms (a move cancels, so the strip still swipes), which opens it on that pitch; a tap
+    still only selects;
+  - **Profile's Pitch mix → Edit pitches**, and the "no pitches yet" prompts.
+- **Who edits an arsenal:** one function, `set_pitch_arsenal(p_pitcher, p_types text[])` (migration
+  `20261106000000_u15_pitch_arsenal`): the pitcher's own login (a parent for a player they created) or any coach who
+  can see the pitcher on a current, non-archived team (`coach_sees_pitcher`: assistants and facility group coaches
+  too). Relative-accuracy cells follow the same people in the app (the database already allowed any coach of the
+  pitcher). Linked guardians and teens stay read-only (F1-G). Name, throws, uniform and radar gun stay head-only (R6).
+  Online only ("Needs a connection"). The old direct column write and `coach_set_pitch_types` are **kept until cached
+  apps (v336 and earlier) have updated**; a later migration removes both.
+- **Mid-session:** relative-accuracy edits score later pitches only (the hit kind is stored at the tap). A session keeps
+  the colour order it started with (`activeSession.typeOrder`, `colorTypesFor`), so adding or removing a pitch never
+  recolours what's charted. A removed pitch stays on the pitches already thrown, and a new report lists it
+  (`reportPitchTypes`).
+- **Perspective:** a bullpen always opens behind the pitcher, a Live Game behind the catcher (the device no longer
+  remembers a last choice). Phones: a **Catcher / Pitcher** button on the pitch-count line (Live Game: just under the
+  scoreboard) flips it until the first pitch; after that a tap says "Perspective is set for this session". iPad / laptop
+  keep the chips, same lock. Storage is unchanged (catcher frame).
+- **The clock is retired** everywhere. `pitches.time_to_plate` stays; new pitches write null; History and reports show
+  the times of sessions that have them.
+- **Switch pitcher (coaches):** tapping the pitcher's name (phone header, or the name on iPad / laptop while charting)
+  opens the roster. Nothing charted: it switches. Otherwise **Save and switch** / **Discard and switch** (two-step) /
+  **Keep charting**. Then the new pitcher's start questions with his own defaults; in a Live Game after a save,
+  "Continue from where X left off?" is already Yes, the R3 hand-off (inherited runners, `relieved_session_id`). A
+  discard never continues. A pitcher with an unfinished session of his own lands on its Resume prompt.
+- **Parent's player profile:** Pitch mix and Relative accuracy sit right under the photo buttons.
 
 ## Live Game on the field (G5, Joel, Oct 6–8 2026; evidence `plans/g5-evidence.md`)
 

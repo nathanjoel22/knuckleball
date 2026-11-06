@@ -168,6 +168,10 @@
   .sess-who .headshot{ width:28px; height:28px; font-size:10px; flex:none; }
   .sess-name{ font-weight:700; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:2.5em; }
   .sess-num{ font-size:14px; color:var(--on-dark-dim); flex:none; }
+  .sess-switch{ background:transparent; border:0; padding:0; margin:0; color:inherit; font:inherit; text-align:left; cursor:pointer; min-height:44px; }
+  .sess-switch-mark{ flex:none; font-size:12px; color:var(--on-dark-dim); }
+  .switch-pick{ display:flex !important; align-items:center; justify-content:flex-start; gap:var(--s-12); text-align:left !important; }
+  .switch-pick .headshot{ width:32px; height:32px; font-size:11px; flex:none; }
   .sess-offline{ flex:none; width:9px; height:9px; border-radius:var(--radius-circle); background:var(--accent-bright); }   /* offline: a dot, so the name keeps its room */
   .sess-more{ font-size:24px; }
   .btn-icon.on-dark.sess-more{ background:transparent; }   /* Joel, Oct 22: the mark sits on the header's own dark, like the names beside it */
@@ -195,19 +199,37 @@
   .ph-status .ph-item, .ph-status .ph-inn{ white-space:nowrap; }
   @media (max-width:389px){ .ph-status{ gap:var(--s-8); padding:0 var(--s-8); } .sb-cell{ padding-right:var(--s-8); } }
   @media (max-width:359px){ .ph-status{ gap:var(--s-4); padding:0 var(--s-6); } .sb-cell{ padding-right:var(--s-4); } .sb-num{ font-size:var(--t-20); } .ph-status .deliv-one{ width:60px; padding:0 var(--s-4); } }   /* D2 (Oct 13): room to spare at 320 px (it was 7 px over before Stage B) */
-  .ph-persp{ margin-left:auto; font-size:var(--t-12); font-weight:800; font-stretch:85%; letter-spacing:var(--tr-label); text-transform:uppercase; text-align:right; color:var(--on-dark); }
-  .ph-persp.locked{ color:var(--on-dark-dim); }
+  .ph-persp{ margin-left:auto; min-height:40px; padding:0 var(--s-8); font-size:var(--t-12); font-weight:800; font-stretch:85%; letter-spacing:var(--tr-label); text-transform:uppercase; text-align:right; color:var(--on-dark); background:transparent; border:1px solid var(--brand-line); }
+  .ph-persp.locked{ color:var(--on-dark-dim); border-color:transparent; }
+  /* U15: Live Game phones -- the button sits on its own thin dark line under the scoreboard */
+  .ph-persp-row{ display:flex; justify-content:flex-end; align-items:center; margin:calc(-1 * var(--s-4)) 0 calc(-1 * var(--s-4)); }
+  .ph-persp-row .ph-persp{ min-height:32px; color:var(--ink); border-color:var(--border-strong); }
+  .ph-persp-row .ph-persp.locked{ color:var(--ink-faint); border-color:transparent; }
+  .ph-persp-note{ margin:0; font-size:12px; font-weight:600; color:var(--ink-faint); text-align:right; }
   /* one grid square on a phone: the grid is min(screen - 28px, 320px) wide,
      3px padding each side and 3px gaps, five across */
   .ph-layout{ --chip:calc((min(100vw - 28px, 320px) - 18px) / 5); }
   .deliv-row{ display:flex; align-items:center; gap:var(--s-4); min-height:44px; }
   /* Joel, Oct 1: Set and Windup are the same width */
   .deliv-one{ flex:none; width:78px; padding:0 var(--s-8); font-weight:700; }
-  .ttp-btn.ttp-compact{ flex:none; font-size:16px; }
+  .ars-plus{ flex:none; font-size:24px; font-weight:700; line-height:1; }   /* U15: the "+" where the clock was */
+  .ptype-label-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--s-8); margin-bottom:var(--s-8); }
+  /* U15: the Pitches bubble -- a bottom sheet on phones, a centered card on iPad and laptop */
+  .ars-sheet .ars-list{ display:flex; flex-direction:column; gap:var(--s-8); }
+  .ars-row{ border:1px solid var(--border); border-radius:var(--radius-control); padding:var(--s-8) var(--s-12); display:flex; flex-direction:column; gap:var(--s-6); }
+  .ars-row.is-focus{ border-color:var(--brand-mid); box-shadow:0 0 0 1px var(--brand-mid); }
+  .ars-head{ display:flex; align-items:center; gap:var(--s-8); }
+  .ars-name{ font-weight:700; }
+  .ars-cells, .ars-note{ margin:0; }
+  .ars-actions{ display:flex; gap:var(--s-8); flex-wrap:wrap; }
+  .sess-sheet.ars-sheet .ars-actions .btn, .sess-sheet.ars-sheet .ars-add-btn{ width:auto; min-height:44px; font-size:14px; }
+  .ars-add-list{ display:flex; flex-wrap:wrap; gap:var(--s-8); }
+  .ars-sheet .zone-paint .zone-grid{ max-width:300px; }
+  @media (min-width:501px){ .ars-overlay{ align-items:center; padding:var(--s-16); } .sess-sheet.ars-sheet{ border-radius:var(--radius-dock); max-height:90vh; } }
+  .hold-chip{ -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
   /* Joel, Oct 8: in the Live Game status bar (phones) */
   .ph-status-deliv{ margin-left:auto; display:flex; align-items:center; gap:var(--s-6); }
   .ph-status .deliv-one{ width:76px; height:34px; min-height:34px; padding:0 var(--s-8); font-size:14px; }
-  .ph-status .ttp-btn.ttp-compact{ width:40px; min-width:40px; height:34px; min-height:34px; }
   @media (max-width:359px){ .ph-status{ gap:var(--s-4); padding:0 var(--s-6); } .sb-cell{ padding-right:var(--s-4); } .sb-lbl{ letter-spacing:0.02em; } .ph-status-deliv{ gap:var(--s-4); } .ph-status .deliv-one{ width:60px; padding:0 var(--s-4); } }   /* after the rules above, so the smallest phones win */
   .pstrip-wrap{ flex:1; min-width:0; display:flex; align-items:center; gap:var(--s-2); }
   .pstrip-arrow{ flex:none; width:20px; min-width:0; padding:0; font-size:24px; font-weight:800; }
@@ -812,7 +834,6 @@
   .history-tray{ flex:1 1 260px; max-width:420px; }
   .deliv-tray-row{ display:flex; align-items:center; gap:var(--s-8); }
   .deliv-tray-row .tray{ flex:1 1 auto; max-width:260px; }
-  .chip-x{ min-height:0; padding:0 0 0 var(--s-4); color:inherit; font-size:12px; }
   /* the iPad/laptop left column is narrow: the perspective's two long choices stack */
   .wide-left .tray[data-tray="persp"]{ flex-direction:column; }
   .wide-left .tray[data-tray="persp"] .seg{ min-height:44px; }
@@ -1063,10 +1084,6 @@
   .perspective-delivery-row{ display:flex; flex-wrap:wrap; gap:var(--s-20); }
   .perspective-delivery-row > div{ flex:1; min-width:180px; }
   /* U11 (7): the stopwatch sits with Windup / Set. Disabled (greyed) unless Set. */
-  .ttp-btn:not(.ttp-compact){ min-width:84px; }
-  .ttp-btn.ttp-running{ box-shadow:var(--ring-target); }
-  .ttp-btn.ttp-ok{ background:var(--brand-bg); color:var(--surface); }
-  .ttp-btn.ttp-bad{ color:var(--danger); box-shadow:var(--ring-danger); }
   /* U11 (5): no batter -- the RHB frame stays, the silhouette flip doesn't. */
   .no-batter .kb-batter{ display:none; }
   /* Reserved band for the result row, directly above the grid (G1b-r2:
@@ -2000,7 +2017,7 @@ let TYPE_PALETTE = SPORTS.baseball.palette;   // the active sport's (applySport)
    option still calls its own handler -- only the markup is shared. */
 function segTray(items, o){
   o = o || {};
-  const segs = items.map(it => `<button type="button" class="seg${it.cls ? ' ' + it.cls : ''}" aria-pressed="${it.selected ? 'true' : 'false'}"${it.disabled ? ' disabled' : ''}${it.title ? ` title="${it.title}"` : ''} onclick="${it.onclick}">${it.label}</button>`).join('');
+  const segs = items.map(it => `<button type="button" class="seg${it.cls ? ' ' + it.cls : ''}" aria-pressed="${it.selected ? 'true' : 'false'}"${it.disabled ? ' disabled' : ''}${it.title ? ` title="${it.title}"` : ''}${it.attrs ? ' ' + it.attrs : ''} onclick="${it.onclick}">${it.label}</button>`).join('');
   return `<div class="tray${o.cls ? ' ' + o.cls : ''}" role="group"${o.label ? ` aria-label="${o.label}"` : ''}${o.key ? ` data-tray="${o.key}"` : ''}${o.id ? ` id="${o.id}"` : ''}>${segs}${o.key ? '<span class="tray-ind" aria-hidden="true"></span>' : ''}</div>`;
 }
 const trayLastBox = {};
@@ -2056,14 +2073,15 @@ function applyPitchColorClasses(){
   }catch(e){}
 }
 function typeColorClass(pitcher, type){
-  const idx = pitchTypesFor(pitcher).indexOf(type);
+  const idx = colorTypesFor(pitcher).indexOf(type);
   return 'ptc-' + (idx >= 0 ? idx % TYPE_PALETTE.length : 0);
 }
 // A pitch-type tray (wide layouts: two per row).
 function pitchTypeTray(p, grid){
   return segTray(pitchTypesFor(p).map(t => ({
     label: `<span class="type-dot" aria-hidden="true"></span>${pitchLabel(t)}`,
-    cls: typeColorClass(p, t), selected: state.selectedType === t,
+    cls: typeColorClass(p, t) + ' hold-chip', selected: state.selectedType === t,
+    attrs: `data-hold-type="${escHtml(t)}"`,
     onclick: `selectType(${escHtml(JSON.stringify(t))})`
   })), { key: 'ptype', label: 'Pitch type', cls: grid ? 'tray-grid' : '' });
 }
@@ -2194,7 +2212,11 @@ let state = {
   nameStatus: null,         // U9: null | 'saving' | 'saved' | 'error:<msg>'
   setupReminderDismissed: false,   // U9: per-session only, never persisted -- resets on reload
   zones: {},                // U7B: { pitcherId: { pitchType: { R: ['row-col', ...], L: [...] } } }, catcher frame
-  zonePaint: null,          // U7B: the zone being painted { pitcherId, type, side, cells }
+  zonePaint: null,          // U7B: the zone being painted { pitcherId, type, side, cells } (U15: inSheet when it's in the Pitches bubble)
+  arsenalSheet: null,       // U15: the Pitches bubble { pitcherId, focus, toAdd, removeArmed }
+  arsenalMsg: '',
+  switchSheet: null,        // U15: the coach's pitcher switch { step: 'pick' | 'confirm', to }
+  perspNoteUntil: 0,        // U15: "Perspective is set for this session" after a tap on the locked button
   zoneMsg: '',
   passwordStatus: null,     // U7: null | 'sending' | 'saved' | 'error:<msg>'
   contactsSavedAt: null,
@@ -2273,8 +2295,17 @@ function isFacilityManager(){ return currentTeamIsFacility() && isHeadOfCurrentT
 function pitchTypesFor(p){
   return (p && p.pitchTypes) ? p.pitchTypes : [];
 }
+// U15 (decision 3): while charting, colours follow the arsenal as it was when the session started, so adding or
+// removing a pitch mid-session never recolours what's already on the grid; a pitch added since goes on the end.
+function colorTypesFor(p){
+  const list = pitchTypesFor(p), s = state.activeSession;
+  if(state.view !== 'session' || !s || !s.kind || !Array.isArray(s.typeOrder) || !p || p.id !== state.currentPitcherId) return list;
+  const out = s.typeOrder.slice();
+  list.forEach(t => { if(out.indexOf(t) < 0) out.push(t); });
+  return out;
+}
 function colorForType(pitcher, type){
-  const idx = pitchTypesFor(pitcher).indexOf(type);
+  const idx = colorTypesFor(pitcher).indexOf(type);
   return TYPE_PALETTE[idx >= 0 ? idx % TYPE_PALETTE.length : 0];
 }
 // Which label color reads on a pitch-type color: the sport's ink or white, whichever has more contrast
@@ -2587,7 +2618,6 @@ const REPORT_VIEW_NAME = REPORT_VIEW === 'pitcher' ? "Pitcher's view" : "Catcher
 function sessionPerspective(session){
   return (session && session.chartingPerspective) || 'behind_catcher';
 }
-const PERSPECTIVE_PREF_KEY = 'lastChartingPerspective';
 
 // U2a -- batter side. Live (in-session, not-yet-saved) value defaults to
 // 'R'; NOT remembered across sessions like chartingPerspective is (Joel,
@@ -4885,43 +4915,170 @@ window.submitAccountSetup = async function(role){
 };
 
 /* ---------- PITCH MIX + THROWS (Profile pages; pitcher edits own, coach edits a rostered pitcher) ----------
-   A pitcher writes their own row directly (pitch_types / throws are the only
-   profile columns clients may update); a coach goes through coach_set_pitch_types /
-   coach_set_throws, which only accept a pitcher on one of the coach's own teams. */
+   Throws: a pitcher writes their own row directly; a head coach goes through coach_set_throws.
+   U15 (Joel, Nov 6 2026): the arsenal (pitch_types) has one write path for everyone, set_pitch_arsenal, which
+   accepts the pitcher's own login (a parent for their player) and any coach who can see the pitcher on a current
+   team -- assistants and a facility's group coaches too. Online only (decision 1). */
+function canEditArsenal(p){
+  if(!p || !state.profile || activeLinked()) return false;   // F1-G: linked sign-ins stay read-only
+  if(isCoach()) return !currentTeamArchived() && state.roster.some(r => r.id === p.id);
+  return p.id === state.profile.id;
+}
 async function savePitchMix(types){
-  let ok = false;
-  if(isCoach()){
-    const p = currentPitcher();
-    if(!p) return false;
-    const { error } = await supabaseClient.rpc('coach_set_pitch_types', { p_pitcher_id: p.id, p_types: types });
-    ok = !error;
-    if(ok) p.pitchTypes = types;
-  } else {
-    const { error } = await supabaseClient.from('profiles').update({ pitch_types: types }).eq('id', state.profile.id);
-    ok = !error;
-    if(ok) state.profile.pitch_types = types;
+  const p = currentPitcher();
+  if(!p) return false;
+  if(!isOnline()){ state.arsenalMsg = 'Needs a connection. Changes to pitches save online.'; return false; }
+  const { error } = await supabaseClient.rpc('set_pitch_arsenal', { p_pitcher: p.id, p_types: types });
+  const ok = !error;
+  if(ok){
+    p.pitchTypes = types.slice();
+    if(state.profile && state.profile.id === p.id) state.profile.pitch_types = types.slice();
+    const r = state.roster.find(x => x.id === p.id); if(r) r.pitchTypes = types.slice();
+    await saveLastKnownContext();   // charting and New Session read the mix offline from this snapshot
   }
-  state.profileMsg = ok ? '' : 'Could not save. Check your connection and try again.';
-  if(ok) await saveLastKnownContext();   // New Session reads the mix offline from this snapshot
+  state.arsenalMsg = ok ? '' : (error && /not allowed/.test(error.message || '') ? "You can't change this pitcher's pitches." : 'Could not save. Check your connection and try again.');
   return ok;
 }
-window.addPitchType = async function(){
-  const input = document.getElementById('new-type-input');
-  const val = (input && input.value || '').trim();
+
+/* ---------- U15: THE PITCHES BUBBLE (one editor; three ways in) ----------
+   The "+" on the charting screen opens it on Add a pitch; holding a pitch chip opens it on that pitch; Profile's
+   Pitch mix opens it too. Each pitch: Edit accuracy (the U14 painter, inline) and Remove (confirm). Below: the
+   pitches not yet in the arsenal, one tap adds. A pitch removed mid-session stays on the pitches already charted. */
+window.openArsenalSheet = function(focusType, toAdd){
   const p = currentPitcher();
-  if(!val || !p) return;
-  const types = [...(p.pitchTypes || [])];
-  if(!types.includes(val)) types.push(val);
-  await savePitchMix(types);
+  if(!canEditArsenal(p)) return;
+  state.arsenalSheet = { pitcherId: p.id, focus: focusType || null, toAdd: !!toAdd, removeArmed: null };
+  state.arsenalMsg = '';
+  state.zonePaint = null;
+  state.zoneMsg = '';
+  render();
+  setTimeout(() => {
+    const el = document.getElementById(toAdd ? 'ars-add' : (focusType ? 'ars-row-' + arsenalRowId(focusType) : ''));
+    if(el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+  }, 0);
+};
+window.closeArsenalSheet = function(){ state.arsenalSheet = null; state.zonePaint = null; state.zoneMsg = ''; state.arsenalMsg = ''; render(); };
+function arsenalRowId(t){ return String(t).replace(/[^A-Za-z0-9]/g, '_'); }
+window.arsenalAdd = async function(type){
+  const p = currentPitcher();
+  if(!p || !state.arsenalSheet) return;
+  const types = pitchTypesFor(p).slice();
+  if(types.indexOf(type) < 0) types.push(type);
+  const ok = await savePitchMix(types);
+  if(ok){ state.arsenalSheet.focus = type; state.arsenalSheet.toAdd = false; }
   render();
 };
-window.removePitchType = async function(type){
+window.arsenalArmRemove = function(type){ if(state.arsenalSheet){ state.arsenalSheet.removeArmed = type; render(); } };
+window.arsenalKeep = function(){ if(state.arsenalSheet){ state.arsenalSheet.removeArmed = null; render(); } };
+window.arsenalRemove = async function(type){
+  const p = currentPitcher();
+  if(!p || !state.arsenalSheet) return;
+  const ok = await savePitchMix(pitchTypesFor(p).filter(t => t !== type));
+  if(ok){
+    if(state.selectedType === type) state.selectedType = null;   // the next chip tap selects again
+    if(state.zonePaint && state.zonePaint.type === type) state.zonePaint = null;
+    state.arsenalSheet.removeArmed = null;
+    if(state.arsenalSheet.focus === type) state.arsenalSheet.focus = null;
+  }
+  render();
+};
+window.arsenalEditAccuracy = function(type){
   const p = currentPitcher();
   if(!p) return;
-  await savePitchMix((p.pitchTypes || []).filter(t => t !== type));
-  if(state.selectedType === type) state.selectedType = null;
+  if(state.zonePaint && state.zonePaint.type === type){ state.zonePaint = null; state.zoneMsg = ''; render(); return; }
+  if(state.arsenalSheet) state.arsenalSheet.focus = type;
+  state.zonePaint = { pitcherId: p.id, type, side: 'R', cells: (zoneCellsFor(p.id, type, 'R') || []).slice(), inSheet: true };
+  state.zoneMsg = '';
   render();
 };
+function renderArsenalSheet(){
+  const a = state.arsenalSheet, p = currentPitcher();
+  if(!a || !p || p.id !== a.pitcherId) return '';
+  const s = state.activeSession, charting = state.view === 'session' && s && s.kind;
+  const raOffNote = charting && !s.raOn ? '<p class="profile-note ars-note">Relative accuracy is off for this session. Cells saved here count from the next session that turns it on.</p>' : '';
+  const rows = pitchTypesFor(p).map(t => {
+    const col = colorForType(p, t), focus = a.focus === t, painting = state.zonePaint && state.zonePaint.type === t;
+    const r = zoneCellsFor(p.id, t, 'R'), l = zoneCellsFor(p.id, t, 'L');
+    const cellsLine = `vs RHB ${r ? r.length : 0} of ${RA_MAX_CELLS} · vs LHB ${l ? l.length : 0} of ${RA_MAX_CELLS}`;
+    const armed = a.removeArmed === t;
+    return `<div class="ars-row${focus ? ' is-focus' : ''}" id="ars-row-${arsenalRowId(t)}">
+      <div class="ars-head">
+        <span class="pitch-chip" style="background:${col};color:${readableTextOn(col)};">${pitchLabel(t)}</span>
+        <span class="ars-name">${escHtml(t)}</span>
+      </div>
+      <p class="profile-note ars-cells">${cellsLine}</p>
+      ${armed ? `<p class="delete-warn">Remove ${escHtml(t)} from the pitches? Pitches already charted keep it.</p>
+        <div class="ars-actions">
+          <button type="button" class="btn btn-danger btn-sm" onclick="arsenalRemove(${escHtml(JSON.stringify(t))})">Remove</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="arsenalKeep()">Keep</button>
+        </div>` : `<div class="ars-actions">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="arsenalEditAccuracy(${escHtml(JSON.stringify(t))})" aria-expanded="${painting ? 'true' : 'false'}">${painting ? 'Close accuracy' : 'Edit accuracy'}</button>
+          <button type="button" class="btn btn-tertiary btn-sm" onclick="arsenalArmRemove(${escHtml(JSON.stringify(t))})">Remove</button>
+        </div>`}
+      ${painting ? raOffNote + renderZonePainter() : ''}
+    </div>`;
+  }).join('') || `<p class="profile-note">No pitches yet. Add the first one below.</p>`;
+  const have = pitchTypesFor(p);
+  const remaining = PITCH_CATALOG.filter(c => have.indexOf(c.name) < 0);
+  const full = have.length >= 20;
+  const add = remaining.length && !full ? `<div class="ars-add-list">${remaining.map(c =>
+      `<button type="button" class="btn btn-secondary btn-sm ars-add-btn" onclick="arsenalAdd(${escHtml(JSON.stringify(c.name))})">+ ${escHtml(c.name)}</button>`).join('')}</div>`
+    : `<p class="profile-note">${full ? 'That’s the most pitches one profile can have (20).' : 'Every pitch on the list is already added.'}</p>`;
+  const who = isCoach() ? escHtml(p.name) + '’s pitches' : (p.id === (state.session && state.session.user.id) ? 'Your pitches' : escHtml(p.name) + '’s pitches');
+  return `<div class="modal-overlay sheet-overlay ars-overlay" onclick="if(event.target===this) closeArsenalSheet();">
+    <div class="sess-sheet ars-sheet" role="dialog" aria-label="Pitches">
+      <div class="sess-sheet-title">${who}</div>
+      ${state.arsenalMsg ? `<p class="profile-msg">${escHtml(state.arsenalMsg)}</p>` : ''}
+      <div class="ars-list">${rows}</div>
+      <div id="ars-add"><div class="field-label" style="margin-bottom:var(--s-8);">Add a pitch</div>${add}</div>
+      <button type="button" class="btn btn-secondary ars-close" onclick="closeArsenalSheet()">Done</button>
+    </div>
+  </div>`;
+}
+// The "+" (P1): opens the bubble on Add a pitch. Only for someone who can edit this arsenal.
+function renderArsenalPlus(p){
+  if(!canEditArsenal(p)) return '';
+  return `<button type="button" class="btn btn-secondary btn-icon hit44 ars-plus" onclick="openArsenalSheet(null, true)" aria-label="Add or edit pitches" title="Pitches">+</button>`;
+}
+// "Pitch type" over the trays (iPad / laptop); softball has no delivery control, so its "+" sits here.
+function renderPitchTypeLabel(p){
+  const plus = sportCfg().hasDelivery ? '' : renderArsenalPlus(p);
+  return plus ? `<div class="ptype-label-row"><span class="field-label">Pitch type</span>${plus}</div>`
+    : `<div class="field-label" style="margin-bottom:var(--s-8);">Pitch type</div>`;
+}
+// No pitches yet: open the bubble right here when this viewer can edit; otherwise say who can.
+function renderMixPrompt(p){
+  if(p.pitchTypes && p.pitchTypes.length) return '';
+  if(canEditArsenal(p)) return `<p class="mix-prompt">${isCoach() ? escHtml(p.name) + ' has no pitches yet.' : 'No pitches yet.'} Add them to start charting.</p>
+    <button class="btn btn-secondary" onclick="openArsenalSheet(null, true)">Add pitches</button>`;
+  return `<p class="mix-prompt">${escHtml(p.name)} has no pitches yet. A coach or the pitcher can add them.</p>`;
+}
+// Holding a pitch chip (500 ms, cancelled by a move so the strip still swipes) opens the bubble on that pitch.
+// The click that follows a hold is swallowed, so a hold never also selects the pitch.
+(function(){
+  let timer = null, startX = 0, startY = 0, swallowUntil = 0;
+  function clear(){ if(timer){ clearTimeout(timer); timer = null; } }
+  document.addEventListener('pointerdown', e => {
+    const chip = e.target && e.target.closest ? e.target.closest('[data-hold-type]') : null;
+    clear();
+    swallowUntil = 0;
+    if(!chip || (e.button !== undefined && e.button !== 0)) return;
+    if(!canEditArsenal(currentPitcher())) return;
+    startX = e.clientX; startY = e.clientY;
+    const type = chip.getAttribute('data-hold-type');
+    timer = setTimeout(() => { timer = null; swallowUntil = Date.now() + 1500; try{ if(navigator.vibrate) navigator.vibrate(10); }catch(err){} openArsenalSheet(type, false); }, 500);
+  }, true);
+  document.addEventListener('pointermove', e => { if(timer && (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10)) clear(); }, true);
+  ['pointerup', 'pointercancel'].forEach(n => document.addEventListener(n, clear, true));
+  // the sheet is drawn under the finger mid-hold, so the click that ends the hold may land on it: swallow that one
+  document.addEventListener('click', e => {
+    if(!swallowUntil) return;
+    const fresh = Date.now() <= swallowUntil;
+    swallowUntil = 0;
+    if(fresh){ e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  document.addEventListener('contextmenu', e => { if(e.target && e.target.closest && e.target.closest('[data-hold-type]')) e.preventDefault(); });
+})();
 window.setThrows = async function(val){
   const p = currentPitcher();
   if(!p) return;
@@ -5115,10 +5272,9 @@ window.toggleContactsPanel = async function(){
 /* ---------- SESSION LOGGING (pitcher only) ---------- */
 function draftKey(){ return 'draft:' + state.currentPitcherId + ':' + state.currentTeamId; }
 // U5: one place a fresh session gets constructed, so chartingPerspective's
-// default (the device's last choice, remembered per PERSPECTIVE_PREF_KEY)
+// default (U15: no longer the device's last choice -- chooseSessionKind sets each kind's)
 // is only ever read in one spot rather than duplicated at each call site.
 async function freshActiveSession(){
-  const lastPerspective = await storGet(PERSPECTIVE_PREF_KEY);
   // U2a: currentBatterSide always starts 'R' -- deliberately NOT remembered
   // across sessions like chartingPerspective is (see sessionBatterSide's
   // comment). U9: usesRadarGun is deliberately NOT set here -- an empty,
@@ -5130,7 +5286,7 @@ async function freshActiveSession(){
   // instead of any charting UI whenever it's still null. The game-only
   // counters are set by chooseSessionKind() once 'game' is actually
   // picked, not here, so a bullpen session never carries them at all.
-  return { kind: null, pitches: [], startedAt: Date.now(), chartingPerspective: lastPerspective || 'behind_catcher', currentBatterSide: 'R' };
+  return { kind: null, pitches: [], startedAt: Date.now(), chartingPerspective: 'behind_catcher', currentBatterSide: 'R' };   // U15: chooseSessionKind sets each kind's own
 }
 async function refreshDraftState(){
   if(!state.currentPitcherId){ state.draftAvailable = false; state.activeSession = null; return; }
@@ -5238,11 +5394,31 @@ window.togglePerspectiveRoll = function(){
   state.perspectiveRolledUp = !state.perspectiveRolledUp;
   render();
 };
+// U15 (P2): on phones the side the charter stands on is one button -- Catcher / Pitcher -- on the pitch-count line
+// (Live Game: under the scoreboard). It flips the view until the first pitch; then a tap only says why it won't.
+function renderPerspButton(light){
+  const s = state.activeSession, locked = s.pitches.length > 0;
+  const behindPitcher = sessionPerspective(s) === 'behind_pitcher';
+  return `<button type="button" class="btn btn-tertiary${light ? '' : ' on-dark'} ph-persp${locked ? ' locked' : ''}" onclick="flipPerspective()" aria-label="Charting from behind the ${behindPitcher ? 'pitcher' : 'catcher'}${locked ? ', set for this session' : '. Tap to switch'}">${behindPitcher ? 'Pitcher' : 'Catcher'}${locked ? ' · locked' : ' ⇄'}</button>`;
+}
+function renderPerspNote(){
+  return Date.now() < state.perspNoteUntil ? '<p class="ph-persp-note" role="status">Perspective is set for this session.</p>' : '';
+}
+window.flipPerspective = function(){
+  const s = state.activeSession;
+  if(!s) return;
+  if(s.pitches.length > 0){
+    state.perspNoteUntil = Date.now() + 2500;
+    render();
+    setTimeout(() => { if(Date.now() >= state.perspNoteUntil) render(); }, 2600);
+    return;
+  }
+  window.selectPerspective(sessionPerspective(s) === 'behind_pitcher' ? 'behind_catcher' : 'behind_pitcher');
+};
 window.selectPerspective = async function(newPerspective){
   if(state.activeSession.pitches.length > 0) return; // locked after the first pitch
   state.activeSession.chartingPerspective = newPerspective;
   state.perspectiveRolledUp = true;   // Joel, Oct 1: phones roll it up once picked (ignored elsewhere)
-  await storSet(PERSPECTIVE_PREF_KEY, newPerspective);
   await storSet(draftKey(), state.activeSession);
   render();
 };
@@ -5278,64 +5454,9 @@ function renderBatterModeToggle(){
   return `<div><div class="field-label" style="margin-bottom:var(--s-8);">Batter</div>${tray}</div>`;
 }
 
-/* ---------- U11 (7): TIME TO HOME (stopwatch) ----------
-   Only under Set (a stretch measurement). Tap 1 = the pitcher's first
-   move, tap 2 = the catcher's glove; the reading shows on the button and
-   attaches to the NEXT pitch recorded (the location tap that follows), then
-   clears. Tapping again before that pitch restarts. A reading nobody uses
-   within 60 s is discarded. 0.80-3.00 s only -- anything else shows red and
-   is never stored (a late start or stop). In-memory on purpose: nothing on
-   the charting path waits on it, and it works offline like everything else. */
-const TTP_MIN = 0.80, TTP_MAX = 3.00, TTP_KEEP_MS = 60000;
-let ttpTicker = null, ttpExpiry = null;
-function ttpState(){ return state.ttp || (state.ttp = { phase: 'idle', startedAt: 0, value: null, stoppedAt: 0 }); }
-function ttpValid(v){ return v !== null && v >= TTP_MIN && v <= TTP_MAX; }
-function ttpReset(){
-  state.ttp = { phase: 'idle', startedAt: 0, value: null, stoppedAt: 0 };
-  clearInterval(ttpTicker); ttpTicker = null;
-  clearTimeout(ttpExpiry); ttpExpiry = null;
-}
-window.tapTimeToPlate = function(){
-  const s = state.activeSession;
-  if(!s || s.delivery !== 'set') return;
-  const t = ttpState();
-  if(t.phase === 'running'){
-    t.phase = 'stopped';
-    t.stoppedAt = Date.now();
-    t.value = Math.round((t.stoppedAt - t.startedAt) / 10) / 100;
-    clearInterval(ttpTicker); ttpTicker = null;
-    clearTimeout(ttpExpiry);
-    ttpExpiry = setTimeout(() => { if(ttpState().phase === 'stopped'){ ttpReset(); render(); } }, TTP_KEEP_MS);
-  } else {                                   // idle or stopped: (re)start
-    ttpReset();
-    const n = ttpState();
-    n.phase = 'running';
-    n.startedAt = Date.now();
-    // Live readout without a full re-render: only the button's text changes.
-    ttpTicker = setInterval(() => {
-      const b = document.getElementById('ttp-btn');
-      if(b) b.textContent = '⏱ ' + ((Date.now() - n.startedAt) / 1000).toFixed(2);
-    }, 50);
-  }
-  render();
-};
-// The reading for the pitch being recorded right now -- then the stopwatch
-// clears, used or not. Only a stopped, in-range, fresh (<= 60 s) reading counts.
-function takeTimeToPlate(){
-  const t = ttpState();
-  const v = (t.phase === 'stopped' && ttpValid(t.value) && Date.now() - t.stoppedAt <= TTP_KEEP_MS) ? t.value : null;
-  if(t.phase !== 'idle') ttpReset();
-  return v;
-}
-function renderTimeToPlateBtn(compact){
-  const s = state.activeSession;
-  const enabled = !!s && s.delivery === 'set';
-  const t = ttpState();
-  let label = compact ? '⏱' : '⏱ Time', cls = 'btn ttp-btn ' + (compact ? 'btn-icon hit44 ttp-compact' : 'btn-secondary btn-sm');
-  if(t.phase === 'running'){ label = '⏱ ' + ((Date.now() - t.startedAt) / 1000).toFixed(2); cls += ' ttp-running'; }
-  else if(t.phase === 'stopped'){ label = '⏱ ' + t.value.toFixed(2); cls += ttpValid(t.value) ? ' ttp-ok' : ' ttp-bad'; }
-  return `<button type="button" id="ttp-btn" class="${cls}" ${enabled ? '' : 'disabled'} title="${enabled ? 'Time to home: tap at first move, tap again at the glove' : 'Time to home is timed from the stretch: choose Set'}" onclick="tapTimeToPlate()">${label}</button>`;
-}
+/* ---------- U11 (7): TIME TO HOME -- retired by U15 (Joel, Nov 6 2026) ----------
+   The stopwatch is gone from every charting screen. pitches.time_to_plate stays in the schema; no new value is
+   written, and History / reports still show the times of sessions that have them. */
 
 window.toggleBatterSide = async function(){
   state.activeSession.currentBatterSide = sessionBatterSide(state.activeSession) === 'R' ? 'L' : 'R';
@@ -5671,7 +5792,7 @@ window.handleZoneTap = async function(row, col){
     // above still used the RHB zones via batterSide).
     batterSide: isNoBatter(state.activeSession) ? null : batterSide,
     delivery: state.activeSession.delivery || null,   // U11 (6)
-    timeToPlate: takeTimeToPlate(),                   // U11 (7)
+    timeToPlate: null,                                // U11 (7); U15: the clock is retired, nothing new is timed
     ts: Date.now()
   });
   state.pendingTarget = null;
@@ -6957,8 +7078,9 @@ function renderHomePlate(chartingPerspective){
 /* ---------- RENDER: SESSION VIEW (pitcher only) ---------- */
 // U5: session-start "prompt" is a persistent, always-visible toggle (this
 // codebase has no modal/dialog pattern anywhere) rather than a one-shot
-// dismissible dialog -- pre-filled from the device's remembered last
-// choice, locked once the first pitch is logged so the tap->storage mirror
+// dismissible dialog -- U15: a bullpen starts behind the pitcher, a Live
+// Game behind the catcher (no longer the device's last choice); phones use
+// the Catcher / Pitcher button (renderPerspButton) instead. Locked once the first pitch is logged so the tap->storage mirror
 // never has more than its one capture-time call site to worry about.
 function renderPerspectiveToggle(forceFull){
   const current = sessionPerspective(state.activeSession);
@@ -7050,7 +7172,7 @@ function headerBackTarget(){
   const v = state.view;
   if(v === 'session' && state.activeSession && state.activeSession.startQ && canGoBackToChooser()) return 'chooser';
   if(v === 'chat' && state.chat && state.chat.threadId) return 'chat';
-  if(v === 'profile' && state.zonePaint) return 'profile';
+  if(v === 'profile' && state.zonePaint && !state.zonePaint.inSheet) return 'profile';
   if(v === 'pitcherProfile' && isCoach()) return 'roster';
   return null;
 }
@@ -7084,6 +7206,7 @@ window.chooseSessionKind = async function(kind){
     state.activeSession.batterMode = 'none';
     state.activeSession.currentBatterSide = 'R';
     state.activeSession.delivery = sportCfg().hasDelivery ? 'windup' : null;   // S1: softball has no Set/Windup
+    state.activeSession.chartingPerspective = 'behind_pitcher';   // U15 (E1): a bullpen always opens behind the pitcher
   }
   if(kind === 'game'){
     // Fresh game state. Bases start empty, so the delivery starts at Windup
@@ -7115,10 +7238,8 @@ window.chooseSessionKind = async function(kind){
     // regardless of which array it lives in.
     state.activeSession.events = [];
     state.activeSession.nextSeq = 1;
-    // Games are usually charted from behind the plate (Joel) -- override
-    // whatever the last BULLPEN charted from, since that's a different
-    // remembered habit. Still just the default; the toggle still shows
-    // and can be changed before the first pitch, same as a bullpen's.
+    // U15 (E1): a Live Game always opens behind the catcher (a bullpen behind the pitcher); the
+    // Catcher / Pitcher button changes it before the first pitch.
     state.activeSession.chartingPerspective = 'behind_catcher';
     // G1b-r2a: whether the drop-down panel covers the grid. Not derivable
     // from gamePendingPitch/fieldPlay alone -- after a direct-record glyph
@@ -7130,6 +7251,7 @@ window.chooseSessionKind = async function(kind){
   // Joel, Oct 12: then the start questions -- radar gun today, relative accuracy (bullpen), opponent (Live Game).
   // Defaults come from the profile; the answers belong to this session only.
   const pq = currentPitcher();
+  state.activeSession.typeOrder = pitchTypesFor(pq).slice();   // U15: this session's colour order (colorTypesFor)
   state.activeSession.startQ = { radar: !!(pq && pq.usesRadarGun), rel: raLastAnswer(pq), intent: false, intentHelp: false, file: fileDefault() };
   const handoff = kind === 'game' ? gameHandoff() : null;
   if(handoff){ state.activeSession.startQ.carry = true; if(handoff.opponent && !state.activeSession.opponent) state.activeSession.opponent = handoff.opponent; }
@@ -7582,12 +7704,10 @@ window.gridTiebreak = async function(yes){
 };
 function gameHasRunners(s){ return !!(s.runners && (s.runners[1] || s.runners[2] || s.runners[3])); }
 function defaultGameDelivery(s){
-  if(!sportCfg().hasDelivery){ s.delivery = null; ttpReset(); return; }   // S2: softball -- no delivery, ever
+  if(!sportCfg().hasDelivery){ s.delivery = null; return; }   // S2: softball -- no delivery, ever
   s.delivery = gameHasRunners(s) ? 'set' : 'windup';
-  if(s.delivery !== 'set') ttpReset();   // U11 (7): a time to home only exists under Set
 }
 window.setGameDelivery = async function(d){
-  if(d !== 'set') ttpReset();   // U11 (7): a time to home only exists under Set
   state.activeSession.delivery = d;
   await storSet(draftKey(), state.activeSession);
   render();
@@ -8885,8 +9005,8 @@ function renderDeliveryToggle(noTime){
   const opts = [{ key: 'windup', label: 'Windup' }, { key: 'set', label: 'Set' }];
   const tray = segTray(opts.map(o => ({ label: o.label, selected: s.delivery === o.key, onclick: `setGameDelivery('${o.key}')` })), { key: 'deliv', label: 'Delivery' });
   const label = 'Delivery' + (!s.delivery ? ' — pick one before the next pitch' : '');
-  const clock = !noTime && s.kind !== 'game';   // Joel, Oct 14: the clock is for bullpens only -- removed from Live Games
-  return `<div><div class="field-label" style="margin-bottom:var(--s-8);">${label}</div><div class="deliv-tray-row">${tray}${clock ? renderTimeToPlateBtn() : ''}</div></div>`;
+  // U15: the "+" (the Pitches bubble) sits where the clock was; the clock is retired (Live Games since Oct 14)
+  return `<div><div class="field-label" style="margin-bottom:var(--s-8);">${label}</div><div class="deliv-tray-row">${tray}${renderArsenalPlus(currentPitcher())}</div></div>`;
 }
 // G1b-r decisions 2/3/10, updated by G1b-r2: six buttons now, not seven --
 // H and O fold into one In Play icon button (opens the walkthrough, which
@@ -11117,6 +11237,7 @@ function renderGameSessionView(p){
           <span class="ph-diamond">${renderRunnerDiamond()}</span>
           ${renderStatusDelivery()}
         </div>
+        <div class="ph-persp-row">${renderPerspButton(true)}</div>${renderPerspNote()}
         ${renderPhoneDeliveryRow(p, true)}
         <div class="ph-grid-wrap">${renderPhoneHint()}
           <div class="zone-wrap lg-phone${g5OnDiamond() ? ' g5-on' : ''}">
@@ -11148,12 +11269,9 @@ function renderGameSessionView(p){
           ${raPill()}
         </div>
         <div>
-          <div class="field-label" style="margin-bottom:var(--s-8);">Pitch type</div>
+          ${renderPitchTypeLabel(p)}
           ${pitchTypeTray(p, false)}
-          ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
-            ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
-            : 'Add your pitches in Profile to start charting.'}</p>
-          <button class="btn btn-secondary" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
+          ${renderMixPrompt(p)}
         </div>
         <div class="hint-msg">${state.hint}</div>
         <div class="gridwrap">
@@ -11193,12 +11311,9 @@ function renderGameSessionView(p){
           <div class="wide-left">
             ${renderPerspectiveToggle()}
             <div>
-              <div class="field-label" style="margin-bottom:var(--s-8);">Pitch type</div>
+              ${renderPitchTypeLabel(p)}
               ${pitchTypeTray(p, true)}
-              ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
-                ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
-                : 'Add your pitches in Profile to start charting.'}</p>
-              <button class="btn btn-secondary" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
+              ${renderMixPrompt(p)}
             </div>
             ${sportCfg().hasDelivery ? renderDeliveryToggle(true) : ''}
           </div>
@@ -11240,7 +11355,7 @@ function renderGameSessionView(p){
    player header and the tabs give way to one session header
    (‹ team · photo name #num · ⋯); the ⋯ sheet holds perspective, opponent,
    End session & save, and Discard. Then a one-line status bar, one row with
-   a Set/Windup button, ⏱ and a swipeable pitch strip, the grid, the batter
+   a Set/Windup button, the "+" (U15; the clock until then) and a swipeable pitch strip, the grid, the batter
    pill under it, (Live Game) Undo / New batter / New inning, (pen) a slim
    velocity strip. Live Game velocity stays in the grid (Joel, 3a); ADV stays
    in the grid and IBB / auto ball / auto strike / balk stay under + More
@@ -11256,7 +11371,7 @@ function renderSessionHeader(p){
   const last = String(p.name || '').trim().split(/\s+/).pop();
   return `<div class="sess-head">
     <button type="button" class="btn btn-tertiary on-dark sess-back" onclick="sessionLeave()" aria-label="Back to the roster (this session is kept)">‹ <span class="sess-team">${escHtml(team ? team.name : '')}</span></button>
-    <span class="sess-who">${renderHeadshot(p)}<span class="sess-name">${escHtml(last)}</span>${(num === null || num === undefined) ? '' : `<span class="sess-num">#${escHtml(String(num))}</span>`}</span>
+    ${canSwitchPitcher() ? `<button type="button" class="sess-who sess-switch" onclick="openSwitchSheet()" aria-label="Switch pitcher (now ${escHtml(p.name || '')})">` : '<span class="sess-who">'}${renderHeadshot(p)}<span class="sess-name">${escHtml(last)}</span>${(num === null || num === undefined) ? '' : `<span class="sess-num">#${escHtml(String(num))}</span>`}${canSwitchPitcher() ? '<span class="sess-switch-mark" aria-hidden="true">▾</span></button>' : '</span>'}
     ${isOnline() ? '' : '<span class="sess-offline" title="Offline -- saved on this device" aria-label="Offline, saved on this device"></span>'}
     <button type="button" class="btn btn-icon on-dark sess-more" onclick="openSessionSheet()" aria-label="Session options">${KB_MARK_SVG}</button>
   </div>`;
@@ -11270,7 +11385,6 @@ function renderSessionHeader(p){
 window.sessionLeave = async function(){
   const s = state.activeSession;
   if(s && s.kind) await storSet(draftKey(), s);
-  ttpReset();
   state.pendingTarget = null; state.veloTargetIdx = null; state.hint = '';
   state.sessionSheetOpen = false; state.sessionDiscardArmed = false;
   await refreshDraftState();
@@ -11278,11 +11392,81 @@ window.sessionLeave = async function(){
   render();
   try{ window.scrollTo(0, 0); }catch(e){}
 };
+/* ---------- U15 (P4): SWITCH PITCHER FROM THE CHARTING SCREEN (coaches) ----------
+   Tapping the pitcher's name opens the roster. No pitches yet: it just switches. Otherwise Save (and in a Live Game the
+   next pitcher's start asks "Continue from where X left off?", set to Yes -- the R3 hand-off), Discard (a fresh
+   game; never a continuation) or Keep charting. Then the new pitcher's start questions, answered with his own
+   defaults: one tap on Start. A new pitcher with an unfinished session of his own lands on its Resume prompt. */
+function canSwitchPitcher(){
+  const s = state.activeSession;
+  return isCoach() && !!(s && s.kind) && state.roster.some(r => r.id !== state.currentPitcherId) && !state.saving;
+}
+window.coachNameTap = function(){
+  if(onChartingScreen() && canSwitchPitcher()) openSwitchSheet();
+  else setView('pitcherProfile');
+};
+window.openSwitchSheet = function(){
+  if(!canSwitchPitcher()) return;
+  state.switchSheet = { step: 'pick', to: null, discardArmed: false };
+  render();
+};
+window.closeSwitchSheet = function(){ state.switchSheet = null; render(); };
+window.pickSwitchPitcher = function(id){
+  const s = state.activeSession;
+  if(!state.switchSheet || !s) return;
+  if(!s.pitches.length){ doSwitchPitcher(id, 'none'); return; }
+  state.switchSheet = { step: 'confirm', to: id, discardArmed: false };
+  render();
+};
+window.armSwitchDiscard = function(){ if(state.switchSheet){ state.switchSheet.discardArmed = true; render(); } };
+window.doSwitchPitcher = async function(id, how){
+  const s = state.activeSession;
+  if(!s || !state.roster.some(r => r.id === id)) return;
+  const kind = s.kind;
+  state.switchSheet = null;
+  state.sessionSheetOpen = false; state.sessionDiscardArmed = false;
+  if(how === 'save'){
+    await endSession();
+    if(state.activeSession && state.activeSession.pitches && state.activeSession.pitches.length) return;   // not saved: stay put
+  } else {
+    await storDelete(draftKey());   // discarded, or nothing charted yet
+  }
+  await selectPitcher(id);
+  if(state.draftAvailable || !state.activeSession) return;   // he has an unfinished session: its Resume prompt shows
+  await chooseSessionKind(kind);
+  if(how === 'discard' && state.activeSession.startQ) state.activeSession.startQ.carry = undefined;   // never continue a discarded game
+  state.view = 'session';
+  render();
+  try{ window.scrollTo(0, 0); }catch(e){}
+};
+function renderSwitchSheet(){
+  const w = state.switchSheet, s = state.activeSession, cur = currentPitcher();
+  if(!w || !s || !s.kind || !cur) return '';
+  const game = s.kind === 'game', n = s.pitches.length, what = `${n} pitch${n === 1 ? '' : 'es'}`;
+  let body;
+  if(w.step === 'pick'){
+    body = state.roster.filter(r => r.id !== state.currentPitcherId).map(r =>
+      `<button type="button" class="btn btn-secondary switch-pick" onclick="pickSwitchPitcher('${r.id}')">${renderHeadshot(r)}<span>${escHtml(r.name)}</span></button>`).join('');
+  } else {
+    const to = state.roster.find(r => r.id === w.to);
+    body = `<p class="profile-note" style="margin:0;">Switching to ${escHtml(to ? to.name : '')}. ${escHtml(cur.name)}'s ${game ? 'game' : 'pen'} has ${what}.</p>
+      <button type="button" class="btn btn-primary" onclick="doSwitchPitcher('${w.to}', 'save')">Save and switch</button>
+      ${w.discardArmed ? `<p class="delete-warn">Discard ${escHtml(cur.name)}'s ${game ? 'game' : 'pen'}? ${n === 1 ? 'That pitch is' : 'The ' + what + ' are'} deleted from this device. This can't be undone.</p>
+        <button type="button" class="btn btn-danger" onclick="doSwitchPitcher('${w.to}', 'discard')">Discard and switch</button>`
+        : `<button type="button" class="btn btn-danger" onclick="armSwitchDiscard()">Discard and switch</button>`}`;
+  }
+  return `<div class="modal-overlay sheet-overlay ars-overlay" onclick="if(event.target===this) closeSwitchSheet();">
+    <div class="sess-sheet" role="dialog" aria-label="Switch pitcher">
+      <div class="sess-sheet-title">${w.step === 'pick' ? 'Switch pitcher' : 'Before you switch'}</div>
+      ${body}
+      <button type="button" class="btn btn-secondary" onclick="closeSwitchSheet()">Keep charting</button>
+    </div>
+  </div>`;
+}
 window.openSessionSheet = function(){ state.sessionSheetOpen = true; state.sessionDiscardArmed = false; render(); };
 window.closeSessionSheet = function(){ state.sessionSheetOpen = false; state.sessionDiscardArmed = false; render(); };
 window.armDiscardSession = function(){ state.sessionDiscardArmed = true; render(); };
 window.discardActiveSession = async function(){
-  ttpReset();
   await storDelete(draftKey());
   state.activeSession = await freshActiveSession();
   state.pendingTarget = null; state.veloTargetIdx = null; state.hint = '';
@@ -11340,7 +11524,7 @@ function renderPitchStrip(p){
   // U13: a scrollable tray -- each type's dot and selected underline in its own color (Joel, Oct 1 kept the colors).
   const chips = pitchTypesFor(p).map(t => {
     const sel = state.selectedType === t;
-    return `<button type="button" class="seg pstrip-chip ${typeColorClass(p, t)}" aria-pressed="${sel ? 'true' : 'false'}" onclick="selectType(${escHtml(JSON.stringify(t))})"><span class="type-dot" aria-hidden="true"></span>${pitchLabel(t)}</button>`;
+    return `<button type="button" class="seg pstrip-chip hold-chip ${typeColorClass(p, t)}" data-hold-type="${escHtml(t)}" aria-pressed="${sel ? 'true' : 'false'}" onclick="selectType(${escHtml(JSON.stringify(t))})"><span class="type-dot" aria-hidden="true"></span>${pitchLabel(t)}</button>`;
   }).join('');
   return `<div class="pstrip-wrap">
     <button type="button" class="btn btn-tertiary pstrip-arrow" id="pstrip-prev" onclick="pitchStripStep(-1)" aria-label="Earlier pitch types">‹</button>
@@ -11444,7 +11628,7 @@ function attachPitchStrip(){
 }
 function renderPhoneDeliveryRow(p, deliveryInStatus){
   const withDelivery = sportCfg().hasDelivery && !deliveryInStatus;
-  return `<div class="deliv-row">${withDelivery ? renderDeliveryOne() + renderTimeToPlateBtn(true) : ''}${renderPitchStrip(p)}</div>`;
+  return `<div class="deliv-row">${withDelivery ? renderDeliveryOne() : ''}${renderArsenalPlus(p)}${renderPitchStrip(p)}</div>`;
 }
 // Joel, Oct 8 (Live Game, phones): Set/Windup rides on the right of the status bar; the pitch-type row
 // gets the full width. Joel, Oct 14: no clock in Live Games.
@@ -11574,12 +11758,10 @@ function renderSessionView(){
       <div class="panel controls-panel ph-controls">
         <div class="ph-status on-dark">
           <span class="sb-cell"><span class="sb-num ph-count">${stats.total}</span><span class="sb-lbl">${stats.total === 1 ? 'Pitch' : 'Pitches'}</span></span>
-          <span class="ph-persp${locked ? ' locked' : ''}">${chartingPerspective === 'behind_pitcher' ? 'Pitcher' : 'Catcher'}${locked ? ' · locked' : ''}</span>
-        </div>
+          ${renderPerspButton()}
+        </div>${renderPerspNote()}
         ${renderPhoneDeliveryRow(p)}
-        ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
-          ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
-          : 'Add your pitches in Profile to start charting.'}</p>`}
+        ${renderMixPrompt(p)}
         <div class="ph-grid-wrap">${renderPhoneHint()}
           <div class="zone-wrap pb-zone">
             <div class="batter-frame${isNoBatter(state.activeSession) ? ' no-batter' : ''}" style="display:contents;">${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}</div>
@@ -11605,12 +11787,9 @@ function renderSessionView(){
       <div class="panel controls-panel">
         <div class="perspective-delivery-row bullpen-setup-row">${renderPerspectiveToggle()}${renderBatterModeToggle()}${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}</div>
         <div>
-          <div class="field-label" style="margin-bottom:var(--s-8);">Pitch type</div>
+          ${renderPitchTypeLabel(p)}
           ${pitchTypeTray(p, false)}
-          ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
-            ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
-            : 'Add your pitches in Profile to start charting.'}</p>
-          <button class="btn btn-secondary" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
+          ${renderMixPrompt(p)}
         </div>
         <div class="accuracy-count-row">
           <div class="pitch-counter">
@@ -11660,12 +11839,9 @@ function renderSessionView(){
             </div>
             ${raPill()}
             <div>
-              <div class="field-label" style="margin-bottom:var(--s-8);">Pitch type</div>
+              ${renderPitchTypeLabel(p)}
               ${pitchTypeTray(p, true)}
-              ${(p.pitchTypes && p.pitchTypes.length) ? '' : `<p class="mix-prompt">${isCoach()
-                ? `${escHtml(p.name)} hasn't added any pitches yet. Add them in their profile to start charting.`
-                : 'Add your pitches in Profile to start charting.'}</p>
-              <button class="btn btn-secondary" onclick="${isCoach() ? 'openPitcherProfile()' : "setView('profile')"}">${isCoach() ? 'Open pitcher profile' : 'Open Profile'}</button>`}
+              ${renderMixPrompt(p)}
             </div>
             ${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}
             ${renderBatterModeToggle()}
@@ -12608,7 +12784,7 @@ function renderRelAccuracySection(p){
     zones = (p.pitchTypes || []).map(t => {
       const r = zoneCellsFor(p.id, t, 'R'), l = zoneCellsFor(p.id, t, 'L');
       const stat = (label, c) => `${label}: ${c ? c.length + ' of ' + RA_MAX_CELLS + ' cells' : 'none marked (exact only)'}`;
-      const open = state.zonePaint && state.zonePaint.pitcherId === p.id && state.zonePaint.type === t;
+      const open = state.zonePaint && !state.zonePaint.inSheet && state.zonePaint.pitcherId === p.id && state.zonePaint.type === t;
       return `<div class="zone-row">
         <div class="profile-row"><strong>${pitchLabel(t)}</strong>
           <button class="btn btn-secondary" onclick="${open ? 'cancelZonePaint()' : `openZonePaint(${escHtml(JSON.stringify(t))})`}">${open ? 'Close' : 'Mark cells'}</button></div>
@@ -13150,19 +13326,14 @@ function renderThrowsSection(p){
     </div></div>`;
 }
 function renderPitchMixSection(p){
+  // U15: the chips only; "Edit pitches" opens the Pitches bubble (add, remove, edit accuracy) -- one editor everywhere.
   const chips = (p.pitchTypes || []).map(t =>
-    `<span class="pitch-chip" style="background:${colorForType(p, t)};color:${readableTextOn(colorForType(p, t))};">${pitchLabel(t)} <button type="button" class="btn btn-tertiary btn-sm hit44 chip-x" onclick="removePitchType(${escHtml(JSON.stringify(t))})" aria-label="Remove ${pitchLabel(t)}">✕</button></span>`
+    `<span class="pitch-chip" style="background:${colorForType(p, t)};color:${readableTextOn(colorForType(p, t))};">${pitchLabel(t)}</span>`
   ).join('') || `<span style="color:var(--ink-faint);font-size:12px;">No pitches set yet</span>`;
-  const remaining = PITCH_CATALOG.filter(c => !(p.pitchTypes || []).includes(c.name));
+  const edit = canEditArsenal(p) ? `<div class="add-type-inline"><button type="button" class="btn btn-secondary btn-sm" onclick="openArsenalSheet(null, ${(p.pitchTypes || []).length ? 'false' : 'true'})">${(p.pitchTypes || []).length ? 'Edit pitches' : 'Add pitches'}</button></div>` : '';
   return `<div class="profile-section"><h3>Pitch mix</h3>
     <div class="pitcher-sub" style="margin:0;">${chips}</div>
-    <div class="add-type-inline">
-      <select id="new-type-input" class="text-input">
-        <option value="">Add a pitch…</option>
-        ${remaining.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
-      </select>
-      <button type="button" class="btn btn-secondary btn-sm" onclick="addPitchType()">Add</button>
-    </div></div>`;
+    ${edit}</div>`;
 }
 // U9: name editing, added for the first time (nothing wrote profiles.full_name
 // after account creation before this). `self` distinguishes the two ways
@@ -13512,14 +13683,15 @@ function renderProfileView(){
   if(activeLinked()) return renderLinkedProfileView(msg);   // F1-G
   const p = currentPitcher();
   const uniformRows = state.teams.map(t => uniformRowHtml(t.id, state.profile.id, 'Uniform # · ' + t.name)).join('');
+  const mine = activePlayerIsMine();   // U15 (E3): a parent's player shows Pitch mix and Relative accuracy right under the photo
   return `<div class="profile-page">
     ${renderHeadshotControls(p)}
     ${msg}
+    ${mine ? renderPitchMixSection(p) + renderRelAccuracySection(p) : ''}
     ${uniformRows ? `<div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>` : ''}
     ${renderLevelSection(p)}
     ${renderThrowsSection(p)}
-    ${renderPitchMixSection(p)}
-    ${renderRelAccuracySection(p)}
+    ${mine ? '' : renderPitchMixSection(p) + renderRelAccuracySection(p)}
     ${renderRadarGunSection(p, true)}
     ${renderNameSection(p, true)}
     ${activePlayerIsMine() ? renderPlayerAccessSection() : ''}
@@ -13672,7 +13844,8 @@ function renderPitcherProfileView(){
   if(!p) return `<div class="empty-hist">Select a pitcher to see his profile.</div>`;
   const team = state.teams.find(t => t.id === state.currentTeamId);
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
-  // R6: editing a pitcher's profile is head-only (decision table). An
+  // R6: editing a pitcher's profile is head-only (decision table) -- except, since U15 (Joel, Nov 6 2026), the
+  // pitch mix and relative accuracy, which any coach who can see the pitcher edits (set_pitch_arsenal). An
   // assistant gets a read-only summary here rather than threading a new
   // mode through five separately-owned section renderers (name/throws/
   // pitch-mix/rel-accuracy/radar-gun) that heads and self-service pitchers
@@ -13686,8 +13859,9 @@ function renderPitcherProfileView(){
       ${msg}
       <div class="profile-section"><h3>Uniform number</h3><p class="profile-note">${escHtml(String(uniformNum))}${team ? ' · ' + escHtml(team.name) : ''}</p></div>
       <div class="profile-section"><h3>Throws</h3><p class="profile-note">${p.throws === 'L' ? 'Left' : p.throws === 'R' ? 'Right' : 'Not set'}</p></div>
-      <div class="profile-section"><h3>Pitch mix</h3><p class="profile-note">${(p.pitchTypes || []).map(pitchLabel).join(' · ') || 'No pitches set yet'}</p></div>
-      <p class="profile-note">Only the head coach can edit a pitcher's profile.</p>
+      ${renderPitchMixSection(p)}
+      ${canEditArsenal(p) ? renderRelAccuracySection(p) : ''}
+      <p class="profile-note">Only the head coach can change the name, throws and uniform number.</p>
     </div>`;
   }
   return `<div class="profile-page">
@@ -13930,12 +14104,19 @@ function buildReportPayload(session, p){
     chartingPerspective: session.chartingPerspective,
     loggedByCoach: session.loggedByCoach,
     raOn: session.raOn === true,   // U14: the legend shows only when RA was on
-    pitchTypes: p.pitchTypes,
+    pitchTypes: reportPitchTypes(p, pitchesForReport),
     pitches: pitchesForReport,
     history
   };
 }
 
+// U15: the report's pitch list is the arsenal plus any pitch thrown in this session that has since been removed
+// from it (on the end), so a removed pitch keeps its rows, grids and legend in the report.
+function reportPitchTypes(p, pitches){
+  const out = pitchTypesFor(p).slice();
+  (pitches || []).forEach(x => { if(x && x.type && out.indexOf(x.type) < 0) out.push(x.type); });
+  return out;
+}
 // ---------- G2 approach (e): recent bullpens, pooled for real ----------
 // Pools raw pitches from the pitcher's last 5 BULLPEN sessions charted
 // strictly before the game's own date (decision 8: "pens only, never
@@ -14068,7 +14249,7 @@ async function buildGameReportPayload(session, p){
     chartingPerspective: session.chartingPerspective,
     loggedByCoach: session.loggedByCoach,
     raOn: session.raOn === true,   // U14: the legend shows only when RA was on
-    pitchTypes: p.pitchTypes,
+    pitchTypes: reportPitchTypes(p, pitchesForReport),
     pitches: pitchesForReport,
     recentPens: buildRecentPensForGame(session.date, tid),
     recentPenPitches: buildRecentPenPitchesForGame(session.date, tid),
@@ -14634,7 +14815,7 @@ function render(){
     const acctInHeader = !isPhoneWidth() && state.view !== 'profile' && state.view !== 'leaderboard';
     const headerHtml = `
       <div class="pitcher-header">
-        ${isCoach() ? `<div class="ident-link" role="link" tabindex="0" title="Player Profile" onclick="if(!event.target.closest('.gear-btn')) setView('pitcherProfile')" onkeydown="if(event.key==='Enter' && !event.target.closest('.gear-btn')){setView('pitcherProfile');}">${renderPlayerIdent(p, true, arsenalChips, profileGearBtn())}</div>` : renderPlayerIdent(p, true, arsenalChips, profileGearBtn())}
+        ${isCoach() ? `<div class="ident-link" role="link" tabindex="0" title="Player Profile" onclick="if(!event.target.closest('.gear-btn')) coachNameTap()" onkeydown="if(event.key==='Enter' && !event.target.closest('.gear-btn')){coachNameTap();}">${renderPlayerIdent(p, true, arsenalChips, profileGearBtn())}</div>` : renderPlayerIdent(p, true, arsenalChips, profileGearBtn())}
         <div class="pitcher-header-actions">
           ${isCoach()
             ? ''   // Nov 5: the gear beside the name replaces the Profile button
@@ -14678,7 +14859,7 @@ function render(){
   if(rosterOnly){ main = ''; phoneFooter = ''; }
   const policyFoot = (phoneSession || rosterOnly) ? '' : `<div class="policy-foot">Knuckleball LLC 2026 &middot; <a href="${policyHref('privacy.html')}">Privacy</a> &middot; <a href="${policyHref('terms.html')}">Terms</a></div>`;   // P1-10
   const dockOn = coachDockShown(phoneSession);
-  app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}${policyFoot}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet() + renderJoinCodeOverlay() + (dockOn ? renderCoachDock() : '');
+  app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}${policyFoot}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + (dockOn ? renderCoachDock() : '');
   if(app.classList) app.classList.toggle('has-dock', dockOn);
   if(dockOn) attachCoachDock();
   placeTrayIndicators();   // U13

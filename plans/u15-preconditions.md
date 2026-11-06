@@ -4,8 +4,8 @@ Written against: STATUS 2026-11-05 "Nothing under a coach's open roster", produc
 from `origin/main` (84ae0d2). The packet had no copy on main; it's saved verbatim as `plans/u15-charting-phone-batch.md`.
 Line numbers are `bullpen-tracker.html` unless a file is named.
 
-**Status: waiting on Joel.** Section B lists where the code differs from the packet. Section C lists the decisions
-needed before building.
+**Status: approved (Joel, Nov 6 2026: "1. ok 2. ok 3. correct 4. yes 5. yes 6. yes 7. ok"): all seven decisions in C as
+recommended.** Section B lists where the code differs from the packet.
 
 ## A. Answers to the ten questions
 

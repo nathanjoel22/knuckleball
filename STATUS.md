@@ -15,10 +15,12 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-05 · production v336)
+## Now and next (updated 2026-11-06 · production v336; v337 on a branch)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
+- U15 charting batch, branch `u15-charting-batch` (v337), PR open; the staging DB migration is applied. See the Nov 6
+  entry for the apply order.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -30,7 +32,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    - confirm a Cloudflare deploy;
    - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
-   is applied; still to do: finish the browser walkthrough and bump the cache past v336 (v337). Then: backup, production
+   is applied; still to do: finish the browser walkthrough and bump the cache past v337 (v338). Then: backup, production
    migration, checks, merge.
 
 **Waiting on Joel**
@@ -45,12 +47,73 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - Change Email: retry; the box now shows the server's real reason (v329).
 - Test emails to `nate+…@knuckleballonline.com` bounce: turn on Subaddressing in Cloudflare Email Routing and remove
   `nate+chaoscoach@` / `nate+chaosparent@` from Resend's suppression list (or use Gmail plus addresses).
+- U15 on the phone after it ships: hold a pitch chip, the "+", the Catcher / Pitcher button, and tapping the name to
+  switch pitchers mid-game.
 - F1-C2's privacy sentence (DRAFT in `privacy.html` on the branch) needs approval.
 - Google Play store art upload (on hold).
-- When to remove the staging test logins `feed-coach-*` (on Staging Knights, with the 2 reports it made) and
-  `feed-pitcher-*@example.com`.
+- When to remove the staging test logins:
+  - `feed-coach-*` (on Staging Knights, with the 2 reports it made) and `feed-pitcher-*@example.com`;
+  - U15's `u15-sbcoach-*`, `u15-sbpitch-*` and `u15-parent-*@example.com` (with the "U15 Softball Test" team and the
+    parent's player "U15 Kid").
 
 ---
+
+## 2026-11-06 · U15 charting batch · **staging** (DB migration applied on staging; site on a branch), branch `u15-charting-batch`, PR open (not merged)
+- **Asked by:** Joel's U15 packet (`plans/u15-charting-phone-batch.md`, saved verbatim). He approved the preconditions
+  report's seven decisions as recommended: "1. ok 2. ok 3. correct 4. yes 5. yes 6. yes 7. ok"
+  (`plans/u15-preconditions.md`). Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v337.
+- **Database:** migration `20261106000000_u15_pitch_arsenal` adds `set_pitch_arsenal(p_pitcher, p_types text[])`.
+  - It accepts the pitcher's own login (a parent for their player) or any coach who can see the pitcher on a current,
+    non-archived team.
+  - No table, grant or policy change; policies 32.
+  - Applied on staging and recorded in staging's migration history.
+  - Rollback `supabase/rollback/20261106000000_u15_pitch_arsenal_down.sql`; test `supabase/tests/u15_pitch_arsenal.sql`.
+- **Built** (the CLAUDE.md "Charting screen batch (U15)" section has the detail):
+  - **The Pitches bubble.** One editor for a pitcher's pitches: add, remove with a confirm, and edit relative accuracy
+    inline. It opens from the "+", from holding a pitch chip, and from Profile.
+  - **Who can edit:** assistants and facility group coaches can now edit pitches and their accuracy cells. Name, throws,
+    uniform and radar gun stay head coach only.
+  - **The clock is retired everywhere;** times already recorded still show.
+  - **Perspective:** a bullpen opens behind the pitcher, a Live Game behind the catcher. Phones get a Catcher / Pitcher
+    button that locks after the first pitch.
+  - **Switching pitchers:** coaches tap the pitcher's name to switch: Save / Discard / Keep charting. A saved game
+    continues through the R3 hand-off.
+  - **Parent's player profile:** Pitch mix and Relative accuracy move up under the photo.
+  - **Mid-session safeguards:** a session keeps its colour order, and a pitch removed mid-session stays in that session's
+    new report.
+- **Deviations from the packet** (all in the preconditions report, section B):
+  - there was no U5 start question to remove, so only the bullpen default changed;
+  - the phone "+" sits right of the single Windup / Set flip button. On Live Game phones it's at the start of the pitch
+    row, because Windup sits in the scoreboard there;
+  - the baseball list has 13 pitches;
+  - Live Game phones get the Catcher / Pitcher button on a slim line under the scoreboard;
+  - no team score is carried (the app has none);
+  - the continuation reuses the existing "Continue from where X left off?";
+  - pitch edits are online only;
+  - the direct write and `coach_set_pitch_types` stay until cached apps update, removed by a later migration.
+- **Tests (staging):** `plans/u15-crosscheck.md` (four widths, both sports, bullpen and Live Game, acceptance 1–8) and
+  `plans/u15-rls-matrix.md`.
+  - The RLS matrix is identical before and after.
+  - The function's 15 caller cases and 5 validation checks all pass.
+  - Two-pitch proof: `ra` against the old cells, then `miss` after the edit.
+  - A mid-game switch linked reliever → starter with one inherited runner.
+  - R3 Stage B's test passes. Its fixture's second pitcher has left Staging Knights; a scratch copy used the team's
+    current one.
+  - Staging test data from these checks:
+    - one saved pen and two saved games (one starter, one reliever) on Staging Knights;
+    - the rostered staging pitcher's pitches put back as they were;
+    - the U15 test logins above.
+- **Apply order (Joel):**
+  1. Backup.
+  2. Production migration `20261106000000_u15_pitch_arsenal` (`supabase db push`, DEPLOY.md).
+  3. Merge the PR (site, v337).
+
+  No Edge Function deploy: no function changed.
+- **Open:**
+  - Joel's phone check after it ships.
+  - A later migration removes the direct `pitch_types` write and `coach_set_pitch_types`, once cached apps have updated.
+  - F1-C2 now needs v338.
+
 
 ## 2026-11-05 · Nothing under a coach's open roster · **production** (PR #73 merged Nov 5, v336 live)
 - **Asked by:** Joel: "when you tap on roster in the coach mode, there shouldn't be anything showing below the roster

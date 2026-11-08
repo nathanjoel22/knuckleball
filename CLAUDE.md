@@ -123,7 +123,7 @@ Where this and the sections above differ, this wins.
   - The batter side changes the words; perspective never does. A "no batter" pen speaks as vs RHB.
   - Every string is in `plans/u16-speech-table.md`.
 - **Speech:** on-device `speechSynthesis` only: no network, no audio files. It uses the first local en-US voice, rate
-  1.1, pitch 1.0, and `cancel()` before each call. It is called inside the tap, which iOS needs.
+  1.0 (normal speed; Joel, Nov 8 -- the packet's 1.1 shipped first in v338), pitch 1.0, and `cancel()` before each call. It is called inside the tap, which iOS needs.
 - **The switch:** Voice On / Off under the perspective chips (phones: the 9-dot sheet). It's one per-device setting,
   `kb:voice` ('off', or absent = On). It's hidden in a game without Intent and wherever the browser has no speech. The
   Play Store Android app's WebView has none, so the app shell needs a native text-to-speech plugin before it can speak

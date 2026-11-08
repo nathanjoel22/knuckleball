@@ -15,12 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-08 · production v337; v338 on a branch)
+## Now and next (updated 2026-11-08 · production v338; v339 on a branch)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- U16 Voice call, branch `u16-voice-call` (v338), PR open. The report function is deployed to staging. See the Nov 8
-  entry for the apply order.
+- Voice rate 1.0, branch `u16-voice-rate` (v339), PR open.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -32,7 +31,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    - confirm a Cloudflare deploy;
    - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
-   is applied; still to do: finish the browser walkthrough and bump the cache past U16's v338 (v339). Then: backup,
+   is applied; still to do: finish the browser walkthrough and bump the cache past v339 (v340). Then: backup,
    production migration, checks, merge.
 3. Once cached apps (v336 and earlier) have updated: a migration removing the direct `pitch_types` write and
    `coach_set_pitch_types` (U15 decision 2).
@@ -62,7 +61,13 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-08 · U16 Voice call · **staging** (report function deployed to staging; site on a branch), branch `u16-voice-call`, PR open (not merged)
+## 2026-11-08 · no packet (Voice reads at normal speed) · **staging** (site on a branch), branch `u16-voice-rate`, PR open (not merged)
+- **Asked by:** Joel, after U16 shipped: "lets read at 1". Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v339.
+- **Built:** the Voice call's speech rate goes from 1.1 (the packet's) to 1.0, the phone's normal speed. Nothing else
+  changes. The U16 entry below records 1.1, which is what v338 shipped.
+- **Apply order:** merge. No function deploy, no migration.
+
+## 2026-11-08 · U16 Voice call · **production** (PR #77 merged Nov 8, `cdec18c`; v338 live on all three addresses; `send-session-report` deployed to production, version 46), branch `u16-voice-call`
 - **Asked by:** Joel's U16 packet (`plans/u16-voice-call.md`, saved verbatim). He approved all eight preconditions
   decisions as recommended: "yes to all" (`plans/u16-preconditions.md`). Operator `Nathan <joelhauserman@gmail.com>`.
   **Cache:** v338. No migration.

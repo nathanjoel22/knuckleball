@@ -15,11 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-08 · production v338; v339 on a branch)
+## Now and next (updated 2026-11-08 · production v339; v340 on a branch)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- Voice rate 1.0, branch `u16-voice-rate` (v339), PR open.
+- Voice on iPhone, branch `u16-voice-ios` (v340), PR #80 open.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -31,7 +31,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    - confirm a Cloudflare deploy;
    - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
-   is applied; still to do: finish the browser walkthrough and bump the cache past v339 (v340). Then: backup,
+   is applied; still to do: finish the browser walkthrough and bump the cache past v340 (v341). Then: backup,
    production migration, checks, merge.
 3. Once cached apps (v336 and earlier) have updated: a migration removing the direct `pitch_types` write and
    `coach_set_pitch_types` (U15 decision 2).
@@ -61,7 +61,27 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-08 · no packet (Voice reads at normal speed) · **staging** (site on a branch), branch `u16-voice-rate`, PR open (not merged)
+## 2026-11-08 · no packet (Voice silent on iPhone) · **staging** (site on a branch), branch `u16-voice-ios`, PR #80 open (not merged)
+- **Asked by:** Joel: "voice on iphone not working" (v339). Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v340.
+- **Found:** not reproducible here; Chrome speaks. Two iPhone Safari quirks fit:
+  - a `speak()` made right after `cancel()` is dropped, and every call ran `cancel()` first;
+  - naming a voice (`u.voice`) can leave a call silent.
+- **Built:**
+  - `cancel()` only when a call is still playing, then the new call about 60 ms later. Nothing playing = speak at once,
+    inside the tap.
+  - No voice is named when the browser's default voice is on the device (always so on iOS). The first local en-US voice
+    is named only when the default is a network voice.
+  - The utterance stays referenced until it ends.
+- **Checked (Chrome with a stand-in speech engine):**
+  - Idle: one speak, no cancel, 12 ms after the tap.
+  - Playing: cancel, then speak 66 ms later.
+  - Two quick re-calls: only the last one speaks.
+  - Voice picker: iPhone voices name none; a Chrome network default names the local "Samantha".
+  - The tap where the pitch went is still silent.
+- **Open:** Joel to listen on the iPhone with the ringer switch on (iPhone Safari mutes speech in silent mode).
+- **Apply order:** merge. No function deploy, no migration.
+
+## 2026-11-08 · no packet (Voice reads at normal speed) · **production** (PR #78 merged Nov 8, `4826a47`; v339 live on all three addresses), branch `u16-voice-rate`
 - **Asked by:** Joel, after U16 shipped: "lets read at 1". Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v339.
 - **Built:** the Voice call's speech rate goes from 1.1 (the packet's) to 1.0, the phone's normal speed. Nothing else
   changes. The U16 entry below records 1.1, which is what v338 shipped.

@@ -5766,11 +5766,15 @@ window.setVoice = function(on){
   if(!on){ try{ window.speechSynthesis.cancel(); }catch(e){} }
   render();
 };
-// The first local en-US voice (a network voice would go quiet offline); none listed yet = the browser's default.
+// Which voice: the browser's own en-US default whenever it's on the device -- always so on iPhones and iPads, where
+// naming a voice can leave the call silent (Joel's iPhone, Nov 8). Only when that default is a network voice (some
+// Chrome installs) is the first local en-US voice named instead, so a call still plays offline.
 function voiceFor(){
   let vs = [];
   try{ vs = window.speechSynthesis.getVoices() || []; }catch(e){}
   const en = vs.filter(v => String(v.lang || '').replace('_', '-').toLowerCase() === 'en-us');
+  const def = en.find(v => v.default) || vs.find(v => v.default);
+  if(!def || def.localService) return null;
   return en.find(v => v.localService) || null;
 }
 // The words for a target tap (screen cell): perspective never changes them, the batter side does. A "no batter" pen
@@ -5779,20 +5783,29 @@ function voiceCallText(s, type, row, col){
   const side = isNoBatter(s) ? 'R' : sessionBatterSide(s);
   return `${type} ${zoneAreaName(row, perspectiveCol(col, sessionPerspective(s)), side)}`;
 }
-// Called from inside the tap handler (a user gesture, which iOS needs). cancel() first, so a new call cuts off the
-// last one and calls never queue.
+// Called from inside the tap handler (a user gesture, which iOS needs for the first call). A new call cuts off one
+// still playing, so calls never queue. iPhone Safari drops a speak() made right after cancel(), so cancel() runs only
+// when something is playing, and then the new call waits a moment; nothing playing = speak at once, inside the tap.
+// The utterance is kept referenced until it ends (iOS can lose one that's collected mid-call).
+let voiceUtter = null;
 function speakCall(type, row, col){
   const s = state.activeSession;
   if(!type || !voiceShown(s) || !voiceOn()) return;
   try{
     const synth = window.speechSynthesis;
-    synth.cancel();
     const u = new SpeechSynthesisUtterance(voiceCallText(s, type, row, col));
     u.lang = 'en-US';
     const v = voiceFor();
     if(v) u.voice = v;
     u.rate = 1.0; u.pitch = 1.0;   // Joel, Nov 8: normal speed (was 1.1)
-    synth.speak(u);
+    u.onend = u.onerror = () => { if(voiceUtter === u) voiceUtter = null; };
+    voiceUtter = u;
+    if(synth.speaking || synth.pending){
+      synth.cancel();
+      setTimeout(() => { if(voiceUtter === u){ try{ synth.speak(u); }catch(e){} } }, 60);
+    } else {
+      synth.speak(u);
+    }
   }catch(e){ /* no speech here: charting goes on */ }
 }
 function renderVoiceToggle(){

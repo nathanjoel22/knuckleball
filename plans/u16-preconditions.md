@@ -3,7 +3,7 @@
 Written against: production v337 (U15), `origin/main` 168408d. Branch `u16-voice-call`. The packet had no copy on main; it's
 saved verbatim as `plans/u16-voice-call.md`. Line numbers are `bullpen-tracker.html` unless a file is named.
 
-**Status: waiting for Joel** on the decisions in C.
+**Status: approved (Joel, Nov 8 2026: "yes to all"): all eight decisions in C as recommended.**
 
 ## A. Answers to the six questions
 

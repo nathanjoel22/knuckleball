@@ -15,11 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-06 · production v336; v337 on a branch)
+## Now and next (updated 2026-11-08 · production v337; v338 on a branch)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- U15 charting batch, branch `u15-charting-batch` (v337), PR open; the staging DB migration is applied. See the Nov 6
+- U16 Voice call, branch `u16-voice-call` (v338), PR open. The report function is deployed to staging. See the Nov 8
   entry for the apply order.
 
 **Next up, in order**
@@ -32,8 +32,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    - confirm a Cloudflare deploy;
    - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
-   is applied; still to do: finish the browser walkthrough and bump the cache past v337 (v338). Then: backup, production
-   migration, checks, merge.
+   is applied; still to do: finish the browser walkthrough and bump the cache past U16's v338 (v339). Then: backup,
+   production migration, checks, merge.
+3. Once cached apps (v336 and earlier) have updated: a migration removing the direct `pitch_types` write and
+   `coach_set_pitch_types` (U15 decision 2).
 
 **Waiting on Joel**
 - iPhone airplane-mode check on knuckleballonline.com (v336 on Cloudflare Pages): open online, close, airplane mode,
@@ -47,7 +49,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - Change Email: retry; the box now shows the server's real reason (v329).
 - Test emails to `nate+…@knuckleballonline.com` bounce: turn on Subaddressing in Cloudflare Email Routing and remove
   `nate+chaoscoach@` / `nate+chaosparent@` from Resend's suppression list (or use Gmail plus addresses).
-- U15 on the phone after it ships: hold a pitch chip, the "+", the Catcher / Pitcher button, and tapping the name to
+- U16 on a real phone (staging, then production): listen to the calls; the iPhone with the silent switch on; airplane
+  mode; Android Chrome. The Play Store app can't speak yet (no switch shown).
+- U15 on the phone (live since Nov 6): hold a pitch chip, the "+", the Catcher / Pitcher button, and tapping the name to
   switch pitchers mid-game.
 - F1-C2's privacy sentence (DRAFT in `privacy.html` on the branch) needs approval.
 - Google Play store art upload (on hold).
@@ -58,7 +62,54 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-06 · U15 charting batch · **staging** (DB migration applied on staging; site on a branch), branch `u15-charting-batch`, PR open (not merged)
+## 2026-11-08 · U16 Voice call · **staging** (report function deployed to staging; site on a branch), branch `u16-voice-call`, PR open (not merged)
+- **Asked by:** Joel's U16 packet (`plans/u16-voice-call.md`, saved verbatim). He approved all eight preconditions
+  decisions as recommended: "yes to all" (`plans/u16-preconditions.md`). Operator `Nathan <joelhauserman@gmail.com>`.
+  **Cache:** v338. No migration.
+- **Built:**
+  - **The call.** The target tap says "<pitch type> <area name>" out loud: a bullpen's first tap, or a Live Game's intent
+    tap when the game started with Intent = Yes.
+  - **Words.** The full stored pitch name ("Four Seam Fastball middle up extra"). The names follow the batter side, never
+    the perspective. A "no batter" pen is named as against a right-handed batter.
+  - **Names.** One function, `zoneAreaName`, names all 25 cells from `zoneNumberFor` and a new `ZONE_NAMES` table in the
+    tracker. Ring cells add "extra" above or below the zone and "plus" off either side.
+  - **Speech.** On-device `speechSynthesis` only: no network, no files. It uses the first local en-US voice, rate 1.1,
+    and `cancel()` before each call. The tap that marks where the pitch went is silent and doesn't cut a call off.
+  - **The switch.** Voice On / Off sits under the perspective chips: in the 9-dot sheet on phones, beside the chart on
+    iPad and laptop. It's one per-device setting, `kb:voice`, On by default. It's hidden in a game without Intent and
+    wherever the browser can't speak.
+  - **Amendment 17.** The report's `ZONE_NAMES` say "up and away" / "middle away" (were "up and out" / "middle out").
+    New reports only; sent reports are never touched.
+  - **Pre-push check.** `.githooks/pre-push` now refuses a push where the app's nine names differ from the report's.
+  - **Docs.** A Help line (`#voice`), and `plans/u16-speech-table.md` (every cell × side, generated from the app's
+    function).
+- **Checks (staging, Chrome, the speech call recorded instead of played):**
+  - **Softball pen (390):** all 100 cell × side × perspective calls match the packet. The call is handed to speech
+    0.3 ms after the tap, in the local voice "Samantha", en-US, rate 1.1, `cancel()` first.
+  - **Changing the call:** Reset target and a new tap give a second call, with the first cancelled.
+  - **Voice Off:** silent; kept after a reload.
+  - **No-batter pen:** named vs RHB.
+  - **Baseball pen (behind the pitcher):** the same screen cell says "up and in plus" vs LHB and "up and away plus" vs
+    RHB.
+  - **Live Game, Intent No:** no switch, no speech.
+  - **Live Game, Intent Yes:** one call on the intent tap, none on the next tap.
+  - **All 21 catalog names:** spoken in full.
+  - **Layouts:** the switch shows at 768 / 1180 / 1440 with no sideways scroll.
+  - **Report:** a locally rendered report lists "3 (up and away)", "6 (middle away)".
+  - `deno check` passes.
+- **Deviations from the packet:**
+  - The report function changes (Amendment 17, decision 1), so acceptance 9's "no function change" doesn't hold.
+  - Baseball has 13 pitches, not 12.
+  - "Re-tap a different target" is Reset target / ‹ Back, then a new tap.
+  - Not checked yet: acceptance 1-7 by ear on a real phone, including the silent switch, airplane mode and the
+    ~300 ms timing (Joel). The Play Store Android app can't speak: its WebView has no `speechSynthesis`, so the switch is
+    hidden there. A native text-to-speech plugin is a later step.
+- **Apply order:**
+  1. Joel merges the PR (site v338).
+  2. `supabase functions deploy send-session-report` to production.
+  3. No migration, no backup needed.
+
+## 2026-11-06 · U15 charting batch · **production** (PR #76 merged Nov 6, `168408d`; v337 live; migration applied to production after the 2026-11-06 backup), branch `u15-charting-batch`
 - **Asked by:** Joel's U15 packet (`plans/u15-charting-phone-batch.md`, saved verbatim). He approved the preconditions
   report's seven decisions as recommended: "1. ok 2. ok 3. correct 4. yes 5. yes 6. yes 7. ok"
   (`plans/u15-preconditions.md`). Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v337.

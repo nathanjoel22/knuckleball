@@ -5791,7 +5791,7 @@ function speakCall(type, row, col){
     u.lang = 'en-US';
     const v = voiceFor();
     if(v) u.voice = v;
-    u.rate = 1.1; u.pitch = 1.0;
+    u.rate = 1.0; u.pitch = 1.0;   // Joel, Nov 8: normal speed (was 1.1)
     synth.speak(u);
   }catch(e){ /* no speech here: charting goes on */ }
 }

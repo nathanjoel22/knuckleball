@@ -15,11 +15,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-08 · production v339; v340 on a branch)
+## Now and next (updated 2026-11-08 · production v340; v341 on a branch)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- Voice on iPhone, branch `u16-voice-ios` (v340), PR #80 open.
+- Voice at 0.9 speed, branch `u16-voice-rate-09` (v341), PR open.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -31,7 +31,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
    - confirm a Cloudflare deploy;
    - then remove CNAME and update DEPLOY.md, CLAUDE.md, README and STATUS.
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
-   is applied; still to do: finish the browser walkthrough and bump the cache past v340 (v341). Then: backup,
+   is applied; still to do: finish the browser walkthrough and bump the cache past v341 (v342). Then: backup,
    production migration, checks, merge.
 3. Once cached apps (v336 and earlier) have updated: a migration removing the direct `pitch_types` write and
    `coach_set_pitch_types` (U15 decision 2).
@@ -61,7 +61,16 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-08 · no packet (Voice silent on iPhone) · **staging** (site on a branch), branch `u16-voice-ios`, PR #80 open (not merged)
+## 2026-11-08 · no packet (Voice at 0.9 speed) · **staging** (site on a branch), branch `u16-voice-rate-09`, PR open (not merged)
+- **Asked by:** Joel: "make the voice .9 speed". Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v341.
+- **Built:** `speakCall` sets `rate = 0.9` (was 1.0 since v339). Pitch, language and the iPhone-safe behavior (v340) are
+  unchanged. CLAUDE.md's Speech line updated.
+- **Deviations:** none. No migration, no function change.
+- **Open:** Joel listens on the iPhone after the merge (reopen the app online to pick up v341).
+
+---
+
+## 2026-11-08 · no packet (Voice silent on iPhone) · **production**, branch `u16-voice-ios`, PR #80 merged (`aeffb05`)
 - **Asked by:** Joel: "voice on iphone not working" (v339). Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v340.
 - **Found:** not reproducible here; Chrome speaks. Two iPhone Safari quirks fit:
   - a `speak()` made right after `cancel()` is dropped, and every call ran `cancel()` first;

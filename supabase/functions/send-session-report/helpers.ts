@@ -139,12 +139,13 @@ export function zoneNumber(row: number, col: number, batterSide: 'R' | 'L', grid
   return rr * zoneSize + cc + 1
 }
 
-// Canonical vocabulary (Joel, Sept 10 2026) -- exact strings, no synonyms, no
-// regularizing "low and away" to "low and out." Keyed by the SAME 1-9 numbers
-// zoneNumber() produces for a 3x3 strike zone.
+// Canonical vocabulary (Joel, Sept 10 2026) -- exact strings, no synonyms. Keyed by the SAME 1-9 numbers
+// zoneNumber() produces for a 3x3 strike zone. Amendment 17 (U16, Joel, Nov 8 2026): 3 and 6 say "away", like 9
+// (they said "up and out" / "middle out" before; reports already sent keep that). The tracker's ZONE_NAMES must
+// match these exactly (.githooks/pre-push).
 export const ZONE_NAMES: Record<number, string> = {
-  1: 'up and in', 2: 'middle up', 3: 'up and out',
-  4: 'middle in', 5: 'middle middle', 6: 'middle out',
+  1: 'up and in', 2: 'middle up', 3: 'up and away',
+  4: 'middle in', 5: 'middle middle', 6: 'middle away',
   7: 'low and in', 8: 'middle low', 9: 'low and away'
 }
 

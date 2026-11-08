@@ -276,6 +276,7 @@
   .sess-sheet{ width:100%; max-width:520px; background:var(--card); border-radius:var(--radius-dock) var(--radius-dock) 0 0; padding:18px 16px calc(16px + env(safe-area-inset-bottom, 0px));
     display:flex; flex-direction:column; gap:var(--s-12); max-height:85vh; overflow:auto; }
   .sess-sheet-title{ font-weight:800; font-size:16px; }
+  .voice-row{ margin-top:var(--s-12); }   /* U16: Voice On / Off under the perspective chips */
   /* Joel, Oct 1: End session & save, Discard and Close are the same size */
   .sess-sheet .btn{ width:100%; min-height:48px; margin:0; font-size:16px; text-align:center; }
   .sess-sheet .delete-row{ display:flex; flex-direction:column; gap:var(--s-12); }
@@ -2589,6 +2590,24 @@ function zoneNumberFor(cRow, cCol, batterSide = 'R'){
   if(cRow < 1 || cRow > 3 || cCol < 1 || cCol > 3) return null;
   const colFromInside = batterSide === 'R' ? cCol : 4 - cCol; // RHB inside = catcher-frame LEFT
   return (cRow - 1) * 3 + colFromInside;
+}
+// U16 / Amendment 17 (Joel, Nov 8 2026): the canonical area names, keyed by zoneNumberFor's 1-9 ("away", never
+// "out"). The report keeps the same strings in send-session-report/helpers.ts ZONE_NAMES; .githooks/pre-push refuses a
+// push where the two differ.
+const ZONE_NAMES = {
+  1: 'up and in', 2: 'middle up', 3: 'up and away',
+  4: 'middle in', 5: 'middle middle', 6: 'middle away',
+  7: 'low and in', 8: 'middle low', 9: 'low and away'
+};
+// U16: every cell of the 5x5 grid by name (catcher-frame cell + batter side, like zoneNumberFor). A ring cell takes the
+// name of the zone cell it touches: off the plate to either side, corners included, adds "plus"; over or under the
+// zone adds "extra". Display / speech only, never stored.
+function zoneAreaName(cRow, cCol, batterSide = 'R'){
+  const r = Math.min(3, Math.max(1, cRow)), c = Math.min(3, Math.max(1, cCol));
+  const name = ZONE_NAMES[zoneNumberFor(r, c, batterSide)];
+  if(c !== cCol) return name + ' plus';
+  if(r !== cRow) return name + ' extra';
+  return name;
 }
 function isAccurate(pitch){
   return pitch.targetRow === pitch.actualRow && pitch.targetCol === pitch.actualCol;
@@ -5731,6 +5750,60 @@ function renderGameVeloStrip(){
   </div>`;
 }
 
+// U16 (Joel, Nov 8 2026; plans/u16-voice-call.md): Voice call. The target tap (a bullpen's tap 1, a Live Game's
+// intent tap) says "<pitch type> <area name>" out loud, like a PitchCom earpiece. On-device speech only
+// (speechSynthesis: no network, no audio files), so it works in an offline bullpen. One per-device setting, kb:voice
+// ('off' = off; absent = On), for bullpens and Intent games alike; a game without Intent has no call and no switch.
+// Hidden wherever the browser has no speech (the Android app's WebView, for now).
+const VOICE_KEY = 'kb:voice';
+function voiceSupported(){
+  try{ return !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function'; }catch(e){ return false; }
+}
+function voiceOn(){ return lsGet(VOICE_KEY) !== 'off'; }
+function voiceShown(s){ return voiceSupported() && !!s && (s.kind === 'bullpen' || (s.kind === 'game' && !!s.intent)); }
+window.setVoice = function(on){
+  try{ if(on) localStorage.removeItem(VOICE_KEY); else localStorage.setItem(VOICE_KEY, 'off'); }catch(e){}
+  if(!on){ try{ window.speechSynthesis.cancel(); }catch(e){} }
+  render();
+};
+// The first local en-US voice (a network voice would go quiet offline); none listed yet = the browser's default.
+function voiceFor(){
+  let vs = [];
+  try{ vs = window.speechSynthesis.getVoices() || []; }catch(e){}
+  const en = vs.filter(v => String(v.lang || '').replace('_', '-').toLowerCase() === 'en-us');
+  return en.find(v => v.localService) || null;
+}
+// The words for a target tap (screen cell): perspective never changes them, the batter side does. A "no batter" pen
+// is named as against a right-handed batter, the same rule its accuracy scoring uses.
+function voiceCallText(s, type, row, col){
+  const side = isNoBatter(s) ? 'R' : sessionBatterSide(s);
+  return `${type} ${zoneAreaName(row, perspectiveCol(col, sessionPerspective(s)), side)}`;
+}
+// Called from inside the tap handler (a user gesture, which iOS needs). cancel() first, so a new call cuts off the
+// last one and calls never queue.
+function speakCall(type, row, col){
+  const s = state.activeSession;
+  if(!type || !voiceShown(s) || !voiceOn()) return;
+  try{
+    const synth = window.speechSynthesis;
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(voiceCallText(s, type, row, col));
+    u.lang = 'en-US';
+    const v = voiceFor();
+    if(v) u.voice = v;
+    u.rate = 1.1; u.pitch = 1.0;
+    synth.speak(u);
+  }catch(e){ /* no speech here: charting goes on */ }
+}
+function renderVoiceToggle(){
+  if(!state.activeSession || !voiceShown(state.activeSession)) return '';
+  const on = voiceOn();
+  return `<div class="voice-row"><div class="field-label" style="margin-bottom:var(--s-8);">Voice</div>${segTray([
+    { label: 'On', selected: on, onclick: 'setVoice(true)' },
+    { label: 'Off', selected: !on, onclick: 'setVoice(false)' }
+  ], { key: 'voice', label: 'Voice: say each call out loud' })}</div>`;
+}
+
 window.handleZoneTap = async function(row, col){
   if(state.editDraftRow !== null){ state.hint = 'Finish editing that pitch first'; render(); return; }
   if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
@@ -5739,6 +5812,7 @@ window.handleZoneTap = async function(row, col){
   if(!state.pendingTarget){
     // Tap 1 of a new pitch: the previous pitch's velocity is now locked as it
     // stands, and the strip stays off until this pitch's tap 2.
+    speakCall(state.selectedType, row, col);   // U16
     state.pendingTarget = { row, col };
     state.veloTargetIdx = null;
     raCheckCells(state.selectedType);   // U14
@@ -7104,7 +7178,8 @@ function renderPerspectiveToggle(forceFull){
       </button>`;
     return rolled ? `<div>${head}</div>` : `<div>${head}<div class="tray-gap">${chips}</div></div>`;
   }
-  return `<div><div class="field-label" style="margin-bottom:var(--s-8);">Charting perspective</div>${chips}${lockedNote}</div>`;
+  // U16: the Voice switch sits under the perspective chips (the phone's 9-dot sheet; iPad / laptop beside the chart)
+  return `<div><div class="field-label" style="margin-bottom:var(--s-8);">Charting perspective</div>${chips}${lockedNote}${renderVoiceToggle()}</div>`;
 }
 
 // U2a (D8): box "1" is always the inside column. Asking zoneNumberFor
@@ -7598,6 +7673,7 @@ window.handleGameZoneTap = async function(row, col){
   if(si.intent){
     const asking = si.g5 && G5_CHART_STEPS[si.g5.step];
     if(!si.gameTarget && !asking){
+      speakCall(gamePitchType(), row, col);   // U16: the intent tap, before anything is awaited
       si.gameTarget = { row, col };
       raCheckCells(gamePitchType());   // U14
       await storSet(draftKey(), si);

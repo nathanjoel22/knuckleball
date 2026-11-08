@@ -56,10 +56,34 @@ palette_check() {
   return 1
 }
 
+zone_names() {
+  # print the nine zone names one file holds at a commit (lines like  1: 'up and in', 2: 'middle up', ...)
+  case "$2" in
+    tracker) git show "$1:bullpen-tracker.html" 2>/dev/null ;;
+    report)  git show "$1:supabase/functions/send-session-report/helpers.ts" 2>/dev/null ;;
+  esac | grep -oE "[1-9]: '(up|middle|low)[a-z ]*'" | tr '\n' ' '
+}
+
+# Zone names (U16 / Amendment 17, Nov 8 2026): the app's ZONE_NAMES (what Voice says) and the report's must be the
+# same nine strings, in order. Checked on every push, any branch; a commit without the app's table (old history) passes.
+zone_names_check() {
+  t=$(zone_names "$1" tracker); r=$(zone_names "$1" report)
+  [ -z "$t" ] && return 0
+  if [ "$t" = "$r" ]; then return 0; fi
+  echo "" >&2
+  echo "  PUSH REJECTED - the zone names don't match (they must be identical):" >&2
+  echo "      bullpen-tracker.html ZONE_NAMES:     $t" >&2
+  echo "      send-session-report/helpers.ts:      $r" >&2
+  echo "  Change both together, commit, and push again." >&2
+  echo "" >&2
+  return 1
+}
+
 status=0
 
 while read -r local_ref local_oid remote_ref remote_oid; do
   [ "$local_oid" != "$zero" ] && { palette_check "$local_oid" || { status=1; continue; }; }
+  [ "$local_oid" != "$zero" ] && { zone_names_check "$local_oid" || { status=1; continue; }; }
   # only guard the branch that actually publishes to GitHub Pages
   [ "$remote_ref" = "refs/heads/main" ] || continue
   # branch deletion -- nothing to check

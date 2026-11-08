@@ -109,6 +109,26 @@ Where this and the sections above differ, this wins.
   discard never continues. A pitcher with an unfinished session of his own lands on its Resume prompt.
 - **Parent's player profile:** Pitch mix and Relative accuracy sit right under the photo buttons.
 
+## Voice call (U16, Joel, Nov 8 2026; `plans/u16-voice-call.md`, decisions in `plans/u16-preconditions.md`)
+
+- **The call:** the target tap says "<full stored pitch name> <area name>" out loud. That's a bullpen's tap 1, or a Live
+  Game's intent tap when the game started with Intent = Yes (`speakCall`, from `handleZoneTap` / `handleGameZoneTap`). The
+  tap that marks where the pitch went is silent and lets the call finish. Nothing is stored.
+- **Area names (Amendment 17):** `ZONE_NAMES` in the tracker, keyed by `zoneNumberFor`'s 1-9: up and in, middle up, up and
+  away, middle in, middle middle, middle away, low and in, middle low, low and away ("away", never "out").
+  - The report's `ZONE_NAMES` (`send-session-report/helpers.ts`) hold the same nine strings; `.githooks/pre-push`
+    refuses a push where they differ.
+  - `zoneAreaName(cRow, cCol, side)` names all 25 cells: a ring cell takes the zone cell it touches, plus "plus" off
+    either side (corners too) or "extra" above or below.
+  - The batter side changes the words; perspective never does. A "no batter" pen speaks as vs RHB.
+  - Every string is in `plans/u16-speech-table.md`.
+- **Speech:** on-device `speechSynthesis` only: no network, no audio files. It uses the first local en-US voice, rate
+  1.1, pitch 1.0, and `cancel()` before each call. It is called inside the tap, which iOS needs.
+- **The switch:** Voice On / Off under the perspective chips (phones: the 9-dot sheet). It's one per-device setting,
+  `kb:voice` ('off', or absent = On). It's hidden in a game without Intent and wherever the browser has no speech. The
+  Play Store Android app's WebView has none, so the app shell needs a native text-to-speech plugin before it can speak
+  (not built).
+
 ## Live Game on the field (G5, Joel, Oct 6–8 2026; evidence `plans/g5-evidence.md`)
 
 Built far past the uploaded spec `plans/g5-live-game-diamond.md` -- where they differ, Joel's later decisions (below) win.

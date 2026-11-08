@@ -15,11 +15,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-08 · production v340; v341 on a branch)
+## Now and next (updated 2026-11-08 · production v341)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- Voice at 0.9 speed, branch `u16-voice-rate-09` (v341), PR open.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -61,12 +60,13 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-08 · no packet (Voice at 0.9 speed) · **staging** (site on a branch), branch `u16-voice-rate-09`, PR open (not merged)
+## 2026-11-08 · no packet (Voice at 0.9 speed) · **production**, branch `u16-voice-rate-09`, PR #81 merged (`5f2642d`)
 - **Asked by:** Joel: "make the voice .9 speed". Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v341.
 - **Built:** `speakCall` sets `rate = 0.9` (was 1.0 since v339). Pitch, language and the iPhone-safe behavior (v340) are
   unchanged. CLAUDE.md's Speech line updated.
 - **Deviations:** none. No migration, no function change.
-- **Open:** Joel listens on the iPhone after the merge (reopen the app online to pick up v341).
+- **Shipped:** v341 live on knuckleballonline.com, www and knuckleball.pages.dev (production config), checked Nov 8.
+- **Open:** Joel listens on the iPhone (reopen the app online to pick up v341).
 
 ---
 

@@ -15,11 +15,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-08 · production v338; v339 on a branch)
+## Now and next (updated 2026-11-08 · production v339)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
-- Voice rate 1.0, branch `u16-voice-rate` (v339), PR open.
 
 **Next up, in order**
 1. Phase 5. Earliest Nov 11, after a clean week and final domain tests:
@@ -61,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-08 · no packet (Voice reads at normal speed) · **staging** (site on a branch), branch `u16-voice-rate`, PR open (not merged)
+## 2026-11-08 · no packet (Voice reads at normal speed) · **production** (PR #78 merged Nov 8, `4826a47`; v339 live on all three addresses), branch `u16-voice-rate`
 - **Asked by:** Joel, after U16 shipped: "lets read at 1". Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v339.
 - **Built:** the Voice call's speech rate goes from 1.1 (the packet's) to 1.0, the phone's normal speed. Nothing else
   changes. The U16 entry below records 1.1, which is what v338 shipped.

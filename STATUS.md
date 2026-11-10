@@ -32,7 +32,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
    is applied; still to do: finish the browser walkthrough and bump the cache past v341 (v342). Then: backup,
    production migration, checks, merge.
-3. Once cached apps (v336 and earlier) have updated: a migration removing the direct `pitch_types` write and
+3. Voice in the Play Store Android app: its WebView has no speech, so the app shell needs a native text-to-speech plugin
+   (a new dependency and a new Play build; not started). Until then it shows no Voice switch.
+4. Once cached apps (v336 and earlier) have updated: a migration removing the direct `pitch_types` write and
    `coach_set_pitch_types` (U15 decision 2).
 
 **Waiting on Joel**
@@ -47,8 +49,6 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - Change Email: retry; the box now shows the server's real reason (v329).
 - Test emails to `nate+…@knuckleballonline.com` bounce: turn on Subaddressing in Cloudflare Email Routing and remove
   `nate+chaoscoach@` / `nate+chaosparent@` from Resend's suppression list (or use Gmail plus addresses).
-- U16 on a real phone (production): calls play on the iPhone, in airplane mode too, and the silent switch mutes them as
-  expected (Joel, Nov 8-10, v341). Still to check: Android Chrome. The Play Store app can't speak yet (no switch shown).
 - U15 on the phone (live since Nov 6): hold a pitch chip, the "+", the Catcher / Pitcher button, and tapping the name to
   switch pitchers mid-game.
 - F1-C2's privacy sentence (DRAFT in `privacy.html` on the branch) needs approval.
@@ -67,8 +67,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Deviations:** none. No migration, no function change.
 - **Shipped:** v341 live on knuckleballonline.com, www and knuckleball.pages.dev (production config), checked Nov 8.
 - **Checked:** Joel, Nov 8: "voice working on iphone now" (v341, production). Nov 10: "airplane mode and silent switch
-  both worked as expected".
-- **Open:** Android Chrome (Waiting on Joel).
+  both worked as expected" and "android chrome also worked".
+- **Open:** none. U16's phone checks are all done; the Play Store app's voice is in Next up.
 
 ---
 

@@ -89,7 +89,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - Two quick re-calls: only the last one speaks.
   - Voice picker: iPhone voices name none; a Chrome network default names the local "Samantha".
   - The tap where the pitch went is still silent.
-- **Open:** closed: calls play on Joel's iPhone (Nov 8, with v341).
+- **Open:** none. Calls play on Joel's iPhone (Nov 8, v341).
 - **Apply order:** merge. No function deploy, no migration.
 
 ## 2026-11-08 · no packet (Voice reads at normal speed) · **production** (PR #78 merged Nov 8, `4826a47`; v339 live on all three addresses), branch `u16-voice-rate`

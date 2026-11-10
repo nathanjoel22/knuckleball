@@ -15,7 +15,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## Now and next (updated 2026-11-08 · production v341)
+## Now and next (updated 2026-11-10 · production v341)
 
 **In progress**
 - Hosting clean week on Cloudflare Pages, Nov 4–11 (no branch). GitHub Pages stays on as the fallback.
@@ -32,7 +32,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 2. F1-C2 (coach roster threads), **parked** on `f1c2-roster-threads` (local only, not pushed). The staging DB migration
    is applied; still to do: finish the browser walkthrough and bump the cache past v341 (v342). Then: backup,
    production migration, checks, merge.
-3. Once cached apps (v336 and earlier) have updated: a migration removing the direct `pitch_types` write and
+3. Voice in the Play Store Android app: its WebView has no speech, so the app shell needs a native text-to-speech plugin
+   (a new dependency and a new Play build; not started). Until then it shows no Voice switch.
+4. Once cached apps (v336 and earlier) have updated: a migration removing the direct `pitch_types` write and
    `coach_set_pitch_types` (U15 decision 2).
 
 **Waiting on Joel**
@@ -47,8 +49,6 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - Change Email: retry; the box now shows the server's real reason (v329).
 - Test emails to `nate+…@knuckleballonline.com` bounce: turn on Subaddressing in Cloudflare Email Routing and remove
   `nate+chaoscoach@` / `nate+chaosparent@` from Resend's suppression list (or use Gmail plus addresses).
-- U16 on a real phone (staging, then production): listen to the calls; the iPhone with the silent switch on; airplane
-  mode; Android Chrome. The Play Store app can't speak yet (no switch shown).
 - U15 on the phone (live since Nov 6): hold a pitch chip, the "+", the Catcher / Pitcher button, and tapping the name to
   switch pitchers mid-game.
 - F1-C2's privacy sentence (DRAFT in `privacy.html` on the branch) needs approval.
@@ -66,7 +66,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   unchanged. CLAUDE.md's Speech line updated.
 - **Deviations:** none. No migration, no function change.
 - **Shipped:** v341 live on knuckleballonline.com, www and knuckleball.pages.dev (production config), checked Nov 8.
-- **Open:** Joel listens on the iPhone (reopen the app online to pick up v341).
+- **Checked:** Joel, Nov 8: "voice working on iphone now" (v341, production). Nov 10: "airplane mode and silent switch
+  both worked as expected" and "android chrome also worked".
+- **Open:** none. U16's phone checks are all done; the Play Store app's voice is in Next up.
 
 ---
 
@@ -87,7 +89,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - Two quick re-calls: only the last one speaks.
   - Voice picker: iPhone voices name none; a Chrome network default names the local "Samantha".
   - The tap where the pitch went is still silent.
-- **Open:** Joel to listen on the iPhone with the ringer switch on (iPhone Safari mutes speech in silent mode).
+- **Open:** none. Calls play on Joel's iPhone (Nov 8, v341).
 - **Apply order:** merge. No function deploy, no migration.
 
 ## 2026-11-08 · no packet (Voice reads at normal speed) · **production** (PR #78 merged Nov 8, `4826a47`; v339 live on all three addresses), branch `u16-voice-rate`

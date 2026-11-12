@@ -1,0 +1,23 @@
+{
+  "_comment": "Copy to config.local.json (git-ignored) and fill in. Keep seed and endDate the same for staging and production so both get the same facility.",
+  "seed": "ds1-2026-11",
+  "password": "<the shared demo password>",
+  "facilityName": "<facility name>",
+  "timezone": "America/New_York",
+  "startDate": "2026-07-01",
+  "endDate": "2026-11-10",
+  "invites": { "staging": "<token from operator.html on staging>", "prod": "<token from operator.html on production>" },
+  "manager": { "email": "<manager@example.com>", "name": "<Manager Name>" },
+  "coaches": [
+    { "email": "<coach1@example.com>", "name": "<Coach One>" },
+    { "email": "<coach2@example.com>", "name": "<Coach Two>" }
+  ],
+  "pitchers": [
+    { "email": "<pitcher1@example.com>", "name": "<Pitcher One>", "throws": "R", "arsenal": ["FB", "SL", "CH"], "coach": 1 },
+    { "email": "<pitcher2@example.com>", "name": "<Pitcher Two>", "throws": "L", "arsenal": ["FB", "CB", "CH"], "coach": 2 }
+  ],
+  "chat": {
+    "facility": ["<manager post 1>", "<manager post 2>"],
+    "private": { "coach": 1, "pitcher": 2, "messages": [["coach", "<text>"], ["pitcher", "<text>"]] }
+  }
+}

@@ -60,7 +60,23 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-13 · DS1 demo facility seed · **staging and production** (data only), branch `ds1-demo-seed`, PR #84 (open)
+## 2026-11-13 · no packet (W1 App Store: no placeholders in the app; privacy host line) · **production on merge**, branch `w1-native-placeholders`
+- **Asked by:** Joel ("yes, start both"; privacy wording "I approve", Nov 13). Operator `Nathan <joelhauserman@gmail.com>`.
+  **Cache:** v342.
+- **Built:** inside the store apps (`isNativeApp()`), a player, parent or teen outside a facility gets no Chat button
+  (`dockKeys()`; the "Chat is coming soon" page was a placeholder, Apple 2.1). Website and facility members unchanged;
+  coaches already had none. `privacy.html` "Where it lives": Cloudflare (Cloudflare Pages) serves the site; the GitHub
+  Pages line is gone. Quiet update: `TERMS_VERSION` and the Version line unchanged.
+- **Deviations:** the landing page's Pricing needed nothing: inside the iPhone app it never shows (film, then "Which
+  sport?"), and its "Price not set" cards were already hidden.
+- **Checked:** `dockKeys()` run for app / web x facility / none x coach / player / view-only (only app + no facility +
+  player changes); privacy and tracker load on the local staging site with no console errors.
+- **Open:** after merge, confirm v342 on the live site and in the TestFlight app (a player login with no facility: bar =
+  Charts · Analysis). F1-C2 now needs v343.
+
+---
+
+## 2026-11-13 · DS1 demo facility seed · **staging and production** (data only), branch `ds1-demo-seed`, PR #84 merged (`3e1f40c`)
 - **Asked by:** Joel (DS1 packet; decisions D1-D8 approved Nov 11). Operator `Nathan <joelhauserman@gmail.com>`.
   **Cache:** v341 (no site change: `tools/` never ships).
 - **Built:** `tools/seed-demo/` (dry run, run, verify, teardown). Jordan's demo facility, the same on both projects
@@ -77,7 +93,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   needed the full path (the CLI reads them from the repo root). Both fixed on the branch.
 - **Open:** Joel's browser look (one Create report per pitcher; chat) and the TestFlight sign-in as Jordan, a coach and a
   pitcher. Jordan changes his password after first sign-in (D6). D2's self-verify hole is a separate packet. When the
-  demo ends: teardown SQL or change the shared password (Joel decides). Merge PR #84.
+  demo ends: teardown SQL or change the shared password (Joel decides).
 
 ---
 

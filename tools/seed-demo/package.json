@@ -1,0 +1,15 @@
+{
+  "name": "knuckleball-seed-demo",
+  "private": true,
+  "description": "DS1: seeds the demo facility through the app's own calls (README.md). Not part of the site.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dry-run": "node seed.mjs --dry-run --env",
+    "seed": "node seed.mjs --env",
+    "verify": "node verify.mjs --env"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.117.2"
+  }
+}

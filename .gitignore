@@ -4,3 +4,9 @@ supabase/.temp/
 
 # Cloudflare Pages build output (scripts/build-site.sh)
 _site/
+
+# DS1 demo seed: real addresses and the password stay on this Mac (tools/seed-demo/README.md)
+tools/seed-demo/config.local.json
+tools/seed-demo/out/
+tools/seed-demo/node_modules/
+plans/ds1-jordan-demo-seed.verbatim.md

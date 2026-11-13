@@ -4130,10 +4130,11 @@ function coachDockShown(phoneSession){ return !!state.profile && (isCoach() || s
 // Nov 5 (Joel): no Home or Profile on the bar (the wordmark goes Home; Profile is a Home tile and in the account menu).
 // Coaches: Charts, Analysis, Chat (in a facility), Roster. Players, parents and teens: Charts, Analysis, Chat (marked
 // "Soon" outside a facility). View-only friends and family: Analysis, Profile.
+// W1 (Joel, Nov 13 2026): inside the store apps there's no "Soon" Chat (Apple rejects placeholders, 2.1): no facility, no Chat.
 function dockKeys(){
   if(isCoach()) return ['charts', 'history', ...(chatEnabled() ? ['chat'] : []), 'roster'];
   if(viewOnlyLinked()) return ['history', 'profile'];
-  return ['charts', 'history', 'chat'];
+  return ['charts', 'history', ...((chatEnabled() || !isNativeApp()) ? ['chat'] : [])];
 }
 const DOCK_LABELS = { home: 'Home', charts: 'Charts', history: 'Analysis', chat: 'Chat', roster: 'Roster', profile: 'Profile' };
 function dockActiveIndex(){

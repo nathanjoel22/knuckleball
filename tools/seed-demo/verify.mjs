@@ -171,7 +171,7 @@ check(9, 'no leaderboard and no notes on the facility team (other accounts\' iso
   `leaderboard: ${lb.error ? lb.error.message : JSON.stringify(lb.data).slice(0, 80)}; notes ${notes}`);
 
 // 10. email: the seed calls no Edge Function; the count is a read-only query (README step 7)
-console.log(`\n10. Email: seed.mjs calls no Edge Function, so it can't send. To prove it, compare before and after the run:\n    supabase db query --linked --project-ref ${project.ref} "select count(*) from public.rate_limit_events where created_at > now() - interval '1 day'"`);
+console.log(`\n10. Email: seed.mjs calls no Edge Function, so it can't send. To prove it, compare before and after the run:\n    supabase db query --linked --project-ref ${project.ref} "select count(*) from public.rate_limit_events where at > now() - interval '1 day'"`);
 
 const failed = results.filter(r => !r.ok);
 console.log(`\n${results.length - failed.length} passed, ${failed.length} failed`);

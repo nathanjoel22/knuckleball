@@ -38,7 +38,7 @@ All commands from `~/knuckleball-repo/tools/seed-demo`.
    memberships kept, sessions have fixed ids and come back `already_saved`.
 6. **Verified email (decision D1):** the run writes `out/verify-staging.sql`, which marks the 13 sign-ins' email
    verified. That's needed for reports and normally comes only from an emailed link. Run it:
-   `supabase db query --linked --project-ref wpsscxwawgiwmifpjpec -f out/verify-staging.sql`
+   `supabase db query --linked --project-ref wpsscxwawgiwmifpjpec -f "$PWD/out/verify-staging.sql"`
 7. **Check:** `node verify.mjs --env staging`. Every line should say PASS.
    - For the email check, run the count it prints before step 5 and again now; the two should be equal.
 8. **Look at staging in the browser:**
@@ -47,7 +47,7 @@ All commands from `~/knuckleball-repo/tools/seed-demo`.
      reports on their own; Create report sends no email).
    - Chat shows the facility posts and the Coach 1 thread.
 9. **Fresh production backup** (BACKUPS.md).
-10. **Production:** steps 4-7 with `--env prod`; the verify SQL is `out/verify-prod.sql` with
+10. **Production:** steps 4-7 with `--env prod`; the verify SQL is `"$PWD/out/verify-prod.sql"` (the full path: the CLI reads `-f` from the repo root) with
     `--project-ref fkgccjhuimkkbupbanxp`.
 11. **TestFlight:** open the app as Jordan (and one coach, one pitcher) with the shared password.
 
@@ -86,7 +86,7 @@ they head the facility. It also can't delete a team that has sessions. So teardo
 modelled on `supabase/scripts/f1a_loadtest_cleanup.sql`:
 
 1. `node seed.mjs --env staging --teardown` writes `out/teardown-staging.sql`.
-2. Run it as is: `supabase db query --linked --project-ref wpsscxwawgiwmifpjpec -f out/teardown-staging.sql`. It's a
+2. Run it as is: `supabase db query --linked --project-ref wpsscxwawgiwmifpjpec -f "$PWD/out/teardown-staging.sql"`. It's a
    **dry run**: it does everything, reports the counts and rolls back.
 3. To really remove it, change `dry_run constant boolean := true` to `false` in that file and run it again.
 

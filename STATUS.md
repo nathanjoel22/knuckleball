@@ -60,6 +60,27 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-13 · DS1 demo facility seed · **staging and production** (data only), branch `ds1-demo-seed`, PR #84 (open)
+- **Asked by:** Joel (DS1 packet; decisions D1-D8 approved Nov 11). Operator `Nathan <joelhauserman@gmail.com>`.
+  **Cache:** v341 (no site change: `tools/` never ships).
+- **Built:** `tools/seed-demo/` (dry run, run, verify, teardown). Jordan's demo facility, the same on both projects
+  from seed `ds1-122`: 13 sign-ins (manager, 2 coaches, 10 adult pitchers; real details only in the git-ignored
+  `config.local.json`), 131 backdated sessions (69 pens, 62 games, 4,816 pitches, Jul 1 - Nov 10), 8 chat messages.
+  All through the app's own calls with the anon key: no schema, RLS or function change.
+- **Ran:** staging first (invite made on operator.html; the first invite had a different facility name and was
+  cancelled), then production after the 2026-11-13 backup. Each: `seed.mjs`, the D1 verify SQL (13 profiles'
+  `email_verified_at`; production run confirmed with Joel first), `verify.mjs`: **12 of 12 PASS on both** (access per
+  account, Trends stories, `session_stats` 0 differences on 20 recomputed, every game line, no leaderboard / notes).
+  **No email:** `rate_limit_events` 0 in the last 24 h before and after, both projects. Production went from 76 to 90
+  profiles (the manager has two coach profiles) and 160 to 291 sessions.
+- **Deviations:** `verify.mjs`'s email-count query used `created_at` (the column is `at`); the README's `-f` paths
+  needed the full path (the CLI reads them from the repo root). Both fixed on the branch.
+- **Open:** Joel's browser look (one Create report per pitcher; chat) and the TestFlight sign-in as Jordan, a coach and a
+  pitcher. Jordan changes his password after first sign-in (D6). D2's self-verify hole is a separate packet. When the
+  demo ends: teardown SQL or change the shared password (Joel decides). Merge PR #84.
+
+---
+
 ## 2026-11-08 · no packet (Voice at 0.9 speed) · **production**, branch `u16-voice-rate-09`, PR #81 merged (`5f2642d`)
 - **Asked by:** Joel: "make the voice .9 speed". Operator `Nathan <joelhauserman@gmail.com>`. **Cache:** v341.
 - **Built:** `speakCall` sets `rate = 0.9` (was 1.0 since v339). Pitch, language and the iPhone-safe behavior (v340) are

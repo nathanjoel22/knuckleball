@@ -5,7 +5,12 @@ Written against: STATUS 2026-11-13 (W1 App Store: no placeholders in the app; pr
 **From Jordan + Claude, after the Nov 15 review with Joel.** Joel asked for everything in the two proposals to be
 built. The agreed design, with a drawing of every screen, is the page **Knuckleball App Navigation**
 (https://claude.ai/artifact/9c6e7A3Kj2SYACz3KpzHqx; Jordan shares it with Joel). This packet is that page as build
-instructions. Text layouts of the main screens are in section 3 so the packet stands on its own.
+instructions.
+
+**The look is in the repo:** `docs/n1/` holds a picture of every drawn screen, and
+`plans/n1-design-reference.md` gives the values behind them (color roles as app tokens, type, the styling of the
+line score, recap and pitcher card, the recap's motion). Open the pictures for a stage before building it. The
+text layouts in section 3 show structure only; the pictures are the approved look.
 
 Seven stages, A to G. **Each stage is its own branch, its own preconditions report, its own PR and its own cache
 bump, and reaches staging before Joel ships it. A stage starts only after the one before it is on production.**
@@ -88,7 +93,11 @@ report restates the ones it touches so he confirms them in writing before code:*
 
 Sizes seen in the drawings: phone 390px, iPad upright 820px, iPad wide 1180px, laptop 1440px.
 
+Each stage names its pictures in `docs/n1/`. Read the matching section of `plans/n1-design-reference.md` with them.
+
 ### Stage A · Names and the phone menu (size M, front end only)
+
+Pictures: `a-phone-bar.png`, `a-more-screen.png`, `a-sign-out-sheet.png`.
 
 **Names.** One labels object feeds the bar, the sidebar (Stage B), page headings and `help.html`:
 
@@ -174,6 +183,9 @@ and mark the two paragraphs above it (Coach dock, Trends) as history. Stage B do
 
 ### Stage B · Sidebar and roster (size L, front end only)
 
+Pictures: `b-sidebar-ipad.png`, `b-remove-sheet.png`. Not drawn: the icon rail, the roster page, the pitcher's
+page and Manage; sketch them in preconditions in the same style.
+
 **Sidebar.** At ≥501px the left column becomes the menu. It replaces the bottom bar on iPads and the tab row on
 computers, so `dockDevice()` narrows to phone width and `renderTabs` retires.
 
@@ -250,6 +262,9 @@ sentence in preconditions.
 
 ### Stage C · Home dashboards (size L, front end only unless preconditions say otherwise)
 
+Pictures: `c-home-pitcher.png`, `c-home-parent.png`, `c-home-coach.png`, `c-line-score.png`, and the owner's Home
+in `b-sidebar-ipad.png`.
+
 `renderHomeTiles` gives way to a Home per role. Each card leads somewhere.
 
 **The line score** (one component, used for one pitcher and for a roster):
@@ -305,6 +320,8 @@ report (no RLS change without Joel). Writing waits for J1.
 
 ### Stage D · Getting-started card (size M, front end only)
 
+Picture: `d-getting-started.png`.
+
 A card at the top of Home: title, "3 of 5", a progress bar, the steps, "Hide". Hidden, it stays reachable from
 More → "Getting started". It never blocks anything.
 
@@ -328,6 +345,8 @@ report lists where they repeat a step on the card and proposes what to keep; Joe
 unasked.
 
 ### Stage E · Zone pictures in History and the recap (size M, front end only)
+
+Pictures: `e-history-zones.png`, `e-zone-large.png`, `e-recap.png`.
 
 **History.** Each session's bar gets a small zone picture at its left: a 5×5 heat map from `session_stats.cells`
 (darker = more pitches), pitcher's view, the 3×3 zone outlined. It needs no pitch rows, so it draws for every
@@ -364,6 +383,8 @@ stays open as today (Nov 5).
 
 ### Stage F · Pitcher card and milestones (size M, front end only)
 
+Pictures: `f-pitcher-card.png`, `f-milestones.png`.
+
 **Card.** The header of the pitcher's page (Stage B), and of a pitcher's own Account:
 
 ```
@@ -396,6 +417,8 @@ A banner on Home for 7 days after one is earned (dismissable, remembered per dev
 pitcher's page. Nothing is stored on the server. Wording never tells a pitcher to throw more.
 
 ### Stage G · Facility name and colors (size L, database + front end)
+
+Pictures: `g-sidebar-standard.png`, `g-sidebar-facility.png`. Not drawn: the logo and color picker.
 
 This is T1 ("team branding: moved to later", STATUS) for facilities. **It changes the database, so the
 preconditions report carries the full migration, the rollback and the RLS for Joel to approve before anything
@@ -452,74 +475,78 @@ runs** (CLAUDE.md: no RLS change, no schema deploy without asking).
 2. Airplane mode after one online load: every screen the stage adds still draws.
 3. Start a bullpen and a Live Game: no bar, no sidebar, no new element on the charting screen; a session saves and
    syncs as before.
-4. `CACHE_VERSION` bumped; pre-push checks pass; STATUS.md entry in the same PR; CLAUDE.md updated where the stage
+4. **Side by side with the picture.** For each picture the stage names, a staging screenshot of the built screen
+   at 390px (iPad pictures at 1180px) beside the picture from `docs/n1/`, both in the evidence file, with a list of
+   every visible difference and why it is there. Same order, same dark and light surfaces, same type roles, same
+   color roles. A softball screenshot of the same screen shows the softball tokens, with no baseball color left.
+5. `CACHE_VERSION` bumped; pre-push checks pass; STATUS.md entry in the same PR; CLAUDE.md updated where the stage
    changed a rule.
 
 **Stage A:**
 
-5. Each role's bar matches the table. Every bar tap lands at scroll 0. History is lit on Sessions and Trends.
-6. No "Charts", "Charting", "New Session", "Analysis" or "Player Profile" text remains in the tracker's UI or
+6. Each role's bar matches the table. Every bar tap lands at scroll 0. History is lit on Sessions and Trends.
+7. No "Charts", "Charting", "New Session", "Analysis" or "Player Profile" text remains in the tracker's UI or
    `help.html` (grep output), apart from code identifiers.
-7. Every item of the old account menu is reachable from More, per role (click path for each).
-8. Chat icon: shown with the right count for the manager and a facility pitcher; absent for a normal-team coach
+8. Every item of the old account menu is reachable from More, per role (click path for each).
+9. Chat icon: shown with the right count for the manager and a facility pitcher; absent for a normal-team coach
    and for a pitcher outside a facility, on the web and with `isNativeApp()` true.
-9. Sign out: the sheet names the login; with one unsynced session in the outbox it shows the unsynced line;
+10. Sign out: the sheet names the login; with one unsynced session in the outbox it shows the unsynced line;
    "Stay signed in" does nothing; after signing out and back in, that session syncs.
-10. `help.html` opened from More shows "‹ Back to Knuckleball" in a plain browser tab and returns to the app.
-11. At 390px no view's last control is under the bar (screenshot of each view scrolled to the end).
+11. `help.html` opened from More shows "‹ Back to Knuckleball" in a plain browser tab and returns to the app.
+12. At 390px no view's last control is under the bar (screenshot of each view scrolled to the end).
 
 **Stage B:**
 
-12. At 820, 1180 and 1440px there is a sidebar and no bottom bar or tab row; at 390px the Stage A bar is unchanged.
-13. Every sidebar item opens its place for each role; History opens Sessions and Trends; the manager sees
+13. At 820, 1180 and 1440px there is a sidebar and no bottom bar or tab row; at 390px the Stage A bar is unchanged.
+14. Every sidebar item opens its place for each role; History opens Sessions and Trends; the manager sees
     Facility items, a normal coach doesn't.
-14. Roster: no Remove, Clear or "⋯" on any row. A row opens the pitcher's page; Back returns to the list.
-15. The chip switches pitcher on Chart and on History without leaving the view.
-16. Manage, on staging with demo pitchers: Clear "New"; Move with Confirm; Remove from a coach when the pitcher
+15. Roster: no Remove, Clear or "⋯" on any row. A row opens the pitcher's page; Back returns to the list.
+16. The chip switches pitcher on Chart and on History without leaving the view.
+17. Manage, on staging with demo pitchers: Clear "New"; Move with Confirm; Remove from a coach when the pitcher
     has two groups (stays on the facility); Remove from a coach when it is the only group (the sheet says they
     leave the facility; afterwards `pitcher_teams` has no row, query shown); Remove from facility (email function
     called once).
-17. "Delete my account" is in its own group, not beside "Download my data"; the delete flow's two screens are
+18. "Delete my account" is in its own group, not beside "Download my data"; the delete flow's two screens are
     word for word as before; the path sentence in the three pages is true.
 
 **Stage C:**
 
-18. Each role's Home matches section 3. Line score totals equal History's counts for the same week (numbers
+19. Each role's Home matches section 3. Line score totals equal History's counts for the same week (numbers
     shown side by side).
-19. A pitcher with no session for 5 days is listed under "Needs your attention"; one at 4 days is not.
-20. A pitching coach's Home shows only their group; the manager's shows all (compare with the roster).
-21. A session saved offline appears in the line score before it syncs.
-22. The coach's note shows on a normal team where a note exists, for the pitcher and (if the rule allows) the
+20. A pitcher with no session for 5 days is listed under "Needs your attention"; one at 4 days is not.
+21. A pitching coach's Home shows only their group; the manager's shows all (compare with the roster).
+22. A session saved offline appears in the line score before it syncs.
+23. The coach's note shows on a normal team where a note exists, for the pitcher and (if the rule allows) the
     parent; nothing on a facility team.
 
 **Stage D:**
 
-23. A new login of each role sees its list; each step ticks when done by really doing it; "Hide" hides it; More →
+24. A new login of each role sees its list; each step ticks when done by really doing it; "Hide" hides it; More →
     Getting started brings it back.
-24. Adding a sixth step to one role is a one-entry change (the diff shown).
+25. Adding a sixth step to one role is a one-entry change (the diff shown).
 
 **Stage E:**
 
-25. Every History bar has a picture; a session's picture matches its report's first plot (same cells, pitcher's
+26. Every History bar has a picture; a session's picture matches its report's first plot (same cells, pitcher's
     view), for a RHP and a LHP.
-26. Ending a bullpen and a game shows the recap offline; its numbers equal the History card's; Done, View report
+27. Ending a bullpen and a game shows the recap offline; its numbers equal the History card's; Done, View report
     and Send report go where section 3 says, synced and unsynced.
-27. With reduced motion on, nothing moves.
+28. With reduced motion on, nothing moves.
 
 **Stage F:**
 
-28. The card's totals equal Trends' totals for the same pitcher. No "Top velo" for a pitcher with no readings.
-29. Each milestone fires once on the session that earns it, using a seeded pitcher; a week with no session ends
+29. The card's totals equal Trends' totals for the same pitcher. No "Top velo" for a pitcher with no readings.
+30. Each milestone fires once on the session that earns it, using a seeded pitcher; a week with no session ends
     a run, rest days inside a week don't.
-30. No Share button before J2. After J2: the PNG matches the card; the button is absent for everyone J2 excludes.
+31. No Share button before J2. After J2: the PNG matches the card; the button is absent for everyone J2 excludes.
 
 **Stage G:**
 
-31. Migration and rollback run on staging; the RLS test shows a pitching coach and a pitcher can read and cannot
+32. Migration and rollback run on staging; the RLS test shows a pitching coach and a pitcher can read and cannot
     write the facility's branding, and another facility's manager can do neither.
-32. With a logo and two colors set: sidebar, phone top bar and card show them for every member role; a normal
+33. With a logo and two colors set: sidebar, phone top bar and card show them for every member role; a normal
     team and the other sport's side are unchanged; pitch chips, reports and the Live Game field are unchanged.
-33. A low-contrast pair is refused. The theme paints on an offline reload.
+34. A low-contrast pair is refused. The theme paints on an offline reload.
 
 ## 7. Ship (staging first; production only by Joel)
 
@@ -536,8 +563,8 @@ runs** (CLAUDE.md: no RLS change, no schema deploy without asking).
 
 ## Paste into Claude Code (one stage at a time; replace <X> and <stage name>)
 
-> Pull `origin/main` and work only from what GitHub has. Read `CLAUDE.md`, the top of `STATUS.md` and
-> `plans/n1-navigation-and-home.md`. This is **N1 Stage <X>: <stage name>**. Stages before <X> must already be on
+> Pull `origin/main` and work only from what GitHub has. Read `CLAUDE.md`, the top of `STATUS.md`,
+> `plans/n1-navigation-and-home.md` and `plans/n1-design-reference.md`, and open this stage's pictures in `docs/n1/`. This is **N1 Stage <X>: <stage name>**. Stages before <X> must already be on
 > production; if STATUS says otherwise, stop and tell me. Branch `n1<x>-…` from `main` as named in section 7.
 > Standing rules apply: staging only, only Joel ships to production, no new dependency, nothing from another
 > host, charting never needs the network, frozen reports and the palettes untouched, pre-push checks finish

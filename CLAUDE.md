@@ -207,19 +207,42 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
 
 - **History cards (v188):** every pen and game card shows the report's first chart (`renderHistoryPlot`): dots by pitch type in the PITCHER'S view (Amendment 16), a grey translucent ring, a cream 3×3 strike zone, no zone numbers and no heat shading, above a drawn home plate (`renderPerspectivePlate`, our own drawing -- no stock images). Games also get a per-type table (`gameHistoryTypeTable`).
 - **Wordmark (v189):** "KNUCKLEBALL" in all caps in Black Ops One, no diamond or period, on every page -- `privacy.html` / `terms.html` too since D2 Stage C (Joel approved, Oct 13 2026). The font is self-hosted (`vendor/fonts/BlackOpsOne-Regular.ttf`, `@font-face` in `vendor/fonts/fonts.css`, license `vendor/fonts/OFL.txt`) and precached by `sw.js` so it shows offline. The Noto files were tried and removed (Oct 8).
-- **Coach dock (v190–v193):** coaches on phones (≤500px, `coachDockShown`), never during the charting screen (`phoneSessionMode`), get a translucent bar fixed to the bottom (`renderCoachDock`, `dockGo`): **Home** (house) → New Session's "What will we be charting today?"; **Charts** (clipboard) → History; **Roster** (person) → opens the pitcher list and scrolls to the top of the page; **Profile** (gear) → the coach profile. Home / Charts / Profile roll the roster up and land with the pitcher's header box at the top of the screen (Profile: the top of the page content). It slides away scrolling down and returns scrolling up (its own jumps don't hide it); a highlight pill glides under a finger sliding along the bar and snaps to the nearest button on release; taps glide it too. Pure UI, no network. iPad and laptop have no dock; since Oct 26 pitchers get one too (Home · Charts · Trends · Profile), see Trends below.
-- **Trends (Joel, Oct 26 2026, v310):** a tab after History: the selected pitcher's saved sessions added up (All / Bullpen / Live Game) -- strike % and peak velocity per pitch type, one point per session, and one pitcher's-view 5x5 plot per pitch type of every pitch. Built on every render from History's data (`renderTrendsView`); no report, no network. Home (same day) is four squares -- Charting, History, Trends, Profile (Armcare / Mental Game kept as concepts, not shown) -- and the phone bottom bar is Home · Charts · History · Trends · Roster · Profile for coaches, Home · Charts · History · Trends · Profile for pitchers (`dockKeys()`); Charts opens the Bullpen / Live Game question (or Resume), History opens History. **Since Oct 29 (Joel), History and Trends share one button, Analysis** (History's icon): it opens History and stays lit on History and Trends, so the bar is Home · Charts · Analysis · Roster · Profile (coaches) / Home · Charts · Analysis · Profile (pitchers); Trends is in the page's tabs and on Home.
-- **Navigation (Joel, Nov 5 2026, v331; supersedes the dock and tab details above where they differ):** phones and
-  iPads (touch screens, or any window ≤500px; `dockDevice()`) always show the bottom bar, never sliding away, hidden
-  only on the charting screen; they have **no tab bar** under the pitcher's name (charting included). Bar: coaches
-  Charts · Analysis · Chat (in a facility) · Roster; players, parents and teens Charts · Analysis · Chat ("Soon" outside
-  a facility: a coming-soon page); view-only friends and family Analysis · Profile (`dockKeys()`). History / Trends sit
-  above All / Bullpen / Live Game there (`analysisTray`). Computers keep the tab bar. **Leaderboard is hidden for now**
-  (no tab; `renderLeaderboardView` kept). The KNUCKLEBALL wordmark goes Home (`goHome`); Profile is in the account menu
-  (`acctGoProfile`) and a Home tile; a coach taps the pitcher's name or photo for Player Profile. Every bar button lands at the very top of the page (the
-  banner in view; v335); A coach's open roster list (phones / iPads,
-  `rosterCanCollapse`) stands alone: nothing below it, not even the footer or Sign out, until a pitcher is picked or
-  another button is tapped (v336).
+- **Coach dock (v190–v193; history: N1 Stage A below is the rule now):** coaches on phones (≤500px, `coachDockShown`), never during the charting screen (`phoneSessionMode`), get a translucent bar fixed to the bottom (`renderCoachDock`, `dockGo`): **Home** (house) → New Session's "What will we be charting today?"; **Charts** (clipboard) → History; **Roster** (person) → opens the pitcher list and scrolls to the top of the page; **Profile** (gear) → the coach profile. Home / Charts / Profile roll the roster up and land with the pitcher's header box at the top of the screen (Profile: the top of the page content). It slides away scrolling down and returns scrolling up (its own jumps don't hide it); a highlight pill glides under a finger sliding along the bar and snaps to the nearest button on release; taps glide it too. Pure UI, no network. iPad and laptop have no dock; since Oct 26 pitchers get one too (Home · Charts · Trends · Profile), see Trends below.
+- **Trends (Joel, Oct 26 2026, v310; the bar and tab details are history: see N1 Stage A below):** a tab after History: the selected pitcher's saved sessions added up (All / Bullpen / Live Game) -- strike % and peak velocity per pitch type, one point per session, and one pitcher's-view 5x5 plot per pitch type of every pitch. Built on every render from History's data (`renderTrendsView`); no report, no network. Home (same day) is four squares -- Charting, History, Trends, Profile (Armcare / Mental Game kept as concepts, not shown) -- and the phone bottom bar is Home · Charts · History · Trends · Roster · Profile for coaches, Home · Charts · History · Trends · Profile for pitchers (`dockKeys()`); Charts opens the Bullpen / Live Game question (or Resume), History opens History. **Since Oct 29 (Joel), History and Trends share one button, Analysis** (History's icon): it opens History and stays lit on History and Trends, so the bar is Home · Charts · Analysis · Roster · Profile (coaches) / Home · Charts · Analysis · Profile (pitchers); Trends is in the page's tabs and on Home.
+- **Navigation (N1 Stage A, Joel + Jordan, Nov 15-16 2026, v343; `plans/n1-navigation-and-home.md`, decisions in
+  `plans/n1a-preconditions.md`; replaces the Nov 5 v331 rules):**
+  - **One name per place** (`PLACE` in the tracker): Home, Chart, History (its views **Sessions** and **Trends**),
+    Roster, More, Pitcher settings (a pitcher's own setup), Account (the login, team and data).
+  - **Phones and iPads** (touch screens, or any window ≤500px; `dockDevice()`) always show the bottom bar, never sliding
+    away, hidden only on the charting screen and while a typing field has focus; **no tab bar** there. Bar
+    (`dockKeys()`): coaches Home · Chart · History · Roster · More; players, parents and teens Home · Chart · History ·
+    More; view-only friends and family Home · History · More. History stays lit on Sessions and Trends (the
+    `analysisTray` above All / Bullpen / Live Game); More stays lit on Account. Every bar button lands at the very top
+    of the page (v335).
+  - **More** (`renderMoreView`, a section's first screen, no Back): Your account (the login's name and role, its email,
+    one row per profile to switch, + Add a sport), Team (Add a player; for coaches Join codes and invite links -- only
+    a facility side's coaches or a team's head -- and Team settings, which open Account at those sections), Help
+    (Getting started and Help and support → `help.html`, Privacy · Terms), then **Sign out**. On phones and iPads the
+    avatar opens More; computers keep the account dropdown until Stage B's sidebar.
+  - **Chat** is an icon at the top right, left of the avatar (`chatIconBtn`), only in a facility, with the unread +
+    reports count; never on the charting screen. No Chat on the bar or in the tabs, and no coming-soon page, on the web
+    and in the store apps alike.
+  - **Sign out asks first** (`askSignOut`, `renderSignOutSheet`): "You're signed in as <name>", plus how many sessions
+    on this device haven't synced (they stay and sync when the same login signs back in). The phone footer's Sign out
+    is gone; the sidebar's opens the same sheet. The first-run screens keep their direct Sign out.
+  - **Account / Pitcher settings:** a pitcher's page is one page with two headed groups, Pitcher settings (photo, name,
+    pitch mix, relative accuracy, uniform, level, throws, radar gun, who can see) then Account (email, password, your
+    data); a coach's own page is Account (with team admin); a coach's view of a pitcher is Pitcher settings. On phones
+    and iPads, ‹ Back on Account goes to More.
+  - **Chart** opens the chooser as two cards (Bullpen, Live Game) with the pitcher's last session under them, from the
+    device's data (absent offline for a pitcher the coach never opened).
+  - **Computers** keep the tab row until Stage B: Home · Chart (Resume with a draft) · Sessions · Trends · Pitcher
+    settings (coach) / Account (pitcher). **Leaderboard is hidden for now** (no tab; `renderLeaderboardView` kept). The
+    KNUCKLEBALL wordmark goes Home (`goHome`).
+  - **Help** shows "‹ Back to Knuckleball" always, and the store apps open it inside the app (not the Safari sheet):
+    `help` is out of the 17 pages' native link handler. Privacy, terms, reports and delete-account keep the sheet.
+  - A coach's open roster list (phones / iPads, `rosterCanCollapse`) still stands alone until a pitcher is picked or
+    another button is tapped (v336) -- until Stage B makes the roster a page.
 - **One "‹ Back" (F1-D, Joel, Oct 29 2026; `plans/f1d-preconditions.md`; v324):** top left of the page (in the account
   row on phones; its own row when the account sits in the pitcher header), every size, browser and installed. It goes
   to the section's first screen, never browser history: start questions → "Bullpen or Live Game?"; (an opened History

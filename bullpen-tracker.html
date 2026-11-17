@@ -872,6 +872,24 @@
   .ls-grid .name-hd{ text-transform:uppercase; }
   .pill{ display:inline-block; border-radius:999px; padding:2px 10px; font-size:13px; font-weight:700; }
   .pill-new{ background:var(--accent); color:var(--on-accent, var(--ink)); }
+  .pill-count{ background:var(--surface); color:var(--ink-dim); }
+  /* N1-D: Get started (docs/n1/d-getting-started.png) */
+  .gs-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:var(--s-16) var(--s-16) var(--s-6); }
+  .gs-top{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--s-8); }
+  .gs-title{ margin:0; font-size:var(--t-32); line-height:1; }
+  .gs-count{ font-size:13px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint); white-space:nowrap; }
+  .gs-hide{ border:0; background:none; font:inherit; color:inherit; text-transform:inherit; letter-spacing:inherit; cursor:pointer; padding:var(--s-8) 0; min-height:44px; }
+  .gs-bar{ height:10px; border-radius:999px; background:var(--surface); margin:var(--s-8) 0 var(--s-4); overflow:hidden; }
+  .gs-bar span{ display:block; height:100%; background:var(--accent); border-radius:999px; }
+  .gs-bar.all span{ background:var(--success); }
+  .gs-step{ display:flex; align-items:center; gap:var(--s-12); width:100%; min-height:56px; padding:var(--s-8) 0; border:0; border-top:1px solid var(--border);
+    background:none; color:var(--ink); font:inherit; font-size:var(--t-16); text-align:left; cursor:pointer; }
+  .gs-step.done{ cursor:default; }
+  .gs-check{ width:32px; height:32px; border-radius:50%; background:var(--success); color:#fff; display:inline-flex; align-items:center; justify-content:center; font-weight:800; flex:none; }
+  .gs-ring{ width:32px; height:32px; border-radius:50%; border:2px solid var(--ink-dim); flex:none; }
+  .gs-text{ flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .gs-step.next .gs-label{ font-weight:700; }
+  .gs-hint{ font-size:var(--t-14); color:var(--ink-dim); }
   .pill-days{ background:var(--warning-tint, #FBF1D6); color:var(--accent-ink, #7A5A00); }
   .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
   .home-tiles{ display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:var(--s-8); width:100%; max-width:340px; margin:var(--s-4) 0 var(--s-24); }
@@ -3177,7 +3195,7 @@ async function loadFullContextOnline(alreadyPainted){
   // Joel, Oct 1 (both sports): a brand-new coach -- head of a team with no
   // pitchers yet, welcome never dismissed -- lands on the coach welcome with
   // the pitcher invite link at the top, so the first thing to do is obvious.
-  if(isCoach() && state.profile && !state.profile.setup_dismissed_at && isHeadOfCurrentTeam() && !state.roster.length){
+  if(isCoach() && state.profile && !state.profile.setup_dismissed_at && isHeadOfCurrentTeam() && !state.roster.length && !currentTeamIsFacility()){   // N1-D (Q4): facilities join by QR code
     openCoachWelcome();
   }
 
@@ -4544,7 +4562,7 @@ async function copyLinkGeneric(link, statusField){
   render();
   setTimeout(() => { state[statusField] = null; render(); }, ok ? 2000 : 4000);
 }
-window.copyInviteLink = function(){ return copyLinkGeneric(inviteLinkFor(), 'inviteCopyStatus'); };
+window.copyInviteLink = function(){ gsMark('share'); return copyLinkGeneric(inviteLinkFor(), 'inviteCopyStatus'); };
 window.copyCoachInviteLink = function(){ return copyLinkGeneric(coachInviteLinkFor(), 'coachInviteCopyStatus'); };
 window.armRegenerateInvite = function(){
   state.regenerateArmed = true;
@@ -4774,7 +4792,7 @@ function renderJoinCodeBar(){
     ${isFacilityManager() ? `<button type="button" class="btn btn-secondary btn-sm" onclick="showJoinCode('all')">All join codes</button>` : ''}
   </div>`;
 }
-window.showJoinCode = function(id){ state.codeView = id; state.codeArmed = null; state.codeMsg = ''; render(); if(isOnline()) loadGroupCodes(); };
+window.showJoinCode = function(id){ gsMark('share'); state.codeView = id; state.codeArmed = null; state.codeMsg = ''; render(); if(isOnline()) loadGroupCodes(); };
 window.closeJoinCode = function(){ state.codeView = null; state.codeArmed = null; state.codeMsg = ''; render(); };
 window.shareJoinCode = async function(id){
   const c = groupCodes().find(x => x.group_id === id); if(!c) return;
@@ -6180,6 +6198,7 @@ window.endSession = async function(){
     lastAttemptAt: null
   };
   await enqueueOutboxItem(state.session.user.id, item);
+  gsMark(item.kind === 'game' ? 'game' : 'pen');   // N1-D: Get started knows at once, offline too
   await storDelete(draftKey());
   if(item.kind === 'game'){ saveGameHandoff(state.activeSession, item); rememberRecentGame(item); }   // R3 (B5): "Who was pitching?" offline
 
@@ -6938,6 +6957,8 @@ function clearDeleteState(){
   state.deleteError = null;
 }
 window.setView = function(v){
+  if(v !== 'home') state.gsForce = false;   // N1-D: More -> Getting started shows the card until you leave Home
+  if((v === 'roster' || v === 'coaches') && isFacilityManager()) gsMark('facility-view');
   if(v === 'leaderboard' && !hasLeaderboard()) v = 'session';
   if(v === 'session' && viewOnlyLinked()) v = 'history';   // F1-G: friends and family don't chart
   if(v !== 'chat') chatStopThreadPoll();   // F1-C1
@@ -13339,7 +13360,7 @@ function renderMoreView(){
       ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
       ${team ? `<div class="more-group-label">Team</div>${team}` : ''}
       <div class="more-group-label">Help</div>
-      <a class="more-row" href="help.html"><span class="more-row-main">Getting started</span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></a>
+      ${gsRole() ? `<button type="button" class="more-row" onclick="openGettingStarted()"><span class="more-row-main">Getting started</span><span class="more-row-right">${(() => { const g = gsState(); return g ? `<span class="pill pill-count">${g.n} of ${g.total}</span>` : ''; })()}<span class="more-go" aria-hidden="true">›</span></span></button>` : `<a class="more-row" href="help.html"><span class="more-row-main">Getting started</span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></a>`}
       <a class="more-row" href="help.html#support"><span class="more-row-main">Help and support</span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></a>
       <div class="more-row more-row-links"><a href="${policyHref('privacy.html')}">Privacy</a><span aria-hidden="true">·</span><a href="${policyHref('terms.html')}">Terms</a></div>
     </div>
@@ -13708,8 +13729,8 @@ function renderLastSessionCard(p, s, label, withAcc){
 }
 function isParentView(){ return activePlayerIsMine() || activeLinked() === 'guardian' || activeLinked() === 'family'; }
 function renderHomeView(){
-  if(isCoach()) return renderCoachHome();
-  const p = currentPitcher(); if(!p) return '';
+  if(isCoach()) return renderGettingStarted() + renderCoachHome();
+  const p = currentPitcher(); if(!p) return renderGettingStarted();
   const list = myWeekList(), wk = weekDays(list);
   const sorted = list.slice().sort((a, b) => b.at - a.at);
   const chartBtn = viewOnlyLinked() ? '' : `<button type="button" class="btn btn-primary home-cta" onclick="setView('session')">${state.draftAvailable ? 'Resume' : 'Chart today'}</button>`;
@@ -13718,6 +13739,7 @@ function renderHomeView(){
     const chips = chipChoices().length > 1 ? renderPitcherChip(p) : `<div class="pitcher-chip-row"><span class="pitcher-chip is-static">${renderHeadshot(p)}<span class="pitcher-chip-name">${escHtml(p.name)}</span></span></div>`;
     const earlier = sorted.slice(1, 4);
     return `<div class="home-page">
+      ${renderGettingStarted()}
       ${chips}
       ${renderLineScore({ single: wk, sentence: `${first} threw ${wk.total} pitch${wk.total === 1 ? '' : 'es'} in ${wk.sessions} session${wk.sessions === 1 ? '' : 's'} this week.`, label: `${p.name} · this week` })}
       ${chartBtn}
@@ -13727,6 +13749,7 @@ function renderHomeView(){
     </div>`;
   }
   return `<div class="home-page">
+    ${renderGettingStarted()}
     ${renderLineScore({ single: wk })}
     ${chartBtn}
     ${renderNoteCard(null)}
@@ -13785,6 +13808,93 @@ function renderCoachHome(){
       ${recentCard ? `<div class="hc-recent">${recentCard}</div>` : ''}
     </div>
   </div>`;
+}
+/* ---------- N1 Stage D: GET STARTED (Joel, Nov 17 2026; plans/n1d-preconditions.md, docs/n1/d-getting-started.png) ----------
+   A card at the top of Home: one list of steps per role, each { id, label, hint, go, done(ctx) } -- adding a step is one
+   entry. A step is done from what the app already knows; where it can't tell (a link shared, a report read), a mark on
+   this device (kb:gs:<uid>:<profile>:<step>) records that it happened here. Hide is per login and profile on the device;
+   More -> Getting started brings the card back. Never blocks anything; nothing on the server. */
+function gsKey(k){ return 'kb:gs:' + (state.session ? state.session.user.id : '') + ':' + (state.profile ? state.profile.id : '') + ':' + k; }
+function gsMarked(k){ return lsGet(gsKey(k)) === '1'; }
+function gsMark(k){ try{ if(state.session && state.profile && !gsMarked(k)) lsSet(gsKey(k), '1'); }catch(e){} }
+// The kinds of session this team (coach) or this pitcher already has: Home's read, loaded History and the outbox.
+function gsHasSession(kind){
+  const pool = isCoach() ? rosterWeekItems().map(x => x.kind) : myWeekList().map(x => x.s.kind || 'bullpen');
+  return pool.some(k => !kind || (k || 'bullpen') === kind) || gsMarked(kind === 'game' ? 'game' : kind ? 'pen' : 'pen') || (!kind && gsMarked('game'));
+}
+const GS_STEPS = {
+  coach: [
+    { id: 'team', label: 'Name your team and set level of play', hint: 'Team settings, under More',
+      // every team gets a level when it's made (teams.level is NOT NULL), so the data can't tell: done once Team
+      // settings has been opened from here, or once the team has sessions
+      go: "gsMark('team');goAccountSection('acct-team')", done: () => gsMarked('team') || gsHasSession(null) },
+    { id: 'share', label: c => c.facility ? 'Share your join code with pitchers' : 'Share your invite link with pitchers', hint: c => c.facility ? 'Show it, print it or send it' : 'Copy it and send it any way you like',
+      go: c => c.facility ? "showMyJoinCode()" : "goAccountSection('acct-invites')", done: c => c.rosterN > 0 || gsMarked('share') },
+    { id: 'pen', label: 'Chart your first bullpen', hint: 'Chart, then Bullpen', go: "setView('session')", done: () => gsHasSession('bullpen') },
+    { id: 'report', label: 'Send your first report', hint: 'End a session, then Send report', go: "setView('history')", done: () => gsMarked('report-sent') },
+    { id: 'game', label: 'Chart a live game', hint: 'Chart, then Live Game', go: "setView('session')", done: () => gsHasSession('game') }
+  ],
+  owner: [
+    { id: 'coaches', label: 'Add your coaches', hint: 'Send the coach invite link', go: "goAccountSection('acct-invites')", done: c => c.groupsN > 1 },
+    { id: 'codes', label: 'Share the join codes', hint: 'Coaches and groups: show or print them', go: "navGo('coaches')",
+      done: c => c.inGroupN > 0 || gsMarked('share') },
+    { id: 'groups', label: 'Set up groups', hint: 'Give every pitcher a coach', go: "navGo('roster')", done: c => c.rosterN > 0 && c.looseN === 0 },
+    { id: 'look', label: 'Look over the facility view', hint: 'Roster and Coaches and groups', go: "navGo('coaches')", done: () => gsMarked('facility-view') },
+    { id: 'first', label: 'Chart a first session', hint: 'Chart, then Bullpen or Live Game', go: "setView('session')", done: () => gsHasSession(null) }
+  ],
+  pitcher: [
+    { id: 'join', label: 'Join your coach or go solo', hint: "Open your coach's link, or just start charting", go: "location.href='help.html#pitcher-join'",
+      done: c => c.teamsN > 0 || gsHasSession(null) },
+    { id: 'mix', label: 'Set your pitch mix and throwing hand', hint: 'Account, under Pitcher settings', go: 'acctGoProfile()',
+      done: c => !!(c.p && c.p.throws && (c.p.pitchTypes || []).length) },
+    { id: 'pen', label: 'Chart your first bullpen', hint: 'Chart, then Bullpen', go: "setView('session')", done: () => gsHasSession('bullpen') },
+    { id: 'read', label: 'Read your first report', hint: 'History shows each report under its session', go: "setView('history')", done: () => gsMarked('report-read') },
+    { id: 'who', label: 'See who can view your charts', hint: 'Help explains it', go: "gsMark('who');location.href='help.html#pitcher-visibility'", done: () => gsMarked('who') }
+  ],
+  parent: [   // Joel, Q3: no "Approve the guardian email" step -- a parent's own players never need it
+    { id: 'player', label: 'Add your player', hint: 'More, then Add a player', go: 'openAddPlayer()', done: c => c.playersN > 0 },
+    { id: 'team', label: "Join the team with the coach's link", hint: "Open the link and choose your player", go: "location.href='help.html#parent-join'", done: c => c.teamsN > 0 },
+    { id: 'read', label: 'Open the latest report', hint: 'History shows each report under its session', go: "setView('history')", done: () => gsMarked('report-read') }
+  ]
+};
+function gsRole(){
+  if(!state.profile || viewOnlyLinked()) return null;   // Q5: view-only family has nothing on these lists
+  if(isCoach()) return isFacilityManager() ? 'owner' : 'coach';
+  if(isParentView()) return 'parent';
+  return 'pitcher';
+}
+function gsState(){
+  const role = gsRole(); if(!role) return null;
+  const team = (state.teams || []).find(t => t.id === state.currentTeamId);
+  const roster = state.roster || [];
+  const ctx = { team, facility: currentTeamIsFacility(), p: currentPitcher(), rosterN: roster.length, teamsN: (state.teams || []).length,
+    groupsN: facilityGroups().length, inGroupN: roster.filter(r => (r.groups || []).length).length, looseN: roster.filter(r => !(r.groups || []).length).length,
+    playersN: ((state.myProfiles || []).filter(x => !isAccountOnlyProfile(x))).length };
+  const val = (v) => typeof v === 'function' ? v(ctx) : v;
+  const steps = GS_STEPS[role].map(s => ({ id: s.id, label: val(s.label), hint: val(s.hint), go: val(s.go), done: !!s.done(ctx) }));
+  return { role, steps, n: steps.filter(s => s.done).length, total: steps.length };
+}
+window.hideGettingStarted = function(){ lsSet(gsKey('hidden'), '1'); state.gsForce = false; render(); };
+window.openGettingStarted = function(){ try{ localStorage.removeItem(gsKey('hidden')); }catch(e){} state.gsForce = true; goHome(); };
+window.showMyJoinCode = function(){ const c = groupCodes().find(x => x.mine); if(c) showJoinCode(c.group_id); else navGo('coaches'); };
+function renderGettingStarted(){
+  const g = gsState(); if(!g) return '';
+  if(!state.gsForce && gsMarked('hidden')) return '';
+  const all = g.n === g.total;
+  if(all && !state.gsForce){   // Q2: "All set" on the visit it completes, then gone from Home (More still shows it)
+    if(gsMarked('allset') && !state.gsAllSetShown) return '';
+    if(!gsMarked('allset')){ gsMark('allset'); state.gsAllSetShown = true; }
+  }
+  const firstOpen = g.steps.findIndex(s => !s.done);
+  const row = (s, i) => s.done
+    ? `<div class="gs-step done"><span class="gs-check" aria-hidden="true">✓</span><span class="gs-text"><span class="gs-label">${escHtml(s.label)}</span></span><span class="sr-only">Done</span></div>`
+    : `<button type="button" class="gs-step${i === firstOpen ? ' next' : ''}" onclick="${s.go}"><span class="gs-ring" aria-hidden="true"></span><span class="gs-text"><span class="gs-label">${escHtml(s.label)}</span>${i === firstOpen && s.hint ? `<span class="gs-hint">${escHtml(s.hint)}</span>` : ''}</span><span class="more-go" aria-hidden="true">›</span></button>`;
+  return `<section class="gs-card" aria-label="Get started">
+    <div class="gs-top"><h2 class="display gs-title">${all ? "You're all set" : 'Get started'}</h2>
+      <span class="gs-count">${g.n} of ${g.total} · <button type="button" class="gs-hide" onclick="hideGettingStarted()">Hide</button></span></div>
+    <div class="gs-bar${all ? ' all' : ''}" role="progressbar" aria-valuemin="0" aria-valuemax="${g.total}" aria-valuenow="${g.n}" aria-label="${g.n} of ${g.total} done"><span style="width:${Math.round(g.n / g.total * 100)}%"></span></div>
+    ${g.steps.map(row).join('')}
+  </section>`;
 }
 /* ---------- F1-C1: CHAT (Oct 29 2026, plans/f1-training-facilities.md; decisions in plans/f1c1-preconditions.md) ----------
    Only inside a training facility. Two kinds of thread: the facility's (the manager posts to everyone there) and a
@@ -15086,6 +15196,7 @@ window.sendSessionReport = async function(sessionId){
     const body = await callSendReportFunction(Object.assign({ emails }, payload));
     if(body.reportPath) session.reportPath = body.reportPath;
     state.reportStatus = { sessionId, status: 'sent', message: 'Report sent to ' + emails.length + ' recipient(s).' };
+    gsMark('report-sent');   // N1-D
   } catch(err){
     state.reportStatus = { sessionId, status: 'error', message: err.message || 'Could not send — email backend may not be deployed yet. See SETUP.md.' };
   }
@@ -15216,6 +15327,7 @@ function feedInert(html){
 }
 // The report's own <style> (its :root variables and body rule moved onto the shadow host) and its <body>.
 function feedReportHost(text){
+  gsMark('report-read');   // N1-D: a report drawn in History counts as read
   const doc = feedInert(text);
   const host = document.createElement('div');
   host.className = 'feed-report-doc';
@@ -15529,7 +15641,7 @@ function render(){
     // U9 acceptance 7: verification wins if both would apply -- a stacked
     // wall of banners is worse than picking one, and an unverified email
     // is the more urgent of the two.
-    const setupReminderBanner = verifyBanner ? '' : renderSetupReminderBanner();
+    const setupReminderBanner = '';   // N1-D (Joel, Q4): retired -- the Get started card carries the same step
     const guardianBanner = renderGuardianBanner();   // P1-10
 
     // Joel, Oct 7 (G5): on iPad and laptop the account button joins the pitcher header's row, so the

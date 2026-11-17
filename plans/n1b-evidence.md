@@ -120,7 +120,8 @@ bar is unchanged.
 5. **Remove from my group** again: they went back to No coach yet.
 6. **Remove from facility:** the sheet (`b4-remove-facility-sheet.png`), then confirm. The app returned to the roster,
    and they're off it. Staging: `on_side 0, departures 1`. `rate_limit_events`: one `removal_notice`, and its
-   recipient row is the example.com address. That's the one email (Q8); nothing went to a DS1 address.
+   recipient row is the example.com address. That's the one email (Q8); nothing went to a DS1 address. **Correction (Nov 17, Stage D):** Resend refuses example.com recipients (422), so this
+   email was attempted and counted but never delivered; the removal itself went ahead, as designed.
 - A normal team's head (`u15-sbcoach`, head of "U15 Softball Test") sees only "Remove from this team". Its sheet: "Removes
   U15 from this team's roster and emails them to let them know. Their sessions and stats aren't deleted, only this
   team's view of them." I tapped Keep on roster, so nothing was removed.

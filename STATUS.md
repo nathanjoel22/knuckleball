@@ -60,6 +60,32 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-17 · N1 Stage D (Get started card) · **staging**, branch `n1d-getting-started`, cache `kb-shell-v346`
+
+- **Packet:** `plans/n1-navigation-and-home.md` Stage D. Preconditions `plans/n1d-preconditions.md`: Joel, "yes to all,
+  build it". Evidence `plans/n1d-evidence.md`.
+- **Built:**
+  - The "Get started" card at the top of Home, with one data list of steps per role (`GS_STEPS`: coach, owner, pitcher,
+    parent; none for view-only family).
+  - Steps tick from data the app already has, or from a device mark where it can't tell (a link shared, a report
+    read, Team settings opened).
+  - Hide; "You're all set" once, then the card leaves Home; More → Getting started shows "n of N" and brings it back.
+  - Retired the every-visit "Finish setting up your profile" banner.
+  - No coach Welcome popup on facility sides (they join by QR code).
+- **Deviations:**
+  - The coach's step 1 can't use `teams.level` (every team gets one at creation), so it's done when Team settings is
+    opened from the step or the team has sessions.
+  - Parent list is 3 steps (Q3).
+- **Open:**
+  - "Send your first report" was not ticked for real: Resend refuses example.com addresses. Joel: OK to use Resend's test
+    sink `delivered@resend.dev` for that one check?
+  - Correction: Stage B's removal email to example.com was likewise never delivered (attempted, refused).
+- **Staging test data:**
+  - new coach `n1d-coach-…@example.com` ("N1D Test Team");
+  - a one-pitch game for the U15 pitcher;
+  - a pen, throws and pitch mix for `feed-pitcher`;
+  - U15 pitcher's contacts.
+
 ## 2026-11-17 · N1 Stage C (Home dashboards) · **staging**, branch `n1c-home`, cache `kb-shell-v345`
 
 - **Packet:** `plans/n1-navigation-and-home.md` Stage C. Preconditions `plans/n1c-preconditions.md`: Joel, "yes to all,
@@ -130,7 +156,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Staging test data:**
   - one 3-pitch bullpen for Andre Boateng (Nov 17);
   - `feed-pitcher-1793899731@example.com` has the throwaway password, and was joined to and removed from the demo
-    facility (one removal email to that example.com address).
+    facility (one removal email attempted to that example.com address; Resend refuses example.com, so none was delivered).
 
 ## 2026-11-16 · N1 Stage A (names and the phone menu) · **production** (v343 live Nov 17), branch `n1a-names-phone-menu`, PR #87 merged (`7ec3dbd`), cache `kb-shell-v343`
 

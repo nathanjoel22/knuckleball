@@ -283,6 +283,14 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
     (`pitcher_id, started_at, kind, pitch_count`) for the roster, the last 14 days (`loadWeekRows`, on team load, after
     a sync, and when Home shows and the copy is over 2 minutes old). The rows and `state.workload` go in the offline
     snapshot, so Home draws offline with "As of <time>". No migration.
+- **Get started (N1 Stage D, Joel, Nov 17 2026, v346; `plans/n1d-preconditions.md`, evidence `plans/n1d-evidence.md`):** a
+  card at the top of Home (`renderGettingStarted`). Steps are data, one list per role (`GS_STEPS`: coach, facility
+  owner, pitcher / teen, parent / guardian; none for view-only family), each `{ id, label, hint, go, done(ctx) }`.
+  Adding a step is one entry. Done comes from data the app holds, or from a device mark
+  (`kb:gs:<uid>:<profile>:<step>`, `gsMark`) where it can't tell. Hide is per login and profile on the device. When
+  every step is done it says "You're all set" once, then leaves Home. More → Getting started (`openGettingStarted`)
+  shows "n of N" and brings it back. The every-visit setup reminder banner is retired; the pitcher's one-time setup
+  popup stays; the coach Welcome popup no longer opens on facility sides.
 - **One "‹ Back" (F1-D, Joel, Oct 29 2026; `plans/f1d-preconditions.md`; v324):** top left of the page (in the account
   row on phones; its own row when the account sits in the pitcher header), every size, browser and installed. It goes
   to the section's first screen, never browser history: start questions → "Bullpen or Live Game?"; (an opened History

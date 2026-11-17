@@ -2525,7 +2525,7 @@ CREATE OR REPLACE FUNCTION "public"."is_coach_of_session"("p_session_id" "uuid")
       join public.pitcher_teams pt on pt.team_id = s.team_id and pt.pitcher_id = s.pitcher_id
      where s.id = p_session_id
        and s.started_at >= pt.joined_at
-       and not public.is_facility_team(s.team_id)   -- F1-A: no notes in a facility (Chat replaces them)
+       and (not public.is_facility_team(s.team_id) or public.coach_sees_pitcher(s.team_id, s.pitcher_id))
   );
 $$;
 

@@ -86,7 +86,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - a pen for Andre Boateng;
   - `u15-sbpitch-03123297@example.com` has the throwaway password.
 
-## 2026-11-17 · N1 Stage B (menu, roster page, Manage, No coach yet) · **staging** (DB + app), branch `n1b-sidebar-roster`, cache `kb-shell-v344`
+## 2026-11-17 · N1 Stage B (menu, roster page, Manage, No coach yet) · **production** (DB + app, v344 live Nov 17), branch `n1b-sidebar-roster`, PR #89 merged (`6ca2a75`), cache `kb-shell-v344`
 
 - **Packet:** `plans/n1-navigation-and-home.md` Stage B. Preconditions `plans/n1b-preconditions.md`: Joel, "yes to all"
   (Q1-Q8, the migration, the policy sentences). Evidence `plans/n1b-evidence.md`.
@@ -115,14 +115,14 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - The remove sheet uses they / them (the picture says him / his).
   - The menu keeps The spot mark beside the wordmark.
   - Home stays the four squares until Stage C.
-- **Production, Joel, in this order:**
-  1. a backup (BACKUPS.md);
-  2. `supabase db push --project-ref fkgccjhuimkkbupbanxp --dry-run`, which should list only
-     `20261117000000_n1b_remove_from_group`;
-  3. `supabase db push --project-ref fkgccjhuimkkbupbanxp`;
-  4. merge the PR.
-
-  v343 keeps working before or after the migration. After production, regenerate `supabase/schema/schema.sql`.
+- **Production (Nov 17):**
+  1. backup `~/knuckleball-backups/2026-11-16-2313-{schema,data}.sql`;
+  2. the dry run listed only `20261117000000_n1b_remove_from_group`;
+  3. Joel sent `supabase db push --project-ref fkgccjhuimkkbupbanxp`: applied. Function checked (SECURITY DEFINER,
+     EXECUTE for authenticated only, no `pitcher_teams` write), 32 policies, the migration list matches the repo;
+  4. Joel merged PR #89; v344 is live (the menu code and the new privacy wording confirmed on knuckleballonline.com);
+  5. `supabase/schema/schema.sql` regenerated. It also picks up U15's `set_pitch_arsenal`, which wasn't added to the
+     file on Nov 6.
 - **Open:**
   - Joel's iPhone / iPad checks after merge: the rail on an iPad held upright, and the menu when it's turned sideways.
   - App Store review notes: the delete path is now "Account → Delete my account (at the bottom)", to update when

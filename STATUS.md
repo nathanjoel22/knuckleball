@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-17 · N1 Stage G2 (a team's logo and colors) · **staging** (DB + app), branch `n1g2-team-colors`, cache `kb-shell-v351`
+## 2026-11-17 · N1 Stage G2 (a team's logo and colors) · **production** (DB + app, v351 live Nov 17), branch `n1g2-team-colors`, PR #99 merged (`86f3b08`), cache `kb-shell-v351`
 
 - **No packet:** Joel, "yes, let head coaches do it also", then "yes to all" on `plans/n1g2-preconditions.md`.
   Evidence `plans/n1g2-evidence.md`.
@@ -80,7 +80,14 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   3. the push;
   4. merge.
 
-  Afterwards, regenerate `schema.sql`.
+  Done Nov 17:
+  - backup `2026-11-17-1007`;
+  - the dry run listed only the migration;
+  - Joel pushed it. Checks: 4 `teams` columns, no client SELECT (only the table-wide REFERENCES every column has), the
+    3 functions run only for signed-in users, the private bucket with the 256 KB limit, 12 storage policies, 32 public,
+    and the migration list matches the repo;
+  - Joel merged PR #99; v351 is live with the privacy line;
+  - `schema.sql` regenerated.
 - **Staging:** the U15 team was put back to Knuckleball's look.
 
 ## 2026-11-17 · History reports start closed (no packet; Joel's request) · **production** (v350 live Nov 17), branch `history-collapsed`, PR #98 merged (`b428265`), cache `kb-shell-v350`

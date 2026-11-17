@@ -2784,6 +2784,23 @@ $$;
 ALTER FUNCTION "public"."is_team_member"("check_team_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."is_team_reader"("p_team" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select exists (
+    select 1 from public.teams t
+     where t.id = p_team and t.archived_at is null
+       and (public.is_team_coach(t.id)
+            or exists (select 1 from public.pitcher_teams pt
+                        where pt.team_id = t.id and (public.is_my_profile(pt.pitcher_id) or public.is_linked_to(pt.pitcher_id))))
+  );
+$$;
+
+
+ALTER FUNCTION "public"."is_team_reader"("p_team" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."join_group_via_token"("p_token" "text", "p_profile" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -3007,6 +3024,22 @@ $$;
 
 
 ALTER FUNCTION "public"."move_between_groups"("p_pitcher" "uuid", "p_from" "uuid", "p_to" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."my_brandings"() RETURNS TABLE("team_id" "uuid", "org_id" "uuid", "name" "text", "brand_color" "text", "accent_color" "text", "logo_path" "text", "updated_at" timestamp with time zone)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select f.team_id, f.org_id, f.name, f.brand_color, f.accent_color, f.logo_path, f.updated_at
+    from public.my_facility_brandings() f
+  union all
+  select t.id, null::uuid, t.name, t.brand_color, t.accent_color, t.logo_path, t.branding_updated_at
+    from public.teams t
+   where t.kind = 'team' and public.is_team_reader(t.id);
+$$;
+
+
+ALTER FUNCTION "public"."my_brandings"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."my_facility"() RETURNS "jsonb"
@@ -4220,6 +4253,31 @@ $$;
 ALTER FUNCTION "public"."set_pitch_arsenal"("p_pitcher" "uuid", "p_types" "text"[]) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."set_team_branding"("p_team" "uuid", "p_brand" "text", "p_accent" "text", "p_logo_path" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if auth.uid() is null then return jsonb_build_object('ok', false, 'error', 'not_authenticated'); end if;
+  if not public.is_team_head(p_team) then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
+  if exists (select 1 from public.teams where id = p_team and kind <> 'team') then
+    return jsonb_build_object('ok', false, 'error', 'use_facility_look'); end if;
+  if public.is_team_archived(p_team) then return jsonb_build_object('ok', false, 'error', 'team_archived'); end if;
+  if (p_brand is null) <> (p_accent is null) then return jsonb_build_object('ok', false, 'error', 'both_colors'); end if;
+  if p_logo_path is not null and p_logo_path not like p_team::text || '/logo.%' then
+    return jsonb_build_object('ok', false, 'error', 'bad_logo_path'); end if;
+  update public.teams set brand_color = p_brand, accent_color = p_accent, logo_path = p_logo_path,
+         branding_updated_at = now() where id = p_team;
+  return jsonb_build_object('ok', true);
+exception when check_violation then
+  return jsonb_build_object('ok', false, 'error', 'bad_color');
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_team_branding"("p_team" "uuid", "p_brand" "text", "p_accent" "text", "p_logo_path" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."set_team_level"("p_team_id" "uuid", "p_level" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -5392,9 +5450,16 @@ CREATE TABLE IF NOT EXISTS "public"."teams" (
     "archived_by" "uuid",
     "org_id" "uuid",
     "kind" "text" DEFAULT 'team'::"text" NOT NULL,
+    "brand_color" "text",
+    "accent_color" "text",
+    "logo_path" "text",
+    "branding_updated_at" timestamp with time zone,
+    CONSTRAINT "teams_accent_color_check" CHECK (("accent_color" ~ '^#[0-9A-Fa-f]{6}$'::"text")),
+    CONSTRAINT "teams_brand_color_check" CHECK (("brand_color" ~ '^#[0-9A-Fa-f]{6}$'::"text")),
     CONSTRAINT "teams_facility_has_org" CHECK ((("kind" = 'facility'::"text") = ("org_id" IS NOT NULL))),
     CONSTRAINT "teams_kind_check" CHECK (("kind" = ANY (ARRAY['team'::"text", 'facility'::"text"]))),
     CONSTRAINT "teams_level_check" CHECK (((("sport" = 'baseball'::"text") AND ("level" = ANY (ARRAY['little_league'::"text", 'high_school'::"text", 'college'::"text"]))) OR (("sport" = 'softball'::"text") AND ("level" = ANY (ARRAY['little_league'::"text", 'high_school_up'::"text"]))))),
+    CONSTRAINT "teams_logo_path_check" CHECK ((("logo_path" IS NULL) OR ("logo_path" ~ '^[0-9a-f-]{36}/logo\.(png|jpg|webp)$'::"text"))),
     CONSTRAINT "teams_name_length" CHECK ((("char_length"("btrim"("name")) >= 2) AND ("char_length"("btrim"("name")) <= 60))),
     CONSTRAINT "teams_sport_check" CHECK (("sport" = ANY (ARRAY['baseball'::"text", 'softball'::"text"])))
 );
@@ -6915,6 +6980,12 @@ GRANT ALL ON FUNCTION "public"."is_team_member"("check_team_id" "uuid") TO "serv
 
 
 
+REVOKE ALL ON FUNCTION "public"."is_team_reader"("p_team" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."is_team_reader"("p_team" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_team_reader"("p_team" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."join_group_via_token"("p_token" "text", "p_profile" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."join_group_via_token"("p_token" "text", "p_profile" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."join_group_via_token"("p_token" "text", "p_profile" "uuid") TO "service_role";
@@ -6948,6 +7019,12 @@ GRANT ALL ON FUNCTION "public"."leave_player"("p_player" "uuid") TO "service_rol
 REVOKE ALL ON FUNCTION "public"."move_between_groups"("p_pitcher" "uuid", "p_from" "uuid", "p_to" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."move_between_groups"("p_pitcher" "uuid", "p_from" "uuid", "p_to" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."move_between_groups"("p_pitcher" "uuid", "p_from" "uuid", "p_to" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."my_brandings"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."my_brandings"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."my_brandings"() TO "service_role";
 
 
 
@@ -7223,6 +7300,12 @@ GRANT ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_nu
 REVOKE ALL ON FUNCTION "public"."set_pitch_arsenal"("p_pitcher" "uuid", "p_types" "text"[]) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_pitch_arsenal"("p_pitcher" "uuid", "p_types" "text"[]) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."set_pitch_arsenal"("p_pitcher" "uuid", "p_types" "text"[]) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."set_team_branding"("p_team" "uuid", "p_brand" "text", "p_accent" "text", "p_logo_path" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."set_team_branding"("p_team" "uuid", "p_brand" "text", "p_accent" "text", "p_logo_path" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_team_branding"("p_team" "uuid", "p_brand" "text", "p_accent" "text", "p_logo_path" "text") TO "service_role";
 
 
 

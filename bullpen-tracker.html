@@ -824,6 +824,56 @@
   .pitcher-chip .headshot{ width:40px; height:40px; }
   .pitcher-chip-caret{ color:var(--ink-faint); font-size:12px; }
   .switch-pick.is-on{ border-color:var(--accent); }
+  /* N1-C: Home (docs/n1/c-*.png; values from plans/n1-design-reference.md, scaled 1.4 to the real screen) */
+  .home-page{ display:flex; flex-direction:column; gap:var(--s-12); min-width:0; }
+  .home-cta{ width:100%; min-height:52px; font-size:var(--t-16); }
+  .linescore{ background:var(--brand-bg-deep); color:var(--on-dark); border-radius:16px; padding:var(--s-12) var(--s-12) var(--s-16); display:flex; flex-direction:column; gap:var(--s-8); }
+  .ls-top{ display:flex; justify-content:space-between; gap:var(--s-8); font-size:12px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--on-dark-faint); }
+  .ls-sentence{ font-size:26px; line-height:1.05; text-transform:none; color:var(--on-dark); }
+  .ls-grid{ width:100%; border-collapse:separate; border-spacing:4px; table-layout:fixed; font-family:var(--font-display); font-weight:800; font-variant-numeric:tabular-nums; text-align:center; }
+  .ls-grid .hd{ font-family:var(--font-sans); font-size:11px; font-weight:700; letter-spacing:.1em; color:var(--on-dark-faint); padding:0 0 2px; }
+  .ls-grid .c{ background:var(--brand-bg-2); border-radius:6px; font-size:24px; line-height:1.5; color:var(--on-dark-dim); padding:0; }
+  .ls-grid .c.hit{ color:var(--accent); }
+  .ls-grid .c.tot{ background:var(--accent); color:var(--on-accent, var(--ink)); }
+  .ls-grid .c.today{ outline:2px solid var(--accent); outline-offset:-2px; }
+  .ls-grid .c.later{ background:transparent; box-shadow:inset 0 0 0 1px var(--brand-line, rgba(255,255,255,.12)); }
+  .ls-grid .gap{ width:6px; padding:0; }
+  .ls-grid col, .ls-grid th.gap{ width:6px; }
+  .ls-grid.team .c{ font-size:18px; line-height:44px; }
+  .ls-grid.team .name{ text-align:left; padding-left:8px; color:var(--on-dark); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; width:28%; font-weight:800; }
+  .ls-grid.team .name-hd{ width:28%; text-align:left; padding-left:8px; }
+  .ls-grid .ls-row{ cursor:pointer; }
+  .ls-grid .ls-row:focus-visible{ outline:2px solid var(--focus); }
+  .ls-more{ align-self:flex-start; min-height:44px; border:0; background:transparent; color:var(--on-dark-dim); font:inherit; font-weight:600; cursor:pointer; padding:0 var(--s-4); }
+  .home-note{ display:flex; flex-direction:column; gap:var(--s-6); width:100%; text-align:left; background:var(--card); border:1px solid var(--border); border-left:5px solid var(--accent);
+    border-radius:0 16px 16px 0; padding:var(--s-16); font:inherit; color:var(--ink); cursor:pointer; }
+  .home-note-label{ font-size:12px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint); }
+  .home-note-body{ font-size:var(--t-16); font-weight:600; line-height:1.35; }
+  .home-last-body{ display:flex; gap:var(--s-16); align-items:center; padding:var(--s-12) 0 var(--s-8); }
+  .home-last-plot{ width:128px; flex:none; }
+  .home-last-plot svg{ width:100%; height:auto; display:block; }
+  .home-last-text{ display:flex; flex-direction:column; gap:var(--s-6); min-width:0; }
+  .home-last-title{ font-weight:700; font-size:var(--t-16); }
+  .home-last-meta{ font-size:var(--t-14); color:var(--ink-dim); }
+  .home-last-chips{ display:flex; flex-wrap:wrap; gap:var(--s-4); }
+  .home-link{ align-self:flex-start; border:0; background:transparent; color:var(--brand-mid); font:inherit; font-weight:700; font-size:var(--t-16); cursor:pointer; padding:var(--s-4) 0; min-height:44px; }
+  .pitcher-chip.is-static{ cursor:default; padding-right:var(--s-16); }
+  .home-tiles-num{ display:grid; grid-template-columns:repeat(3, 1fr); gap:var(--s-8); }
+  .home-tile-num{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:var(--s-12); display:flex; flex-direction:column; gap:var(--s-4); min-width:0; }
+  .home-tile-num.dark{ background:var(--brand-bg); border-color:var(--brand-bg); color:var(--on-dark); }
+  .htn-label{ font-size:12px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint); }
+  .home-tile-num.dark .htn-label{ color:var(--on-dark-faint); }
+  .htn-num{ font-size:36px; line-height:1; }
+  .htn-num small{ font-family:var(--font-sans); font-size:14px; font-weight:700; text-transform:none; margin-left:4px; }
+  /* phones: line score, attention, by coach, recent; above 860px attention beside the line score (b-sidebar-ipad.png) */
+  .home-cols{ display:grid; grid-template-columns:minmax(0, 1fr); grid-template-areas:"ls" "attn" "by" "recent"; gap:var(--s-12); align-items:start; }
+  .hc-ls{ grid-area:ls; min-width:0; } .hc-attn{ grid-area:attn; min-width:0; } .hc-by{ grid-area:by; min-width:0; } .hc-recent{ grid-area:recent; min-width:0; }
+  @media (min-width:861px){ .home-cols{ grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); grid-template-areas:"attn ls" "by recent"; } }
+  .ls-grid .name-hd{ text-transform:uppercase; }
+  .pill{ display:inline-block; border-radius:999px; padding:2px 10px; font-size:13px; font-weight:700; }
+  .pill-new{ background:var(--accent); color:var(--on-accent, var(--ink)); }
+  .pill-days{ background:var(--warning-tint, #FBF1D6); color:var(--accent-ink, #7A5A00); }
+  .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
   .home-tiles{ display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:var(--s-8); width:100%; max-width:340px; margin:var(--s-4) 0 var(--s-24); }
   /* Joel, Oct 12 (his laptop mock-up): on iPad and laptop the tiles fill the whole area beside the roster --
      Charting and History split the top row, Armcare / Mental Game / Profile split the next into thirds */
@@ -2863,6 +2913,8 @@ function applyCachedContext(cached){
   state.roster = cached.roster || [];
   state.zones = cached.zones || {};
   state.rosterDotLatest = cached.rosterDotLatest || {};
+  if(cached.weekRows) state.weekRows = cached.weekRows;   // N1-C: Home draws offline from the last read
+  if(cached.workload) state.workload = Object.assign({}, cached.workload, state.workload);
   state.rosterDotSeen = cached.rosterDotSeen || {};
   state.unopenedSessions = cached.unopenedSessions || {};
   state.openedLocal = cached.openedLocal || {};
@@ -3969,7 +4021,9 @@ async function saveLastKnownContext(){
     openedLocal: state.openedLocal,
     currentTeamId: state.currentTeamId,
     currentPitcherId: state.currentPitcherId,
-    myVerification: state.myVerification
+    myVerification: state.myVerification,
+    weekRows: state.weekRows || null,   // N1-C: the coach's Home, offline (with the time it was read)
+    workload: state.workload || null
   };
   // S4 A5: the ACTIVE profile's snapshot lives at the old key (the pre-paint
   // theme script reads it), and every profile keeps its own copy so a
@@ -4015,6 +4069,7 @@ window.onTeamChange = async function(teamId, skipRender){
   if(isCoach()){
     await loadRosterForTeam(teamId);
     loadWorkload(state.roster.map(r => r.id));   // R4: roster pitch counts (background, online)
+    loadWeekRows(true);   // N1-C: the week on Home (background)
     state.currentPitcherId = state.roster.length ? state.roster[0].id : null;
     if(skipRender) adoptDraftPitcher();   // launch: land on the pitcher whose session is in progress
     state.rosterCollapsed = isPhoneWidth();   // a fresh team load starts open -- except on phones (Joel, Oct 8: rolled up until Roster is tapped)
@@ -6484,6 +6539,7 @@ async function syncOutbox(){
   await refreshOutboxState();
   await loadSessionsForCurrentSelection();
   state.syncing = false;
+  if(isCoach()) loadWeekRows(true);   // N1-C: a synced pen moves from the outbox to the read rows
   render();
 }
 
@@ -13530,6 +13586,206 @@ function renderAccountExtras(){
       ${moreRow('<span class="more-signout">Sign out</span>', 'askSignOut()')}
     </div>`;
 }
+/* ---------- N1 Stage C: HOME (Joel, Nov 17 2026; plans/n1c-preconditions.md, docs/n1/c-*.png) ----------
+   Home is the week: one line score (pitches per day, Sunday to Saturday in the device's time) and what needs doing,
+   per role. A pitcher's and a parent's Home come from History's data on the device; a coach's from one read of
+   session_stats for the roster (its own read rule decides who is seen), kept with the offline snapshot. Sessions
+   waiting in the outbox count. Nothing here waits on the network to draw. */
+const IDLE_FLAG_DAYS = 5;            // Joel's starting point: no session in this many days -> Needs your attention
+const WEEK_ROWS_DAYS = 14;           // the coach read covers this many days (this week + recent sessions)
+const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+function weekStartMs(now){ const d = new Date(now || Date.now()); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - d.getDay()); return d.getTime(); }
+function weekRangeLabel(){
+  const a = new Date(weekStartMs()), b = new Date(weekStartMs()); b.setDate(b.getDate() + 6);
+  const m = d => d.toLocaleDateString(undefined, { month: 'short' });
+  return m(a) === m(b) ? `${m(a)} ${a.getDate()} to ${b.getDate()}` : `${m(a)} ${a.getDate()} to ${m(b)} ${b.getDate()}`;
+}
+// A session's pitch count: the stats row's, or (pending / no row) its pitches plus a game's +K / +B (Q2: the number the
+// roster's "Last 7 days" line uses).
+function sessionPitchCountN(s){
+  if(rowHasStats(s) && s.stats.pitch_count != null) return s.stats.pitch_count;
+  return (s.pitches || []).length + (s.pitchCountAdjust || 0);
+}
+// Days of this week, 0-6 -> pitch totals, plus the session count. `list` holds { at (ms), n }.
+function weekDays(list){
+  const start = weekStartMs(), days = [0, 0, 0, 0, 0, 0, 0], seen = [false, false, false, false, false, false, false];
+  let sessions = 0;
+  list.forEach(x => {
+    if(x.at < start) return;
+    const i = new Date(x.at).getDay();
+    if(x.at >= start + 7 * 86400000 + 3600000 * 2) return;   // next week (with room for a DST hour)
+    days[i] += x.n; seen[i] = true; sessions++;
+  });
+  return { days, seen, total: days.reduce((a, b) => a + b, 0), sessions };
+}
+// One pitcher's sessions (History's data + the outbox), as { at, n, s }.
+function myWeekList(){
+  return pendingSessionsForCurrentSelection().concat(state.sessions || []).map(s => ({ at: +new Date(s.date), n: sessionPitchCountN(s), s }));
+}
+/* The coach's read: session_stats for the roster, the last WEEK_ROWS_DAYS days. Background; the last copy draws. */
+async function loadWeekRows(force){
+  if(!isCoach() || !state.session || !isOnline() || !(state.roster || []).length) return;
+  const w = state.weekRows;
+  if(!force && w && w.teamId === state.currentTeamId && Date.now() - w.readAt < 120000) return;
+  if(state.weekLoading) return;
+  state.weekLoading = true;
+  try{
+    const since = new Date(Math.min(weekStartMs(), Date.now() - WEEK_ROWS_DAYS * 86400000)).toISOString();
+    const { data, error } = await netTimeout(supabaseClient.from('session_stats').select('session_id, pitcher_id, started_at, kind, pitch_count')
+      .in('pitcher_id', state.roster.map(r => r.id)).gte('started_at', since).order('started_at', { ascending: false }).limit(1000), 10000);
+    if(!error && Array.isArray(data)){
+      state.weekRows = { teamId: state.currentTeamId, readAt: Date.now(), rows: data };
+      saveLastKnownContext();
+      if(state.view === 'home') render();
+    }
+  }catch(e){ /* the last copy stays */ }
+  state.weekLoading = false;
+}
+// Roster sessions: the read rows, the current pitcher's History (fresher after a sync) and the outbox, once each.
+function rosterWeekItems(){
+  const byId = {}, ids = new Set((state.roster || []).map(r => r.id));
+  const w = state.weekRows && state.weekRows.teamId === state.currentTeamId ? state.weekRows.rows : [];
+  w.forEach(r => { byId[r.session_id] = { id: r.session_id, pid: r.pitcher_id, at: +new Date(r.started_at), n: r.pitch_count || 0, kind: r.kind }; });
+  (state.sessions || []).forEach(s => { if(ids.has(state.currentPitcherId) && !s.deletedAt && rowHasStats(s)) byId[s.id] = byId[s.id] || { id: s.id, pid: state.currentPitcherId, at: +new Date(s.date), n: sessionPitchCountN(s), kind: s.kind }; });
+  (state.outbox || []).forEach(it => { if(ids.has(it.pitcherId) && (it.teamId === undefined || it.teamId === state.currentTeamId))
+    byId[it.id] = { id: it.id, pid: it.pitcherId, at: it.endedAt, n: (it.pitches || []).length + (it.pitchCountAdjust || 0), kind: it.kind || 'bullpen', pending: true }; });
+  return Object.values(byId).sort((a, b) => b.at - a.at);
+}
+function lastName(n){ const parts = String(n || '').trim().split(/\s+/); return parts.length > 1 ? parts[parts.length - 1] : parts[0]; }
+/* The line score (docs/n1/c-line-score.png). opts: { label, sentence, single: weekDays(), rows: [{ id, name, wk }] }.
+   A real table, so a screen reader hears row and column headers. */
+function renderLineScore(o){
+  const today = new Date().getDay();
+  const cell = (wk, i) => {
+    const cls = ['c'];
+    if(i === today) cls.push('today');
+    if(i > today) return `<td class="c later" aria-label="${DAY_LETTERS[i]}: not yet"></td>`;
+    if(wk.seen[i]) cls.push('hit');
+    const v = (i === today && !wk.seen[i]) ? '–' : String(wk.days[i]);
+    return `<td class="${cls.join(' ')}">${v}</td>`;
+  };
+  const head = `<tr>${o.rows ? '<th scope="col" class="hd name-hd">Pitcher</th>' : ''}${DAY_LETTERS.map((d, i) => `<th scope="col" class="hd${i === today ? ' hd-today' : ''}" aria-label="${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][i]}">${d}</th>`).join('')}<th class="gap" aria-hidden="true"></th><th scope="col" class="hd" aria-label="Pitches">P</th>${o.rows ? '' : '<th scope="col" class="hd" aria-label="Sessions">S</th>'}</tr>`;
+  const body = o.rows
+    ? o.rows.map(r => `<tr class="ls-row" tabindex="0" role="link" onclick="openPitcherPage('${r.id}')" onkeydown="if(event.key==='Enter'){openPitcherPage('${r.id}');}"><th scope="row" class="c name">${escHtml(lastName(r.name))}</th>${DAY_LETTERS.map((_, i) => cell(r.wk, i)).join('')}<td class="gap" aria-hidden="true"></td><td class="c tot">${r.wk.total}</td></tr>`).join('')
+    : `<tr>${DAY_LETTERS.map((_, i) => cell(o.single, i)).join('')}<td class="gap" aria-hidden="true"></td><td class="c tot">${o.single.total}</td><td class="c tot">${o.single.sessions}</td></tr>`;
+  return `<div class="linescore">
+    ${o.sentence ? `<div class="ls-sentence display">${escHtml(o.sentence)}</div>` : `<div class="ls-top"><span class="ls-label">${escHtml(o.label || 'This week · pitches')}</span><span class="ls-range">${escHtml(weekRangeLabel())}</span></div>`}
+    <table class="ls-grid${o.rows ? ' team' : ''}"><caption class="sr-only">${escHtml(o.label || 'Pitches this week')}, ${escHtml(weekRangeLabel())}</caption><thead>${head}</thead><tbody>${body}</tbody></table>
+    ${o.more || ''}
+  </div>`;
+}
+// The newest coach's note on this pitcher's sessions (History brings them; RLS decides who reads them).
+function newestNote(){
+  let best = null;
+  (state.sessions || []).forEach(s => (s.notes || []).forEach(n => { if(!best || n.createdAt > best.createdAt) best = { ...n, sessionId: s.id }; }));
+  return best;
+}
+function renderNoteCard(forName){
+  const n = newestNote(); if(!n) return '';
+  const when = new Date(n.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return `<button type="button" class="home-note" onclick="openSessionInHistory('${n.sessionId}')">
+    <span class="home-note-label">${forName ? `For ${escHtml(String(forName).split(' ')[0])} · from ` : ''}${escHtml(n.authorName || 'Coach')} · ${escHtml(when)}</span>
+    <span class="home-note-body">“${escHtml(n.body)}”</span>
+  </button>`;
+}
+function renderLastSessionCard(p, s, label, withAcc){
+  if(!s) return '';
+  const st = s.kind === 'game' ? null : penCardStats(s);
+  const n = sessionPitchTotal(s);
+  const chips = (p.pitchTypes || []).map(t => { const c = colorForType(p, t); return `<span class="pitch-chip" style="background:${c};color:${readableTextOn(c)};">${pitchLabel(t)}</span>`; }).join('');
+  return `<div class="more-card home-last">
+    <div class="more-group-label">${label}</div>
+    <div class="home-last-body">
+      <div class="home-last-plot">${renderHistoryPlot(plotSessionOf(s, p), p, { small: true, legend: false, caption: '' })}</div>
+      <div class="home-last-text">
+        <div class="home-last-title">${s.kind === 'game' ? 'Live Game' : 'Bullpen'} · ${escHtml(new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}</div>
+        <div class="home-last-meta">${n} pitch${n === 1 ? '' : 'es'}${withAcc && st && st.total ? ' · ' + st.accuracyPct + '% accuracy' : ''}${s.pending ? ' · waiting to sync' : ''}</div>
+        ${withAcc ? `<div class="home-last-chips">${chips}</div>` : ''}
+        <button type="button" class="home-link" onclick="openSessionInHistory('${s.id}')">Open report ›</button>
+      </div>
+    </div>
+  </div>`;
+}
+function isParentView(){ return activePlayerIsMine() || activeLinked() === 'guardian' || activeLinked() === 'family'; }
+function renderHomeView(){
+  if(isCoach()) return renderCoachHome();
+  const p = currentPitcher(); if(!p) return '';
+  const list = myWeekList(), wk = weekDays(list);
+  const sorted = list.slice().sort((a, b) => b.at - a.at);
+  const chartBtn = viewOnlyLinked() ? '' : `<button type="button" class="btn btn-primary home-cta" onclick="setView('session')">${state.draftAvailable ? 'Resume' : 'Chart today'}</button>`;
+  if(isParentView()){
+    const first = String(p.name || '').split(' ')[0];
+    const chips = chipChoices().length > 1 ? renderPitcherChip(p) : `<div class="pitcher-chip-row"><span class="pitcher-chip is-static">${renderHeadshot(p)}<span class="pitcher-chip-name">${escHtml(p.name)}</span></span></div>`;
+    const earlier = sorted.slice(1, 4);
+    return `<div class="home-page">
+      ${chips}
+      ${renderLineScore({ single: wk, sentence: `${first} threw ${wk.total} pitch${wk.total === 1 ? '' : 'es'} in ${wk.sessions} session${wk.sessions === 1 ? '' : 's'} this week.`, label: `${p.name} · this week` })}
+      ${chartBtn}
+      ${renderNoteCard(p.name)}
+      ${renderLastSessionCard(p, sorted[0] && sorted[0].s, 'Latest report', false) || '<p class="profile-note">The first session shows up here.</p>'}
+      ${earlier.length ? `<div class="more-card"><div class="more-group-label">Earlier</div>${earlier.map(x => `<button type="button" class="more-row" onclick="openSessionInHistory('${x.s.id}')"><span class="more-row-main">${x.s.kind === 'game' ? 'Live Game' : 'Bullpen'} · ${escHtml(new Date(x.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}</span><span class="more-row-right">${x.n} pitches</span></button>`).join('')}</div>` : ''}
+    </div>`;
+  }
+  return `<div class="home-page">
+    ${renderLineScore({ single: wk })}
+    ${chartBtn}
+    ${renderNoteCard(null)}
+    ${renderLastSessionCard(p, sorted[0] && sorted[0].s, 'Last session', true) || '<p class="profile-note">Your first session shows up here.</p>'}
+    <button type="button" class="home-link home-trends" onclick="setView('trends')">Trends ›</button>
+  </div>`;
+}
+/* The coach's Home (docs/n1/c-home-coach.png) and the facility manager's (b-sidebar-ipad.png). */
+function renderCoachHome(){
+  loadWeekRows();   // background; draws again when it lands
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+  const roster = state.roster || [], items = rosterWeekItems(), start = weekStartMs();
+  const byP = {}; items.forEach(x => { (byP[x.pid] = byP[x.pid] || []).push(x); });
+  const wkOf = id => weekDays(byP[id] || []);
+  const rows = roster.map(r => ({ id: r.id, name: r.name, wk: wkOf(r.id) }));
+  const active = rows.filter(r => r.wk.sessions > 0);
+  const weekSessions = items.filter(x => x.at >= start).length, weekPitches = rows.reduce((a, r) => a + r.wk.total, 0);
+  const thrown = active.slice().sort((a, b) => b.wk.total - a.wk.total), rest = rows.filter(r => !r.wk.sessions);
+  const showAll = !!state.homeAllRows;
+  const lsRows = showAll ? thrown.concat(rest) : thrown;
+  const more = rest.length ? `<button type="button" class="ls-more" onclick="state.homeAllRows=!state.homeAllRows;render()">${showAll ? 'Show only who threw' : `+ ${rest.length} with no pitches this week ›`}</button>` : '';
+  const archived = currentTeamArchived(), mgr = isFacilityManager();
+  const tile = (label, num, sub, dark) => `<div class="home-tile-num${dark ? ' dark' : ''}"><span class="htn-label">${label}</span><span class="htn-num display">${num}${sub ? `<small>${sub}</small>` : ''}</span></div>`;
+  const stale = state.weekRows && state.weekRows.teamId === state.currentTeamId && !isOnline()
+    ? `<p class="profile-note">As of ${escHtml(new Date(state.weekRows.readAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}</p>` : '';
+  // Needs your attention: new pitchers, idle 5+ days (longest first), never charted, unread chat.
+  const attn = [];
+  const facNew = facilityNewCount();
+  if(facNew) attn.push(`<button type="button" class="more-row" onclick="navGo('roster')"><span class="more-row-main">${facNew} new pitcher${facNew === 1 ? '' : 's'}<span class="more-row-sub">Welcome them and check their pitch mix</span></span><span class="more-row-right"><span class="pill pill-new">New</span></span></button>`);
+  const now = Date.now();
+  const lastAt = id => { const w = (state.workload || {})[id], last = (byP[id] || [])[0]; const a = w && w.last_at ? +new Date(w.last_at) : 0; return Math.max(a, last ? last.at : 0); };
+  const idle = roster.map(r => ({ r, at: lastAt(r.id) })).filter(x => x.at && now - x.at >= IDLE_FLAG_DAYS * 86400000).sort((a, b) => a.at - b.at);
+  const never = roster.filter(r => !lastAt(r.id) && (state.workload || {})[r.id]);   // only once the workload has loaded
+  const daysAgo = at => Math.floor((now - at) / 86400000);
+  if(idle.length > 2) attn.push(`<button type="button" class="more-row" onclick="openPitcherPage('${idle[0].r.id}')"><span class="more-row-main">${idle.length} pitchers haven't thrown in ${IDLE_FLAG_DAYS}+ days<span class="more-row-sub">Longest: ${escHtml(idle[0].r.name)}, ${daysAgo(idle[0].at)} days</span></span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>`);
+  else idle.forEach(x => attn.push(`<button type="button" class="more-row" onclick="openPitcherPage('${x.r.id}')"><span class="more-row-main">${escHtml(x.r.name)}<span class="more-row-sub">Last threw ${escHtml(new Date(x.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}</span></span><span class="more-row-right"><span class="pill pill-days">${daysAgo(x.at)} days</span></span></button>`));
+  if(never.length) attn.push(`<button type="button" class="more-row" onclick="openPitcherPage('${never[0].id}')"><span class="more-row-main">${never.length === 1 ? escHtml(never[0].name) : never.length + ' pitchers'}<span class="more-row-sub">No sessions yet</span></span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>`);
+  const chatN = chatEnabled() ? chatState().unread + chatState().reports : 0;
+  if(chatN) attn.push(`<button type="button" class="more-row" onclick="openChat()"><span class="more-row-main">${chatN} unread message${chatN === 1 ? '' : 's'}<span class="more-row-sub">Chat</span></span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>`);
+  const attnCard = `<div class="more-card"><div class="more-group-label">Needs your attention</div>${attn.join('') || '<p class="profile-note more-empty">Nothing right now.</p>'}</div>`;
+  const recent = items.slice(0, 5);
+  const nameOf = id => (roster.find(r => r.id === id) || {}).name || '';
+  const recentCard = recent.length ? `<div class="more-card"><div class="more-group-label">Recent sessions</div>${recent.map(x => `<button type="button" class="more-row" onclick="selectPitcher('${x.pid}', 'history')"><span class="more-row-main">${escHtml(nameOf(x.pid))}<span class="more-row-sub">${x.kind === 'game' ? 'Live Game' : 'Bullpen'} · ${escHtml(new Date(x.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))} · ${x.n} pitches${x.pending ? ' · waiting to sync' : ''}</span></span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>`).join('')}</div>` : '';
+  const byCoach = mgr ? `<div class="more-card"><div class="more-group-label">By coach</div>${facilityGroups().map(g => { const ps = roster.filter(r => (r.groups || []).some(y => y.id === g.id)); const a = ps.filter(r => wkOf(r.id).sessions).length; return `<div class="more-row"><span class="more-row-main">${escHtml(g.coachName)}</span><span class="more-row-right">${a} of ${ps.length} active</span></div>`; }).join('')}</div>` : '';
+  const title = `<div class="place-head"><h2 class="display">This week</h2><span class="place-sub">${escHtml(team ? team.name : '')} · ${escHtml(weekRangeLabel())}</span></div>`;
+  return `<div class="home-page coach-home${mgr ? ' mgr-home' : ''}">
+    ${title}
+    <div class="home-tiles-num">${tile('Active', active.length, ` of ${roster.length}`, !mgr)}${tile('Sessions', weekSessions)}${tile('Pitches', weekPitches)}</div>
+    ${stale}
+    ${archived ? '' : roster.length ? `<button type="button" class="btn btn-primary home-cta" onclick="setView('session')">${state.draftAvailable ? 'Resume' : 'Start a session'}</button>`
+      : (isHeadOfCurrentTeam() ? `<button class="btn btn-primary home-cta" onclick="openCoachWelcome()">Get the invite link</button>` : '<p class="profile-note">Ask your head coach for the pitcher invite link.</p>')}
+    <div class="home-cols">
+      <div class="hc-ls">${roster.length ? renderLineScore({ rows: lsRows, label: 'This week · pitches by pitcher', more }) : ''}</div>
+      <div class="hc-attn">${attnCard}</div>
+      ${byCoach ? `<div class="hc-by">${byCoach}</div>` : ''}
+      ${recentCard ? `<div class="hc-recent">${recentCard}</div>` : ''}
+    </div>
+  </div>`;
+}
 /* ---------- F1-C1: CHAT (Oct 29 2026, plans/f1-training-facilities.md; decisions in plans/f1c1-preconditions.md) ----------
    Only inside a training facility. Two kinds of thread: the facility's (the manager posts to everyone there) and a
    private one per pitcher per coach (the coach and the pitcher, or the parent who created the player). The server
@@ -15215,7 +15471,7 @@ function render(){
     // ("Select a pitcher to see his profile," not this generic one) --
     // renderPitcherProfileView() already handles p === null itself.
     main = renderAddSportBanner() + (state.view === 'home' ? '' : renderTabs()) + (state.view === 'home'
-      ? renderHomeTiles()
+      ? renderHomeView()
       : state.view === 'profile'
       ? renderProfileView()
       : state.view === 'leaderboard' ? renderLeaderboardView()
@@ -15301,13 +15557,13 @@ function render(){
       ${verifyBanner}
       ${guardianBanner}
       ${setupReminderBanner}
-      ${['profile', 'leaderboard', 'chat', 'more', 'roster', 'pitcher', 'coaches'].includes(state.view) ? ''
+      ${['home', 'profile', 'leaderboard', 'chat', 'more', 'roster', 'pitcher', 'coaches'].includes(state.view) ? ''
         : (chipViews && renderPitcherChip(p)) || headerHtml}
       ${(state.view === 'home' || state.view === 'more') ? '' : tabs}
       ${state.view === 'more' ? renderMoreView()
         : (state.view === 'roster' || state.view === 'pitcher') ? renderRosterPage(rosterItems, teamSelector, p)
         : state.view === 'coaches' ? renderCoachesPage()
-        : state.view === 'home' ? renderHomeTiles()
+        : state.view === 'home' ? renderHomeView()
         : state.view === 'session' ? renderSessionView()
         : state.view === 'profile' ? renderProfileView()
         : state.view === 'leaderboard' ? renderLeaderboardView()

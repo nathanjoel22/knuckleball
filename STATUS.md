@@ -60,6 +60,32 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-17 · N1 Stage C (Home dashboards) · **staging**, branch `n1c-home`, cache `kb-shell-v345`
+
+- **Packet:** `plans/n1-navigation-and-home.md` Stage C. Preconditions `plans/n1c-preconditions.md`: Joel, "yes to all,
+  build it". Evidence `plans/n1c-evidence.md`.
+- **Built:** Home per role, replacing the four squares:
+  - the weekly line score (a real table; `pitch_count`, the roster's own number; outbox sessions count);
+  - pitcher: Chart today, the coach's note, Last session;
+  - parent: the sentence, note, Latest report, Earlier; view-only family the same without Chart;
+  - coach: Active / Sessions / Pitches, Start a session, the roster line score, Needs your attention (new, idle 5+
+    days, never charted, unread chat), Recent sessions;
+  - facility manager: plus By coach.
+
+  The coach's data is one `session_stats` read under its existing rule, kept offline ("As of …"). **No database
+  change.**
+- **Deviations:**
+  - the Home plot is History's own (with its plate);
+  - the setup reminder banner still shows above Home (Stage D decides);
+  - the manager's title uses the facility's name (Q8).
+- **Open:**
+  - the parent's note card wasn't seen end to end (U15 Kid has no team; the read rule allows it);
+  - Joel's phone and iPad check after merge.
+- **Staging test data:**
+  - a pen and one test note for "U15 Softball Pitcher";
+  - a pen for Andre Boateng;
+  - `u15-sbpitch-03123297@example.com` has the throwaway password.
+
 ## 2026-11-17 · N1 Stage B (menu, roster page, Manage, No coach yet) · **staging** (DB + app), branch `n1b-sidebar-roster`, cache `kb-shell-v344`
 
 - **Packet:** `plans/n1-navigation-and-home.md` Stage B. Preconditions `plans/n1b-preconditions.md`: Joel, "yes to all"

@@ -2451,7 +2451,7 @@ let state = {
   gamePendingOutcome: null,  // 'hit' | 'out' | 'error', while drilling into In Play
   gamePendingHitType: null,  // '1B'|'2B'|'3B'|'HR', while drilling into a Hit
   expandedSessionId: null,
-  collapsedSessions: {},     // History feed: sessions whose bar was tapped closed (Joel, Nov 5)
+  openSessions: {},          // History feed: sessions whose bar was tapped open (Joel, Nov 17: closed by default)
   // G1: which kind of session History shows -- 'all' | 'bullpen' | 'game'.
   // Purely a display filter; never affects what's loaded or synced.
   historyFilter: 'all',
@@ -12719,7 +12719,7 @@ function renderHistoryView(){
         <div class="delete-zone"><button class="btn btn-danger btn-sm" onclick="startDeleteSession('${s.id}')">Delete this session</button></div>`));
       return `
         <div class="session-card" data-sid="${s.id}">
-          <div class="session-card-head has-thumb" role="button" tabindex="0" aria-expanded="${state.collapsedSessions[s.id] ? 'false' : 'true'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
+          <div class="session-card-head has-thumb" role="button" tabindex="0" aria-expanded="${state.openSessions[s.id] ? 'true' : 'false'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
             ${renderZoneThumb(s, p)}
             <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${lineOpen ? ' <span class="coach-logged-tag">Line open</span>' : ''}${pendingTag}</div>
             <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
@@ -12735,7 +12735,7 @@ function renderHistoryView(){
             </div>
             <span class="sc-chev" aria-hidden="true"></span>
           </div>
-          ${state.collapsedSessions[s.id] ? '' : `<div class="session-card-body${s.reportPath ? ' feed-body' : ''}">
+          ${!state.openSessions[s.id] ? '' : `<div class="session-card-body${s.reportPath ? ' feed-body' : ''}">
             ${s.reportPath ? feedReportSlot(s) : `<div class="zone-wrap">${renderHistoryPlot(plotSessionOf(s, p), p)}</div>`}
             <div class="feed-side">
               ${s.reportPath ? '' : gameHistoryTypeTable(p, s)}${feedAutoMark(s, pEligible)}
@@ -12856,7 +12856,7 @@ function renderHistoryView(){
 
     return `
       <div class="session-card" data-sid="${s.id}">
-        <div class="session-card-head has-thumb" role="button" tabindex="0" aria-expanded="${state.collapsedSessions[s.id] ? 'false' : 'true'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
+        <div class="session-card-head has-thumb" role="button" tabindex="0" aria-expanded="${state.openSessions[s.id] ? 'true' : 'false'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
           ${renderZoneThumb(s, p)}
           <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${teamChipHtml(s)}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${pendingTag}</div>
           <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
@@ -12871,7 +12871,7 @@ function renderHistoryView(){
           </div>
           <span class="sc-chev" aria-hidden="true"></span>
         </div>
-        ${state.collapsedSessions[s.id] ? '' : `<div class="session-card-body${s.reportPath ? ' feed-body' : ''}">
+        ${!state.openSessions[s.id] ? '' : `<div class="session-card-body${s.reportPath ? ' feed-body' : ''}">
           ${s.reportPath ? feedReportSlot(s) : `<div class="zone-wrap">${renderHistoryPlot(plotSessionOf(s, p), p)}</div>`}
           <div class="feed-side">
             ${s.reportPath ? '' : `<table class="breakdown-table">
@@ -12885,10 +12885,11 @@ function renderHistoryView(){
       </div>`;
   }).join('') + moreHtml + (shown.length === visible.length ? oldSummaryHtml : '') + backToTopHtml();
 }
-// Joel, Nov 5: a session's bar (date, pitches, strikes, accuracy...) opens and closes its report. Open by default (the
-// feed); closed ones stay closed for this page load. A drawn report is kept (feedHosts), so reopening is instant.
+// Joel, Nov 5: a session's bar (date, pitches, strikes, accuracy...) opens and closes its report. Since Nov 17 (Joel)
+// every report starts closed; opened ones stay open for this page load. A drawn report is kept (feedHosts), so
+// reopening is instant.
 window.toggleSessionCollapse = function(id){
-  if(state.collapsedSessions[id]) delete state.collapsedSessions[id]; else state.collapsedSessions[id] = true;
+  if(state.openSessions[id]) delete state.openSessions[id]; else state.openSessions[id] = true;
   clearDeleteState();
   render();
 };
@@ -13561,8 +13562,18 @@ function renderPitcherPage(p){
   </div>`;
 }
 window.openSessionInHistory = function(id){
+  state.openSessions[id] = true;   // arriving at a session (recap, Home, a pitcher's page) opens its report
   setView('history');
   setTimeout(() => { const el = document.querySelector('.session-card[data-sid="' + id + '"]'); if(el) el.scrollIntoView({ block: 'start' }); }, 80);
+};
+// A coach's Home row: that pitcher's History, with this session open and in view (it loads after the pick).
+window.openPitcherSession = async function(pid, id){
+  state.openSessions[id] = true;
+  await selectPitcher(pid, 'history');
+  let tries = 0;
+  const go = () => { const el = document.querySelector('.session-card[data-sid="' + id + '"]');
+    if(el) el.scrollIntoView({ block: 'start' }); else if(++tries < 30) setTimeout(go, 100); };
+  setTimeout(go, 80);
 };
 /* Manage (Joel, Q6): every action the roster rows used to carry, each confirmed. Who may do what is the server's
    call, as before; rows a viewer can't use aren't drawn. */
@@ -13896,7 +13907,7 @@ function renderCoachHome(){
   const attnCard = `<div class="more-card"><div class="more-group-label">Needs your attention</div>${attn.join('') || '<p class="profile-note more-empty">Nothing right now.</p>'}</div>`;
   const recent = items.slice(0, 5);
   const nameOf = id => (roster.find(r => r.id === id) || {}).name || '';
-  const recentCard = recent.length ? `<div class="more-card"><div class="more-group-label">Recent sessions</div>${recent.map(x => `<button type="button" class="more-row" onclick="selectPitcher('${x.pid}', 'history')"><span class="more-row-main">${escHtml(nameOf(x.pid))}<span class="more-row-sub">${x.kind === 'game' ? 'Live Game' : 'Bullpen'} · ${escHtml(new Date(x.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))} · ${x.n} pitches${x.pending ? ' · waiting to sync' : ''}</span></span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>`).join('')}</div>` : '';
+  const recentCard = recent.length ? `<div class="more-card"><div class="more-group-label">Recent sessions</div>${recent.map(x => `<button type="button" class="more-row" onclick="openPitcherSession('${x.pid}', '${x.id}')"><span class="more-row-main">${escHtml(nameOf(x.pid))}<span class="more-row-sub">${x.kind === 'game' ? 'Live Game' : 'Bullpen'} · ${escHtml(new Date(x.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))} · ${x.n} pitches${x.pending ? ' · waiting to sync' : ''}</span></span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>`).join('')}</div>` : '';
   const byCoach = mgr ? `<div class="more-card"><div class="more-group-label">By coach</div>${facilityGroups().map(g => { const ps = roster.filter(r => (r.groups || []).some(y => y.id === g.id)); const a = ps.filter(r => wkOf(r.id).sessions).length; return `<div class="more-row"><span class="more-row-main">${escHtml(g.coachName)}</span><span class="more-row-right">${a} of ${ps.length} active</span></div>`; }).join('')}</div>` : '';
   const title = `<div class="place-head"><h2 class="display">This week</h2><span class="place-sub">${escHtml(team ? team.name : '')} · ${escHtml(weekRangeLabel())}</span></div>`;
   return `<div class="home-page coach-home${mgr ? ' mgr-home' : ''}">

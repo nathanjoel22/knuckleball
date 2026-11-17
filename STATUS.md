@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-16 · N1 Stage A (names and the phone menu) · **staging**, branch `n1a-names-phone-menu`, cache `kb-shell-v343`
+## 2026-11-16 · N1 Stage A (names and the phone menu) · **production** (v343 live Nov 17), branch `n1a-names-phone-menu`, PR #87 merged (`7ec3dbd`), cache `kb-shell-v343`
 
 - **Packet:** `plans/n1-navigation-and-home.md` Stage A. Preconditions `plans/n1a-preconditions.md`; Joel took every
   recommendation (Q1-Q8). Evidence `plans/n1a-evidence.md`.
@@ -85,7 +85,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
     `delete-account.html` and the in-app terms notice say "Profile → Your data". The page is now Account, opened from
     More. Proposed: "More → Account → Your data" (Stage B moves Delete my account again, so this may be done once, in
     Stage B, instead).
-  - Store-app checks (Help opens in the app; the Chat icon) on Joel's iPhone after merge.
+  - Store-app checks on Joel's iPhone now that v343 is live: Help opens in the app with its Back link; the Chat icon
+    (facility logins); device check 18 (open the app twice: the new bar shows with no App Store update).
+  - Policy wording "Profile → Your data": Joel didn't pick before merging, so it waits for Stage B (the recommendation).
   - App Store screenshots and the review-note paths get redone once N1 is on production (submission held, Joel
     Nov 16).
   - F1-C2 now needs v344.

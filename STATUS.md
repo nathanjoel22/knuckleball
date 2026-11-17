@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-17 · N1 Stage C (Home dashboards) · **staging**, branch `n1c-home`, cache `kb-shell-v345`
+## 2026-11-17 · N1 Stage C (Home dashboards) · **production** (v345 live Nov 17), branch `n1c-home`, PR #91 merged (`b35c789`; it also carried PR #90), cache `kb-shell-v345`
 
 - **Packet:** `plans/n1-navigation-and-home.md` Stage C. Preconditions `plans/n1c-preconditions.md`: Joel, "yes to all,
   build it". Evidence `plans/n1c-evidence.md`.

@@ -94,6 +94,10 @@
       else if(localStorage.getItem('kb:sport') === 'softball') sport = 'softball';
     }catch(e){}
     document.documentElement.setAttribute('data-sport', sport === 'softball' ? 'softball' : 'baseball');
+    try{   // N1-G: a facility's colors, as last applied on this device
+      var fac = JSON.parse(localStorage.getItem('kb:facThemeActive') || 'null');
+      if(fac) for(var k in fac) document.documentElement.style.setProperty(k, fac[k]);
+    }catch(e){}
   })();
 </script>
 <script>
@@ -962,6 +966,23 @@
   .run-day.rest{ background:var(--surface); background:color-mix(in srgb, var(--success) 15%, transparent); color:var(--success); }   /* older iOS: the plain surface */
   .run-day.today{ background:var(--surface); color:var(--ink-dim); }
   .run-day.later{ box-shadow:inset 0 0 0 1px var(--border); }
+  /* N1-G: the facility's identity (docs/n1/g-sidebar-facility.png) and the manager's editor */
+  .fac-id{ display:flex; align-items:center; gap:var(--s-12); cursor:pointer; min-width:0; }
+  .fac-logo{ width:52px; height:52px; border-radius:12px; background:var(--accent); color:var(--on-accent, var(--ink)); display:inline-flex; align-items:center; justify-content:center; flex:none; overflow:hidden; }
+  .fac-logo img{ width:100%; height:100%; object-fit:contain; background:#fff; }
+  .fac-logo .display{ font-size:24px; line-height:1; }
+  .fac-id-text{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .fac-name{ font-size:22px; line-height:1.05; color:var(--on-dark); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fac-powered{ font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--on-dark-faint); }
+  .fac-id.in-head .fac-logo{ width:40px; height:40px; border-radius:10px; }
+  .fac-id.in-head .fac-name{ color:var(--ink); font-size:20px; }
+  .fac-id.in-head .fac-powered{ color:var(--ink-faint); }
+  @media (min-width:501px) and (max-width:860px){ .side-nav:not(.open) .fac-id{ display:none; } }   /* the 72px rail shows only ☰, like the wordmark */
+  .fac-preview{ display:flex; align-items:center; gap:var(--s-12); border-radius:16px; padding:var(--s-12) var(--s-16); background:var(--brand-bg); }
+  .fac-preview-btn{ margin-left:auto; border-radius:10px; padding:var(--s-8) var(--s-16); font-weight:700; }
+  .fac-colors{ gap:var(--s-16); flex-wrap:wrap; }
+  .fac-color{ display:flex; align-items:center; gap:var(--s-8); font-weight:600; }
+  .fac-color input[type=color]{ width:48px; height:44px; border:1px solid var(--border); border-radius:10px; padding:2px; background:var(--card); }
   .pill-days{ background:var(--warning-tint, #FBF1D6); color:var(--accent-ink, #7A5A00); }
   .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
   .home-tiles{ display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:var(--s-8); width:100%; max-width:340px; margin:var(--s-4) 0 var(--s-24); }
@@ -4177,6 +4198,7 @@ window.onTeamChange = async function(teamId, skipRender){
   await saveLastKnownContext();
   loadRosterDots();   // U10 (3): background
   loadGroupCodes();   // F1-B: this side's join codes (background)
+  loadFacilityBrandings();   // N1-G: the facility's look (background; the device copy first)
   if(!skipRender) render();
 };
 // On-device only (localStorage, no network): if the coach has an unfinished draft
@@ -13476,7 +13498,7 @@ function renderSideNav(teamSelector){
   return `<nav class="side-nav${state.navOpen ? ' open' : ''}" aria-label="Menu">
     <div class="nav-top">
       <button type="button" class="nav-toggle" onclick="toggleNav()" aria-label="${state.navOpen ? 'Close the menu' : 'Open the menu'}" aria-expanded="${state.navOpen ? 'true' : 'false'}">${state.navOpen ? '✕' : DOCK_ICONS.more}</button>
-      <div class="brand brand-lockup brand-home" role="link" tabindex="0" aria-label="${PLACE.home}" onclick="navGo('home')" onkeydown="if(event.key==='Enter'){navGo('home');}">${KB_MARK_SVG}<span class="display brand-word">KNUCKLEBALL</span></div>
+      ${facHasLook(currentFacBrand()) ? renderFacIdentity(currentFacBrand(), 'in-nav') : `<div class="brand brand-lockup brand-home" role="link" tabindex="0" aria-label="${PLACE.home}" onclick="navGo('home')" onkeydown="if(event.key==='Enter'){navGo('home');}">${KB_MARK_SVG}<span class="display brand-word">KNUCKLEBALL</span></div>`}
     </div>
     <div class="nav-team">${teamSelector}<span class="nav-sport">${escHtml(SPORT_NAME[currentSport()] || '')}</span>${renderOfflinePill()}</div>
     ${renderOutboxBadge()}
@@ -14268,6 +14290,172 @@ function renderCardPngSheet(){
     </div>
   </div>`;
 }
+/* ---------- N1 Stage G: A FACILITY'S NAME, LOGO AND COLORS (Joel, Nov 17 2026; plans/n1g-preconditions.md) ----------
+   The manager sets a logo and two colors (set_facility_branding); members read them (my_facility_brandings). The two
+   colors become the brand / dock / accent tokens -- never the pitch palettes, reports, the Live Game field, emails or
+   the wordmark. Kept on the device (rows in localStorage kb:facBrand:<uid>, logos in IndexedDB kb-facility, the
+   active tokens in kb:facThemeActive for the pre-paint script) so it paints offline and before load. */
+const FAC_VARS = ['--brand-bg', '--brand-bg-deep', '--brand-bg-2', '--brand-mid', '--brand-mid-ring', '--dock-bg',
+  '--accent', '--accent-bright', '--accent-rgb', '--accent-ink', '--on-accent'];
+function hexRgb(h){ const m = /^#?([0-9a-f]{6})$/i.exec(String(h || '').trim()); if(!m) return null; const n = parseInt(m[1], 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function rgbHex(c){ return '#' + c.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('').toUpperCase(); }
+function relLum(hex){ const c = hexRgb(hex); if(!c) return 0; const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); }
+function contrastOf(a, b){ const x = relLum(a), y = relLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+function mixHex(a, b, t){ const x = hexRgb(a), y = hexRgb(b); return rgbHex(x.map((v, i) => v + (y[i] - v) * t)); }
+function darkenTo(hex, minOnWhite){ let c = hex, i = 0; while(contrastOf(c, '#FFFFFF') < minOnWhite && i++ < 40) c = mixHex(c, '#000000', 0.06); return c; }
+// The two colors -> token values, or the reason they can't be used (4.5:1 for text, the packet's rule).
+function facilityTokens(brand, accent){
+  if(!hexRgb(brand) || !hexRgb(accent)) return { error: 'Pick two colors.' };
+  if(contrastOf('#FFFFFF', brand) < 4.5) return { error: 'This brand color is too light for white text. Pick a darker one.' };
+  const ink = (getComputedStyle(document.documentElement).getPropertyValue('--ink').trim()) || '#0B1F14';
+  const inkC = hexRgb(ink) ? contrastOf(ink, accent) : 0, whiteC = contrastOf('#FFFFFF', accent);
+  if(Math.max(inkC, whiteC) < 4.5) return { error: 'Text would be hard to read on this accent color. Pick a lighter or a darker one.' };
+  const b = hexRgb(brand), a = hexRgb(accent);
+  return { vars: {
+    '--brand-bg': rgbHex(b), '--brand-bg-deep': mixHex(brand, '#000000', 0.25), '--brand-bg-2': mixHex(brand, '#FFFFFF', 0.10),
+    '--brand-mid': darkenTo(brand, 4.5), '--brand-mid-ring': `rgba(${b.join(',')},0.18)`, '--dock-bg': `rgba(${b.join(',')},0.82)`,
+    '--accent': rgbHex(a), '--accent-bright': mixHex(accent, '#FFFFFF', 0.15), '--accent-rgb': a.join(','),
+    '--accent-ink': darkenTo(accent, 4.5), '--on-accent': inkC >= whiteC ? 'var(--ink)' : '#FFFFFF' } };
+}
+function facBrandKey(){ return 'kb:facBrand:' + (state.session ? state.session.user.id : ''); }
+// The branding for the team on screen (Q5: the look follows the current team), when its facility set one.
+function currentFacBrand(){
+  const rows = state.facBrandings || [];
+  const team = (state.teams || []).find(t => t.id === state.currentTeamId);
+  if(!team || team.archived) return null;
+  return rows.find(r => r.team_id === state.currentTeamId) || null;
+}
+function applyFacilityTheme(){
+  // Offline starts never reach loadFacilityBrandings: take the device copy (and its cached logos) the first time.
+  if(!state.facBrandings && state.session){
+    try{ state.facBrandings = JSON.parse(lsGet(facBrandKey()) || 'null'); }catch(e){}
+    if(state.facBrandings) loadFacilityLogos();
+  }
+  const fb = currentFacBrand(), root = document.documentElement;
+  const tk = fb && fb.brand_color && fb.accent_color ? facilityTokens(fb.brand_color, fb.accent_color) : null;
+  const vars = tk && tk.vars ? tk.vars : null;
+  const sig = vars ? JSON.stringify(vars) : '';
+  if(state.facThemeSig === sig) return;
+  state.facThemeSig = sig;
+  FAC_VARS.forEach(v => { if(vars) root.style.setProperty(v, vars[v]); else root.style.removeProperty(v); });
+  try{ if(vars) localStorage.setItem('kb:facThemeActive', sig); else localStorage.removeItem('kb:facThemeActive'); }catch(e){}
+}
+// Logos: IndexedDB (never localStorage, which holds the outbox), keyed by path and update time.
+function facIdb(){
+  return state._facIdb || (state._facIdb = new Promise((res, rej) => { const r = indexedDB.open('kb-facility', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
+}
+async function facGet(k){ try{ const db = await facIdb(); return await new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); }); }catch(e){ return null; } }
+async function facSet(k, v){ try{ const db = await facIdb(); await new Promise(res => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = res; }); }catch(e){} }
+async function loadFacilityLogos(){
+  state.facLogos = state.facLogos || {};
+  let changed = false;
+  for(const r of state.facBrandings || []){
+    if(!r.logo_path){ if(state.facLogos[r.org_id]){ delete state.facLogos[r.org_id]; changed = true; } continue; }
+    const key = r.logo_path + '@' + r.updated_at;
+    let data = await facGet(key);
+    if(!data && isOnline()){
+      try{ const { data: blob, error } = await netTimeout(supabaseClient.storage.from('facility-logos').download(r.logo_path), 8000);
+        if(!error && blob){ data = await blobToDataUrl(blob); await facSet(key, data); } }catch(e){}
+    }
+    if(data && state.facLogos[r.org_id] !== data){ state.facLogos[r.org_id] = data; changed = true; }
+  }
+  if(changed) render();
+}
+async function loadFacilityBrandings(){
+  if(!state.session) return;
+  if(!state.facBrandings){ try{ state.facBrandings = JSON.parse(lsGet(facBrandKey()) || 'null') || []; }catch(e){ state.facBrandings = []; } }
+  if(isOnline()){
+    try{ const { data, error } = await netTimeout(supabaseClient.rpc('my_facility_brandings'), 8000);
+      if(!error && Array.isArray(data)){ state.facBrandings = data; lsSet(facBrandKey(), JSON.stringify(data)); } }catch(e){}
+  }
+  render();
+  loadFacilityLogos();
+}
+// The facility's identity where the wordmark sits (docs/n1/g-sidebar-facility.png): logo or initials, name, Powered by.
+function renderFacIdentity(fb, cls){
+  const logo = state.facLogos && state.facLogos[fb.org_id];
+  return `<div class="fac-id ${cls || ''}" role="link" tabindex="0" aria-label="${PLACE.home}" onclick="navGo('home')" onkeydown="if(event.key==='Enter'){navGo('home');}">
+    <span class="fac-logo">${logo ? `<img src="${logo}" alt="">` : `<span class="display">${escHtml(initialsOf(fb.name))}</span>`}</span>
+    <span class="fac-id-text"><span class="fac-name display">${escHtml(fb.name)}</span><span class="fac-powered">Powered by Knuckleball</span></span>
+  </div>`;
+}
+function facHasLook(fb){ return !!(fb && (fb.logo_path || (fb.brand_color && fb.accent_color))); }
+/* Account -> Facility look (the manager). */
+function renderFacilityLook(){
+  if(!isFacilityManager()) return '';
+  const fb = currentFacBrand(); if(!fb) return '<div class="profile-section"><h3>Facility look</h3><p class="profile-note">Loading… (needs a connection the first time)</p></div>';
+  const ed = state.facEdit || (state.facEdit = { brand: fb.brand_color || '#13294B', accent: fb.accent_color || '#F26B3A', msg: '', busy: false });
+  const tk = facilityTokens(ed.brand, ed.accent);
+  const logo = state.facLogos && state.facLogos[fb.org_id];
+  const prev = tk.vars ? `style="background:${tk.vars['--brand-bg']};"` : '';
+  return `<div class="profile-section fac-look"><h3>Facility look</h3>
+    <p class="profile-note">Your logo and two colors, for everyone at ${escHtml(fb.name)}. Pitch colors, reports and emails don't change.</p>
+    <div class="fac-preview" ${prev}>
+      <span class="fac-logo" ${tk.vars ? `style="background:${tk.vars['--accent']};color:${tk.vars['--on-accent'] === '#FFFFFF' ? '#FFFFFF' : 'var(--ink)'};"` : ''}>${logo ? `<img src="${logo}" alt="">` : `<span class="display">${escHtml(initialsOf(fb.name))}</span>`}</span>
+      <span class="fac-id-text"><span class="fac-name display" style="color:#fff;">${escHtml(fb.name)}</span><span class="fac-powered">Powered by Knuckleball</span></span>
+      ${tk.vars ? `<span class="fac-preview-btn" style="background:${tk.vars['--accent']};color:${tk.vars['--on-accent'] === '#FFFFFF' ? '#FFFFFF' : 'var(--ink)'};">Home</span>` : ''}
+    </div>
+    <div class="profile-row fac-colors">
+      <label class="fac-color"><span>Brand</span><input type="color" value="${escHtml(ed.brand)}" oninput="facEditColor('brand', this.value)"><code>${escHtml(ed.brand)}</code></label>
+      <label class="fac-color"><span>Accent</span><input type="color" value="${escHtml(ed.accent)}" oninput="facEditColor('accent', this.value)"><code>${escHtml(ed.accent)}</code></label>
+    </div>
+    ${tk.error ? `<p class="report-status report-status-error">${escHtml(tk.error)}</p>` : ''}
+    <div class="profile-row">
+      <button class="btn btn-primary" ${tk.error || ed.busy || !isOnline() ? 'disabled' : ''} onclick="saveFacilityLook()">Save colors</button>
+      ${fb.brand_color ? `<button class="btn btn-secondary" ${ed.busy || !isOnline() ? 'disabled' : ''} onclick="resetFacilityColors()">Use Knuckleball colors</button>` : ''}
+    </div>
+    <div class="profile-row">
+      <label class="btn btn-secondary">${logo ? 'Replace logo' : 'Upload logo'}<input type="file" accept="image/png,image/jpeg,image/webp" hidden onchange="onFacLogoPicked(this)"></label>
+      ${fb.logo_path ? `<button class="btn btn-secondary" ${ed.busy ? 'disabled' : ''} onclick="removeFacilityLogo()">Remove logo</button>` : ''}
+    </div>
+    ${!isOnline() ? '<p class="profile-note">Changing the look needs a connection.</p>' : ''}
+    ${ed.msg ? `<p class="profile-note">${escHtml(ed.msg)}</p>` : ''}
+  </div>`;
+}
+window.facEditColor = function(which, v){ const ed = state.facEdit; if(!ed) return; ed[which] = String(v).toUpperCase(); ed.msg = ''; render(); };
+async function facSave(brand, accent, logoPath, okMsg){
+  const fb = currentFacBrand(), ed = state.facEdit; if(!fb || !ed) return;
+  ed.busy = true; ed.msg = ''; render();
+  let res; try{ res = await netTimeout(supabaseClient.rpc('set_facility_branding', { p_org: fb.org_id, p_brand: brand, p_accent: accent, p_logo_path: logoPath }), 10000); }catch(e){ res = { error: e }; }
+  ed.busy = false;
+  ed.msg = (res.error || !res.data || !res.data.ok) ? "Couldn't save that. Check your connection and try again." : okMsg;
+  await loadFacilityBrandings();
+}
+window.saveFacilityLook = function(){ const ed = state.facEdit, fb = currentFacBrand(); if(!ed || !fb || facilityTokens(ed.brand, ed.accent).error) return; facSave(ed.brand, ed.accent, fb.logo_path || null, 'Saved. Everyone at the facility sees it next time they open the app.'); };
+window.resetFacilityColors = function(){ const fb = currentFacBrand(); if(!fb) return; facSave(null, null, fb.logo_path || null, "Back to Knuckleball's colors."); };
+// Q2: PNG / JPEG / WebP, made to fit 256 x 256 on the device, 256 KB at most.
+function makeFacLogoPng(file){
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => { const s = Math.min(1, 256 / Math.max(im.width, im.height)), c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(im.width * s)); c.height = Math.max(1, Math.round(im.height * s));
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url); c.toBlob(b => b ? res(b) : rej(new Error('no image')), 'image/png'); };
+    im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('not an image')); };
+    im.src = url;
+  });
+}
+window.onFacLogoPicked = async function(input){
+  const file = input.files && input.files[0]; input.value = '';
+  const fb = currentFacBrand(), ed = state.facEdit; if(!file || !fb || !ed) return;
+  if(!/^image\/(png|jpeg|webp)$/.test(file.type)){ ed.msg = 'Use a PNG, JPEG or WebP picture.'; render(); return; }
+  if(!isOnline()){ ed.msg = 'Changing the logo needs a connection.'; render(); return; }
+  ed.busy = true; ed.msg = 'Uploading…'; render();
+  try{
+    const blob = await makeFacLogoPng(file);
+    if(blob.size > 262144) throw new Error('too big');
+    const path = fb.org_id + '/logo.png';
+    const { error } = await supabaseClient.storage.from('facility-logos').upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '60' });
+    if(error) throw error;
+    ed.busy = false;
+    await facSave(fb.brand_color || null, fb.accent_color || null, path, 'Logo saved.');
+  }catch(e){ ed.busy = false; ed.msg = "Couldn't upload that picture."; render(); }
+};
+window.removeFacilityLogo = async function(){
+  const fb = currentFacBrand(); if(!fb || !fb.logo_path) return;
+  try{ await supabaseClient.storage.from('facility-logos').remove([fb.logo_path]); }catch(e){}
+  await facSave(fb.brand_color || null, fb.accent_color || null, null, 'Logo removed.');
+};
 /* ---------- F1-C1: CHAT (Oct 29 2026, plans/f1-training-facilities.md; decisions in plans/f1c1-preconditions.md) ----------
    Only inside a training facility. Two kinds of thread: the facility's (the manager posts to everyone there) and a
    private one per pitcher per coach (the coach and the pitcher, or the parent who created the player). The server
@@ -14922,7 +15110,7 @@ function placeHead(label, sub){
 function renderProfileView(){
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
   if(isCoach()){
-    return `<div class="profile-page">${placeHead(PLACE.account)}${msg}${renderNameSection(mapProfile(state.profile), true)}${renderEmailSection()}${renderPasswordSection()}${renderCoachTeamAdmin()}${renderDataSection()}</div>`;
+    return `<div class="profile-page">${placeHead(PLACE.account)}${msg}${renderFacilityLook()}${renderNameSection(mapProfile(state.profile), true)}${renderEmailSection()}${renderPasswordSection()}${renderCoachTeamAdmin()}${renderDataSection()}</div>`;
   }
   if(activeLinked()) return renderLinkedProfileView(msg);   // F1-G
   const p = currentPitcher();
@@ -15936,7 +16124,7 @@ function render(){
     rosterItems = currentTeamIsFacility() ? renderFacilityRoster(rosterRow) : state.roster.map(p => rosterRow(p, null)).join('');
   }
   const phoneHead = `<header class="ph-head">
-      <div class="brand-home ph-wordmark" role="link" tabindex="0" aria-label="Home" onclick="goHome()" onkeydown="if(event.key==='Enter'){goHome();}"><span class="brand-word">KNUCKLEBALL</span></div>
+      ${facHasLook(currentFacBrand()) ? renderFacIdentity(currentFacBrand(), 'in-head') : `<div class="brand-home ph-wordmark" role="link" tabindex="0" aria-label="Home" onclick="goHome()" onkeydown="if(event.key==='Enter'){goHome();}"><span class="brand-word">KNUCKLEBALL</span></div>`}
       <div class="ph-head-right">${renderOfflinePill()}${renderAccountButton()}</div>
     </header>${renderOutboxBadge()}`;
 
@@ -16074,6 +16262,7 @@ function render(){
   // N1-B: the menu on iPads and computers, the plain header on phones; neither on the charting screen (decision 8)
   const wideNav = !isPhoneWidth() && !onChartingScreen();
   const phoneTop = isPhoneWidth() && !phoneSession && !onChartingScreen();
+  applyFacilityTheme();   // N1-G
   if(app.classList){ app.classList.toggle('has-nav', wideNav); app.classList.toggle('nav-open', wideNav && !!state.navOpen); }
   app.innerHTML = (wideNav ? renderSideNav(teamSelector) : '') + `<div class="main${phoneSession ? ' ph-main' : ''}">${phoneTop ? phoneHead : ''}${main}${policyFoot}</div>` + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + renderSignOutSheet() + renderPickSheet() + renderManageSheet() + renderRecap() + renderCardPngSheet() + (dockOn && !state.recap ? renderCoachDock() : '');
   if(app.classList) app.classList.toggle('has-dock', dockOn);

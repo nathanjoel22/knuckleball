@@ -327,6 +327,23 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
   - **Where they show:** a banner on the pitcher's, teen's and parent's Home for 7 days, one at a time, dismissable
     (`kb:ms:<uid>:<profile>:<id>`). The run card ("N weeks running", this week's days with "Rest") and Recent sit under
     the card. Wording never tells a pitcher to throw more.
+- **A facility's name, logo and colors (N1 Stage G, Joel, Nov 17 2026, v349; `plans/n1g-preconditions.md`, evidence
+  `plans/n1g-evidence.md`):**
+  - **Who sets it:** the facility's manager, in Account → Facility look (`renderFacilityLook`): a logo (PNG, JPEG or
+    WebP, made to fit 256 × 256 on the device, 256 KB at most) and two colors.
+  - **What it changes:** the two colors become the brand / dock / accent tokens (`facilityTokens`, `FAC_VARS`). A pair
+    whose text can't reach 4.5:1 is refused at the picker.
+  - **Who sees it:** everyone on that facility while a facility team is the current team (both sports' sides). They get
+    the logo, name and "Powered by Knuckleball" in the menu and the phone header (`renderFacIdentity`). Never the pitch
+    palettes, reports, the Live Game field, emails or the wordmark. An archived side gets no look.
+  - **Storage:** `organizations` gains `brand_color`, `accent_color`, `logo_path` and `branding_updated_at`, still with no
+    client grant. The manager writes through `set_facility_branding`; members read through `my_facility_brandings`. Logos
+    live in the private `facility-logos` bucket (`<org>/logo.png`): members read, the manager writes (4 storage
+    policies; `public` stays 32).
+  - **On the device:** rows in `kb:facBrand:<uid>`, logos in IndexedDB `kb-facility`, and the active tokens in
+    `kb:facThemeActive` for the pre-paint script, so the look paints offline and before load.
+  - Migration `20261119000000_n1g_facility_branding`. The rollback can't delete the bucket (Supabase refuses storage
+    deletes in SQL); the dashboard does that. Test `supabase/tests/n1g_facility_branding.sql`.
 - **One "‹ Back" (F1-D, Joel, Oct 29 2026; `plans/f1d-preconditions.md`; v324):** top left of the page (in the account
   row on phones; its own row when the account sits in the pitcher header), every size, browser and installed. It goes
   to the section's first screen, never browser history: start questions → "Bullpen or Live Game?"; (an opened History

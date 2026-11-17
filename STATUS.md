@@ -60,7 +60,39 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-17 · N1 Stage F (pitcher card, milestones) · **staging**, branch `n1f-card-milestones`, cache `kb-shell-v348`
+## 2026-11-17 · N1 Stage G (facility name, logo and colors) · **staging** (DB + app), branch `n1g-facility-colors`, cache `kb-shell-v349`
+
+- **Packet:** `plans/n1-navigation-and-home.md` Stage G. Preconditions `plans/n1g-preconditions.md`: Joel, "yes to all,
+  build it" (Q1-Q5, the migration and storage rules, the privacy sentence). Evidence `plans/n1g-evidence.md`.
+- **Database (staging only so far):**
+  - migration `20261119000000_n1g_facility_branding`: 4 columns on `organizations`, 4 functions, the private
+    `facility-logos` bucket and its 4 storage policies;
+  - `public` policies stay 32;
+  - test 0 fails;
+  - the rollback was run on staging and re-applied. It can't delete the bucket (Supabase refuses storage deletes from
+    SQL), so the bucket stays, unreadable.
+- **Built:**
+  - the manager's Account → Facility look (logo upload, two colors, live preview, contrast refusal, Use Knuckleball
+    colors, Remove logo);
+  - facility tokens on both sides;
+  - logo, name and "Powered by Knuckleball" in the menu and phone header;
+  - pre-paint and offline from the device copy;
+  - the privacy "Facility details" line (approved by Joel Nov 17 as a quiet update; `TERMS_VERSION` unchanged).
+- **Found and fixed:**
+  - offline starts lost the look (the device copy wasn't read);
+  - the logo crowded the 820px rail;
+  - the rollback's storage deletes.
+- **Production, Joel, in this order:**
+  1. a backup;
+  2. `supabase db push --project-ref fkgccjhuimkkbupbanxp --dry-run` (should list only
+     `20261119000000_n1g_facility_branding`);
+  3. the push;
+  4. merge.
+
+  Afterwards, regenerate `schema.sql`.
+- **Staging:** the DS1 facility was put back to Knuckleball's look (no logo, no colors).
+
+## 2026-11-17 · N1 Stage F (pitcher card, milestones) · **production** (v348 live Nov 17), branch `n1f-card-milestones`, PR #95 merged (`b7e26a7`), cache `kb-shell-v348`
 
 - **Packet:** `plans/n1-navigation-and-home.md` Stage F with J2. Preconditions `plans/n1f-preconditions.md`: Joel agreed
   to Q1-Q6, **and replaced the milestone list** (no pitch-count milestones). Evidence `plans/n1f-evidence.md`.

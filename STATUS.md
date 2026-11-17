@@ -60,7 +60,30 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-17 · History reports start closed (no packet; Joel's request) · **staging**, branch `history-collapsed`, cache `kb-shell-v350`
+## 2026-11-17 · N1 Stage G2 (a team's logo and colors) · **staging** (DB + app), branch `n1g2-team-colors`, cache `kb-shell-v351`
+
+- **No packet:** Joel, "yes, let head coaches do it also", then "yes to all" on `plans/n1g2-preconditions.md`.
+  Evidence `plans/n1g2-evidence.md`.
+- **Database (staging only so far):**
+  - migration `20261120000000_n1g2_team_branding`: 4 `teams` columns (no grant), `is_team_reader`, `my_brandings`,
+    `set_team_branding`, the private `team-logos` bucket and its 4 storage policies;
+  - public policies stay 32, storage 12;
+  - test 0 fails;
+  - the rollback was run on staging and re-applied.
+- **Built:** Account → Team look for a normal team's head coach (Stage G's editor). The look shows for the team's
+  coaches, pitchers and families. Privacy line "Team and facility details" (approved by Joel Nov 17, quiet update;
+  `TERMS_VERSION` unchanged).
+- **Production, Joel, in this order:**
+  1. a backup;
+  2. `supabase db push --project-ref fkgccjhuimkkbupbanxp --dry-run` (should list only
+     `20261120000000_n1g2_team_branding`);
+  3. the push;
+  4. merge.
+
+  Afterwards, regenerate `schema.sql`.
+- **Staging:** the U15 team was put back to Knuckleball's look.
+
+## 2026-11-17 · History reports start closed (no packet; Joel's request) · **production** (v350 live Nov 17), branch `history-collapsed`, PR #98 merged (`b428265`), cache `kb-shell-v350`
 
 - **Joel, Nov 17:** "I want them all collapsed first and then you tap to expand."
 - **Built:**

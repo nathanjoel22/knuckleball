@@ -60,6 +60,41 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-16 · N1 Stage A (names and the phone menu) · **staging**, branch `n1a-names-phone-menu`, cache `kb-shell-v343`
+
+- **Packet:** `plans/n1-navigation-and-home.md` Stage A. Preconditions `plans/n1a-preconditions.md`; Joel took every
+  recommendation (Q1-Q8). Evidence `plans/n1a-evidence.md`.
+- **Built:**
+  - one `PLACE` labels object;
+  - the bar Home · Chart · History · (Roster) · More, with a More screen;
+  - Chat as a top-right icon (no Chat on the bar or tabs, no coming-soon page);
+  - Sign out asks first, and says how many sessions haven't synced;
+  - Account / Pitcher settings headings;
+  - the Chart chooser as cards with the last session;
+  - computers' tabs renamed;
+  - Help: always a Back link, opened inside the store apps (the 17 pages' native link handlers no longer send `help`
+    to the Safari sheet), the new names, and the stale "Add a note" step removed.
+  - CLAUDE.md's navigation rules rewritten as built.
+- **Deviations from the packet:**
+  - check 7 leaves "Charting perspective" (charting screen) and sentences that use "charting" as a word;
+  - More shows one row per profile instead of the picture's "Sport · Switch" (Q3);
+  - the chooser keeps the app's "What will we be charting today?";
+  - the pitcher chip waits for Stage B.
+- **Open:**
+  - **Policy text, Joel's approval needed before production:** `privacy.html` (3 places), `terms.html`,
+    `delete-account.html` and the in-app terms notice say "Profile → Your data". The page is now Account, opened from
+    More. Proposed: "More → Account → Your data" (Stage B moves Delete my account again, so this may be done once, in
+    Stage B, instead).
+  - View-only family wasn't tested end to end (no family login on staging).
+  - Store-app checks (Help opens in the app; the Chat icon) on Joel's iPhone after merge.
+  - App Store screenshots and the review-note paths get redone once N1 is on production (submission held, Joel
+    Nov 16).
+  - F1-C2 now needs v344.
+- **Staging test data:**
+  - two 3-pitch bullpens for Andre Boateng (DS1, Nov 17 UTC);
+  - a throwaway password on `feed-coach-1793899731`, `u15-parent-03123297` and `u15-sbcoach-03123297`
+    `@example.com`.
+
 ## 2026-11-13 · no packet (W1 App Store: no placeholders in the app; privacy host line) · **production on merge**, branch `w1-native-placeholders`
 - **Asked by:** Joel ("yes, start both"; privacy wording "I approve", Nov 13). Operator `Nathan <joelhauserman@gmail.com>`.
   **Cache:** v342.

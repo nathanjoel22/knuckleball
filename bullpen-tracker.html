@@ -26,7 +26,7 @@
       var a = e.target && e.target.closest && e.target.closest('a[href]');
       if(!a) return;
       var u; try{ u = new URL(a.getAttribute('href'), location.href); }catch(x){ return; }
-      if(u.origin !== location.origin || !/\/(report|privacy|terms|delete-account|help)\.html$/.test(u.pathname)) return;
+      if(u.origin !== location.origin || !/\/(report|privacy|terms|delete-account)\.html$/.test(u.pathname)) return;
       var B = cap.Plugins && cap.Plugins.Browser;
       if(!B || !B.open) return;
       e.preventDefault();
@@ -708,8 +708,52 @@
      "Bullpen" and "Live Game" (Beta tag removed, Joel, Oct 1) --
      never make the two read as different sizes; align-items/justify-
      content center the pair under the question in both layouts. */
-  .kind-chooser{ display:flex; flex-direction:column; align-items:center; padding:var(--s-48) var(--s-16); }
-  .kind-chooser-buttons{ display:flex; flex-direction:column; align-items:center; gap:var(--s-16); width:100%; }
+  /* N1-A: the Chart chooser as cards (docs/n1/a-phone-bar.png) */
+  .kind-chooser{ display:flex; flex-direction:column; gap:var(--s-12); padding:var(--s-16) 0 var(--s-24); max-width:560px; margin:0 auto; width:100%; }
+  .kind-chooser-label{ margin:0; font-family:var(--font-sans); font-size:var(--t-12); font-weight:700; text-transform:uppercase; letter-spacing:var(--tr-label, .12em); color:var(--ink-faint); }
+  .kind-chooser-buttons{ display:flex; flex-direction:column; gap:var(--s-12); width:100%; }
+  .kind-card{ display:flex; flex-direction:column; align-items:flex-start; gap:var(--s-6); width:100%; min-height:96px; padding:var(--s-20); border:0; border-radius:var(--radius-dock); background:var(--brand-bg); color:var(--on-dark); text-align:left; cursor:pointer; font:inherit; }
+  .kind-card:active{ transform:scale(.99); }
+  .kind-card:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+  .kind-card-title{ font-size:var(--t-32); line-height:1; text-transform:uppercase; }
+  .kind-card-sub{ font-size:var(--t-12); font-weight:700; text-transform:uppercase; letter-spacing:var(--tr-label, .12em); color:var(--on-dark-faint); }
+  .kind-last{ display:grid; grid-template-columns:1fr auto; grid-template-rows:auto auto auto; align-items:center; column-gap:var(--s-8); width:100%; padding:var(--s-16); border:1px solid var(--border); border-radius:var(--radius-dock); background:var(--card); color:var(--ink); text-align:left; cursor:pointer; font:inherit; }
+  .kind-last-label{ grid-column:1 / -1; font-size:var(--t-12); font-weight:700; text-transform:uppercase; letter-spacing:var(--tr-label, .12em); color:var(--ink-faint); margin-bottom:var(--s-8); }
+  .kind-last-title{ font-weight:600; font-size:var(--t-16); }
+  .kind-last-meta{ grid-column:1; font-size:var(--t-14); color:var(--ink-dim); }
+  .kind-last-go{ grid-column:2; grid-row:2 / 4; font-size:var(--t-20); color:var(--ink-faint); }
+  /* N1-A: a page's place name (More, Account, Pitcher settings) */
+  .place-head{ display:flex; flex-direction:column; gap:var(--s-2); margin:0 0 var(--s-12); }
+  .place-head h2{ margin:0; font-size:var(--t-32); line-height:1; text-transform:uppercase; }
+  .profile-page .place-head:not(:first-child){ margin-top:var(--s-24); }
+  .place-sub{ font-size:var(--t-14); color:var(--ink-dim); }
+  /* N1-A: More (docs/n1/a-more-screen.png) */
+  .more-page{ display:flex; flex-direction:column; gap:var(--s-12); max-width:560px; }
+  .more-card{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-dock); padding:var(--s-4) var(--s-16) var(--s-8); }
+  .more-group-label{ font-size:var(--t-12); font-weight:700; text-transform:uppercase; letter-spacing:var(--tr-label, .12em); color:var(--ink-faint); padding:var(--s-16) 0 var(--s-6); border-bottom:1px solid var(--border); }
+  .more-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--s-8); width:100%; min-height:var(--tap-min, 44px); padding:var(--s-12) 0; border:0; border-bottom:1px solid var(--border); background:none; color:var(--ink); font:inherit; font-size:var(--t-16); text-align:left; text-decoration:none; cursor:pointer; }
+  .more-card > .more-row:last-child, .more-card > .more-row-links{ border-bottom:0; }
+  .more-row:disabled{ opacity:.5; cursor:default; }
+  .more-row-main{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--s-6); min-width:0; }
+  .more-row-sub{ flex-basis:100%; font-size:var(--t-12); color:var(--ink-faint); }
+  .more-row-right{ display:flex; align-items:center; gap:var(--s-8); color:var(--ink-dim); flex:none; }
+  .more-go{ font-size:var(--t-20); color:var(--ink-faint); }
+  .more-row-on{ cursor:default; }
+  .more-row-links{ justify-content:flex-start; cursor:default; }
+  .more-row-links a{ color:var(--ink); text-decoration:none; padding:var(--s-4) 0; }
+  .more-row-links span{ color:var(--ink-faint); }
+  .more-signout{ color:var(--danger); font-weight:600; }
+  /* N1-A: the Chat icon left of the avatar, with its count */
+  .acct-wrap{ display:flex; align-items:center; gap:var(--s-8); }
+  .chat-icon-btn{ position:relative; }
+  .chat-icon-btn svg{ width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .chat-icon-badge{ position:absolute; top:-4px; right:-6px; min-width:18px; padding:0 5px; border-radius:999px; background:var(--accent); color:var(--on-accent, var(--ink)); font-style:normal; font-size:11px; font-weight:800; line-height:18px; text-align:center; }
+  /* N1-A: Sign out asks first (docs/n1/a-sign-out-sheet.png) */
+  .modal-overlay.signout-overlay{ align-items:flex-end; padding:0; }   /* after .modal-overlay in the cascade: a bottom sheet */
+  @media (min-width:501px){ .modal-overlay.signout-overlay{ align-items:center; padding:var(--s-16); } .signout-sheet{ border-radius:var(--radius-dock); } }
+  .signout-sheet .btn-danger{ background:var(--danger); border-color:var(--danger); color:var(--on-danger, #fff); }
+  .signout-sheet .sess-sheet-title{ font-size:var(--t-32); line-height:1; text-transform:uppercase; }
+  .signout-text{ margin:0; font-size:var(--t-16); line-height:var(--lh-body, 1.4); }
   .home-tiles{ display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:var(--s-8); width:100%; max-width:340px; margin:var(--s-4) 0 var(--s-24); }
   /* Joel, Oct 12 (his laptop mock-up): on iPad and laptop the tiles fill the whole area beside the roster --
      Charting and History split the top row, Armcare / Mental Game / Profile split the next into thirds */
@@ -793,7 +837,7 @@
   .start-q-input{ font-size:16px; min-height:44px; }
   .start-q-actions{ display:flex; gap:var(--s-8); margin-top:var(--s-4); }
   .start-q-actions .start-q-go{ flex:1; }
-  @media (min-width:861px){ .kind-chooser-buttons{ flex-direction:row; justify-content:center; } }
+  @media (min-width:861px){ .kind-chooser-buttons{ flex-direction:row; } .kind-chooser-buttons .kind-card{ flex:1; } }
   /* U10 (1): back to the chooser. Above phone width it's a plain
      a secondary button in the pitcher header's action row -- no extra rules, so
      it's exactly the size of Contacts/Profile beside it (Joel: "same
@@ -3676,10 +3720,22 @@ window.goHome = function(){
 // Nov 5 (Joel): Profile is the gear right of the player's name; the account menu keeps it only when no player is on
 // screen (a coach with an empty roster).
 function profileGearBtn(){
-  return `<button type="button" class="btn btn-icon btn-secondary gear-btn" aria-label="Profile" title="Profile" onclick="event.stopPropagation();acctGoProfile()">${DOCK_ICONS.profile}</button>`;
+  const label = isCoach() ? PLACE.account : PLACE.pitcherSettings;
+  return `<button type="button" class="btn btn-icon btn-secondary gear-btn" aria-label="${label}" title="${label}" onclick="event.stopPropagation();acctGoProfile()">${DOCK_ICONS.profile}</button>`;
 }
 window.acctGoProfile = function(){ state.acctOpen = false; state.dockRoster = false; setView('profile'); try{ window.scrollTo(0, 0); }catch(e){} };
-window.toggleAcctMenu = function(){ state.acctOpen = !state.acctOpen; state.acctMsg = ''; render(); };
+// N1-A: on phones and iPads (the bar) the avatar opens More; computers keep the dropdown until Stage B's sidebar.
+window.toggleAcctMenu = function(){
+  if(dockDevice()){ state.acctOpen = false; state.acctMsg = ''; dockGo('more'); return; }
+  state.acctOpen = !state.acctOpen; state.acctMsg = ''; render();
+};
+// N1-A: Chat is an icon at the top right, left of the avatar, only for someone in a facility (chat_summary), never on
+// the charting screen. The count is the bar's old badge: unread + open reports.
+function chatIconBtn(){
+  if(!chatEnabled() || onChartingScreen()) return '';
+  const n = chatState().unread + chatState().reports;
+  return `<button type="button" class="btn btn-icon btn-secondary chat-icon-btn" aria-label="Chat${n ? ', ' + n + ' new' : ''}" title="Chat" onclick="state.acctOpen=false;openChat()">${DOCK_ICONS.chat}${n ? `<i class="chat-icon-badge" aria-hidden="true">${n}</i>` : ''}</button>`;
+}
 window.dismissAddSport = function(){ state.addSportBanner = null; render(); };
 function initialsOf(name){ return String(name || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase(); }
 function profileChip(p){
@@ -3696,7 +3752,7 @@ function renderAccountButton(){
   if(!state.profile) return '';
   const all = state.myProfiles && state.myProfiles.length ? state.myProfiles : [state.profile];
   const list = all.filter(p => !isAccountOnlyProfile(p));   // a parent profile never charts (S4 B2), nor a child sign-in's own (F1-G)
-  const menu = state.acctOpen ? `<div class="acct-menu" role="menu">
+  const menu = (state.acctOpen && !dockDevice()) ? `<div class="acct-menu" role="menu">
       ${state.myVerification && state.myVerification.email ? `<div class="acct-email">${escHtml(state.myVerification.email)}</div>` : ''}
       ${list.map(p => `<button type="button" class="btn btn-tertiary acct-item${p.id === state.profile.id ? ' is-selected' : ''}" role="menuitem" onclick="switchProfile('${p.id}')">
           <span class="acct-avatar">${escHtml(initialsOf(p.full_name))}</span>
@@ -3704,14 +3760,14 @@ function renderAccountButton(){
             <span class="acct-meta">${profileChip(p)} ${ROLE_NAME[p.role] || ''}</span></span>
           ${p.id === state.profile.id ? '<span class="acct-check" aria-label="Active">✓</span>' : ''}
         </button>`).join('')}
-      ${currentPitcher() ? '' : `<button type="button" class="btn btn-tertiary acct-item acct-profile" role="menuitem" onclick="acctGoProfile()"><span class="acct-name">Profile</span></button>`}
+      ${currentPitcher() ? '' : `<button type="button" class="btn btn-tertiary acct-item acct-profile" role="menuitem" onclick="acctGoProfile()"><span class="acct-name">${PLACE.account}</span></button>`}
       ${sportsToAdd().map(sp => `<button type="button" class="btn btn-secondary btn-sm acct-add" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')">+ Add ${sp}</button>`).join('')}
       ${canAddPlayer() ? `<button type="button" class="btn btn-secondary btn-sm acct-add" onclick="openAddPlayer()">+ Add a player</button>` : ''}
       ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
       <a class="btn btn-tertiary btn-sm acct-help" role="menuitem" href="help.html">Help &amp; getting started</a>   <!-- P2-06 -->
     </div>` : '';
-  return `<div class="acct-wrap">
-    <button type="button" class="btn btn-secondary btn-sm acct-btn" aria-haspopup="menu" aria-expanded="${state.acctOpen ? 'true' : 'false'}" onclick="toggleAcctMenu()" title="Your profiles">
+  return `<div class="acct-wrap">${chatIconBtn()}
+    <button type="button" class="btn btn-secondary btn-sm acct-btn" aria-haspopup="${dockDevice() ? 'false' : 'menu'}" aria-expanded="${state.acctOpen ? 'true' : 'false'}" onclick="toggleAcctMenu()" title="${dockDevice() ? PLACE.more : 'Your profiles'}">
       <span class="acct-avatar">${escHtml(initialsOf(state.profile.full_name))}</span>${list.length > 1 ? profileChip(state.profile) : ''}<span class="acct-caret">▾</span>
     </button>${menu}
   </div>`;
@@ -3852,6 +3908,22 @@ async function saveLastKnownContext(){
   await storSet(lastKnownKey(state.session.user.id) + ':' + state.profile.id, snap);
 }
 
+// N1-A: every Sign out outside the first-run screens asks first and says what's still waiting to sync. Signing out
+// clears neither the outbox (outbox:<uid>) nor drafts; the same login drains them when it signs back in.
+window.askSignOut = function(){ state.acctOpen = false; state.signOutAsk = true; render(); };
+window.closeSignOut = function(){ state.signOutAsk = false; render(); };
+function renderSignOutSheet(){
+  if(!state.signOutAsk || !state.profile) return '';
+  const who = myAccountProfile() || state.profile, n = (state.outbox || []).length;
+  return `<div class="modal-overlay sheet-overlay signout-overlay" onclick="if(event.target===this) closeSignOut();">
+    <div class="sess-sheet signout-sheet" role="dialog" aria-label="Sign out">
+      <div class="sess-sheet-title display">Sign out?</div>
+      <p class="signout-text">You're signed in as <b>${escHtml(who.full_name || '')}</b>.${n ? ` ${n} session${n === 1 ? '' : 's'} saved on this ${isPhoneWidth() ? 'phone' : 'device'} ${n === 1 ? "hasn't" : "haven't"} synced yet. ${n === 1 ? 'It stays' : 'They stay'} here and ${n === 1 ? 'syncs' : 'sync'} when you sign back in.` : ''}</p>
+      <button type="button" class="btn btn-secondary" onclick="closeSignOut()">Stay signed in</button>
+      <button type="button" class="btn btn-danger" onclick="signOut()">Sign out</button>
+    </div>
+  </div>`;
+}
 window.signOut = async function(){
   try{ await histCacheClear(); }catch(e){}   // SC1-B: this login's History copy leaves the device with it
   try{ await supabaseClient.auth.signOut(); } catch(e){ console.error('Sign out error', e); }
@@ -4115,7 +4187,8 @@ const DOCK_ICONS = {
   home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.2 12 4l9 7.2"/><path d="M5.5 9.6V20h4.8v-5.4h3.4V20h4.8V9.6"/></svg>',
   charts: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="M8.5 10h7M8.5 13.5h7M8.5 17h4.5"/></svg>',
   trends: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3V21H21M7.2 15.7L8.6 13.9M11.7 13.6L13.1 14.8M15.7 14.2L18.5 8.2"/><circle cx="5.8" cy="17.4" r="1.3"/><circle cx="10" cy="12.2" r="1.3"/><circle cx="14.8" cy="16.2" r="1.3"/><circle cx="19.4" cy="6.2" r="1.3"/></svg>',   // Joel's rising-line chart (Oct 26), redrawn small
-  history: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 12a8.4 8.4 0 1 0 2.5-6"/><path d="M3.4 3.8v4.1h4.1"/><path d="M12 7.4V12l3.2 2.1"/></svg>',   // a clock turning back
+  history: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 20.5h17"/><path d="M6.5 20.5v-6.5M10.5 20.5V6.5M14.5 20.5v-10M18.5 20.5v-4.5"/></svg>',   // N1 (Nov 16): the bar chart in docs/n1 (was a clock turning back)
+  more: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h15M4.5 12h15M4.5 17h15"/></svg>',   // N1-A: More
   chat: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h15v10h-8.5l-4.5 3.8v-3.8h-2z"/><path d="M8 9.5h8M8 12.3h5"/></svg>',   // F1-C1: a speech bubble
   roster: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20.5c.8-4 3.6-6.3 7.2-6.3s6.4 2.3 7.2 6.3"/></svg>',
   profile: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.6"/></svg>'
@@ -4126,27 +4199,26 @@ function dockDevice(){
   try{ return isPhoneWidth() || window.matchMedia('(hover: none) and (pointer: coarse)').matches; }catch(e){ return isPhoneWidth(); }
 }
 function coachDockShown(phoneSession){ return !!state.profile && (isCoach() || state.profile.role === 'pitcher') && dockDevice() && !phoneSession && !onChartingScreen(); }
-// F1-C1 (Joel, A): Chat after Analysis, only for someone with a facility (a facility coach's bar is then six buttons).
-// Nov 5 (Joel): no Home or Profile on the bar (the wordmark goes Home; Profile is a Home tile and in the account menu).
-// Coaches: Charts, Analysis, Chat (in a facility), Roster. Players, parents and teens: Charts, Analysis, Chat (marked
-// "Soon" outside a facility). View-only friends and family: Analysis, Profile.
-// W1 (Joel, Nov 13 2026): inside the store apps there's no "Soon" Chat (Apple rejects placeholders, 2.1): no facility, no Chat.
+// N1 Stage A (Joel + Jordan, Nov 15-16 2026; plans/n1-navigation-and-home.md): one name per place, and the bar is
+// Home, Chart, History (Sessions and Trends inside), Roster (coaches), More. Chat is an icon at the top right, only in a
+// facility (chatIconBtn); there's no Chat on the bar and no "coming soon" page any more. Every name comes from PLACE.
+const PLACE = { home: 'Home', chart: 'Chart', history: 'History', sessions: 'Sessions', trends: 'Trends', roster: 'Roster',
+  more: 'More', pitcherSettings: 'Pitcher settings', account: 'Account' };
 function dockKeys(){
-  if(isCoach()) return ['charts', 'history', ...(chatEnabled() ? ['chat'] : []), 'roster'];
-  if(viewOnlyLinked()) return ['history', 'profile'];
-  return ['charts', 'history', ...((chatEnabled() || !isNativeApp()) ? ['chat'] : [])];
+  if(isCoach()) return ['home', 'charts', 'history', 'roster', 'more'];
+  if(viewOnlyLinked()) return ['home', 'history', 'more'];
+  return ['home', 'charts', 'history', 'more'];
 }
-const DOCK_LABELS = { home: 'Home', charts: 'Charts', history: 'Analysis', chat: 'Chat', roster: 'Roster', profile: 'Profile' };
+const DOCK_LABELS = { home: PLACE.home, charts: PLACE.chart, history: PLACE.history, roster: PLACE.roster, more: PLACE.more };
 function dockActiveIndex(){
   const keys = dockKeys();
   if(isCoach() && state.dockRoster && !state.rosterCollapsed) return keys.indexOf('roster');   // Roster stays lit while its list is open
   const v = state.view;
-  return keys.indexOf(v === 'home' ? 'home' : v === 'session' ? 'charts' : (v === 'history' || v === 'trends') ? 'history' : v === 'chat' ? 'chat' : v === 'profile' ? 'profile' : '');   // Oct 12: Home is the Home screen
+  return keys.indexOf(v === 'home' ? 'home' : v === 'session' ? 'charts' : (v === 'history' || v === 'trends') ? 'history' : (v === 'more' || v === 'profile') ? 'more' : '');   // N1-A: More stays lit on Account
 }
 function renderCoachDock(){
   const idx = dockActiveIndex(), keys = dockKeys();
-  const chatN = chatEnabled() ? chatState().unread + chatState().reports : 0;
-  const btn = (k, label, i) => `<button type="button" role="tab" class="dock-btn${idx === i ? ' on' : ''}" data-go="${k}" aria-selected="${idx === i ? 'true' : 'false'}" tabindex="${(idx === i || (idx < 0 && i === 0)) ? '0' : '-1'}" onclick="dockTap('${k}')" aria-label="${label}">${DOCK_ICONS[k]}<span>${label}</span>${k === 'chat' && chatN ? `<i class="dock-badge" aria-hidden="true">${chatN}</i>` : ''}${k === 'chat' && !chatEnabled() ? '<i class="dock-soon" aria-hidden="true">Soon</i>' : ''}</button>`;
+  const btn = (k, label, i) => `<button type="button" role="tab" class="dock-btn${idx === i ? ' on' : ''}" data-go="${k}" aria-selected="${idx === i ? 'true' : 'false'}" tabindex="${(idx === i || (idx < 0 && i === 0)) ? '0' : '-1'}" onclick="dockTap('${k}')" aria-label="${label}">${DOCK_ICONS[k]}<span>${label}</span></button>`;
   return `<nav class="coach-dock" role="tablist" aria-label="Shortcuts" style="--dock-n:${keys.length}">
     <span class="dock-pill${idx < 0 ? ' off' : ''}" aria-hidden="true" style="transform:translateX(${Math.max(idx, 0) * 100}%)"></span>
     ${keys.map((k, i) => btn(k, DOCK_LABELS[k], i)).join('')}
@@ -4186,8 +4258,8 @@ window.dockGo = function(where){
   }
   state.rosterCollapsed = rosterCanCollapse();   // Joel, Oct 8: any other button rolls the roster back up
   // Charts: the Bullpen / Live Game question (or Resume); a coach on an archived team has no New Session, so History
-  if(where === 'chat'){ if(chatEnabled()) openChat(); else setView('chat'); dockScroll(0); return; }   // F1-C1; "Soon" outside a facility
-  setView(where === 'home' ? 'home' : where === 'charts' ? ((isCoach() && currentTeamArchived()) ? 'history' : 'session') : where === 'history' ? 'history' : 'profile');
+  if(where === 'chat'){ if(chatEnabled()) openChat(); dockScroll(0); return; }   // F1-C1; since N1-A only the top-right icon
+  setView(where === 'home' ? 'home' : where === 'charts' ? ((isCoach() && currentTeamArchived()) ? 'history' : 'session') : where === 'history' ? 'history' : where === 'more' ? 'more' : 'profile');
   dockScroll(0);   // Nov 5 (Joel): every button lands at the very top, the banner and logo in view
 };
 // A dock jump scrolls on its own; the bar must not take that for the user scrolling down and hide.
@@ -7232,12 +7304,24 @@ function renderBatterSilhouette(batterSide, onScreenLeft, onclickJs = 'toggleBat
 // actual); a game can't know intent, so it measures outcome -> result
 // (where it landed, what happened) -- different enough measurements that
 // mixing them corrupts both, hence asking up front rather than inferring.
+// N1-A (Joel, Q2; docs/n1/a-phone-bar.png): the same two choices as cards, and the pitcher's last session under them,
+// from what's already on the device (an unsynced pen counts), so it draws offline.
 function renderSessionKindChooser(){
+  const kinds = [{ k: 'bullpen', title: 'Bullpen', sub: 'Practice session, pitch by pitch' }]
+    .concat(sportCfg().hasLiveGame ? [{ k: 'game', title: 'Live Game', sub: 'Batters, counts and results' }] : []);
+  const last = pendingSessionsForCurrentSelection().concat(state.sessions || []).sort((a, b) => b.date - a.date)[0];
+  const n = last ? sessionPitchTotal(last) : 0;
   return `<div class="kind-chooser">
-    <h2 class="display" style="margin:0 0 var(--s-20);text-align:center;">What will we be charting today?</h2>
-    <div class="kind-chooser-buttons">
-      ${segTray([{ label: 'Bullpen', onclick: "chooseSessionKind('bullpen')" }].concat(sportCfg().hasLiveGame ? [{ label: 'Live Game', onclick: "chooseSessionKind('game')" }] : []), { label: 'What will we be charting today?', cls: 'kind-tray' })}
+    <h2 class="kind-chooser-label">${PLACE.chart} · What will we be charting today?</h2>
+    <div class="kind-chooser-buttons" role="group" aria-label="What will we be charting today?">
+      ${kinds.map(c => `<button type="button" class="kind-card" onclick="chooseSessionKind('${c.k}')"><span class="kind-card-title display">${c.title}</span><span class="kind-card-sub">${c.sub}</span></button>`).join('')}
     </div>
+    ${last ? `<button type="button" class="kind-last" onclick="setView('history')">
+      <span class="kind-last-label">Last session</span>
+      <span class="kind-last-title">${last.kind === 'game' ? 'Live Game' : 'Bullpen'} · ${escHtml(new Date(last.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}</span>
+      <span class="kind-last-meta">${n} pitch${n === 1 ? '' : 'es'}${last.pending ? ' · waiting to sync' : ''}</span>
+      <span class="kind-last-go" aria-hidden="true">›</span>
+    </button>` : ''}
   </div>`;
 }
 // U10 (1): "‹ Back" to the chooser, only while nothing has been recorded.
@@ -7262,6 +7346,7 @@ function headerBackTarget(){
   if(v === 'session' && state.activeSession && state.activeSession.startQ && canGoBackToChooser()) return 'chooser';
   if(v === 'chat' && state.chat && state.chat.threadId) return 'chat';
   if(v === 'profile' && state.zonePaint && !state.zonePaint.inSheet) return 'profile';
+  if(v === 'profile' && dockDevice()) return 'more';   // N1-A: Account is opened from More
   if(v === 'pitcherProfile' && isCoach()) return 'roster';
   return null;
 }
@@ -7270,6 +7355,7 @@ window.headerBack = async function(){
   if(t === 'chooser') return backToChooser();
   if(t === 'chat') return chatBack();
   if(t === 'profile'){ cancelZonePaint(); try{ window.scrollTo(0, 0); }catch(e){} return; }
+  if(t === 'more') return dockGo('more');
   if(t === 'roster'){   // the coach's Player Profile: back to the roster (the list opens; wide screens show it already)
     state.dockRoster = true; state.rosterCollapsed = false;
     setView('home'); try{ window.scrollTo(0, 0); }catch(e){}
@@ -12288,8 +12374,8 @@ function analysisTray(){
   if(!state.tabsOff) return '';
   const dot = !isCoach() && state.profile && hasRosterDot(state.profile.id) ? '<span class="tab-dot" aria-label="New session"></span>' : '';
   return `<div class="chip-row" style="margin-bottom:var(--s-8);">${segTray([
-    { label: 'History' + dot, selected: state.view === 'history', onclick: "setView('history')" },
-    { label: 'Trends', selected: state.view === 'trends', onclick: "setView('trends')" }], { key: 'analysis', label: 'Analysis', cls: 'history-tray' })}</div>`;
+    { label: PLACE.sessions + dot, selected: state.view === 'history', onclick: "setView('history')" },
+    { label: PLACE.trends, selected: state.view === 'trends', onclick: "setView('trends')" }], { key: 'analysis', label: PLACE.history, cls: 'history-tray' })}</div>`;
 }
 function renderHistoryFilter(){
   const opts = [{ key: 'all', label: 'All' }, { key: 'bullpen', label: 'Bullpen' }, { key: 'game', label: 'Live Game' }];
@@ -13114,10 +13200,55 @@ function renderHomeTiles(){
   // Oct 26 (Joel): four equal squares -- Charting, History, Trends, Profile. Armcare and Mental Game stay planned
   // (their icons and the tile('armcare' / 'mental', ..., 'Coming soon', true) pattern are kept) but aren't shown.
   return `<div class="home-tiles home-four" role="navigation" aria-label="Home">
-    ${tile('charting', 'Charting', (archived || viewOnlyLinked()) ? '' : "setView('session')", archived ? 'Archived team' : viewOnlyLinked() ? 'View only' : (state.draftAvailable ? 'Resume' : ''), archived || viewOnlyLinked(), true)}
-    ${tile('history', 'History', "setView('history')", '', false, true)}
-    ${tile('trends', 'Trends', "setView('trends')", '', false, true)}
-    ${tile('profile', 'Profile', "setView('profile')", '', false, true)}
+    ${tile('charting', PLACE.chart, (archived || viewOnlyLinked()) ? '' : "setView('session')", archived ? 'Archived team' : viewOnlyLinked() ? 'View only' : (state.draftAvailable ? 'Resume' : ''), archived || viewOnlyLinked(), true)}
+    ${tile('history', PLACE.history, "setView('history')", '', false, true)}
+    ${tile('trends', PLACE.trends, "setView('trends')", '', false, true)}
+    ${tile('profile', PLACE.account, "setView('profile')", '', false, true)}
+  </div>`;
+}
+/* ---------- N1 Stage A: MORE (Joel + Jordan, Nov 16 2026; docs/n1/a-more-screen.png) ----------
+   Everything the account menu held, in three groups, then Sign out on its own. A section's first screen, so no Back.
+   Rows a role can't use aren't drawn. Nothing here needs the network to draw. */
+window.goAccountSection = function(id){
+  state.dockRoster = false;
+  setView('profile');
+  const go = () => { const el = document.getElementById(id); if(el) el.scrollIntoView({ block: 'start' }); };
+  setTimeout(go, 50); setTimeout(go, 700);   // again once the coach's staff and links have loaded
+};
+function moreRow(label, onclick, right){
+  return `<button type="button" class="more-row" onclick="${onclick}"><span class="more-row-main">${label}</span><span class="more-row-right">${right || ''}<span class="more-go" aria-hidden="true">›</span></span></button>`;
+}
+function renderMoreView(){
+  if(!state.profile) return '';
+  const all = state.myProfiles && state.myProfiles.length ? state.myProfiles : [state.profile];
+  const list = all.filter(p => !isAccountOnlyProfile(p));
+  const acct = myAccountProfile() || state.profile;
+  const email = state.myVerification && state.myVerification.email;
+  const badge = p => p.linked_role ? (p.linked_role === 'child' ? '' : ` <span class="acct-badge">${p.linked_role === 'family' ? 'View only' : 'Parent'}</span>`) : p.managed_by ? ' <span class="acct-badge">Player</span>' : '';
+  const profileRows = list.length > 1 ? list.map(p => p.id === state.profile.id
+      ? `<div class="more-row more-row-on"><span class="more-row-main">${escHtml(p.full_name)}${badge(p)} ${profileChip(p)}</span><span class="more-row-right"><span class="acct-check" aria-label="Active">✓</span></span></div>`
+      : moreRow(`${escHtml(p.full_name)}${badge(p)} ${profileChip(p)}`, `switchProfile('${p.id}')`)).join('') : '';
+  const adds = sportsToAdd().map(sp => `<button type="button" class="more-row" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')"><span class="more-row-main">+ Add ${sp}</span></button>`).join('');
+  const coachTeam = isCoach() && state.teams.find(t => t.id === state.currentTeamId);
+  // the same tests as renderCoachTeamAdmin's codes (a facility side's coaches) and links (a team's head) sections
+  const hasCodes = coachTeam && !coachTeam.archived && (currentTeamIsFacility() || isHeadOfCurrentTeam());
+  const team = (canAddPlayer() ? moreRow('Add a player', 'openAddPlayer()') : '')
+    + (hasCodes ? moreRow('Join codes and invite links', "goAccountSection('acct-invites')") : '')
+    + (coachTeam ? moreRow('Team settings', "goAccountSection('acct-team')") : '');
+  return `<div class="more-page">
+    ${placeHead(PLACE.more)}
+    <div class="more-card">
+      <div class="more-group-label">Your account</div>
+      ${moreRow(`${escHtml(acct.full_name || '')}${ROLE_NAME[acct.role] ? ' · ' + ROLE_NAME[acct.role] : ''}${email ? `<span class="more-row-sub">${escHtml(email)}</span>` : ''}`, 'acctGoProfile()')}
+      ${profileRows}${adds}
+      ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
+      ${team ? `<div class="more-group-label">Team</div>${team}` : ''}
+      <div class="more-group-label">Help</div>
+      <a class="more-row" href="help.html"><span class="more-row-main">Getting started</span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></a>
+      <a class="more-row" href="help.html#support"><span class="more-row-main">Help and support</span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></a>
+      <div class="more-row more-row-links"><a href="${policyHref('privacy.html')}">Privacy</a><span aria-hidden="true">·</span><a href="${policyHref('terms.html')}">Terms</a></div>
+    </div>
+    <div class="more-card">${moreRow('<span class="more-signout">Sign out</span>', 'askSignOut()')}</div>
   </div>`;
 }
 /* ---------- F1-C1: CHAT (Oct 29 2026, plans/f1-training-facilities.md; decisions in plans/f1c1-preconditions.md) ----------
@@ -13260,7 +13391,7 @@ const CHAT_ROLE = { manager: 'Facility manager', coach: 'Coach', pitcher: 'Pitch
 const CHAT_COMPOSE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/><path d="M14 20h6"/></svg>';
 function renderChatView(){
   const c = chatState();
-  if(!chatEnabled()) return `<div class="chat-wrap"><div class="empty-hist"><b>Chat is coming soon.</b><br>Today it's available inside training facilities.</div></div>`;
+  if(!chatEnabled()) return `<div class="chat-wrap"><div class="empty-hist">Chat is part of training facilities.</div></div>`;   // N1-A: nothing links here without a facility
   if(!isOnline()) return `<div class="chat-wrap"><div class="empty-hist">Chat needs a connection. Charting works offline as always.</div></div>`;
   return `<div class="chat-wrap">${c.threadId ? renderChatThread(c) : renderChatList(c)}</div>`;
 }
@@ -13329,15 +13460,15 @@ function renderChatThread(c){
 function renderTabs(){
   if(state.tabsOff) return renderArchivedBanner();   // Nov 5: no tab bar on phones and iPads (the dock), charting included
   const fourthTab = isCoach()
-    ? { label: '<span class="tab-label-full">Player Profile</span><span class="tab-label-short">Player</span>', selected: state.view === 'pitcherProfile', onclick: "setView('pitcherProfile')" }
-    : { label: 'Profile', selected: state.view === 'profile', onclick: "setView('profile')" };
+    ? { label: `<span class="tab-label-full">${PLACE.pitcherSettings}</span><span class="tab-label-short">Settings</span>`, selected: state.view === 'pitcherProfile', onclick: "setView('pitcherProfile')" }
+    : { label: PLACE.account, selected: state.view === 'profile', onclick: "setView('profile')" };
   // P1-09: a coach has no New Session on an archived team (a pitcher keeps the tab, which explains).
   const sessionTab = ((isCoach() && currentTeamArchived()) || viewOnlyLinked()) ? null :   // F1-G: friends and family only look
-    { label: state.draftAvailable ? 'Resume' : '<span class="tab-label-full">New Session</span><span class="tab-label-short">New</span>', selected: state.view === 'session', onclick: "setView('session')" };
-  const tabs = [{ label: 'Home', selected: state.view === 'home', onclick: "setView('home')" }, sessionTab,
-    { label: 'History' + (!isCoach() && state.profile && hasRosterDot(state.profile.id) ? '<span class="tab-dot" aria-label="New session"></span>' : ''), selected: state.view === 'history', onclick: "setView('history')" },
-    { label: 'Trends', selected: state.view === 'trends', onclick: "setView('trends')" },
-    chatEnabled() ? { label: 'Chat' + (chatState().unread + chatState().reports ? `<span class="tab-count" aria-label="${chatState().unread + chatState().reports} unread">${chatState().unread + chatState().reports}</span>` : ''), selected: state.view === 'chat', onclick: 'openChat()' } : null,   // F1-C1
+    { label: state.draftAvailable ? 'Resume' : PLACE.chart, selected: state.view === 'session', onclick: "setView('session')" };
+  // N1-A: History's two views are Sessions and Trends; Chat is the top-right icon on every size (Joel, Q1).
+  const tabs = [{ label: PLACE.home, selected: state.view === 'home', onclick: "setView('home')" }, sessionTab,
+    { label: PLACE.sessions + (!isCoach() && state.profile && hasRosterDot(state.profile.id) ? '<span class="tab-dot" aria-label="New session"></span>' : ''), selected: state.view === 'history', onclick: "setView('history')" },
+    { label: PLACE.trends, selected: state.view === 'trends', onclick: "setView('trends')" },
     // Leaderboard hidden for now (Joel, Nov 5 2026): renderLeaderboardView stays, nothing links to it.
     fourthTab].filter(Boolean);
   return `${renderArchivedBanner()}${segTray(tabs.map(t => Object.assign({ cls: 'tab-btn' }, t)), { key: 'tabs', label: 'Pages', cls: 'tabs' })}`;
@@ -13525,7 +13656,7 @@ function renderTeamDangerSection(team){
     : `Deleting <strong>${escHtml(team.name)}</strong> is permanent. No sessions have been charted for it, so nothing is lost but the team, its roster and its staff list.`;
   return `<div class="profile-section">
     <h3>${kind === 'archive' ? 'Archive this team' : 'Delete this team'}</h3>
-    ${n === undefined || n === null ? `<p class="profile-note">${n === null ? "Couldn't check this team's sessions. Reopen Profile to try again." : 'Checking…'}</p>` : `
+    ${n === undefined || n === null ? `<p class="profile-note">${n === null ? "Couldn't check this team's sessions. Reopen ${PLACE.account} to try again." : 'Checking…'}</p>` : `
     <p class="profile-note">${kind === 'archive'
       ? `This team has ${n} session${n === 1 ? '' : 's'}, so it can be archived (hidden and read-only, restorable) but not deleted.`
       : 'No sessions have been charted for this team, so it can be deleted.'}</p>
@@ -13726,6 +13857,7 @@ function renderCoachTeamAdmin(){
     </div>`;
 
   return `
+    <div id="acct-team"></div>
     ${renameSection}
     ${levelSection}
     <div class="profile-section">
@@ -13733,6 +13865,7 @@ function renderCoachTeamAdmin(){
       ${staffRows}
     </div>
     ${handoffSection}
+    <div id="acct-invites"></div>
     ${codesSection}
     ${linksSection}
     ${realHead ? renderTeamDangerSection(team) : ''}
@@ -13765,26 +13898,34 @@ window.setTeamLevel = async function(teamId, level){
   state.levelBusy = false;
   render();
 };
+// N1-A: a page's place name, with an optional line under it (the pitcher's name).
+function placeHead(label, sub){
+  return `<div class="place-head"><h2 class="display">${escHtml(label)}</h2>${sub ? `<span class="place-sub">${escHtml(sub)}</span>` : ''}</div>`;
+}
 function renderProfileView(){
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
   if(isCoach()){
-    return `<div class="profile-page">${msg}${renderNameSection(mapProfile(state.profile), true)}${renderEmailSection()}${renderPasswordSection()}${renderCoachTeamAdmin()}${renderDataSection()}</div>`;
+    return `<div class="profile-page">${placeHead(PLACE.account)}${msg}${renderNameSection(mapProfile(state.profile), true)}${renderEmailSection()}${renderPasswordSection()}${renderCoachTeamAdmin()}${renderDataSection()}</div>`;
   }
   if(activeLinked()) return renderLinkedProfileView(msg);   // F1-G
   const p = currentPitcher();
   const uniformRows = state.teams.map(t => uniformRowHtml(t.id, state.profile.id, 'Uniform # · ' + t.name)).join('');
   const mine = activePlayerIsMine();   // U15 (E3): a parent's player shows Pitch mix and Relative accuracy right under the photo
+  // N1-A (Joel, Q5): Pitcher settings (the player's own things, the name included: for a parent's player it's the
+  // player's name) then Account (the login's). Same sections, same order inside each group.
   return `<div class="profile-page">
+    ${placeHead(PLACE.pitcherSettings)}
     ${renderHeadshotControls(p)}
     ${msg}
+    ${renderNameSection(p, true)}
     ${mine ? renderPitchMixSection(p) + renderRelAccuracySection(p) : ''}
     ${uniformRows ? `<div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>` : ''}
     ${renderLevelSection(p)}
     ${renderThrowsSection(p)}
     ${mine ? '' : renderPitchMixSection(p) + renderRelAccuracySection(p)}
     ${renderRadarGunSection(p, true)}
-    ${renderNameSection(p, true)}
     ${activePlayerIsMine() ? renderPlayerAccessSection() : ''}
+    ${placeHead(PLACE.account)}
     ${renderEmailSection()}
     ${renderPasswordSection()}
     ${renderDataSection()}
@@ -13895,11 +14036,13 @@ function renderLinkedProfileView(msg){
         : `<button class="btn btn-secondary" ${isOnline() ? '' : 'disabled'} onclick="armPlayerAccess('leave')">Stop following ${name}</button>`}
       ${a.error ? `<p class="profile-note a1-msg">${escHtml(a.error)}</p>` : ''}</div>`;
   return `<div class="profile-page">
+    ${placeHead(PLACE.pitcherSettings)}
     ${msg}
     <div class="profile-section"><h3>${name}</h3><p class="profile-note">${what}</p></div>
     <div class="profile-section"><h3>Throws</h3><p class="profile-note">${me.throws === 'L' ? 'Left' : me.throws === 'R' ? 'Right' : 'Not set'}</p></div>
     <div class="profile-section"><h3>Pitch mix</h3><p class="profile-note">${(me.pitch_types || []).map(pitchLabel).join(' · ') || 'No pitches set yet'}</p></div>
     ${leave}
+    ${placeHead(PLACE.account)}
     ${renderEmailSection()}
     ${renderPasswordSection()}
     ${renderDataSection()}
@@ -13931,7 +14074,7 @@ function renderChildUnlinkedScreen(){
 // password -- those aren't in this table and no function exposes them.
 function renderPitcherProfileView(){
   const p = currentPitcher();
-  if(!p) return `<div class="empty-hist">Select a pitcher to see his profile.</div>`;
+  if(!p) return `<div class="empty-hist">Select a pitcher to see their ${PLACE.pitcherSettings.toLowerCase()}.</div>`;
   const team = state.teams.find(t => t.id === state.currentTeamId);
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
   // R6: editing a pitcher's profile is head-only (decision table) -- except, since U15 (Joel, Nov 6 2026), the
@@ -13945,7 +14088,7 @@ function renderPitcherProfileView(){
   if(!isHeadOfCurrentTeam()){
     const uniformNum = (p.uniformNumber === null || p.uniformNumber === undefined) ? '—' : p.uniformNumber;
     return `<div class="profile-page">
-      <div class="profile-row"><h2 class="display" style="margin:0;">${escHtml(p.name)}'s profile</h2></div>
+      ${placeHead(PLACE.pitcherSettings, p.name)}
       ${msg}
       <div class="profile-section"><h3>Uniform number</h3><p class="profile-note">${escHtml(String(uniformNum))}${team ? ' · ' + escHtml(team.name) : ''}</p></div>
       <div class="profile-section"><h3>Throws</h3><p class="profile-note">${p.throws === 'L' ? 'Left' : p.throws === 'R' ? 'Right' : 'Not set'}</p></div>
@@ -13955,7 +14098,7 @@ function renderPitcherProfileView(){
     </div>`;
   }
   return `<div class="profile-page">
-    <div class="profile-row"><h2 class="display" style="margin:0;">${escHtml(p.name)}'s profile</h2></div>
+    ${placeHead(PLACE.pitcherSettings, p.name)}
     ${msg}
     ${renderNameSection(p, false)}
     <div class="profile-section"><h3>Uniform number</h3>${uniformRowHtml(state.currentTeamId, p.id, 'Uniform # · ' + (team ? team.name : ''))}</div>
@@ -13981,7 +14124,7 @@ function renderSetupView(){
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
   return `<div class="profile-page setup-page">
     <h2 class="display" style="margin:0 0 var(--s-2);">Welcome, ${escHtml(p.name)}</h2>
-    <p class="profile-note" style="margin:0 0 var(--s-12);">A few quick things so charting works well for you. Skip it and come back anytime from Profile.</p>
+    <p class="profile-note" style="margin:0 0 var(--s-12);">A few quick things so charting works well for you. Skip it and come back anytime from ${PLACE.more} → ${PLACE.account}.</p>
     ${msg}
     ${renderSetupHeadshot(p)}
     ${uniformRows ? `<div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>` : ''}
@@ -13995,7 +14138,7 @@ function renderSetupView(){
       </div>
     </div>
     <div class="profile-row" style="margin-top:var(--s-8);">
-      <button class="btn btn-primary" onclick="dismissSetup()">Save Profile</button>
+      <button class="btn btn-primary" onclick="dismissSetup()">Save</button>
       <button class="btn btn-secondary" onclick="dismissSetup()">Set Up Later</button>
     </div>
   </div>`;
@@ -14037,7 +14180,7 @@ function renderCoachWelcome(){
       <p class="profile-note" style="margin:0 0 var(--s-8);">Send this one to your assistants instead. It adds them to your coaching staff.</p>
       ${linkRow(coachInviteLinkFor(), 'copyCoachInviteLink', state.coachInviteCopyStatus)}
     </div>
-    <p class="profile-note">Both links are always on your Profile, under Invite links.</p>
+    <p class="profile-note">Both links are always in ${PLACE.more} → Join codes and invite links.</p>
     <div class="profile-row" style="margin-top:var(--s-8);">
       <button class="btn btn-primary" onclick="dismissSetup()">Done</button>
       <button class="btn btn-secondary" onclick="dismissSetup()">Set Up Later</button>
@@ -14801,9 +14944,7 @@ function render(){
       <div class="roster-collapse${collapsed ? ' collapsed' : ''}">
         <div class="roster-list">${rosterItems || '<p style="color:var(--ink-faint);font-size:12px;">No pitchers on this team yet.</p>'}</div>
       </div>`;
-    phoneFooter = `<div class="phone-footer"><button class="btn btn-secondary sign-out-btn" onclick="signOut()">Sign out</button></div>`;
   } else {
-    phoneFooter = `<div class="phone-footer"><button class="btn btn-secondary sign-out-btn" onclick="signOut()">Sign out</button></div>`;   // Nov 5: every phone, at the very bottom
     sidebarBody = `
       <div class="sb-who"><div class="sb-who-text">
       ${teamSelector}
@@ -14822,7 +14963,7 @@ function render(){
       </div>
       ${sidebarBody}
       ${renderOutboxBadge()}
-      <button class="btn btn-secondary sign-out-btn hide-phone" onclick="signOut()">Sign out</button>
+      <button class="btn btn-secondary sign-out-btn hide-phone" onclick="askSignOut()">Sign out</button>
     </div>`;
 
   const p = currentPitcher();
@@ -14831,6 +14972,8 @@ function render(){
   let main;
   if(phoneSession){
     main = renderSessionHeader(p) + renderSessionView();
+  } else if(!p && state.view === 'more'){
+    main = renderMoreView();   // N1-A
   } else if(!p && state.view === 'chat'){
     main = `${isPhoneWidth() ? '' : `<div class="acct-row">${renderAccountButton()}</div>`}${renderTabs()}${renderChatView()}`;   // F1-C1
   } else if(!p){
@@ -14848,7 +14991,7 @@ function render(){
           : `<p>Invite a pitcher to this team to get started.</p>${
           isHeadOfCurrentTeam() ? `<button class="btn btn-primary mt-12" onclick="openCoachWelcome()">Get the invite link</button>`
                                 : '<p class="profile-note">Ask your head coach for the pitcher invite link.</p>'}`}
-          <button class="btn btn-secondary hide-phone mt-10" onclick="setView('profile')">Profile</button></div>`);   // the coach's Profile button normally lives in the pitcher header, which an empty roster doesn't have
+          <button class="btn btn-secondary hide-phone mt-10" onclick="setView('profile')">${PLACE.account}</button></div>`);   // the coach's Profile button normally lives in the pitcher header, which an empty roster doesn't have
   } else {
     const arsenalChips = p.pitchTypes.map(t => {
       const c = colorForType(p, t);
@@ -14889,7 +15032,7 @@ function render(){
         <p>Verify your email so we can send you your reports. ${state.verifyResendStatus === 'sent' ? 'Verification email sent — check your inbox.' : ''}${state.verifyResendStatus === 'error' ? escHtml(state.verifyResendMsg || 'Could not resend — try again in a moment.') : ''}</p>
         <div class="verify-banner-actions">
           <button class="btn btn-secondary" ${state.verifyResendStatus === 'sending' ? 'disabled' : ''} onclick="resendVerification()">${state.verifyResendStatus === 'sending' ? 'Sending…' : 'Resend'}</button>
-          <button class="btn btn-secondary" onclick="goToProfileEmail()">Wrong email? Change it in Profile</button>
+          <button class="btn btn-secondary" onclick="goToProfileEmail()">Wrong email? Change it in ${PLACE.account}</button>
         </div>
       </div>` : '';
 
@@ -14902,10 +15045,10 @@ function render(){
     // Joel, Oct 7 (G5): on iPad and laptop the account button joins the pitcher header's row, so the
     // name, photo and pitch types sit level with the Knuckleball logo and the chart / diamond get the
     // height its own row took. Phones keep the separate row.
-    const acctInHeader = !isPhoneWidth() && state.view !== 'profile' && state.view !== 'leaderboard';
+    const acctInHeader = !isPhoneWidth() && state.view !== 'profile' && state.view !== 'leaderboard' && state.view !== 'more' && state.view !== 'chat';   // N1-A: those views have no pitcher header
     const headerHtml = `
       <div class="pitcher-header">
-        ${isCoach() ? `<div class="ident-link" role="link" tabindex="0" title="Player Profile" onclick="if(!event.target.closest('.gear-btn')) coachNameTap()" onkeydown="if(event.key==='Enter' && !event.target.closest('.gear-btn')){coachNameTap();}">${renderPlayerIdent(p, true, arsenalChips, profileGearBtn())}</div>` : renderPlayerIdent(p, true, arsenalChips, profileGearBtn())}
+        ${isCoach() ? `<div class="ident-link" role="link" tabindex="0" title="${PLACE.pitcherSettings}" onclick="if(!event.target.closest('.gear-btn')) coachNameTap()" onkeydown="if(event.key==='Enter' && !event.target.closest('.gear-btn')){coachNameTap();}">${renderPlayerIdent(p, true, arsenalChips, profileGearBtn())}</div>` : renderPlayerIdent(p, true, arsenalChips, profileGearBtn())}
         <div class="pitcher-header-actions">
           ${isCoach()
             ? ''   // Nov 5: the gear beside the name replaces the Profile button
@@ -14923,9 +15066,10 @@ function render(){
       ${verifyBanner}
       ${guardianBanner}
       ${setupReminderBanner}
-      ${(state.view === 'profile' || state.view === 'leaderboard' || state.view === 'chat') ? '' : headerHtml}
-      ${state.view === 'home' ? '' : tabs}
-      ${state.view === 'home' ? renderHomeTiles()
+      ${(state.view === 'profile' || state.view === 'leaderboard' || state.view === 'chat' || state.view === 'more') ? '' : headerHtml}
+      ${(state.view === 'home' || state.view === 'more') ? '' : tabs}
+      ${state.view === 'more' ? renderMoreView()
+        : state.view === 'home' ? renderHomeTiles()
         : state.view === 'session' ? renderSessionView()
         : state.view === 'profile' ? renderProfileView()
         : state.view === 'leaderboard' ? renderLeaderboardView()
@@ -14949,7 +15093,7 @@ function render(){
   if(rosterOnly){ main = ''; phoneFooter = ''; }
   const policyFoot = (phoneSession || rosterOnly) ? '' : `<div class="policy-foot">Knuckleball LLC 2026 &middot; <a href="${policyHref('privacy.html')}">Privacy</a> &middot; <a href="${policyHref('terms.html')}">Terms</a></div>`;   // P1-10
   const dockOn = coachDockShown(phoneSession);
-  app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}${policyFoot}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + (dockOn ? renderCoachDock() : '');
+  app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}${policyFoot}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + renderSignOutSheet() + (dockOn ? renderCoachDock() : '');
   if(app.classList) app.classList.toggle('has-dock', dockOn);
   if(dockOn) attachCoachDock();
   placeTrayIndicators();   // U13

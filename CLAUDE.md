@@ -213,7 +213,7 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
   `plans/n1a-preconditions.md`; replaces the Nov 5 v331 rules):**
   - **One name per place** (`PLACE` in the tracker): Home, Chart, History (its views **Sessions** and **Trends**),
     Roster, More, Pitcher settings (a pitcher's own setup), Account (the login, team and data).
-  - **Phones and iPads** (touch screens, or any window ≤500px; `dockDevice()`) always show the bottom bar, never sliding
+  - **Phones** (any window ≤500px; `dockDevice()`, since Stage B) always show the bottom bar, never sliding
     away, hidden only on the charting screen and while a typing field has focus; **no tab bar** there. Bar
     (`dockKeys()`): coaches Home · Chart · History · Roster · More; players, parents and teens Home · Chart · History ·
     More; view-only friends and family Home · History · More. History stays lit on Sessions and Trends (the
@@ -222,8 +222,8 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
   - **More** (`renderMoreView`, a section's first screen, no Back): Your account (the login's name and role, its email,
     one row per profile to switch, + Add a sport), Team (Add a player; for coaches Join codes and invite links -- only
     a facility side's coaches or a team's head -- and Team settings, which open Account at those sections), Help
-    (Getting started and Help and support → `help.html`, Privacy · Terms), then **Sign out**. On phones and iPads the
-    avatar opens More; computers keep the account dropdown until Stage B's sidebar.
+    (Getting started and Help and support → `help.html`, Privacy · Terms), then **Sign out**. On phones the avatar
+    opens More; More's Team group also holds the team switcher (`teamSwitchHtml`).
   - **Chat** is an icon at the top right, left of the avatar (`chatIconBtn`), only in a facility, with the unread +
     reports count; never on the charting screen. No Chat on the bar or in the tabs, and no coming-soon page, on the web
     and in the store apps alike.
@@ -232,17 +232,39 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
     is gone; the sidebar's opens the same sheet. The first-run screens keep their direct Sign out.
   - **Account / Pitcher settings:** a pitcher's page is one page with two headed groups, Pitcher settings (photo, name,
     pitch mix, relative accuracy, uniform, level, throws, radar gun, who can see) then Account (email, password, your
-    data); a coach's own page is Account (with team admin); a coach's view of a pitcher is Pitcher settings. On phones
-    and iPads, ‹ Back on Account goes to More.
+    data, then a separate **Danger** group with Delete my account at the very bottom -- Stage B); a coach's own page is
+    Account (with team admin). On phones ‹ Back on Account goes to More. On iPads and computers Account also carries
+    the profile switcher, Add a player and Sign out (`renderAccountExtras`).
   - **Chart** opens the chooser as two cards (Bullpen, Live Game) with the pitcher's last session under them, from the
     device's data (absent offline for a pitcher the coach never opened).
-  - **Computers** keep the tab row until Stage B: Home · Chart (Resume with a draft) · Sessions · Trends · Pitcher
-    settings (coach) / Account (pitcher). **Leaderboard is hidden for now** (no tab; `renderLeaderboardView` kept). The
-    KNUCKLEBALL wordmark goes Home (`goHome`).
+  - **Leaderboard is hidden for now** (no tab; `renderLeaderboardView` kept). The KNUCKLEBALL wordmark goes Home
+    (`goHome`).
   - **Help** shows "‹ Back to Knuckleball" always, and the store apps open it inside the app (not the Safari sheet):
     `help` is out of the 17 pages' native link handler. Privacy, terms, reports and delete-account keep the sheet.
-  - A coach's open roster list (phones / iPads, `rosterCanCollapse`) still stands alone until a pitcher is picked or
-    another button is tapped (v336) -- until Stage B makes the roster a page.
+- **Menu, roster and Manage (N1 Stage B, Joel, Nov 17 2026, v344; `plans/n1b-preconditions.md`, evidence
+  `plans/n1b-evidence.md`):**
+  - **iPads and computers** (≥501px) have no bar and no tab row: a menu down the left (`renderSideNav`, `navGo`) --
+    the wordmark, the team switcher and sport, Home, Chart, History (Sessions, Trends), Roster (coaches, with the
+    facility's new count), a Facility section (Chat; Coaches and groups for the manager), Help and getting started,
+    and the name row that opens Account. Above 860px it is 280px wide; from 501 to 860px a 72px icon rail that opens
+    over the page (`state.navOpen`, ☰). **Phones** get a plain header instead of the old sidebar block: the wordmark,
+    then Chat and the avatar. Neither the menu nor the header is drawn on the charting screen (decision 8; before
+    Stage B the iPad / computer charting screen kept the sidebar).
+  - **The roster is a page** (`state.view = 'roster'`, `renderRosterPage`): rows carry no actions; tapping one opens
+    the **pitcher's page** (`'pitcher'`, `openPitcherPage`): header, the newest 5 sessions, Pitcher settings, then
+    **Manage**. Above 860px the list and the pitcher's page sit side by side; narrower, ‹ Back returns to the list.
+    `rosterCollapsed`, the Roster toggle bar and "the roster stands alone" are retired. A coach's tap on the pitcher's
+    name opens their page (on the charting screen it still opens the switch sheet).
+  - **Manage** (`renderManage`, `renderManageSheet`): Clear "New" (no question); Move to / Add to coach (manager: pick,
+    then Confirm); Remove from <coach>'s group / my group (a sheet; when it's their only group the sheet says they stay
+    at the facility under No coach yet; no email); Remove from facility / from this team (a sheet; the removal email,
+    then the membership, as before). Wording uses they / them.
+  - **The pitcher chip** (`renderPitcherChip`, `renderPickSheet`) replaces the big header on Chart (before charting),
+    Sessions and Trends for a coach, or a parent with more than one player; picking keeps the view. Switching team
+    keeps the view too (a pitcher's page becomes the roster; an archived team turns Chart into History). Picking on the
+    Roster page opens the pitcher's page; launch still opens Home.
+  - **Coaches and groups** (`'coaches'`, facility manager): the side's coaches with their group sizes and Show code, No
+    coach yet, and Print all codes.
 - **One "‹ Back" (F1-D, Joel, Oct 29 2026; `plans/f1d-preconditions.md`; v324):** top left of the page (in the account
   row on phones; its own row when the account sits in the pitcher header), every size, browser and installed. It goes
   to the section's first screen, never browser history: start questions → "Bullpen or Live Game?"; (an opened History
@@ -372,7 +394,8 @@ There are 32 RLS policies on production and staging (since F1-A, Oct 29 2026: + 
   by its signup `intended_role`, or is let through.
 - **Groups:** `coach_groups` (one per coach per facility team, made by trigger when a coach joins; `join_token` is
   F1-B's QR, never granted) and `coach_group_members` (`flagged_new`). Actions only through `add_to_group`,
-  `remove_from_group` (the last group on a side takes the pitcher off it, departure logged), `move_between_groups`
+  `remove_from_group` (since N1 Stage B, J3: removing the last group leaves the pitcher on the side under "No coach
+  yet"; only Remove from facility ends the membership and logs the departure; migration `20261117000000_n1b_remove_from_group`), `move_between_groups`
   (manager only) and `clear_new_flag`; a coach acts on their own group only.
 - **Narrowed R4 inside a facility (decision D):** `coach_sees_pitcher(team, pitcher)` replaced `is_team_coach(team)`
   wherever a pitcher is involved (the sessions / pitches / game_events / session_stats / pitcher_teams / profiles read

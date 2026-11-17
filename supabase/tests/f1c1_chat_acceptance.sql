@@ -170,7 +170,8 @@ begin
     r := public.chat_post(thA, 'still there?'); out := out || '(post ' || coalesce(r ->> 'error', 'POSTED') || ')';
     reset role;
   end loop;
-  -- MIN leaves coach B's group (their only one): off the side, thread closed, family keeps reading
+  -- MIN leaves coach B's group (their only one): since N1 Stage B (J3) they stay on the side under No coach yet; the
+  -- private thread still closes (access comes from groups) and the family keeps reading
   perform set_config('request.jwt.claims', json_build_object('sub', M, 'role', 'authenticated')::text, true); set local role authenticated;
   r := public.remove_from_group(gB, MIN);
   reset role;

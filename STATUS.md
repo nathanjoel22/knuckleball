@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-17 · N1 Stage G (facility name, logo and colors) · **staging** (DB + app), branch `n1g-facility-colors`, cache `kb-shell-v349`
+## 2026-11-17 · N1 Stage G (facility name, logo and colors) · **production** (DB + app, v349 live Nov 17), branch `n1g-facility-colors`, PR #96 merged (`fa39086`), cache `kb-shell-v349`
 
 - **Packet:** `plans/n1-navigation-and-home.md` Stage G. Preconditions `plans/n1g-preconditions.md`: Joel, "yes to all,
   build it" (Q1-Q5, the migration and storage rules, the privacy sentence). Evidence `plans/n1g-evidence.md`.
@@ -89,7 +89,15 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   3. the push;
   4. merge.
 
-  Afterwards, regenerate `schema.sql`.
+  Done Nov 17:
+  - backup `2026-11-17-0908`;
+  - the dry run listed only the migration;
+  - Joel pushed it. Checks: 8 organization columns, no client grant, the 4 functions run only for signed-in users, the
+    private bucket with the 256 KB limit, 8 storage policies, 32 public, and the migration list matches the repo;
+  - Joel merged PR #96; v349 is live with the privacy line;
+  - `schema.sql` regenerated.
+
+  **N1 is complete (Stages A-G).**
 - **Staging:** the DS1 facility was put back to Knuckleball's look (no logo, no colors).
 
 ## 2026-11-17 · N1 Stage F (pitcher card, milestones) · **production** (v348 live Nov 17), branch `n1f-card-milestones`, PR #95 merged (`b7e26a7`), cache `kb-shell-v348`

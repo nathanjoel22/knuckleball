@@ -60,6 +60,26 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-17 · History reports start closed (no packet; Joel's request) · **staging**, branch `history-collapsed`, cache `kb-shell-v350`
+
+- **Joel, Nov 17:** "I want them all collapsed first and then you tap to expand."
+- **Built:**
+  - Every History bar starts closed; a tap (click / Enter) opens its report (`state.openSessions` replaces
+    `collapsedSessions`). Opened ones stay open for that page load.
+  - Arriving at one session opens just that one:
+    - the recap's View report / Send report, Home's Open report and the notes, a pitcher's page's Recent sessions
+      (`openSessionInHistory`);
+    - a coach's Home → Recent sessions, which now opens that session rather than only the pitcher's History
+      (`openPitcherSession`).
+  - A report is now fetched (and, for a session from Nov 5 on, made) when its bar is opened, not when it scrolls into
+    view.
+- **Checked on staging** (iPhone):
+  - coach 1, Caleb's History: 16 bars, 0 open; a tap opened one with its report, a second tap closed it;
+  - coach Home → Recent sessions (Caleb, 19 pitches): History with only that session open, at the top of the screen,
+    report drawn;
+  - pitcher Home → Open report: only that session open.
+- No database change.
+
 ## 2026-11-17 · N1 Stage G (facility name, logo and colors) · **production** (DB + app, v349 live Nov 17), branch `n1g-facility-colors`, PR #96 merged (`fa39086`), cache `kb-shell-v349`
 
 - **Packet:** `plans/n1-navigation-and-home.md` Stage G. Preconditions `plans/n1g-preconditions.md`: Joel, "yes to all,

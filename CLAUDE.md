@@ -360,8 +360,9 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
   link still opens `report.html` as before; Email report is unchanged; the installed app keeps Share. **No new coaches'
   notes** (Chat is the direction): the comment box is gone; existing notes show read-only in History and on the report
   page; `session_notes` is untouched. A row's "New" dot clears once its card is on screen. **Each session's bar (date, pitches, strikes, accuracy...) opens and
-  closes its report on tap / click / Enter** (open by default, an arrow shows which; closed ones stay closed for that page
-  load; Nov 5, v330). Phones get **↑ Back to
+  closes its report on tap / click / Enter** (an arrow shows which; Nov 5, v330). **Since Nov 17 (Joel, v350) every
+  report starts closed** (`state.openSessions`); opened ones stay open for that page load. Arriving at a session from the
+  recap, Home or a pitcher's page (`openSessionInHistory`, `openPitcherSession`) opens that one. Phones get **↑ Back to
   top** at the end of History and Trends.
 - **Roster on phones (v191, v194):** the list stays rolled up until Roster is tapped (dock or the Roster bar; team load and leaving a session start it rolled up); picking a pitcher or another dock button rolls it up. Open, it shows EVERY pitcher (no 220px inner scroll box at ≤860px) -- the page scrolls.
 

@@ -3569,19 +3569,14 @@ CREATE OR REPLACE FUNCTION "public"."remove_from_group"("p_group" "uuid", "p_pit
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-declare v_team uuid; v_left boolean := false;
+declare v_team uuid;
 begin
   select team_id into v_team from public.coach_groups where id = p_group;
   if v_team is null then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
   if not public.f1a_may_edit_group(p_group) then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
   delete from public.coach_group_members where group_id = p_group and pitcher_id = p_pitcher;
   if not found then return jsonb_build_object('ok', false, 'error', 'not_in_group'); end if;
-  if not exists (select 1 from public.coach_group_members m join public.coach_groups g on g.id = m.group_id
-                  where g.team_id = v_team and m.pitcher_id = p_pitcher) then
-    delete from public.pitcher_teams where team_id = v_team and pitcher_id = p_pitcher;
-    v_left := found;
-  end if;
-  return jsonb_build_object('ok', true, 'left_side', v_left);
+  return jsonb_build_object('ok', true, 'left_side', false);
 end;
 $$;
 
@@ -4126,6 +4121,37 @@ $$;
 
 
 ALTER FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint, "p_profile" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."set_pitch_arsenal"("p_pitcher" "uuid", "p_types" "text"[]) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare v_clean text[];
+begin
+  if auth.uid() is null then raise exception 'not authenticated'; end if;
+  if not exists (select 1 from public.profiles where id = p_pitcher and role = 'pitcher') then
+    raise exception 'not allowed';
+  end if;
+  if not (public.is_my_profile(p_pitcher)
+          or exists (select 1 from public.pitcher_teams pt
+                      where pt.pitcher_id = p_pitcher and not public.is_team_archived(pt.team_id)
+                        and public.coach_sees_pitcher(pt.team_id, p_pitcher))) then
+    raise exception 'not allowed';
+  end if;
+  if p_types is null or cardinality(p_types) > 20
+     or exists (select 1 from unnest(p_types) t where t is null or btrim(t) = '' or length(t) > 40) then
+    raise exception 'invalid pitch list';
+  end if;
+  -- the order is the pitcher's colour order: keep it, drop repeats
+  select coalesce(array_agg(t order by i), '{}') into v_clean
+    from (select t, min(i) i from unnest(p_types) with ordinality u(t, i) group by t) x;
+  update public.profiles set pitch_types = v_clean where id = p_pitcher;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_pitch_arsenal"("p_pitcher" "uuid", "p_types" "text"[]) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_team_level"("p_team_id" "uuid", "p_level" "text") RETURNS "void"
@@ -7094,6 +7120,12 @@ GRANT ALL ON FUNCTION "public"."sessions_h1_lock"() TO "service_role";
 REVOKE ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint, "p_profile" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint, "p_profile" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint, "p_profile" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."set_pitch_arsenal"("p_pitcher" "uuid", "p_types" "text"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."set_pitch_arsenal"("p_pitcher" "uuid", "p_types" "text"[]) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_pitch_arsenal"("p_pitcher" "uuid", "p_types" "text"[]) TO "service_role";
 
 
 

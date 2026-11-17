@@ -14,8 +14,8 @@ text layouts in section 3 show structure only; the pictures are the approved loo
 
 Seven stages, A to G. **Each stage is its own branch, its own preconditions report, its own PR and its own cache
 bump, and reaches staging before Joel ships it. A stage starts only after the one before it is on production.**
-Stages A to F are front end only, except one database function changed in Stage B (J3). Stage G is the only one
-with new tables or columns.
+Stages A to F are front end only, except Stage B's `remove_from_group` change (J3) and Stage E's facility notes
+(J1). Stage G is the only one with new tables or columns.
 
 Code facts below were read at `6d6c959` (v342). Line numbers are for finding the place, not a promise; each
 preconditions report confirms them.
@@ -82,8 +82,9 @@ report restates the ones it touches so he confirms them in writing before code:*
 
 - **J1, the coach's note: Jordan's proposal.** One optional line, "Note to the pitcher", on the Stage E recap,
   saved to `session_notes`. On a normal team the insert rule on `session_notes` already allows it. On a facility team
-  it needs a server change (`is_coach_of_session` refuses facility teams): still Joel's call, asked in Stage E's
-  preconditions; until he says yes, the line isn't drawn for facility sessions. Home's note card (Stage C) shows the
+  it needs a server change (`is_coach_of_session` refuses facility teams): **Joel, Nov 16: yes, facility coaches
+  write notes too.** Stage E's preconditions carry that migration, its rollback and the RLS test (a pitching coach
+  writes only for their own group's pitchers; the manager for the side's) for his yes before it runs. Home's note card (Stage C) shows the
   newest note. This reverses "No new coaches' notes" (History is a feed, Nov 5); Stage E updates CLAUDE.md.
 - **J2, who may share a pitcher card: option A.** An adult pitcher shares their own card. For a player under 18, only
   the parent or guardian on the account: the parent login the player sits on, or a linked `guardian` (F1-G). A teen
@@ -320,8 +321,8 @@ Prefer (a). Whatever is read is kept with `lastKnownContext` so Home draws offli
 A pitcher's own Home needs nothing new: History's data is already on the device.
 
 **Coach's note (J1).** The newest note on the pitcher's sessions (`session_notes`, already loaded with History), as a
-card: "Coach <name> · <date>", the text, "Open the session". Nothing is drawn when there is none or on a facility
-team. Confirm in preconditions that a parent's login can read the note; if the rule doesn't allow it, stop and
+card: "Coach <name> · <date>", the text, "Open the session". Nothing is drawn when there is none (facility
+teams have none until Stage E lets their coaches write them; the card needs no change then). Confirm in preconditions that a parent's login can read the note; if the rule doesn't allow it, stop and
 report (no RLS change without Joel). Writing is the Stage E recap line (J1).
 
 **Zone picture on the last session** uses `renderHistoryPlot` (small), not a new drawing.
@@ -352,7 +353,7 @@ The app already has a coach Welcome modal, a pitcher setup modal and a setup rem
 report lists where they repeat a step on the card and proposes what to keep; Joel decides. Don't remove them
 unasked.
 
-### Stage E · Zone pictures in History and the recap (size M, front end only)
+### Stage E · Zone pictures in History and the recap (size M, front end + facility notes, J1)
 
 Pictures: `e-history-zones.png`, `e-zone-large.png`, `e-recap.png`.
 
@@ -388,7 +389,7 @@ stays open as today (Nov 5).
   in the last 5 sessions, and a new top velocity. Otherwise the line is absent.
 - Switching pitcher mid-game with "save" (`doSwitchPitcher`) skips the recap.
 - **Note to the pitcher (J1):** an optional one-line box above Send report, for a coach charting a pitcher on a
-  normal team (facility teams only if Joel says yes in Stage E's preconditions). It is saved to `session_notes` once
+  normal team or a facility team (J1). It is saved to `session_notes` once
   the session has synced (kept on the device until then; the preconditions say how), so the recap never waits on
   the network.
 
@@ -460,7 +461,6 @@ runs** (CLAUDE.md: no RLS change, no schema deploy without asking).
 - Team (non-facility) branding.
 - `privacy.html` and `terms.html` wording. `help.html` beyond names, the Back link and what a stage names.
 - Automated click-through tests (Jordan is researching tools separately). Checks here are click paths.
-- New notes on facility teams, unless Joel says so in J1.
 - Rebuilding Profile's sections; N1 moves and renames, it doesn't redesign them.
 
 ## 5. Escalate if
@@ -469,7 +469,7 @@ runs** (CLAUDE.md: no RLS change, no schema deploy without asking).
 - Home, More, the recap or the line score would need the network to draw.
 - A view can't be reached, or reached back from, without the browser's Back.
 - Any stage before G turns out to need a migration, an RLS change or a new function, beyond Stage B's
-  `remove_from_group` change (J3) and, if Joel says yes in Stage E, facility notes (J1).
+  `remove_from_group` change (J3) and Stage E's facility notes (J1).
 - A parent's login can't read the coach's note under today's rules.
 - Moving "Delete my account" would make any sentence in `delete-account.html`, `help.html` or the terms notice
   untrue.
@@ -530,7 +530,7 @@ runs** (CLAUDE.md: no RLS change, no schema deploy without asking).
 21. A pitching coach's Home shows only their group; the manager's shows all (compare with the roster).
 22. A session saved offline appears in the line score before it syncs.
 23. The coach's note shows on a normal team where a note exists, for the pitcher and (if the rule allows) the
-    parent; nothing on a facility team.
+    parent; after Stage E, the same on a facility team (Stage E's checks).
 
 **Stage D:**
 
@@ -569,7 +569,7 @@ runs** (CLAUDE.md: no RLS change, no schema deploy without asking).
 - Each stage: preconditions report (`plans/n1<x>-preconditions.md`) and stop for Joel → build → acceptance with
   evidence (`plans/n1<x>-evidence.md`) on staging → `CACHE_VERSION` bump → STATUS.md and CLAUDE.md in the same PR
   → push → PR → stop. Joel checks on his own iPhone and iPad, then merges.
-- Stage B (`remove_from_group`) and Stage G: backup first, migration on staging, tests, then production by Joel.
+- Stage B (`remove_from_group`), Stage E (facility notes) and Stage G: backup first, migration on staging, tests, then production by Joel.
 - Rollback for A to F: `git revert` and a cache bump. Stage G: the rollback migration, written before the forward
   one runs.
 

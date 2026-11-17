@@ -14358,18 +14358,22 @@ function facIdb(){
 }
 async function facGet(k){ try{ const db = await facIdb(); return await new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); }); }catch(e){ return null; } }
 async function facSet(k, v){ try{ const db = await facIdb(); await new Promise(res => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = res; }); }catch(e){} }
+// N1-G2 (Joel, Nov 17): a normal team's head sets a look too. A row with org_id is a facility's (facility-logos,
+// keyed by the org: both sides share it); one without is a team's own (team-logos, keyed by the team).
+const lookKey = r => r.org_id || r.team_id;
+const lookBucket = r => r.org_id ? 'facility-logos' : 'team-logos';
 async function loadFacilityLogos(){
   state.facLogos = state.facLogos || {};
   let changed = false;
   for(const r of state.facBrandings || []){
-    if(!r.logo_path){ if(state.facLogos[r.org_id]){ delete state.facLogos[r.org_id]; changed = true; } continue; }
+    if(!r.logo_path){ if(state.facLogos[lookKey(r)]){ delete state.facLogos[lookKey(r)]; changed = true; } continue; }
     const key = r.logo_path + '@' + r.updated_at;
     let data = await facGet(key);
     if(!data && isOnline()){
-      try{ const { data: blob, error } = await netTimeout(supabaseClient.storage.from('facility-logos').download(r.logo_path), 8000);
+      try{ const { data: blob, error } = await netTimeout(supabaseClient.storage.from(lookBucket(r)).download(r.logo_path), 8000);
         if(!error && blob){ data = await blobToDataUrl(blob); await facSet(key, data); } }catch(e){}
     }
-    if(data && state.facLogos[r.org_id] !== data){ state.facLogos[r.org_id] = data; changed = true; }
+    if(data && state.facLogos[lookKey(r)] !== data){ state.facLogos[lookKey(r)] = data; changed = true; }
   }
   if(changed) render();
 }
@@ -14377,7 +14381,8 @@ async function loadFacilityBrandings(){
   if(!state.session) return;
   if(!state.facBrandings){ try{ state.facBrandings = JSON.parse(lsGet(facBrandKey()) || 'null') || []; }catch(e){ state.facBrandings = []; } }
   if(isOnline()){
-    try{ const { data, error } = await netTimeout(supabaseClient.rpc('my_facility_brandings'), 8000);
+    try{ let { data, error } = await netTimeout(supabaseClient.rpc('my_brandings'), 8000);   // N1-G2: facilities + teams
+      if(error) ({ data, error } = await netTimeout(supabaseClient.rpc('my_facility_brandings'), 8000));
       if(!error && Array.isArray(data)){ state.facBrandings = data; lsSet(facBrandKey(), JSON.stringify(data)); } }catch(e){}
   }
   render();
@@ -14385,7 +14390,7 @@ async function loadFacilityBrandings(){
 }
 // The facility's identity where the wordmark sits (docs/n1/g-sidebar-facility.png): logo or initials, name, Powered by.
 function renderFacIdentity(fb, cls){
-  const logo = state.facLogos && state.facLogos[fb.org_id];
+  const logo = state.facLogos && state.facLogos[lookKey(fb)];
   return `<div class="fac-id ${cls || ''}" role="link" tabindex="0" aria-label="${PLACE.home}" onclick="navGo('home')" onkeydown="if(event.key==='Enter'){navGo('home');}">
     <span class="fac-logo">${logo ? `<img src="${logo}" alt="">` : `<span class="display">${escHtml(initialsOf(fb.name))}</span>`}</span>
     <span class="fac-id-text"><span class="fac-name display">${escHtml(fb.name)}</span><span class="fac-powered">Powered by Knuckleball</span></span>
@@ -14394,14 +14399,17 @@ function renderFacIdentity(fb, cls){
 function facHasLook(fb){ return !!(fb && (fb.logo_path || (fb.brand_color && fb.accent_color))); }
 /* Account -> Facility look (the manager). */
 function renderFacilityLook(){
-  if(!isFacilityManager()) return '';
-  const fb = currentFacBrand(); if(!fb) return '<div class="profile-section"><h3>Facility look</h3><p class="profile-note">Loading… (needs a connection the first time)</p></div>';
-  const ed = state.facEdit || (state.facEdit = { brand: fb.brand_color || '#13294B', accent: fb.accent_color || '#F26B3A', msg: '', busy: false });
+  const fac = currentTeamIsFacility();
+  if(!isHeadOfCurrentTeam() || currentTeamArchived()) return '';   // a facility's manager, or a normal team's head (G2)
+  const title = fac ? 'Facility look' : 'Team look';
+  const fb = currentFacBrand(); if(!fb) return `<div class="profile-section"><h3>${title}</h3><p class="profile-note">Loading… (needs a connection the first time)</p></div>`;
+  if(!state.facEdit || state.facEdit.team !== fb.team_id) state.facEdit = { team: fb.team_id, brand: fb.brand_color || '#13294B', accent: fb.accent_color || '#F26B3A', msg: '', busy: false };
+  const ed = state.facEdit;
   const tk = facilityTokens(ed.brand, ed.accent);
-  const logo = state.facLogos && state.facLogos[fb.org_id];
+  const logo = state.facLogos && state.facLogos[lookKey(fb)];
   const prev = tk.vars ? `style="background:${tk.vars['--brand-bg']};"` : '';
-  return `<div class="profile-section fac-look"><h3>Facility look</h3>
-    <p class="profile-note">Your logo and two colors, for everyone at ${escHtml(fb.name)}. Pitch colors, reports and emails don't change.</p>
+  return `<div class="profile-section fac-look"><h3>${title}</h3>
+    <p class="profile-note">Your logo and two colors, for everyone ${fac ? 'at' : 'on'} ${escHtml(fb.name)}. Pitch colors, reports and emails don't change.</p>
     <div class="fac-preview" ${prev}>
       <span class="fac-logo" ${tk.vars ? `style="background:${tk.vars['--accent']};color:${tk.vars['--on-accent'] === '#FFFFFF' ? '#FFFFFF' : 'var(--ink)'};"` : ''}>${logo ? `<img src="${logo}" alt="">` : `<span class="display">${escHtml(initialsOf(fb.name))}</span>`}</span>
       <span class="fac-id-text"><span class="fac-name display" style="color:#fff;">${escHtml(fb.name)}</span><span class="fac-powered">Powered by Knuckleball</span></span>
@@ -14428,12 +14436,13 @@ window.facEditColor = function(which, v){ const ed = state.facEdit; if(!ed) retu
 async function facSave(brand, accent, logoPath, okMsg){
   const fb = currentFacBrand(), ed = state.facEdit; if(!fb || !ed) return;
   ed.busy = true; ed.msg = ''; render();
-  let res; try{ res = await netTimeout(supabaseClient.rpc('set_facility_branding', { p_org: fb.org_id, p_brand: brand, p_accent: accent, p_logo_path: logoPath }), 10000); }catch(e){ res = { error: e }; }
+  let res; try{ res = await netTimeout((fb.org_id ? supabaseClient.rpc('set_facility_branding', { p_org: fb.org_id, p_brand: brand, p_accent: accent, p_logo_path: logoPath })
+    : supabaseClient.rpc('set_team_branding', { p_team: fb.team_id, p_brand: brand, p_accent: accent, p_logo_path: logoPath })), 10000); }catch(e){ res = { error: e }; }
   ed.busy = false;
   ed.msg = (res.error || !res.data || !res.data.ok) ? "Couldn't save that. Check your connection and try again." : okMsg;
   await loadFacilityBrandings();
 }
-window.saveFacilityLook = function(){ const ed = state.facEdit, fb = currentFacBrand(); if(!ed || !fb || facilityTokens(ed.brand, ed.accent).error) return; facSave(ed.brand, ed.accent, fb.logo_path || null, 'Saved. Everyone at the facility sees it next time they open the app.'); };
+window.saveFacilityLook = function(){ const ed = state.facEdit, fb = currentFacBrand(); if(!ed || !fb || facilityTokens(ed.brand, ed.accent).error) return; facSave(ed.brand, ed.accent, fb.logo_path || null, (fb.org_id ? 'Saved. Everyone at the facility' : 'Saved. Everyone on the team') + ' sees it next time they open the app.'); };
 window.resetFacilityColors = function(){ const fb = currentFacBrand(); if(!fb) return; facSave(null, null, fb.logo_path || null, "Back to Knuckleball's colors."); };
 // Q2: PNG / JPEG / WebP, made to fit 256 x 256 on the device, 256 KB at most.
 function makeFacLogoPng(file){
@@ -14455,8 +14464,8 @@ window.onFacLogoPicked = async function(input){
   try{
     const blob = await makeFacLogoPng(file);
     if(blob.size > 262144) throw new Error('too big');
-    const path = fb.org_id + '/logo.png';
-    const { error } = await supabaseClient.storage.from('facility-logos').upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '60' });
+    const path = lookKey(fb) + '/logo.png';
+    const { error } = await supabaseClient.storage.from(lookBucket(fb)).upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '60' });
     if(error) throw error;
     ed.busy = false;
     await facSave(fb.brand_color || null, fb.accent_color || null, path, 'Logo saved.');
@@ -14464,7 +14473,7 @@ window.onFacLogoPicked = async function(input){
 };
 window.removeFacilityLogo = async function(){
   const fb = currentFacBrand(); if(!fb || !fb.logo_path) return;
-  try{ await supabaseClient.storage.from('facility-logos').remove([fb.logo_path]); }catch(e){}
+  try{ await supabaseClient.storage.from(lookBucket(fb)).remove([fb.logo_path]); }catch(e){}
   await facSave(fb.brand_color || null, fb.accent_color || null, null, 'Logo removed.');
 };
 /* ---------- F1-C1: CHAT (Oct 29 2026, plans/f1-training-facilities.md; decisions in plans/f1c1-preconditions.md) ----------

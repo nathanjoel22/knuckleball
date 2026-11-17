@@ -344,6 +344,18 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
     `kb:facThemeActive` for the pre-paint script, so the look paints offline and before load.
   - Migration `20261119000000_n1g_facility_branding`. The rollback can't delete the bucket (Supabase refuses storage
     deletes in SQL); the dashboard does that. Test `supabase/tests/n1g_facility_branding.sql`.
+  - **Normal teams too (G2, Joel, Nov 17 2026, v351; `plans/n1g2-preconditions.md`, evidence `plans/n1g2-evidence.md`):**
+    - **Who sets it:** a team's **head coach** (not assistants), in Account → **Team look**, the same editor.
+    - **Who sees it:** the team's coaches, rostered pitchers and their parents and linked family, while it's the current
+      team.
+    - **Storage:** `teams` gains the same four columns (no client grant). The head writes through `set_team_branding`
+      (refused for a facility side or an archived team). `my_brandings()` returns facility sides (as
+      `my_facility_brandings`, kept for older apps) plus normal teams (`org_id` null), gated by `is_team_reader`.
+    - **Logos:** in the private `team-logos` bucket (`<team>/logo.png`): readers read, the head writes. Storage policies
+      12; `public` stays 32.
+    - **In the app:** `lookKey` / `lookBucket` pick the facility or team side.
+    - Migration `20261120000000_n1g2_team_branding`; rollback leaves the bucket; test
+      `supabase/tests/n1g2_team_branding.sql`.
 - **One "‹ Back" (F1-D, Joel, Oct 29 2026; `plans/f1d-preconditions.md`; v324):** top left of the page (in the account
   row on phones; its own row when the account sits in the pitcher header), every size, browser and installed. It goes
   to the section's first screen, never browser history: start questions → "Bullpen or Live Game?"; (an opened History

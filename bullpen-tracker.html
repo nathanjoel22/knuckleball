@@ -754,6 +754,76 @@
   .signout-sheet .btn-danger{ background:var(--danger); border-color:var(--danger); color:var(--on-danger, #fff); }
   .signout-sheet .sess-sheet-title{ font-size:var(--t-32); line-height:1; text-transform:uppercase; }
   .signout-text{ margin:0; font-size:var(--t-16); line-height:var(--lh-body, 1.4); }
+  /* N1-B: the phone header (docs/n1/a-phone-bar.png): the wordmark, then Chat and the avatar */
+  .ph-head{ display:flex; align-items:center; justify-content:space-between; gap:var(--s-8); margin:0 0 var(--s-4); }
+  .ph-wordmark{ cursor:pointer; color:var(--ink); }
+  .ph-wordmark .brand-word{ font-size:22px; line-height:1; }
+  .ph-head-right{ display:flex; align-items:center; gap:var(--s-8); }
+  /* N1-B: the menu (docs/n1/b-sidebar-ipad.png) -- 280px above 860px, a 72px rail from 501 to 860px */
+  #app.has-nav{ flex-direction:row; }
+  .side-nav{ width:280px; flex:none; position:sticky; top:0; align-self:flex-start; height:var(--kb-screen, 100vh); overflow-y:auto;
+    background:var(--brand-bg); color:var(--on-dark-dim); padding:var(--s-16) var(--s-12) calc(var(--s-16) + env(safe-area-inset-bottom, 0px));
+    display:flex; flex-direction:column; gap:var(--s-12); z-index:40; }
+  .nav-top{ display:flex; align-items:center; gap:var(--s-8); padding:var(--s-4) var(--s-6); }
+  .nav-top .brand{ color:var(--on-dark); cursor:pointer; }
+  .nav-top .brand-word{ font-size:22px; color:var(--on-dark); }   /* .brand span is the accent; the wordmark stays white */
+  .nav-toggle{ display:none; width:44px; height:44px; border:0; border-radius:var(--radius-control); background:transparent; color:var(--on-dark); cursor:pointer; flex:none; font-size:20px; }
+  .nav-toggle svg, .nav-ic svg{ width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .nav-team{ background:var(--brand-bg-2); border-radius:var(--radius-control); padding:var(--s-12); color:var(--on-dark); display:flex; flex-direction:column; gap:var(--s-2); }
+  .nav-team .roster-label{ color:var(--on-dark-faint); }
+  .nav-team .team-select{ background:transparent; color:var(--on-dark); border-color:var(--brand-line, rgba(255,255,255,.2)); }
+  .nav-team .team-select option{ color:var(--ink); }
+  .nav-sport{ font-size:var(--t-14); color:var(--on-dark-faint); }
+  .nav-items{ display:flex; flex-direction:column; gap:var(--s-2); }
+  .nav-item{ display:flex; align-items:center; gap:var(--s-12); width:100%; min-height:48px; padding:0 var(--s-12); border:0; border-radius:var(--radius-control);
+    background:transparent; color:var(--on-dark-dim); font:inherit; font-size:var(--t-16); font-weight:600; text-align:left; text-decoration:none; cursor:pointer; position:relative; }
+  .nav-item:hover{ background:var(--brand-bg-2); }
+  .nav-item.on{ background:var(--accent); color:var(--on-accent, var(--ink)); }
+  .nav-item:focus-visible, .nav-sub:focus-visible, .nav-toggle:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+  .nav-ic{ display:inline-flex; width:24px; justify-content:center; flex:none; }
+  .nav-lbl{ flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .nav-badge{ background:var(--accent); color:var(--on-accent, var(--ink)); border-radius:999px; font-size:12px; font-weight:800; padding:2px 8px; flex:none; }
+  .nav-item.on .nav-badge{ background:var(--brand-bg); color:var(--on-dark); }
+  .nav-subs{ display:flex; flex-direction:column; padding-left:48px; }
+  .nav-sub{ min-height:44px; border:0; background:transparent; color:var(--on-dark-dim); font:inherit; font-size:var(--t-16); text-align:left; cursor:pointer; padding:0 var(--s-8); border-radius:var(--radius-control); }
+  .nav-sub.on{ color:var(--on-dark); font-weight:700; }
+  .nav-section{ font-size:var(--t-12); font-weight:700; text-transform:uppercase; letter-spacing:var(--tr-label, .12em); color:var(--on-dark-faint); padding:var(--s-12) var(--s-12) var(--s-4); }
+  .nav-foot{ margin-top:auto; display:flex; flex-direction:column; gap:var(--s-2); border-top:1px solid var(--brand-line, rgba(255,255,255,.15)); padding-top:var(--s-12); }
+  .nav-avatar{ width:32px; height:32px; border-radius:50%; background:var(--card); color:var(--ink); font-size:12px; font-weight:800; align-items:center; }
+  .nav-go{ color:var(--on-dark-faint); }
+  .nav-scrim{ display:none; }
+  .side-nav .offline-pill, .side-nav .outbox-badge{ align-self:flex-start; }
+  @media (min-width:501px) and (max-width:860px){
+    #app.has-nav{ flex-direction:row; }
+    .side-nav{ width:72px; padding:var(--s-12) var(--s-8); align-items:center; }
+    .side-nav .nav-toggle{ display:inline-flex; align-items:center; justify-content:center; }
+    .side-nav:not(.open) .brand, .side-nav:not(.open) .nav-team, .side-nav:not(.open) .nav-subs, .side-nav:not(.open) .nav-section,
+    .side-nav:not(.open) .nav-lbl, .side-nav:not(.open) .nav-go, .side-nav:not(.open) .outbox-badge{ display:none; }
+    .side-nav:not(.open) .nav-item{ width:52px; justify-content:center; padding:0; }
+    .side-nav:not(.open) .nav-badge{ position:absolute; top:0; right:-2px; padding:0 5px; font-size:11px; line-height:18px; }
+    .side-nav:not(.open) .nav-badge-word{ display:none; }   /* the rail shows the count only */
+    .side-nav.open{ position:fixed; left:0; top:0; bottom:0; width:280px; height:auto; align-items:stretch; z-index:80; box-shadow:var(--shadow-modal); }
+    .nav-scrim{ display:block; position:fixed; inset:0; background:var(--scrim); z-index:79; }
+    #app.nav-open .main{ margin-left:72px; }   /* the rail's space stays while the open menu floats over the page */
+  }
+  /* N1-B: the roster page; above 860px the list and the pitcher's page side by side */
+  .roster-split{ display:grid; grid-template-columns:minmax(260px, 340px) 1fr; gap:var(--s-24); align-items:start; }
+  .roster-page-list .roster-list{ max-height:none; overflow:visible; }
+  .pitcher-page{ display:flex; flex-direction:column; gap:var(--s-16); min-width:0; }
+  .team-switch{ display:flex; flex-direction:column; gap:var(--s-4); margin:0 0 var(--s-12); width:100%; }
+  .more-row .team-switch{ margin:0; }
+  .more-danger{ color:var(--danger); font-weight:600; }
+  .more-empty{ padding:var(--s-12) 0; margin:0; }
+  .manage-move{ flex-wrap:wrap; cursor:default; }
+  .manage-move .more-row-main{ flex-direction:column; align-items:flex-start; }
+  .danger-card h3{ color:var(--danger); }
+  /* N1-B: the pitcher chip on Chart, Sessions and Trends */
+  .pitcher-chip-row{ display:flex; }
+  .pitcher-chip{ display:inline-flex; align-items:center; gap:var(--s-8); min-height:48px; padding:var(--s-4) var(--s-16) var(--s-4) var(--s-4); border:1px solid var(--border); border-radius:999px;
+    background:var(--card); color:var(--ink); font:inherit; font-size:var(--t-16); font-weight:600; cursor:pointer; }
+  .pitcher-chip .headshot{ width:40px; height:40px; }
+  .pitcher-chip-caret{ color:var(--ink-faint); font-size:12px; }
+  .switch-pick.is-on{ border-color:var(--accent); }
   .home-tiles{ display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:var(--s-8); width:100%; max-width:340px; margin:var(--s-4) 0 var(--s-24); }
   /* Joel, Oct 12 (his laptop mock-up): on iPad and laptop the tiles fill the whole area beside the roster --
      Charting and History split the top row, Armcare / Mental Game / Profile split the next into thirds */
@@ -2542,7 +2612,7 @@ function renderTermsNotice(){
       <li>Players added by a parent are never included unless the parent agrees.</li>
       <li>Sessions and accounts you delete are left out.</li>
     </ul>
-    <p class="note-hint terms-notice-foot" style="font-size:14px;margin:0;">Read the full ${links}. You can download or delete your data at any time in Profile &rarr; Your data.</p>
+    <p class="note-hint terms-notice-foot" style="font-size:14px;margin:0;">Read the full ${links}. You can download or delete your data at any time in Account.</p>
     <button type="button" class="btn btn-primary" onclick="agreeToTerms()">I agree</button>
     <button type="button" class="btn btn-secondary" onclick="signOut()">Sign out</button>
   </div></div>`;
@@ -3948,10 +4018,10 @@ window.onTeamChange = async function(teamId, skipRender){
     state.currentPitcherId = state.roster.length ? state.roster[0].id : null;
     if(skipRender) adoptDraftPitcher();   // launch: land on the pitcher whose session is in progress
     state.rosterCollapsed = isPhoneWidth();   // a fresh team load starts open -- except on phones (Joel, Oct 8: rolled up until Roster is tapped)
-    // Launch (skipRender) opens on Home (Joel, Oct 12); a coach who switches teams
-    // from the dropdown still lands on History, as before.
-    state.view = skipRender ? 'home' : 'history';
-    if(teamIsArchived(teamId)) state.view = 'history';   // P1-09: read-only, no New Session
+    // Launch (skipRender) opens on Home (Joel, Oct 12). N1-B (Q4): a coach who switches teams stays on the same view
+    // (a pitcher's page becomes the new team's roster).
+    state.view = skipRender ? 'home' : (state.view === 'pitcher' || state.view === 'pitcherProfile') ? 'roster' : state.view;
+    if(teamIsArchived(teamId) && state.view === 'session') state.view = 'history';   // P1-09: read-only, no New Session
   } else {
     state.currentPitcherId = state.profile.id;
     state.view = 'home';
@@ -4195,9 +4265,8 @@ const DOCK_ICONS = {
 };
 // Dock everywhere but computers (Joel, Nov 5 2026): phones and iPads (touch screens, or any window 500px wide or less)
 // always show the bottom bar, except on the charting screen; it no longer slides away. Computers keep the tab bar.
-function dockDevice(){
-  try{ return isPhoneWidth() || window.matchMedia('(hover: none) and (pointer: coarse)').matches; }catch(e){ return isPhoneWidth(); }
-}
+// N1 Stage B (Joel, Nov 17 2026): the bar is for phones only; iPads and computers get the menu (renderSideNav).
+function dockDevice(){ return isPhoneWidth(); }
 function coachDockShown(phoneSession){ return !!state.profile && (isCoach() || state.profile.role === 'pitcher') && dockDevice() && !phoneSession && !onChartingScreen(); }
 // N1 Stage A (Joel + Jordan, Nov 15-16 2026; plans/n1-navigation-and-home.md): one name per place, and the bar is
 // Home, Chart, History (Sessions and Trends inside), Roster (coaches), More. Chat is an icon at the top right, only in a
@@ -4212,9 +4281,8 @@ function dockKeys(){
 const DOCK_LABELS = { home: PLACE.home, charts: PLACE.chart, history: PLACE.history, roster: PLACE.roster, more: PLACE.more };
 function dockActiveIndex(){
   const keys = dockKeys();
-  if(isCoach() && state.dockRoster && !state.rosterCollapsed) return keys.indexOf('roster');   // Roster stays lit while its list is open
   const v = state.view;
-  return keys.indexOf(v === 'home' ? 'home' : v === 'session' ? 'charts' : (v === 'history' || v === 'trends') ? 'history' : (v === 'more' || v === 'profile') ? 'more' : '');   // N1-A: More stays lit on Account
+  return keys.indexOf(v === 'home' ? 'home' : v === 'session' ? 'charts' : (v === 'history' || v === 'trends') ? 'history' : (v === 'more' || v === 'profile') ? 'more' : (v === 'roster' || v === 'pitcher' || v === 'pitcherProfile') ? 'roster' : '');   // N1-A: More stays lit on Account
 }
 function renderCoachDock(){
   const idx = dockActiveIndex(), keys = dockKeys();
@@ -4248,15 +4316,7 @@ window.dockGo = function(where){
   // Nov 5 (Joel: "the bar jumps up" on Chat): jump to the top before the page changes, never an animated scroll up a
   // long page -- iPhone Safari takes that for the reader scrolling up and lifts its toolbar, and our bar with it.
   try{ window.scrollTo(0, 0); }catch(e){}
-  state.dockRoster = where === 'roster';
-  if(where === 'roster'){
-    state.rosterCollapsed = false;
-    if(state.view === 'chat') setView('home');   // Nov 5 (Joel): no Chat under the roster; Home's tiles instead
-    else render();
-    dockScroll(0);   // Joel, Oct 8: Roster goes to the top of the page
-    return;
-  }
-  state.rosterCollapsed = rosterCanCollapse();   // Joel, Oct 8: any other button rolls the roster back up
+  if(where === 'roster'){ setView('roster'); dockScroll(0); return; }   // N1-B: the roster is a page
   // Charts: the Bullpen / Live Game question (or Resume); a coach on an archived team has no New Session, so History
   if(where === 'chat'){ if(chatEnabled()) openChat(); dockScroll(0); return; }   // F1-C1; since N1-A only the top-right icon
   setView(where === 'home' ? 'home' : where === 'charts' ? ((isCoach() && currentTeamArchived()) ? 'history' : 'session') : where === 'history' ? 'history' : where === 'more' ? 'more' : 'profile');
@@ -4359,7 +4419,7 @@ window.toggleRosterCollapsed = function(){
   state.rosterCollapsed = !state.rosterCollapsed;
   render();
 };
-window.selectPitcher = async function(pitcherId){
+window.selectPitcher = async function(pitcherId, landing){
   // Joel, Oct 12: tapping a pitcher anywhere in the roster -- however far down it was scrolled -- goes back up to the
   // top of the page, where his name and the Home tiles are. Through dockScroll, so the phone dock doesn't hide for it.
   dockScroll(0);
@@ -4368,7 +4428,7 @@ window.selectPitcher = async function(pitcherId){
   // U10 (3), Joel Sept 30: a name with a red dot opens his History (which
   // clears the name dot); any other name opens New Session.
   state.historyLandingNoClear = null;
-  state.view = hasRosterDot(pitcherId) ? 'history' : 'home';   // Joel, Oct 12: Home, not the chart question
+  state.view = landing || (hasRosterDot(pitcherId) ? 'history' : 'home');   // Joel, Oct 12: Home, not the chart question
   state.uniformEditKey = null; state.uniformMsg = '';
   state.expandedSessionId = null;
   state.oldTombstonesExpanded = false;
@@ -4716,37 +4776,12 @@ function renderJoinCodeOverlay(){
     ${msg}
   </div></div>`;
 }
-function renderFacilityRoster(rosterRow, removeConfirm){
+function renderFacilityRoster(rosterRow){
+  // N1-B: rows show the "New" tag only; Clear, Move and Remove are in Manage on the pitcher's page.
   const groups = facilityGroups(), mgr = isFacilityManager(), mine = myFacilityGroupIds();
-  const readOnly = currentTeamArchived();
   const row = (p, g) => {   // g: the group this row sits in (null: no coach yet)
     const inG = g ? (p.groups || []).find(x => x.id === g.id) : null;
-    const isNew = !!(inG && inG.isNew);
-    const key = p.id + ':' + (g ? g.id : 'none');
-    const open = state.facMenu === key;
-    const canEdit = !readOnly && (mgr || !!(g && mine.includes(g.id)));
-    const tags = isNew ? '<span class="verify-badge roster-verify-badge fac-new-tag">New</span>' : '';
-    const right = canEdit ? `<button class="btn btn-icon btn-secondary btn-sm roster-item-remove" title="Options for ${escHtml(p.name)}" aria-label="Options for ${escHtml(p.name)}" aria-expanded="${open}" onclick="event.stopPropagation();toggleFacMenu('${key}')">⋯</button>` : '';
-    let panel = '';
-    if(canEdit && isNew && !open){
-      panel = `<div class="fac-row-actions"><button class="btn btn-secondary btn-sm" onclick="facAct('clear', '${g.id}', '${p.id}')">Clear</button><button class="btn btn-danger btn-sm" onclick="facAct('remove', '${g.id}', '${p.id}')">Remove</button></div>`;
-    }
-    if(open){
-      const others = groups.filter(x => !(p.groups || []).some(y => y.id === x.id));
-      const opts = others.map(x => `<option value="${x.id}">${escHtml(x.coachName)}</option>`).join('');
-      const last = !!g && (p.groups || []).length <= 1;
-      panel = `<div class="fac-row-actions">
-        ${isNew ? `<button class="btn btn-secondary btn-sm" onclick="facAct('clear', '${g.id}', '${p.id}')">Clear "New"</button>` : ''}
-        ${mgr && opts ? `<label class="fac-move"><span>${g ? 'Move to coach' : 'Add to coach'}</span><select class="team-select" onchange="facAct('${g ? 'move' : 'add'}', '${g ? g.id : ''}', '${p.id}', this.value)"><option value="">Choose…</option>${opts}</select></label>` : ''}
-        ${g ? `<button class="btn btn-secondary btn-sm" onclick="facAct('remove', '${g.id}', '${p.id}')">${mine.includes(g.id) ? 'Remove from my group' : 'Remove from this coach'}</button>` : ''}
-        ${mgr ? `<button class="btn btn-danger btn-sm" onclick="armRemoveRosterPitcher('${p.id}')">Remove from facility</button>` : ''}
-        ${last ? `<p class="note-hint">This is their only coach here, so removing them from the group also takes them off the facility.</p>` : ''}
-        ${state.facError ? `<p class="report-status report-status-error">${escHtml(state.facError)}</p>` : ''}
-      </div>${mgr && state.removeArmedPitcherId === p.id ? removeConfirm(p) : ''}`;
-    } else if(state.facError && state.facErrorKey === key){
-      panel += `<p class="report-status report-status-error fac-row-actions">${escHtml(state.facError)}</p>`;
-    }
-    return rosterRow(p, { tags, right, panel });
+    return rosterRow(p, { tags: (inG && inG.isNew) ? '<span class="verify-badge roster-verify-badge fac-new-tag">New</span>' : '' });
   };
   if(!mgr){
     return renderJoinCodeBar() + (state.roster || []).map(p => row(p, groups.find(g => mine.includes(g.id) && (p.groups || []).some(y => y.id === g.id)) || null)).join('');
@@ -7347,7 +7382,7 @@ function headerBackTarget(){
   if(v === 'chat' && state.chat && state.chat.threadId) return 'chat';
   if(v === 'profile' && state.zonePaint && !state.zonePaint.inSheet) return 'profile';
   if(v === 'profile' && dockDevice()) return 'more';   // N1-A: Account is opened from More
-  if(v === 'pitcherProfile' && isCoach()) return 'roster';
+  if((v === 'pitcherProfile' || (v === 'pitcher' && !isWideSession())) && isCoach()) return 'roster';   // N1-B: wide screens show both
   return null;
 }
 window.headerBack = async function(){
@@ -7356,10 +7391,7 @@ window.headerBack = async function(){
   if(t === 'chat') return chatBack();
   if(t === 'profile'){ cancelZonePaint(); try{ window.scrollTo(0, 0); }catch(e){} return; }
   if(t === 'more') return dockGo('more');
-  if(t === 'roster'){   // the coach's Player Profile: back to the roster (the list opens; wide screens show it already)
-    state.dockRoster = true; state.rosterCollapsed = false;
-    setView('home'); try{ window.scrollTo(0, 0); }catch(e){}
-  }
+  if(t === 'roster'){ setView('roster'); try{ window.scrollTo(0, 0); }catch(e){} }   // N1-B: a pitcher's page -> the roster page
 };
 function renderHeaderBack(){
   return headerBackTarget() ? `<button type="button" class="btn btn-secondary btn-sm kb-back" onclick="headerBack()">‹ Back</button>` : '';
@@ -11579,7 +11611,7 @@ function canSwitchPitcher(){
 }
 window.coachNameTap = function(){
   if(onChartingScreen() && canSwitchPitcher()) openSwitchSheet();
-  else setView('pitcherProfile');
+  else if(state.currentPitcherId) openPitcherPage(state.currentPitcherId);   // N1-B: the pitcher's page (settings and Manage)
 };
 window.openSwitchSheet = function(){
   if(!canSwitchPitcher()) return;
@@ -12180,11 +12212,17 @@ function renderDataSection(){
       : 'Download a copy of everything Knuckleball holds about your account, or delete the account.'}</p>
     <div class="profile-row">
       <button class="btn btn-secondary" ${state.a1Busy === 'export' ? 'disabled' : ''} onclick="a1Download()">${state.a1Busy === 'export' ? 'Preparing…' : 'Download my data'}</button>
+    </div>
+    ${offline}${msg}</div>
+    ${!isPhoneWidth() ? renderAccountExtras() : ''}
+    <div class="profile-section a1-card danger-card"><h3>Danger</h3>
+      <p class="profile-note">${isPlayer ? 'Deleting this player removes their sessions for good after 7 days.' : 'Deleting your account removes it for good after 7 days.'}</p>
+      <div class="profile-row">
       ${due ? `<button class="btn btn-secondary" onclick="a1Restore('${me.id}')">Restore this player</button>`
             : `<button class="btn btn-danger" onclick="a1OpenDelete(${isPlayer ? `'${me.id}'` : 'null'})">${isPlayer ? 'Delete this player' : 'Delete my account'}</button>`}
-    </div>
-    ${due ? `<p class="profile-note">This player will be deleted on ${escHtml(a1Date(due))}.</p>` : ''}
-    ${offline}${msg}</div>`;
+      </div>
+      ${due ? `<p class="profile-note">This player will be deleted on ${escHtml(a1Date(due))}.</p>` : ''}
+    </div>`;
 }
 
 function renderA1Delete(){
@@ -12371,7 +12409,7 @@ window.setHistoryFilter = function(f){
 };
 // Nov 5 (Joel): with the tab bar gone on phones and iPads, History and Trends sit just above All / Bullpen / Live Game.
 function analysisTray(){
-  if(!state.tabsOff) return '';
+  if(!isPhoneWidth()) return '';   // N1-B: phones only; the menu shows Sessions and Trends elsewhere
   const dot = !isCoach() && state.profile && hasRosterDot(state.profile.id) ? '<span class="tab-dot" aria-label="New session"></span>' : '';
   return `<div class="chip-row" style="margin-bottom:var(--s-8);">${segTray([
     { label: PLACE.sessions + dot, selected: state.view === 'history', onclick: "setView('history')" },
@@ -13232,7 +13270,8 @@ function renderMoreView(){
   const coachTeam = isCoach() && state.teams.find(t => t.id === state.currentTeamId);
   // the same tests as renderCoachTeamAdmin's codes (a facility side's coaches) and links (a team's head) sections
   const hasCodes = coachTeam && !coachTeam.archived && (currentTeamIsFacility() || isHeadOfCurrentTeam());
-  const team = (canAddPlayer() ? moreRow('Add a player', 'openAddPlayer()') : '')
+  const team = (teamSwitchHtml() ? `<div class="more-row">${teamSwitchHtml()}</div>` : '')   // N1-B: phones switch team here
+    + (canAddPlayer() ? moreRow('Add a player', 'openAddPlayer()') : '')
     + (hasCodes ? moreRow('Join codes and invite links', "goAccountSection('acct-invites')") : '')
     + (coachTeam ? moreRow('Team settings', "goAccountSection('acct-team')") : '');
   return `<div class="more-page">
@@ -13250,6 +13289,246 @@ function renderMoreView(){
     </div>
     <div class="more-card">${moreRow('<span class="more-signout">Sign out</span>', 'askSignOut()')}</div>
   </div>`;
+}
+/* ---------- N1 Stage B: THE MENU, THE ROSTER PAGE, THE PITCHER'S PAGE (Joel, Nov 17 2026; plans/n1b-preconditions.md) ----------
+   iPads and computers: a menu down the left (renderSideNav), 280px above 860px; between 501 and 860px a 72px icon
+   rail that opens over the page (state.navOpen). Never on the charting screen. The roster is a page; a pitcher's page
+   holds their recent sessions, Pitcher settings and Manage (every remove / move, each confirmed). Nothing here needs
+   the network to draw; the actions in Manage do, as before. */
+const NAV_ICONS = {
+  help: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.8v.6"/><path d="M12 16.8v.2"/></svg>',
+  coaches: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.4"/><path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21M5.6 5.6l1.7 1.7M16.7 16.7l1.7 1.7M5.6 18.4l1.7-1.7M16.7 7.3l1.7-1.7"/></svg>'
+};
+window.toggleNav = function(force){ state.navOpen = force === undefined ? !state.navOpen : !!force; render(); };
+window.navGo = function(where){
+  state.navOpen = false; state.acctOpen = false;
+  try{ window.scrollTo(0, 0); }catch(e){}
+  if(where === 'home') return goHome();
+  if(where === 'chat'){ if(chatEnabled()) openChat(); else render(); return; }
+  if(where === 'account') return acctGoProfile();
+  setView(where === 'charts' ? ((isCoach() && currentTeamArchived()) ? 'history' : 'session') : where);
+};
+function renderSideNav(teamSelector){
+  const v = state.view, coach = isCoach();
+  const item = (key, icon, label, on, onclick, badge) => `<button type="button" class="nav-item${on ? ' on' : ''}" data-nav="${key}" onclick="${onclick}" aria-label="${escHtml(label)}${badge ? ', ' + badge : ''}" title="${escHtml(label)}"${on ? ' aria-current="page"' : ''}><span class="nav-ic">${icon}</span><span class="nav-lbl">${escHtml(label)}</span>${badge ? `<span class="nav-badge">${String(badge).replace(/ new$/, '<span class="nav-badge-word"> new</span>')}</span>` : ''}</button>`;
+  const sub = (label, on, onclick) => `<button type="button" class="nav-sub${on ? ' on' : ''}" onclick="${onclick}"${on ? ' aria-current="page"' : ''}>${label}</button>`;
+  const facNew = coach ? facilityNewCount() : 0;
+  const chatN = chatEnabled() ? chatState().unread + chatState().reports : 0;
+  const mgr = coach && isFacilityManager();
+  const acct = myAccountProfile() || state.profile;
+  const history = v === 'history' || v === 'trends';
+  return `<nav class="side-nav${state.navOpen ? ' open' : ''}" aria-label="Menu">
+    <div class="nav-top">
+      <button type="button" class="nav-toggle" onclick="toggleNav()" aria-label="${state.navOpen ? 'Close the menu' : 'Open the menu'}" aria-expanded="${state.navOpen ? 'true' : 'false'}">${state.navOpen ? '✕' : DOCK_ICONS.more}</button>
+      <div class="brand brand-lockup brand-home" role="link" tabindex="0" aria-label="${PLACE.home}" onclick="navGo('home')" onkeydown="if(event.key==='Enter'){navGo('home');}">${KB_MARK_SVG}<span class="display brand-word">KNUCKLEBALL</span></div>
+    </div>
+    <div class="nav-team">${teamSelector}<span class="nav-sport">${escHtml(SPORT_NAME[currentSport()] || '')}</span>${renderOfflinePill()}</div>
+    ${renderOutboxBadge()}
+    <div class="nav-items">
+      ${item('home', DOCK_ICONS.home, PLACE.home, v === 'home', "navGo('home')")}
+      ${viewOnlyLinked() ? '' : item('charts', DOCK_ICONS.charts, PLACE.chart, v === 'session', "navGo('charts')")}
+      ${item('history', DOCK_ICONS.history, PLACE.history, history, "navGo('history')")}
+      <div class="nav-subs">${sub(PLACE.sessions, v === 'history', "navGo('history')")}${sub(PLACE.trends, v === 'trends', "navGo('trends')")}</div>
+      ${coach ? item('roster', DOCK_ICONS.roster, PLACE.roster, v === 'roster' || v === 'pitcher' || v === 'pitcherProfile', "navGo('roster')", facNew ? facNew + ' new' : '') : ''}
+      ${(chatEnabled() || mgr) ? `<div class="nav-section">Facility</div>` : ''}
+      ${chatEnabled() ? item('chat', DOCK_ICONS.chat, 'Chat', v === 'chat', "navGo('chat')", chatN ? String(chatN) : '') : ''}
+      ${mgr ? item('coaches', NAV_ICONS.coaches, 'Coaches and groups', v === 'coaches', "navGo('coaches')") : ''}
+    </div>
+    <div class="nav-foot">
+      <a class="nav-item" href="help.html" title="Help and getting started" aria-label="Help and getting started"><span class="nav-ic">${NAV_ICONS.help}</span><span class="nav-lbl">Help and getting started</span></a>
+      <button type="button" class="nav-item nav-me${v === 'profile' ? ' on' : ''}" onclick="navGo('account')" aria-label="${PLACE.account}: ${escHtml(acct.full_name || '')}" title="${PLACE.account}"><span class="nav-ic nav-avatar">${escHtml(initialsOf(acct.full_name))}</span><span class="nav-lbl">${escHtml(acct.full_name || '')}</span><span class="nav-go" aria-hidden="true">▸</span></button>
+    </div>
+  </nav>${state.navOpen ? '<div class="nav-scrim" onclick="toggleNav(false)"></div>' : ''}`;
+}
+// The team switcher for the Roster page and More (phones have no menu to hold it).
+function teamSwitchHtml(){
+  if(!state.teams || state.teams.length < 2) return '';
+  const opt = t => `<option value="${escHtml(t.id)}" ${t.id === state.currentTeamId ? 'selected' : ''}>${escHtml(t.name)}${t.archived ? ' (archived)' : ''}</option>`;
+  return `<label class="team-switch"><span class="roster-label">Team</span><select class="team-select" onchange="onTeamChange(this.value)">${state.teams.map(opt).join('')}</select></label>`;
+}
+window.openPitcherPage = async function(id){
+  state.navOpen = false; state.manage = null; state.manageMove = null;
+  await selectPitcher(id, 'pitcher');
+};
+function renderRosterPage(rosterItems, teamSelector, p){
+  const wide = isWideSession();
+  const list = `<div class="roster-page-list">
+      ${placeHead(PLACE.roster)}
+      ${isPhoneWidth() ? teamSwitchHtml() : ''}
+      <div class="roster-list">${rosterItems || '<p class="profile-note">No pitchers on this team yet.</p>'}</div>
+    </div>`;
+  if(state.view === 'pitcher' && !wide) return p ? renderPitcherPage(p) : list;
+  if(!wide) return list;
+  return `<div class="roster-split">${list}<div class="roster-page-detail">${p ? renderPitcherPage(p) : '<p class="profile-note">Pick a pitcher.</p>'}</div></div>`;
+}
+// The pitcher's page: header, recent sessions, Pitcher settings, Manage.
+function renderPitcherPage(p){
+  const chips = p.pitchTypes.map(t => { const c = colorForType(p, t); return `<span class="pitch-chip" style="background:${c};color:${readableTextOn(c)};">${pitchLabel(t)}</span>`; }).join('');
+  const recent = pendingSessionsForCurrentSelection().concat(state.sessions || []).sort((a, b) => b.date - a.date).slice(0, 5);
+  const row = s => {
+    const st = s.kind === 'game' ? null : penCardStats(s);
+    const n = sessionPitchTotal(s);
+    return `<button type="button" class="more-row" onclick="openSessionInHistory('${s.id}')"><span class="more-row-main">${s.kind === 'game' ? 'Live Game' : 'Bullpen'} · ${escHtml(new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}<span class="more-row-sub">${n} pitch${n === 1 ? '' : 'es'}${st && st.total ? ' · ' + st.accuracyPct + '% accuracy' : ''}${s.pending ? ' · waiting to sync' : ''}</span></span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>`;
+  };
+  return `<div class="pitcher-page">
+    <div class="pitcher-header">${renderPlayerIdent(p, true, chips, '')}</div>
+    <div class="more-card">
+      <div class="more-group-label">Recent sessions</div>
+      ${recent.length ? recent.map(row).join('') : '<p class="profile-note more-empty">No sessions yet.</p>'}
+      ${recent.length ? `<button type="button" class="more-row" onclick="setView('history')"><span class="more-row-main">All sessions</span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>` : ''}
+    </div>
+    ${renderPitcherProfileView()}
+    ${renderManage(p)}
+  </div>`;
+}
+window.openSessionInHistory = function(id){
+  setView('history');
+  setTimeout(() => { const el = document.querySelector('.session-card[data-sid="' + id + '"]'); if(el) el.scrollIntoView({ block: 'start' }); }, 80);
+};
+/* Manage (Joel, Q6): every action the roster rows used to carry, each confirmed. Who may do what is the server's
+   call, as before; rows a viewer can't use aren't drawn. */
+function renderManage(p){
+  if(!isCoach() || currentTeamArchived()) return '';
+  const rows = [];
+  if(currentTeamIsFacility()){
+    const groups = facilityGroups(), mgr = isFacilityManager(), mine = myFacilityGroupIds();
+    const inGroups = (p.groups || []).map(x => ({ ...x, g: groups.find(g => g.id === x.id) })).filter(x => x.g);
+    inGroups.forEach(x => {
+      if(!(mgr || mine.includes(x.id))) return;
+      if(x.isNew) rows.push(`<button type="button" class="more-row" onclick="facAct('clear', '${x.id}', '${p.id}')"><span class="more-row-main">Clear "New"<span class="more-row-sub">${escHtml(x.g.coachName)}'s group</span></span></button>`);
+      rows.push(`<button type="button" class="more-row" onclick="openManageSheet('group', '${p.id}', '${x.id}')"><span class="more-row-main more-danger">${mine.includes(x.id) ? 'Remove from my group' : `Remove from ${escHtml(x.g.coachName)}'s group`}</span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>`);
+    });
+    if(mgr){
+      const others = groups.filter(g => !(p.groups || []).some(y => y.id === g.id));
+      const from = inGroups.length === 1 ? inGroups[0].id : '';
+      if(others.length){
+        const m = state.manageMove && state.manageMove.pitcherId === p.id ? state.manageMove : null;
+        const verb = from ? 'Move to coach' : 'Add to coach';
+        rows.push(`<div class="more-row manage-move"><label class="more-row-main"><span>${verb}</span>
+          <select class="team-select" onchange="setManageMove('${p.id}', '${from}', this.value)"><option value="">Choose a coach…</option>${others.map(g => `<option value="${g.id}" ${m && m.to === g.id ? 'selected' : ''}>${escHtml(g.coachName)}</option>`).join('')}</select></label>
+          <button type="button" class="btn btn-primary btn-sm" ${m && m.to ? '' : 'disabled'} onclick="facAct('${from ? 'move' : 'add'}', '${from}', '${p.id}', (state.manageMove || {}).to)">Confirm</button></div>`);
+      }
+      rows.push(`<button type="button" class="more-row" onclick="openManageSheet('facility', '${p.id}')"><span class="more-row-main more-danger">Remove from facility</span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>`);
+    }
+    if(state.facError) rows.push(`<p class="report-status report-status-error">${escHtml(state.facError)}</p>`);
+  } else if(isHeadOfCurrentTeam()){
+    rows.push(`<button type="button" class="more-row" onclick="openManageSheet('team', '${p.id}')"><span class="more-row-main more-danger">Remove from this team</span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>`);
+  }
+  if(!rows.length) return '';
+  return `<div class="more-card manage-card"><div class="more-group-label">Manage</div>${rows.join('')}</div>`;
+}
+window.setManageMove = function(pitcherId, from, to){ state.manageMove = { pitcherId, from, to }; render(); };
+window.openManageSheet = function(kind, pitcherId, groupId){ state.manage = { kind, pitcherId, groupId: groupId || null, busy: false }; state.facError = ''; render(); };
+window.closeManageSheet = function(){ state.manage = null; render(); };
+window.confirmManage = async function(){
+  const m = state.manage; if(!m || m.busy) return;
+  m.busy = true; render();
+  if(m.kind === 'group'){
+    await facAct('remove', m.groupId, m.pitcherId);
+    if(!state.facError) state.manage = null;
+    else m.busy = false;
+    render();
+    return;
+  }
+  await confirmRemoveRosterPitcher(m.pitcherId);   // the removal email, then the membership (facility or team), as before
+  const gone = !(state.roster || []).some(r => r.id === m.pitcherId);
+  state.manage = null;
+  if(gone && (state.view === 'pitcher' || state.view === 'pitcherProfile')) state.view = 'roster';
+  render();
+};
+function renderManageSheet(){
+  const m = state.manage; if(!m) return '';
+  const p = (state.roster || []).find(r => r.id === m.pitcherId); if(!p) return '';
+  const name = escHtml(p.name), first = escHtml(String(p.name || '').split(' ')[0]);
+  let title, text, keep, go;
+  if(m.kind === 'group'){
+    const g = facilityGroups().find(x => x.id === m.groupId), coach = g ? escHtml(g.coachName) : 'this coach';
+    const last = (p.groups || []).length <= 1;
+    const mine = myFacilityGroupIds().includes(m.groupId);
+    title = `Remove ${name}?`;
+    text = `Removes ${name} from ${mine ? 'your' : coach + "'s"} group.${last ? ` ${first} stays at the facility under No coach yet.` : ''}`;
+    keep = 'Keep in group'; go = 'Remove from group';
+  } else {
+    const fac = m.kind === 'facility';
+    title = `Remove ${name}?`;
+    text = `Removes ${first} from this ${fac ? 'facility' : "team's roster"} and emails them to let them know. Their sessions and stats aren't deleted, only this ${fac ? 'facility' : 'team'}'s view of them.`;
+    keep = 'Keep on roster'; go = fac ? 'Remove from facility' : 'Remove from team';
+  }
+  return `<div class="modal-overlay sheet-overlay signout-overlay" onclick="if(event.target===this) closeManageSheet();">
+    <div class="sess-sheet signout-sheet" role="dialog" aria-label="${title}">
+      <div class="sess-sheet-title display">${title}</div>
+      <p class="signout-text">${text}</p>
+      ${state.facError ? `<p class="report-status report-status-error">${escHtml(state.facError)}</p>` : ''}
+      <button type="button" class="btn btn-secondary" onclick="closeManageSheet()">${keep}</button>
+      <button type="button" class="btn btn-danger" ${m.busy ? 'disabled' : ''} onclick="confirmManage()">${m.busy ? 'Removing…' : go}</button>
+    </div>
+  </div>`;
+}
+/* The pitcher chip (Joel, Q4): on Chart, Sessions and Trends, for a coach (the roster) or a parent with more than one
+   player (their profiles). Picking keeps the view you're on. */
+function chipChoices(){
+  if(isCoach()) return (state.roster || []).map(r => ({ id: r.id, name: r.name, who: r, coach: true }));
+  const list = (state.myProfiles || []).filter(x => !isAccountOnlyProfile(x));
+  return list.length > 1 ? list.map(x => ({ id: x.id, name: x.full_name, who: { id: x.id, name: x.full_name }, coach: false })) : [];
+}
+function renderPitcherChip(p){
+  if(!p || chipChoices().length < (isCoach() ? 1 : 2)) return '';
+  return `<div class="pitcher-chip-row"><button type="button" class="pitcher-chip" onclick="openPickSheet()" aria-label="Pitcher: ${escHtml(p.name)}. Switch pitcher">${renderHeadshot(p)}<span class="pitcher-chip-name">${escHtml(p.name)}</span><span class="pitcher-chip-caret" aria-hidden="true">▾</span></button></div>`;
+}
+window.openPickSheet = function(){ state.pickSheet = true; render(); };
+window.closePickSheet = function(){ state.pickSheet = false; render(); };
+window.pickPitcher = async function(id, coach){
+  state.pickSheet = false;
+  if(!coach){ return switchProfile(id); }
+  if(id === state.currentPitcherId){ render(); return; }
+  state.currentPitcherId = id;
+  state.historyLandingNoClear = null;
+  await loadSessionsForCurrentSelection(true);
+  await refreshDraftState();
+  await saveLastKnownContext();
+  render();
+};
+function renderPickSheet(){
+  if(!state.pickSheet) return '';
+  const list = chipChoices();
+  return `<div class="modal-overlay sheet-overlay signout-overlay" onclick="if(event.target===this) closePickSheet();">
+    <div class="sess-sheet" role="dialog" aria-label="Switch pitcher">
+      <div class="sess-sheet-title">Switch pitcher</div>
+      ${list.map(c => `<button type="button" class="btn btn-secondary switch-pick${c.id === state.currentPitcherId || (state.profile && c.id === state.profile.id && !c.coach) ? ' is-on' : ''}" onclick="pickPitcher('${c.id}', ${c.coach})">${renderHeadshot(c.who)}<span>${escHtml(c.name)}</span></button>`).join('')}
+      <button type="button" class="btn btn-secondary" onclick="closePickSheet()">Close</button>
+    </div>
+  </div>`;
+}
+/* Coaches and groups (facility manager; Joel, Q5): the side's coaches with their group sizes and join codes. */
+function renderCoachesPage(){
+  if(!isFacilityManager()) return `<p class="profile-note">Only the facility's manager sees this page.</p>`;
+  const groups = facilityGroups(), codes = groupCodes();
+  const count = id => (state.roster || []).filter(p => (p.groups || []).some(y => y.id === id)).length;
+  const loose = (state.roster || []).filter(p => !(p.groups || []).length).length;
+  return `<div class="more-page">
+    ${placeHead('Coaches and groups')}
+    <div class="more-card">
+      <div class="more-group-label">${escHtml(SPORT_NAME[currentSport()] || '')} side</div>
+      ${groups.map(g => { const c = codes.find(x => x.group_id === g.id); return `<div class="more-row"><span class="more-row-main">${escHtml(g.coachName)}${myFacilityGroupIds().includes(g.id) ? ' (you)' : ''}<span class="more-row-sub">${count(g.id)} pitcher${count(g.id) === 1 ? '' : 's'}</span></span><span class="more-row-right">${c ? `<button type="button" class="btn btn-secondary btn-sm" onclick="showJoinCode('${g.id}')">Show code</button>` : ''}</span></div>`; }).join('')}
+      <div class="more-row"><span class="more-row-main">No coach yet<span class="more-row-sub">${loose} pitcher${loose === 1 ? '' : 's'}</span></span></div>
+    </div>
+    ${codes.length ? `<div class="profile-row"><button type="button" class="btn btn-primary" onclick="printJoinCodes('all')">Print all codes</button></div>` : '<p class="profile-note">Join codes show once they have loaded (online).</p>'}
+  </div>`;
+}
+/* Account on iPads and computers (no More there): the profile switcher, Help and Sign out sit on Account. */
+function renderAccountExtras(){
+  const all = state.myProfiles && state.myProfiles.length ? state.myProfiles : [state.profile];
+  const list = all.filter(x => !isAccountOnlyProfile(x));
+  const rows = list.length > 1 ? list.map(x => x.id === state.profile.id
+      ? `<div class="more-row more-row-on"><span class="more-row-main">${escHtml(x.full_name)} ${profileChip(x)}</span><span class="more-row-right"><span class="acct-check" aria-label="Active">✓</span></span></div>`
+      : moreRow(`${escHtml(x.full_name)} ${profileChip(x)}`, `switchProfile('${x.id}')`)).join('') : '';
+  const adds = sportsToAdd().map(sp => `<button type="button" class="more-row" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')"><span class="more-row-main">+ Add ${sp}</span></button>`).join('')
+    + (canAddPlayer() ? moreRow('Add a player', 'openAddPlayer()') : '');
+  return `<div class="more-card acct-extras">
+      ${rows || adds ? `<div class="more-group-label">Profiles</div>${rows}${adds}` : ''}
+      ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
+      ${moreRow('<span class="more-signout">Sign out</span>', 'askSignOut()')}
+    </div>`;
 }
 /* ---------- F1-C1: CHAT (Oct 29 2026, plans/f1-training-facilities.md; decisions in plans/f1c1-preconditions.md) ----------
    Only inside a training facility. Two kinds of thread: the facility's (the manager posts to everyone there) and a
@@ -14889,25 +15168,18 @@ function render(){
     ? `<div class="team-select-wrap"><span class="roster-label">Team</span><select class="team-select" onchange="onTeamChange(this.value)">${teamOptions}</select></div>`
     : `<div class="team-select-wrap"><span class="roster-label">Team</span><div style="font-size:14px;font-weight:600;">${escHtml(state.teams[0].name)}${state.teams[0].archived ? ' <span class="throws-tag">ARCHIVED</span>' : ''}</div></div>`;
 
-  let sidebarBody;
-  let phoneFooter = '';   // phones only: the coach's invite link + sign out, rendered below the page content
+  // N1 Stage B (Joel, Nov 17 2026; plans/n1b-preconditions.md): the roster is a page (renderRosterPage) and its rows
+  // carry no actions -- Clear, Move and Remove live in Manage on the pitcher's page, with confirmations. The left
+  // column is the menu (renderSideNav) on iPads and computers; phones get a plain header. Neither is drawn while
+  // charting (decision 8).
+  let rosterItems = '';
   if(isCoach()){
-    // R6: removing a pitcher is head-only now -- the ✕ itself is gone for
-    // an assistant (the server would refuse it anyway; see is_team_head),
-    // never just disabled, so there's nothing there to explain.
-    const canRemovePitcher = isHeadOfCurrentTeam() && !currentTeamArchived();   // P1-09: read-only
-    const removeConfirm = p => `
-          <div class="invite-regen-warn" style="padding:0 var(--s-4) var(--s-8);">Removes ${escHtml(p.name)} from this ${currentTeamIsFacility() ? 'facility' : "team's roster"} and emails them to let them know. Their sessions and stats aren't deleted -- only this ${currentTeamIsFacility() ? 'facility' : "team"}'s view of them.</div>
-          <div class="invite-regen-confirm-row" style="padding:0 var(--s-4) var(--s-8);">
-            <button class="btn btn-danger" ${state.removeBusy ? 'disabled' : ''} onclick="confirmRemoveRosterPitcher('${p.id}')">${state.removeBusy ? 'Removing…' : 'Remove now'}</button>
-            <button class="btn btn-secondary" ${state.removeBusy ? 'disabled' : ''} onclick="cancelRemoveRosterPitcher()">Cancel</button>
-          </div>`;
-    // One roster row. x (F1-A, facility sides): tags after the name, the button on the right, and the panel under it.
+    // One roster row. x (F1-A, facility sides): tags after the name.
     const rosterRow = (p, x) => `
       <div class="roster-item-wrap">
         <div class="roster-item${p.id===state.currentPitcherId?' active':''}" style="display:flex;">
           ${hasRosterDot(p.id) ? '<span class="roster-dot" aria-label="New session"></span>' : ''}
-          <button type="button" class="roster-name-btn" onclick="selectPitcher('${p.id}')">
+          <button type="button" class="roster-name-btn" onclick="openPitcherPage('${p.id}')">
             <div class="roster-item-main">
               <span class="roster-item-name">${escHtml(p.name)}${p.throws ? `<span class="throws-tag">${p.throws}HP</span>` : ''}</span>${p.closingOn ? `<span class="closing-tag">Account closing ${escHtml(new Date(p.closingOn).toLocaleDateString(undefined, { month:'short', day:'numeric' }))}</span>` : ''}
               <span class="roster-item-types">${p.pitchTypes.map(pitchLabel).join(' · ') || 'No pitches set yet'}</span>${workloadRosterLine(p.id)}
@@ -14915,72 +15187,34 @@ function render(){
             </div>
             <span class="roster-item-num">${p.uniformNumber === null ? '—' : p.uniformNumber}</span>
           </button>
-          ${x ? x.right : (canRemovePitcher ? `<button class="btn btn-icon btn-danger btn-sm roster-item-remove" title="Remove ${escHtml(p.name)} from this team" onclick="event.stopPropagation();armRemoveRosterPitcher('${p.id}')">✕</button>` : '')}
         </div>
-        ${x ? x.panel : ((canRemovePitcher && state.removeArmedPitcherId === p.id) ? removeConfirm(p) : '')}
       </div>`;
-    const rosterItems = currentTeamIsFacility() ? renderFacilityRoster(rosterRow, removeConfirm) : state.roster.map(p => rosterRow(p, null)).join('');
-
-    // R6: the pitcher invite link (and the new coach invite link) moved
-    // off the main page entirely, into the coach Profile tab's admin
-    // section (renderCoachTeamAdmin) -- head-only there too. Nothing
-    // replaces this panel here.
-    // Collapsing roster: once a pitcher is picked, the list rolls up and the Roster
-    // button itself shows who's selected, so a coach always sees who he's charting
-    // without the list taking up space. Pure UI state (state.rosterCollapsed) --
-    // no network call, and selectPitcher's own behavior is unchanged.
-    const canCollapse = rosterCanCollapse();
-    const collapsed = canCollapse && state.rosterCollapsed;
-    const selectedForLabel = state.roster.find(x => x.id === state.currentPitcherId);
-    const dottedCount = state.roster.filter(x => hasRosterDot(x.id)).length;   // U10 (3)
-    const rosterLabel = collapsed && selectedForLabel ? `Roster · ${escHtml(selectedForLabel.name)}` : 'Roster';
-    const facNew = facilityNewCount();   // F1-A: the manager's dot for new joins
-    sidebarBody = `
-      <div class="team-line">${teamSelector}${isPhoneWidth() ? `<div class="acct-side">${renderAccountButton()}</div>` : ''}</div>
-      ${canCollapse ? `<button class="btn btn-secondary roster-toggle-btn" onclick="toggleRosterCollapsed()" aria-expanded="${collapsed ? 'false' : 'true'}">
-        <span style="display:flex;align-items:center;min-width:0;"><span class="roster-label" style="margin:0;">${rosterLabel}</span>${collapsed && dottedCount ? `<span class="roster-dot-count" aria-label="${dottedCount} with new sessions">${dottedCount}</span>` : ''}${facNew ? `<span class="fac-new-count" aria-label="${facNew} new">${facNew} new</span>` : ''}</span>
-        <span class="roster-chevron${collapsed ? '' : ' open'}">▾</span>
-      </button>` : `<div class="roster-label" style="margin:0;">Roster${facNew ? ` <span class="fac-new-count" aria-label="${facNew} new">${facNew} new</span>` : ''}</div>`}
-      <div class="roster-collapse${collapsed ? ' collapsed' : ''}">
-        <div class="roster-list">${rosterItems || '<p style="color:var(--ink-faint);font-size:12px;">No pitchers on this team yet.</p>'}</div>
-      </div>`;
-  } else {
-    sidebarBody = `
-      <div class="sb-who"><div class="sb-who-text">
-      ${teamSelector}
-      <div class="roster-label">Signed in as</div>
-      <div style="font-size:14px;font-weight:600;">${escHtml(state.profile.full_name)}</div></div>
-      ${isPhoneWidth() ? `<div class="acct-side">${renderAccountButton()}</div>` : ''}</div>`;
+    rosterItems = currentTeamIsFacility() ? renderFacilityRoster(rosterRow) : state.roster.map(p => rosterRow(p, null)).join('');
   }
-
-  const sidebar = `
-    <div class="sidebar">
-      <div class="brand-block">
-        <div class="brand brand-lockup brand-home" role="link" tabindex="0" aria-label="Home" onclick="goHome()" onkeydown="if(event.key==='Enter'){goHome();}">${KB_MARK_SVG}<h1 class="display brand-word">KNUCKLEBALL</h1></div>
-        <span class="tagline">Always a Step Ahead</span>
-        <span class="role-badge slant-tag">${isCoach() ? 'Coach' : 'Pitcher'}</span>
-        ${renderOfflinePill()}
-      </div>
-      ${sidebarBody}
-      ${renderOutboxBadge()}
-      <button class="btn btn-secondary sign-out-btn hide-phone" onclick="askSignOut()">Sign out</button>
-    </div>`;
+  const phoneHead = `<header class="ph-head">
+      <div class="brand-home ph-wordmark" role="link" tabindex="0" aria-label="Home" onclick="goHome()" onkeydown="if(event.key==='Enter'){goHome();}"><span class="brand-word">KNUCKLEBALL</span></div>
+      <div class="ph-head-right">${renderOfflinePill()}${renderAccountButton()}</div>
+    </header>${renderOutboxBadge()}`;
 
   const p = currentPitcher();
   const phoneSession = phoneSessionMode(p);   // G1b-r5
-  state.tabsOff = dockDevice();   // read by renderTabs / the History and Trends trays
+  state.tabsOff = true;   // N1-B: no tab row on any size (the bar on phones, the menu elsewhere); renderTabs keeps the archived banner
   let main;
   if(phoneSession){
     main = renderSessionHeader(p) + renderSessionView();
   } else if(!p && state.view === 'more'){
     main = renderMoreView();   // N1-A
+  } else if(!p && (state.view === 'roster' || state.view === 'pitcher')){
+    main = renderRosterPage(rosterItems, teamSelector, null);   // N1-B: an empty roster still has its page
+  } else if(!p && state.view === 'coaches'){
+    main = renderCoachesPage();
   } else if(!p && state.view === 'chat'){
-    main = `${isPhoneWidth() ? '' : `<div class="acct-row">${renderAccountButton()}</div>`}${renderTabs()}${renderChatView()}`;   // F1-C1
+    main = `${renderTabs()}${renderChatView()}`;   // F1-C1
   } else if(!p){
     // U9: 'pitcherProfile' with no pitcher selected has its own message
     // ("Select a pitcher to see his profile," not this generic one) --
     // renderPitcherProfileView() already handles p === null itself.
-    main = (isPhoneWidth() ? '' : `<div class="acct-row">${renderAccountButton()}</div>`) + renderAddSportBanner() + (state.view === 'home' ? '' : renderTabs()) + (state.view === 'home'
+    main = renderAddSportBanner() + (state.view === 'home' ? '' : renderTabs()) + (state.view === 'home'
       ? renderHomeTiles()
       : state.view === 'profile'
       ? renderProfileView()
@@ -15045,7 +15279,6 @@ function render(){
     // Joel, Oct 7 (G5): on iPad and laptop the account button joins the pitcher header's row, so the
     // name, photo and pitch types sit level with the Knuckleball logo and the chart / diamond get the
     // height its own row took. Phones keep the separate row.
-    const acctInHeader = !isPhoneWidth() && state.view !== 'profile' && state.view !== 'leaderboard' && state.view !== 'more' && state.view !== 'chat';   // N1-A: those views have no pitcher header
     const headerHtml = `
       <div class="pitcher-header">
         ${isCoach() ? `<div class="ident-link" role="link" tabindex="0" title="${PLACE.pitcherSettings}" onclick="if(!event.target.closest('.gear-btn')) coachNameTap()" onkeydown="if(event.key==='Enter' && !event.target.closest('.gear-btn')){coachNameTap();}">${renderPlayerIdent(p, true, arsenalChips, profileGearBtn())}</div>` : renderPlayerIdent(p, true, arsenalChips, profileGearBtn())}
@@ -15054,21 +15287,26 @@ function render(){
             ? ''   // Nov 5: the gear beside the name replaces the Profile button
             : activeLinked() ? ''   // F1-G: report contacts are the creating parent's
             : `<button class="btn btn-secondary" onclick="toggleContactsPanel()">${state.contactsOpen ? 'Hide' : ''} Contacts</button>`}
-          ${acctInHeader ? `<div class="acct-row acct-inline">${renderAccountButton()}</div>` : ''}
         </div>
       </div>
       ${contactsPanel}`;
 
+    // N1-B: Chart (before charting starts), Sessions and Trends show the pitcher chip in place of the big header,
+    // for anyone with more than one pitcher to pick from.
+    const chipViews = (state.view === 'session' && !onChartingScreen()) || state.view === 'history' || state.view === 'trends';
     main = `
-      ${(acctInHeader || isPhoneWidth()) ? (renderHeaderBack() ? `<div class="acct-row kb-back-row">${renderHeaderBack()}</div>` : '') : `<div class="acct-row">${renderHeaderBack()}${renderAccountButton()}</div>`}
+      ${renderHeaderBack() ? `<div class="acct-row kb-back-row">${renderHeaderBack()}</div>` : ''}
       ${renderAddSportBanner()}
       ${renderUpdateBar()}${renderInstallBanner()}
       ${verifyBanner}
       ${guardianBanner}
       ${setupReminderBanner}
-      ${(state.view === 'profile' || state.view === 'leaderboard' || state.view === 'chat' || state.view === 'more') ? '' : headerHtml}
+      ${['profile', 'leaderboard', 'chat', 'more', 'roster', 'pitcher', 'coaches'].includes(state.view) ? ''
+        : (chipViews && renderPitcherChip(p)) || headerHtml}
       ${(state.view === 'home' || state.view === 'more') ? '' : tabs}
       ${state.view === 'more' ? renderMoreView()
+        : (state.view === 'roster' || state.view === 'pitcher') ? renderRosterPage(rosterItems, teamSelector, p)
+        : state.view === 'coaches' ? renderCoachesPage()
         : state.view === 'home' ? renderHomeTiles()
         : state.view === 'session' ? renderSessionView()
         : state.view === 'profile' ? renderProfileView()
@@ -15087,13 +15325,13 @@ function render(){
   // tab while this one still has the modal flagged on).
   const setupModalHtml = (state.showSetupModal && (isCoach() ? isHeadOfCurrentTeam() : !state.draftAvailable)) ? renderSetupModal() : '';
 
-  // Nov 5 (Joel): a coach's open roster list on a phone or iPad (where it rolls up) stands alone -- nothing below it,
-  // not the pitcher, the page, the footer or Sign out -- until a pitcher is picked or another button is tapped.
-  const rosterOnly = isCoach() && !phoneSession && rosterCanCollapse() && !state.rosterCollapsed;
-  if(rosterOnly){ main = ''; phoneFooter = ''; }
-  const policyFoot = (phoneSession || rosterOnly) ? '' : `<div class="policy-foot">Knuckleball LLC 2026 &middot; <a href="${policyHref('privacy.html')}">Privacy</a> &middot; <a href="${policyHref('terms.html')}">Terms</a></div>`;   // P1-10
+  const policyFoot = phoneSession ? '' : `<div class="policy-foot">Knuckleball LLC 2026 &middot; <a href="${policyHref('privacy.html')}">Privacy</a> &middot; <a href="${policyHref('terms.html')}">Terms</a></div>`;   // P1-10
   const dockOn = coachDockShown(phoneSession);
-  app.innerHTML = (phoneSession ? '' : sidebar) + `<div class="main${phoneSession ? ' ph-main' : ''}">${main}${policyFoot}</div>` + (phoneSession ? '' : phoneFooter) + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + renderSignOutSheet() + (dockOn ? renderCoachDock() : '');
+  // N1-B: the menu on iPads and computers, the plain header on phones; neither on the charting screen (decision 8)
+  const wideNav = !isPhoneWidth() && !onChartingScreen();
+  const phoneTop = isPhoneWidth() && !phoneSession && !onChartingScreen();
+  if(app.classList){ app.classList.toggle('has-nav', wideNav); app.classList.toggle('nav-open', wideNav && !!state.navOpen); }
+  app.innerHTML = (wideNav ? renderSideNav(teamSelector) : '') + `<div class="main${phoneSession ? ' ph-main' : ''}">${phoneTop ? phoneHead : ''}${main}${policyFoot}</div>` + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + renderSignOutSheet() + renderPickSheet() + renderManageSheet() + (dockOn ? renderCoachDock() : '');
   if(app.classList) app.classList.toggle('has-dock', dockOn);
   if(dockOn) attachCoachDock();
   placeTrayIndicators();   // U13

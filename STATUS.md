@@ -60,6 +60,52 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-17 · N1 Stage B (menu, roster page, Manage, No coach yet) · **staging** (DB + app), branch `n1b-sidebar-roster`, cache `kb-shell-v344`
+
+- **Packet:** `plans/n1-navigation-and-home.md` Stage B. Preconditions `plans/n1b-preconditions.md`: Joel, "yes to all"
+  (Q1-Q8, the migration, the policy sentences). Evidence `plans/n1b-evidence.md`.
+- **Database (staging only so far):**
+  - migration `20261117000000_n1b_remove_from_group`: removing a pitcher's last coach group keeps them on the facility,
+    under No coach yet;
+  - rollback `supabase/rollback/20261117000000_n1b_remove_from_group_down.sql`;
+  - new test `supabase/tests/n1b_remove_from_group.sql` (0 fails); `f1a_acceptance` and `f1c1_chat_acceptance` pass,
+    with their notes updated;
+  - no RLS change; 32 policies.
+- **Built:**
+  - iPads and computers: a menu down the left (72px icon rail from 501 to 860px). No bar and no tab row there.
+  - Phones: a plain header (wordmark, Chat, avatar) instead of the old sidebar block.
+  - No menu or header while charting.
+  - The roster is a page; a row opens the pitcher's page (recent sessions, Pitcher settings, Manage, with
+    confirmations).
+  - The pitcher chip on Chart, Sessions and Trends.
+  - Coaches and groups (manager).
+  - Account: Delete my account in its own Danger group; on iPads and computers Account also has the profile switcher
+    and Sign out.
+  - Switching team keeps the view.
+  - Policy sentences: "Profile → Your data" becomes "Account" in `privacy.html` (3 places), `terms.html`,
+    `delete-account.html` and the in-app terms notice, plus Help's #data step. Joel approved this as a quiet update:
+    `TERMS_VERSION` and the Version line are unchanged.
+- **Deviations:**
+  - The remove sheet uses they / them (the picture says him / his).
+  - The menu keeps The spot mark beside the wordmark.
+  - Home stays the four squares until Stage C.
+- **Production, Joel, in this order:**
+  1. a backup (BACKUPS.md);
+  2. `supabase db push --project-ref fkgccjhuimkkbupbanxp --dry-run`, which should list only
+     `20261117000000_n1b_remove_from_group`;
+  3. `supabase db push --project-ref fkgccjhuimkkbupbanxp`;
+  4. merge the PR.
+
+  v343 keeps working before or after the migration. After production, regenerate `supabase/schema/schema.sql`.
+- **Open:**
+  - Joel's iPhone / iPad checks after merge: the rail on an iPad held upright, and the menu when it's turned sideways.
+  - App Store review notes: the delete path is now "Account → Delete my account (at the bottom)", to update when
+    submitting.
+- **Staging test data:**
+  - one 3-pitch bullpen for Andre Boateng (Nov 17);
+  - `feed-pitcher-1793899731@example.com` has the throwaway password, and was joined to and removed from the demo
+    facility (one removal email to that example.com address).
+
 ## 2026-11-16 · N1 Stage A (names and the phone menu) · **production** (v343 live Nov 17), branch `n1a-names-phone-menu`, PR #87 merged (`7ec3dbd`), cache `kb-shell-v343`
 
 - **Packet:** `plans/n1-navigation-and-home.md` Stage A. Preconditions `plans/n1a-preconditions.md`; Joel took every

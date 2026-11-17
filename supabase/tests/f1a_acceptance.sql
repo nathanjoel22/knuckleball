@@ -170,6 +170,8 @@ begin
   reset role;
 
   -- ---------- group actions ----------
+  -- N1 Stage B (J3, Nov 17 2026): removing the last group keeps the pitcher on the side (expect left side false,
+  -- P03 on side 1, departure logged 0); F1-A's original expected left side true, on side 0, departure 1.
   out := out || ' | groups:';
   perform set_config('request.jwt.claims', json_build_object('sub', CA, 'role', 'authenticated')::text, true); set local role authenticated;
   r := public.add_to_group(gB, P[2]);                   out := out || ' CA add to B:' || coalesce(r ->> 'error', 'ok');

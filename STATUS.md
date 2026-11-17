@@ -85,7 +85,6 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
     `delete-account.html` and the in-app terms notice say "Profile → Your data". The page is now Account, opened from
     More. Proposed: "More → Account → Your data" (Stage B moves Delete my account again, so this may be done once, in
     Stage B, instead).
-  - View-only family wasn't tested end to end (no family login on staging).
   - Store-app checks (Help opens in the app; the Chat icon) on Joel's iPhone after merge.
   - App Store screenshots and the review-note paths get redone once N1 is on production (submission held, Joel
     Nov 16).
@@ -93,7 +92,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Staging test data:**
   - two 3-pitch bullpens for Andre Boateng (DS1, Nov 17 UTC);
   - a throwaway password on `feed-coach-1793899731`, `u15-parent-03123297` and `u15-sbcoach-03123297`
-    `@example.com`.
+    `@example.com`;
+  - the view-only family login `n1a-family-1794886284@example.com` (follows "U15 Kid").
 
 ## 2026-11-13 · no packet (W1 App Store: no placeholders in the app; privacy host line) · **production on merge**, branch `w1-native-placeholders`
 - **Asked by:** Joel ("yes, start both"; privacy wording "I approve", Nov 13). Operator `Nathan <joelhauserman@gmail.com>`.

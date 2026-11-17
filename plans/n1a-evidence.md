@@ -22,6 +22,7 @@ that showed a real email address were left out.
 | Pitching coach (facility) | 440 | Home · Chart · History · Roster · More | yes |
 | Pitcher (facility) | 440 | Home · Chart · History · More | yes |
 | Parent (no facility) | 440 | Home · Chart · History · More | no |
+| View-only family | 390 | Home · History · More | no |
 | Assistant, normal team | 440 | Home · Chart · History · Roster · More | no |
 | Facility manager | 820 iPad | Home · Chart · History · Roster · More | yes (once `chat_summary` loads, as before) |
 | Facility manager | 1180 iPad | Home · Chart · History · Roster · More | yes |
@@ -30,10 +31,15 @@ that showed a real email address were left out.
 Softball: `u15-sbcoach` and the manager's softball side. The bar, chooser, More and Sign out sheet all use the softball
 tokens (`e-390-*-softball.png`), with no baseball color left.
 
-**View-only family: not run.** Staging has no family login left; the F1-G ones were removed on Nov 1. Making one means a
-new parent login and a player link, which sends a verification email. The code path: `dockKeys()` returns home,
-history, more for `viewOnlyLinked()`, and More draws no Team rows for that role (`canAddPlayer()` false for a linked
-login). Joel to check on a real family link, or I make a staging one if he OKs one test email.
+**View-only family** (Joel OK'd one verification email, Nov 16):
+1. As the parent, `create_player_link(player, 'family')` for "U15 Kid".
+2. Then `player-link.html?t=…` in a signed-out browser: Create account and follow, as `n1a-family-1794886284@example.com`, "N1A Family Test".
+   This is the one verification email.
+3. Result: bar **Home · History · More**, no Chat icon. `setView('session')` lands on History.
+4. More: the account row (Parent), Add a player (the login is an adult parent account, as the old menu offered), Help
+   rows, Sign out (`e-390-more-family.png`).
+5. Account shows the two headed groups, its Back goes to More, and More stays lit. No view's end is under the bar
+   (home, history, trends, more, account).
 
 **2. Offline.**
 1. One online load, then the service worker took over (`kb-shell-v343` the only cache).
@@ -133,3 +139,4 @@ the bar starts at 850; on the iPad they end by 1058px and the bar starts at 1088
 - Two 3-pitch bullpens for Andre Boateng (DS1 demo, Nov 17 03:13 and 03:15 UTC), charted by the manager.
 - The throwaway staging password on `feed-coach-1793899731`, `u15-parent-03123297` and `u15-sbcoach-03123297`
   `@example.com`.
+- The family login `n1a-family-1794886284@example.com`, following "U15 Kid".

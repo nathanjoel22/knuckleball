@@ -14,7 +14,8 @@ text layouts in section 3 show structure only; the pictures are the approved loo
 
 Seven stages, A to G. **Each stage is its own branch, its own preconditions report, its own PR and its own cache
 bump, and reaches staging before Joel ships it. A stage starts only after the one before it is on production.**
-Stages A to F are front end only. Stage G is the only one with a database change.
+Stages A to F are front end only, except one database function changed in Stage B (J3). Stage G is the only one
+with new tables or columns.
 
 Code facts below were read at `6d6c959` (v342). Line numbers are for finding the place, not a promise; each
 preconditions report confirms them.
@@ -77,17 +78,22 @@ report restates the ones it touches so he confirms them in writing before code:*
     Animations respect `prefers-reduced-motion`.
 13. Every plot stays in the pitcher's view (Amendment 16).
 
-**Two answers N1 needs from Joel. Neither blocks the stages before it:**
+**Joel's answers (Nov 16, 2026):**
 
-- **J1, before Stage C's note card is finished: how does a coach write the note that shows on Home?** Since Nov 5
-  there is no way to write a session note ("No new coaches' notes", CLAUDE.md), and facility teams never had notes
-  (`is_coach_of_session` refuses; `renderSessionNotes` returns nothing for a facility). Proposed: one optional line,
-  "Note to the pitcher", on the Stage E recap screen. On a normal team the insert rule on `session_notes` already
-  allows it. On a facility team it needs a server change, which is Joel's call. Until he answers, Home shows only
-  notes that already exist.
-- **J2, before Stage F's Share button: who may share a pitcher card?** A shared card puts a minor's name and
-  numbers outside the app. Proposed: an adult pitcher shares their own; for a player under 18 only the parent or
-  guardian on the account; a coach never. The card itself is built either way; only Share waits.
+- **J1, the coach's note: Jordan's proposal.** One optional line, "Note to the pitcher", on the Stage E recap,
+  saved to `session_notes`. On a normal team the insert rule on `session_notes` already allows it. On a facility team
+  it needs a server change (`is_coach_of_session` refuses facility teams): still Joel's call, asked in Stage E's
+  preconditions; until he says yes, the line isn't drawn for facility sessions. Home's note card (Stage C) shows the
+  newest note. This reverses "No new coaches' notes" (History is a feed, Nov 5); Stage E updates CLAUDE.md.
+- **J2, who may share a pitcher card: option A.** An adult pitcher shares their own card. For a player under 18, only
+  the parent or guardian on the account: the parent login the player sits on, or a linked `guardian` (F1-G). A teen
+  who signed up with their own login has no parent login in the app, so no one gets Share for them. A coach never
+  does. Anyone can still take a screenshot; this is only about the Share button.
+- **J3, removing a pitcher from a facility coach: they stay on the facility.** A player can exist without a coach.
+  Removing a pitcher from their only coach group leaves them on the facility under the roster's existing **"No coach
+  yet"**, for the manager to give a new coach or remove from the facility on purpose. No email for that (they are
+  still on the facility). **Removing from the facility sends the removal email**, as it does today. This changes
+  `remove_from_group` (Stage B).
 
 ## 3. The work
 
@@ -181,7 +187,7 @@ whose last control sits under it (Home's lower tiles do today, until scrolled).
 **CLAUDE.md.** In the same PR, replace the "Navigation (Joel, Nov 5 2026 ...)" paragraph with the rules as built,
 and mark the two paragraphs above it (Coach dock, Trends) as history. Stage B does the same for what it changes.
 
-### Stage B · Sidebar and roster (size L, front end only)
+### Stage B · Sidebar and roster (size L, front end + one database function, J3)
 
 Pictures: `b-sidebar-ipad.png`, `b-remove-sheet.png`. Not drawn: the icon rail, the roster page, the pitcher's
 page and Manage; sketch them in preconditions in the same style.
@@ -241,16 +247,18 @@ current view. Switching team keeps the current view. Report in preconditions whe
 |---|---|---|---|
 | Clear "New" | manager, own coach | button under the row | on the page; no question needed |
 | Move to coach / Add to coach | manager | a select that fires on change | pick the coach, then **Confirm** |
-| Remove from this coach / my group | manager, own coach | **no question, no email** | a sheet, see below |
+| Remove from this coach / my group | manager, own coach | **no question, no email** | a sheet, see below; the pitcher stays on the facility (J3) |
 | Remove from facility / from this team | manager / head coach | inline confirm | the same words, in a sheet |
 
 - "Remove from this coach" is the real gap today: `remove_from_group` also deletes the `pitcher_teams` row when
-  that was the pitcher's last group, so one tap takes a pitcher off the facility. The sheet must say which will
-  happen: "Removes <name> from <coach>'s group." or, when it is the only group, "This is <name>'s only coach here,
-  so this also takes them off the facility. Their sessions and stats aren't deleted, only this facility's view of
-  them."
-- Whether that last-group path should also send the removal email (`send-removal-notice`) is Joel's call; ask in
-  preconditions. No RPC changes in this stage.
+  that was the pitcher's last group, so one tap takes a pitcher off the facility. **J3 fixes it:** a migration
+  changes `remove_from_group` so it only removes the group row; a pitcher with no group stays on the facility and is
+  listed under "No coach yet". It still returns `left_side` (now always false) so cached apps don't break. Write the
+  down script in `supabase/rollback/` and update `supabase/tests/f1a_acceptance.sql` (it may assert the old
+  behavior). The preconditions report carries the migration, rollback and test for Joel's yes; backup before
+  production, as for any schema change.
+- The sheet says: "Removes <name> from <coach>'s group." and, when it is the only group, "<name> stays at the
+  facility under No coach yet." No email.
 - Team and facility removal keep today's sentence: "Removes <name> from this team's roster and emails them to let
   them know. Their sessions and stats aren't deleted -- only this team's view of them."
 
@@ -311,10 +319,10 @@ proposes how the roster line score gets its per-day counts and Joel picks:
 Prefer (a). Whatever is read is kept with `lastKnownContext` so Home draws offline, with the time it was read.
 A pitcher's own Home needs nothing new: History's data is already on the device.
 
-**Coach's note.** The newest note on the pitcher's sessions (`session_notes`, already loaded with History), as a
+**Coach's note (J1).** The newest note on the pitcher's sessions (`session_notes`, already loaded with History), as a
 card: "Coach <name> · <date>", the text, "Open the session". Nothing is drawn when there is none or on a facility
 team. Confirm in preconditions that a parent's login can read the note; if the rule doesn't allow it, stop and
-report (no RLS change without Joel). Writing waits for J1.
+report (no RLS change without Joel). Writing is the Stage E recap line (J1).
 
 **Zone picture on the last session** uses `renderHistoryPlot` (small), not a new drawing.
 
@@ -379,7 +387,10 @@ stays open as today (Nov 5).
 - The callout line has two rules in v1, both computed from sessions on the device: best accuracy for a pitch type
   in the last 5 sessions, and a new top velocity. Otherwise the line is absent.
 - Switching pitcher mid-game with "save" (`doSwitchPitcher`) skips the recap.
-- If J1 is yes: the optional "Note to the pitcher" line sits above Send report.
+- **Note to the pitcher (J1):** an optional one-line box above Send report, for a coach charting a pitcher on a
+  normal team (facility teams only if Joel says yes in Stage E's preconditions). It is saved to `session_notes` once
+  the session has synced (kept on the device until then; the preconditions say how), so the recap never waits on
+  the network.
 
 ### Stage F · Pitcher card and milestones (size M, front end only)
 
@@ -390,7 +401,7 @@ Pictures: `f-pitcher-card.png`, `f-milestones.png`.
 ```
  ┌─────────────────────────────┐
  │  21 (large, faint)    [RHP] │  photo when there is one, else initials
- │  THAYER PITCHING LAB · 2026 │  the team or facility name
+ │  TAYLOR PITCHING LAB · 2026 │  the team or facility name
  │ ANDRE BOATENG               │
  │ [4SFB] [CU] [SL] [CH]       │  the pitcher's own colors (colorForType)
  │  14       412     81    56% │
@@ -401,9 +412,10 @@ Pictures: `f-pitcher-card.png`, `f-milestones.png`.
 
 - Totals come from the sessions the viewer can already read (History's data); say "since <first date>" when that
   is not a calendar year. Top velo only when there are readings.
-- **Share (after J2):** draws the card to a canvas by hand (no library) and hands a PNG to the share sheet: the
+- **Share (J2, option A):** draws the card to a canvas by hand (no library) and hands a PNG to the share sheet: the
   Capacitor Share plugin in the store apps, `navigator.share` with a file where the browser supports it, otherwise
-  a download. The button is drawn only for the people J2 allows. Until J2, no Share button.
+  a download. The button is drawn only for the people J2 allows: an adult pitcher on their own card, and for a
+  player under 18 the parent login the player sits on or a linked guardian.
 
 **Milestones.** One list, each `{ id, label, test(sessions) }`, worked out on the device from History's data:
 
@@ -456,7 +468,8 @@ runs** (CLAUDE.md: no RLS change, no schema deploy without asking).
 - A stage can't keep a "Kept" decision (7 to 13) as written.
 - Home, More, the recap or the line score would need the network to draw.
 - A view can't be reached, or reached back from, without the browser's Back.
-- Any stage before G turns out to need a migration, an RLS change or a new function.
+- Any stage before G turns out to need a migration, an RLS change or a new function, beyond Stage B's
+  `remove_from_group` change (J3) and, if Joel says yes in Stage E, facility notes (J1).
 - A parent's login can't read the coach's note under today's rules.
 - Moving "Delete my account" would make any sentence in `delete-account.html`, `help.html` or the terms notice
   untrue.
@@ -503,9 +516,9 @@ runs** (CLAUDE.md: no RLS change, no schema deploy without asking).
 15. Roster: no Remove, Clear or "⋯" on any row. A row opens the pitcher's page; Back returns to the list.
 16. The chip switches pitcher on Chart and on History without leaving the view.
 17. Manage, on staging with demo pitchers: Clear "New"; Move with Confirm; Remove from a coach when the pitcher
-    has two groups (stays on the facility); Remove from a coach when it is the only group (the sheet says they
-    leave the facility; afterwards `pitcher_teams` has no row, query shown); Remove from facility (email function
-    called once).
+    has two groups (stays in the other); Remove from a coach when it is the only group (the sheet says they stay;
+    afterwards `pitcher_teams` still has the row, they show under "No coach yet", no email sent; query shown);
+    Remove from facility (email function called once). The updated `f1a_acceptance.sql` passes on staging.
 18. "Delete my account" is in its own group, not beside "Download my data"; the delete flow's two screens are
     word for word as before; the path sentence in the three pages is true.
 
@@ -538,7 +551,8 @@ runs** (CLAUDE.md: no RLS change, no schema deploy without asking).
 29. The card's totals equal Trends' totals for the same pitcher. No "Top velo" for a pitcher with no readings.
 30. Each milestone fires once on the session that earns it, using a seeded pitcher; a week with no session ends
     a run, rest days inside a week don't.
-31. No Share button before J2. After J2: the PNG matches the card; the button is absent for everyone J2 excludes.
+31. The Share PNG matches the card. Share shows for an adult pitcher's own card and for a parent's or linked
+    guardian's player under 18; it is absent for coaches, view-only family and a teen's own login.
 
 **Stage G:**
 
@@ -555,7 +569,7 @@ runs** (CLAUDE.md: no RLS change, no schema deploy without asking).
 - Each stage: preconditions report (`plans/n1<x>-preconditions.md`) and stop for Joel → build → acceptance with
   evidence (`plans/n1<x>-evidence.md`) on staging → `CACHE_VERSION` bump → STATUS.md and CLAUDE.md in the same PR
   → push → PR → stop. Joel checks on his own iPhone and iPad, then merges.
-- Stage G only: backup first, migration on staging, tests, then production by Joel.
+- Stage B (`remove_from_group`) and Stage G: backup first, migration on staging, tests, then production by Joel.
 - Rollback for A to F: `git revert` and a cache bump. Stage G: the rollback migration, written before the forward
   one runs.
 

@@ -60,7 +60,29 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-17 · N1 Stage E (zone pictures, recap, notes) · **staging** (DB + app), branch `n1e-zone-recap`, cache `kb-shell-v347`
+## 2026-11-17 · N1 Stage F (pitcher card, milestones) · **staging**, branch `n1f-card-milestones`, cache `kb-shell-v348`
+
+- **Packet:** `plans/n1-navigation-and-home.md` Stage F with J2. Preconditions `plans/n1f-preconditions.md`: Joel agreed
+  to Q1-Q6, **and replaced the milestone list** (no pitch-count milestones). Evidence `plans/n1f-evidence.md`.
+- **Built:**
+  - The pitcher card on the pitcher's page and the pitcher's own Account.
+  - Share as a hand-drawn PNG: the web share sheet or a download; in the store apps, press and hold.
+  - Joel's milestones (sessions, bullpens, live games, strikeouts, every new top velo, the run at 4 / 8 / 12 / 26 / 52
+    weeks).
+  - A 7-day Home banner, plus the run card and Recent under the card.
+- **Also in this PR:** STATUS marks Stage E as on production; `supabase/schema/schema.sql` was regenerated after Stage E's
+  migration.
+- **Deviations:**
+  - no "ON PLAN";
+  - the run card and Recent sit on the pitcher's page and Account, not Home;
+  - the store-app share is press-and-hold (no new build).
+- **Open:**
+  - A teen's own sign-in and a linked guardian weren't tested live; the rules are in `canShareCard`.
+  - The headless tab froze once while signing in after a reload, and the freeze didn't come back. Watch for it on a
+    device.
+  - Joel's phone and iPad check after merge.
+
+## 2026-11-17 · N1 Stage E (zone pictures, recap, notes) · **production** (DB + app, v347 live Nov 17), branch `n1e-zone-recap`, PR #94 merged (`143a868`), cache `kb-shell-v347`
 
 - **Packet:** `plans/n1-navigation-and-home.md` Stage E with J1. Preconditions `plans/n1e-preconditions.md`: Joel, "YES TO
   ALL" (Q1-Q4, the migration, the Help wording). Evidence `plans/n1e-evidence.md`.
@@ -87,7 +109,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   3. the push;
   4. merge.
 
-  v346 shows no note box, so either order is safe. Afterwards, regenerate `supabase/schema/schema.sql`.
+  Done Nov 17: backup `2026-11-17-0012`; the dry run listed only the migration; Joel pushed it (function checked,
+  32 policies, the migration list matches the repo); Joel merged PR #94; v347 is live. `schema.sql` was regenerated in the
+  Stage F PR.
 - **Staging test data:** pens and a game for Andre Boateng and Noah Lindqvist, a pen for the U15 pitcher, and 3 test
   notes.
 

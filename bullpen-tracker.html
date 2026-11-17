@@ -923,6 +923,45 @@
   .rc-view{ background:rgba(255,255,255,.12); color:var(--on-dark); border-color:transparent; }
   .rc-done{ border:0; background:none; color:var(--on-dark-dim); font:inherit; min-height:44px; cursor:pointer; }
   .rc-wait{ margin:0; font-size:var(--t-14); color:var(--on-dark-dim); text-align:center; }
+  /* N1-F: the pitcher card and milestones (docs/n1/f-*.png) */
+  .pcard-wrap{ display:flex; flex-direction:column; gap:var(--s-8); }
+  .pcard{ background:var(--brand-bg-deep); border:4px solid var(--accent); border-radius:22px; padding:var(--s-16); color:var(--on-dark); display:flex; flex-direction:column; gap:var(--s-12); max-width:560px; }
+  .pcard-top{ position:relative; height:200px; border-radius:16px; overflow:hidden; display:flex; align-items:center; justify-content:center;
+    background:repeating-linear-gradient(-60deg, rgba(255,255,255,.05) 0 26px, transparent 26px 60px), var(--brand-bg); }
+  .pcard-num{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:190px; line-height:1; color:rgba(255,255,255,.10); }
+  .pcard-hand{ position:absolute; top:var(--s-12); right:var(--s-12); background:var(--accent); color:var(--on-accent, var(--ink)); font-weight:800; font-style:italic; padding:4px 14px; border-radius:4px; }
+  .pcard-face{ position:relative; display:flex; align-items:center; justify-content:center; }
+  .pcard-face .display{ font-size:86px; line-height:1; color:var(--on-dark); }
+  .pcard-face img{ width:120px; height:120px; border-radius:50%; object-fit:cover; }
+  .pcard-team{ position:absolute; left:var(--s-16); bottom:var(--s-12); font-size:13px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--on-dark-dim); }
+  .pcard-name{ font-size:44px; line-height:1; color:var(--on-dark); }
+  .pcard-chips{ display:flex; flex-wrap:wrap; gap:var(--s-6); }
+  .pcard-stats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(0, 1fr)); gap:var(--s-6); }
+  .pcard-stat{ background:rgba(0,0,0,.3); border-radius:12px; padding:var(--s-8) var(--s-4); display:flex; flex-direction:column; align-items:center; gap:2px; min-width:0; }
+  .pcard-val{ font-size:32px; line-height:1; color:var(--accent); }
+  .pcard-lbl{ font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--on-dark-dim); }
+  .pcard-foot{ display:flex; justify-content:space-between; align-items:baseline; gap:var(--s-8); color:var(--on-dark-dim); font-size:var(--t-14); }
+  .pcard-foot .brand-word{ font-size:20px; color:var(--on-dark); }
+  .pcard-share{ align-self:flex-start; }
+  .pcard-sheet{ max-height:92vh; }
+  .pcard-png{ width:100%; max-width:420px; align-self:center; border-radius:16px; -webkit-touch-callout:default; user-select:auto; }
+  .ms-banner{ display:flex; align-items:center; gap:var(--s-12); background:var(--brand-bg); color:var(--on-dark); border-radius:16px; padding:var(--s-12) var(--s-16); }
+  .ms-coin{ width:56px; height:56px; border-radius:50%; background:var(--accent); color:var(--on-accent, var(--ink)); box-shadow:inset 0 0 0 4px rgba(0,0,0,.15);
+    display:inline-flex; align-items:center; justify-content:center; font-size:22px; flex:none; }
+  .ms-coin.small{ width:44px; height:44px; font-size:17px; }
+  .ms-text{ flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .ms-title{ font-weight:700; font-size:var(--t-16); }
+  .ms-sub{ font-size:var(--t-14); opacity:.8; }
+  .ms-x{ border:0; background:none; color:inherit; font-size:18px; min-width:44px; min-height:44px; cursor:pointer; }
+  .ms-row{ display:flex; align-items:center; gap:var(--s-12); padding:var(--s-12) 0; border-top:1px solid var(--border); }
+  .ms-note{ margin:var(--s-8) 0 0; }
+  .run-title{ margin:var(--s-12) 0 0; font-size:var(--t-32); line-height:1; }
+  .run-days{ display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:var(--s-4); margin:var(--s-8) 0; }
+  .run-day{ border-radius:10px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
+  .run-day.hit{ background:var(--accent); color:var(--on-accent, var(--ink)); }
+  .run-day.rest{ background:var(--surface); background:color-mix(in srgb, var(--success) 15%, transparent); color:var(--success); }   /* older iOS: the plain surface */
+  .run-day.today{ background:var(--surface); color:var(--ink-dim); }
+  .run-day.later{ box-shadow:inset 0 0 0 1px var(--border); }
   .pill-days{ background:var(--warning-tint, #FBF1D6); color:var(--accent-ink, #7A5A00); }
   .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
   .home-tiles{ display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:var(--s-8); width:100%; max-width:340px; margin:var(--s-4) 0 var(--s-24); }
@@ -13488,7 +13527,8 @@ function renderPitcherPage(p){
     return `<button type="button" class="more-row" onclick="openSessionInHistory('${s.id}')"><span class="more-row-main">${s.kind === 'game' ? 'Live Game' : 'Bullpen'} · ${escHtml(new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}<span class="more-row-sub">${n} pitch${n === 1 ? '' : 'es'}${st && st.total ? ' · ' + st.accuracyPct + '% accuracy' : ''}${s.pending ? ' · waiting to sync' : ''}</span></span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>`;
   };
   return `<div class="pitcher-page">
-    <div class="pitcher-header">${renderPlayerIdent(p, true, chips, '')}</div>
+    ${renderPitcherCard(p)}
+    ${renderRunAndRecent()}
     <div class="more-card">
       <div class="more-group-label">Recent sessions</div>
       ${recent.length ? recent.map(row).join('') : '<p class="profile-note more-empty">No sessions yet.</p>'}
@@ -13780,6 +13820,7 @@ function renderHomeView(){
     const earlier = sorted.slice(1, 4);
     return `<div class="home-page">
       ${renderGettingStarted()}
+      ${renderMilestoneBanner()}
       ${chips}
       ${renderLineScore({ single: wk, sentence: `${first} threw ${wk.total} pitch${wk.total === 1 ? '' : 'es'} in ${wk.sessions} session${wk.sessions === 1 ? '' : 's'} this week.`, label: `${p.name} · this week` })}
       ${chartBtn}
@@ -13790,6 +13831,7 @@ function renderHomeView(){
   }
   return `<div class="home-page">
     ${renderGettingStarted()}
+    ${renderMilestoneBanner()}
     ${renderLineScore({ single: wk })}
     ${chartBtn}
     ${renderNoteCard(null)}
@@ -14060,6 +14102,171 @@ function animateRecap(){
   const step = t => { const k = Math.min(1, (t - t0) / 500); nums.forEach(n => { n.textContent = Math.round(k * Number(n.dataset.count)) + (n.dataset.suffix || ''); }); if(k < 1) requestAnimationFrame(step); };
   requestAnimationFrame(step);
   setTimeout(() => nums.forEach(n => { n.textContent = n.dataset.count + (n.dataset.suffix || ''); }), 700);   // frames can pause (app in the background): always land on the real number
+}
+/* ---------- N1 Stage F: THE PITCHER CARD AND MILESTONES (Joel, Nov 17 2026; plans/n1f-preconditions.md) ----------
+   Both are worked out on the device from the sessions this viewer can read (History's data and the outbox): a coach's
+   card and milestones count that team's view, a pitcher's own count everything. Nothing is stored on the server. */
+function ordinal(n){ const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+// The sessions behind the card and milestones, oldest first, each { s, at, kind, n (pitch_count), k, top, hits, charted }.
+function cardSessions(){
+  const rows = pendingSessionsForCurrentSelection().concat(state.sessions || []).filter(s => !s.deletedAt);
+  return rows.map(s => {
+    const game = (s.kind || 'bullpen') === 'game', stats = rowHasStats(s) ? s.stats : null;
+    const ps = s.pitches || [];
+    const velos = ps.map(x => (x.velo != null && !isDefaultVeloReading(x)) ? x.velo : null).filter(v => v != null);
+    const top = stats && stats.velo_max != null ? stats.velo_max : (velos.length ? Math.max(...velos) : null);
+    const k = game ? (stats && stats.game && stats.game.k != null ? stats.game.k : gameStats(ps, s.pitchCountAdjust || 0, s.events || []).k) : 0;
+    const hits = stats ? (stats.hits || 0) : ps.filter(isHit).length, charted = stats ? (stats.pitches || 0) : ps.length;
+    return { s, at: +new Date(s.date), kind: game ? 'game' : 'bullpen', n: sessionPitchCountN(s), k, top: top > 0 ? top : null, hits, charted };
+  }).sort((a, b) => a.at - b.at);
+}
+/* Milestones -- Joel's list (Nov 17): no pitch counts. Each rule walks the sessions in order and returns what it earned,
+   { id, label, badge, at }. Adding one is one entry. */
+const MS_RUN_WEEKS = [4, 8, 12, 26, 52];
+function msSessionSteps(n){ if(n === 10 || n === 20 || n === 50 || n === 75) return true; return n >= 100 && n % 50 === 0; }
+function msKSteps(n){ if(n === 1 || n === 5) return true; if(n < 100) return n % 10 === 0; if(n < 1000) return n % 100 === 0; return n % 1000 === 0; }
+const MILESTONES = [
+  { id: 'sessions', earn: list => { const out = []; list.forEach((x, i) => { const n = i + 1;
+      if(n === 1) out.push({ id: 's1', label: '1st session charted', badge: '1st', at: x.at });
+      else if(msSessionSteps(n)) out.push({ id: 's' + n, label: ordinal(n) + ' session', badge: String(n), at: x.at }); }); return out; } },
+  { id: 'kinds', earn: list => { const out = [], seen = { bullpen: 0, game: 0 };
+      list.forEach(x => { const n = ++seen[x.kind]; if(n === 1 || n === 3 || n === 5)
+        out.push({ id: x.kind + n, label: `${ordinal(n)} ${x.kind === 'game' ? 'live game' : 'bullpen'} charted`, badge: ordinal(n), at: x.at }); }); return out; } },
+  { id: 'strikeouts', earn: list => { const out = []; let k = 0;
+      list.forEach(x => { for(let i = 0; i < x.k; i++){ k++; if(msKSteps(k)) out.push({ id: 'k' + k, label: k === 1 ? '1st strikeout' : ordinal(k) + ' strikeout', badge: 'K' + (k >= 1000 ? (k / 1000) + 'K' : k), at: x.at }); } }); return out; } },
+  { id: 'velo', earn: list => { const out = []; let best = 0;   // the first reading counts, then every new best
+      list.forEach(x => { if(x.top != null && x.top > best){ best = x.top; out.push({ id: 'v' + best, label: 'New top velocity', sub: best + ' mph', badge: String(best), at: x.at }); } }); return out; } },
+  { id: 'run', earn: list => { const out = [], wk = new Set(list.map(x => weekStartMs(x.at)));
+      const firstOf = {}; list.forEach(x => { const w = weekStartMs(x.at); if(firstOf[w] == null) firstOf[w] = x.at; });
+      [...wk].sort((a, b) => a - b).reduce((run, w, i, arr) => { const prev = arr[i - 1]; const r = (prev != null && w - prev <= 7 * 86400000 + 7200000) ? run + 1 : 1;
+        if(MS_RUN_WEEKS.includes(r)) out.push({ id: 'run' + r + '-' + w, label: `${r} weeks running`, badge: r + 'W', at: firstOf[w] }); return r; }, 0); return out; } }
+];
+function earnedMilestones(){ const list = cardSessions(); return MILESTONES.flatMap(m => m.earn(list)).sort((a, b) => b.at - a.at); }
+// The run as of now: weeks in a row with a session, counting back from this week (or last week while this one is empty).
+function currentRun(){
+  const weeks = new Set(cardSessions().map(x => weekStartMs(x.at)));
+  let w = weekStartMs(), run = 0;
+  if(!weeks.has(w)) w = weekStartMs(w - 86400000);
+  while(weeks.has(w)){ run++; w = weekStartMs(w - 86400000); }
+  return run;
+}
+function msKey(id){ return 'kb:ms:' + (state.session ? state.session.user.id : '') + ':' + (state.profile ? state.profile.id : '') + ':' + id; }
+window.dismissMilestone = function(id){ try{ lsSet(msKey(id), '1'); }catch(e){} render(); };
+const MS_BANNER_DAYS = 7;
+function renderMilestoneBanner(){
+  const now = Date.now();
+  const m = earnedMilestones().find(x => now - x.at < MS_BANNER_DAYS * 86400000 && lsGet(msKey(x.id)) !== '1');
+  if(!m) return '';
+  return `<div class="ms-banner"><span class="ms-coin display">${escHtml(m.badge)}</span><span class="ms-text"><span class="ms-title">${escHtml(m.label)}${m.sub ? ' · ' + escHtml(m.sub) : ''}</span><span class="ms-sub">${escHtml(new Date(m.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}</span></span><button type="button" class="ms-x" onclick="dismissMilestone('${m.id}')" aria-label="Dismiss">✕</button></div>`;
+}
+function renderRunAndRecent(){
+  const list = cardSessions(), run = currentRun(), start = weekStartMs(), today = new Date().getDay();
+  const byDay = [0, 0, 0, 0, 0, 0, 0]; list.forEach(x => { if(x.at >= start && x.at < start + 7 * 86400000 + 7200000) byDay[new Date(x.at).getDay()] += x.n; });
+  const days = DAY_LETTERS.map((d, i) => i > today ? `<span class="run-day later" aria-label="${d}: not yet"></span>`
+    : byDay[i] ? `<span class="run-day hit">${byDay[i]}</span>` : i === today ? '<span class="run-day today">Today</span>' : '<span class="run-day rest">Rest</span>').join('');
+  const recent = earnedMilestones().slice(0, 5);
+  const coachNote = isCoach() ? '<p class="profile-note ms-note">From this team\'s sessions.</p>' : '';
+  return `<div class="more-card run-card"><div class="run-top"><h3 class="display run-title">${run ? run + ' week' + (run === 1 ? '' : 's') + ' running' : 'This week'}</h3></div>
+      <div class="more-group-label">This week</div><div class="run-days">${days}</div>
+      <p class="profile-note">A week counts when there's at least one session. Rest days keep the run going.</p></div>
+    <div class="more-card"><div class="more-group-label">Recent</div>${recent.length ? recent.map(m => `<div class="ms-row"><span class="ms-coin small display">${escHtml(m.badge)}</span><span class="ms-text"><span class="ms-title">${escHtml(m.label)}</span><span class="ms-sub">${m.sub ? escHtml(m.sub) + ' · ' : ''}${escHtml(new Date(m.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }))}</span></span></div>`).join('')
+      : '<p class="profile-note more-empty">Milestones show up here: the 1st bullpen, the 10th session, a new top velocity and more.</p>'}${coachNote}</div>`;
+}
+/* The card (docs/n1/f-pitcher-card.png). */
+function cardTotals(p){
+  const list = cardSessions();
+  const pens = list.filter(x => x.kind === 'bullpen'), charted = pens.reduce((a, x) => a + x.charted, 0);
+  const tops = list.map(x => x.top).filter(v => v != null);
+  const first = list.length ? new Date(list[0].at) : null, sameYear = !list.length || list.every(x => new Date(x.at).getFullYear() === new Date(list[0].at).getFullYear());
+  const team = (state.teams || []).find(t => t.id === state.currentTeamId);
+  return { sessions: list.length, pitches: list.reduce((a, x) => a + x.n, 0), top: tops.length ? Math.max(...tops) : null,
+    acc: charted ? Math.round(100 * pens.reduce((a, x) => a + x.hits, 0) / charted) : null,
+    when: !first ? String(new Date().getFullYear()) : sameYear ? String(first.getFullYear()) : 'since ' + first.toLocaleDateString(undefined, { month: 'short', year: 'numeric' }),
+    team: team ? team.name : 'Independent' };
+}
+// J2, option A: an adult pitcher on their own card; for a player under 18, the parent login they sit on or a linked
+// guardian. Never coaches, view-only family or a teen's own sign-in.
+function canShareCard(){
+  if(isCoach() || !state.profile) return false;
+  if(activePlayerIsMine() || activeLinked() === 'guardian') return true;
+  if(activeLinked()) return false;
+  const acct = myAccountProfile();
+  return !!(acct && acct.id === state.profile.id && acct.age_attestation === 'adult');
+}
+function renderPitcherCard(p){
+  const t = cardTotals(p), num = jerseyNumberOf(p), photo = state.headshots && state.headshots[p.id];
+  const chips = (p.pitchTypes || []).map(x => { const c = colorForType(p, x); return `<span class="pitch-chip" style="background:${c};color:${readableTextOn(c)};">${pitchLabel(x)}</span>`; }).join('');
+  const box = (v, l) => `<div class="pcard-stat"><span class="pcard-val display">${v}</span><span class="pcard-lbl">${l}</span></div>`;
+  return `<div class="pcard-wrap"><div class="pcard" aria-label="Pitcher card for ${escHtml(p.name)}">
+    <div class="pcard-top">
+      ${num != null && num !== '' ? `<span class="pcard-num display" aria-hidden="true">${escHtml(String(num))}</span>` : ''}
+      ${p.throws ? `<span class="pcard-hand">${p.throws}HP</span>` : ''}
+      <span class="pcard-face">${photo ? `<img src="${photo}" alt="">` : `<span class="display">${escHtml(initialsOf(p.name))}</span>`}</span>
+      <span class="pcard-team">${escHtml(t.team)} · ${escHtml(t.when)}</span>
+    </div>
+    <div class="pcard-name display">${escHtml(p.name)}</div>
+    ${chips ? `<div class="pcard-chips">${chips}</div>` : ''}
+    <div class="pcard-stats">${box(t.sessions, 'Sessions')}${box(t.pitches, 'Pitches')}${t.top != null ? box(t.top, 'Top velo') : ''}${t.acc != null ? box(t.acc + '%', 'Accuracy') : ''}</div>
+    <div class="pcard-foot"><span class="brand-word">KNUCKLEBALL</span><span>knuckleballonline.com</span></div>
+  </div>${canShareCard() ? `<button type="button" class="btn btn-secondary pcard-share" onclick="shareCard()">Share card</button>` : ''}</div>`;
+}
+/* Share: the card drawn to a canvas by hand (no library), as a PNG. Store apps: the picture full screen to press and hold
+   (Joel, Q1: no new app build); browsers: the share sheet with the file where it's supported, else a download. */
+async function drawCardPng(p){
+  const t = cardTotals(p), css = getComputedStyle(document.documentElement), v = n => css.getPropertyValue(n).trim() || '#000';
+  const solid = col => { const m = /^var\((--[^),]+)/.exec(String(col || '')); return m ? v(m[1]) : col; };   // a canvas can't read var(--x)
+  try{ await Promise.all(["800 80px 'Big Shoulders Display'", "700 30px 'Archivo'", "400 60px 'Black Ops One'"].map(f => document.fonts.load(f))); }catch(e){}
+  const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const rr = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+  g.fillStyle = v('--accent'); rr(0, 0, W, H, 60); g.fill();
+  g.fillStyle = v('--brand-bg-deep'); rr(14, 14, W - 28, H - 28, 50); g.fill();
+  g.save(); rr(60, 60, W - 120, 560, 36); g.clip(); g.fillStyle = v('--brand-bg'); g.fillRect(60, 60, W - 120, 560);
+  g.strokeStyle = 'rgba(255,255,255,0.05)'; g.lineWidth = 50; for(let x = -400; x < W + 400; x += 120){ g.beginPath(); g.moveTo(x, 640); g.lineTo(x + 400, 40); g.stroke(); }
+  const num = jerseyNumberOf(p);
+  if(num != null && num !== ''){ g.fillStyle = 'rgba(255,255,255,0.10)'; g.font = "800 520px 'Big Shoulders Display'"; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(num), W / 2, 340); }
+  const photo = state.headshots && state.headshots[p.id];
+  if(photo){ try{ const im = new Image(); im.src = photo; await im.decode(); g.save(); g.beginPath(); g.arc(W / 2, 320, 150, 0, Math.PI * 2); g.clip(); g.drawImage(im, W / 2 - 150, 170, 300, 300); g.restore(); }catch(e){} }
+  else { g.fillStyle = v('--on-dark'); g.font = "800 220px 'Big Shoulders Display'"; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(initialsOf(p.name), W / 2, 330); }
+  if(p.throws){ g.fillStyle = v('--accent'); rr(W - 260, 90, 170, 80, 10); g.fill(); g.fillStyle = v('--on-accent') || '#111'; g.font = "italic 800 52px 'Archivo'"; g.textAlign = 'center'; g.fillText(p.throws + 'HP', W - 175, 132); }
+  g.fillStyle = v('--on-dark-dim'); g.font = "700 34px 'Archivo'"; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.fillText((t.team + ' · ' + t.when).toUpperCase(), 100, 590);
+  g.restore();
+  g.fillStyle = v('--on-dark'); g.font = "800 120px 'Big Shoulders Display'"; g.textAlign = 'left'; g.fillText(String(p.name || '').toUpperCase(), 60, 760, W - 120);
+  let x = 60; g.font = "800 40px 'Archivo'";
+  (p.pitchTypes || []).forEach(tp => { const lbl = pitchLabel(tp), w = g.measureText(lbl).width + 56, col = colorForType(p, tp); g.fillStyle = col; rr(x, 800, w, 70, 35); g.fill(); g.fillStyle = solid(readableTextOn(col)); g.textAlign = 'center'; g.fillText(lbl, x + w / 2, 849); x += w + 18; });
+  const stats = [[t.sessions, 'SESSIONS'], [t.pitches, 'PITCHES']].concat(t.top != null ? [[t.top, 'TOP VELO']] : []).concat(t.acc != null ? [[t.acc + '%', 'ACCURACY']] : []);
+  const bw = (W - 120 - 20 * (stats.length - 1)) / stats.length;
+  stats.forEach((s, i) => { const bx = 60 + i * (bw + 20); g.fillStyle = 'rgba(0,0,0,0.35)'; rr(bx, 920, bw, 210, 24); g.fill(); g.textAlign = 'center';
+    g.fillStyle = v('--accent'); g.font = "800 110px 'Big Shoulders Display'"; g.fillText(String(s[0]), bx + bw / 2, 1050);
+    g.fillStyle = v('--on-dark-dim'); g.font = "700 28px 'Archivo'"; g.fillText(s[1], bx + bw / 2, 1100); });
+  g.fillStyle = v('--on-dark'); g.font = "400 56px 'Black Ops One'"; g.textAlign = 'left'; g.fillText('KNUCKLEBALL', 60, 1250);
+  g.fillStyle = v('--on-dark-dim'); g.font = "500 36px 'Archivo'"; g.textAlign = 'right'; g.fillText('knuckleballonline.com', W - 60, 1245);
+  return c;
+}
+window.shareCard = async function(){
+  const p = currentPitcher(); if(!p || !canShareCard()) return;
+  const c = await drawCardPng(p);
+  state.cardPng = c.toDataURL('image/png'); render();
+};
+window.closeCardPng = function(){ state.cardPng = null; render(); };
+window.shareCardFile = async function(){
+  const p = currentPitcher(), data = state.cardPng; if(!data) return;
+  const name = 'knuckleball-' + String(p ? p.name : 'card').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.png';
+  const blob = await (await fetch(data)).blob(), file = new File([blob], name, { type: 'image/png' });
+  if(navigator.canShare && navigator.canShare({ files: [file] })){ try{ await navigator.share({ files: [file], title: 'Knuckleball' }); return; }catch(e){ return; } }
+  const a = document.createElement('a'); a.href = data; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+};
+function renderCardPngSheet(){
+  if(!state.cardPng) return '';
+  const native = isNativeApp();
+  return `<div class="modal-overlay sheet-overlay signout-overlay" onclick="if(event.target===this) closeCardPng();">
+    <div class="sess-sheet pcard-sheet" role="dialog" aria-label="Your card">
+      <img class="pcard-png" src="${state.cardPng}" alt="Pitcher card">
+      ${native ? '<p class="signout-text">Press and hold the picture to save or share it.</p>'
+        : `<button type="button" class="btn btn-primary" onclick="shareCardFile()">${navigator.canShare ? 'Share' : 'Download'}</button>`}
+      <button type="button" class="btn btn-secondary" onclick="closeCardPng()">Close</button>
+    </div>
+  </div>`;
 }
 /* ---------- F1-C1: CHAT (Oct 29 2026, plans/f1-training-facilities.md; decisions in plans/f1c1-preconditions.md) ----------
    Only inside a training facility. Two kinds of thread: the facility's (the manager posts to everyone there) and a
@@ -14724,6 +14931,8 @@ function renderProfileView(){
   // N1-A (Joel, Q5): Pitcher settings (the player's own things, the name included: for a parent's player it's the
   // player's name) then Account (the login's). Same sections, same order inside each group.
   return `<div class="profile-page">
+    ${renderPitcherCard(p)}
+    ${renderRunAndRecent()}
     ${placeHead(PLACE.pitcherSettings)}
     ${renderHeadshotControls(p)}
     ${msg}
@@ -14845,7 +15054,9 @@ function renderLinkedProfileView(msg){
       ${a.armed === 'leave' ? `<div class="profile-row"><button class="btn btn-danger" ${a.busy ? 'disabled' : ''} onclick="leaveLinkedPlayer()">Stop following</button><button class="btn btn-secondary" onclick="armPlayerAccess(null)">Keep</button></div>`
         : `<button class="btn btn-secondary" ${isOnline() ? '' : 'disabled'} onclick="armPlayerAccess('leave')">Stop following ${name}</button>`}
       ${a.error ? `<p class="profile-note a1-msg">${escHtml(a.error)}</p>` : ''}</div>`;
+  const cp = currentPitcher();
   return `<div class="profile-page">
+    ${cp ? renderPitcherCard(cp) + renderRunAndRecent() : ''}
     ${placeHead(PLACE.pitcherSettings)}
     ${msg}
     <div class="profile-section"><h3>${name}</h3><p class="profile-note">${what}</p></div>
@@ -15864,7 +16075,7 @@ function render(){
   const wideNav = !isPhoneWidth() && !onChartingScreen();
   const phoneTop = isPhoneWidth() && !phoneSession && !onChartingScreen();
   if(app.classList){ app.classList.toggle('has-nav', wideNav); app.classList.toggle('nav-open', wideNav && !!state.navOpen); }
-  app.innerHTML = (wideNav ? renderSideNav(teamSelector) : '') + `<div class="main${phoneSession ? ' ph-main' : ''}">${phoneTop ? phoneHead : ''}${main}${policyFoot}</div>` + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + renderSignOutSheet() + renderPickSheet() + renderManageSheet() + renderRecap() + (dockOn && !state.recap ? renderCoachDock() : '');
+  app.innerHTML = (wideNav ? renderSideNav(teamSelector) : '') + `<div class="main${phoneSession ? ' ph-main' : ''}">${phoneTop ? phoneHead : ''}${main}${policyFoot}</div>` + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + renderSignOutSheet() + renderPickSheet() + renderManageSheet() + renderRecap() + renderCardPngSheet() + (dockOn && !state.recap ? renderCoachDock() : '');
   if(app.classList) app.classList.toggle('has-dock', dockOn);
   if(dockOn) attachCoachDock();
   animateRecap();   // N1-E: no-op unless the recap just opened

@@ -309,6 +309,24 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
     when the coach sees the pitcher (`coach_sees_pitcher`: their own group, or the manager). Normal teams unchanged.
     Migration `20261118000000_n1e_facility_notes` (rollback in `supabase/rollback/`, test
     `supabase/tests/n1e_facility_notes.sql`); 32 policies.
+- **The pitcher card and milestones (N1 Stage F, Joel, Nov 17 2026, v348; `plans/n1f-preconditions.md`, evidence
+  `plans/n1f-evidence.md`):**
+  - **The card** (`renderPitcherCard`) heads the pitcher's page (coaches) and the pitcher's own Account (and a parent's
+    or linked view of the player). It shows uniform number, hand, photo or initials, team · year (or "since <month
+    year>"), name, pitch chips, then Sessions, Pitches (`pitch_count`), Top velo (only with readings), Accuracy (bullpens).
+    It counts from the sessions the viewer can read (`cardSessions`), so a coach's card counts that team's view.
+  - **Share** (J2, option A; `canShareCard`): an adult pitcher on their own card; the parent login a player sits on, or a
+    linked guardian; never coaches, view-only family or a teen's own sign-in. The card is drawn by hand on a canvas
+    (`drawCardPng`, 1080 × 1350) and shared as a file where the browser can, else downloaded. In the store apps it's
+    shown full screen to press and hold (no file plugin in the shell; Joel, Q1).
+  - **Milestones (Joel's list; no pitch counts, which push throwing more):** the 1st session; the 1st, 3rd and 5th
+    bullpen and live game; total sessions at 10, 20, 50, 75, 100 then every 50; strikeouts in live games at 1, 5, 10,
+    every 10 to 100, every 100 to 1,000, then every 1,000; every new top velocity, the first reading included; and the
+    weekly run at 4, 8, 12, 26 and 52 weeks. One list (`MILESTONES`), worked out on the device; nothing on the server.
+    A milestone is dated by the session that earned it.
+  - **Where they show:** a banner on the pitcher's, teen's and parent's Home for 7 days, one at a time, dismissable
+    (`kb:ms:<uid>:<profile>:<id>`). The run card ("N weeks running", this week's days with "Rest") and Recent sit under
+    the card. Wording never tells a pitcher to throw more.
 - **One "‹ Back" (F1-D, Joel, Oct 29 2026; `plans/f1d-preconditions.md`; v324):** top left of the page (in the account
   row on phones; its own row when the account sits in the pitcher header), every size, browser and installed. It goes
   to the section's first screen, never browser history: start questions → "Bullpen or Live Game?"; (an opened History

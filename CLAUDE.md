@@ -291,6 +291,24 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
   every step is done it says "You're all set" once, then leaves Home. More → Getting started (`openGettingStarted`)
   shows "n of N" and brings it back. The every-visit setup reminder banner is retired; the pitcher's one-time setup
   popup stays; the coach Welcome popup no longer opens on facility sides.
+- **Zone pictures, the recap and notes (N1 Stage E, Joel, Nov 17 2026, v347; `plans/n1e-preconditions.md`, evidence
+  `plans/n1e-evidence.md`):**
+  - Every History bar (pens and games) has a small zone picture (`renderZoneThumb`): a 5x5 heat map in the pitcher's
+    view, the 3x3 zone outlined. It's built from the stats row's per-type cells or the pitches (`plotSessionOf`), so it
+    draws offline. Reports stay open under their bars (Nov 5).
+  - **The recap** (`renderRecap`, `state.recap`): one full-screen dark screen after End session & save, from the session
+    just saved on the device. It shows FINAL · BULLPEN / LIVE GAME, the name, pitches, accuracy (a game: IP, K, BB, H),
+    top velo only with radar, the plot with per-type count · accuracy, a callout only when true (best accuracy for a
+    type over the last 5 sessions; a new top velo), and Send report / View report / Done. Save and switch skips it.
+    The count-up and slide-in stop under reduced motion.
+  - **Coaches' notes are back, on the recap only** ("Note to the pitcher", 280 characters; no comment box in History).
+    A note is queued on the device (`kb:noteQueue:<uid>`) and saved to `session_notes` after its session syncs
+    (`flushNoteQueue`, after every sync); a failed save shows under the outbox notice. Notes show on Home, in History
+    and on the report page, facility sessions included.
+  - **Facility notes:** `is_coach_of_session` (only the `session_notes` INSERT rule uses it) allows a facility session
+    when the coach sees the pitcher (`coach_sees_pitcher`: their own group, or the manager). Normal teams unchanged.
+    Migration `20261118000000_n1e_facility_notes` (rollback in `supabase/rollback/`, test
+    `supabase/tests/n1e_facility_notes.sql`); 32 policies.
 - **One "‹ Back" (F1-D, Joel, Oct 29 2026; `plans/f1d-preconditions.md`; v324):** top left of the page (in the account
   row on phones; its own row when the account sits in the pitcher header), every size, browser and installed. It goes
   to the section's first screen, never browser history: start questions → "Bullpen or Live Game?"; (an opened History
@@ -430,7 +448,7 @@ There are 32 RLS policies on production and staging (since F1-A, Oct 29 2026: + 
   `supabase/tests/f1a_rls_matrix.sql`: every login, every table, before = after). On a facility team a pitching coach
   sees, charts and reports only their group's pitchers; the manager sees all. Coaches of the pitcher's other teams
   still read lesson pens (R4 stands).
-- **No notes and no leaderboard on facility teams** (`is_coach_of_session` refuses; `get_team_leaderboard` raises
+- **No leaderboard on facility teams; notes since N1 Stage E only by the pitcher's group coach or the manager** (`is_coach_of_session`; `get_team_leaderboard` raises
   `facility_team`; the tracker hides both). `handoff_facility(new_manager)` = the R6 handoff on both sides at once
   (the new manager must already coach both; decision C).
 - Rollback `supabase/rollback/20261030000000_f1a_facilities_down.sql` (refuses while facility sessions exist); tests

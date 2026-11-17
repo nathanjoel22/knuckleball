@@ -2675,6 +2675,34 @@ $$;
 ALTER FUNCTION "public"."is_org_manager"("p_team" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."is_org_manager_login"("p_org" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select exists (select 1 from public.organizations o where o.id = p_org and o.manager_login = auth.uid());
+$$;
+
+
+ALTER FUNCTION "public"."is_org_manager_login"("p_org" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_org_member"("p_org" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select exists (
+    select 1 from public.teams t
+     where t.org_id = p_org and t.kind = 'facility' and t.archived_at is null
+       and (public.is_team_coach(t.id)
+            or exists (select 1 from public.pitcher_teams pt
+                        where pt.team_id = t.id and (public.is_my_profile(pt.pitcher_id) or public.is_linked_to(pt.pitcher_id))))
+  );
+$$;
+
+
+ALTER FUNCTION "public"."is_org_member"("p_org" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."is_pitcher_report_eligible"("p_pitcher_id" "uuid") RETURNS boolean
     LANGUAGE "sql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -2992,6 +3020,22 @@ $$;
 
 
 ALTER FUNCTION "public"."my_facility"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."my_facility_brandings"() RETURNS TABLE("team_id" "uuid", "org_id" "uuid", "name" "text", "brand_color" "text", "accent_color" "text", "logo_path" "text", "updated_at" timestamp with time zone)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select t.id, o.id, o.name, o.brand_color, o.accent_color, o.logo_path, o.branding_updated_at
+    from public.teams t join public.organizations o on o.id = t.org_id
+   where t.kind = 'facility' and t.archived_at is null and public.is_org_member(o.id)
+     and (public.is_team_coach(t.id)
+          or exists (select 1 from public.pitcher_teams pt where pt.team_id = t.id
+                      and (public.is_my_profile(pt.pitcher_id) or public.is_linked_to(pt.pitcher_id))));
+$$;
+
+
+ALTER FUNCTION "public"."my_facility_brandings"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."my_group_codes"() RETURNS "jsonb"
@@ -4089,6 +4133,28 @@ $$;
 ALTER FUNCTION "public"."sessions_h1_lock"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."set_facility_branding"("p_org" "uuid", "p_brand" "text", "p_accent" "text", "p_logo_path" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if auth.uid() is null then return jsonb_build_object('ok', false, 'error', 'not_authenticated'); end if;
+  if not public.is_org_manager_login(p_org) then return jsonb_build_object('ok', false, 'error', 'not_allowed'); end if;
+  if (p_brand is null) <> (p_accent is null) then return jsonb_build_object('ok', false, 'error', 'both_colors'); end if;
+  if p_logo_path is not null and p_logo_path not like p_org::text || '/logo.%' then
+    return jsonb_build_object('ok', false, 'error', 'bad_logo_path'); end if;
+  update public.organizations set brand_color = p_brand, accent_color = p_accent, logo_path = p_logo_path,
+         branding_updated_at = now() where id = p_org;
+  return jsonb_build_object('ok', true);
+exception when check_violation then
+  return jsonb_build_object('ok', false, 'error', 'bad_color');
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_facility_branding"("p_org" "uuid", "p_brand" "text", "p_accent" "text", "p_logo_path" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."set_my_uniform_number"("p_team_id" "uuid", "p_number" smallint, "p_profile" "uuid" DEFAULT NULL::"uuid") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -4676,6 +4742,13 @@ CREATE TABLE IF NOT EXISTS "public"."organizations" (
     "name" "text" NOT NULL,
     "manager_login" "uuid" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "brand_color" "text",
+    "accent_color" "text",
+    "logo_path" "text",
+    "branding_updated_at" timestamp with time zone,
+    CONSTRAINT "organizations_accent_color_check" CHECK (("accent_color" ~ '^#[0-9A-Fa-f]{6}$'::"text")),
+    CONSTRAINT "organizations_brand_color_check" CHECK (("brand_color" ~ '^#[0-9A-Fa-f]{6}$'::"text")),
+    CONSTRAINT "organizations_logo_path_check" CHECK ((("logo_path" IS NULL) OR ("logo_path" ~ '^[0-9a-f-]{36}/logo\.(png|jpg|webp)$'::"text"))),
     CONSTRAINT "organizations_name_length" CHECK ((("char_length"("btrim"("name")) >= 2) AND ("char_length"("btrim"("name")) <= 60)))
 );
 
@@ -6793,6 +6866,18 @@ GRANT ALL ON FUNCTION "public"."is_org_manager"("p_team" "uuid") TO "service_rol
 
 
 
+REVOKE ALL ON FUNCTION "public"."is_org_manager_login"("p_org" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."is_org_manager_login"("p_org" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_org_manager_login"("p_org" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."is_org_member"("p_org" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."is_org_member"("p_org" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_org_member"("p_org" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."is_pitcher_report_eligible"("p_pitcher_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."is_pitcher_report_eligible"("p_pitcher_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_pitcher_report_eligible"("p_pitcher_id" "uuid") TO "service_role";
@@ -6869,6 +6954,12 @@ GRANT ALL ON FUNCTION "public"."move_between_groups"("p_pitcher" "uuid", "p_from
 REVOKE ALL ON FUNCTION "public"."my_facility"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."my_facility"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."my_facility"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."my_facility_brandings"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."my_facility_brandings"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."my_facility_brandings"() TO "service_role";
 
 
 
@@ -7114,6 +7205,12 @@ GRANT ALL ON FUNCTION "public"."sessions_g3_team_check"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."sessions_h1_lock"() TO "anon";
 GRANT ALL ON FUNCTION "public"."sessions_h1_lock"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."sessions_h1_lock"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."set_facility_branding"("p_org" "uuid", "p_brand" "text", "p_accent" "text", "p_logo_path" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."set_facility_branding"("p_org" "uuid", "p_brand" "text", "p_accent" "text", "p_logo_path" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_facility_branding"("p_org" "uuid", "p_brand" "text", "p_accent" "text", "p_logo_path" "text") TO "service_role";
 
 
 

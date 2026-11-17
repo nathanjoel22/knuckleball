@@ -265,6 +265,24 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
     Roster page opens the pitcher's page; launch still opens Home.
   - **Coaches and groups** (`'coaches'`, facility manager): the side's coaches with their group sizes and Show code, No
     coach yet, and Print all codes.
+- **Home is the week (N1 Stage C, Joel, Nov 17 2026, v345; `plans/n1c-preconditions.md`, evidence `plans/n1c-evidence.md`):**
+  `renderHomeView` replaces the four squares (`renderHomeTiles` is kept but unused); Home has no pitcher header.
+  - **The line score** (`renderLineScore`, a real table): pitches per day, Sunday to Saturday in the device's time, P and
+    S totals; today outlined ("–" until charted), days still to come empty. "Pitches" is `pitch_count`, the number the
+    roster's "Last 7 days" line uses. Sessions waiting in the outbox count.
+  - **Pitcher / teen:** line score, Chart today (Resume), the newest coach's note, Last session (History's plot, pitches,
+    accuracy, chips, Open report), Trends. **Parent / linked guardian:** the player chip, "<Name> threw N pitches in S
+    sessions this week." over the line score, the note ("For <name> · from …"), Latest report, Earlier. **View-only
+    family:** the same without Chart.
+  - **Coach:** "This week" with the team's name; Active (a pitcher with a session this week) of the roster, Sessions,
+    Pitches; Start a session; the roster line score (who threw first, then "+ N with no pitches this week"); Needs your
+    attention (facility New pitchers; no session in `IDLE_FLAG_DAYS` = 5 or more, longest first, from
+    `pitcher_workload.last_at`; "No sessions yet"; unread chat); Recent sessions. **Facility manager:** the same across
+    every coach plus By coach. A pitching coach's Home covers their group (the read rules decide).
+  - **Data:** a pitcher's / parent's Home uses History's data on the device; a coach's reads `session_stats`
+    (`pitcher_id, started_at, kind, pitch_count`) for the roster, the last 14 days (`loadWeekRows`, on team load, after
+    a sync, and when Home shows and the copy is over 2 minutes old). The rows and `state.workload` go in the offline
+    snapshot, so Home draws offline with "As of <time>". No migration.
 - **One "‹ Back" (F1-D, Joel, Oct 29 2026; `plans/f1d-preconditions.md`; v324):** top left of the page (in the account
   row on phones; its own row when the account sits in the pitcher header), every size, browser and installed. It goes
   to the section's first screen, never browser history: start questions → "Bullpen or Live Game?"; (an opened History

@@ -60,7 +60,38 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-17 · N1 Stage D (Get started card) · **staging**, branch `n1d-getting-started`, cache `kb-shell-v346`
+## 2026-11-17 · N1 Stage E (zone pictures, recap, notes) · **staging** (DB + app), branch `n1e-zone-recap`, cache `kb-shell-v347`
+
+- **Packet:** `plans/n1-navigation-and-home.md` Stage E with J1. Preconditions `plans/n1e-preconditions.md`: Joel, "YES TO
+  ALL" (Q1-Q4, the migration, the Help wording). Evidence `plans/n1e-evidence.md`.
+- **Database (staging only so far):**
+  - migration `20261118000000_n1e_facility_notes`: notes on facility sessions by the pitcher's group coach or the
+    manager;
+  - rollback `supabase/rollback/20261118000000_n1e_facility_notes_down.sql` (production's exact text);
+  - test `supabase/tests/n1e_facility_notes.sql`: before, 2 expected refusals; after, 0 fails;
+  - no policy change (32).
+- **Built:**
+  - a zone picture on every History bar;
+  - the recap after every save (not Save and switch), with the callout and Send / View / Done;
+  - "Note to the pitcher" on the recap for coaches, queued on the device until its session syncs;
+  - facility notes shown in History;
+  - Help coach step 6 "Leave a note" (Joel's OK, a quiet Help change).
+- **Deviations:**
+  - History bars stay open (Q1);
+  - the recap plot uses History's cell style;
+  - the recap's count-up got a fallback, since it could stall when animation pauses.
+- **Production, Joel, in this order:**
+  1. a backup;
+  2. `supabase db push --project-ref fkgccjhuimkkbupbanxp --dry-run` (should list only
+     `20261118000000_n1e_facility_notes`);
+  3. the push;
+  4. merge.
+
+  v346 shows no note box, so either order is safe. Afterwards, regenerate `supabase/schema/schema.sql`.
+- **Staging test data:** pens and a game for Andre Boateng and Noah Lindqvist, a pen for the U15 pitcher, and 3 test
+  notes.
+
+## 2026-11-17 · N1 Stage D (Get started card) · **production** (v346 live Nov 17), branch `n1d-getting-started`, PR #93 merged (`7e253ba`; it also carried PR #92), cache `kb-shell-v346`
 
 - **Packet:** `plans/n1-navigation-and-home.md` Stage D. Preconditions `plans/n1d-preconditions.md`: Joel, "yes to all,
   build it". Evidence `plans/n1d-evidence.md`.

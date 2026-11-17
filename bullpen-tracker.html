@@ -890,6 +890,39 @@
   .gs-text{ flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
   .gs-step.next .gs-label{ font-weight:700; }
   .gs-hint{ font-size:var(--t-14); color:var(--ink-dim); }
+  /* N1-E: History's zone picture and the recap (docs/n1/e-*.png) */
+  .session-card-head.has-thumb{ position:relative; padding-left:calc(64px + var(--s-24)); }
+  .zone-thumb{ position:absolute; left:var(--s-16); top:50%; transform:translateY(-50%); width:64px; height:64px; border-radius:8px; overflow:hidden; }
+  .recap-screen{ position:fixed; inset:0; z-index:95; background:var(--brand-bg-deep); color:var(--on-dark); overflow-y:auto;
+    padding:calc(var(--s-16) + env(safe-area-inset-top, 0px)) var(--s-16) calc(var(--s-24) + env(safe-area-inset-bottom, 0px)); }
+  .recap-inner{ max-width:560px; margin:0 auto; display:flex; flex-direction:column; gap:var(--s-12); min-height:100%; }
+  .rc-top{ display:flex; justify-content:space-between; align-items:center; }
+  .rc-top .brand-word{ font-size:22px; color:var(--on-dark); }
+  .rc-when{ font-size:13px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--on-dark-faint); }
+  .rc-tag{ align-self:flex-start; background:var(--accent); color:var(--on-accent, var(--ink)); font-weight:800; letter-spacing:.14em; text-transform:uppercase; padding:6px 18px; font-style:italic; animation:rcSlide .45s ease-out both; }
+  @keyframes rcSlide{ from{ transform:translateX(-24px); opacity:0; } to{ transform:none; opacity:1; } }
+  .recap-screen.still .rc-tag{ animation:none; }
+  @media (prefers-reduced-motion: reduce){ .rc-tag{ animation:none; } }
+  .rc-name{ margin:0; font-size:44px; line-height:1; color:var(--on-dark); }
+  .rc-nums{ display:grid; grid-template-columns:repeat(3, 1fr); gap:var(--s-8); }
+  .rc-nums.game{ grid-template-columns:repeat(5, 1fr); }
+  .rc-num{ background:rgba(0,0,0,.25); border-radius:14px; padding:var(--s-12) var(--s-6); display:flex; flex-direction:column; align-items:center; gap:var(--s-4); }
+  .rc-val{ font-size:40px; line-height:1; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .rc-nums.game .rc-val{ font-size:30px; }
+  .rc-lbl{ font-size:12px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--on-dark-dim); }
+  .rc-mid{ display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:var(--s-12); align-items:center; }
+  .rc-plot{ background:var(--brand-bg); border-radius:14px; padding:var(--s-8); }
+  .rc-plot svg{ width:100%; height:auto; display:block; }
+  .rc-types{ display:flex; flex-direction:column; gap:var(--s-8); font-size:var(--t-16); color:var(--on-dark); }
+  .rc-type{ display:flex; align-items:center; gap:var(--s-8); }
+  .rc-call{ color:var(--accent); font-weight:700; line-height:1.25; }
+  .rc-note{ display:flex; flex-direction:column; gap:var(--s-6); }
+  .rc-note .text-input{ background:var(--card); }
+  .rc-actions{ margin-top:auto; display:flex; flex-direction:column; gap:var(--s-8); }
+  .rc-actions .btn{ width:100%; min-height:52px; }
+  .rc-view{ background:rgba(255,255,255,.12); color:var(--on-dark); border-color:transparent; }
+  .rc-done{ border:0; background:none; color:var(--on-dark-dim); font:inherit; min-height:44px; cursor:pointer; }
+  .rc-wait{ margin:0; font-size:var(--t-14); color:var(--on-dark-dim); text-align:center; }
   .pill-days{ background:var(--warning-tint, #FBF1D6); color:var(--accent-ink, #7A5A00); }
   .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
   .home-tiles{ display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:var(--s-8); width:100%; max-width:340px; margin:var(--s-4) 0 var(--s-24); }
@@ -6219,6 +6252,7 @@ window.endSession = async function(){
   await refreshOutboxState();
   state.view = 'history';
   state.historyLandingNoClear = state.currentPitcherId;   // U10 (3): the saver keeps his dots
+  if(!state.skipRecap){ const rp = currentPitcher(); if(rp) state.recap = { item, p: rp, note: '' }; }   // N1-E: the recap, one screen before History
   render();
 
   triggerSync();
@@ -6559,6 +6593,7 @@ async function syncOutbox(){
   await loadSessionsForCurrentSelection();
   state.syncing = false;
   if(isCoach()) loadWeekRows(true);   // N1-C: a synced pen moves from the outbox to the read rows
+  flushNoteQueue();   // N1-E: notes wait for their session to sync
   render();
 }
 
@@ -6580,8 +6615,7 @@ function isMine(id){ return !!id && myProfileIds().includes(id); }
 function renderSessionNotes(s){
   // History feed (Joel, Nov 5 2026): no new notes -- Chat replaces them. Notes already written stay, read-only, here and
   // on the report page (get_report_notes).
-  if(isFacilityTeam(s.teamId)) return '';   // F1-A: no notes in a facility (Chat replaces them, F1-C)
-  const notes = s.notes || [];
+  const notes = s.notes || [];   // N1-E (J1): facility notes show too
   if(!notes.length) return '';
   const list = notes.map(n => {
     const when = new Date(n.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -11711,7 +11745,8 @@ window.doSwitchPitcher = async function(id, how){
   state.switchSheet = null;
   state.sessionSheetOpen = false; state.sessionDiscardArmed = false;
   if(how === 'save'){
-    await endSession();
+    state.skipRecap = true;   // N1-E: Save and switch skips the recap
+    try{ await endSession(); } finally { state.skipRecap = false; }
     if(state.activeSession && state.activeSession.pitches && state.activeSession.pitches.length) return;   // not saved: stay put
   } else {
     await storDelete(draftKey());   // discarded, or nothing charted yet
@@ -12419,6 +12454,9 @@ function renderInstallBanner(){
 /* ---------- RENDER: OUTBOX BADGE (P1-01) ---------- */
 window.dismissSyncNotice = function(){ state.syncNotice = null; render(); };
 function renderOutboxBadge(){
+  return renderOutboxBadgeInner() + renderNoteQueueNotice();   // N1-E: a note that couldn't be saved shows here
+}
+function renderOutboxBadgeInner(){
   const notice = state.syncNotice ? `
     <div class="outbox-badge">
       <span>${escHtml(state.syncNotice)}</span>
@@ -12620,7 +12658,8 @@ function renderHistoryView(){
         <div class="delete-zone"><button class="btn btn-danger btn-sm" onclick="startDeleteSession('${s.id}')">Delete this session</button></div>`));
       return `
         <div class="session-card" data-sid="${s.id}">
-          <div class="session-card-head" role="button" tabindex="0" aria-expanded="${state.collapsedSessions[s.id] ? 'false' : 'true'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
+          <div class="session-card-head has-thumb" role="button" tabindex="0" aria-expanded="${state.collapsedSessions[s.id] ? 'false' : 'true'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
+            ${renderZoneThumb(s, p)}
             <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${lineOpen ? ' <span class="coach-logged-tag">Line open</span>' : ''}${pendingTag}</div>
             <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
               <div class="meta-item"><span class="meta-num mono">${gameIpText(stats.outs)}</span><span class="meta-lbl">IP</span></div>
@@ -12756,7 +12795,8 @@ function renderHistoryView(){
 
     return `
       <div class="session-card" data-sid="${s.id}">
-        <div class="session-card-head" role="button" tabindex="0" aria-expanded="${state.collapsedSessions[s.id] ? 'false' : 'true'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
+        <div class="session-card-head has-thumb" role="button" tabindex="0" aria-expanded="${state.collapsedSessions[s.id] ? 'false' : 'true'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
+          ${renderZoneThumb(s, p)}
           <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${teamChipHtml(s)}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${pendingTag}</div>
           <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
@@ -13895,6 +13935,131 @@ function renderGettingStarted(){
     <div class="gs-bar${all ? ' all' : ''}" role="progressbar" aria-valuemin="0" aria-valuemax="${g.total}" aria-valuenow="${g.n}" aria-label="${g.n} of ${g.total} done"><span style="width:${Math.round(g.n / g.total * 100)}%"></span></div>
     ${g.steps.map(row).join('')}
   </section>`;
+}
+/* ---------- N1 Stage E: ZONE PICTURES, THE RECAP, NOTES (Joel, Nov 17 2026; plans/n1e-preconditions.md) ---------- */
+// History's bar picture (docs/n1/e-history-zones.png): a 5x5 heat map, darker = more pitches, pitcher's view, the
+// 3x3 zone outlined. From the pitches, or the stats row's per-type cells (plotSessionOf) -- so it needs no pitch rows.
+function renderZoneThumb(s, p){
+  const pts = plotSessionOf(s, p).pitches || [];
+  if(!pts.length) return '';
+  const N = GRID_SIZE, counts = {};
+  pts.forEach(pt => { if(pt.actualRow == null || pt.actualCol == null) return; const c = perspectiveCol(pt.actualCol, REPORT_PERSPECTIVE); const k = pt.actualRow + '-' + c; counts[k] = (counts[k] || 0) + 1; });
+  const max = Math.max(1, ...Object.values(counts)), cell = 20;
+  let rects = '';
+  for(let r = 0; r < N; r++) for(let c = 0; c < N; c++){
+    const n = counts[r + '-' + c] || 0;
+    rects += `<rect x="${c * cell}" y="${r * cell}" width="${cell}" height="${cell}" fill="${n ? 'var(--brand-mid)' : (isStrikeCell(r, c) ? 'var(--card)' : 'var(--surface)')}"${n ? ` fill-opacity="${(0.25 + 0.75 * n / max).toFixed(2)}"` : ''} stroke="var(--border)" stroke-width="0.6"/>`;
+  }
+  return `<svg class="zone-thumb" viewBox="0 0 ${N * cell} ${N * cell}" role="img" aria-label="Where the pitches went, pitcher's view">${rects}<rect x="${cell}" y="${cell}" width="${cell * 3}" height="${cell * 3}" fill="none" stroke="var(--ink)" stroke-width="1.6"/></svg>`;
+}
+/* Notes (J1): written on the recap, kept on the device (kb:noteQueue:<uid>) and saved to session_notes once their
+   session has synced. A failed save keeps the note with its reason, like an outbox item. */
+function noteQueueKey(){ return 'kb:noteQueue:' + (state.session ? state.session.user.id : ''); }
+function noteQueue(){ try{ return JSON.parse(lsGet(noteQueueKey()) || '[]'); }catch(e){ return []; } }
+function setNoteQueue(q){ try{ lsSet(noteQueueKey(), JSON.stringify(q)); }catch(e){} }
+async function flushNoteQueue(){
+  if(!state.session || !isOnline()) return;
+  const q = noteQueue(); if(!q.length) return;
+  const waiting = new Set((state.outbox || []).map(it => it.id));
+  const keep = []; let saved = 0;
+  for(const n of q){
+    if(waiting.has(n.sessionId)){ keep.push(n); continue; }   // its session hasn't synced yet
+    try{
+      const { error } = await netTimeout(supabaseClient.from('session_notes').insert({ session_id: n.sessionId, author_id: n.authorId, author_name: n.authorName, body: n.body }), 10000);
+      if(error) keep.push(Object.assign({}, n, { lastError: error.message })); else saved++;
+    }catch(e){ keep.push(Object.assign({}, n, { lastError: (e && e.message) || 'offline' })); }
+  }
+  setNoteQueue(keep);
+  if(saved){ await loadSessionsForCurrentSelection(); render(); }
+}
+function renderNoteQueueNotice(){
+  const bad = noteQueue().filter(n => n.lastError);
+  if(!bad.length) return '';
+  return `<div class="outbox-badge"><span>${bad.length} note${bad.length === 1 ? '' : 's'} not saved yet<span class="outbox-why-list">${bad.slice(0, 3).map(n => `<span class="outbox-why">${escHtml(n.lastError)}</span>`).join('')}</span></span></div>`;
+}
+/* The recap (docs/n1/e-recap.png): one screen after End session & save, drawn on the device from the session just
+   saved. Never waits on anything; Save and switch skips it. */
+function recapCallout(item, p, by){
+  const prev = (state.sessions || []).filter(s => s.id !== item.id && (s.kind || 'bullpen') === (item.kind || 'bullpen')).sort((a, b) => b.date - a.date).slice(0, 5);
+  const typeAcc = (s, t) => {
+    if(rowHasStats(s) && s.stats.by_type && s.stats.by_type[t]){ const b = s.stats.by_type[t]; return b.n ? b.hits / b.n : null; }
+    const ps = (s.pitches || []).filter(x => x.type === t); return ps.length ? ps.filter(isHit).length / ps.length : null;
+  };
+  const myTop = Math.max(-1, ...item.pitches.map(x => (x.velo != null && !isDefaultVeloReading(x)) ? x.velo : -1));
+  if(myTop > 0){
+    const old = Math.max(-1, ...(state.sessions || []).filter(s => s.id !== item.id).map(s => rowHasStats(s) ? (s.stats.velo_max || -1) : Math.max(-1, ...(s.pitches || []).map(x => x.velo != null ? x.velo : -1))));
+    if(old > 0 && myTop > old) return `New top velo: ${myTop}`;
+  }
+  if(prev.length < 2 || item.kind === 'game') return '';
+  let best = null;
+  Object.keys(by).forEach(t => {
+    const mine = by[t].count >= 3 ? by[t].accurate / by[t].count : null;
+    if(mine == null) return;
+    const others = prev.map(s => typeAcc(s, t)).filter(v => v != null);
+    if(others.length >= 2 && others.every(v => mine > v) && (!best || mine > best.v)) best = { t, v: mine };
+  });
+  return best ? `Best ${pitchLabel(best.t)} accuracy in ${prev.length + 1} sessions` : '';
+}
+function renderRecap(){
+  const r = state.recap; if(!r) return '';
+  const item = r.item, p = r.p, st = sessionStats(item.pitches), game = item.kind === 'game';
+  const top = st.hasVelo ? st.maxVelo : null;
+  const gl = game ? gameStats(item.pitches, item.pitchCountAdjust || 0, item.events || []) : null;
+  const when = new Date(item.endedAt);
+  const big = (n, label, suffix) => `<div class="rc-num"><span class="rc-val display" data-count="${n}"${suffix ? ` data-suffix="${suffix}"` : ''}>${n}${suffix || ''}</span><span class="rc-lbl">${label}</span></div>`;
+  const nums = game
+    ? big(item.pitches.length + (item.pitchCountAdjust || 0), 'Pitches') + `<div class="rc-num"><span class="rc-val display">${gameIpText(item.gameOutsRecorded || 0)}</span><span class="rc-lbl">IP</span></div>` + big(gl.k, 'K') + big(gl.bb, 'BB') + big(gl.h, 'H')
+    : big(st.total, 'Pitches') + big(st.accuracyPct, 'Accuracy', '%') + (top != null ? big(top, 'Top velo') : '');
+  const types = orderPitchTypes(p, Object.keys(st.byType), t => st.byType[t].count).map(t => {
+    const c = colorForType(p, t), b = st.byType[t];
+    return `<div class="rc-type"><span class="pitch-chip" style="background:${c};color:${readableTextOn(c)};">${pitchLabel(t)}</span><span>${b.count}${game ? '' : ' · ' + b.accuracyPct + '%'}</span></div>`;
+  }).join('');
+  const call = recapCallout(item, p, st.byType);
+  const synced = !(state.outbox || []).some(it => it.id === item.id);
+  return `<div class="recap-screen" role="dialog" aria-modal="true" aria-label="Session recap">
+    <div class="recap-inner">
+      <div class="rc-top"><span class="brand-word">KNUCKLEBALL</span><span class="rc-when">${escHtml(when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))} · ${escHtml(when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))}</span></div>
+      <span class="rc-tag slant-tag">Final · ${game ? 'Live Game' : 'Bullpen'}</span>
+      <h2 class="display rc-name">${escHtml(p.name)}</h2>
+      <div class="rc-nums${game ? ' game' : ''}">${nums}</div>
+      <div class="rc-mid">
+        <div class="rc-plot">${renderHistoryPlot({ kind: item.kind, pitches: item.pitches }, p, { small: true, legend: false, caption: '' })}</div>
+        <div class="rc-types">${types}${call ? `<div class="rc-call">${escHtml(call)}</div>` : ''}</div>
+      </div>
+      ${isCoach() ? `<label class="rc-note"><span class="rc-lbl">Note to the pitcher (optional)</span><input class="text-input" id="recap-note" maxlength="280" value="${escHtml(r.note || '')}" oninput="state.recap.note=this.value" placeholder="One line for ${escHtml(String(p.name || '').split(' ')[0])}"></label>` : ''}
+      <div class="rc-actions">
+        <button type="button" class="btn btn-primary" onclick="recapGo('send')">Send report</button>
+        ${synced ? '' : '<p class="rc-wait">Available once this session has synced.</p>'}
+        <button type="button" class="btn btn-secondary rc-view" onclick="recapGo('view')">View report</button>
+        <button type="button" class="rc-done" onclick="recapGo('done')">Done</button>
+      </div>
+    </div>
+  </div>`;
+}
+window.recapGo = async function(where){
+  const r = state.recap; if(!r) return;
+  const body = String(r.note || '').trim();
+  if(body && isCoach()){
+    const me = state.profile;
+    setNoteQueue(noteQueue().concat([{ sessionId: r.item.id, authorId: me.id, authorName: me.full_name || 'Coach', body: body.slice(0, 280), queuedAt: Date.now() }]));
+  }
+  state.recap = null;
+  state.view = 'history';
+  render();
+  if(body) flushNoteQueue();
+  if(where === 'view' || where === 'send') openSessionInHistory(r.item.id);
+  const synced = !(state.outbox || []).some(it => it.id === r.item.id) && (state.sessions || []).some(s => s.id === r.item.id);
+  if(where === 'send' && synced) sendSessionReport(r.item.id);   // today's Send report, nothing new
+};
+// The label slides in and the numbers count up over about half a second -- never under reduced motion.
+function animateRecap(){
+  const el = document.querySelector('.recap-screen'); if(!el || el.dataset.ran) return;
+  el.dataset.ran = '1';
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches){ el.classList.add('still'); return; }
+  const nums = [...el.querySelectorAll('[data-count]')], t0 = performance.now();
+  const step = t => { const k = Math.min(1, (t - t0) / 500); nums.forEach(n => { n.textContent = Math.round(k * Number(n.dataset.count)) + (n.dataset.suffix || ''); }); if(k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+  setTimeout(() => nums.forEach(n => { n.textContent = n.dataset.count + (n.dataset.suffix || ''); }), 700);   // frames can pause (app in the background): always land on the real number
 }
 /* ---------- F1-C1: CHAT (Oct 29 2026, plans/f1-training-facilities.md; decisions in plans/f1c1-preconditions.md) ----------
    Only inside a training facility. Two kinds of thread: the facility's (the manager posts to everyone there) and a
@@ -15699,9 +15864,10 @@ function render(){
   const wideNav = !isPhoneWidth() && !onChartingScreen();
   const phoneTop = isPhoneWidth() && !phoneSession && !onChartingScreen();
   if(app.classList){ app.classList.toggle('has-nav', wideNav); app.classList.toggle('nav-open', wideNav && !!state.navOpen); }
-  app.innerHTML = (wideNav ? renderSideNav(teamSelector) : '') + `<div class="main${phoneSession ? ' ph-main' : ''}">${phoneTop ? phoneHead : ''}${main}${policyFoot}</div>` + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + renderSignOutSheet() + renderPickSheet() + renderManageSheet() + (dockOn ? renderCoachDock() : '');
+  app.innerHTML = (wideNav ? renderSideNav(teamSelector) : '') + `<div class="main${phoneSession ? ' ph-main' : ''}">${phoneTop ? phoneHead : ''}${main}${policyFoot}</div>` + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + renderSignOutSheet() + renderPickSheet() + renderManageSheet() + renderRecap() + (dockOn && !state.recap ? renderCoachDock() : '');
   if(app.classList) app.classList.toggle('has-dock', dockOn);
   if(dockOn) attachCoachDock();
+  animateRecap();   // N1-E: no-op unless the recap just opened
   placeTrayIndicators();   // U13
   try{ document.documentElement.classList.toggle('charting', onChartingScreen()); }catch(e){}   // P2-05: no pull-to-refresh mid-pen
   attachPitchStrip();   // G1b-r5: no-op unless the phone pitch strip is on screen

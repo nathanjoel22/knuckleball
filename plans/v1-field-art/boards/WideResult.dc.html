@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>iPad and laptop in play with field art</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Big+Shoulders+Display:wght@700;800&display=swap">
+<style>
+body{margin:0}
+.chalk{background-image:url(/_blob/fad5ce9725263f71e0d2803099b05671);background-size:100% auto;background-repeat:repeat-y}
+.chalkring{background-image:url(/_blob/1a1c3a1828dfdf89eadeaf5ea453a02b);background-size:100% 100%;background-repeat:no-repeat}
+a{color:#1F4434}a:hover{color:#061A12}
+</style>
+</helmet>
+<div style="position: relative; width: 1232px; height: 860px; overflow: hidden; background: #FFFFFF; font-family: Archivo, system-ui, sans-serif; color: #0A1A14">
+<div style="position: absolute; left: 20px; top: 2px; width: 1196px; height: 70px; box-sizing: border-box; padding: 8px 12px; border-radius: 14px; background: {{bar}}; color: #FFFFFF; display: flex; align-items: flex-start; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 5px"><span style="font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 32px; line-height: 0.9">1</span><span style="font-weight: 700; font-size: 10px; letter-spacing: 0.12em; color: #D5DED9">INNING</span></div>
+<div style="display: flex; flex-direction: column; gap: 5px"><span style="font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 32px; line-height: 0.9">0</span><span style="font-weight: 700; font-size: 10px; letter-spacing: 0.12em; color: #D5DED9">OUTS</span></div>
+<div style="display: flex; flex-direction: column; gap: 5px"><span style="font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 32px; line-height: 0.9">0-1</span><span style="font-weight: 700; font-size: 10px; letter-spacing: 0.12em; color: #D5DED9">COUNT</span></div>
+<div style="display: flex; flex-direction: column; gap: 5px"><span style="font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 32px; line-height: 0.9">1</span><span style="font-weight: 700; font-size: 10px; letter-spacing: 0.12em; color: #D5DED9">BATTER #</span></div>
+<div style="display: flex; flex-direction: column; gap: 5px"><span style="font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 32px; line-height: 0.9">0</span><span style="font-weight: 700; font-size: 10px; letter-spacing: 0.12em; color: #D5DED9">RUNS</span></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 6px"><svg viewBox="0 0 30 22" width="30" height="22" aria-hidden="true" style="display: block"><polygon points="15,1 21,7 15,13 9,7" style="fill: none; stroke: #C5D0CA; stroke-width: 1.4px"></polygon><polygon points="23,9 29,15 23,21 17,15" style="fill: none; stroke: #C5D0CA; stroke-width: 1.4px"></polygon><polygon points="7,9 13,15 7,21 1,15" style="fill: none; stroke: #C5D0CA; stroke-width: 1.4px"></polygon></svg><span style="font-weight: 700; font-size: 10px; letter-spacing: 0.12em; color: #D5DED9">RUNNERS</span></div>
+</div>
+<div style="position: absolute; left: 20px; top: 88px; width: 159px; display: flex; flex-direction: column">
+<span style="font-weight: 800; font-size: 10.5px; letter-spacing: 0.12em; color: #4A5B55">CHARTING PERSPECTIVE</span>
+<div style="margin-top: 9px; box-sizing: border-box; padding: 3px; border-radius: 14px; background: #E8EBE8; display: flex; flex-direction: column; font-weight: 800; font-size: 14px">
+<button type="button" style="height: 43px; margin: 0; padding: 0; border: 0; border-bottom: 3px solid #0A1A14; border-radius: 10px; background: #FFFFFF; color: #0A1A14; font: inherit; cursor: pointer">Behind the catcher</button>
+<button type="button" style="height: 43px; margin: 0; padding: 0; border: 0; background: transparent; color: #0A1A14; font: inherit; cursor: pointer">Behind the pitcher</button>
+</div>
+<span style="margin-top: 18px; font-weight: 800; font-size: 10.5px; letter-spacing: 0.12em; color: #4A5B55">VOICE</span>
+<div style="margin-top: 9px; box-sizing: border-box; padding: 3px; border-radius: 14px; background: #E8EBE8; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); font-weight: 800; font-size: 14px">
+<button type="button" style="height: 37px; margin: 0; padding: 0; border: 0; border-bottom: 3px solid #0A1A14; border-radius: 10px; background: #FFFFFF; color: #0A1A14; font: inherit; cursor: pointer">On</button>
+<button type="button" style="height: 37px; margin: 0; padding: 0; border: 0; background: transparent; color: #0A1A14; font: inherit; cursor: pointer">Off</button>
+</div>
+<sc-if value="{{ isBB }}" hint-placeholder-val="{{ true }}">
+<span style="margin-top: 18px; font-weight: 800; font-size: 10.5px; letter-spacing: 0.12em; color: #4A5B55">DELIVERY</span>
+<div style="margin-top: 9px; box-sizing: border-box; padding: 3px; border-radius: 14px; background: #E8EBE8; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); font-weight: 800; font-size: 14px">
+<button type="button" style="height: 37px; margin: 0; padding: 0; border: 0; border-bottom: 3px solid #0A1A14; border-radius: 10px; background: #FFFFFF; color: #0A1A14; font: inherit; cursor: pointer">Windup</button>
+<button type="button" style="height: 37px; margin: 0; padding: 0; border: 0; background: transparent; color: #0A1A14; font: inherit; cursor: pointer">Set</button>
+</div>
+</sc-if>
+<span style="margin-top: 18px; font-weight: 800; font-size: 10.5px; letter-spacing: 0.12em; color: #4A5B55">PITCH TYPE</span>
+<div style="margin-top: 9px; box-sizing: border-box; padding: 10px 16px; border-radius: 14px; background: #E8EBE8; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 8px; align-items: center; font-weight: 800; font-size: 14px">
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 44px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F2B741"></span>{{p1}}</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 44px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #2FB07A"></span>{{p2}}</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 44px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F0683C"></span>{{p3}}</span>
+<button type="button" aria-label="Add or edit pitches" style="justify-self: center; width: 44px; height: 44px; margin: 0; padding: 0; border: 0; border-radius: 12px; background: transparent; color: #0A1A14; font-family: inherit; font-weight: 700; font-size: 24px; line-height: 1; cursor: pointer">+</button>
+</div>
+</div>
+<div style="position: absolute; left: 200px; top: 80px; width: 740px; height: 580px; overflow: hidden; border-radius: 12px">
+<svg viewBox="-67 0 471 369" width="740" height="580" role="img" aria-label="Field, tap where the ball went" style="display: block">
+<g style="transform: translate(0px, 45px)">
+<rect x="-80" y="-60" width="500" height="460" style="fill: #4E9A4B"></rect>
+<polygon points="168.5,240 -80,-5 -80,-35 168.5,210 417,-35 417,-5" style="fill: #5BA756"></polygon>
+<polygon points="168.5,180 -80,-65 -80,-95 168.5,150 417,-95 417,-65" style="fill: #5BA756"></polygon>
+<polygon points="168.5,120 -80,-125 -80,-155 168.5,90 417,-155 417,-125" style="fill: #5BA756"></polygon>
+<polygon points="168.5,60 -80,-185 -80,-215 168.5,30 417,-215 417,-185" style="fill: #5BA756"></polygon>
+<polygon points="-80,55 168.5,300 417,55 417,400 -80,400" style="fill: #3F8440"></polygon>
+<polygon points="-80,115 168.5,360 168.5,400 -80,400" style="fill: #387A3A"></polygon>
+<polygon points="417,115 168.5,360 168.5,400 417,400" style="fill: #387A3A"></polygon>
+<path d="M-67,114 Q168.5,-30 404,114" style="fill: none; stroke: #C99C6B; stroke-width: 12px"></path>
+<path d="M-67,-60 L404,-60 L404,104 Q168.5,-40 -67,104 Z" style="fill: #BFE3F5"></path>
+<path d="M-67,104 Q168.5,-40 404,104" style="fill: none; stroke: {{wall}}; stroke-width: 5px"></path>
+<path d="M-67,101 Q168.5,-43 404,101" style="fill: none; stroke: #F2C230; stroke-width: 1.5px"></path>
+<g style="transform: translate(0px, 16px) skewX(-10deg); transform-origin: 168.5px 76px">
+<rect x="135" y="48" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="135" y="56.5" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="158" y="48" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="158" y="56.5" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="181" y="48" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="181" y="56.5" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="135" y="67.5" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="135" y="76" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="158" y="67.5" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="158" y="76" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="181" y="67.5" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="181" y="76" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="135" y="87" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="135" y="95.5" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="158" y="87" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="158" y="95.5" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="181" y="87" width="21" height="8.5" style="fill: #2F7A36"></rect><rect x="181" y="95.5" width="21" height="8.5" style="fill: #3A8A3D"></rect>
+</g>
+<path d="M168.5,306 L70,208 A139,139 0 0 1 267,208 Z" style="fill: #C99C6B"></path>
+<line x1="168.5" y1="300" x2="-42" y2="92.5" style="stroke: transparent; stroke-width: 4.6px; stroke-dasharray: 1.2 0.8 0.7 1 1.7 0.6 0.9 1.1"></line>
+<line x1="168.5" y1="300" x2="379" y2="92.5" style="stroke: transparent; stroke-width: 4.6px; stroke-dasharray: 1.2 0.8 0.7 1 1.7 0.6 0.9 1.1"></line>
+<line x1="168.5" y1="300" x2="-42" y2="92.5" style="stroke: transparent; stroke-width: 3.4px"></line>
+<line x1="168.5" y1="300" x2="379" y2="92.5" style="stroke: transparent; stroke-width: 3.4px"></line>
+<line x1="168.5" y1="300" x2="-42" y2="92.5" style="stroke: transparent; stroke-width: 2.4px; stroke-dasharray: 0.7 1.9 1 2.6 0.5 1.5"></line>
+<line x1="168.5" y1="300" x2="379" y2="92.5" style="stroke: transparent; stroke-width: 2.4px; stroke-dasharray: 0.7 1.9 1 2.6 0.5 1.5"></line>
+<polygon points="168.5,203 212,246 168.5,288 125,246" style="fill: {{infield}}"></polygon>
+<polygon points="168.5,216 199,246 168.5,275 138,246" style="fill: {{infield2}}"></polygon>
+<circle cx="168.5" cy="240" r="10" style="fill: {{moundFill}}"></circle>
+<sc-if value="{{ isSB }}" hint-placeholder-val="{{ false }}">
+<circle cx="168.5" cy="240" r="14" style="fill: none; stroke: transparent; stroke-width: 2px"></circle>
+</sc-if>
+<rect x="163.5" y="238.8" width="10" height="2.4" style="fill: #FFFFFF"></rect>
+<circle cx="168.5" cy="302" r="22" style="fill: #C99C6B"></circle>
+<ellipse cx="168.5" cy="304" rx="17" ry="12" style="fill: #F6E3C4; opacity: 0.55"></ellipse>
+<polygon points="159.5,303 168.5,312 177.5,303 177.5,306 168.5,315 159.5,306" style="fill: #9FA39A"></polygon>
+<polygon points="159.5,294 177.5,294 177.5,303 168.5,312 159.5,303" style="fill: #FAFAF7; stroke: #1B2A22; stroke-width: 1.2px; stroke-linejoin: round"></polygon>
+</g>
+</svg>
+<sc-if value="{{ isSB }}" hint-placeholder-val="{{ false }}">
+<div class="chalkring" style="position: absolute; left: 344.9px; top: 422.6px; width: 50.3px; height: 50.3px; pointer-events: none"></div>
+</sc-if>
+<div class="chalk" style="position: absolute; left: 339.9px; top: 516.8px; width: 8.9px; height: 428.4px; transform-origin: 50% 0; transform: rotate(134.59deg); pointer-events: none"></div>
+<div class="chalk" style="position: absolute; left: 391.2px; top: 516.8px; width: 8.9px; height: 428.4px; transform-origin: 50% 0; transform: rotate(-134.59deg); pointer-events: none"></div>
+<svg viewBox="-67 0 471 369" width="740" height="580" aria-hidden="true" style="position: absolute; left: 0; top: 0; pointer-events: none">
+<g style="transform: translate(0px, 45px)">
+<polygon points="168.5,174 178.5,184 168.5,194 158.5,184" style="fill: #FBFBF8; stroke: #8E9288; stroke-width: 0.8px; stroke-linejoin: round; filter: drop-shadow(2.4px 0.5px 0.5px rgba(40,25,10,0.5))"></polygon>
+<polygon points="231,221 241,231 231,241 221,231" style="fill: #FBFBF8; stroke: #8E9288; stroke-width: 0.8px; stroke-linejoin: round; filter: drop-shadow(2.4px 0.5px 0.5px rgba(40,25,10,0.5))"></polygon>
+<polygon points="106,221 116,231 106,241 96,231" style="fill: #FBFBF8; stroke: #8E9288; stroke-width: 0.8px; stroke-linejoin: round; filter: drop-shadow(2.4px 0.5px 0.5px rgba(40,25,10,0.5))"></polygon>
+</g>
+</svg>
+</div>
+<div style="position: absolute; left: 430px; top: 676px; width: 340px; height: 30px; border-radius: 15px; background: #F3E5C0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px">In play — FC, Error, Hit or Out?</div>
+<button type="button" disabled style="position: absolute; left: 375px; top: 722px; width: 87.6px; height: 64px; margin: 0; padding: 0; border: 0; border-radius: 4px; background: #F0F2F0; color: #7E8882; font-family: inherit; font-weight: 800; font-size: 30px">FC</button>
+<button type="button" style="position: absolute; left: 465.6px; top: 722px; width: 87.6px; height: 64px; margin: 0; padding: 0; border: 0; border-radius: 4px; background: #E8EBE8; color: #0A1A14; font-family: inherit; font-weight: 800; font-size: 30px; cursor: pointer">E</button>
+<button type="button" style="position: absolute; left: 556.2px; top: 722px; width: 87.6px; height: 64px; margin: 0; padding: 0; border: 0; border-radius: 4px; background: #E8EBE8; color: #0A1A14; font-family: inherit; font-weight: 800; font-size: 30px; cursor: pointer">H</button>
+<button type="button" style="position: absolute; left: 646.8px; top: 722px; width: 87.6px; height: 64px; margin: 0; padding: 0; border: 0; border-radius: 4px; background: #E8EBE8; color: #0A1A14; font-family: inherit; font-weight: 800; font-size: 30px; cursor: pointer">O</button>
+<button type="button" style="position: absolute; left: 375px; top: 796px; width: 221px; height: 44px; margin: 0; padding: 0; border: 0; border-radius: 12px; background: #E8EBE8; color: #0A1A14; font-family: inherit; font-weight: 700; font-size: 14px; cursor: pointer">‹ Back</button>
+<span style="position: absolute; left: 960px; top: 88px; font-weight: 800; font-size: 10.5px; letter-spacing: 0.12em; color: #4A5B55">RECENT PITCHES</span>
+<div style="position: absolute; left: 960px; top: 110px; width: 252px; box-sizing: border-box; padding: 4px 14px; border-radius: 14px; background: #F3F5F3; display: flex; flex-direction: column">
+<div style="display: grid; grid-template-columns: 26px 44px 34px minmax(0, 1fr); gap: 6px; padding: 10px 0; border-bottom: 1px solid #DDE2DD; font-weight: 700; font-size: 10px; letter-spacing: 0.1em; color: #4A5B55">
+<span>#</span><span>TYPE</span><span>MPH</span><span>RESULT</span>
+</div>
+<div style="display: grid; grid-template-columns: 26px 44px 34px minmax(0, 1fr); gap: 6px; align-items: center; padding: 10px 0; border-bottom: 1px solid #DDE2DD; font-size: 13.5px">
+<span style="font-weight: 700; color: #4A5B55">2</span>
+<span style="font-weight: 800">{{p1}}</span>
+<span style="font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 18px">{{v2}}</span>
+<span style="font-weight: 700">In play, entering result</span>
+</div>
+<div style="display: grid; grid-template-columns: 26px 44px 34px minmax(0, 1fr); gap: 6px; align-items: center; padding: 10px 0; font-size: 13.5px">
+<span style="font-weight: 700; color: #4A5B55">1</span>
+<span style="font-weight: 800">{{p1}}</span>
+<span style="font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 18px">{{v1}}</span>
+<span>Strike looking</span>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"sport":{"editor":"enum","options":["Baseball","Softball"],"default":"Baseball"},"$preview":{"width":1232,"height":860}}'>
+class Component extends DCLogic {
+renderVals() {
+const sb = (this.props.sport ?? 'Baseball') === 'Softball';
+return {
+isSB: sb, isBB: !sb, bar: sb ? '#2B4468' : '#334B45', wall: sb ? '#16385C' : '#1F4D3A',
+infield: sb ? '#C99C6B' : '#57A353', infield2: sb ? '#C99C6B' : '#63AD5D', moundFill: sb ? '#C99C6B' : '#B98B5B',
+p1: sb ? 'FB' : '4SFB', p2: sb ? 'RISE' : 'CB', p3: 'CH', v1: sb ? 57 : 85, v2: sb ? 58 : 86
+};
+}
+}
+</script>
+</body>
+</html>

@@ -60,6 +60,33 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-18 · Live Game: black batter-side columns, PU folded into FB, larger base labels (no packet; Joel's request) · **staging** (local staging site), branch `fly-pop-merge`, cache `kb-shell-v355`
+
+- **Joel, Nov 18:** "change the blinking side bars that determine batter side from yellow to a transparent black. make FB
+  and PU the same thing...get rid of PU and anything it can do that FB cannot, should be an option for FB now". Then:
+  1B / 2B / 3B larger, and a runner's base a slightly translucent white rather than full white.
+- **Built:**
+  - **Select Batter Side:** the outside columns pulse in see-through black. It's the same overlay and rhythm; the pulse
+    sets how see-through it is, and reduced motion holds it at 0.3.
+  - **Contact:** Bu · GB · LD · FB. PU is gone.
+    - The one thing PU could do and FB couldn't, IF, is now open to FB (`g5LocationCells`, `g5Zone`).
+    - A fly ball fielded in the infield is not a sacrifice fly, exactly as a pop-up wasn't. `gameSacrifice` takes the
+      field, in the play and in the at-bat editor.
+    - The editor offers Pop up only for a pitch that already is one.
+    - Games charted before keep `pop` and still show "pop-up" in History and reports. No database change.
+  - **The runners screen:** a base with a runner is `rgba(255,255,255,0.78)` instead of `#fff`. Its label is 20px on
+    phones (was 14), and on iPad / laptop 0.3 of a box (was 0.22).
+- **Checked (staging, 440 and 1280):**
+  - the columns compute to black and pulse;
+  - the contact row reads "Bu GB LD FB";
+  - after FB the location row offers IF / OF / FOUL, IF lights the infield boxes (15, 17, 18, 22, 23, 24, 25), and a tap
+    there goes on to "Who fielded it?" with field IF;
+  - `gameSacrifice`: fly + IF → none; fly + OF → SF; fly caught foul → SF; line drive → SF (unchanged);
+  - two runners on: translucent white bases, labels 20px (phone) and 26px (1280).
+- **Open:** Joel's merge.
+
+---
+
 ## 2026-11-18 · V1 Part B (the guided Live Game flow) · **production** (v354 live Nov 18), branch `v1-guided-flow`, PR #104 merged (`dbab1de`), cache `kb-shell-v354`
 
 - **Packet** `plans/v1-field-art-and-guided-flow.md`, Part B. Decisions `plans/v1-preconditions.md` (Joel: yes to all).

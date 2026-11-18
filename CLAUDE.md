@@ -176,7 +176,7 @@ Live Game only; bullpens keep their flow and their No batter / vs RHB / vs LHB p
   **Select Pitch Type**, then **Select Pitch Intent** (Intent on only), then **Select Pitch Outcome**. After that, today's
   steps follow: what happened, ball in play, runners, velocity.
 - **There is no RHB / LHB button.**
-  - Step 1 pulses the two outside columns (Relative Accuracy's overlay, in the accent). A tap on one puts the batter on
+  - Step 1 pulses the two outside columns (Relative Accuracy's overlay, in see-through black since Nov 18). A tap on one puts the batter on
     that side of the screen (catcher's view: left = RHB; pitcher's view: right = RHB). A tap anywhere else does
     nothing, and nothing is recorded.
   - The side is kept per at-bat, `s.batterSides[atBatIndex]`, in the draft. So:
@@ -209,7 +209,9 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
   Inning / Outs / Count in the top bar adjusts it. The top bar also shows **Runs** (his own; inherited runs scored as
   "+N inh").
 - **A ball in play:** FC · E · H · O → H asks 1B / 2B / 3B / HR; E asks "Where did the batter end up?" (1B/2B/3B/Home)
-  → contact (Bu PU GB LD FB; a bunt lights the infield by itself) → location (IF / OF / FOUL, and FENCE for a homer;
+  → contact (Bu GB LD FB; a bunt lights the infield by itself. **Since Nov 18 (Joel) there's no PU: FB covers
+  pop-ups**, takes IF as well as OF, and a fly fielded in the infield is never a sacrifice fly, as a pop-up never was;
+  games charted before keep their 'pop') → location (IF / OF / FOUL, and FENCE for a homer;
   OF on a homer = inside the park) → **Who fielded it?** (positions as yellow pills on the field; a tap selects /
   unselects; with runners on, tap the outs in order -- 6-4-3 = force at 2B + batter; a force away from first with no
   out at first is a fielder's choice; Unassisted; a fly / line / pop out is one tap) → the batter is placed and runners

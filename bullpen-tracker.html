@@ -1340,6 +1340,16 @@
   /* iPad / laptop: Recent pitches in the right column */
   .wide-log{ background:var(--bg); border-radius:var(--radius-card, 12px); padding:var(--s-12) var(--s-16); align-self:start; min-width:0; }
   .wide-log .pitch-log{ max-height:none; }
+  /* V1 Part B: Select Batter Side pulses the two outside columns in the accent (Relative Accuracy's overlay and rhythm);
+     Select Pitch Type pulses the pitch choices at about a third of that. Reduced motion: steady tints. */
+  .rel-glow-overlay.v1-side-glow{ background:var(--accent); }
+  .v1-batter-tap{ pointer-events:auto; cursor:pointer; }
+  @keyframes v1TypePulse{ 0%,100%{ box-shadow:inset 0 0 0 999px rgba(var(--accent-rgb),0); } 50%{ box-shadow:inset 0 0 0 999px rgba(var(--accent-rgb),0.17); } }
+  .v1-pick-type .seg:not(.ptype-plus), .v1-pick-type .pstrip-chip{ animation:v1TypePulse 1.1s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce){
+    .rel-glow-overlay{ opacity:0.3; }
+    .v1-pick-type .seg:not(.ptype-plus), .v1-pick-type .pstrip-chip{ box-shadow:inset 0 0 0 999px rgba(var(--accent-rgb),0.12); }
+  }
   /* Joel, Oct 13: the prompt ("Tap where you're aiming", "What happened?", "Now tap where the pitch went"...) has to
      catch the eye at once -- big, heavy, dark, on a tinted pill in the sport's accent, centered under the chart */
   .zone-caption{ display:block; width:fit-content; max-width:100%; box-sizing:border-box; margin:var(--s-8) auto 0; padding:var(--s-6) var(--s-12);
@@ -2409,7 +2419,7 @@ function pitchTypeTray(p, grid, plus){
   }));
   // V1 (iPad / laptop): "+" is the box's last choice, grey like the others
   if(plus && canEditArsenal(p)) items.push({ label: '+', cls: 'ptype-plus', attrs: 'aria-label="Add or edit pitches" title="Pitches"', onclick: 'openArsenalSheet(null, true)' });
-  return segTray(items, { key: 'ptype', label: 'Pitch type', cls: grid ? 'tray-grid' : '' });
+  return segTray(items, { key: 'ptype', label: 'Pitch type', cls: (grid ? 'tray-grid' : '') + (v1TypeStep() ? ' v1-pick-type' : '') });
 }
 const GRID_SIZE = 5;
 
@@ -2972,8 +2982,64 @@ function sessionPerspective(session){
 // already relies on), not a separate top-level UI field -- so it survives
 // a tab-kill mid-LHB-sequence instead of silently resetting to RHB.
 function sessionBatterSide(session){
+  if(session && session.kind === 'game'){ const m = gameBatterSides(session); return m[session.atBatIndex] || 'R'; }   // V1 Part B
   return (session && session.currentBatterSide) || 'R';
 }
+// V1 Part B (Joel, Nov 18 2026; plans/v1-field-art-and-guided-flow.md): in a Live Game the batter's side is chosen once
+// per batter, by tapping the side of the chart he stands on ("Select Batter Side"), and kept per at-bat
+// (s.batterSides[atBatIndex]) in the draft -- so a new batter (atBatIndex moves on) starts unchosen, Back across an
+// at-bat restores the previous batter's side, and a killed tab comes back to the same step. "Not chosen" is a real
+// state (never a silent right-hander): no pitch is charted until it's chosen. A game started before V1 Part B keeps
+// the side it had for its current batter.
+function gameBatterSides(s){
+  if(!s.batterSides) s.batterSides = { [s.atBatIndex]: s.currentBatterSide || 'R' };
+  return s.batterSides;
+}
+// Step 2 of a Live Game pitch: the batter's side is chosen and no pitch type is yet.
+function v1TypeStep(){
+  const s = state.activeSession;
+  return !!(s && s.kind === 'game' && !s.g5 && !s.startQ && gameBatterChosen(s) && !state.selectedType);
+}
+function gameBatterChosen(s){
+  return !(s && s.kind === 'game') || (!s.batterFix && !!gameBatterSides(s)[s.atBatIndex]);
+}
+// The four steps of a Live Game pitch (Joel): the yellow prompt under the chart always says what to tap next.
+function gameStepPrompt(s){
+  if(!gameBatterChosen(s)) return 'Select Batter Side';
+  if(!gamePitchType()) return 'Select Pitch Type';
+  return (s.intent && !s.gameTarget) ? 'Select Pitch Intent' : 'Select Pitch Outcome';
+}
+// Step 1: a tap on either outside column puts the batter on that side of the screen (catcher's view: left = RHB;
+// pitcher's view: right = RHB). Correcting a side ("Change batter side", or a tap on the batter) also corrects the
+// pitches already charted to this batter, rescored for that side (they're still in the draft).
+async function gamePickBatterSide(col){
+  const s = state.activeSession;
+  if(col !== 0 && col !== GRID_SIZE - 1) return;   // anywhere else does nothing in this step
+  const rhbLeft = insideColumnOnScreenLeft(sessionPerspective(s), 'R');
+  const side = (col === 0) === rhbLeft ? 'R' : 'L';
+  gameBatterSides(s)[s.atBatIndex] = side;
+  s.currentBatterSide = side;
+  if(s.batterFix){
+    s.batterFix = false;
+    s.pitches.forEach(pt => {
+      if(pt.atBatIndex !== s.atBatIndex || pt.batterSide === side) return;
+      pt.batterSide = side;
+      if(pt.accuracyHitKind && pt.targetRow !== null && pt.targetRow !== undefined){   // U14: rescored for the new side
+        const sc = scoreU14(s, state.currentPitcherId, pt.type, side, pt.targetRow, pt.targetCol, pt.actualRow, pt.actualCol);
+        pt.accuracyHitKind = sc.kind; pt.accuracyZoneCells = sc.cells;
+      }
+    });
+  }
+  await storSet(draftKey(), s);
+  render();
+}
+window.gameFixBatterSide = async function(){
+  const s = state.activeSession;
+  if(!s || s.kind !== 'game' || s.g5 || !gameBatterChosen(s)) return;
+  s.batterFix = true;
+  await storSet(draftKey(), s);
+  render();
+};
 // U9: "changing it takes effect on the next session, never mid-pen"
 // (Joel) -- but freezing it the moment the (possibly still-EMPTY) session
 // object gets constructed was too early: toggling the setting in Profile
@@ -5663,7 +5729,7 @@ async function refreshDraftState(){
   // that G1b now deliberately preserves everywhere else -- discarding it
   // here specifically because it happens to be the game's first pitch
   // would silently contradict that.
-  const hasMidFlowProgress = draft && (draft.gamePendingPitch || draft.fieldPlay || draft.adjustRunners);
+  const hasMidFlowProgress = draft && (draft.gamePendingPitch || draft.fieldPlay || draft.adjustRunners || (draft.kind === 'game' && draft.batterSides && !draft.startQ));   // V1 Part B
   if(draft && ((draft.pitches && draft.pitches.length) || hasMidFlowProgress)){
     state.draftAvailable = true;
     state.pendingDraft = draft;
@@ -5690,6 +5756,7 @@ window.resumeDraft = function(){
   state.activeSession = state.pendingDraft;
   // Oct 14: a Live Game resumed mid-play gets its pitch type back (it was cleared on load)
   if(state.activeSession && state.activeSession.gamePendingPitch && state.activeSession.gamePendingPitch.type) state.selectedType = state.activeSession.gamePendingPitch.type;
+  else if(state.activeSession && state.activeSession.kind === 'game' && state.activeSession.selType) state.selectedType = state.activeSession.selType;   // V1 (Q9)
   // Defensive: a draft persisted before U5/U2a/U9/G1 shipped won't carry
   // these fields. A pre-G1 draft has no `kind` at all -- it can only be a
   // bullpen (the chooser didn't exist yet), so default it rather than
@@ -5747,6 +5814,7 @@ window.discardDraft = async function(){
 
 window.selectType = function(type){
   state.selectedType = type;
+  if(state.activeSession && state.activeSession.kind === 'game'){ state.activeSession.selType = type; storSet(draftKey(), state.activeSession); }   // V1 (Q9)
   state.hint = '';
   render();
 };
@@ -7348,9 +7416,9 @@ const V1_BATTER = {
 };
 function v1Layout(){ return isPhoneWidth() ? 'phone' : 'wide'; }
 function v1View(chartingPerspective){ return chartingPerspective === 'behind_pitcher' ? 'pitcher' : 'catcher'; }
-function v1Batter(key, onScreenLeft){
+function v1Batter(key, onScreenLeft, onclick){
   const t = V1_BATTER[key][onScreenLeft ? 'L' : 'R'];
-  return `<g class="v1-batter" transform="translate(${t[0]} ${t[1]}) scale(${t[2]} ${Math.abs(t[2])})">
+  return `<g class="v1-batter${onclick ? ' v1-batter-tap' : ''}"${onclick ? ` onclick="${onclick}" role="button" aria-label="Change batter side"` : ''} transform="translate(${t[0]} ${t[1]}) scale(${t[2]} ${Math.abs(t[2])})">
     <ellipse cx="83" cy="501" rx="75" ry="7" fill="rgba(0,0,0,0.3)"/>
     <g style="fill:var(--batter)">${currentSport() === 'softball' ? KB_PONYTAIL : ''}<path d="${KB_BATTER_D}"/></g></g>`;
 }
@@ -7362,7 +7430,7 @@ function v1Stage(kind, layout, gridHtml, o){
   const pct = (v, of) => (v / of * 100).toFixed(4) + '%';
   const box = `left:${pct(r[0], P.w)};top:${pct(r[1], P.h)};width:${pct(r[2], P.w)};height:${pct(r[3], P.h)}`;
   return `<div class="v1-stage v1-${layout} v1-${kind}">
-    <svg class="v1-scene" viewBox="0 0 ${P.w} ${P.h}" preserveAspectRatio="none" aria-hidden="true" focusable="false">${V1_SCENE[kind + '-' + layout](currentSport() === 'softball', id)}${o.batter ? v1Batter(kind + '-' + layout, o.batter.left) : ''}</svg>
+    <svg class="v1-scene" viewBox="0 0 ${P.w} ${P.h}" preserveAspectRatio="none" aria-hidden="true" focusable="false">${V1_SCENE[kind + '-' + layout](currentSport() === 'softball', id)}${o.batter ? v1Batter(kind + '-' + layout, o.batter.left, o.batter.onclick) : ''}</svg>
     <div class="v1-box" style="${box}">${gridHtml}</div>
   </div>`;
 }
@@ -7640,6 +7708,7 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
     const litType = isBullpenTap ? state.selectedType : (gameAim ? gamePitchType() : null);
     const zoneNow = ((isBullpenTap && pendingTarget) || gameAim) && litType && sessionRelAccuracy(sa, gp)
       ? zoneCellsFor(state.currentPitcherId, litType, batterSide) : null;
+    const sideStep = !isBullpenTap && !!(sa && sa.kind === 'game' && !gameBatterChosen(sa));   // V1 Part B, Select Batter Side
     const glowCells = zoneNow
       ? new Set(zoneNow.map(k => { const [zr, zc] = k.split('-').map(Number); return zr + '-' + perspectiveCol(zc, chartingPerspective); }))
       : null;
@@ -7660,6 +7729,7 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
         let cls = 'zone-cell' + (inZone ? ' in-zone' : '') + ' clickable';
         let inner = num !== null ? `<span class="zone-number">${num}</span>` : '';
         if(isGlow) inner += `<span class="rel-glow-overlay"></span>`;
+        if(sideStep && (col === 0 || col === GRID_SIZE - 1)) inner += `<span class="rel-glow-overlay v1-side-glow"></span>`;
         if(isTarget){ cls += ' zone-cell-target'; inner += `<span class="target-dot"><span class="target-dot-core"></span></span>`; }
         if(ballHere){ cls += ' zone-cell-ball' + (state.gameBallFlash ? ' ball-flash' : ''); inner += `<span class="zone-ball">${G5_BALL_SVG}</span>`; }
         if(isFlash){
@@ -7993,6 +8063,7 @@ function saveGameHandoff(s, item){
   const me = currentPitcher(), names = Object.assign({}, s.ownerNames || {}, { [item.id]: (me && me.name) || 'the previous pitcher' });
   try{ localStorage.setItem(GAME_HANDOFF_KEY, JSON.stringify({ at: Date.now(), teamId: item.teamId, pitcherId: item.pitcherId, sport: currentSport(),
     inning: s.inning, outs: s.outs, balls: s.balls, strikes: s.strikes, runners: runnersBitmask(s.runners), opponent: s.opponent || null,
+    side: gameBatterChosen(s) ? sessionBatterSide(s) : null,   // V1 (Q7): the batter at the plate
     meta, phantomOuts: s.phantomInning === s.inning ? (s.phantomOuts || 0) : 0,   // Release 2: whose runners, and the inning's would-be outs
     sessionId: item.id, ownerNames: names })); }catch(e){}   // R3 (B3): the game he relieves, and whose names go with the owners
 }
@@ -8089,6 +8160,7 @@ window.startSessionNow = async function(){
   s.raOn = s.kind === 'game' ? !!(q.intent && q.rel) : !!q.rel;
   if(s.kind === 'bullpen' || q.intent) rememberRaAnswer(currentPitcher(), !!q.rel);
   if(s.kind === 'game') s.intent = !!q.intent;   // Joel, Oct 12: Live Game intent (target, then where it went)
+  if(s.kind === 'game') s.batterSides = {};   // V1 Part B: the first batter's side is asked (Select Batter Side)
   if(s.kind === 'game'){
     const el = document.getElementById('start-opponent');
     const name = String((el && el.value) || s.opponent || '').trim().slice(0, 60);
@@ -8103,6 +8175,7 @@ window.startSessionNow = async function(){
       s.carriedInning = h.inning; s.carryOutsBefore = (h.inning - 1) * 3 + h.outs;
       gameStartInherited(s, h.meta, h.phantomOuts, h.sessionId || null, h.ownerNames);
       defaultGameDelivery(s);
+      if(h.side && (h.balls || h.strikes)) s.batterSides[s.atBatIndex] = h.side;   // V1 (Q7): the same batter, mid at-bat
     }
   }
   if(s.kind === 'game' && q.mid && !(q.carry && s.carriedInning)){   // Oct 20: starting mid-game by hand
@@ -8309,9 +8382,10 @@ window.handleGameZoneTap = async function(row, col){
     render();
     return;
   }
-  if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
-  if(sportCfg().hasDelivery && !state.activeSession.delivery){ state.hint = 'Set or windup first'; render(); return; }
   if(tiebreakPending(state.activeSession)){ state.hint = 'Answer the extra-inning question first'; render(); return; }
+  if(!gameBatterChosen(state.activeSession)) return gamePickBatterSide(col);   // V1 Part B, step 1: Select Batter Side
+  if(!state.selectedType) return;   // step 2: Select Pitch Type (the prompt says so; the pitch choices pulse)
+  if(sportCfg().hasDelivery && !state.activeSession.delivery){ state.hint = 'Set or windup first'; render(); return; }
   state.hint = '';
   state.gameAdjust = null;   // a chart tap ends an adjustment
   // Joel, Oct 12: with Intent on, the first tap is where the pitch was called (the target), like a bullpen; the
@@ -8765,6 +8839,7 @@ function applyGameResultProgression(result, extra){
     // or field-flow logic exists to have put a runner there in the first
     // place.
     s.runners = { 1: false, 2: false, 3: false };
+    s.balls = 0; s.strikes = 0;   // V1 (Q8): a runner out ending the inning mid at-bat -- same batter next inning, 0-0
   }
   if(endsAtBat){
     s.atBatIndex++;
@@ -8787,6 +8862,7 @@ window.recordGameResult = async function(result, extra){
   if(!pending) return;
   if(!gamePitchType()){ state.hint = 'Pick this pitch\'s type, then tap again'; render(); return; }   // Oct 14: never save a pitch with no type
   const s = state.activeSession;
+  if(!gameBatterChosen(s)) return;   // V1 Part B: never save a pitch with no batter side
   const ledgerBefore = gameLedgerBefore(s);   // Release 2: runs earned / inherited
   const chartingPerspective = sessionPerspective(s);
   const batterSide = sessionBatterSide(s);
@@ -9015,7 +9091,13 @@ window.gameBack = async function(){
   state.g5More = false;
   if(s.g5) return g5Back();
   if(s.intent && s.gameTarget) return resetGameTarget();
-  return undoLastGameAction();
+  await undoLastGameAction();
+  // V1 Part B: Back across an at-bat forgets the sides chosen for the batters after it -- every new batter is asked again
+  const m = gameBatterSides(s);
+  Object.keys(m).forEach(k => { if(Number(k) > s.atBatIndex){ delete m[k]; } });
+  if(s.batterFix && !m[s.atBatIndex]) s.batterFix = false;
+  await storSet(draftKey(), s);
+  render();
 };
 window.g5MoreToggle = function(){ state.g5More = !state.g5More; state.g5Rare = false; state.g5RareAsk = null; state.gameAdjust = null; render(); };
 window.g5MoreClose = function(){ state.g5More = false; state.g5Rare = false; state.g5RareAsk = null; };
@@ -9173,7 +9255,7 @@ window.commitAdjustEvent = async function(reason){
   const hadRunnersBefore = gameHasRunners(s);
   const { outsOnPlay, runsScored } = applyRunnerAdvances(s, advances, null);
   s.outs += outsOnPlay;
-  if(s.outs >= 3){ s.inning++; s.outs = 0; s.runners = { 1: false, 2: false, 3: false }; }
+  if(s.outs >= 3){ s.inning++; s.outs = 0; s.runners = { 1: false, 2: false, 3: false }; s.balls = 0; s.strikes = 0; }   // V1 (Q8): same batter leads off, 0-0
   if(hadRunnersBefore !== gameHasRunners(s)) defaultGameDelivery(s);   // Joel, Oct 1
   s.events.push({
     id: genUUID(), seq: s.nextSeq++,
@@ -9261,7 +9343,7 @@ window.commitNoPitchEvent = async function(eventType, extra, noRender){
   }
   outsBumped = outsBumped || outsOnPlay;
   if(outsBumped) s.outs += outsBumped;
-  if(s.outs >= 3){ s.inning++; s.outs = 0; s.runners = { 1: false, 2: false, 3: false }; }
+  if(s.outs >= 3){ s.inning++; s.outs = 0; s.runners = { 1: false, 2: false, 3: false }; s.balls = 0; s.strikes = 0; }   // V1 (Q8)
   if(endsAtBat){ s.atBatIndex++; s.balls = 0; s.strikes = 0; defaultGameDelivery(s); }
   else if(hadRunnersBefore !== gameHasRunners(s)) defaultGameDelivery(s);   // e.g. a pickoff empties the bases
   s.events.push({
@@ -11795,7 +11877,7 @@ function g5NavRow(){
     </div>${more ? (state.g5Rare ? g5RareTray(s) : `<div class="g5-more" role="group" aria-label="More">
       ${b('Hit by pitch', 'gameHitByPitch()', !(s.g5 && s.g5.step === 'what'))}
       <button type="button" class="btn btn-secondary btn-sm g5-more-btn" onclick="g5RareToggle()">Rare plays ▸</button>
-      ${b('New batter', 'gameNewBatter()')}${b('New inning', 'gameNewInning()')}
+      ${b('New batter', 'gameNewBatter()')}${b('New inning', 'gameNewInning()')}${b('Change batter side', 'gameFixBatterSide()', !!s.g5 || !gameBatterChosen(s))}
     </div>`) : ''}`;
 }
 // Oct 20: the Rare plays tray (in More's place). Joel, Oct 21: Dropped 3rd, Intentional walk, Interference (then Catcher's
@@ -11850,7 +11932,7 @@ function phoneLgPrompt(s){
   if(step === 'what') return 'Tap Pitch Result';
   if(step === 'velo') return 'Record Velocity';   // Joel, Oct 22
   if(step) return '';   // the extra-inning question, the field
-  return (s.intent && !s.gameTarget) ? 'Tap Pitch Intent' : 'Tap Pitch Outcome';
+  return gameStepPrompt(s);   // V1 Part B: Select Batter Side / Pitch Type / Pitch Intent / Pitch Outcome
 }
 function g5Surface(pitches, chartingPerspective, currentBatterSide){
   // Joel, Oct 12: while what happened is asked under the chart, the tapped spot stays marked on it
@@ -11861,7 +11943,8 @@ function g5Surface(pitches, chartingPerspective, currentBatterSide){
   let chart = renderZoneGrid(pitches, true, state.flashCell, mark, chartingPerspective, currentBatterSide, 'handleGameZoneTap');
   if(g5Step() === 'velo') chart = chart.replace(/<\/div>$/, g5VeloRows() + '</div>');   // inside .zone-grid, over its last two rows
   // V1 (Nov 18): the chart and the field each sit on their own drawn stage; the flip turns the whole stage over
-  const stage = v1Stage(v1View(chartingPerspective), v1Layout(), chart, { batter: { left: insideColumnOnScreenLeft(chartingPerspective, currentBatterSide) } });
+  const stage = v1Stage(v1View(chartingPerspective), v1Layout(), chart,
+    { batter: gameBatterChosen(sa) ? { left: insideColumnOnScreenLeft(chartingPerspective, currentBatterSide), onclick: sa.g5 ? null : 'gameFixBatterSide()' } : null });
   if(g5OnDiamond()){
     // Joel's iPad photo, Oct 8: Safari kept the field's buttons on their own 3D layer after the flip, drawn a
     // little closer (bigger) under the perspective. Once the flip has played, draw the field again flat.
@@ -11883,8 +11966,8 @@ function g5Surface(pitches, chartingPerspective, currentBatterSide){
 function v1PhoneUnder(s){
   const g5 = s.g5, onField = g5OnDiamond();
   if(onField) return (g5 && G5_BAND_STEPS[g5.step]) ? `<div class="v1-under v1-ph"><div class="zone-caption ph-lg-prompt">${g5PhoneCaption(g5)}</div></div>` : '';
-  const ph = phoneLgPrompt(s);
-  return `<div class="v1-under v1-ph">${v1BatterPill()}${ph ? `<div class="zone-caption ph-lg-prompt">${ph}</div>` : '<div class="ph-lg-spacer"></div>'}</div>`;
+  const ph = phoneLgPrompt(s);   // V1 Part B: no batter pill in a Live Game -- the prompt sits centred
+  return ph ? `<div class="v1-under v1-ph"><div class="zone-caption ph-lg-prompt">${ph}</div></div>` : '';
 }
 
 function renderGameSessionView(p){
@@ -11930,7 +12013,7 @@ function renderGameSessionView(p){
   const g5Now = g5Step();
   const zoneCaption = GAME_ADJUST[state.gameAdjust] ? 'Adjust ' + GAME_ADJUST[state.gameAdjust].label : (s.g5 && g5Now) ? (g5NeedsBatter(s.g5) ? 'Put the batter on base (tap a base, or drag from home)' : g5Caption(g5Now))
     : g5Now === 'velo' ? 'Record Velocity'   // Joel, Oct 22: while the speeds are up
-    : s.intent ? (s.gameTarget ? 'Now tap where the pitch went' : 'Tap where the pitch is called') : `Tap where the pitch landed`;
+    : gameStepPrompt(s);   // V1 Part B: the same four prompts on every screen size
   const g5Below = g5OnDiamond() ? g5HoeRow() + g5FieldActions() : g5BelowChart(g5Now);   // Oct 19: both sides put their buttons under the prompt
 
   if(phoneSessionMode(p)){
@@ -11982,7 +12065,7 @@ function renderGameSessionView(p){
         <div class="gridwrap">
           <div class="zone-wrap">
             ${g5Surface(pitches, chartingPerspective, currentBatterSide)}
-            ${v1UnderRow(zoneCaption, g5OnDiamond() ? '' : v1BatterPill(), insideColumnOnScreenLeft(chartingPerspective, currentBatterSide))}
+            ${v1UnderRow(zoneCaption, '', true)}
           </div>${g5Below}
         </div>
       </div>
@@ -12026,7 +12109,7 @@ function renderGameSessionView(p){
             <div class="gridwrap">
               <div class="zone-wrap">
                 ${g5Surface(pitches, chartingPerspective, currentBatterSide)}
-                ${v1UnderRow(renderWideCaption(zoneCaption), g5OnDiamond() ? '' : v1BatterPill(), insideColumnOnScreenLeft(chartingPerspective, currentBatterSide))}
+                ${v1UnderRow(renderWideCaption(zoneCaption), '', true)}
               </div>${g5Below}
             </div>
           </div>
@@ -12234,7 +12317,7 @@ function renderPitchStrip(p){
   }).join('');
   return `<div class="pstrip-wrap">
     <button type="button" class="btn btn-tertiary pstrip-arrow" id="pstrip-prev" onclick="pitchStripStep(-1)" aria-label="Earlier pitch types">‹</button>
-    <div class="tray tray-scroll pstrip" id="pitch-strip" role="group" aria-label="Pitch type" data-tray="pstrip">${chips}${canEditArsenal(p) ? '<button type="button" class="pstrip-plus" onclick="openArsenalSheet(null, true)" aria-label="Add or edit pitches" title="Pitches">+</button>' : ''}<span class="tray-ind" aria-hidden="true"></span></div>
+    <div class="tray tray-scroll pstrip${v1TypeStep() ? ' v1-pick-type' : ''}" id="pitch-strip" role="group" aria-label="Pitch type" data-tray="pstrip">${chips}${canEditArsenal(p) ? '<button type="button" class="pstrip-plus" onclick="openArsenalSheet(null, true)" aria-label="Add or edit pitches" title="Pitches">+</button>' : ''}<span class="tray-ind" aria-hidden="true"></span></div>
     <button type="button" class="btn btn-tertiary pstrip-arrow" id="pstrip-next" onclick="pitchStripStep(1)" aria-label="More pitch types">›</button>
   </div>`;
 }

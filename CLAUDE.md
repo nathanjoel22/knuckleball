@@ -168,6 +168,32 @@ Built far past the uploaded spec `plans/g5-live-game-diamond.md` -- where they d
   - 501–860px keeps its stacked controls with the wide scene.
 - Reports, History, Trends and the accuracy painter keep their own drawings.
 
+## The guided Live Game flow (V1 Part B, Joel, Nov 18 2026; decisions in `plans/v1-preconditions.md`)
+
+Live Game only; bullpens keep their flow and their No batter / vs RHB / vs LHB pill.
+
+- **One prompt** under the chart says what to tap next (`gameStepPrompt`). It reads **Select Batter Side**, then
+  **Select Pitch Type**, then **Select Pitch Intent** (Intent on only), then **Select Pitch Outcome**. After that, today's
+  steps follow: what happened, ball in play, runners, velocity.
+- **There is no RHB / LHB button.**
+  - Step 1 pulses the two outside columns (Relative Accuracy's overlay, in the accent). A tap on one puts the batter on
+    that side of the screen (catcher's view: left = RHB; pitcher's view: right = RHB). A tap anywhere else does
+    nothing, and nothing is recorded.
+  - The side is kept per at-bat, `s.batterSides[atBatIndex]`, in the draft. So:
+    - every path that moves to a new batter starts at step 1;
+    - Back across an at-bat restores the previous batter's side;
+    - a killed tab comes back to the same step;
+    - a started game resumes even before its first pitch.
+  - "Not chosen" is a real state (`gameBatterChosen`): no Live Game pitch is ever saved without a side.
+  - A game started before Part B keeps the side it had.
+- **The pitch type stays selected** across pitches and batters, and is kept in the draft (`s.selType`). It clears on a
+  pitching change. While none is chosen (step 2), the pitch choices pulse faintly. A chart tap in step 2 does nothing.
+- **A wrong side:** tap the batter, or More → **Change batter side**. Both go back to step 1 for this batter. The pitches
+  already charted to him take the new side, rescored for Relative Accuracy (`gamePickBatterSide`).
+- **A pitching change mid at-bat:** the hand-off carries the side when the count isn't fresh (Q7).
+- **A third out made on the bases between pitches:** the same batter leads off the next inning at 0-0 (Q8).
+- **Reduced motion:** both pulses are steady tints.
+
 ## Live Game charting now (Joel, Oct 19–21 2026; v252–v280; shipped Oct 21)
 
 **Where this and the G5 section above differ, this wins.** Superseded from G5: Foul Tip / Foul Out (Foul is always a

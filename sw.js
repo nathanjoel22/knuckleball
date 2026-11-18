@@ -15,7 +15,7 @@
 // stale-while-revalidate fetch handler below is the offline/secondary
 // path -- it is not what ships a code change. This bump is a required
 // step in DEPLOY.md ("Frontend: deploy to production").
-const CACHE_VERSION = 'kb-shell-v352';
+const CACHE_VERSION = 'kb-shell-v353';
 
 const PRECACHE_URLS = [
   '/',
@@ -47,6 +47,8 @@ const PRECACHE_URLS = [
   '/vendor/qrcodegen.js',   // F1-B: join codes draw offline
   '/vendor/fonts/fonts.css',
   '/css/tokens.css',   // D1: the design tokens every page loads (Oct 13)
+  '/assets/field/chalk-line.png',   // V1 (Nov 18): the chalk on the charting screens, offline too
+  '/assets/field/chalk-ring.png',
   '/css/components.css',   // D2 Stage C: the shared components and sign-in look (Oct 13)
   '/buttons.css',   // U13: every page's button shapes, offline too (Oct 9)
   '/vendor/icons/arm.png',     // Home tiles: Joel's drawings, offline too (Oct 12)

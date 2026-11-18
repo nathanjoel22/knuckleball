@@ -206,9 +206,6 @@
   .ph-persp{ margin-left:auto; min-height:40px; padding:0 var(--s-8); font-size:var(--t-12); font-weight:800; font-stretch:85%; letter-spacing:var(--tr-label); text-transform:uppercase; text-align:right; color:var(--on-dark); background:transparent; border:1px solid var(--brand-line); }
   .ph-persp.locked{ color:var(--on-dark-dim); border-color:transparent; }
   /* U15: Live Game phones -- the button sits on its own thin dark line under the scoreboard */
-  .ph-persp-row{ display:flex; justify-content:flex-end; align-items:center; margin:calc(-1 * var(--s-4)) 0 calc(-1 * var(--s-4)); }
-  .ph-persp-row .ph-persp{ min-height:32px; color:var(--ink); border-color:var(--border-strong); }
-  .ph-persp-row .ph-persp.locked{ color:var(--ink-faint); border-color:transparent; }
   .ph-persp-note{ margin:0; font-size:12px; font-weight:600; color:var(--ink-faint); text-align:right; }
   /* one grid square on a phone: the grid is min(screen - 28px, 320px) wide,
      3px padding each side and 3px gaps, five across */
@@ -1291,6 +1288,58 @@
   .zone-cell.in-zone{ background:var(--surface); border-color:var(--border-strong); }
   .zone-cell.clickable{ cursor:pointer; }
   .zone-cell.clickable:hover{ outline:2px solid var(--accent); outline-offset:-2px; }
+  /* ---------- V1: the drawn ballpark under the charting chart and the field (Joel, Nov 18 2026; plans/v1-preconditions.md) ----------
+     A stage is the board's panel (phone 440 x 518, wide 740 x 580) at any size: the art is one SVG scaled by its
+     viewBox, the 25 boxes sit in .v1-box where the board puts them. The box colours are the boards'; :where() keeps
+     these at the plain box's weight, so the target, flash, ball and glow styles further down still win. */
+  .v1-stage{ position:relative; width:100%; aspect-ratio:440 / 518; overflow:hidden; flex:0 0 auto; }
+  .v1-stage.v1-wide{ aspect-ratio:740 / 580; max-width:740px; border-radius:12px; }
+  .v1-scene{ position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none; }
+  .v1-box{ position:absolute; }
+  .v1-box > .zone-grid{ position:absolute !important; inset:0; width:100% !important; height:100% !important; max-width:none !important;
+    margin:0 !important; padding:0 !important; background:transparent !important; aspect-ratio:auto !important; border-radius:0;
+    grid-template-columns:repeat(5, minmax(0, 1fr)) !important; grid-template-rows:repeat(5, minmax(0, 1fr)) !important; gap:0.694%; /* geometry: the boards' 3px gaps */ }
+  .v1-wide .v1-box > .zone-grid{ gap:0.904%; /* geometry: the boards' 3px gaps */ }
+  :where(.v1-stage) .zone-cell{ border-radius:5px; }
+  :where(.v1-catcher) .zone-cell{ background:rgba(255,255,255,0.4); border:1px solid rgba(255,255,255,0.85); }
+  :where(.v1-catcher) .zone-cell.in-zone{ background:rgba(236,238,234,0.66); border-color:#FFFFFF; }
+  :where(.v1-pitcher) .zone-cell{ background:rgba(255,255,255,0.16); border:1px solid rgba(255,255,255,0.6); }
+  :where(.v1-pitcher) .zone-cell.in-zone{ background:rgba(10,26,20,0.34); border-color:rgba(255,255,255,0.9); }
+  .v1-stage .zone-number{ color:#4E5A53; font-size:11px; top:4px; left:6px; }
+  .v1-pitcher .zone-number{ color:#F2F4F1; }
+  .v1-wide .zone-number{ font-size:10px; }
+  .v1-field .zone-grid.g5-flat{ background:transparent !important; }
+  .v1-field .g5-field{ left:0; top:0; width:100%; height:100%; }
+  .wide-right .v1-field .g5-cell{ --g5c:calc(var(--stw, 600px) * 0.1431 - 3px); /* geometry: the field square is 529.47 of the board's 740 */ }
+  /* the card turn (G5, Oct 10) now turns the whole stage */
+  .v1-flip{ position:relative; width:100%; aspect-ratio:440 / 518; flex:0 0 auto; }
+  .v1-flip.v1-wide{ aspect-ratio:740 / 580; max-width:740px; }
+  .v1-face > .v1-stage{ position:absolute; inset:0; width:100%; height:100%; max-width:none; }
+  .g5-flip-in .v1-back{ transform:scaleX(0); animation:g5halfin 162ms ease-out 163ms forwards; }
+  .g5-flip-out .v1-back{ animation:g5halfaway 163ms ease-in forwards; }
+  .wide-right .v1-stage, .wide-right .v1-flip{ width:var(--stw, 100%); max-width:none; }
+  /* phones: the chart runs edge to edge (Joel's approved change 2) */
+  .ph-layout .v1-stage, .ph-layout .v1-flip{ width:100vw; max-width:none; align-self:center; }
+  .ph-layout .ph-grid-wrap{ display:flex; flex-direction:column; align-items:center; }
+  .ph-layout .ph-grid-wrap > .zone-wrap{ width:100%; }
+  /* under the chart: the prompt, the batter's pill on his side */
+  .v1-under{ display:flex; align-items:center; justify-content:center; gap:var(--s-8); width:100%; margin-top:var(--s-12); }
+  .v1-under.v1-pill-right{ flex-direction:row-reverse; }
+  .v1-under > .zone-caption{ margin:0; }
+  .v1-pill{ min-height:36px; padding:0 var(--s-16); border-radius:var(--radius-pill); background:var(--brand-bg); color:var(--on-dark); font-weight:800; font-size:var(--t-14); border:0; }
+  .v1-under.v1-ph{ max-width:340px; margin-top:var(--s-16); gap:var(--s-8); }
+  .v1-ph .v1-pill{ flex:0 0 104px; min-height:48px; padding:0; font-size:15.5px; }
+  .v1-ph .ph-lg-prompt{ position:static; flex:1 1 auto; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:15.5px; white-space:nowrap; }
+  .v1-ph .ph-lg-spacer{ flex:1 1 auto; }
+  /* phones, Live Game: the view button rides in the status bar's Windup / Set slot until the first pitch */
+  .ph-status-persp .ph-persp{ min-height:34px; padding:0 var(--s-12); border:1.5px solid var(--on-dark-faint); border-radius:12px; background:rgba(255,255,255,0.08); letter-spacing:0.1em; font-size:11.5px; }
+  /* "+" as the last item: the phone strip's plain plus; the iPad / laptop Pitch type box's last grey choice */
+  .pstrip-plus{ flex:0 0 44px; height:44px; margin:0; padding:0 0 2px; border:0; background:transparent; color:var(--ink); font:inherit; font-weight:800; font-size:20px; line-height:1;
+    display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+  .seg.ptype-plus{ justify-content:center; font-size:20px; font-weight:800; }
+  /* iPad / laptop: Recent pitches in the right column */
+  .wide-log{ background:var(--bg); border-radius:var(--radius-card, 12px); padding:var(--s-12) var(--s-16); align-self:start; min-width:0; }
+  .wide-log .pitch-log{ max-height:none; }
   /* Joel, Oct 13: the prompt ("Tap where you're aiming", "What happened?", "Now tap where the pitch went"...) has to
      catch the eye at once -- big, heavy, dark, on a tinted pill in the sport's accent, centered under the chart */
   .zone-caption{ display:block; width:fit-content; max-width:100%; box-sizing:border-box; margin:var(--s-8) auto 0; padding:var(--s-6) var(--s-12);
@@ -1590,6 +1639,7 @@
     font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:12px; font-weight:700; color:var(--ink);
   }
   .zone-cell-target{ outline:2px solid var(--accent); outline-offset:-2px; background:rgba(var(--accent-rgb),0.16); }
+  .v1-stage .zone-cell.zone-cell-target{ background:rgba(var(--accent-rgb),0.16); }   /* V1: over the boards' in-zone colour */
   .target-dot{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
   .target-dot-core{
     width:12px; height:12px; border-radius:var(--radius-circle); background:var(--accent);
@@ -1891,7 +1941,9 @@
     }
     .wide-right .kb-batter{ --kb-batter-h:var(--kbh, 112%); }
     .wide-right .home-plate-wrap{ width:calc(0.6 * var(--zg, 278px) - 4.8px); }
-    .wide-game{ display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:var(--s-20); row-gap:var(--s-16); }
+    .wide-game{ display:grid; grid-template-columns:auto minmax(0, 1fr) minmax(220px, 280px); column-gap:var(--s-20); row-gap:var(--s-16); }   /* V1: the log's column */
+    .wide-game .wide-log{ grid-column:3; grid-row:1 / span 2; }
+    .wide-cols > .wide-log{ flex:0 0 260px; }
     .wide-game .wide-left{ max-width:180px; }
     .wide-bl{ grid-column:1; display:flex; align-items:center; }
 /* never more than two pitch types across */
@@ -1953,14 +2005,6 @@
   /* Joel, Oct 19: the field keeps its 25 boxes and rules, but the charter never sees the 5x5 -- no box outlines,
      and foul ground / over the fence flash as one shape drawn on the field (g5FieldSvg), not box by box */
   .gg-field .g5-cell{ border-color:transparent !important; }
-  /* Joel, Oct 19 (Live Game phones): the batter pill moves to the left of its band under the chart and the step
-     badge follows beside it, same height */
-  .lg-phone .kb-batter, .lg-phone .kb-batter.is-left, .lg-phone .kb-batter.is-right{ left:3px; transform:none; }
-  .lg-phone .kb-batter__label{ min-width:104px; padding:0 14px; }
-  .ph-lg-prompt{ position:absolute; left:115px; right:3px; width:auto; max-width:none; top:calc(100% + var(--kb-pill-clear) + 2px); min-height:var(--kb-pill-h);
-    margin:0; display:flex; align-items:center; justify-content:center; white-space:nowrap; pointer-events:none; /* geometry: the batter / home-plate gutters */ }   /* Joel: runs to IP's right edge */
-  .ph-layout .g5-card.g5-band{ margin-bottom:calc(var(--kb-pill-clear) + var(--kb-pill-h) + 8px) !important; /* geometry: the charting grid's cell math */ }
-  .ph-lg-prompt.ph-lg-full{ left:3px; }   /* no batter pill on the field side: the badge spans K's left edge to IP's right */
 
   .g5-front > .zone-grid{ position:absolute !important; inset:0; width:100% !important; height:100% !important; max-width:none !important; margin:0 !important; }
   /* Joel's iPad (Oct 8): Safari drew the field's buttons too big under a 3D flip, so the flip is flat -- the face
@@ -2356,13 +2400,16 @@ function typeColorClass(pitcher, type){
   return 'ptc-' + (idx >= 0 ? idx % TYPE_PALETTE.length : 0);
 }
 // A pitch-type tray (wide layouts: two per row).
-function pitchTypeTray(p, grid){
-  return segTray(pitchTypesFor(p).map(t => ({
+function pitchTypeTray(p, grid, plus){
+  const items = pitchTypesFor(p).map(t => ({
     label: `<span class="type-dot" aria-hidden="true"></span>${pitchLabel(t)}`,
     cls: typeColorClass(p, t) + ' hold-chip', selected: state.selectedType === t,
     attrs: `data-hold-type="${escHtml(t)}"`,
     onclick: `selectType(${escHtml(JSON.stringify(t))})`
-  })), { key: 'ptype', label: 'Pitch type', cls: grid ? 'tray-grid' : '' });
+  }));
+  // V1 (iPad / laptop): "+" is the box's last choice, grey like the others
+  if(plus && canEditArsenal(p)) items.push({ label: '+', cls: 'ptype-plus', attrs: 'aria-label="Add or edit pitches" title="Pitches"', onclick: 'openArsenalSheet(null, true)' });
+  return segTray(items, { key: 'ptype', label: 'Pitch type', cls: grid ? 'tray-grid' : '' });
 }
 const GRID_SIZE = 5;
 
@@ -5355,8 +5402,8 @@ function renderArsenalPlus(p){
   return `<button type="button" class="btn btn-secondary btn-icon hit44 ars-plus" onclick="openArsenalSheet(null, true)" aria-label="Add or edit pitches" title="Pitches">+</button>`;
 }
 // "Pitch type" over the trays (iPad / laptop); softball has no delivery control, so its "+" sits here.
-function renderPitchTypeLabel(p){
-  const plus = sportCfg().hasDelivery ? '' : renderArsenalPlus(p);
+function renderPitchTypeLabel(p, noPlus){
+  const plus = (sportCfg().hasDelivery || noPlus) ? '' : renderArsenalPlus(p);
   return plus ? `<div class="ptype-label-row"><span class="field-label">Pitch type</span>${plus}</div>`
     : `<div class="field-label" style="margin-bottom:var(--s-8);">Pitch type</div>`;
 }
@@ -7280,6 +7327,298 @@ function heatColor(intensity){
   return `rgb(${r},${g},${b})`;
 }
 
+/* ---------- V1: FIELD ART (Joel, Nov 18 2026; plans/v1-field-art-and-guided-flow.md, decisions in plans/v1-preconditions.md) ----------
+   Every charting chart (bullpen and Live Game, both views, phone and wide) and the ball-in-play field sit on a drawn
+   ballpark: one "stage" holding the board's art, scaled by its viewBox, with the chart's own 25 boxes placed on it where
+   the board puts them. Phones (<= 500px) use the 440 x 518 phone boards; everything wider the 740 x 580 wide boards.
+   The boxes, their taps and every saved value are unchanged; the art never takes a tap and needs no network (the two
+   chalk textures are precached). Reports, History, Trends and the accuracy painter keep their own drawings. */
+const V1_PANEL = {
+  phone: { w: 440, h: 518, chart: [4, 4, 432, 432], field: [0, 58.71, 440, 439.7] },
+  wide:  { w: 740, h: 580, chart: [204, 164.5, 332, 332], field: [105.27, 70.73, 529.47, 529.7] }
+};
+// The batter: translate x, y and scale of the 167 x 504 silhouette, by the side of the screen he stands on. The scale
+// is the strike zone's height / 180, so the 7-8-9 row ends just below his knees and the 1-2-3 row starts just below
+// his front elbow (boards; the phone left / pitcher's-view left are the boards' mirrors).
+const V1_BATTER = {
+  'catcher-phone': { L: [72.8, -202.8, -1.433], R: [367.2, -202.8, 1.433] },
+  'pitcher-phone': { L: [73, -202.8, -1.433], R: [367, -202.8, 1.433] },
+  'catcher-wide':  { L: [237.7, 6, -1.1], R: [502, 6, 1.1] },
+  'pitcher-wide':  { L: [224, 6, -1.1], R: [516, 6, 1.1] }
+};
+function v1Layout(){ return isPhoneWidth() ? 'phone' : 'wide'; }
+function v1View(chartingPerspective){ return chartingPerspective === 'behind_pitcher' ? 'pitcher' : 'catcher'; }
+function v1Batter(key, onScreenLeft){
+  const t = V1_BATTER[key][onScreenLeft ? 'L' : 'R'];
+  return `<g class="v1-batter" transform="translate(${t[0]} ${t[1]}) scale(${t[2]} ${Math.abs(t[2])})">
+    <ellipse cx="83" cy="501" rx="75" ry="7" fill="rgba(0,0,0,0.3)"/>
+    <g style="fill:var(--batter)">${currentSport() === 'softball' ? KB_PONYTAIL : ''}<path d="${KB_BATTER_D}"/></g></g>`;
+}
+let v1Seq = 0;
+// kind: 'catcher' | 'pitcher' | 'field'. o.batter = { left } draws the batter on that side (none: no batter).
+function v1Stage(kind, layout, gridHtml, o){
+  o = o || {};
+  const P = V1_PANEL[layout], r = kind === 'field' ? P.field : P.chart, id = 'v1s' + (++v1Seq);
+  const pct = (v, of) => (v / of * 100).toFixed(4) + '%';
+  const box = `left:${pct(r[0], P.w)};top:${pct(r[1], P.h)};width:${pct(r[2], P.w)};height:${pct(r[3], P.h)}`;
+  return `<div class="v1-stage v1-${layout} v1-${kind}">
+    <svg class="v1-scene" viewBox="0 0 ${P.w} ${P.h}" preserveAspectRatio="none" aria-hidden="true" focusable="false">${V1_SCENE[kind + '-' + layout](currentSport() === 'softball', id)}${o.batter ? v1Batter(kind + '-' + layout, o.batter.left) : ''}</svg>
+    <div class="v1-box" style="${box}">${gridHtml}</div>
+  </div>`;
+}
+// The card turn between the chart and the field (G5's flip, Oct 7/10): now the whole stage turns over.
+function v1Flip(dir, front, back){
+  return `<div class="v1-flip v1-${v1Layout()} g5-flip-${dir}"><div class="g5-face g5-front v1-face">${front}</div><div class="g5-face v1-back v1-face">${back}</div></div>`;
+}
+// Under the chart on iPad / laptop (and the stacked iPad layout): the prompt, with the batter's pill on his side.
+function v1UnderRow(captionHtml, pillHtml, pillLeft){
+  return `<div class="v1-under${pillLeft ? '' : ' v1-pill-right'}">${pillHtml || ''}<div class="zone-caption">${captionHtml}</div></div>`;
+}
+function v1BatterPill(){
+  const side = sessionBatterSide(state.activeSession);
+  const label = side === 'R' ? 'RHB' : 'LHB';
+  return `<button type="button" class="btn v1-pill" onclick="toggleBatterSide()" aria-label="Pitching to a ${side === 'R' ? 'right' : 'left'}-handed batter. Tap to switch to ${side === 'R' ? 'left' : 'right'}-handed.">vs ${label}</button>`;
+}
+
+// GENERATED from plans/v1-field-art/boards by the V1 scene script (Nov 18 2026). Panel pixels: phone 440 x 518,
+// wide 740 x 580. Chalk is the photo texture (assets/field/), never a stroke. `sb` = softball, `id` = this stage's
+// own prefix (patterns and filters need ids unique on the page).
+const V1_SCENE = {
+  'catcher-phone': (sb, id) => `<defs><pattern id="${id}c116" patternUnits="userSpaceOnUse" x="-5.8" y="0" width="11.6" height="83.52"><image href="assets/field/chalk-line.png" width="11.6" height="83.52" preserveAspectRatio="none"/></pattern><pattern id="${id}c143" patternUnits="userSpaceOnUse" x="-7.15" y="0" width="14.3" height="102.96"><image href="assets/field/chalk-line.png" width="14.3" height="102.96" preserveAspectRatio="none"/></pattern><pattern id="${id}c161" patternUnits="userSpaceOnUse" x="-8.05" y="0" width="16.1" height="115.92"><image href="assets/field/chalk-line.png" width="16.1" height="115.92" preserveAspectRatio="none"/></pattern></defs>
+<rect x="0" y="0" width="440" height="212" style="fill: var(--field-sky)"></rect>
+<rect x="0" y="212" width="440" height="22" style="fill: var(--field-wall)"></rect>
+<rect x="0" y="210" width="440" height="4" style="fill: var(--field-rail)"></rect>
+<rect x="0" y="234" width="440" height="284" style="fill: var(--field-grass)"></rect>
+<polygon points="220,234 30,518 104,518" style="fill: var(--field-grass-2)"></polygon>
+<polygon points="220,234 184,518 256,518" style="fill: var(--field-grass-2)"></polygon>
+<polygon points="220,234 336,518 410,518" style="fill: var(--field-grass-2)"></polygon>
+<ellipse cx="220" cy="288" rx="330" ry="20" style="fill: var(--field-dirt)"></ellipse>
+<polygon points="-60,262 500,262 440,356 220,290 0,356" style="fill: var(--field-dirt)"></polygon>
+<polygon points="220,284 462,318 370,430 70,430 -22,318" style="fill: var(--field-infield)"></polygon>
+<polygon points="61.4,417.9 34.6,442.1 -54.2,306 -40.8,294" style="fill: var(--field-dirt)"></polygon>
+<polygon points="378.6,417.9 405.4,442.1 494.2,306 480.8,294" style="fill: var(--field-dirt)"></polygon>
+<ellipse cx="220" cy="346" rx="36" ry="7" style="fill: var(--field-mound)"></ellipse>
+${sb ? `
+` : ''}
+<rect x="211" y="343" width="18" height="3" style="fill: #FFFFFF"></rect>
+<polygon points="220,277 228,278 237,274 228,270 220,269" style="fill: rgba(50,30,10,0.36)"></polygon>
+<polyline points="211,273 220,277 229,273" style="fill: none; stroke: rgba(40,25,10,0.5); stroke-width: 0.9px; stroke-linejoin: round"></polyline>
+<polygon points="211,270 220,274 220,277 211,273" style="fill: #D2D5CD"></polygon>
+<polygon points="220,274 229,270 229,273 220,277" style="fill: #B4B8AF"></polygon>
+<polygon points="220,266 229,270 220,274 211,270" style="fill: #FBFBF8; stroke: #E3E5DE; stroke-width: 0.5px; stroke-linejoin: round"></polygon>
+<ellipse cx="220" cy="486" rx="420" ry="92" style="fill: var(--field-dirt)"></ellipse>
+<ellipse cx="220" cy="476" rx="190" ry="38" style="fill: var(--field-dirt-light); opacity: 0.35"></ellipse>
+<ellipse cx="220" cy="476" rx="152" ry="28" style="fill: var(--field-dirt-light); opacity: 0.45"></ellipse>
+<ellipse cx="220" cy="476" rx="122" ry="18" style="fill: var(--field-dirt-light); opacity: 0.6"></ellipse>
+<polygon points="91,468 220,492 349,468 349,477 220,501 91,477" style="fill: var(--plate-edge)"></polygon>
+<polygon points="112,452 328,452 349,468 220,492 91,468" style="fill: var(--plate-top); stroke: #8E9288; stroke-width: 1px; stroke-linejoin: round"></polygon>
+${sb ? `
+<image href="assets/field/chalk-ring.png" x="160.6" y="334.6" width="118.9" height="22.9" preserveAspectRatio="none"/>
+` : ''}
+<polygon transform="translate(48.05 430.0) rotate(141.59)" points="-7.15,0.0 7.15,0.0 4.0,252.7 -4.0,252.7" fill="url(#${id}c143)"/>
+<polygon transform="translate(392.05 430.0) rotate(-141.59)" points="-7.15,0.0 7.15,0.0 4.0,252.7 -4.0,252.7" fill="url(#${id}c143)"/>
+<polygon transform="translate(70.0 430.0) rotate(90.0)" points="-5.8,0 5.8,0 5.8,150.0 -5.8,150.0" fill="url(#${id}c116)"/>
+<polygon transform="translate(70.05 430.0) rotate(36.19)" points="-5.8,0.0 5.8,0.0 8.05,101.6 -8.05,101.6" fill="url(#${id}c161)"/>
+<polygon transform="translate(10.05 512.0) rotate(90.0)" points="-8.05,0 8.05,0 8.05,90.0 -8.05,90.0" fill="url(#${id}c161)"/>
+<polygon transform="translate(370.0 430.0) rotate(-90.0)" points="-5.8,0 5.8,0 5.8,150.0 -5.8,150.0" fill="url(#${id}c116)"/>
+<polygon transform="translate(370.05 430.0) rotate(-36.19)" points="-5.8,0.0 5.8,0.0 8.05,101.6 -8.05,101.6" fill="url(#${id}c161)"/>
+<polygon transform="translate(430.05 512.0) rotate(-90.0)" points="-8.05,0 8.05,0 8.05,90.0 -8.05,90.0" fill="url(#${id}c161)"/>`,
+  'catcher-wide': (sb, id) => `<defs><pattern id="${id}c116" patternUnits="userSpaceOnUse" x="-5.8" y="0" width="11.6" height="83.52"><image href="assets/field/chalk-line.png" width="11.6" height="83.52" preserveAspectRatio="none"/></pattern><pattern id="${id}c143" patternUnits="userSpaceOnUse" x="-7.15" y="0" width="14.3" height="102.96"><image href="assets/field/chalk-line.png" width="14.3" height="102.96" preserveAspectRatio="none"/></pattern><pattern id="${id}c161" patternUnits="userSpaceOnUse" x="-8.05" y="0" width="16.1" height="115.92"><image href="assets/field/chalk-line.png" width="16.1" height="115.92" preserveAspectRatio="none"/></pattern></defs>
+<g transform="translate(-30 0)">
+<rect x="0" y="0" width="800" height="282" style="fill: var(--field-sky)"></rect>
+<rect x="0" y="282" width="800" height="22" style="fill: var(--field-wall)"></rect>
+<rect x="0" y="280" width="800" height="4" style="fill: var(--field-rail)"></rect>
+<rect x="0" y="304" width="800" height="276" style="fill: var(--field-grass)"></rect>
+<polygon points="400,304 60,580 150,580" style="fill: var(--field-grass-2)"></polygon>
+<polygon points="400,304 250,580 330,580" style="fill: var(--field-grass-2)"></polygon>
+<polygon points="400,304 470,580 550,580" style="fill: var(--field-grass-2)"></polygon>
+<polygon points="400,304 650,580 740,580" style="fill: var(--field-grass-2)"></polygon>
+<ellipse cx="400" cy="362" rx="440" ry="18" style="fill: var(--field-dirt)"></ellipse>
+<polygon points="30,335 770,335 660,412 400,366 140,412" style="fill: var(--field-dirt)"></polygon>
+<polygon points="400,360 676,384 544,488 256,488 124,384" style="fill: var(--field-infield)"></polygon>
+<polygon points="567.5,504.3 544.5,471.7 717.8,344.6 728.2,359.4" style="fill: var(--field-dirt)"></polygon>
+<polygon points="232.5,504.3 255.5,471.7 82.2,344.6 71.8,359.4" style="fill: var(--field-dirt)"></polygon>
+<ellipse cx="400" cy="414" rx="34" ry="6.5" style="fill: var(--field-mound)"></ellipse>
+${sb ? `
+` : ''}
+<rect x="391" y="411" width="18" height="3" style="fill: #FFFFFF"></rect>
+<ellipse cx="400" cy="544" rx="540" ry="90" style="fill: var(--field-dirt)"></ellipse>
+<ellipse cx="400" cy="530" rx="160" ry="32" style="fill: var(--field-dirt-light); opacity: 0.35"></ellipse>
+<ellipse cx="400" cy="530" rx="128" ry="24" style="fill: var(--field-dirt-light); opacity: 0.45"></ellipse>
+<ellipse cx="400" cy="530" rx="104" ry="15" style="fill: var(--field-dirt-light); opacity: 0.6"></ellipse>
+<polygon points="301,524 400,542 499,524 499,531 400,549 301,531" style="fill: var(--plate-edge)"></polygon>
+<polygon points="317,512 483,512 499,524 400,542 301,524" style="fill: var(--plate-top); stroke: #8E9288; stroke-width: 1px; stroke-linejoin: round"></polygon>
+</g>
+${sb ? `
+<image href="assets/field/chalk-ring.png" x="312.9" y="403.1" width="114.3" height="21.7" preserveAspectRatio="none"/>
+` : ''}
+<polygon transform="translate(526.05 488.0) rotate(-128.01)" points="-7.15,0.0 7.15,0.0 4.0,302.1 -4.0,302.1" fill="url(#${id}c143)"/>
+<polygon transform="translate(214.05 488.0) rotate(128.01)" points="-7.15,0.0 7.15,0.0 4.0,302.1 -4.0,302.1" fill="url(#${id}c143)"/>
+<polygon transform="translate(240.0 488.0) rotate(90.0)" points="-5.8,0 5.8,0 5.8,290.0 -5.8,290.0" fill="url(#${id}c116)"/>
+<polygon transform="translate(240.05 488.0) rotate(34.62)" points="-5.8,0.0 5.8,0.0 8.05,102.1 -8.05,102.1" fill="url(#${id}c161)"/>
+<polygon transform="translate(182.05 572.0) rotate(90.0)" points="-8.05,0 8.05,0 8.05,232.0 -8.05,232.0" fill="url(#${id}c161)"/>
+<polygon transform="translate(500.0 488.0) rotate(-90.0)" points="-5.8,0 5.8,0 5.8,290.0 -5.8,290.0" fill="url(#${id}c116)"/>
+<polygon transform="translate(500.05 488.0) rotate(-34.62)" points="-5.8,0.0 5.8,0.0 8.05,102.1 -8.05,102.1" fill="url(#${id}c161)"/>
+<polygon transform="translate(558.05 572.0) rotate(-90.0)" points="-8.05,0 8.05,0 8.05,232.0 -8.05,232.0" fill="url(#${id}c161)"/>
+<g transform="translate(-30 0)">
+<polygon points="400,351 408,352 417,348 408,344 400,343" style="fill: rgba(50,30,10,0.36)"></polygon>
+<polyline points="391,347 400,351 409,347" style="fill: none; stroke: rgba(40,25,10,0.5); stroke-width: 0.9px; stroke-linejoin: round"></polyline>
+<polygon points="391,344 400,348 400,351 391,347" style="fill: #D2D5CD"></polygon>
+<polygon points="400,348 409,344 409,347 400,351" style="fill: #B4B8AF"></polygon>
+<polygon points="400,340 409,344 400,348 391,344" style="fill: #FBFBF8; stroke: #E3E5DE; stroke-width: 0.5px; stroke-linejoin: round"></polygon>
+<polygon points="713.3,370.8 722.3,371.8 731.3,364.8 716.3,363.3 707.3,362.3" style="fill: rgba(50,30,10,0.36)"></polygon>
+<polyline points="698.3,369.3 713.3,370.8 722.3,363.8" style="fill: none; stroke: rgba(40,25,10,0.5); stroke-width: 0.9px; stroke-linejoin: round"></polyline>
+<polygon points="698.3,366.1 713.3,367.6 713.3,370.8 698.3,369.3" style="fill: #C6C9C1"></polygon>
+<polygon points="713.3,367.6 722.3,360.6 722.3,363.8 713.3,370.8" style="fill: #A9ADA4"></polygon>
+<polygon points="713.3,367.6 722.3,360.6 707.3,359.1 698.3,366.1" style="fill: #FBFBF8; stroke: #E3E5DE; stroke-width: 0.5px; stroke-linejoin: round"></polygon>
+<polygon points="86.7,370.8 95.7,371.8 110.7,370.3 101.7,363.3 92.7,362.3" style="fill: rgba(50,30,10,0.36)"></polygon>
+<polyline points="77.7,363.8 86.7,370.8 101.7,369.3" style="fill: none; stroke: rgba(40,25,10,0.5); stroke-width: 0.9px; stroke-linejoin: round"></polyline>
+<polygon points="77.7,360.6 86.7,367.6 86.7,370.8 77.7,363.8" style="fill: #E2E4DD"></polygon>
+<polygon points="86.7,367.6 101.7,366.1 101.7,369.3 86.7,370.8" style="fill: #C6C9C1"></polygon>
+<polygon points="86.7,367.6 77.7,360.6 92.7,359.1 101.7,366.1" style="fill: #FBFBF8; stroke: #E3E5DE; stroke-width: 0.5px; stroke-linejoin: round"></polygon>
+</g>`,
+  'pitcher-phone': (sb, id) => `<defs><pattern id="${id}c116" patternUnits="userSpaceOnUse" x="-5.8" y="0" width="11.6" height="83.52"><image href="assets/field/chalk-line.png" width="11.6" height="83.52" preserveAspectRatio="none"/></pattern><pattern id="${id}c161" patternUnits="userSpaceOnUse" x="-8.05" y="0" width="16.1" height="115.92"><image href="assets/field/chalk-line.png" width="16.1" height="115.92" preserveAspectRatio="none"/></pattern></defs>
+<rect x="0" y="0" width="440" height="176" style="fill: var(--field-stands)"></rect>
+<rect x="0" y="176" width="440" height="82" style="fill: var(--field-wall)"></rect>
+<rect x="0" y="258" width="440" height="260" style="fill: var(--field-grass)"></rect>
+<rect x="0" y="258" width="440" height="32" style="fill: var(--field-grass-2)"></rect>
+<rect x="0" y="322" width="440" height="32" style="fill: var(--field-grass-2)"></rect>
+<ellipse cx="220" cy="474" rx="420" ry="102" style="fill: var(--field-dirt)"></ellipse>
+<ellipse cx="220" cy="476" rx="190" ry="40" style="fill: var(--field-dirt-light); opacity: 0.35"></ellipse>
+<ellipse cx="220" cy="478" rx="152" ry="30" style="fill: var(--field-dirt-light); opacity: 0.45"></ellipse>
+<ellipse cx="220" cy="482" rx="122" ry="19" style="fill: var(--field-dirt-light); opacity: 0.6"></ellipse>
+<polygon points="91,492 349,492 348,501 92,501" style="fill: var(--plate-edge)"></polygon>
+<polygon points="91,492 349,492 331,466 220,448 109,466" style="fill: var(--plate-top); stroke: #8E9288; stroke-width: 1px; stroke-linejoin: round"></polygon>
+<polygon transform="translate(92.0 418.0) rotate(90.0)" points="-5.8,0 5.8,0 5.8,172.0 -5.8,172.0" fill="url(#${id}c116)"/>
+<polygon transform="translate(92.05 418.0) rotate(39.81)" points="-5.8,0.0 5.8,0.0 8.05,125.0 -8.05,125.0" fill="url(#${id}c161)"/>
+<polygon transform="translate(12.05 514.0) rotate(90.0)" points="-8.05,0 8.05,0 8.05,92.0 -8.05,92.0" fill="url(#${id}c161)"/>
+<polygon transform="translate(348.0 418.0) rotate(-90.0)" points="-5.8,0 5.8,0 5.8,172.0 -5.8,172.0" fill="url(#${id}c116)"/>
+<polygon transform="translate(348.05 418.0) rotate(-39.81)" points="-5.8,0.0 5.8,0.0 8.05,125.0 -8.05,125.0" fill="url(#${id}c161)"/>
+<polygon transform="translate(428.05 514.0) rotate(-90.0)" points="-8.05,0 8.05,0 8.05,92.0 -8.05,92.0" fill="url(#${id}c161)"/>`,
+  'pitcher-wide': (sb, id) => `<defs><pattern id="${id}c116" patternUnits="userSpaceOnUse" x="-5.8" y="0" width="11.6" height="83.52"><image href="assets/field/chalk-line.png" width="11.6" height="83.52" preserveAspectRatio="none"/></pattern><pattern id="${id}c161" patternUnits="userSpaceOnUse" x="-8.05" y="0" width="16.1" height="115.92"><image href="assets/field/chalk-line.png" width="16.1" height="115.92" preserveAspectRatio="none"/></pattern></defs>
+<rect x="0" y="0" width="740" height="250" style="fill: var(--field-stands)"></rect>
+<rect x="0" y="250" width="740" height="84" style="fill: var(--field-wall)"></rect>
+<rect x="0" y="334" width="740" height="246" style="fill: var(--field-grass)"></rect>
+<rect x="0" y="334" width="740" height="30" style="fill: var(--field-grass-2)"></rect>
+<rect x="0" y="394" width="740" height="30" style="fill: var(--field-grass-2)"></rect>
+<ellipse cx="370" cy="540" rx="540" ry="100" style="fill: var(--field-dirt)"></ellipse>
+<ellipse cx="370" cy="530" rx="160" ry="34" style="fill: var(--field-dirt-light); opacity: 0.35"></ellipse>
+<ellipse cx="370" cy="532" rx="128" ry="25" style="fill: var(--field-dirt-light); opacity: 0.45"></ellipse>
+<ellipse cx="370" cy="535" rx="104" ry="16" style="fill: var(--field-dirt-light); opacity: 0.6"></ellipse>
+<polygon points="271,542 469,542 468,549 272,549" style="fill: var(--plate-edge)"></polygon>
+<polygon points="271,542 469,542 455,524 370,510 285,524" style="fill: var(--plate-top); stroke: #8E9288; stroke-width: 1px; stroke-linejoin: round"></polygon>
+<polygon transform="translate(232.0 480.0) rotate(90.0)" points="-5.8,0 5.8,0 5.8,252.0 -5.8,252.0" fill="url(#${id}c116)"/>
+<polygon transform="translate(232.05 480.0) rotate(35.07)" points="-5.8,0.0 5.8,0.0 8.05,114.9 -8.05,114.9" fill="url(#${id}c161)"/>
+<polygon transform="translate(166.05 574.0) rotate(90.0)" points="-8.05,0 8.05,0 8.05,186.0 -8.05,186.0" fill="url(#${id}c161)"/>
+<polygon transform="translate(508.0 480.0) rotate(-90.0)" points="-5.8,0 5.8,0 5.8,312.0 -5.8,312.0" fill="url(#${id}c116)"/>
+<polygon transform="translate(508.05 480.0) rotate(-35.07)" points="-5.8,0.0 5.8,0.0 8.05,114.9 -8.05,114.9" fill="url(#${id}c161)"/>
+<polygon transform="translate(574.05 574.0) rotate(-90.0)" points="-8.05,0 8.05,0 8.05,246.0 -8.05,246.0" fill="url(#${id}c161)"/>`,
+  'field-phone': (sb, id) => `<defs><pattern id="${id}c80" patternUnits="userSpaceOnUse" x="-4.0" y="0" width="8.0" height="57.6"><image href="assets/field/chalk-line.png" width="8.0" height="57.6" preserveAspectRatio="none"/></pattern><filter id="${id}ds" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="2.4" dy="0.5" stdDeviation="0.5" flood-color="rgb(40,25,10)" flood-opacity="0.5"/></filter></defs>
+<g transform="scale(1.30564 1.30479) translate(-0.0 -0.0)">
+<g transform="translate(0 45)">
+<rect x="0" y="0" width="337" height="397" style="fill: var(--field-grass)"></rect>
+<polygon points="168.5,240 -10,64 -10,34 168.5,210 347,34 347,64" style="fill: var(--field-grass-2)"></polygon>
+<polygon points="168.5,180 -10,4 -10,-26 168.5,150 347,-26 347,4" style="fill: var(--field-grass-2)"></polygon>
+<polygon points="168.5,120 -10,-56 -10,-86 168.5,90 347,-86 347,-56" style="fill: var(--field-grass-2)"></polygon>
+<polygon points="168.5,60 -10,-116 -10,-146 168.5,30 347,-146 347,-116" style="fill: var(--field-grass-2)"></polygon>
+<polygon points="0,134 168.5,300 337,134 337,397 0,397" style="fill: #3F8440"></polygon>
+<polygon points="0,194 168.5,360 168.5,397 0,397" style="fill: #387A3A"></polygon>
+<polygon points="337,194 168.5,360 168.5,397 337,397" style="fill: #387A3A"></polygon>
+<path d="M0,78 Q168.5,6 337,78" style="fill: none; stroke: var(--field-dirt); stroke-width: 12px"></path>
+<path d="M0,0 L337,0 L337,68 Q168.5,-4 0,68 Z" style="fill: var(--field-sky)"></path>
+<path d="M0,68 Q168.5,-4 337,68" style="fill: none; stroke: var(--field-wall); stroke-width: 5px"></path>
+<path d="M0,65 Q168.5,-7 337,65" style="fill: none; stroke: var(--field-rail); stroke-width: 1.5px"></path>
+<g transform="translate(168.5 92.0) skewX(-10) translate(-168.5 -76.0)">
+<rect x="133" y="46" width="71" height="60" style="fill: var(--field-grass)"></rect>
+<rect x="135" y="48" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="135" y="56.5" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="158" y="48" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="158" y="56.5" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="181" y="48" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="181" y="56.5" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="135" y="67.5" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="135" y="76" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="158" y="67.5" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="158" y="76" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="181" y="67.5" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="181" y="76" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="135" y="87" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="135" y="95.5" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="158" y="87" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="158" y="95.5" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="181" y="87" width="21" height="8.5" style="fill: #2F7A36"></rect><rect x="181" y="95.5" width="21" height="8.5" style="fill: #3A8A3D"></rect>
+</g>
+<path d="M168.5,306 L70,208 A139,139 0 0 1 267,208 Z" style="fill: var(--field-dirt)"></path>
+<polygon points="168.5,203 212,246 168.5,288 125,246" style="fill: var(--field-infield)"></polygon>
+<polygon points="168.5,216 199,246 168.5,275 138,246" style="fill: var(--field-infield-2)"></polygon>
+<circle cx="168.5" cy="240" r="10" style="fill: var(--field-mound-2)"></circle>
+${sb ? `
+` : ''}
+<rect x="163.5" y="238.8" width="10" height="2.4" style="fill: #FFFFFF"></rect>
+<circle cx="168.5" cy="302" r="22" style="fill: var(--field-dirt)"></circle>
+<ellipse cx="168.5" cy="304" rx="17" ry="12" style="fill: var(--field-dirt-light); opacity: 0.55"></ellipse>
+<polygon points="159.5,303 168.5,312 177.5,303 177.5,306 168.5,315 159.5,306" style="fill: var(--plate-edge)"></polygon>
+<polygon points="159.5,294 177.5,294 177.5,303 168.5,312 159.5,303" style="fill: var(--plate-top); stroke: #1B2A22; stroke-width: 1.2px; stroke-linejoin: round"></polygon>
+</g>
+<rect x="0" y="0" width="337" height="46" style="fill: var(--field-sky)"></rect>
+</g>
+${sb ? `
+<image href="assets/field/chalk-ring.png" x="199.1" y="351.2" width="41.8" height="41.8" preserveAspectRatio="none"/>
+` : ''}
+<polygon transform="translate(198.6 429.4) rotate(134.57)" points="-4.0,0 4.0,0 4.0,278.8 -4.0,278.8" fill="url(#${id}c80)"/>
+<polygon transform="translate(241.4 429.4) rotate(-134.57)" points="-4.0,0 4.0,0 4.0,278.8 -4.0,278.8" fill="url(#${id}c80)"/>
+<g transform="scale(1.30564 1.30479) translate(-0.0 -0.0)">
+<g transform="translate(0 45)">
+<polygon points="168.5,174 178.5,184 168.5,194 158.5,184" style="fill: #FBFBF8; stroke: #8E9288; stroke-width: 0.8px; stroke-linejoin: round" filter="url(#${id}ds)"></polygon>
+<polygon points="231,221 241,231 231,241 221,231" style="fill: #FBFBF8; stroke: #8E9288; stroke-width: 0.8px; stroke-linejoin: round" filter="url(#${id}ds)"></polygon>
+<polygon points="106,221 116,231 106,241 96,231" style="fill: #FBFBF8; stroke: #8E9288; stroke-width: 0.8px; stroke-linejoin: round" filter="url(#${id}ds)"></polygon>
+</g>
+</g>`,
+  'field-wide': (sb, id) => `<defs><pattern id="${id}c89" patternUnits="userSpaceOnUse" x="-4.45" y="0" width="8.9" height="64.08"><image href="assets/field/chalk-line.png" width="8.9" height="64.08" preserveAspectRatio="none"/></pattern><filter id="${id}ds" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="2.4" dy="0.5" stdDeviation="0.5" flood-color="rgb(40,25,10)" flood-opacity="0.5"/></filter></defs>
+<g transform="scale(1.57113 1.57182) translate(67.0 -0.0)">
+<g transform="translate(0 45)">
+<rect x="-80" y="-60" width="500" height="460" style="fill: var(--field-grass)"></rect>
+<polygon points="168.5,240 -80,-5 -80,-35 168.5,210 417,-35 417,-5" style="fill: var(--field-grass-2)"></polygon>
+<polygon points="168.5,180 -80,-65 -80,-95 168.5,150 417,-95 417,-65" style="fill: var(--field-grass-2)"></polygon>
+<polygon points="168.5,120 -80,-125 -80,-155 168.5,90 417,-155 417,-125" style="fill: var(--field-grass-2)"></polygon>
+<polygon points="168.5,60 -80,-185 -80,-215 168.5,30 417,-215 417,-185" style="fill: var(--field-grass-2)"></polygon>
+<polygon points="-80,55 168.5,300 417,55 417,400 -80,400" style="fill: #3F8440"></polygon>
+<polygon points="-80,115 168.5,360 168.5,400 -80,400" style="fill: #387A3A"></polygon>
+<polygon points="417,115 168.5,360 168.5,400 417,400" style="fill: #387A3A"></polygon>
+<path d="M-67,114 Q168.5,-30 404,114" style="fill: none; stroke: var(--field-dirt); stroke-width: 12px"></path>
+<path d="M-67,-60 L404,-60 L404,104 Q168.5,-40 -67,104 Z" style="fill: var(--field-sky)"></path>
+<path d="M-67,104 Q168.5,-40 404,104" style="fill: none; stroke: var(--field-wall); stroke-width: 5px"></path>
+<path d="M-67,101 Q168.5,-43 404,101" style="fill: none; stroke: var(--field-rail); stroke-width: 1.5px"></path>
+<g transform="translate(168.5 92.0) skewX(-10) translate(-168.5 -76.0)">
+<rect x="135" y="48" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="135" y="56.5" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="158" y="48" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="158" y="56.5" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="181" y="48" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="181" y="56.5" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="135" y="67.5" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="135" y="76" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="158" y="67.5" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="158" y="76" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="181" y="67.5" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="181" y="76" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="135" y="87" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="135" y="95.5" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="158" y="87" width="21" height="8.5" style="fill: #7CC272"></rect><rect x="158" y="95.5" width="21" height="8.5" style="fill: #6BB463"></rect>
+<rect x="181" y="87" width="21" height="8.5" style="fill: #2F7A36"></rect><rect x="181" y="95.5" width="21" height="8.5" style="fill: #3A8A3D"></rect>
+</g>
+<path d="M168.5,306 L70,208 A139,139 0 0 1 267,208 Z" style="fill: var(--field-dirt)"></path>
+<polygon points="168.5,203 212,246 168.5,288 125,246" style="fill: var(--field-infield)"></polygon>
+<polygon points="168.5,216 199,246 168.5,275 138,246" style="fill: var(--field-infield-2)"></polygon>
+<circle cx="168.5" cy="240" r="10" style="fill: var(--field-mound-2)"></circle>
+${sb ? `
+` : ''}
+<rect x="163.5" y="238.8" width="10" height="2.4" style="fill: #FFFFFF"></rect>
+<circle cx="168.5" cy="302" r="22" style="fill: var(--field-dirt)"></circle>
+<ellipse cx="168.5" cy="304" rx="17" ry="12" style="fill: var(--field-dirt-light); opacity: 0.55"></ellipse>
+<polygon points="159.5,303 168.5,312 177.5,303 177.5,306 168.5,315 159.5,306" style="fill: var(--plate-edge)"></polygon>
+<polygon points="159.5,294 177.5,294 177.5,303 168.5,312 159.5,303" style="fill: var(--plate-top); stroke: #1B2A22; stroke-width: 1.2px; stroke-linejoin: round"></polygon>
+</g>
+</g>
+${sb ? `
+<image href="assets/field/chalk-ring.png" x="344.9" y="422.6" width="50.3" height="50.3" preserveAspectRatio="none"/>
+` : ''}
+<polygon transform="translate(344.35 516.8) rotate(134.59)" points="-4.45,0 4.45,0 4.45,428.4 -4.45,428.4" fill="url(#${id}c89)"/>
+<polygon transform="translate(395.65 516.8) rotate(-134.59)" points="-4.45,0 4.45,0 4.45,428.4 -4.45,428.4" fill="url(#${id}c89)"/>
+<g transform="scale(1.57113 1.57182) translate(67.0 -0.0)">
+<g transform="translate(0 45)">
+<polygon points="168.5,174 178.5,184 168.5,194 158.5,184" style="fill: #FBFBF8; stroke: #8E9288; stroke-width: 0.8px; stroke-linejoin: round" filter="url(#${id}ds)"></polygon>
+<polygon points="231,221 241,231 231,241 221,231" style="fill: #FBFBF8; stroke: #8E9288; stroke-width: 0.8px; stroke-linejoin: round" filter="url(#${id}ds)"></polygon>
+<polygon points="106,221 116,231 106,241 96,231" style="fill: #FBFBF8; stroke: #8E9288; stroke-width: 0.8px; stroke-linejoin: round" filter="url(#${id}ds)"></polygon>
+</g>
+</g>`,
+};
+
 /* ---------- RENDER: ZONE GRID ---------- */
 function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPerspective, batterSide, tapFnName){
   tapFnName = tapFnName || 'handleZoneTap';
@@ -7353,25 +7692,9 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
   }
   // Joel, Oct 8: History's heat maps (not clickable) sit just above a real home plate, seen from the mound in
   // perspective -- the wide front edge nearest, the point away -- the strike zone's width, below the grid.
-  const platePerspective = chartingPerspective || null;
-  const plate = clickable ? renderHomePlate(platePerspective) : renderPerspectivePlate();
-  // U2a: the silhouette is ALWAYS an absolutely-positioned child inside
-  // .zone-grid (never a layout sibling -- that shipped once and pushed the
-  // home plate out of position), only for the live/clickable grid. History
-  // never passes a batterSide, so this is '' there, unchanged from before.
-  const silhouette = clickable
-    ? renderBatterSilhouette(batterSide, insideColumnOnScreenLeft(chartingPerspective, batterSide))
-    : '';
-  // Both live perspectives now draw the plate INSIDE .zone-grid (an extra
-  // absolutely-positioned child, overlaying the cells) -- anchored to the
-  // grid element itself, never to .zone-wrap (which carries the phone-only
-  // margin-bottom reserving the batter-side pill's band; a percentage-
-  // positioned plate against THAT would drift on phone widths). History
-  // never passes a chartingPerspective, so it always falls through to the
-  // unchanged, below-grid, non-translucent markup.
-  return platePerspective
-    ? `<div class="zone-grid">${cells}${plate}${silhouette}</div>`
-    : `<div class="zone-grid${clickable ? '' : ' heat-grid'}">${cells}${silhouette}</div>${plate}`;
+  // V1 (Nov 18): a charting chart is only its 25 boxes -- its stage (v1Stage) draws the plate and the batter.
+  if(clickable) return `<div class="zone-grid">${cells}</div>`;
+  return `<div class="zone-grid heat-grid">${cells}</div>${renderPerspectivePlate()}`;
 }
 
 /* One pentagon shape for the live grid, in both perspectives -- CSS
@@ -7514,6 +7837,7 @@ function insideColumnOnScreenLeft(chartingPerspective, batterSide){
 // Joel, Oct 12: the softball batter wears a ponytail growing out of the back of the helmet, its tip curling up,
 // with a little space above the shoulder;
 // the whole figure mirrors for a left-handed batter, so it flips with it. Baseball's batter is unchanged.
+const KB_BATTER_D = 'M48.8 503C44.1 500.1 48.8 492 55.2 492C59.1 492 69.5 486.3 71.1 483.3C71.8 482 73.9 480 75.7 478.9C79.2 476.7 80.1 474.6 79.7 469C79.5 466.1 79.9 465.4 81.7 465.2C86 464.6 86.3 462.8 84 452.3C81.7 441.7 78.8 431.4 76 423.5C75 420.8 73.7 416 73 413C72.4 410 71.4 406.1 70.9 404.5C70.4 402.9 68.8 397.5 67.4 392.7C64.7 383.7 61 379 56.7 379C54.8 379 40.4 371.6 37.8 369.3C33.8 365.7 27.8 353.9 27.8 349.4C27.8 340.6 61.5 290.3 75.9 277.5C86 268.7 89.1 260.2 85.3 252.2C83.3 247.8 74 233.5 68.6 226.5C54.5 207.8 47.5 197.8 45.4 193.3C42.8 187.4 42.1 187.1 39.5 190C38.3 191.3 36.4 192 34 192C31.9 192 27.8 193.3 24.4 195C15.8 199.4 7.7 198.9 2.3 193.8C-1.5 190.3 -1 180.3 3.1 175.9C7.9 170.8 9 168.8 9 165.5C9 163.8 9.9 160.9 11 159C17.3 147.9 17.2 148.3 17.1 136.5C16.9 124.5 18 121.8 24.3 118.3C25.9 117.5 26.1 116.7 25.3 112.9L24.4 108.5L19.7 108.5C13.6 108.5 13.5 107.4 19 103.5L23.5 100.3L24 89.7C24.7 76.5 25.3 75.7 39.3 70.1C45.2 67.7 58.6 69.2 66.1 73.1C72.4 76.4 71.1 77.6 103.4 39C111.8 29 122.5 16.9 133.4 5.3C138.8 -0.6 141.2 -1.2 145.4 2.1C151.6 7 151.4 7.3 113.7 45.1C74.2 84.7 75.4 83.2 77.1 89.2C77.8 91.6 78.3 98.1 78.4 103.7C78.5 113.3 78.6 114 80.5 114.1C81.6 114.2 88.2 114.1 95.1 114C109.3 113.8 112.1 114.6 116.3 120.2C119.8 124.9 120.4 127.3 120.5 138C120.6 145.4 121.1 148.5 122.8 152.3C124 155 125.6 161.9 126.5 168.8C128.5 184.1 135.6 212.4 138.5 217C139.8 219 143.5 223.8 146.7 227.6C149.9 231.4 153.8 236.3 155.3 238.5C156.7 240.7 159.2 243.8 160.6 245.5C165.6 251.2 167 255.6 167 266.5C167 283.8 164.5 290.2 151.2 306.3C142.5 316.9 134.4 328 125 342C118.5 351.7 111.8 360.7 104.8 369.2C100.1 374.9 100.1 375.4 106.5 382.8C116.4 394.2 122.8 399.3 126.5 398.7C129.1 398.3 130.9 398.8 134.6 401.3C137.2 403.1 139.8 404.8 140.4 405.1C142 406.1 150.7 408 153.4 408C156.9 408 161 411.7 161 414.9C161 418.3 152.8 435.3 150.3 437.1C147 439.5 145 443.3 145 447.1C145 451.8 138.5 465.6 132.6 473.8C128.5 479.3 127.6 480 124.6 480C119.3 480 118.5 478.2 118.4 465.1C118.3 441.8 113.9 427.9 107.5 430.4C103.9 431.7 107.3 468.1 111.5 473.1C113 475 113.9 477.7 114.3 482.4C114.6 486 115.5 490.8 116.1 492.9C118.8 502.1 114.9 504.5 98.5 503.6C85.5 502.9 87.1 502.9 67.5 503.5C56.3 503.9 49.9 503.7 48.8 503Z';
 const KB_PONYTAIL = '<path d="M74 91 C84 88 95 91 101 96 C104 98 107 97 109 93 C111 100 107 107 100 109 C94 110 88 108 82 107 C79 106 76 106 74 105 Z"/>';
 function renderBatterSilhouette(batterSide, onScreenLeft, onclickJs = 'toggleBatterSide()'){
   const label = batterSide === 'R' ? 'RHB' : 'LHB';
@@ -7521,7 +7845,7 @@ function renderBatterSilhouette(batterSide, onScreenLeft, onclickJs = 'toggleBat
   const thisHand = batterSide === 'R' ? 'right' : 'left';
   return `<button type="button" class="kb-batter ${onScreenLeft ? 'is-left' : 'is-right'}" onclick="${onclickJs}" aria-label="Pitching to a ${thisHand}-handed batter. Tap to switch to ${otherHand}-handed.">
     <svg class="kb-batter__fig" viewBox="0 0 167 504" aria-hidden="true" focusable="false">${currentSport() === 'softball' ? KB_PONYTAIL : ''}
-      <path d="M48.8 503C44.1 500.1 48.8 492 55.2 492C59.1 492 69.5 486.3 71.1 483.3C71.8 482 73.9 480 75.7 478.9C79.2 476.7 80.1 474.6 79.7 469C79.5 466.1 79.9 465.4 81.7 465.2C86 464.6 86.3 462.8 84 452.3C81.7 441.7 78.8 431.4 76 423.5C75 420.8 73.7 416 73 413C72.4 410 71.4 406.1 70.9 404.5C70.4 402.9 68.8 397.5 67.4 392.7C64.7 383.7 61 379 56.7 379C54.8 379 40.4 371.6 37.8 369.3C33.8 365.7 27.8 353.9 27.8 349.4C27.8 340.6 61.5 290.3 75.9 277.5C86 268.7 89.1 260.2 85.3 252.2C83.3 247.8 74 233.5 68.6 226.5C54.5 207.8 47.5 197.8 45.4 193.3C42.8 187.4 42.1 187.1 39.5 190C38.3 191.3 36.4 192 34 192C31.9 192 27.8 193.3 24.4 195C15.8 199.4 7.7 198.9 2.3 193.8C-1.5 190.3 -1 180.3 3.1 175.9C7.9 170.8 9 168.8 9 165.5C9 163.8 9.9 160.9 11 159C17.3 147.9 17.2 148.3 17.1 136.5C16.9 124.5 18 121.8 24.3 118.3C25.9 117.5 26.1 116.7 25.3 112.9L24.4 108.5L19.7 108.5C13.6 108.5 13.5 107.4 19 103.5L23.5 100.3L24 89.7C24.7 76.5 25.3 75.7 39.3 70.1C45.2 67.7 58.6 69.2 66.1 73.1C72.4 76.4 71.1 77.6 103.4 39C111.8 29 122.5 16.9 133.4 5.3C138.8 -0.6 141.2 -1.2 145.4 2.1C151.6 7 151.4 7.3 113.7 45.1C74.2 84.7 75.4 83.2 77.1 89.2C77.8 91.6 78.3 98.1 78.4 103.7C78.5 113.3 78.6 114 80.5 114.1C81.6 114.2 88.2 114.1 95.1 114C109.3 113.8 112.1 114.6 116.3 120.2C119.8 124.9 120.4 127.3 120.5 138C120.6 145.4 121.1 148.5 122.8 152.3C124 155 125.6 161.9 126.5 168.8C128.5 184.1 135.6 212.4 138.5 217C139.8 219 143.5 223.8 146.7 227.6C149.9 231.4 153.8 236.3 155.3 238.5C156.7 240.7 159.2 243.8 160.6 245.5C165.6 251.2 167 255.6 167 266.5C167 283.8 164.5 290.2 151.2 306.3C142.5 316.9 134.4 328 125 342C118.5 351.7 111.8 360.7 104.8 369.2C100.1 374.9 100.1 375.4 106.5 382.8C116.4 394.2 122.8 399.3 126.5 398.7C129.1 398.3 130.9 398.8 134.6 401.3C137.2 403.1 139.8 404.8 140.4 405.1C142 406.1 150.7 408 153.4 408C156.9 408 161 411.7 161 414.9C161 418.3 152.8 435.3 150.3 437.1C147 439.5 145 443.3 145 447.1C145 451.8 138.5 465.6 132.6 473.8C128.5 479.3 127.6 480 124.6 480C119.3 480 118.5 478.2 118.4 465.1C118.3 441.8 113.9 427.9 107.5 430.4C103.9 431.7 107.3 468.1 111.5 473.1C113 475 113.9 477.7 114.3 482.4C114.6 486 115.5 490.8 116.1 492.9C118.8 502.1 114.9 504.5 98.5 503.6C85.5 502.9 87.1 502.9 67.5 503.5C56.3 503.9 49.9 503.7 48.8 503Z"></path>
+      <path d="${KB_BATTER_D}"></path>
     </svg>
     <span class="kb-batter__label">vs ${label}</span>
   </button>`;
@@ -9400,13 +9724,13 @@ function renderGameStatusBar(){
     <div class="stat-box">${renderRunnerDiamond()}<span class="stat-lbl">Runners</span></div>
   </div>`;
 }
-function renderDeliveryToggle(noTime){
+function renderDeliveryToggle(noTime, noPlus){
   const s = state.activeSession;
   const opts = [{ key: 'windup', label: 'Windup' }, { key: 'set', label: 'Set' }];
   const tray = segTray(opts.map(o => ({ label: o.label, selected: s.delivery === o.key, onclick: `setGameDelivery('${o.key}')` })), { key: 'deliv', label: 'Delivery' });
   const label = 'Delivery' + (!s.delivery ? ' — pick one before the next pitch' : '');
   // U15: the "+" (the Pitches bubble) sits where the clock was; the clock is retired (Live Games since Oct 14)
-  return `<div><div class="field-label" style="margin-bottom:var(--s-8);">${label}</div><div class="deliv-tray-row">${tray}${renderArsenalPlus(currentPitcher())}</div></div>`;
+  return `<div><div class="field-label" style="margin-bottom:var(--s-8);">${label}</div><div class="deliv-tray-row">${tray}${noPlus ? '' : renderArsenalPlus(currentPitcher())}</div></div>`;
 }
 // G1b-r decisions 2/3/10, updated by G1b-r2: six buttons now, not seven --
 // H and O fold into one In Play icon button (opens the walkthrough, which
@@ -11049,33 +11373,18 @@ window.g5NextPitch = async function(){
 // the dirt from box 17's top-left corner, peaking mid 25, to box 23's top-right corner; the mound mid 24.
 // 2B sits at the bottom of box 25, clear of the outfield grass (Joel, Oct 7).
 // 1B and 3B sit just inside the foul lines, their outer side on the line (Joel, Oct 8).
-// Same drawing in send-session-report/diamond.ts -- change both or neither.
-// Center-field logo mown into the grass (Jordan's "Strikeout" mark, docs/cf-logo-mown.md): home plate cut as a band
-// with the scorebook K inside, the field's own greens cross-cut at 90 degrees and half the stripe width (each half
-// against its own side of the V), a 5% shade, a 10% hairline, the spot cut shorter. Both sports; same in diamond.ts.
-const G5_CF_LOGO = `<defs><pattern id="g5cfxl" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(-45 250 450)"><rect width="40" height="40" fill="#6FA548"/><rect width="40" height="20" fill="#8CBA5A"/></pattern><pattern id="g5cfxr" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="40" height="40" fill="#6FA548"/><rect width="40" height="20" fill="#8CBA5A"/></pattern><symbol id="g5cfmark" viewBox="0 0 100 100"><path fill-rule="evenodd" d="M2 2H98V50L50 98L2 50Z M9 9H91V47L50 88L9 47Z"/><path transform="translate(22 14) scale(0.034)" d="M0 0H442V1327H0Z M510 1139V494L820 0H1280Z M823 1327L673 1018L935 625L1301 1327Z"/></symbol><mask id="g5cfmask"><rect width="500" height="500" fill="#000"/><use href="#g5cfmark" x="170" y="74" width="160" height="160" fill="#fff"/></mask></defs><g mask="url(#g5cfmask)" pointer-events="none"><rect width="250" height="500" fill="url(#g5cfxl)"/><rect x="250" width="250" height="500" fill="url(#g5cfxr)"/><rect width="500" height="500" fill="#000000" fill-opacity="0.05"/></g><use href="#g5cfmark" x="170" y="74" width="160" height="160" fill="none" stroke="#000000" stroke-opacity="0.10" stroke-width="1" pointer-events="none"/><circle cx="274" cy="131.6" r="9.6" fill="#FFFFFF" fill-opacity="0.22" pointer-events="none"/>`;
+// The report draws the same field in send-session-report/diamond.ts. Since V1 (Nov 18, Joel) the app's charting
+// field has the boards' look and the report keeps its own; the box layout and what a tap means stay identical.
 function g5FieldSvg(){
-  const soft = currentSport() === 'softball';
+  // V1 (Nov 18): the field itself is the boards' drawing on the stage (v1Stage 'field'); this layer, in the 25 boxes'
+  // own units (100 a box), keeps only what changes during a play -- the shaded area being asked about and the gold
+  // base under each runner. The geometry notes above still say where everything sits.
   const g = state.activeSession && state.activeSession.g5;
   const occ = (g && (g.step === 'bases' || g.step === 'runners')) ? g5ShownBases(g, state.activeSession) : runnersBitmask(state.activeSession ? state.activeSession.runners : {});   // a waiting move shows its runner off his old base
-  const base = (x, y, bit) => `<rect x="${x - 11}" y="${y - 11}" width="22" height="22" rx="2" transform="rotate(45 ${x} ${y})" class="g5-base${occ & bit ? ' on' : ''}"/>`;
-  // Joel, Oct 8 (both sports, from his ballpark photo): mower stripes parallel to each foul line, meeting in a V at
-  // center field -- fair grass light #8CBA5A / #6FA548, foul ground the darker #60963C / #548A35 -- and a crosshatch
-  // plaid on the infield grass; a soft light falloff over it. Over the fence keeps its color; softball's infield
-  // stays all dirt (no grass). Same drawing in send-session-report/diamond.ts.
-  const mow = `<defs><pattern id="g5fl" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="80" height="80" fill="#6FA548"/><rect width="80" height="40" fill="#8CBA5A"/></pattern><pattern id="g5fr" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(-45 250 450)"><rect width="80" height="80" fill="#6FA548"/><rect width="80" height="40" fill="#8CBA5A"/></pattern><pattern id="g5dl" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 450)"><rect width="80" height="80" fill="#548A35"/><rect width="80" height="40" fill="#60963C"/></pattern><pattern id="g5dr" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(-45 250 450)"><rect width="80" height="80" fill="#548A35"/><rect width="80" height="40" fill="#60963C"/></pattern><pattern id="g5pl" width="24" height="24" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 350)"><rect width="24" height="24" fill="#8CBA5A"/><rect width="12" height="24" fill="#000000" fill-opacity="0.10"/><rect width="24" height="12" fill="#000000" fill-opacity="0.10"/></pattern><linearGradient id="g5sun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.10"/><stop offset="1" stop-color="#000000" stop-opacity="0.08"/></linearGradient></defs>`;
-  return `<svg class="g5-field" viewBox="0 0 500 500" aria-hidden="true">${mow}
-<rect width="250" height="500" fill="url(#g5dl)"/><rect x="250" width="250" height="500" fill="url(#g5dr)"/>
-<path d="M0,0 L500,0 L500,100 A650,650 0 0 0 0,100 Z" style="fill:var(--gg-fence)"/>
-<path d="M250,450 L0,200 L0,100 A650,650 0 0 1 250,50 Z" fill="url(#g5fl)"/><path d="M250,450 L500,200 L500,100 A650,650 0 0 0 250,50 Z" fill="url(#g5fr)"/>${G5_CF_LOGO}<rect width="500" height="500" fill="url(#g5sun)"/>
-<path d="M0,100 A650,650 0 0 1 500,100" fill="none" style="stroke:var(--gg-line)" stroke-width="6" opacity="0.75"/>
-<path d="M250,450 L100,300 A250,250 0 0 1 400,300 Z" style="fill:var(--gg-dirt)"/>
-<polygon points="250,428 314,364 250,300 186,364" style="fill:${soft ? 'var(--gg-dirt)' : 'url(#g5pl)'}"/>
-${soft ? '<circle cx="250" cy="350" r="16" fill="none" stroke="#fff" stroke-width="2.5"/>' : '<circle cx="250" cy="350" r="14" style="fill:var(--gg-mound)"/>'}
-<path d="M250,450 L0,200 M250,450 L500,200" stroke="#fff" stroke-width="4"/>
+  const base = (x, y, bit) => occ & bit ? `<rect x="${x - 11}" y="${y - 11}" width="22" height="22" rx="2" transform="rotate(45 ${x} ${y})" class="g5-base on"/>` : '';
+  return `<svg class="g5-field" viewBox="0 0 500 500" aria-hidden="true">
 ${base(342.2, 342.2, 1)}${base(250, 282, 2)}${base(157.8, 342.2, 4)}
 ${g && g.step === 'where' && g.zone === 'FOUL' ? '<path class="g5-zone-shade" d="M0,200 L250,450 L500,200 L500,500 L0,500 Z"/>' : ''}${g && g.step === 'hr' ? '<path class="g5-zone-shade" d="M0,0 L500,0 L500,100 A650,650 0 0 0 0,100 Z"/>' : ''}${g && g.step === 'where' && g.zone === 'IF' ? '<path class="g5-zone-shade" d="M250,450 L100,300 A250,250 0 0 1 400,300 Z"/>' : ''}${g && g.step === 'where' && g.zone === 'OF' ? '<path class="g5-zone-shade" fill-rule="evenodd" d="M250,450 L0,200 L0,100 A650,650 0 0 1 500,100 L500,200 Z M250,450 L100,300 A250,250 0 0 1 400,300 Z"/>' : ''}
-<polygon points="237,438 263,438 263,451 250,464 237,451" fill="#fff" style="stroke:var(--gg-line)" stroke-width="1.5"/>
 </svg>`;
 }
 const G5_BALL_SVG = `<svg class="g5-ball" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.5" fill="#fff" stroke="#9aa" stroke-width="1"/><path d="M7 4.5c2.5 4 2.5 11 0 15M17 4.5c-2.5 4-2.5 11 0 15" fill="none" stroke="#C8302F" stroke-width="1.3" stroke-dasharray="1.6 1.4"/></svg>`;
@@ -11159,9 +11468,10 @@ function g5Caption(step){
     where: 'Select Ball in Play Location', hr: 'Home run — where did it leave the park?', bases: 'Select current bases for baserunners',
     runners: 'Drag a runner to a base, or tap a runner then a base' }[step] || '';
 }
-// The field: the back of the chart. Same square, same 25 boxes.
+// The field: the back of the chart (V1, Nov 18: its own stage, the boards' drawing; the 25 boxes on the field's square).
 function g5FieldFace(){
-  return `<div class="g5-face g5-back gg-field" data-step="${state.activeSession.g5.step}">${g5FieldInner()}</div>`;
+  const g = state.activeSession.g5;
+  return v1Stage('field', v1Layout(), `<div class="zone-grid g5-card g5-flat gg-field" data-step="${g ? g.step : ''}">${g5FieldInner()}</div>`);
 }
 function g5FieldInner(){
   const s = state.activeSession, g = s.g5, step = g.step;
@@ -11380,22 +11690,6 @@ document.addEventListener('click', e => {
   if(Date.now() - g5DragAt < 400 && e.target && e.target.closest && e.target.closest('.gg-field')){ e.stopPropagation(); e.preventDefault(); }
 }, true);
 
-// The card flip (Joel, Oct 7): the chart turns over to the field and back, like a card. The flipping
-// draw holds both faces; the draws after it hold only the face that's up.
-function g5Card(face, flip, chartHtml){
-  // At rest the field is built exactly like the chart -- its 25 boxes straight in the .zone-grid, the drawing
-  // behind them -- so it is the chart's own square on every screen (Joel's iPad, Oct 8: a layer laid over the
-  // box came out taller than wide there). The two-face card is only for the flip itself.
-  // Joel, Oct 19 (phones): while O / E / H are asked, the field keeps the chart's band underneath and the prompt badge
-  // sits in it where "Tap Pitch Result" is on the chart side, so O / E / H land exactly where K / B / F / IP were
-  const g5 = state.activeSession.g5;   // null during the flip back to the chart (the play is already saved)
-  const band = !!(g5 && G5_BAND_STEPS[g5.step]) && isPhoneWidth();
-  if(!flip){
-    const badge = band ? `<div class="zone-caption ph-lg-prompt ph-lg-full">${g5PhoneCaption(g5)}</div>` : '';
-    return `<div class="zone-grid g5-card g5-flat gg-field${band ? ' g5-band' : ''}" data-step="${g5.step}">${g5FieldInner()}${badge}</div>`;
-  }
-  return `<div class="zone-grid g5-card${band ? ' g5-band' : ''} g5-flip-${flip}"><div class="g5-face g5-front">${chartHtml}</div>${face}</div>`;
-}
 // Joel, Oct 6: after the flip back, velocity sits IN the chart -- the bar on its second-to-last
 // row, Reset + Next pitch on the last row -- so nothing is added below the chart.
 function g5VeloRows(){
@@ -11565,20 +11859,32 @@ function g5Surface(pitches, chartingPerspective, currentBatterSide){
   const mark = (sa && sa.intent) ? (sa.gameTarget || (asking && sa.gamePendingPitch && sa.gamePendingPitch.target) || null) : (asking ? sa.gameDot : null);
   state.gameBallCell = (sa && sa.intent && asking) ? sa.gameDot : null;
   let chart = renderZoneGrid(pitches, true, state.flashCell, mark, chartingPerspective, currentBatterSide, 'handleGameZoneTap');
+  if(g5Step() === 'velo') chart = chart.replace(/<\/div>$/, g5VeloRows() + '</div>');   // inside .zone-grid, over its last two rows
+  // V1 (Nov 18): the chart and the field each sit on their own drawn stage; the flip turns the whole stage over
+  const stage = v1Stage(v1View(chartingPerspective), v1Layout(), chart, { batter: { left: insideColumnOnScreenLeft(chartingPerspective, currentBatterSide) } });
   if(g5OnDiamond()){
     // Joel's iPad photo, Oct 8: Safari kept the field's buttons on their own 3D layer after the flip, drawn a
     // little closer (bigger) under the perspective. Once the flip has played, draw the field again flat.
-    if(state.g5Anim === 'in') setTimeout(() => { if(!state.g5Anim && g5OnDiamond()) render(); }, 375);
-    return g5Card(g5FieldFace(), state.g5Anim === 'in' ? 'in' : null, chart);   // its buttons go under the prompt (g5Below, Oct 19)
+    if(state.g5Anim === 'in'){
+      setTimeout(() => { if(!state.g5Anim && g5OnDiamond()) render(); }, 375);
+      return v1Flip('in', stage, g5FieldFace());
+    }
+    return g5FieldFace();   // its buttons go under the prompt (g5Below, Oct 19)
   }
-  if(g5Step() === 'velo') chart = chart.replace(/<\/div>$/, g5VeloRows() + '</div>');   // inside .zone-grid, over its last two rows
-  if(isPhoneWidth()){ const ph = phoneLgPrompt(sa); if(ph) chart = chart.replace(/<\/div>$/, `<div class="zone-caption ph-lg-prompt">${ph}</div></div>`); }
   if(state.g5Anim === 'out' && state.g5LastFace){
     // the flip back: the field turns over to the chart; one plain draw follows once it has finished
     setTimeout(() => { if(!state.g5Anim && !g5OnDiamond()) render(); }, 375);
-    return g5Card(state.g5LastFace, 'out', chart);
+    return v1Flip('out', stage, state.g5LastFace);
   }
-  return chart;
+  return stage;
+}
+// V1: the row under a Live Game chart on phones -- the batter pill, then the step badge beside it (Joel, Oct 19), or the
+// field's band badge (O / E / H asked) on its own.
+function v1PhoneUnder(s){
+  const g5 = s.g5, onField = g5OnDiamond();
+  if(onField) return (g5 && G5_BAND_STEPS[g5.step]) ? `<div class="v1-under v1-ph"><div class="zone-caption ph-lg-prompt">${g5PhoneCaption(g5)}</div></div>` : '';
+  const ph = phoneLgPrompt(s);
+  return `<div class="v1-under v1-ph">${v1BatterPill()}${ph ? `<div class="zone-caption ph-lg-prompt">${ph}</div>` : '<div class="ph-lg-spacer"></div>'}</div>`;
 }
 
 function renderGameSessionView(p){
@@ -11635,14 +11941,13 @@ function renderGameSessionView(p){
         <div class="ph-status on-dark">
           <span ${gameAdjustAttrs('inning')}><span class="sb-num ph-inn">▲${s.inning}</span><span class="sb-lbl"><span class="lbl-long">Inning</span><span class="lbl-short">Inn</span></span></span><span ${gameAdjustAttrs('outs')}><span class="sb-num ph-item">${displayOuts(s)}</span><span class="sb-lbl">Out${displayOuts(s) === 1 ? '' : 's'}</span></span><span ${gameAdjustAttrs('balls')}><span class="sb-num ph-item">${s.balls}-${s.strikes}</span><span class="sb-lbl">Count</span></span>${gameRunsCell(s, true)}
           <span class="ph-diamond">${renderRunnerDiamond()}</span>
-          ${renderStatusDelivery()}
-        </div>
-        <div class="ph-persp-row">${renderPerspButton(true)}</div>${renderPerspNote()}
+          ${v1StatusSlot(s)}
+        </div>${renderPerspNote()}
         ${renderPhoneDeliveryRow(p, true)}
         <div class="ph-grid-wrap">${renderPhoneHint()}
           <div class="zone-wrap lg-phone${g5OnDiamond() ? ' g5-on' : ''}">
             ${g5Surface(pitches, chartingPerspective, currentBatterSide)}
-          </div>${g5Below}
+          </div>${v1PhoneUnder(s)}${g5Below}
         </div>
       </div>
       <div class="panel log-panel">
@@ -11677,7 +11982,7 @@ function renderGameSessionView(p){
         <div class="gridwrap">
           <div class="zone-wrap">
             ${g5Surface(pitches, chartingPerspective, currentBatterSide)}
-            <div class="zone-caption">${zoneCaption}</div>
+            ${v1UnderRow(zoneCaption, g5OnDiamond() ? '' : v1BatterPill(), insideColumnOnScreenLeft(chartingPerspective, currentBatterSide))}
           </div>${g5Below}
         </div>
       </div>
@@ -11710,21 +12015,22 @@ function renderGameSessionView(p){
         <div class="wide-cols wide-game">
           <div class="wide-left">
             ${renderPerspectiveToggle()}
+            ${sportCfg().hasDelivery ? renderDeliveryToggle(true, true) : ''}
             <div>
-              ${renderPitchTypeLabel(p)}
-              ${pitchTypeTray(p, true)}
+              ${renderPitchTypeLabel(p, true)}
+              ${pitchTypeTray(p, true, true)}
               ${renderMixPrompt(p)}
             </div>
-            ${sportCfg().hasDelivery ? renderDeliveryToggle(true) : ''}
           </div>
           <div class="wide-right">
             <div class="gridwrap">
               <div class="zone-wrap">
                 ${g5Surface(pitches, chartingPerspective, currentBatterSide)}
-                <div class="zone-caption">${renderWideCaption(zoneCaption)}</div>
+                ${v1UnderRow(renderWideCaption(zoneCaption), g5OnDiamond() ? '' : v1BatterPill(), insideColumnOnScreenLeft(chartingPerspective, currentBatterSide))}
               </div>${g5Below}
             </div>
           </div>
+          <div class="wide-log"><div class="field-label">Recent pitches</div><div class="pitch-log">${logRows}</div></div>
           <div class="wide-bl">${raPill()}</div>   <!-- Joel, Oct 14: no clock in Live Games (it sat here); U14: the RA pill -->
         </div>
       </div>
@@ -11737,8 +12043,7 @@ function renderGameSessionView(p){
           <div class="stat-box"><span class="stat-num mono">${stats.h}</span><span class="stat-lbl">H</span></div>
           <div class="stat-box"><span class="stat-num mono">${gameRuns(s)}</span><span class="stat-lbl">R</span></div>
         </div>
-        <div class="field-label">Recent pitches</div>
-        <div class="pitch-log">${logRows}</div>
+        
         <div style="margin:var(--s-12) 0 var(--s-8);">
           <div class="field-label" style="margin-bottom:var(--s-4);">Opponent (optional)</div>
           <input class="text-input" placeholder="e.g. Eastern" maxlength="60"
@@ -11929,7 +12234,7 @@ function renderPitchStrip(p){
   }).join('');
   return `<div class="pstrip-wrap">
     <button type="button" class="btn btn-tertiary pstrip-arrow" id="pstrip-prev" onclick="pitchStripStep(-1)" aria-label="Earlier pitch types">‹</button>
-    <div class="tray tray-scroll pstrip" id="pitch-strip" role="group" aria-label="Pitch type" data-tray="pstrip">${chips}<span class="tray-ind" aria-hidden="true"></span></div>
+    <div class="tray tray-scroll pstrip" id="pitch-strip" role="group" aria-label="Pitch type" data-tray="pstrip">${chips}${canEditArsenal(p) ? '<button type="button" class="pstrip-plus" onclick="openArsenalSheet(null, true)" aria-label="Add or edit pitches" title="Pitches">+</button>' : ''}<span class="tray-ind" aria-hidden="true"></span></div>
     <button type="button" class="btn btn-tertiary pstrip-arrow" id="pstrip-next" onclick="pitchStripStep(1)" aria-label="More pitch types">›</button>
   </div>`;
 }
@@ -11989,29 +12294,20 @@ function sizeWideGrid(){
   if(!right || !isWideSession()) return;
   const wrap = right.querySelector('.zone-wrap');
   if(!wrap) return;
-  const A = 167 / 504, H0 = 0.8, MIN = 238, CAP = 560;    // MIN = 5 x 44px cells + gaps; H0 = batter height / grid
+  // V1 (Nov 18): the column holds the drawn stage (740 x 580 on the wide board); the chart is 332 / 740 of its width.
+  // The stage fills the column, held to the window's height so the prompt stays on screen; the chart never gets
+  // smaller than 5 x 44px boxes. --zg stays the chart's side (the field's buttons and the rows under it use it).
+  const AR = 580 / 740, K = 332 / 740, MIN_STAGE = Math.ceil(238 / K);
   const colW = wrap.clientWidth;
-  const cap = wrap.querySelector('.zone-caption');
-  const capH = cap ? cap.offsetHeight + 10 : 0;            // + .zone-wrap's gap
+  const under = wrap.querySelector('.v1-under');
+  const capH = under ? under.offsetHeight + 12 : 0;
   const top = right.getBoundingClientRect().top + (window.pageYOffset || 0);
-  const cols = right.closest('.wide-cols');
-  const roomAll = window.innerHeight - top - capH - 24;
-  // Joel, Oct 2: Undo / New batter / New inning always sit side by side,
-  // centered under the grid. Their row isn't counted in the height budget:
-  // in a short window (Safari's toolbars) the grid keeps its full size and
-  // the row sits just below the fold, a short scroll away.
-  const below = 0;
-  const room = roomAll - below;
-  let h = H0;
-  let side = Math.min(CAP, (colW - 12) / (1 + 2 * A * H0), room / Math.max(1, H0));
-  if(side < MIN){
-    side = MIN;
-    h = Math.max(0.6, Math.min(H0, ((colW - side) / 2 - 6) / (A * side)));
-  }
-  side = Math.floor(side);
-  right.style.setProperty('--zg', side + 'px');
-  right.style.setProperty('--kbh', (h * 100).toFixed(1) + '%');
-  right.style.setProperty('--kbo', Math.max(0, Math.ceil((h - 1) * side)) + 'px');
+  // Joel, Oct 2: the rows under the chart aren't counted in the height budget -- in a short window they sit just below
+  // the fold, a short scroll away, and the chart keeps its size.
+  const room = window.innerHeight - top - capH - 24;
+  const stageW = Math.floor(Math.max(MIN_STAGE, Math.min(colW, room / AR)));
+  right.style.setProperty('--stw', stageW + 'px');
+  right.style.setProperty('--zg', Math.floor(stageW * K) + 'px');
 }
 window.addEventListener('resize', onWideResize);
 // WIDE-SIZE-END
@@ -12029,7 +12325,17 @@ function attachPitchStrip(){
 }
 function renderPhoneDeliveryRow(p, deliveryInStatus){
   const withDelivery = sportCfg().hasDelivery && !deliveryInStatus;
-  return `<div class="deliv-row">${withDelivery ? renderDeliveryOne() : ''}${renderArsenalPlus(p)}${renderPitchStrip(p)}</div>`;
+  return `<div class="deliv-row">${withDelivery ? renderDeliveryOne() : ''}${renderPitchStrip(p)}</div>`;   // V1: "+" is the strip's last item
+}
+// V1 (Joel, Nov 18; phones, Live Game): before the first pitch the status bar's Windup / Set slot holds the view
+// button (Catcher / Pitcher); the first pitch locks the view and the slot goes back to Windup / Set (softball: empty).
+function v1StatusSlot(s){
+  if(!s.pitches.length) return `<span class="ph-status-deliv ph-status-persp">${renderPerspButton(false)}</span>`;
+  return renderStatusDelivery();
+}
+function v1PenStage(pitches, chartingPerspective, currentBatterSide){
+  const grid = renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide, 'handleZoneTap');
+  return v1Stage(v1View(chartingPerspective), v1Layout(), grid, isNoBatter(state.activeSession) ? {} : { batter: { left: insideColumnOnScreenLeft(chartingPerspective, currentBatterSide) } });
 }
 // Joel, Oct 8 (Live Game, phones): Set/Windup rides on the right of the status bar; the pitch-type row
 // gets the full width. Joel, Oct 14: no clock in Live Games.
@@ -12165,7 +12471,7 @@ function renderSessionView(){
         ${renderMixPrompt(p)}
         <div class="ph-grid-wrap">${renderPhoneHint()}
           <div class="zone-wrap pb-zone">
-            <div class="batter-frame${isNoBatter(state.activeSession) ? ' no-batter' : ''}" style="display:contents;">${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}</div>
+            ${v1PenStage(pitches, chartingPerspective, currentBatterSide)}
             <div class="zone-caption">${zoneCaption}</div>${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
           </div>
         </div>
@@ -12202,8 +12508,8 @@ function renderSessionView(){
         <div class="hint-msg">${state.hint}</div>
         <div>
           <div class="zone-wrap">
-            <div class="batter-frame${isNoBatter(state.activeSession) ? ' no-batter' : ''}" style="display:contents;">${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}</div>
-            <div class="zone-caption">${zoneCaption}</div>${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
+            ${v1PenStage(pitches, chartingPerspective, currentBatterSide)}
+            ${v1UnderRow(zoneCaption, isNoBatter(state.activeSession) ? '' : v1BatterPill(), insideColumnOnScreenLeft(chartingPerspective, currentBatterSide))}${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
           </div>
         </div>
         ${sessionUsesRadarGun(state.activeSession) ? `<div>
@@ -12239,24 +12545,25 @@ function renderSessionView(){
               </div>
             </div>
             ${raPill()}
+            ${sportCfg().hasDelivery ? renderDeliveryToggle(false, true) : ''}
             <div>
-              ${renderPitchTypeLabel(p)}
-              ${pitchTypeTray(p, true)}
+              ${renderPitchTypeLabel(p, true)}
+              ${pitchTypeTray(p, true, true)}
               ${renderMixPrompt(p)}
             </div>
-            ${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}
             ${renderBatterModeToggle()}
           </div>
           <div class="wide-right">
             <div class="zone-wrap">
-              <div class="batter-frame${isNoBatter(state.activeSession) ? ' no-batter' : ''}" style="display:contents;">${renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide)}</div>
-              <div class="zone-caption">${renderWideCaption(zoneCaption)}</div>${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
+              ${v1PenStage(pitches, chartingPerspective, currentBatterSide)}
+              ${v1UnderRow(renderWideCaption(zoneCaption), isNoBatter(state.activeSession) ? '' : v1BatterPill(), insideColumnOnScreenLeft(chartingPerspective, currentBatterSide))}${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
             </div>
             ${sessionUsesRadarGun(state.activeSession) ? `<div>
               <div class="field-label" style="margin-bottom:var(--s-8);">Velocity</div>
               ${renderVeloStrip()}
             </div>` : ''}
           </div>
+          <div class="wide-log"><div class="field-label">Recent pitches</div><div class="pitch-log">${logRows}</div></div>
         </div>
       </div>
       <div class="panel log-panel">
@@ -12269,8 +12576,6 @@ function renderSessionView(){
           <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="stat-lbl">Avg mph</span></div>
           <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.minVelo+'–'+stats.maxVelo : '—'}</span><span class="stat-lbl">Range</span></div>
         </div>
-        <div class="field-label">Recent pitches</div>
-        <div class="pitch-log">${logRows}</div>
         ${renderEndSessionRow()}
       </div>
     </div>`;

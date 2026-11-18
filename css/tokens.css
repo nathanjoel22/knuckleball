@@ -166,6 +166,23 @@
   --tap-min:   44px;
   --app-max:   1320px;
   --sidebar-w: 280px;
+  /* V1 field art (Joel, Nov 18 2026; plans/v1-preconditions.md): the drawn ballpark behind the charting chart and the
+     ball-in-play field. Art only -- the app's chrome keeps its own tokens above. */
+  --field-sky:        #BFE3F5;
+  --field-wall:       #1F4D3A;
+  --field-rail:       #F2C230;
+  --field-stands:     #39483F;   /* pitcher's view, above the backstop */
+  --field-grass:      #4E9A4B;
+  --field-grass-2:    #5BA756;   /* mower stripes */
+  --field-infield:    #57A353;
+  --field-infield-2:  #63AD5D;   /* the ball-in-play field's inner diamond */
+  --field-mound:      #C99C6B;
+  --field-mound-2:    #B98B5B;   /* the ball-in-play field's mound */
+  --field-dirt:       #C99C6B;
+  --field-dirt-light: #F6E3C4;
+  --plate-top:        #FAFAF7;
+  --plate-edge:       #9FA39A;
+  --batter:           #0E1110;
 }
 @media (prefers-reduced-motion: reduce){
   :root{ --duration-fast:0ms; --duration-base:0ms; --duration-slow:0ms; --duration-flip:0ms; }
@@ -200,4 +217,11 @@ html[data-sport="softball"]{
   --dock-bg:          rgba(11,37,64,0.82);
   --pitch-1: #FF4F9A; --pitch-2: #2F9BFF; --pitch-3: #7A3FB8; --pitch-4: #FF9F1C;
   --pitch-5: #00A99D; --pitch-6: #7A53FF; --pitch-7: #CD4730; --pitch-8: #6C7684;   /* 6-8 darkened from the target (Joel, Oct 13: white chip labels 4.6:1) */
+  /* V1 field art: softball's wall and stands are navy; the infield is all dirt and there is no mound */
+  --field-wall:       #16385C;
+  --field-stands:     #3A4656;
+  --field-infield:    #C99C6B;
+  --field-infield-2:  #C99C6B;
+  --field-mound:      transparent;
+  --field-mound-2:    #C99C6B;
 }

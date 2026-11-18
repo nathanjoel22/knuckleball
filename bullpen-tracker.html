@@ -2109,6 +2109,11 @@
   .ph-layout .g5-pad, .ph-layout .g5-nav, .ph-layout .g5-more{ max-width:340px; }
   .wide-right .g5-pad, .wide-right .g5-nav, .wide-right .g5-more{ width:var(--zg, 278px); max-width:none; }
   .g5-pad{ display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:3px; /* geometry: the charting grid's cell math */ }
+  /* Joel, Nov 18: a ball in play's rows centred under home plate -- the same five boxes, shifted by half of each unused one
+     (100% - 3px = the five boxes and four gaps inside the 3px side padding); ‹ Back's row the same */
+  .g5-pad.g5-shift, .g5-nav.g5-shift{ transform:translateX(calc((5 - var(--n)) * (100% - 3px) / 10)); }
+  .g5-nav.g5-shift{ display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:3px; }
+  .g5-nav.g5-shift .g5-nav-btn{ min-width:0; }
   .g5-res{ min-width:0; aspect-ratio:1/1; min-height:0; padding:0; border-radius:var(--radius-cell); /* geometry: the charting grid's cell math */ }
   .g5-res-l{ font-size:32px; font-weight:800; line-height:1; }
   .wide-right .g5-res-l{ font-size:calc((var(--zg, 278px) - 18px) / 5 * 0.45); }
@@ -11575,7 +11580,17 @@ function g5FieldInner(){
   return `${g5FieldSvg()}${cells}`;
 }
 // + Add out and ‹ Back (and Next on the bases question, radar on) sit under the field.
-function g5FieldActions(){
+// Joel, Nov 18: a ball in play's buttons (FC / E / H / O and every row after it) sit in order, centred under home plate,
+// at their usual size; ‹ Back starts under the leftmost one (and Next, when there is one, ends under the rightmost).
+// The row keeps the chart's five-box grid and is shifted by the boxes it doesn't use (.g5-shift, --n).
+function g5PlayBelow(){
+  let row = g5HoeRow();
+  const n = (row.match(/class="btn btn-secondary g5-res/g) || []).length;
+  if(!n || n >= 5) return row + g5FieldActions();
+  row = row.replace(/grid-column:\d+;/g, '').replace('<div class="g5-pad"', `<div class="g5-pad g5-shift" style="--n:${n}"`);
+  return row + g5FieldActions(n);
+}
+function g5FieldActions(n){
   const g = state.activeSession.g5;
   if(g.move) return g5MovePrompt(g);
   if(g.step === 'bases' && g.runOutPick && g5RunAsking(g)) return g5RunOutPrompt(g);   // Oct 21
@@ -11596,6 +11611,11 @@ function g5FieldActions(){
   const blocked = g5NeedsBatter(g) || g5NeedsFcOut(g) || !!g5RunAsking(g);
   const next = g.step === 'bases' ? `<button type="button" class="btn btn-primary btn-sm g5-nav-btn next-pitch" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>`
     : '<span class="g5-nav-btn" aria-hidden="true"></span>';
+  if(n){   // lined up with the centred row above (g5PlayBelow)
+    const half = Math.max(1, Math.floor(n / 2));
+    const nx = next.replace(/^<(button|span) /, `<$1 style="grid-column:${n - half + 1} / span ${half};" `);
+    return `${summary}<div class="g5-nav g5-shift" style="--n:${n}"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" style="grid-column:1 / span ${half};" onclick="g5Back()">‹ Back</button>${nx}</div>`;
+  }
   return `${summary}<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button>${next}</div>`;
 }
 /* ---------- Runners on the field (Joel, Oct 12) ----------
@@ -12018,7 +12038,7 @@ function renderGameSessionView(p){
   const zoneCaption = GAME_ADJUST[state.gameAdjust] ? 'Adjust ' + GAME_ADJUST[state.gameAdjust].label : (s.g5 && g5Now) ? (g5NeedsBatter(s.g5) ? 'Put the batter on base (tap a base, or drag from home)' : g5Caption(g5Now))
     : g5Now === 'velo' ? 'Record Velocity'   // Joel, Oct 22: while the speeds are up
     : gameStepPrompt(s);   // V1 Part B: the same four prompts on every screen size
-  const g5Below = g5OnDiamond() ? g5HoeRow() + g5FieldActions() : g5BelowChart(g5Now);   // Oct 19: both sides put their buttons under the prompt
+  const g5Below = g5OnDiamond() ? g5PlayBelow() : g5BelowChart(g5Now);   // Oct 19: both sides put their buttons under the prompt
 
   if(phoneSessionMode(p)){
     return `

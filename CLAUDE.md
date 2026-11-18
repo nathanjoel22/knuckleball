@@ -218,6 +218,9 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
   pushed only as far as forced → **each runner asked, lead runner first** (HELD · ADV TO 2B/3B/HOME · OUT; OUT asks the
   base, or after a catch Doubled off / Out advancing to …) → **Confirm the play** (the play written out; Next saves;
   third outs and home runs stop here too). The Outs shown go up when the play is saved.
+- **Where the play's buttons sit (Joel, Nov 18 2026):** every row of a ball in play (FC / E / H / O, the hit, contact,
+  location and runner rows) keeps the chart's box size. The buttons are in order and centred under home plate, and ‹ Back
+  starts under the leftmost one; Next ends under the rightmost (`g5PlayBelow`, `.g5-shift`).
 - **Runs and the pitching line:** runs per play (`runs_scored`), unearned (`unearned_runs`: reached on E / CI, "On error",
   passed ball, after the inning would have ended, the placed extra-inning runner; changed in the editor), inherited
   (`inherited_runs`; runners on when he started -- hand-off or "Starting mid-game?" with inning / outs / runners / count),

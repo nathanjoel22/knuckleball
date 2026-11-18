@@ -442,6 +442,15 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
 - **`css/standalone.css`:** the safe-area insets go on `:root` (pages set their own body padding). Installed, a strip in the sport's `--brand-bg` sits behind the black-translucent status bar.
 - **Install banner** (Home only, once per device, `kb:install` = dismissed / installed): Android uses `beforeinstallprompt` (one Install button); iOS explains Share → Add to Home Screen, and only when the outbox is empty, because a home-screen app's storage is separate from Safari's. **It is OFF** (Joel, Oct 23, 2026: "I don't like or want it there"; `window.KB_INSTALL_BANNER = false` in the tracker's head), and Chrome's own install prompt is always held back too. It was on Oct 22-23, after the real logo ("The spot") replaced the placeholder icon.
 - **Updates:** an installed app is rarely reloaded, so a worker that takes over from an older one shows "A new version of Knuckleball is ready · Reload" (never on the charting screen). The app also checks for a new version whenever it comes back to the front.
+- **The iPhone / iPad store app's opening film** (`index.html`, `kb-app-splash`, iOS only):
+  - Signed in, it never shows: the head script goes straight to the app.
+  - Signed out, the first time on a device, the whole hero film plays (14.8 s). Only a film that played to its end is
+    remembered (`kb:introSeen`).
+  - After that, one of three parts at random (Joel, Nov 18 2026):
+    - the opening, 0-3.5 s;
+    - the mitt and the middle-school boy and girl, 5.0-8.25 s;
+    - the older pair and their strikeout pitches, 8.3-14.25 s.
+  - Each stops on its own last frame. Then the logo, then "Which sport?". With no signal it goes on after 4.5 s.
 - No pull-to-refresh on the charting screen (`html.charting`). Report, privacy and terms show "‹ Back" only when installed (report: a plain link, because its CSP allows no inline script).
 
 ## What this is

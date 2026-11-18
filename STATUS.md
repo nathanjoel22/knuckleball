@@ -60,6 +60,37 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-17 · One name per person, and the Account page reordered (no packet; Joel's request) · **staging** (local staging site), branch `one-name`, cache `kb-shell-v352`
+
+- **No packet:** Joel asked why More listed his name three times. He asked for one name with a Baseball | Softball
+  choice ("yes, build it"), plus four changes in the same section.
+- **Built:**
+  - **One name:** More (phones) and Account's Profiles group (iPads and computers) show the login's name once. The
+    login's own sport profiles become one Baseball | Softball switch (`ownSportProfiles`, `renderSportSwitch`, built on
+    `segTray`), shown only when there are two. With one sport it's "+ Add <sport>" as before. Players and linked players
+    keep their own rows.
+  - **Change name** on your own sport profile saves to all of your own sport profiles in one update (`.in('id', …)`).
+    A player's name stays its own. Before this, each sport profile could hold a different name. Production and staging
+    had none that differed (checked Nov 17), so no data change.
+  - **"Add a player" is now "Create Child's Profile"** everywhere: More, Account, the old account menu, the add screen's
+    title, Getting started, `help.html`, and the "under 13" notes on the sign-up and join pages.
+  - **Account order (coach):** Team / Facility look, Join codes and invite links, Name, the team admin (name, level,
+    staff, hand-off, Create a team), Archive / Delete this team, Your data (Download), Email, Password, then Danger
+    (Delete my account stays at the very bottom, as N1 Stage B decided). A pitcher's Account group is Your data,
+    Email, Password, Danger.
+- **Checked on staging** (390 / 440 and 1180):
+  - the U15 Softball coach, with a baseball profile added for the test: one name row and the switch;
+  - Change name renamed both profiles, then was set back;
+  - the coach's and the pitcher's section order;
+  - the parent's More unchanged;
+  - no console errors.
+- **Deviations:** none. A coach's rename of a rostered pitcher (`coach_set_full_name`) still renames only that sport's
+  profile.
+- **Staging data left:** the U15 Softball coach now also has a baseball profile with no team.
+- **Open:** Joel's merge.
+
+---
+
 ## 2026-11-17 · N1 Stage G2 (a team's logo and colors) · **production** (DB + app, v351 live Nov 17), branch `n1g2-team-colors`, PR #99 merged (`86f3b08`), cache `kb-shell-v351`
 
 - **No packet:** Joel, "yes, let head coaches do it also", then "yes to all" on `plans/n1g2-preconditions.md`.

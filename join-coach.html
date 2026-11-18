@@ -197,7 +197,7 @@
     }
     var v = kbAgeValue(px);
     if(!v) return { error: 'Tell us how old you are.' };
-    if(v === 'under_13') return { error: "Players under 13 need a parent or guardian to create their profile. Ask them to set up a parent account and choose 'Add a player'." };
+    if(v === 'under_13') return { error: "Players under 13 need a parent or guardian to create their profile. Ask them to set up a parent account and choose 'Create Child\'s Profile'." };
     var g = null;
     if(v === 'minor_13_17'){
       g = (document.getElementById(px + 'guardian-email').value || '').trim().toLowerCase();

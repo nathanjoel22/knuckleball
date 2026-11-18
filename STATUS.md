@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-18 · The store app's opening film: whole film first, then a random part (no packet; Joel's request) · **staging** (local site), branch `landing-video-clips`, no cache change (the landing page isn't in the service worker)
+## 2026-11-18 · The store app's opening film: whole film first, then a random part (no packet; Joel's request) · **production** (live Nov 18), branch `landing-video-clips`, PR #111 merged (`74bf573`), no cache change (the landing page isn't in the service worker)
 
 - **Joel, Nov 18:**
   - The first time the app is opened, the whole intro film plays.
@@ -82,7 +82,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - Six later opens picked 8.3 → 14.2, 8.3 → 14.2, 5.0 → 8.2, 8.3 → 14.2, 5.0 → 8.2 and 5.0 → 8.2. Forced to part 1: 0 → 3.47 (twice).
   - An iPad plays the wide film.
   - Signed in, the page went straight to the app with no film.
-- **Open:** Joel's merge.
+- **Production:** Joel merged PR #111. The live landing page had the new script about 45 seconds later; the store app
+  picks it up on its next signed-out open.
+- **Open:** none.
 
 ---
 

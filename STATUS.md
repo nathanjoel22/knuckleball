@@ -60,6 +60,18 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-18 · Charting: the infield grass's top point rounded (no packet; Joel's request) · **staging** (local staging site), branch `infield-round`, cache `kb-shell-v356`
+
+- **Joel, Nov 18:** "the grass of the infield has almost a pentagon look to it when in the catchers view. round out the
+  top point underneath 2B just a hair".
+- **Built:** in both catcher's-view scenes (phone and wide; `V1_SCENE['catcher-*']`), the infield grass's top corner under
+  2B is a quadratic curve. It starts 15% along each top edge, so the peak drops about 2 board pixels. The rest of the
+  shape is unchanged. Softball's infield is dirt, so no difference shows there.
+- **Checked:** on staging at 440 and 1280, before / after crops under second base.
+- **Open:** Joel's merge.
+
+---
+
 ## 2026-11-18 · Live Game: black batter-side columns, PU folded into FB, larger base labels (no packet; Joel's request) · **production** (v355 live Nov 18), branch `fly-pop-merge`, PR #107 merged (`4423182`), cache `kb-shell-v355`
 
 - **Joel, Nov 18:** "change the blinking side bars that determine batter side from yellow to a transparent black. make FB

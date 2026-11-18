@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-18 · Live Game: black batter-side columns, PU folded into FB, larger base labels (no packet; Joel's request) · **staging** (local staging site), branch `fly-pop-merge`, cache `kb-shell-v355`
+## 2026-11-18 · Live Game: black batter-side columns, PU folded into FB, larger base labels (no packet; Joel's request) · **production** (v355 live Nov 18), branch `fly-pop-merge`, PR #107 merged (`4423182`), cache `kb-shell-v355`
 
 - **Joel, Nov 18:** "change the blinking side bars that determine batter side from yellow to a transparent black. make FB
   and PU the same thing...get rid of PU and anything it can do that FB cannot, should be an option for FB now". Then:
@@ -83,7 +83,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
     there goes on to "Who fielded it?" with field IF;
   - `gameSacrifice`: fly + IF → none; fly + OF → SF; fly caught foul → SF; line drive → SF (unchanged);
   - two runners on: translucent white bases, labels 20px (phone) and 26px (1280).
-- **Open:** Joel's merge.
+- **Production:** Joel merged PR #107; the live `sw.js` showed `kb-shell-v355` about 45 seconds later.
+- **Open:** none.
 
 ---
 

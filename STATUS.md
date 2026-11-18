@@ -60,6 +60,42 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-18 · V1 Part A (field art on the charting screens) · **staging** (local staging site), branch `v1-field-art`, cache `kb-shell-v353`
+
+- **Packet** `plans/v1-field-art-and-guided-flow.md` (Joel, Nov 18). Reference bundle `plans/v1-field-art/` (14 boards, 14
+  pictures, 2 chalk textures). Report and Joel's "yes to all": `plans/v1-preconditions.md`. Evidence: `plans/v1a-evidence.md`
+  (+ `plans/v1a-evidence/`). The G6 plan Joel supplied is now `plans/g6-live-game-gaps.md`.
+- **Built:**
+  - **Every charting chart and the ball-in-play field** sit on the boards' drawn ballpark: one stage per chart (`v1Stage`,
+    `V1_SCENE` generated from the boards). That covers bullpen and Live Game, both sports, both views, phone (≤500px,
+    440 boards) and wider (740 boards).
+    - The chalk is the photo texture (`assets/field/`, precached).
+    - The batter is the solid silhouette scaled to the strike zone.
+    - Colours come from new `--field-*` tokens.
+  - **The field** keeps G5's 25 boxes and handlers on its own square. Only its live layers stay in `g5FieldSvg`. The flip
+    turns the whole stage.
+  - **Joel's approved layout changes:**
+    - Phones: edge to edge; the view button in the Windup / Set slot until the first pitch; "+" last in the strip.
+    - Wide: Delivery above Pitch type; "+" in the Pitch type box; Recent pitches in a right column.
+    - 501–860px keeps its stacked controls with the wide scene.
+  - **CLAUDE.md:** a V1 section, and the G5 rule updated. The app's field may look different from the report's; the
+    box layout and tap meaning stay identical.
+- **Checked:**
+  - 14 boards against staging.
+  - Before / after at 390, 440, 820 and 1280, both sports, both views and sides, the field and a bullpen (96 screenshots).
+  - The same fixed field taps give the same boxes before and after, at three sizes.
+  - Offline draws the scenes and textures.
+  - Render cost within noise at 6x CPU slowdown; +29 KB tracker, +105.5 KB textures (cached once).
+- **Deviations** (in the evidence file):
+  - The app's own log rows sit in the right column, not the boards' table.
+  - The app's target / flash styles are kept.
+  - Live chrome colours.
+  - Self-hosted fonts.
+  - At 1280 × 800 the rows under the chart sit just below the fold.
+- **Open:** Joel's merge; then Part B (the guided Live Game flow), its own pull request.
+
+---
+
 ## 2026-11-17 · One name per person, and the Account page reordered (no packet; Joel's request) · **production** (v352 live Nov 17), branch `one-name`, PR #101 merged (`f5b1f82`), cache `kb-shell-v352`
 
 - **No packet:** Joel asked why More listed his name three times. He asked for one name with a Baseball | Softball

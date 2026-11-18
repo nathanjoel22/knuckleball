@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-18 · V1 Part B (the guided Live Game flow) · **staging** (local staging site), branch `v1-guided-flow` (on Part A), cache `kb-shell-v354`
+## 2026-11-18 · V1 Part B (the guided Live Game flow) · **production** (v354 live Nov 18), branch `v1-guided-flow`, PR #104 merged (`dbab1de`), cache `kb-shell-v354`
 
 - **Packet** `plans/v1-field-art-and-guided-flow.md`, Part B. Decisions `plans/v1-preconditions.md` (Joel: yes to all).
   Evidence `plans/v1b-evidence.md`.
@@ -82,11 +82,13 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - A started game resumes before its first pitch.
   - Fixing a side is off mid-play.
   - Four test games on staging (two by mistake under the baseball test coach's pitcher).
-- **Open:** Joel's merge, after Part A (#103).
+- **Production:** Joel merged PR #104 after Part A. The live `sw.js` showed `kb-shell-v354` about 45 seconds later, and the live
+  tracker has the new prompts. No database change.
+- **Open:** the four staging test games, to delete or keep (Joel's call).
 
 ---
 
-## 2026-11-18 · V1 Part A (field art on the charting screens) · **staging** (local staging site), branch `v1-field-art`, cache `kb-shell-v353`
+## 2026-11-18 · V1 Part A (field art on the charting screens) · **production** (v353 live Nov 18), branch `v1-field-art`, PR #103 merged (`063bcdc`), build fix PR #105, cache `kb-shell-v353`
 
 - **Packet** `plans/v1-field-art-and-guided-flow.md` (Joel, Nov 18). Reference bundle `plans/v1-field-art/` (14 boards, 14
   pictures, 2 chalk textures). Report and Joel's "yes to all": `plans/v1-preconditions.md`. Evidence: `plans/v1a-evidence.md`
@@ -118,7 +120,16 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - Live chrome colours.
   - Self-hosted fonts.
   - At 1280 × 800 the rows under the chart sit just below the fold.
-- **Open:** Joel's merge; then Part B (the guided Live Game flow), its own pull request.
+- **Production:** Joel merged PR #103. The Cloudflare Pages build then stopped at its own check, "sw.js precaches files the
+  build doesn't copy": the two chalk textures were in `sw.js` but not in `scripts/build-site.sh`'s allowlist. The site
+  stayed on v352, so nothing broke.
+  - PR #105 added the two files to the allowlist. It was checked locally (the build copies 121 files with them, and fails
+    without).
+  - After Joel merged #105, v353 went live about 45 seconds later, with both textures served as images (61,576 and 43,971
+    bytes).
+- **Lesson:** a new file the site serves must be added to `scripts/build-site.sh` in the same PR, with the build run
+  before the PR.
+- **Open:** none for Part A.
 
 ---
 

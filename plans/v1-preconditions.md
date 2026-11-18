@@ -4,6 +4,8 @@ Written against: `2036c48` (main; production v352). Packet: `plans/v1-field-art-
 
 # V1 · Field art and the guided Live Game flow · preconditions (Nov 18, 2026)
 
+**Joel, Nov 18 2026: "yes to all"**: questions 1-9 as recommended below.
+
 Nothing is built yet. Line numbers are `bullpen-tracker.html` at `2036c48`.
 
 ## Boards against their pictures

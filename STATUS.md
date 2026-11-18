@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-17 · One name per person, and the Account page reordered (no packet; Joel's request) · **staging** (local staging site), branch `one-name`, cache `kb-shell-v352`
+## 2026-11-17 · One name per person, and the Account page reordered (no packet; Joel's request) · **production** (v352 live Nov 17), branch `one-name`, PR #101 merged (`f5b1f82`), cache `kb-shell-v352`
 
 - **No packet:** Joel asked why More listed his name three times. He asked for one name with a Baseball | Softball
   choice ("yes, build it"), plus four changes in the same section.
@@ -87,7 +87,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Deviations:** none. A coach's rename of a rostered pitcher (`coach_set_full_name`) still renames only that sport's
   profile.
 - **Staging data left:** the U15 Softball coach now also has a baseball profile with no team.
-- **Open:** Joel's merge.
+- **Production:** Joel merged PR #101 on Nov 17; the live `sw.js` shows `kb-shell-v352`. No database change.
+- **Open:** none.
 
 ---
 

@@ -743,6 +743,9 @@
   .more-row-right{ display:flex; align-items:center; gap:var(--s-8); color:var(--ink-dim); flex:none; }
   .more-go{ font-size:var(--t-20); color:var(--ink-faint); }
   .more-row-on{ cursor:default; }
+  .more-row-sport{ cursor:default; }
+  .more-row-sport .sport-switch{ width:100%; }
+  .more-row-sport .sport-switch .seg{ flex:1; }
   .more-row-links{ justify-content:flex-start; cursor:default; }
   .more-row-links a{ color:var(--ink); text-decoration:none; padding:var(--s-4) 0; }
   .more-row-links span{ color:var(--ink-faint); }
@@ -2663,7 +2666,7 @@ function renderAttestScreen(){
       ${state.attestChoice === 'minor_13_17' ? `<div><div class="field-label" style="margin-bottom:var(--s-6);">Parent or guardian email</div>
         <input class="text-input" id="attest-guardian" type="email" placeholder="Not your own email" value="${escHtml(state.attestGuardian || '')}" oninput="state.attestGuardian = this.value">
         <p class="note-hint" style="margin-top:var(--s-6);">We'll email them a link to approve your account. Until they do, you can chart, but you can't view or send reports.</p></div>` : ''}
-      ${state.attestChoice === 'under_13' ? `<p class="attest-stop">Players under 13 need a parent or guardian to create their profile. Ask them to sign up and choose "Add a player". Contact <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a> about this account.</p>` : ''}
+      ${state.attestChoice === 'under_13' ? `<p class="attest-stop">Players under 13 need a parent or guardian to create their profile. Ask them to sign up and choose "Create Child's Profile". Contact <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a> about this account.</p>` : ''}
       <label class="attest-check"><input type="checkbox" id="attest-terms" ${state.attestTerms ? 'checked' : ''} onchange="state.attestTerms = this.checked"> <span>I agree to the ${terms}.</span></label>`;
   return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="One quick question"><div class="who-card attest-card">
     <div class="display" style="font-size:32px;line-height:1;">One quick question</div>
@@ -3981,6 +3984,23 @@ function sportsToAdd(){
   const have = (state.myProfiles || []).filter(p => !p.managed_by && p.role === primary.role).map(p => p.sport);
   return ['baseball', 'softball'].filter(sp => !have.includes(sp));
 }
+// One person, one name (Joel, Nov 17 2026): the login's own sport profiles (not its players or linked players) are one
+// row with a Baseball | Softball switch, and Change name saves to all of them.
+function ownSportProfiles(){
+  const primary = myAccountProfile();
+  if(!primary || (primary.role !== 'coach' && primary.role !== 'pitcher')) return [];
+  return (state.myProfiles || [primary]).filter(p => !p.managed_by && !p.linked_role && p.role === primary.role && p.sport);
+}
+function renderSportSwitch(){
+  const own = ownSportProfiles();
+  if(own.length < 2) return '';
+  const order = ['baseball', 'softball'];
+  const items = own.slice().sort((a, b) => order.indexOf(a.sport) - order.indexOf(b.sport)).map(p => ({
+    label: SPORT_NAME[p.sport], selected: p.id === state.profile.id,
+    onclick: p.id === state.profile.id ? '' : `switchProfile('${p.id}')`
+  }));
+  return `<div class="more-row more-row-sport">${segTray(items, { cls: 'sport-switch', label: 'Sport', key: 'acct-sport' })}</div>`;
+}
 function renderAccountButton(){
   if(!state.profile) return '';
   const all = state.myProfiles && state.myProfiles.length ? state.myProfiles : [state.profile];
@@ -3995,7 +4015,7 @@ function renderAccountButton(){
         </button>`).join('')}
       ${currentPitcher() ? '' : `<button type="button" class="btn btn-tertiary acct-item acct-profile" role="menuitem" onclick="acctGoProfile()"><span class="acct-name">${PLACE.account}</span></button>`}
       ${sportsToAdd().map(sp => `<button type="button" class="btn btn-secondary btn-sm acct-add" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')">+ Add ${sp}</button>`).join('')}
-      ${canAddPlayer() ? `<button type="button" class="btn btn-secondary btn-sm acct-add" onclick="openAddPlayer()">+ Add a player</button>` : ''}
+      ${canAddPlayer() ? `<button type="button" class="btn btn-secondary btn-sm acct-add" onclick="openAddPlayer()">+ Create Child's Profile</button>` : ''}
       ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
       <a class="btn btn-tertiary btn-sm acct-help" role="menuitem" href="help.html">Help &amp; getting started</a>   <!-- P2-06 -->
     </div>` : '';
@@ -4037,7 +4057,7 @@ function renderAddPlayerScreen(){
     <div class="main">
       <div class="empty-state" style="max-width:440px;margin:0 auto;">
         ${first ? '' : `<div class="acct-row kb-back-row" style="align-self:stretch;"><button type="button" class="btn btn-secondary btn-sm kb-back" onclick="addPlayerBack()">‹ Back</button></div>`}
-        <div class="display" style="font-size:32px;">${first ? 'Add your player' : 'Add a player'}</div>
+        <div class="display" style="font-size:32px;">Create Child's Profile</div>
         <p style="color:var(--ink-dim);font-size:14px;margin:0;">Set up your child's profile. They don't need an email or a login: you chart for them from this account${email ? `, and their reports come to <strong>${escHtml(email)}</strong>` : ''}.</p>
         <div class="invite-form" style="width:100%;text-align:left;">
           <div><span class="field-label">Player's name</span>
@@ -12373,7 +12393,7 @@ window.a1Restore = async function(profileId){
 };
 window.a1KeepScheduled = async function(){ state.a1Pending = null; await signOut(); };
 
-function renderDataSection(){
+function renderDataSection(below){
   const me = state.profile || {};
   const isPlayer = !!me.managed_by && !linkedRole(me) && me.id !== (state.session && state.session.user.id);
   const msg = state.a1Msg ? `<p class="profile-note a1-msg">${escHtml(state.a1Msg)}</p>` : '';
@@ -12387,6 +12407,7 @@ function renderDataSection(){
       <button class="btn btn-secondary" ${state.a1Busy === 'export' ? 'disabled' : ''} onclick="a1Download()">${state.a1Busy === 'export' ? 'Preparing…' : 'Download my data'}</button>
     </div>
     ${offline}${msg}</div>
+    ${below || ''}
     ${!isPhoneWidth() ? renderAccountExtras() : ''}
     <div class="profile-section a1-card danger-card"><h3>Danger</h3>
       <p class="profile-note">${isPlayer ? 'Deleting this player removes their sessions for good after 7 days.' : 'Deleting your account removes it for good after 7 days.'}</p>
@@ -13442,15 +13463,17 @@ function renderMoreView(){
   const acct = myAccountProfile() || state.profile;
   const email = state.myVerification && state.myVerification.email;
   const badge = p => p.linked_role ? (p.linked_role === 'child' ? '' : ` <span class="acct-badge">${p.linked_role === 'family' ? 'View only' : 'Parent'}</span>`) : p.managed_by ? ' <span class="acct-badge">Player</span>' : '';
-  const profileRows = list.length > 1 ? list.map(p => p.id === state.profile.id
+  const own = ownSportProfiles();
+  const others = own.length > 1 ? list.filter(p => !own.includes(p)) : list;
+  const profileRows = renderSportSwitch() + (list.length > 1 ? others.map(p => p.id === state.profile.id
       ? `<div class="more-row more-row-on"><span class="more-row-main">${escHtml(p.full_name)}${badge(p)} ${profileChip(p)}</span><span class="more-row-right"><span class="acct-check" aria-label="Active">✓</span></span></div>`
-      : moreRow(`${escHtml(p.full_name)}${badge(p)} ${profileChip(p)}`, `switchProfile('${p.id}')`)).join('') : '';
+      : moreRow(`${escHtml(p.full_name)}${badge(p)} ${profileChip(p)}`, `switchProfile('${p.id}')`)).join('') : '');
   const adds = sportsToAdd().map(sp => `<button type="button" class="more-row" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')"><span class="more-row-main">+ Add ${sp}</span></button>`).join('');
   const coachTeam = isCoach() && state.teams.find(t => t.id === state.currentTeamId);
   // the same tests as renderCoachTeamAdmin's codes (a facility side's coaches) and links (a team's head) sections
   const hasCodes = coachTeam && !coachTeam.archived && (currentTeamIsFacility() || isHeadOfCurrentTeam());
   const team = (teamSwitchHtml() ? `<div class="more-row">${teamSwitchHtml()}</div>` : '')   // N1-B: phones switch team here
-    + (canAddPlayer() ? moreRow('Add a player', 'openAddPlayer()') : '')
+    + (canAddPlayer() ? moreRow("Create Child's Profile", 'openAddPlayer()') : '')
     + (hasCodes ? moreRow('Join codes and invite links', "goAccountSection('acct-invites')") : '')
     + (coachTeam ? moreRow('Team settings', "goAccountSection('acct-team')") : '');
   return `<div class="more-page">
@@ -13709,11 +13732,12 @@ function renderCoachesPage(){
 function renderAccountExtras(){
   const all = state.myProfiles && state.myProfiles.length ? state.myProfiles : [state.profile];
   const list = all.filter(x => !isAccountOnlyProfile(x));
-  const rows = list.length > 1 ? list.map(x => x.id === state.profile.id
+  const own = ownSportProfiles();
+  const rows = renderSportSwitch() + (list.length > 1 ? (own.length > 1 ? list.filter(x => !own.includes(x)) : list).map(x => x.id === state.profile.id
       ? `<div class="more-row more-row-on"><span class="more-row-main">${escHtml(x.full_name)} ${profileChip(x)}</span><span class="more-row-right"><span class="acct-check" aria-label="Active">✓</span></span></div>`
-      : moreRow(`${escHtml(x.full_name)} ${profileChip(x)}`, `switchProfile('${x.id}')`)).join('') : '';
+      : moreRow(`${escHtml(x.full_name)} ${profileChip(x)}`, `switchProfile('${x.id}')`)).join('') : '');
   const adds = sportsToAdd().map(sp => `<button type="button" class="more-row" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')"><span class="more-row-main">+ Add ${sp}</span></button>`).join('')
-    + (canAddPlayer() ? moreRow('Add a player', 'openAddPlayer()') : '');
+    + (canAddPlayer() ? moreRow("Create Child's Profile", 'openAddPlayer()') : '');
   return `<div class="more-card acct-extras">
       ${rows || adds ? `<div class="more-group-label">Profiles</div>${rows}${adds}` : ''}
       ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
@@ -13967,7 +13991,7 @@ const GS_STEPS = {
     { id: 'who', label: 'See who can view your charts', hint: 'Help explains it', go: "gsMark('who');location.href='help.html#pitcher-visibility'", done: () => gsMarked('who') }
   ],
   parent: [   // Joel, Q3: no "Approve the guardian email" step -- a parent's own players never need it
-    { id: 'player', label: 'Add your player', hint: 'More, then Add a player', go: 'openAddPlayer()', done: c => c.playersN > 0 },
+    { id: 'player', label: "Create your child's profile", hint: "More, then Create Child's Profile", go: 'openAddPlayer()', done: c => c.playersN > 0 },
     { id: 'team', label: "Join the team with the coach's link", hint: "Open the link and choose your player", go: "location.href='help.html#parent-join'", done: c => c.teamsN > 0 },
     { id: 'read', label: 'Open the latest report', hint: 'History shows each report under its session', go: "setView('history')", done: () => gsMarked('report-read') }
   ]
@@ -14816,9 +14840,15 @@ window.submitNameChange = async function(self){
   render();
   let ok = false;
   if(self){
-    const { error } = await supabaseClient.from('profiles').update({ full_name: val }).eq('id', state.profile.id);
+    // One person, one name: your own sport profiles are renamed together (one update); a player keeps their own.
+    const own = ownSportProfiles();
+    const ids = own.some(x => x.id === state.profile.id) ? own.map(x => x.id) : [state.profile.id];
+    const { error } = await supabaseClient.from('profiles').update({ full_name: val }).in('id', ids);
     ok = !error;
-    if(ok) state.profile.full_name = val;
+    if(ok){
+      state.profile.full_name = val;
+      (state.myProfiles || []).forEach(x => { if(ids.includes(x.id)) x.full_name = val; });
+    }
   } else {
     const p = currentPitcher();
     if(!p) return;
@@ -14960,7 +14990,9 @@ window.restoreTeam = async function(){
   state.teamDangerBusy = false;
   render();
 };
-function renderCoachTeamAdmin(){
+// Joel, Nov 17 2026: Account's order is the look, then the join codes and invite links ('invites'), the name, the team
+// admin ('rest'), then archive / delete ('danger') just above Your data; email and password sit at the bottom.
+function renderCoachTeamAdmin(part){
   const team = state.teams.find(t => t.id === state.currentTeamId);
   if(!team) return '';
   const realHead = isHeadOfTeam(team.id);
@@ -15081,6 +15113,8 @@ function renderCoachTeamAdmin(){
       ${state.levelError ? `<p class="profile-msg">${escHtml(state.levelError)}</p>` : ''}
     </div>`;
 
+  if(part === 'invites') return `<div id="acct-invites"></div>${codesSection}${linksSection}`;
+  if(part === 'danger') return realHead ? renderTeamDangerSection(team) : '';
   return `
     <div id="acct-team"></div>
     ${renameSection}
@@ -15090,10 +15124,6 @@ function renderCoachTeamAdmin(){
       ${staffRows}
     </div>
     ${handoffSection}
-    <div id="acct-invites"></div>
-    ${codesSection}
-    ${linksSection}
-    ${realHead ? renderTeamDangerSection(team) : ''}
     <div class="profile-section">
       <h3>Create a team</h3>
       <p class="profile-note">Start a new team you'll be head of — your account can hold a role on more than one.</p>
@@ -15130,7 +15160,7 @@ function placeHead(label, sub){
 function renderProfileView(){
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
   if(isCoach()){
-    return `<div class="profile-page">${placeHead(PLACE.account)}${msg}${renderFacilityLook()}${renderNameSection(mapProfile(state.profile), true)}${renderEmailSection()}${renderPasswordSection()}${renderCoachTeamAdmin()}${renderDataSection()}</div>`;
+    return `<div class="profile-page">${placeHead(PLACE.account)}${msg}${renderFacilityLook()}${renderCoachTeamAdmin('invites')}${renderNameSection(mapProfile(state.profile), true)}${renderCoachTeamAdmin('rest')}${renderCoachTeamAdmin('danger')}${renderDataSection(renderEmailSection() + renderPasswordSection())}</div>`;
   }
   if(activeLinked()) return renderLinkedProfileView(msg);   // F1-G
   const p = currentPitcher();
@@ -15153,9 +15183,7 @@ function renderProfileView(){
     ${renderRadarGunSection(p, true)}
     ${activePlayerIsMine() ? renderPlayerAccessSection() : ''}
     ${placeHead(PLACE.account)}
-    ${renderEmailSection()}
-    ${renderPasswordSection()}
-    ${renderDataSection()}
+    ${renderDataSection(renderEmailSection() + renderPasswordSection())}
   </div>`;
 }
 /* ---------- F1-G: LINKED SIGN-INS (Joel, Oct 29 2026; plans/f1g-preconditions.md) ----------
@@ -15272,9 +15300,7 @@ function renderLinkedProfileView(msg){
     <div class="profile-section"><h3>Pitch mix</h3><p class="profile-note">${(me.pitch_types || []).map(pitchLabel).join(' · ') || 'No pitches set yet'}</p></div>
     ${leave}
     ${placeHead(PLACE.account)}
-    ${renderEmailSection()}
-    ${renderPasswordSection()}
-    ${renderDataSection()}
+    ${renderDataSection(renderEmailSection() + renderPasswordSection())}
   </div>`;
 }
 window.leaveLinkedPlayer = async function(){

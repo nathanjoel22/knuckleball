@@ -356,6 +356,11 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
     - **In the app:** `lookKey` / `lookBucket` pick the facility or team side.
     - Migration `20261120000000_n1g2_team_branding`; rollback leaves the bucket; test
       `supabase/tests/n1g2_team_branding.sql`.
+- **One name, and Account's order (Joel, Nov 17 2026, v352):** a login's own sport profiles are one person: More and
+  Account show the name once, with a Baseball | Softball switch when there are two (`ownSportProfiles`,
+  `renderSportSwitch`). Change name saves to all of them; players and linked players keep their own rows and names.
+  "Add a player" is called **Create Child's Profile** everywhere. A coach's Account runs: the look, join codes and
+  invite links, Name, team admin, Archive / Delete this team, Your data, Email, Password, Danger (last).
 - **One "‹ Back" (F1-D, Joel, Oct 29 2026; `plans/f1d-preconditions.md`; v324):** top left of the page (in the account
   row on phones; its own row when the account sits in the pitcher header), every size, browser and installed. It goes
   to the section's first screen, never browser history: start questions → "Bullpen or Live Game?"; (an opened History

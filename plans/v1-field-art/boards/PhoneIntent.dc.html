@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone pitch intent, catcher's view</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Big+Shoulders+Display:wght@700;800&display=swap">
+<style>
+body{margin:0}
+.chalk{background-image:url(/_blob/fad5ce9725263f71e0d2803099b05671);background-size:100% auto;background-repeat:repeat-y}
+.chalkring{background-image:url(/_blob/1a1c3a1828dfdf89eadeaf5ea453a02b);background-size:100% 100%;background-repeat:no-repeat}
+a{color:#1F4434}a:hover{color:#061A12}
+</style>
+</helmet>
+<div style="position: relative; width: 440px; height: 912px; overflow: hidden; background: #F2F4F1; font-family: Archivo, system-ui, sans-serif; color: #0A1A14">
+<div style="position: absolute; left: 8px; top: 8px; width: 424px; height: 44px; box-sizing: border-box; padding: 0 16px 0 10px; border-radius: 12px; background: {{hdr}}; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between">
+<div style="display: flex; align-items: center">
+<span style="font-weight: 800; font-size: 15.5px">‹ Blue Bombers</span>
+<span style="margin-left: 14px; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 10px; background: #E6EAE6; color: #0A1A14">PC</span>
+<span style="margin-left: 8px; font-weight: 800; font-size: 15.5px">Cornerpainter</span>
+<span style="margin-left: 8px; font-weight: 500; font-size: 13px; color: #AEB8B1">#50</span>
+<span style="margin-left: 9px; font-size: 8px; color: #E6EAE6">▼</span>
+</div>
+<svg viewBox="0 0 24 20" width="24" height="20" role="img" aria-label="Session menu" style="display: block"><g style="transform: skewX(-10deg); transform-origin: 12px 10px"><rect x="1" y="1" width="6" height="5" style="fill: #FFFFFF"></rect><rect x="9" y="1" width="6" height="5" style="fill: #FFFFFF"></rect><rect x="17" y="1" width="6" height="5" style="fill: #FFFFFF"></rect><rect x="1" y="7.5" width="6" height="5" style="fill: #FFFFFF"></rect><rect x="9" y="7.5" width="6" height="5" style="fill: #FFFFFF"></rect><rect x="17" y="7.5" width="6" height="5" style="fill: #FFFFFF"></rect><rect x="1" y="14" width="6" height="5" style="fill: #FFFFFF"></rect><rect x="9" y="14" width="6" height="5" style="fill: #FFFFFF"></rect><rect x="17" y="14" width="6" height="5" style="fill: {{accent}}"></rect></g></svg>
+</div>
+<div style="position: absolute; left: 14px; top: 66px; width: 412px; height: 52px; box-sizing: border-box; padding: 0 12px 0 0; border-radius: 12px; background: {{bar}}; color: #FFFFFF; display: flex; align-items: center">
+<div style="width: 60px; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-right: 1px solid #26302B">
+<span style="display: inline-flex; align-items: center; gap: 3px; font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 26px; line-height: 0.85"><svg viewBox="0 0 20 18" width="18" height="16" aria-hidden="true" style="display: block"><polygon points="10,0 20,18 0,18" style="fill: #FFFFFF"></polygon></svg>1</span>
+<span style="font-weight: 700; font-size: 9.5px; letter-spacing: 0.1em; color: #8B9990">INNING</span>
+</div>
+<div style="width: 47px; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-right: 1px solid #26302B">
+<span style="font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 26px; line-height: 0.85">0</span>
+<span style="font-weight: 700; font-size: 9.5px; letter-spacing: 0.1em; color: #8B9990">OUTS</span>
+</div>
+<div style="width: 56px; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-right: 1px solid #26302B">
+<span style="font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 26px; line-height: 0.85">0-0</span>
+<span style="font-weight: 700; font-size: 9.5px; letter-spacing: 0.1em; color: #8B9990">COUNT</span>
+</div>
+<div style="width: 47px; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-right: 1px solid #26302B">
+<span style="font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif; font-weight: 800; font-size: 26px; line-height: 0.85">0</span>
+<span style="font-weight: 700; font-size: 9.5px; letter-spacing: 0.1em; color: #8B9990">RUNS</span>
+</div>
+<svg viewBox="0 0 30 22" width="30" height="22" role="img" aria-label="Bases empty" style="display: block; margin-left: 16px"><polygon points="15,1 21,7 15,13 9,7" style="fill: none; stroke: #6F7D74; stroke-width: 1.6px"></polygon><polygon points="23,9 29,15 23,21 17,15" style="fill: none; stroke: #6F7D74; stroke-width: 1.6px"></polygon><polygon points="7,9 13,15 7,21 1,15" style="fill: none; stroke: #6F7D74; stroke-width: 1.6px"></polygon></svg>
+<button type="button" style="margin: 0 0 0 auto; height: 34px; padding: 0 12px; border: 1.5px solid #6F7D74; border-radius: 12px; background: #1E2522; color: #FFFFFF; font-family: inherit; font-weight: 800; font-size: 11.5px; letter-spacing: 0.1em; cursor: pointer">CATCHER ⇄</button>
+</div>
+<span style="position: absolute; left: 18px; top: 130px; font-weight: 800; font-size: 20px; color: #A9B1AB">‹</span>
+<div style="position: absolute; left: 36px; top: 122px; width: 368px; height: 44px; border-radius: 16px; background: #E8EBE8; font-weight: 800; font-size: 14px">
+<span style="position: absolute; left: 8px; top: 13px; display: inline-flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F2B741"></span>{{p1}}</span>
+<span style="position: absolute; left: 78px; top: 13px; display: inline-flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #4FAE77"></span>{{p2}}</span>
+<span style="position: absolute; left: 137px; top: 13px; display: inline-flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F0783C"></span>{{p3}}</span>
+<span style="position: absolute; left: 197px; top: 13px; display: inline-flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #D9484E"></span>{{p4}}</span>
+<button type="button" aria-label="Add or edit pitches" style="position: absolute; left: 244px; top: 0; width: 44px; height: 44px; margin: 0; padding: 0 0 2px 0; border: 0; background: transparent; color: #0A1A14; display: inline-flex; align-items: center; justify-content: center; font-family: inherit; font-weight: 800; font-size: 20px; line-height: 1; cursor: pointer">+</button>
+</div>
+<span style="position: absolute; left: 411px; top: 130px; font-weight: 800; font-size: 20px; color: #A9B1AB">›</span>
+<div style="position: absolute; left: 0; top: 180px; width: 440px; height: 518px; overflow: hidden">
+<svg viewBox="0 0 440 518" width="440" height="518" aria-hidden="true" style="position: absolute; left: 0; top: 0; pointer-events: none">
+<rect x="0" y="0" width="440" height="212" style="fill: #BFE3F5"></rect>
+<rect x="0" y="212" width="440" height="22" style="fill: {{wall}}"></rect>
+<rect x="0" y="210" width="440" height="4" style="fill: #F2C230"></rect>
+<rect x="0" y="234" width="440" height="284" style="fill: #4E9A4B"></rect>
+<polygon points="220,234 30,518 104,518" style="fill: #5BA756"></polygon>
+<polygon points="220,234 184,518 256,518" style="fill: #5BA756"></polygon>
+<polygon points="220,234 336,518 410,518" style="fill: #5BA756"></polygon>
+<ellipse cx="220" cy="288" rx="330" ry="20" style="fill: #C99C6B"></ellipse>
+<polygon points="-60,262 500,262 440,356 220,290 0,356" style="fill: #C99C6B"></polygon>
+<polygon points="220,284 462,318 370,430 70,430 -22,318" style="fill: {{infield}}"></polygon>
+<polygon points="61.4,417.9 34.6,442.1 -54.2,306 -40.8,294" style="fill: #C99C6B"></polygon>
+<polygon points="378.6,417.9 405.4,442.1 494.2,306 480.8,294" style="fill: #C99C6B"></polygon>
+<ellipse cx="220" cy="346" rx="36" ry="7" style="fill: {{moundFill}}"></ellipse>
+<sc-if value="{{ isSB }}" hint-placeholder-val="{{ false }}">
+<ellipse cx="220" cy="346" rx="52" ry="10" style="fill: none; stroke: transparent; stroke-width: 6px; stroke-dasharray: 1.6 1 0.9 1.3 2.2 0.8 1.2 1.5"></ellipse>
+<ellipse cx="220" cy="346" rx="52" ry="10" style="fill: none; stroke: transparent; stroke-width: 4.5px"></ellipse>
+</sc-if>
+<rect x="211" y="343" width="18" height="3" style="fill: #FFFFFF"></rect>
+<polygon points="220,277 228,278 237,274 228,270 220,269" style="fill: rgba(50,30,10,0.36); filter: blur(0.5px)"></polygon>
+<polyline points="211,273 220,277 229,273" style="fill: none; stroke: rgba(40,25,10,0.5); stroke-width: 0.9px; stroke-linejoin: round"></polyline>
+<polygon points="211,270 220,274 220,277 211,273" style="fill: #D2D5CD"></polygon>
+<polygon points="220,274 229,270 229,273 220,277" style="fill: #B4B8AF"></polygon>
+<polygon points="220,266 229,270 220,274 211,270" style="fill: #FBFBF8; stroke: #E3E5DE; stroke-width: 0.5px; stroke-linejoin: round"></polygon>
+<ellipse cx="220" cy="486" rx="420" ry="92" style="fill: #C99C6B"></ellipse>
+<line x1="48" y1="430" x2="-109" y2="232" style="stroke: transparent; stroke-width: 9.5px; stroke-dasharray: 1.6 1 0.9 1.3 2.2 0.8 1.2 1.5"></line>
+<line x1="392" y1="430" x2="549" y2="232" style="stroke: transparent; stroke-width: 9.5px; stroke-dasharray: 1.6 1 0.9 1.3 2.2 0.8 1.2 1.5"></line>
+<line x1="48" y1="430" x2="-109" y2="232" style="stroke: transparent; stroke-width: 7.5px"></line>
+<line x1="392" y1="430" x2="549" y2="232" style="stroke: transparent; stroke-width: 7.5px"></line>
+<line x1="48" y1="430" x2="-109" y2="232" style="stroke: transparent; stroke-width: 5.5px; stroke-dasharray: 0.9 2.4 1.3 3.3 0.7 1.9 1.6 4.1"></line>
+<line x1="392" y1="430" x2="549" y2="232" style="stroke: transparent; stroke-width: 5.5px; stroke-dasharray: 0.9 2.4 1.3 3.3 0.7 1.9 1.6 4.1"></line>
+<polyline points="-80,430 70,430 10,512 -80,512" style="fill: none; stroke: transparent; stroke-width: 9.5px; stroke-dasharray: 1.6 1 0.9 1.3 2.2 0.8 1.2 1.5; stroke-linejoin: round"></polyline>
+<polyline points="-80,430 70,430 10,512 -80,512" style="fill: none; stroke: transparent; stroke-width: 7.5px; stroke-linejoin: round"></polyline>
+<polyline points="-80,430 70,430 10,512 -80,512" style="fill: none; stroke: transparent; stroke-width: 5.5px; stroke-dasharray: 0.9 2.4 1.3 3.3 0.7 1.9 1.6 4.1"></polyline>
+<polyline points="520,430 370,430 430,512 520,512" style="fill: none; stroke: transparent; stroke-width: 9.5px; stroke-dasharray: 1.6 1 0.9 1.3 2.2 0.8 1.2 1.5; stroke-linejoin: round"></polyline>
+<polyline points="520,430 370,430 430,512 520,512" style="fill: none; stroke: transparent; stroke-width: 7.5px; stroke-linejoin: round"></polyline>
+<polyline points="520,430 370,430 430,512 520,512" style="fill: none; stroke: transparent; stroke-width: 5.5px; stroke-dasharray: 0.9 2.4 1.3 3.3 0.7 1.9 1.6 4.1"></polyline>
+<ellipse cx="220" cy="476" rx="190" ry="38" style="fill: #F6E3C4; opacity: 0.35"></ellipse>
+<ellipse cx="220" cy="476" rx="152" ry="28" style="fill: #F6E3C4; opacity: 0.45"></ellipse>
+<ellipse cx="220" cy="476" rx="122" ry="18" style="fill: #F6E3C4; opacity: 0.6"></ellipse>
+<polygon points="91,468 220,492 349,468 349,477 220,501 91,477" style="fill: #9FA39A"></polygon>
+<polygon points="112,452 328,452 349,468 220,492 91,468" style="fill: #FAFAF7; stroke: #8E9288; stroke-width: 1px; stroke-linejoin: round"></polygon>
+</svg>
+<sc-if value="{{ isSB }}" hint-placeholder-val="{{ false }}">
+<div class="chalkring" style="position: absolute; left: 160.6px; top: 334.6px; width: 118.9px; height: 22.9px; pointer-events: none"></div>
+</sc-if>
+<div class="chalk" style="position: absolute; left: 40.9px; top: 430.0px; width: 14.3px; height: 252.7px; transform-origin: 50% 0; transform: rotate(141.59deg); clip-path: polygon(0% 0, 100% 0, 78% 100%, 22% 100%); pointer-events: none"></div>
+<div class="chalk" style="position: absolute; left: 384.9px; top: 430.0px; width: 14.3px; height: 252.7px; transform-origin: 50% 0; transform: rotate(-141.59deg); clip-path: polygon(0% 0, 100% 0, 78% 100%, 22% 100%); pointer-events: none"></div>
+<div class="chalk" style="position: absolute; left: 64.2px; top: 430.0px; width: 11.6px; height: 150.0px; transform-origin: 50% 0; transform: rotate(90.00deg); pointer-events: none"></div>
+<div class="chalk" style="position: absolute; left: 62.0px; top: 430.0px; width: 16.1px; height: 101.6px; transform-origin: 50% 0; transform: rotate(36.19deg); clip-path: polygon(14% 0, 86% 0, 100% 100%, 0% 100%); pointer-events: none"></div>
+<div class="chalk" style="position: absolute; left: 2.0px; top: 512.0px; width: 16.1px; height: 90.0px; transform-origin: 50% 0; transform: rotate(90.00deg); pointer-events: none"></div>
+<div class="chalk" style="position: absolute; left: 364.2px; top: 430.0px; width: 11.6px; height: 150.0px; transform-origin: 50% 0; transform: rotate(-90.00deg); pointer-events: none"></div>
+<div class="chalk" style="position: absolute; left: 362.0px; top: 430.0px; width: 16.1px; height: 101.6px; transform-origin: 50% 0; transform: rotate(-36.19deg); clip-path: polygon(14% 0, 86% 0, 100% 100%, 0% 100%); pointer-events: none"></div>
+<div class="chalk" style="position: absolute; left: 422.0px; top: 512.0px; width: 16.1px; height: 90.0px; transform-origin: 50% 0; transform: rotate(-90.00deg); pointer-events: none"></div>
+<div style="position: absolute; left: -166.5px; top: -202.8px; width: 167px; height: 504px; transform-origin: 0 0; transform: translateX(239.3px) scale(-1.433, 1.433); pointer-events: none">
+<div style="position: absolute; left: 8px; top: 494px; width: 150px; height: 14px; border-radius: 50%; background: rgba(0,0,0,0.3)"></div>
+<sc-if value="{{ isSB }}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 0; top: 0; width: 167px; height: 504px; clip-path: path('M74 91 C84 88 95 91 101 96 C104 98 107 97 109 93 C111 100 107 107 100 109 C94 110 88 108 82 107 C79 106 76 106 74 105 Z'); background: #0E1110"></div>
+</sc-if>
+<div style="position: absolute; left: 0; top: 0; width: 167px; height: 504px; clip-path: path('M48.8 503C44.1 500.1 48.8 492 55.2 492C59.1 492 69.5 486.3 71.1 483.3C71.8 482 73.9 480 75.7 478.9C79.2 476.7 80.1 474.6 79.7 469C79.5 466.1 79.9 465.4 81.7 465.2C86 464.6 86.3 462.8 84 452.3C81.7 441.7 78.8 431.4 76 423.5C75 420.8 73.7 416 73 413C72.4 410 71.4 406.1 70.9 404.5C70.4 402.9 68.8 397.5 67.4 392.7C64.7 383.7 61 379 56.7 379C54.8 379 40.4 371.6 37.8 369.3C33.8 365.7 27.8 353.9 27.8 349.4C27.8 340.6 61.5 290.3 75.9 277.5C86 268.7 89.1 260.2 85.3 252.2C83.3 247.8 74 233.5 68.6 226.5C54.5 207.8 47.5 197.8 45.4 193.3C42.8 187.4 42.1 187.1 39.5 190C38.3 191.3 36.4 192 34 192C31.9 192 27.8 193.3 24.4 195C15.8 199.4 7.7 198.9 2.3 193.8C-1.5 190.3 -1 180.3 3.1 175.9C7.9 170.8 9 168.8 9 165.5C9 163.8 9.9 160.9 11 159C17.3 147.9 17.2 148.3 17.1 136.5C16.9 124.5 18 121.8 24.3 118.3C25.9 117.5 26.1 116.7 25.3 112.9L24.4 108.5L19.7 108.5C13.6 108.5 13.5 107.4 19 103.5L23.5 100.3L24 89.7C24.7 76.5 25.3 75.7 39.3 70.1C45.2 67.7 58.6 69.2 66.1 73.1C72.4 76.4 71.1 77.6 103.4 39C111.8 29 122.5 16.9 133.4 5.3C138.8 -0.6 141.2 -1.2 145.4 2.1C151.6 7 151.4 7.3 113.7 45.1C74.2 84.7 75.4 83.2 77.1 89.2C77.8 91.6 78.3 98.1 78.4 103.7C78.5 113.3 78.6 114 80.5 114.1C81.6 114.2 88.2 114.1 95.1 114C109.3 113.8 112.1 114.6 116.3 120.2C119.8 124.9 120.4 127.3 120.5 138C120.6 145.4 121.1 148.5 122.8 152.3C124 155 125.6 161.9 126.5 168.8C128.5 184.1 135.6 212.4 138.5 217C139.8 219 143.5 223.8 146.7 227.6C149.9 231.4 153.8 236.3 155.3 238.5C156.7 240.7 159.2 243.8 160.6 245.5C165.6 251.2 167 255.6 167 266.5C167 283.8 164.5 290.2 151.2 306.3C142.5 316.9 134.4 328 125 342C118.5 351.7 111.8 360.7 104.8 369.2C100.1 374.9 100.1 375.4 106.5 382.8C116.4 394.2 122.8 399.3 126.5 398.7C129.1 398.3 130.9 398.8 134.6 401.3C137.2 403.1 139.8 404.8 140.4 405.1C142 406.1 150.7 408 153.4 408C156.9 408 161 411.7 161 414.9C161 418.3 152.8 435.3 150.3 437.1C147 439.5 145 443.3 145 447.1C145 451.8 138.5 465.6 132.6 473.8C128.5 479.3 127.6 480 124.6 480C119.3 480 118.5 478.2 118.4 465.1C118.3 441.8 113.9 427.9 107.5 430.4C103.9 431.7 107.3 468.1 111.5 473.1C113 475 113.9 477.7 114.3 482.4C114.6 486 115.5 490.8 116.1 492.9C118.8 502.1 114.9 504.5 98.5 503.6C85.5 502.9 87.1 502.9 67.5 503.5C56.3 503.9 49.9 503.7 48.8 503Z'); background: #0E1110"></div>
+</div>
+<div style="position: absolute; left: 4px; top: 4px; display: grid; grid-template-columns: repeat(5, 84px); grid-auto-rows: 84px; gap: 3px">
+<sc-for list="{{cells}}" as="c" hint-placeholder-count="25">
+<button type="button" aria-label="Location box" style="position: relative; box-sizing: border-box; margin: 0; padding: 0; border-radius: 5px; cursor: pointer; font-family: inherit; {{c.style}}"><span style="position: absolute; left: 6px; top: 4px; font-weight: 700; font-size: 11px; color: #4E5A53">{{c.n}}</span></button>
+</sc-for>
+</div>
+</div>
+<button type="button" style="position: absolute; left: 53px; top: 716px; width: 104px; height: 48px; margin: 0; padding: 0; border: 0; border-radius: 24px; background: {{hdr}}; color: #FFFFFF; font-family: inherit; font-weight: 800; font-size: 15.5px; cursor: pointer">vs RHB</button>
+<div style="position: absolute; left: 165px; top: 716px; width: 222px; height: 48px; border-radius: 24px; background: #F3E5C0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15.5px">Tap Pitch Intent</div>
+<button type="button" disabled style="position: absolute; left: 53px; top: 780px; width: 64.3px; height: 64px; margin: 0; padding: 0; border: 0; border-radius: 4px; background: #EEF0EE; color: #7E8882; font-family: inherit; font-weight: 800; font-size: 27px">K</button>
+<button type="button" disabled aria-label="Strikeout looking" style="position: absolute; left: 120.3px; top: 780px; width: 64.3px; height: 64px; margin: 0; padding: 0; border: 0; border-radius: 4px; background: #EEF0EE; color: #7E8882; font-family: inherit; font-weight: 800; font-size: 27px"><span style="display: inline-block; transform: scaleX(-1)">K</span></button>
+<button type="button" disabled style="position: absolute; left: 187.6px; top: 780px; width: 64.3px; height: 64px; margin: 0; padding: 0; border: 0; border-radius: 4px; background: #EEF0EE; color: #7E8882; font-family: inherit; font-weight: 800; font-size: 27px">B</button>
+<button type="button" disabled style="position: absolute; left: 254.9px; top: 780px; width: 64.3px; height: 64px; margin: 0; padding: 0; border: 0; border-radius: 4px; background: #EEF0EE; color: #7E8882; font-family: inherit; font-weight: 800; font-size: 27px">F</button>
+<button type="button" disabled style="position: absolute; left: 322.2px; top: 780px; width: 64.3px; height: 64px; margin: 0; padding: 0; border: 0; border-radius: 4px; background: #EEF0EE; color: #7E8882; font-family: inherit; font-weight: 800; font-size: 27px">IP</button>
+<button type="button" disabled style="position: absolute; left: 53px; top: 852px; width: 164px; height: 44px; margin: 0; padding: 0; border: 0; border-radius: 14px; background: #EEF0EE; color: #7E8882; font-family: inherit; font-weight: 700; font-size: 14px">‹ Back</button>
+<button type="button" style="position: absolute; left: 223px; top: 852px; width: 164px; height: 44px; margin: 0; padding: 0; border: 0; border-radius: 14px; background: #E8EBE8; color: #0A1A14; font-family: inherit; font-weight: 700; font-size: 14px; cursor: pointer">More ▾</button>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"sport":{"editor":"enum","options":["Baseball","Softball"],"default":"Baseball"},"$preview":{"width":440,"height":912}}'>
+class Component extends DCLogic {
+renderVals() {
+const sb = (this.props.sport ?? 'Baseball') === 'Softball';
+const accent = sb ? '#FF4F9A' : '#F2B741';
+const cells = [];
+for (let r = 0; r < 5; r++) {
+for (let c = 0; c < 5; c++) {
+const zone = r >= 1 && r <= 3 && c >= 1 && c <= 3;
+const picked = r === 3 && c === 4;
+let style;
+if (picked) {
+style = 'background: rgba(255,255,255,0.72); border: 2.5px solid ' + accent;
+} else if (zone) {
+style = 'background: rgba(236,238,234,0.66); border: 1px solid #FFFFFF';
+} else {
+style = 'background: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.85)';
+}
+cells.push({ n: zone ? String((r - 1) * 3 + c) : '', style: style });
+}
+}
+return {
+cells: cells, isSB: sb, isBB: !sb, accent: accent,
+hdr: sb ? '#0B2540' : '#0A1A14', bar: sb ? '#071A2E' : '#050D09',
+wall: sb ? '#16385C' : '#1F4D3A', stands: sb ? '#3A4656' : '#39483F',
+infield: sb ? '#C99C6B' : '#57A353', moundFill: sb ? 'transparent' : '#C99C6B',
+p1: sb ? 'FB' : '4SFB', p2: sb ? 'RISE' : 'SL', p3: 'CH', p4: sb ? 'DROP' : 'CU'
+};
+}
+}
+</script>
+</body>
+</html>

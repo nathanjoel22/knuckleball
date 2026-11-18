@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-18 · Live Game: a ball in play's buttons centred under home plate (no packet; Joel's request) · **staging** (local staging site), branch `play-buttons-centered`, cache `kb-shell-v357`
+## 2026-11-18 · Live Game: a ball in play's buttons centred under home plate (no packet; Joel's request) · **production** (v357 live Nov 18), branch `play-buttons-centered`, PR #113 merged (`974bef4`), cache `kb-shell-v357`
 
 - **Joel, Nov 18:** "when a ball is put in play, move the outcome buttons like O, H, etc... and all subsequent buttons of
   that flow centered beneath home plate. the back button should stay aligned underneath those buttons to the left hand
@@ -79,7 +79,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - Button size unchanged (64.4 px on phones).
   - Runner question (ADV TO 2B / 3B / HOME / OUT): centred; Back 86.7 = the group's left; Next ends at 353.3 = the
     group's right.
-- **Open:** Joel's merge.
+- **Production:** Joel merged PR #113. The live `sw.js` showed `kb-shell-v357` about 45 seconds later, and the live tracker
+  has `g5PlayBelow`.
+- **Open:** none.
 
 ---
 

@@ -60,6 +60,32 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-18 · The store app's opening film: whole film first, then a random part (no packet; Joel's request) · **staging** (local site), branch `landing-video-clips`, no cache change (the landing page isn't in the service worker)
+
+- **Joel, Nov 18:**
+  - The first time the app is opened, the whole intro film plays.
+  - After that, one of three parts at random:
+    - the current opening;
+    - the catcher's mitt with the middle-school batter, then the middle-school boy and girl;
+    - the adult guy and girl, then their strikeout pitches.
+  - Signed in, skip the film.
+- **Built (`index.html`, the iOS app's `kb-app-splash` script):**
+  - First time on a device, the whole 14.8 s film. `kb:introSeen` is set only once it has played to its end, so a
+    first open with no signal shows the whole film next time.
+  - Then a random part: 0-3.5 s, 5.0-8.25 s or 8.3-14.25 s. The cut points were read frame by frame (0.1 s) and are the
+    same in the wide and the 4:5 films. A part stops on its own last frame, then the usual fade, logo and "Which sport?".
+  - The later parts start on the brand dark rather than the opening's poster.
+  - Signed in: unchanged; the head script already goes straight to the app.
+  - The store app loads the live page, so no new build is needed.
+- **Checked** (headless Chrome with a stand-in for the iOS app's bridge, signed out):
+  - The first open played 0 → 14.8 s and set the flag.
+  - Six later opens picked 8.3 → 14.2, 8.3 → 14.2, 5.0 → 8.2, 8.3 → 14.2, 5.0 → 8.2 and 5.0 → 8.2. Forced to part 1: 0 → 3.47 (twice).
+  - An iPad plays the wide film.
+  - Signed in, the page went straight to the app with no film.
+- **Open:** Joel's merge.
+
+---
+
 ## 2026-11-18 · Charting: the infield grass's top point rounded (no packet; Joel's request) · **production** (v356 live Nov 18), branch `infield-round`, PR #109 merged (`e290ec1`), cache `kb-shell-v356`
 
 - **Joel, Nov 18:** "the grass of the infield has almost a pentagon look to it when in the catchers view. round out the

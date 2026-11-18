@@ -60,6 +60,29 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-18 · Live Game: a ball in play's buttons centred under home plate (no packet; Joel's request) · **staging** (local staging site), branch `play-buttons-centered`, cache `kb-shell-v357`
+
+- **Joel, Nov 18:** "when a ball is put in play, move the outcome buttons like O, H, etc... and all subsequent buttons of
+  that flow centered beneath home plate. the back button should stay aligned underneath those buttons to the left hand
+  side and underneath the furthest button to the left".
+- **Built (`g5PlayBelow`, `.g5-shift`):**
+  - Each in-play row has its buttons in order, at their usual size: FC / E / H / O, the hit (1B / 2B / 3B / HR), the
+    batter's base, contact, location, and the runner question.
+  - The row keeps the chart's five-box grid and is shifted by half of each box it doesn't use, so the group is centred
+    under home plate.
+  - The ‹ Back row is the same grid with the same shift: Back starts under the leftmost button, and Next (runners
+    question) ends under the rightmost.
+  - A five-button row needs no shift.
+- **Checked at 390, 440, 820 and 1280:**
+  - FC E H O, 1B 2B 3B HR, Bu GB LD FB and IF OF FOUL: each group's centre equals home plate's centre (box 15) to 0.1 px,
+    and Back's left edge equals the leftmost button's.
+  - Button size unchanged (64.4 px on phones).
+  - Runner question (ADV TO 2B / 3B / HOME / OUT): centred; Back 86.7 = the group's left; Next ends at 353.3 = the
+    group's right.
+- **Open:** Joel's merge.
+
+---
+
 ## 2026-11-18 · The store app's opening film: whole film first, then a random part (no packet; Joel's request) · **production** (live Nov 18), branch `landing-video-clips`, PR #111 merged (`74bf573`), no cache change (the landing page isn't in the service worker)
 
 - **Joel, Nov 18:**

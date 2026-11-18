@@ -60,6 +60,32 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-18 · V1 Part B (the guided Live Game flow) · **staging** (local staging site), branch `v1-guided-flow` (on Part A), cache `kb-shell-v354`
+
+- **Packet** `plans/v1-field-art-and-guided-flow.md`, Part B. Decisions `plans/v1-preconditions.md` (Joel: yes to all).
+  Evidence `plans/v1b-evidence.md`.
+- **Built (Live Game only):**
+  - The RHB / LHB button is gone. One centred prompt says what to tap next:
+    - Select Batter Side: the outside columns pulse; a tap puts the batter on that side;
+    - Select Pitch Type: the choices pulse faintly while none is chosen;
+    - Select Pitch Intent (Intent on);
+    - Select Pitch Outcome.
+  - The side is kept per at-bat in the draft, so every new batter is asked and Back restores the previous one.
+  - The pitch type stays selected and is kept in the draft. It clears on a pitching change.
+  - A wrong side is fixed by tapping the batter or More → Change batter side; that batter's pitches follow, rescored.
+  - Q7: the hand-off carries the side mid at-bat. Q8: a third out on the bases resets the count to 0-0.
+  - Reduced motion: steady tints.
+- **Checked:** Done when 6-12 PASS. The same game charted on main and on this branch saves identical pitches and
+  `session_stats`.
+- **Deviations:**
+  - Back across an at-bat forgets later batters' sides.
+  - A started game resumes before its first pitch.
+  - Fixing a side is off mid-play.
+  - Four test games on staging (two by mistake under the baseball test coach's pitcher).
+- **Open:** Joel's merge, after Part A (#103).
+
+---
+
 ## 2026-11-18 · V1 Part A (field art on the charting screens) · **staging** (local staging site), branch `v1-field-art`, cache `kb-shell-v353`
 
 - **Packet** `plans/v1-field-art-and-guided-flow.md` (Joel, Nov 18). Reference bundle `plans/v1-field-art/` (14 boards, 14

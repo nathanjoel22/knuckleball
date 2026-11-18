@@ -32,6 +32,7 @@ FILES=(
   vendor/fonts/OFL.txt vendor/fonts/OFL-archivo.txt vendor/fonts/OFL-bigshoulders.txt
   # images the app draws
   batter-icon.png
+  assets/field/chalk-line.png assets/field/chalk-ring.png   # V1: the chalk on the charting screens (precached)
   vendor/icons/arm.png vendor/icons/brain.png vendor/icons/gear.png vendor/icons/graph.png
   vendor/icons/scatter.png vendor/icons/trends.svg
   # installed-app icons and iOS splash screens

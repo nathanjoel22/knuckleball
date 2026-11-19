@@ -124,7 +124,7 @@ export function restCard(w: Workload | null | undefined, gamePitches: number, ga
   const over = gamePitches > ps.max ? ` Above Pitch Smart's daily max for ages ${age} (${ps.max}).` : ''
   return `<section class="kr-card kr-rest"><h3 class="kr-label">Rest · Pitch Smart ages ${age}</h3><div class="kr-rest-big">${big}</div><p class="kr-rest-sub">${gamePitches} game pitch${gamePitches === 1 ? '' : 'es'}.${over}</p></section>`
 }
-export function sevenDayCard(w: Workload | null | undefined): string {
+export function sevenDayCard(w: Workload | null | undefined, kid = false): string {
   if (!w || w.sport !== 'baseball') return ''
   const level = w.level && SEVEN_DAY_GUIDE[w.level] ? w.level : 'college'   // no level = college (Joel, Nov 19)
   const guide = SEVEN_DAY_GUIDE[level], n = w.seven_day, over = n > guide
@@ -136,13 +136,28 @@ export function sevenDayCard(w: Workload | null | undefined): string {
   const rest = [...games, penText].filter(Boolean)
   const head = mine ? `${mine.pitches} in this ${mine.kind === 'game' ? 'game' : 'pen'}` : ''
   const parts = rest.length ? `${head} + ${rest.join(' + ')} this week.` : `${head}, nothing else in the last 7 days.`
-  const tail = over
+  const tail = kid   // SR1 E: a little league player's own version (packet Stage D)
+    ? (over ? ` That's more than the ${guide} guideline. Talk with your coach about rest.` : ` Guideline: about ${guide} in 7 days.`)
+    : over
     ? ` Above the ${guide} guideline for ${LEVEL_WORD[level]}. Keeping this pace makes fatigue or injury more likely. A heads-up, not a stop.`
     : ` Guideline for ${LEVEL_WORD[level]}: about ${guide} in 7 days.`
   const scale = Math.max(n, guide) * 1.08
   const bar = `<svg class="kr-7bar" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="2.5" width="100" height="3" rx="1.5" fill="var(--kr-line)"/><rect x="0" y="2.5" width="${(100 * n / scale).toFixed(1)}" height="3" rx="1.5" fill="${over ? 'var(--kr-down)' : 'var(--kr-link)'}"/><rect x="${(100 * guide / scale - 0.4).toFixed(1)}" y="0" width="0.8" height="8" fill="var(--kr-ink)"/></svg>`
   return `<section class="kr-card kr-7d${over ? ' over' : ''}"><h3 class="kr-label">${over ? '⚠ ' : ''}Last 7 days</h3><div class="kr-7d-num">${n} pitch${n === 1 ? '' : 'es'}</div>${bar}<p class="kr-sub">${parts}${tail}</p></section>`
 }
+
+// ---------- SR1 Stage E: reader versions (decision 10) ----------
+// One stored file carries its level's versions; the page showing it puts kr-as-player / kr-as-parent on an ancestor
+// (report.html from &v=, History from who is looking). No class = the coach version. High school and college have no
+// parent version: a parent sees the coach version (Joel, Nov 19).
+export type Voice = 'coach' | 'you'
+export type LevelGroup = 'll' | 'hs' | 'college'
+export function levelGroup(level: string | null | undefined): LevelGroup {
+  return level === 'little_league' ? 'll' : level === 'high_school' || level === 'high_school_up' ? 'hs' : 'college'
+}
+export const versionsFor = (g: LevelGroup) => g === 'll' ? ['coach', 'player', 'parent'] : ['coach', 'player']
+// a block only some versions show (block-level); kr-ver-* classes
+export const ver = (vs: string[], html: string, inline = false) => `<${inline ? 'span' : 'div'} class="kr-ver ${vs.map(v => 'kr-ver-' + v).join(' ')}">${html}</${inline ? 'span' : 'div'}>`
 
 // ---------- small pure helpers ----------
 export const pctOf = (a: number, b: number) => b ? Math.round(100 * a / b) : null
@@ -250,6 +265,10 @@ export function radios(id: string, tabs: string[], windows: string[]): string {
 export function tabBar(id: string, tabs: string[]): string {
   return `<nav class="kr-tabs">${tabs.map((t, i) => `<label class="kr-tl kr-tl${i + 1}" for="kt${i + 1}-${id}">${escapeHtml(t)}</label>`).join('')}</nav>`
 }
+// SR1 E: one row of labels for every version; each label names its panel and the versions that show it
+export function tabBarVersions(id: string, labels: { panel: number; label: string; versions: string[] }[]): string {
+  return `<nav class="kr-tabs">${labels.map(l => `<label class="kr-tl kr-tl${l.panel} kr-ver ${l.versions.map(v => 'kr-ver-' + v).join(' ')}" for="kt${l.panel}-${id}">${escapeHtml(l.label)}</label>`).join('')}</nav>`
+}
 export function windowSwitch(id: string, windows: string[]): string {
   return `<div class="kr-ws">${windows.map(k => `<label class="kr-wl kr-wl-${k}" for="kw-${k}-${id}">${WINDOWS.find(w => w.key === k)?.label ?? k}</label>`).join('')}</div>`
 }
@@ -291,17 +310,17 @@ function rangeBar(cur: number, [lo, hi]: [number, number], neutral?: boolean): s
   const dot = neutral || (cur >= lo && cur <= hi) ? 'var(--kr-ink)' : cur > hi ? 'var(--kr-up)' : 'var(--kr-down)'
   return `<svg class="kr-bar" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><line x1="6" y1="5" x2="94" y2="5" stroke="var(--kr-line)" stroke-width="1.5"/><rect x="${x(lo)}" y="2.6" width="${(+x(hi) - +x(lo)).toFixed(1)}" height="4.8" rx="2.4" fill="var(--kr-band)"/><circle cx="${x(cur)}" cy="5" r="3.2" fill="${dot}"/></svg>`
 }
-export function windowCaption(first: string, k: string, ws: WindowStats | undefined, noun: string, extra: string): string {
+export function windowCaption(first: string, k: string, ws: WindowStats | undefined, noun: string, extra: string, voice: Voice = 'coach'): string {
   const w = WINDOWS.find(x => x.key === k)
   const n = ws?.n ?? 0
-  return `<p class="kr-wcap">Compared with ${escapeHtml(first)}'s ${w?.caption ?? ''} · ${n} ${n === 1 ? noun : noun + 's'}${extra}${k === DEFAULT_WINDOW ? ' · default' : ''}</p>`
+  return `<p class="kr-wcap">Compared with ${voice === 'you' ? 'your' : escapeHtml(first) + "'s"} ${w?.caption ?? ''} · ${n} ${n === 1 ? noun : noun + 's'}${extra}${k === DEFAULT_WINDOW ? ' · default' : ''}</p>`
 }
-export function stoodOutCard(items: StoodOut[], hasRange: boolean, first: string): string {
+export function stoodOutCard(items: StoodOut[], hasRange: boolean, first: string, label = 'What stood out', voice: Voice = 'coach'): string {
   const mark = { up: '▲', down: '▼', info: 'i' }
   const rows = items.length
     ? items.map(it => `<li class="kr-so"><span class="kr-mk kr-mk-${it.mark}" aria-label="${it.mark === 'up' ? 'above' : it.mark === 'down' ? 'below' : 'note'}">${mark[it.mark]}</span><span>${it.text}</span></li>`).join('')
-    : `<li class="kr-so kr-so-none">${hasRange ? `Nothing outside ${escapeHtml(first)}'s normal range today.` : `Needs 5 sessions in the last 3 months to judge.`}</li>`
-  return card('What stood out', `<ul class="kr-sos">${rows}</ul><p class="caption">Always judged against the 3-month default, so it doesn't change with the window.</p>`)
+    : `<li class="kr-so kr-so-none">${hasRange ? `Nothing outside ${voice === 'you' ? 'your' : escapeHtml(first) + "'s"} normal range today.` : `Needs 5 sessions in the last 3 months to judge.`}</li>`
+  return card(label, `<ul class="kr-sos">${rows}</ul><p class="caption">Always judged against the 3-month default, so it doesn't change with the window.</p>`)
 }
 export function spark(values: (number | null)[], color = 'var(--kr-link)'): string {
   const v = values.map((x, i) => ({ x: i, y: x })).filter((p): p is { x: number; y: number } => p.y !== null)
@@ -319,19 +338,29 @@ export function simpleTable(head: string[], rows: string[][], hlRow = -1): strin
     rows.map((r, i) => `<tr${i === hlRow ? ' class="kr-hl"' : ''}>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
 }
 export const typeCell = (t: string, allTypes: string[]) => `<span class="dot" style="background:${colorForType(t, allTypes)}"></span>${escapeHtml(t)}`
-export function footer(first: string, links: string): string {
+export function footer(first: string, links: string, playerToo = false): string {
+  const line = (who: string) => `<p>Numbers and patterns only: compared with ${who} own sessions, never graded.</p>`
   return `
   <footer class="report-footer kr-foot">
-    <p>Numbers and patterns only: compared with ${escapeHtml(first)}'s own sessions, never graded.</p>
+    ${playerToo ? ver(['coach', 'parent'], line(escapeHtml(first) + "'s")) + ver(['player'], line('your')) : line(escapeHtml(first) + "'s")}
     ${links}
   </footer>`
 }
 
 // The tab and window rules. Classes, not ids, so one stylesheet serves every report; `~` keeps each report's inputs
 // to its own page (History's no-shadow fallback puts several in one document).
-const NT = 6, WK = WINDOWS.map(w => w.key)
+const NT = 8, WK = WINDOWS.map(w => w.key)
 export const SR1_CSS = `
   .kr-in{ position:absolute; opacity:0; width:1px; height:1px; pointer-events:none; }
+  .kr-ver{ display:none; } .kr-ver-coach{ display:block; } span.kr-ver-coach{ display:inline; } .kr-tl.kr-ver-coach{ display:block; }
+  .kr-as-player .kr-ver-coach, .kr-as-parent .kr-ver-coach{ display:none; }
+  .kr-as-player .kr-ver-player, .kr-as-parent .kr-ver-parent{ display:block; }
+  .kr-as-player span.kr-ver-player, .kr-as-parent span.kr-ver-parent{ display:inline; }
+  .kr-card.kr-work{ background:var(--kr-brand); border-color:var(--kr-brand); color:var(--kr-on-dark); }
+  .kr-card.kr-work .kr-label, .kr-card.kr-work .kr-sub{ color:var(--kr-on-dark-dim); }
+  .kr-tiles.kr-tiles-3{ grid-template-columns:repeat(3, 1fr); }
+  .kr-word{ font-size:11.5px; font-weight:700; color:var(--kr-ink-faint); } .kr-word.kr-up{ color:var(--kr-up); }
+  .kr-novelo{ border-top:1px dashed var(--kr-line); padding-top:10px; margin-top:6px; font-size:12px; color:var(--kr-ink-faint); }
   .report-header.kr-head{ border-radius:12px 12px 0 0; margin-bottom:0; padding-bottom:0; gap:8px; }
   .kr-head-top{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
   .kr-head h1{ font-size:30px; }

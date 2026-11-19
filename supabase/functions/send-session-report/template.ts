@@ -12,7 +12,8 @@ import {
   type Comparison, NO_COMPARISON, type StoodOut, type TileSpec, WINDOWS, SR1_CSS, ids, radios, tabBar, windowSwitch, wb, wi, panel,
   takeaway, card, tileFor, windowCaption, stoodOutCard, sparkCard, simpleTable, typeCell, footer, firstName, penWord, word,
   ordinal, pctOf, pickFastball, avgVelo, gunned, outsideRange, rangeText, sortStoodOut, missPattern, missDirs, DIR_WORDS,
-  fadePattern, sidePattern, typeMin, sevenDayCard
+  fadePattern, sidePattern, typeMin, sevenDayCard, type Voice, type LevelGroup, levelGroup, versionsFor, ver, tabBarVersions,
+  restDays, backDate
 } from './sr1.ts'
 
 // SR1 Stage A: a pen's purpose (sessions.purpose; the tracker's SESSION_TAGS) as the header says it
@@ -220,11 +221,10 @@ export const CSS = `
 `
 
 // ---------- SR1 Stage C: the answer-first report (coach version) ----------
-const PEN_TABS = ['Summary', 'Command', 'Velocity & workload', 'Trends']
 function penDate(p: ReportPayload): string {
   return new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
-function penHeader(p: ReportPayload, id: string): string {
+function penHeader(p: ReportPayload, id: string, g: LevelGroup): string {
   const numBit = p.uniformNumber !== null && p.uniformNumber !== undefined ? ` <span class="header-num">#${escapeHtml(p.uniformNumber)}</span>` : ''
   const tagBit = SESSION_TAG_LABELS[p.purpose ?? ''] ? ' · ' + SESSION_TAG_LABELS[p.purpose ?? ''] : ''
   return `
@@ -232,8 +232,22 @@ function penHeader(p: ReportPayload, id: string): string {
     <div class="kr-head-top"><div class="brand-mark">KNUCKLEBALL</div><span class="sport-tag">${asSport(p.sport) === 'softball' ? 'Softball' : 'Baseball'} · Bullpen</span></div>
     <h1>${escapeHtml(p.pitcherName)}${numBit}</h1>
     <p class="header-meta">${penDate(p)}${tagBit}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''}</p>
-    ${tabBar(id, PEN_TABS)}
+    ${tabBarVersions(id, penTabLabels(g))}
   </header>`
+}
+// SR1 E: each version's tabs (decision 10). Panels: 1 Summary · 2 Command · 3 Velocity & workload · 4 Trends ·
+// 5 Where it went · 6 Progress without velocity (both little league player only)
+function penTabLabels(g: LevelGroup) {
+  const C = ['coach'], full = g === 'college' ? ['coach', 'player'] : C
+  return [
+    { panel: 1, label: 'Summary', versions: versionsFor(g) },
+    { panel: 2, label: 'Command', versions: g === 'hs' ? ['coach', 'player'] : full },
+    { panel: 3, label: 'Velocity & workload', versions: full },
+    ...(g === 'hs' ? [{ panel: 3, label: 'Velocity', versions: ['player'] }] : []),
+    { panel: 4, label: 'Trends', versions: full },
+    ...(g === 'hs' ? [{ panel: 4, label: 'Progress', versions: ['player'] }] : []),
+    ...(g === 'll' ? [{ panel: 5, label: 'Where it went', versions: ['player'] }, { panel: 6, label: 'Progress', versions: ['player'] }, { panel: 4, label: 'Progress', versions: ['parent'] }] : [])
+  ]
 }
 // The pen's own numbers, everything the tabs and the rules read
 function penFacts(p: ReportPayload) {
@@ -258,29 +272,32 @@ function penFacts(p: ReportPayload) {
 }
 type PenFacts = ReturnType<typeof penFacts>
 
-function penStoodOut(p: ReportPayload, f: PenFacts, c: Comparison): StoodOut[] {
+// "you" (the player's versions) or the first name (coach and parent): whose normal range, whose pitch
+const whose = (p: ReportPayload, v: Voice) => v === 'you' ? 'your' : escapeHtml(firstName(p.pitcherName)) + "'s"
+const typeSay = (t: string, v: Voice) => v === 'you' ? 'Your ' + escapeHtml(t.toLowerCase()) : escapeHtml(t)
+
+function penStoodOut(p: ReportPayload, f: PenFacts, c: Comparison, v: Voice = 'coach'): StoodOut[] {
   const ws = c.baselines?.windows?.['3m']
-  const first = escapeHtml(firstName(p.pitcherName))
+  const who = whose(p, v)
   const items: StoodOut[] = []
-  const rate = (cur: number | null, range: [number, number] | undefined, minW: number, text: (dir: string, r: string) => string, unit: string, neutral = false) => {
+  const rate = (metric: string, cur: number | null, range: [number, number] | undefined, minW: number, text: (dir: string, r: string) => string, unit: string, neutral = false) => {
     const o = outsideRange(cur, range, minW)
     if (!o || !range) return
-    items.push({ kind: 'rate', size: o.size, mark: neutral ? 'info' : o.dir === 'above' ? 'up' : 'down', text: text(o.dir, rangeText(range, unit)) })
+    items.push({ kind: 'rate', metric, size: o.size, mark: neutral ? 'info' : o.dir === 'above' ? 'up' : 'down', text: text(o.dir, rangeText(range, unit)) })
   }
   if (ws?.range) {
-    rate(f.spot, ws.range.spot_pct, 5, (d, r) => `On the spot ${f.spot}% (${f.hits} of ${f.n}), ${d} ${first}'s normal range (${r}).`, '%')
-    rate(f.strikePct, ws.range.strike_pct, 5, (d, r) => `Strikes ${f.strikePct}% (${f.strikes} of ${f.n}), ${d} ${first}'s normal range (${r}).`, '%')
-    rate(f.n, ws.range.pitches, 5, (d, r) => `${f.n} pitches, ${d === 'above' ? 'more' : 'fewer'} than ${first}'s normal range (${r}).`, '', true)
+    rate('spot', f.spot, ws.range.spot_pct, 5, (d, r) => `On the spot ${f.spot}% (${f.hits} of ${f.n}), ${d} ${who} normal range (${r}).`, '%')
+    rate('strike', f.strikePct, ws.range.strike_pct, 5, (d, r) => `Strikes ${f.strikePct}% (${f.strikes} of ${f.n}), ${d} ${who} normal range (${r}).`, '%')
+    rate('pitches', f.n, ws.range.pitches, 5, (d, r) => `${f.n} pitches, ${d === 'above' ? 'more' : 'fewer'} than ${who} normal range (${r}).`, '', true)
   }
   for (const t of f.byType) {
     const tr = ws?.types?.[t.type]?.range
     if (!tr) continue
     if (t.n >= typeMin) {
-      const tn = escapeHtml(t.type)
-      rate(pctOf(t.hits, t.n), tr.spot_pct, 5, (d, r) => `${tn} hit its spot ${pctOf(t.hits, t.n)}% (${t.hits} of ${t.n}), ${d} ${first}'s normal range (${r}).`, '%')
-      rate(pctOf(t.strikes, t.n), tr.strike_pct, 5, (d, r) => `${tn} strikes ${pctOf(t.strikes, t.n)}% (${t.strikes} of ${t.n}), ${d} ${first}'s normal range (${r}).`, '%')
+      rate('spot', pctOf(t.hits, t.n), tr.spot_pct, 5, (d, r) => `${typeSay(t.type, v)} hit its spot ${pctOf(t.hits, t.n)}% (${t.hits} of ${t.n}), ${d} ${who} normal range (${r}).`, '%')
+      rate('strike', pctOf(t.strikes, t.n), tr.strike_pct, 5, (d, r) => `${typeSay(t.type, v)} strikes ${pctOf(t.strikes, t.n)}% (${t.strikes} of ${t.n}), ${d} ${who} normal range (${r}).`, '%')
     }
-    if (t.type === f.fb.type && f.fbVelo !== null) rate(f.fbVelo, tr.velo, 1, (d, r) => `${escapeHtml(f.fb.label)} averaged ${f.fbVelo} mph, ${d} ${first}'s normal range (${r} mph).`, 'mph')
+    if (t.type === f.fb.type && f.fbVelo !== null) rate('velo', f.fbVelo, tr.velo, 1, (d, r) => `${v === 'you' ? 'Your ' : ''}${escapeHtml(f.fb.label)} averaged ${f.fbVelo} mph, ${d} ${who} normal range (${r} mph).`, 'mph')
   }
   items.push(...missPattern(f.ps, isHit as (p: never) => boolean, c.throws, f.thrown))
   const fade = fadePattern(f.ps, f.fb.type, f.fb.label); if (fade) items.push(fade)
@@ -288,47 +305,115 @@ function penStoodOut(p: ReportPayload, f: PenFacts, c: Comparison): StoodOut[] {
   return sortStoodOut(items)
 }
 
-function penHeadline(p: ReportPayload, f: PenFacts, c: Comparison, items: StoodOut[]): string {
-  const pen = penWord(p.purpose)
+// best / toughest of the last k same-kind, same-tag pens (this one + up to 5 before, 10+ pitches each)
+function penRank(f: PenFacts, c: Comparison): { k: number; best: boolean; worst: boolean } {
   const k = Math.min(6, 1 + c.recent.length)
-  if (f.n >= 10 && f.spot !== null && k >= 4) {
-    const spots = c.recent.slice(0, k - 1).map(r => r.pitches ? 100 * r.hits / r.pitches : 0)
-    const lead = f.byType.filter(t => t.n >= typeMin).sort((a, b) => b.hits / b.n - a.hits / a.n)[0]
-    if (f.spot > Math.max(...spots)) return `Best ${pen} of the last ${word(k)}: ${f.spot}% on the spot${lead ? `, led by the ${escapeHtml(lead.type.toLowerCase())}` : ''}.`
-    if (f.spot < Math.min(...spots)) {
-      const miss = items.find(i => i.kind === 'misses')
-      return `Toughest ${pen} of the last ${word(k)}: ${f.spot}% on the spot${miss ? `, ${escapeHtml((miss.type ?? '').toLowerCase())} misses went ${DIR_WORDS[miss.dir ?? ''] ?? ''}` : ''}.`
-    }
+  if (f.n < 10 || f.spot === null || k < 4) return { k, best: false, worst: false }
+  const spots = c.recent.slice(0, k - 1).map(r => r.pitches ? 100 * r.hits / r.pitches : 0)
+  return { k, best: f.spot > Math.max(...spots), worst: f.spot < Math.min(...spots) }
+}
+function penHeadline(p: ReportPayload, f: PenFacts, c: Comparison, items: StoodOut[], v: Voice = 'coach'): string {
+  const pen = penWord(p.purpose)
+  const r = penRank(f, c)
+  const lead = f.byType.filter(t => t.n >= typeMin).sort((a, b) => b.hits / b.n - a.hits / a.n)[0]
+  if (r.best) return `${v === 'you' ? 'Your best' : 'Best'} ${pen} of the last ${word(r.k)}: ${f.spot}% on the spot${lead ? `, led by ${v === 'you' ? 'your' : 'the'} ${escapeHtml(lead.type.toLowerCase())}` : ''}.`
+  if (r.worst) {
+    const miss = items.find(i => i.kind === 'misses')
+    return `${v === 'you' ? 'Your toughest' : 'Toughest'} ${pen} of the last ${word(r.k)}: ${f.spot}% on the spot${miss ? `, ${escapeHtml((miss.type ?? '').toLowerCase())} misses went ${DIR_WORDS[miss.dir ?? ''] ?? ''}` : ''}.`
   }
   if (items.length) return items[0].text
   return `${f.spot ?? 0}% on the spot and ${f.strikePct ?? 0}% strikes over ${f.n} pitch${f.n === 1 ? '' : 'es'}.`
 }
 
-function penSummary(p: ReportPayload, f: PenFacts, c: Comparison, id: string, items: StoodOut[]): string {
-  const chartedBy = p.loggedByCoach ? 'the coaching staff' : escapeHtml(p.pitcherName)
-  const sided = f.ps.filter(x => x.batterSide === 'R' || x.batterSide === 'L').length
-  const batterBit = !f.n ? '' : sided === 0 ? ' · No batter' : sided < f.n ? ' · Mixed' : ''
-  const tag = p.purpose && SESSION_TAG_LABELS[p.purpose] ? ` · ${penWord(p.purpose)} (tagged at start)` : ''
-  const head = card('', `<h2 class="kr-headline">${penHeadline(p, f, c, items)}</h2>
-    <p class="kr-sub">${penDate(p)}${tag} · ${f.n} pitch${f.n === 1 ? '' : 'es'} · ${f.thrown.length} pitch type${f.thrown.length === 1 ? '' : 's'}${batterBit} · charted by ${chartedBy}</p>`)
-  const tiles: TileSpec[] = [
+function penWindows(p: ReportPayload, c: Comparison, id: string, tiles: TileSpec[], v: Voice, cls = ''): string {
+  const first = firstName(p.pitcherName)
+  const extra = p.purpose && SESSION_TAG_LABELS[p.purpose] ? ` · ${penWord(p.purpose)}s only` : ''
+  const wins = c.baselines ? WINDOWS.map(w => w.key).filter(k => c.baselines!.windows[k]) : []
+  return wins.length
+    ? windowSwitch(id, wins) + wins.map(k => wb(k, windowCaption(first, k, c.baselines!.windows[k], 'pen', extra, v)
+        + `<div class="kr-tiles${cls}">${tiles.map(t => tileFor(t, c.baselines!.windows[k], 'pen')).join('')}</div>`)).join('')
+    : `<div class="kr-tiles${cls}">${tiles.map(t => tileFor(t, undefined, 'pen')).join('')}</div><p class="kr-wcap">No earlier sessions to compare with yet.</p>`
+}
+function penTiles(f: PenFacts): TileSpec[] {
+  return [
     { label: 'On the spot', cur: f.spot, unit: '%', key: 'spot_pct' },
     { label: 'Strike %', cur: f.strikePct, unit: '%', key: 'strike_pct' },
     { label: `${f.fb.label} avg mph`, cur: f.fbVelo, unit: 'mph', key: 'velo', type: f.fb.type ?? undefined, sub: f.anyVelo ? 'not gunned' : 'radar off' },
     { label: 'Pitches', cur: f.n, unit: '', key: 'pitches', neutral: true }
   ]
-  const first = firstName(p.pitcherName)
-  const extra = p.purpose && SESSION_TAG_LABELS[p.purpose] ? ` · ${penWord(p.purpose)}s only` : ''
-  const wins = c.baselines ? WINDOWS.map(w => w.key).filter(k => c.baselines!.windows[k]) : []
-  const compare = wins.length
-    ? windowSwitch(id, wins) + wins.map(k => wb(k, windowCaption(first, k, c.baselines!.windows[k], 'pen', extra)
-        + `<div class="kr-tiles">${tiles.map(t => tileFor(t, c.baselines!.windows[k], 'pen')).join('')}</div>`)).join('')
-    : `<div class="kr-tiles">${tiles.map(t => tileFor(t, undefined, 'pen')).join('')}</div><p class="kr-wcap">No earlier sessions to compare with yet.</p>`
-  return head + compare + stoodOutCard(items, !!c.baselines?.windows?.['3m']?.range, first) + sevenDayCard(c.workload) + penViewCaption(p)
+}
+// The full Summary: the coach's, and in "you" for a high school (top two items) or college player
+function penSummary(p: ReportPayload, f: PenFacts, c: Comparison, id: string, items: StoodOut[], v: Voice = 'coach', maxItems = 3): string {
+  const chartedBy = p.loggedByCoach ? 'the coaching staff' : escapeHtml(p.pitcherName)
+  const sided = f.ps.filter(x => x.batterSide === 'R' || x.batterSide === 'L').length
+  const batterBit = !f.n ? '' : sided === 0 ? ' · No batter' : sided < f.n ? ' · Mixed' : ''
+  const tag = p.purpose && SESSION_TAG_LABELS[p.purpose] ? ` · ${penWord(p.purpose)} (tagged at start)` : ''
+  const head = card('', `<h2 class="kr-headline">${penHeadline(p, f, c, items, v)}</h2>
+    <p class="kr-sub">${penDate(p)}${tag} · ${f.n} pitch${f.n === 1 ? '' : 'es'} · ${f.thrown.length} pitch type${f.thrown.length === 1 ? '' : 's'}${batterBit} · charted by ${chartedBy}</p>`)
+  return head + penWindows(p, c, id, penTiles(f), v)
+    + stoodOutCard(items.slice(0, maxItems), !!c.baselines?.windows?.['3m']?.range, firstName(p.pitcherName), 'What stood out', v)
+    + sevenDayCard(c.workload) + penViewCaption(p)
+}
+// Little league player (b08): two numbers, what went well, no velocity anywhere
+function penSummaryLLPlayer(p: ReportPayload, f: PenFacts, c: Comparison, id: string, itemsYou: StoodOut[]): string {
+  const r = penRank(f, c)
+  const head = card('', `<h2 class="kr-headline">${f.hits} of your ${f.n} pitches hit your spot.${r.best ? ` Your best pen of the last ${word(r.k)}!` : ''}</h2>
+    <p class="kr-sub">${r.best ? `Best of your last ${r.k} bullpens.` : `${penDate(p)} · ${f.n} pitches`}</p>`)
+  const well = itemsYou.filter(i => i.mark === 'up' && i.metric !== 'velo' && i.kind !== 'fade')
+  const top = f.byType.filter(t => t.n >= 1).sort((a, b) => b.hits / b.n - a.hits / a.n)[0]
+  const fallback: StoodOut[] = top ? [{ mark: 'up', kind: 'rate', size: 0, text: `Your ${escapeHtml(top.type.toLowerCase())} hit your spot ${top.hits} of ${top.n} times.` }] : []
+  return head + penWindows(p, c, id, penTiles(f).slice(0, 2), 'you')
+    + stoodOutCard(well.length ? well : fallback, true, firstName(p.pitcherName), 'What went well', 'you')
+    + sevenDayCard(c.workload, true)
+    + `<p class="kr-novelo">No velocity on this version. Your coach and parents can see it.</p>`
+}
+// Little league parent (b11): workload and rest first, one line on how it went
+function penSummaryLLParent(p: ReportPayload, f: PenFacts, c: Comparison): string {
+  const w = c.workload, baseball = asSport(p.sport) === 'baseball'
+  const first = escapeHtml(firstName(p.pitcherName))
+  const r = penRank(f, c)
+  const tag = p.purpose && SESSION_TAG_LABELS[p.purpose] ? ` (${penWord(p.purpose)})` : ''
+  let restLine = "Pitch Smart's rest rules count game pitches; no games in the last 7 days."
+  const game = w?.parts.filter(x => x.kind === 'game' && !x.this).slice(-1)[0]
+  if (game) {
+    const d = w?.age_group ? restDays(w.age_group, game.pitches) : null
+    const day = new Date(game.started_at).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/New_York' })
+    restLine = d === null ? `Pitch Smart's rest rules count game pitches: ${day}'s game had ${game.pitches}.`
+      : `Pitch Smart's rest rules count game pitches: ${day}'s game rest ends ${backDate(Date.parse(game.started_at), d)}.`
+  }
+  const workload = baseball ? `<section class="kr-card kr-work"><h3 class="kr-label">Workload</h3><div class="kr-rest-big">${f.n} pitches in this pen${tag}</div><p class="kr-sub">${restLine}</p></section>` + sevenDayCard(w) : ''
+  const how = card('How it went', `<h2 class="kr-headline">${f.hits} of ${f.n} pitches hit the spot${r.best ? `, ${first}'s best pen of the last ${word(r.k)}` : ''}.</h2>`)
+  const a3 = c.baselines?.windows?.['3m']?.avg
+  const wordFor = (cur: number | null, avg: number | undefined, best = false) => best ? '<span class="kr-word kr-up">best yet</span>'
+    : cur === null || avg === undefined || avg === null ? '' : `<span class="kr-word">${cur - Math.round(avg) >= 3 ? 'above usual' : cur - Math.round(avg) <= -3 ? 'below usual' : 'steady'}</span>`
+  const tile = (label: string, val: string, wd: string) => `<div class="kr-tile"><div class="kr-tile-lbl">${label}</div><div class="kr-tile-val">${val}</div>${wd}</div>`
+  const tiles = `<div class="kr-tiles kr-tiles-3">${tile('Strikes', `${f.strikePct ?? 0}%`, wordFor(f.strikePct, a3?.strike_pct))}${tile('On the spot', `${f.spot ?? 0}%`, wordFor(f.spot, a3?.spot_pct, r.best))}${tile('Pitches', String(f.n), '')}</div>`
+  return workload + how + tiles
 }
 function penViewCaption(p: ReportPayload): string {
   const note = viewNote(p.chartingPerspective).replace('class="header-note"', 'class="caption"')
   return (note || `<p class="caption">Every grid in this report is drawn in the ${VIEW_NAME}, ${REPORT_VIEW === 'pitcher' ? 'looking in from the mound toward home plate' : 'looking out toward the mound'}.</p>`)
+}
+// Little league player: Where it went (b09) -- the hit / miss grids and one line per pitch, no velocity
+function penWhereItWent(p: ReportPayload, f: PenFacts, c: Comparison): string {
+  const grids = drawHitTypeGrids({ gridSize: f.gs, batterSide: null, allTypes: f.allTypes, raOn: !!p.raOn,
+    pitches: f.ps.map(x => ({ type: x.type, row: x.actualRow, col: x.actualCol, kind: x.accuracyHitKind || (isHit(x) ? 'exact' : 'miss') })) })
+  const best = f.byType.slice().sort((a, b) => b.hits / b.n - a.hits / a.n)[0]
+  const lines: StoodOut[] = f.byType.map(t => ({ mark: t === best ? 'up' as const : 'info' as const, kind: 'rate', size: 0, text: `${escapeHtml(t.type)}: ${t.hits} of ${t.n} on your spot.` }))
+  missPattern(f.ps, isHit as (p: never) => boolean, c.throws, f.thrown).forEach(m => lines.push({ ...m, mark: 'info', text: `${escapeHtml(m.type ?? '')}: most misses went ${DIR_WORDS[m.dir ?? ''] ?? ''}.` }))
+  return takeaway('Where your pitches went')
+    + card('', `${grids}<p class="caption">Filled = hit the spot · ring = missed it. ${VIEW_NAME[0].toUpperCase() + VIEW_NAME.slice(1)}.</p>`)
+    + `<section class="kr-card"><ul class="kr-sos">${lines.map(it => `<li class="kr-so"><span class="kr-mk kr-mk-${it.mark}">${it.mark === 'up' ? '▲' : 'i'}</span><span>${it.text}</span></li>`).join('')}</ul></section>`
+}
+// Little league player: Progress without velocity
+function penProgressLite(p: ReportPayload, f: PenFacts): string {
+  const hist = p.history.filter(h => (safeNum(h.total) ?? 0) >= 10).slice(-5)
+  if (hist.length < 2) return takeaway('Your progress starts once you have three pens') + card('', `<p class="caption">This page draws one line per number once you have at least three pens of 10 or more pitches on this team.</p>`)
+  const k = hist.length + 1
+  return takeaway(`Your last ${word(k)} pens`)
+    + sparkCard('On the spot', [...hist.map(h => h.commandPct), f.spot], `${f.spot ?? 0}%`, `last ${k} pens`)
+    + sparkCard('Strike %', [...hist.map(h => h.strikePct), f.strikePct], `${f.strikePct ?? 0}%`, `last ${k} pens`)
+    + sparkCard('Pitches', [...hist.map(h => h.total), f.n], String(f.n), `last ${k} pens`)
 }
 
 function penCommand(p: ReportPayload, f: PenFacts, c: Comparison): string {
@@ -427,6 +512,8 @@ export function buildReportHtml(p: ReportPayload): string {
   const id = ids(p.sessionId)
   const f = penFacts(p)
   const items = penStoodOut(p, f, c)
+  const itemsYou = penStoodOut(p, f, c, 'you')
+  const g = levelGroup(c.workload?.level ?? c.baselines?.level ?? null)   // SR1 E: the versions this file carries
   const wins = c.baselines ? WINDOWS.map(w => w.key).filter(k => c.baselines!.windows[k]) : []
   const links = `<p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="${signInUrl(asSport(p.sport))}">knuckleballonline.com</a> &middot; <a href="https://knuckleballonline.com/privacy.html#${asSport(p.sport)}">Privacy</a> &middot; <a href="https://knuckleballonline.com/terms.html#${asSport(p.sport)}">Terms</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>`
   // D2: this report's own colors and fonts (--kr-*) for its sport -- no hex swap, no site stylesheet.
@@ -438,16 +525,19 @@ export function buildReportHtml(p: ReportPayload): string {
 <style>${reportVars(asSport(p.sport))}${CSS}${SR1_CSS}</style>
 </head>
 <body>
-<div class="page kr">
-${radios(id, PEN_TABS, wins)}
-${penHeader(p, id)}
+<div class="page kr" data-kr-versions="${versionsFor(g).join(' ')}">
+${radios(id, ['1', '2', '3', '4', '5', '6'], wins)}
+${penHeader(p, id, g)}
 <main class="kr-main">
-${panel(1, penSummary(p, f, c, id, items))}
+${panel(1, ver(['coach'], penSummary(p, f, c, id, items))
+  + (g === 'll' ? ver(['player'], penSummaryLLPlayer(p, f, c, id, itemsYou)) + ver(['parent'], penSummaryLLParent(p, f, c))
+    : ver(['player'], penSummary(p, f, c, id, itemsYou, 'you', g === 'hs' ? 2 : 3))))}
 ${panel(2, penCommand(p, f, c))}
 ${panel(3, penVelocity(p, f))}
 ${panel(4, penTrends(p, f))}
+${g === 'll' ? panel(5, penWhereItWent(p, f, c)) + panel(6, penProgressLite(p, f)) : ''}
 </main>
-${footer(firstName(p.pitcherName), links)}
+${footer(firstName(p.pitcherName), links, true)}
 </div>
 </body>
 </html>`)

@@ -24,7 +24,7 @@ import {
   type Comparison, NO_COMPARISON, type StoodOut, type TileSpec, WINDOWS, SR1_CSS, ids, radios, tabBar, windowSwitch, wb, panel,
   takeaway, card, tileFor, windowCaption, stoodOutCard, sparkCard, simpleTable, typeCell, footer, firstName, word, ordinal, pctOf,
   pickFastball, avgVelo, gunned, outsideRange, rangeText, sortStoodOut, sidePattern, clusterPattern, typeMin, inningMin,
-  restCard, sevenDayCard
+  restCard, sevenDayCard, type Voice, type LevelGroup, levelGroup, versionsFor, ver, tabBarVersions
 } from './sr1.ts'
 
 // The one definition this report does NOT compute itself -- it's the exact
@@ -511,7 +511,21 @@ const GAME_CSS = `
 `
 
 // ---------- SR1 Stage C: the answer-first game report (coach version) ----------
-const GAME_TABS = ['Summary', 'Location', 'Batters', 'Pitch types', 'Trends', 'Every pitch']
+// SR1 E: each version's tabs (decision 10). Panels: 1 Summary · 2 Location · 3 Batters · 4 Pitch types · 5 Trends ·
+// 6 Every pitch · 7 Where it went · 8 Progress without velocity (7 and 8: little league player only)
+function gameTabLabels(g: LevelGroup) {
+  const full = g === 'college' ? ['coach', 'player'] : ['coach']
+  return [
+    { panel: 1, label: 'Summary', versions: versionsFor(g) },
+    { panel: 2, label: 'Location', versions: g === 'hs' ? ['coach', 'player'] : full },
+    { panel: 3, label: 'Batters', versions: g === 'hs' ? ['coach', 'player'] : full },
+    { panel: 4, label: 'Pitch types', versions: full },
+    { panel: 5, label: 'Trends', versions: full },
+    ...(g === 'hs' ? [{ panel: 5, label: 'Progress', versions: ['player'] }] : []),
+    { panel: 6, label: 'Every pitch', versions: full },
+    ...(g === 'll' ? [{ panel: 7, label: 'Where it went', versions: ['player'] }, { panel: 8, label: 'Progress', versions: ['player'] }, { panel: 5, label: 'Progress', versions: ['parent'] }] : [])
+  ]
+}
 const G_STRIKES = new Set(['strike_looking', 'strike_swinging', 'foul', 'foul_tip', 'in_play', 'sac_bunt', 'sac_fly', 'dropped_third'])
 const gStrike = (x: GamePitch) => G_STRIKES.has(x.result)
 const gCounts = (x: GamePitch) => x.result !== 'interference' && x.result !== 'other'
@@ -519,14 +533,14 @@ const gHit = (x: GamePitch) => x.result === 'in_play' && x.inPlayOutcome === 'hi
 function gameDate(p: GameReportPayload): string {
   return new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
-function gameHeader(p: GameReportPayload, id: string): string {
+function gameHeader(p: GameReportPayload, id: string, g: LevelGroup): string {
   const numBit = p.uniformNumber !== null && p.uniformNumber !== undefined ? ` <span class="header-num">#${escapeHtml(p.uniformNumber)}</span>` : ''
   return `
   <header class="report-header kr-head">
     <div class="kr-head-top"><div class="brand-mark">KNUCKLEBALL</div><span class="sport-tag">${asSport(p.sport) === 'softball' ? 'Softball' : 'Baseball'} · Live Game</span></div>
     <h1>${escapeHtml(p.pitcherName)}${numBit}</h1>
     <p class="header-meta">${gameDate(p)}${p.opponent ? ` vs ${escapeHtml(p.opponent)}` : ''}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''}</p>
-    ${tabBar(id, GAME_TABS)}
+    ${tabBarVersions(id, gameTabLabels(g))}
   </header>`
 }
 function gameFacts(p: GameReportPayload) {
@@ -556,9 +570,10 @@ function gameFacts(p: GameReportPayload) {
 }
 type GameFacts = ReturnType<typeof gameFacts>
 
-function gameStoodOut(p: GameReportPayload, f: GameFacts, c: Comparison): StoodOut[] {
+const gWhose = (p: GameReportPayload, v: Voice) => v === 'you' ? 'your' : escapeHtml(firstName(p.pitcherName)) + "'s"
+function gameStoodOut(p: GameReportPayload, f: GameFacts, c: Comparison, v: Voice = 'coach'): StoodOut[] {
   const ws = c.baselines?.windows?.['3m']
-  const first = escapeHtml(firstName(p.pitcherName))
+  const who = gWhose(p, v)
   const s = f.s, items: StoodOut[] = []
   const rate = (metric: string, cur: number | null, range: [number, number] | undefined, minW: number, text: (dir: string, r: string) => string, unit: string, neutral = false) => {
     const o = outsideRange(cur, range, minW)
@@ -566,17 +581,17 @@ function gameStoodOut(p: GameReportPayload, f: GameFacts, c: Comparison): StoodO
     items.push({ kind: 'rate', metric, value: cur, dir: o.dir, size: o.size, mark: neutral ? 'info' : o.dir === 'above' ? 'up' : 'down', text: text(o.dir, rangeText(range, unit)) })
   }
   if (ws?.range) {
-    rate('strike', s.strike_pct, ws.range.strike_pct, 5, (d, r) => `Strikes ${s.strike_pct}% of ${s.strike_pct_denominator} pitches, ${d} ${first}'s normal range (${r}).`, '%')
+    rate('strike', s.strike_pct, ws.range.strike_pct, 5, (d, r) => `Strikes ${s.strike_pct}% of ${s.strike_pct_denominator} pitches, ${d} ${who} normal range (${r}).`, '%')
     const fpN = Math.round((s.first_pitch_strike_pct ?? 0) * s.first_pitch_pitches / 100)
-    rate('fp', s.first_pitch_strike_pct, ws.range.fp_strike_pct, 5, (d, r) => `First pitch was a strike to ${fpN} of ${s.first_pitch_pitches} batters (${s.first_pitch_strike_pct}%), ${d} ${first}'s normal range (${r}).`, '%')
-    rate('zone', s.in_zone_pct, ws.range.in_zone_pct, 5, (d, r) => `${s.in_zone} of ${s.pitches} pitches in the zone (${s.in_zone_pct}%), ${d} ${first}'s normal range (${r}).`, '%')
-    rate('pitches', pitchCount(s), ws.range.pitches, 5, (d, r) => `${pitchCount(s)} pitches, ${d === 'above' ? 'more' : 'fewer'} than ${first}'s normal range (${r}).`, '', true)
+    rate('fp', s.first_pitch_strike_pct, ws.range.fp_strike_pct, 5, (d, r) => `First pitch was a strike to ${fpN} of ${s.first_pitch_pitches} batters (${s.first_pitch_strike_pct}%), ${d} ${who} normal range (${r}).`, '%')
+    rate('zone', s.in_zone_pct, ws.range.in_zone_pct, 5, (d, r) => `${s.in_zone} of ${s.pitches} pitches in the zone (${s.in_zone_pct}%), ${d} ${who} normal range (${r}).`, '%')
+    rate('pitches', pitchCount(s), ws.range.pitches, 5, (d, r) => `${pitchCount(s)} pitches, ${d === 'above' ? 'more' : 'fewer'} than ${who} normal range (${r}).`, '', true)
   }
   for (const t of f.byType) {
     const tr = ws?.types?.[t.type]?.range
     if (!tr) continue
-    if (t.n >= typeMin) rate('type', pctOf(t.strikes, t.den), tr.strike_pct, 5, (d, r) => `${escapeHtml(t.type)} strikes ${pctOf(t.strikes, t.den)}% (${t.strikes} of ${t.den}), ${d} ${first}'s normal range (${r}).`, '%')
-    if (t.type === f.fb.type && f.fbVelo !== null) rate('velo', f.fbVelo, tr.velo, 1, (d, r) => `${escapeHtml(f.fb.label)} averaged ${f.fbVelo} mph, ${d} ${first}'s normal range (${r} mph).`, 'mph')
+    if (t.n >= typeMin) rate('type', pctOf(t.strikes, t.den), tr.strike_pct, 5, (d, r) => `${v === 'you' ? 'Your ' + escapeHtml(t.type.toLowerCase()) : escapeHtml(t.type)} strikes ${pctOf(t.strikes, t.den)}% (${t.strikes} of ${t.den}), ${d} ${who} normal range (${r}).`, '%')
+    if (t.type === f.fb.type && f.fbVelo !== null) rate('velo', f.fbVelo, tr.velo, 1, (d, r) => `${v === 'you' ? 'Your ' : ''}${escapeHtml(f.fb.label)} averaged ${f.fbVelo} mph, ${d} ${who} normal range (${r} mph).`, 'mph')
   }
   const sr = ws?.range?.strike_pct
   if (sr) {
@@ -586,7 +601,7 @@ function gameStoodOut(p: GameReportPayload, f: GameFacts, c: Comparison): StoodO
       const one = f.innings[0]
       const velo = inn.i.fbVelo !== null && one && one.fbVelo !== null && inn.i.inning !== one.inning && Math.round(one.fbVelo - inn.i.fbVelo) >= 1
         ? ` and ${escapeHtml(f.fb.label)} ${Math.round(one.fbVelo - inn.i.fbVelo)} mph under the ${ordinal(one.inning)} (${Math.round(one.fbVelo)} → ${Math.round(inn.i.fbVelo)})` : ''
-      items.push({ kind: 'inning', mark: 'info', size: inn.o!.size, inning: inn.i.inning, dir: inn.o!.dir, value: inn.i.strikePct!,
+      items.push({ kind: 'inning', metric: velo ? 'velo-inning' : 'inning', mark: 'info', size: inn.o!.size, inning: inn.i.inning, dir: inn.o!.dir, value: inn.i.strikePct!,
         text: `${ordinal(inn.i.inning)} inning: ${inn.i.strikePct}% strikes${velo}.` })
     }
   }
@@ -595,53 +610,100 @@ function gameStoodOut(p: GameReportPayload, f: GameFacts, c: Comparison): StoodO
   return sortStoodOut(items)
 }
 
-function gameHeadline(p: GameReportPayload, f: GameFacts, c: Comparison, items: StoodOut[]): string {
+function gameRank(f: GameFacts, c: Comparison): { k: number; best: boolean; worst: boolean } {
+  const s = f.s, k = Math.min(6, 1 + c.recent.length)
+  if (k < 4 || s.strike_pct_denominator < 10) return { k, best: false, worst: false }
+  const prior = c.recent.slice(0, k - 1).map(r => r.game && r.game.strike_pct_denominator ? 100 * r.game.strikes / r.game.strike_pct_denominator : 0)
+  return { k, best: s.strike_pct > Math.max(...prior), worst: s.strike_pct < Math.min(...prior) }
+}
+function gameHeadline(p: GameReportPayload, f: GameFacts, c: Comparison, items: StoodOut[], v: Voice = 'coach'): string {
   const s = f.s
   const rateItem = items.find(i => i.kind === 'rate' && (i.metric === 'fp' || i.metric === 'strike' || i.metric === 'zone'))
   const inn = items.find(i => i.kind === 'inning')
   if (rateItem && inn) {
     const name = rateItem.metric === 'fp' ? 'First-pitch strikes' : rateItem.metric === 'zone' ? 'In-zone pitches' : 'Strikes'
     const up = rateItem.dir === 'above', innUp = inn.dir === 'above'
-    return `${name} ${up ? 'up' : 'down'} to ${rateItem.value}%, ${up === innUp ? 'and' : 'but'} strikes ${innUp ? 'rose' : 'faded'} to ${inn.value}% in the ${ordinal(inn.inning ?? 0)}.`
+    return `${name} ${up ? 'up' : 'down'} to ${rateItem.value}%, ${up === innUp ? 'and' : 'but'} ${v === 'you' ? 'your ' : ''}strikes ${innUp ? 'rose' : 'faded'} to ${inn.value}% in the ${ordinal(inn.inning ?? 0)}.`
   }
-  const k = Math.min(6, 1 + c.recent.length)
-  if (k >= 4 && s.strike_pct_denominator >= 10) {
-    const prior = c.recent.slice(0, k - 1).map(r => r.game && r.game.strike_pct_denominator ? 100 * r.game.strikes / r.game.strike_pct_denominator : 0)
-    if (s.strike_pct > Math.max(...prior)) return `Best strike-throwing game of the last ${word(k)}: ${s.strike_pct}% strikes.`
-    if (s.strike_pct < Math.min(...prior)) return `${s.strike_pct}% strikes, the fewest of the last ${word(k)} games.`
-  }
+  const r = gameRank(f, c)
+  if (r.best) return `${v === 'you' ? 'Your best' : 'Best'} strike-throwing game of the last ${word(r.k)}: ${s.strike_pct}% strikes.`
+  if (r.worst) return `${s.strike_pct}% strikes, ${v === 'you' ? 'your' : 'the'} fewest of the last ${word(r.k)} games.`
   if (items.length) return items[0].text
   return `${fmtIP(s.outs_recorded)} innings, ${pitchCount(s)} pitches: ${s.strike_pct}% strikes${s.first_pitch_strike_pct !== null ? `, ${s.first_pitch_strike_pct}% first-pitch strikes` : ''}.`
 }
 
-function gameSummaryTab(p: GameReportPayload, f: GameFacts, c: Comparison, id: string, items: StoodOut[]): string {
-  const s = f.s
-  const chartedBy = p.loggedByCoach ? 'the coaching staff' : escapeHtml(p.pitcherName)
-  const head = card('', `<h2 class="kr-headline">${gameHeadline(p, f, c, items)}</h2>
-    <p class="kr-sub">${gameDate(p)}${p.opponent ? ` vs ${escapeHtml(p.opponent)}` : ''} · ${s.batters_faced} batter${s.batters_faced === 1 ? '' : 's'} · charted by ${chartedBy}</p>`)
-  const strip = `<div class="kr-strip">${[[fmtIP(s.outs_recorded), 'IP'], [String(pitchCount(s)), 'P'], [String(s.k), 'K'], [String(s.bb), 'BB'], [String(s.h), 'H'], [s.runs != null ? String(s.runs) : '—', 'R']]
+function gameStrip(s: GameSummary): string {
+  return `<div class="kr-strip">${[[fmtIP(s.outs_recorded), 'IP'], [String(pitchCount(s)), 'P'], [String(s.k), 'K'], [String(s.bb), 'BB'], [String(s.h), 'H'], [s.runs != null ? String(s.runs) : '—', 'R']]
     .map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>`
-  const tiles: TileSpec[] = [
+}
+function gameWindows(p: GameReportPayload, c: Comparison, id: string, tiles: TileSpec[], v: Voice): string {
+  const first = firstName(p.pitcherName)
+  const wins = c.baselines ? WINDOWS.map(w => w.key).filter(k => c.baselines!.windows[k]) : []
+  return wins.length
+    ? windowSwitch(id, wins) + wins.map(k => wb(k, windowCaption(first, k, c.baselines!.windows[k], 'game', '', v)
+        + `<div class="kr-tiles">${tiles.map(t => tileFor(t, c.baselines!.windows[k], 'game')).join('')}</div>`)).join('')
+    : `<div class="kr-tiles">${tiles.map(t => tileFor(t, undefined, 'game')).join('')}</div><p class="kr-wcap">No earlier games to compare with yet.</p>`
+}
+function gameTiles(f: GameFacts): TileSpec[] {
+  const s = f.s
+  return [
     { label: 'Strike %', cur: s.strike_pct, unit: '%', key: 'strike_pct' },
     { label: '1st-pitch strike', cur: s.first_pitch_strike_pct, unit: '%', key: 'fp_strike_pct' },
     { label: '2 of first 3', cur: pctOf(f.twoOfThree, f.done.length), unit: '%', key: 'two_of_three', plain: true, sub: `${f.twoOfThree} of ${f.done.length} batters` },
     { label: 'In zone', cur: s.in_zone_pct, unit: '%', key: 'in_zone_pct' }
   ]
-  const first = firstName(p.pitcherName)
-  const wins = c.baselines ? WINDOWS.map(w => w.key).filter(k => c.baselines!.windows[k]) : []
-  const compare = wins.length
-    ? windowSwitch(id, wins) + wins.map(k => wb(k, windowCaption(first, k, c.baselines!.windows[k], 'game', '')
-        + `<div class="kr-tiles">${tiles.map(t => tileFor(t, c.baselines!.windows[k], 'game')).join('')}</div>`)).join('')
-    : `<div class="kr-tiles">${tiles.map(t => tileFor(t, undefined, 'game')).join('')}</div><p class="kr-wcap">No earlier games to compare with yet.</p>`
+}
+function gameCaptions(p: GameReportPayload): string {
+  const note = viewNote(p.chartingPerspective).replace('class="header-note"', 'class="caption"')
+  return (note || `<p class="caption">Every grid in this report is drawn in the ${VIEW_NAME}, ${REPORT_VIEW === 'pitcher' ? 'looking in from the mound toward home plate' : 'looking out toward the mound'}.</p>`)
+    + `<p class="caption">A strike is: called strike, swinging strike, foul, any ball in play, sac bunt/fly, dropped third. A ball is: ball, HBP. Interference and "other" count toward pitches but neither bucket.</p>`
+}
+// The full Summary: the coach's, and in "you" for a high school (top two items) or college player
+function gameSummaryTab(p: GameReportPayload, f: GameFacts, c: Comparison, id: string, items: StoodOut[], v: Voice = 'coach', maxItems = 3): string {
+  const s = f.s
+  const chartedBy = p.loggedByCoach ? 'the coaching staff' : escapeHtml(p.pitcherName)
+  const head = card('', `<h2 class="kr-headline">${gameHeadline(p, f, c, items, v)}</h2>
+    <p class="kr-sub">${gameDate(p)}${p.opponent ? ` vs ${escapeHtml(p.opponent)}` : ''} · ${s.batters_faced} batter${s.batters_faced === 1 ? '' : 's'} · charted by ${chartedBy}</p>`)
   const hlInning = items.find(i => i.kind === 'inning')?.inning
   const inningTable = f.innings.length ? card('By inning', simpleTable(['Inn', 'Pitches', 'Strike', `${escapeHtml(f.fb.label)} mph`],
     f.innings.map(i => [String(i.inning), String(i.n), i.strikePct === null ? '—' : `${i.strikePct}%`, i.fbVelo === null ? '—' : String(Math.round(i.fbVelo))]),
     f.innings.findIndex(i => i.inning === hlInning))) : ''
-  const note = viewNote(p.chartingPerspective).replace('class="header-note"', 'class="caption"')
-  return head + strip + compare + inningTable + stoodOutCard(items, !!c.baselines?.windows?.['3m']?.range, first)
-    + restCard(c.workload, pitchCount(s), p.date, p.teamName === 'Independent') + sevenDayCard(c.workload)
-    + (note || `<p class="caption">Every grid in this report is drawn in the ${VIEW_NAME}, ${REPORT_VIEW === 'pitcher' ? 'looking in from the mound toward home plate' : 'looking out toward the mound'}.</p>`)
-    + `<p class="caption">A strike is: called strike, swinging strike, foul, any ball in play, sac bunt/fly, dropped third. A ball is: ball, HBP. Interference and "other" count toward pitches but neither bucket.</p>`
+  return head + gameStrip(s) + gameWindows(p, c, id, gameTiles(f), v) + inningTable
+    + stoodOutCard(items.slice(0, maxItems), !!c.baselines?.windows?.['3m']?.range, firstName(p.pitcherName), 'What stood out', v)
+    + restCard(c.workload, pitchCount(s), p.date, p.teamName === 'Independent') + sevenDayCard(c.workload) + gameCaptions(p)
+}
+// Little league player (g09): two numbers, what went well, no velocity anywhere
+function gameSummaryLLPlayer(p: GameReportPayload, f: GameFacts, c: Comparison, id: string, itemsYou: StoodOut[]): string {
+  const s = f.s
+  const head = card('', `<h2 class="kr-headline">${s.k ? `You pitched ${fmtIP(s.outs_recorded)} innings and struck out ${s.k}!` : `You pitched ${fmtIP(s.outs_recorded)} innings and threw ${s.strike_pct}% strikes.`}</h2>
+    <p class="kr-sub">${gameDate(p)}${p.opponent ? ` vs ${escapeHtml(p.opponent)}` : ''}</p>`)
+  const well = itemsYou.filter(i => i.mark === 'up' && i.metric !== 'velo' && i.metric !== 'velo-inning')
+  const fpN = Math.round((s.first_pitch_strike_pct ?? 0) * s.first_pitch_pitches / 100)
+  const fallback: StoodOut[] = s.first_pitch_pitches ? [{ mark: 'up', kind: 'rate', size: 0, text: `You threw a strike on the first pitch to ${fpN} of ${s.first_pitch_pitches} batters.` }] : []
+  return head + gameWindows(p, c, id, gameTiles(f).slice(0, 2), 'you')
+    + stoodOutCard(well.length ? well : fallback, true, firstName(p.pitcherName), 'What went well', 'you')
+    + restCard(c.workload, pitchCount(s), p.date, p.teamName === 'Independent') + sevenDayCard(c.workload, true)
+    + `<p class="kr-novelo">No velocity on this version. Your coach and parents can see it.</p>`
+}
+// Little league parent (g11): rest and workload first, one line on how it went, the line strip
+function gameSummaryLLParent(p: GameReportPayload, f: GameFacts, c: Comparison): string {
+  const s = f.s, first = escapeHtml(firstName(p.pitcherName)), r = gameRank(f, c)
+  const ip = fmtIP(s.outs_recorded)
+  const how = card('How it went', `<h2 class="kr-headline">${ip} innings, ${s.k} strikeout${s.k === 1 ? '' : 's'}, ${s.bb} walk${s.bb === 1 ? '' : 's'}${p.opponent ? ` against ${escapeHtml(p.opponent)}` : ''}.</h2>
+    <p class="kr-sub">${s.strike_pct}% strikes${r.best ? `, ${first}'s best in the last ${word(r.k)} games` : ''}.</p>`)
+  return restCard(c.workload, pitchCount(s), p.date, p.teamName === 'Independent') + sevenDayCard(c.workload) + how + gameStrip(s)
+}
+// Little league player: Where it went (location by result and by type; no velocity) and Progress without velocity
+function gameWhereItWent(p: GameReportPayload, f: GameFacts): string {
+  return takeaway(`Where your pitches went: ${f.s.in_zone} of ${f.s.pitches} in the zone`) + renderLocationCharts(p) + renderTypeGrids(p)
+}
+function gameProgressLite(p: GameReportPayload): string {
+  const t = (p.gameTrend ?? []).slice(-6)
+  if (t.length < 3) return takeaway('Your progress starts once you have three games') + card('', `<p class="caption">This page draws one line per number once you have at least three games on this team.</p>`)
+  const last = t[t.length - 1]
+  return takeaway(`Your last ${word(t.length)} games`)
+    + sparkCard('Strike %', t.map(g => safeNum(g.strikePct)), `${last.strikePct ?? 0}%`, `last ${t.length} games`)
+    + sparkCard('1st-pitch strike', t.map(g => safeNum(g.firstPitchStrikePct)), `${last.firstPitchStrikePct ?? 0}%`, `last ${t.length} games`)
 }
 
 function gameLocationTab(p: GameReportPayload, f: GameFacts): string {
@@ -709,6 +771,8 @@ export function buildGameReportHtml(p: GameReportPayload): string {
   const id = ids(p.sessionId)
   const f = gameFacts(p)
   const items = gameStoodOut(p, f, c)
+  const itemsYou = gameStoodOut(p, f, c, 'you')
+  const g = levelGroup(c.workload?.level ?? c.baselines?.level ?? null)   // SR1 E: the versions this file carries
   const wins = c.baselines ? WINDOWS.map(w => w.key).filter(k => c.baselines!.windows[k]) : []
   const links = `<p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="https://knuckleballonline.com/login.html?sport=${asSport(p.sport)}">knuckleballonline.com</a> &middot; <a href="https://knuckleballonline.com/privacy.html#${asSport(p.sport)}">Privacy</a> &middot; <a href="https://knuckleballonline.com/terms.html#${asSport(p.sport)}">Terms</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>`
   // D2: this report's own colors and fonts (--kr-*) for its sport -- no hex swap, no site stylesheet.
@@ -720,18 +784,21 @@ export function buildGameReportHtml(p: GameReportPayload): string {
 <style>${reportVars(asSport(p.sport))}${PEN_CSS}${GAME_CSS}${DIAMOND_CSS}${CONNECT_CSS}${SR1_CSS}</style>
 </head>
 <body>
-<div class="page kr">
-${radios(id, GAME_TABS, wins)}
-${gameHeader(p, id)}
+<div class="page kr" data-kr-versions="${versionsFor(g).join(' ')}">
+${radios(id, ['1', '2', '3', '4', '5', '6', '7', '8'], wins)}
+${gameHeader(p, id, g)}
 <main class="kr-main">
-${panel(1, gameSummaryTab(p, f, c, id, items))}
+${panel(1, ver(['coach'], gameSummaryTab(p, f, c, id, items))
+  + (g === 'll' ? ver(['player'], gameSummaryLLPlayer(p, f, c, id, itemsYou)) + ver(['parent'], gameSummaryLLParent(p, f, c))
+    : ver(['player'], gameSummaryTab(p, f, c, id, itemsYou, 'you', g === 'hs' ? 2 : 3))))}
 ${panel(2, gameLocationTab(p, f))}
 ${panel(3, gameBattersTab(p, f))}
 ${panel(4, gamePitchTypesTab(p, f))}
 ${panel(5, gameTrendsTab(p))}
 ${panel(6, gameEveryPitchTab(p, f))}
+${g === 'll' ? panel(7, gameWhereItWent(p, f)) + panel(8, gameProgressLite(p)) : ''}
 </main>
-${footer(firstName(p.pitcherName), links)}
+${footer(firstName(p.pitcherName), links, true)}
 </div>
 </body>
 </html>`)

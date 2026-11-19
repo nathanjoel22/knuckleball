@@ -11,6 +11,8 @@
 //   POST { action: 'list' }                       the newest 50 links with their state (open / used / expired)
 //   POST { action: 'create', facility_name, manager_email, baseball_level, softball_level }
 //   POST { action: 'cancel', token }               an unused link stops working now
+//   POST { action: 'facilities' }                 R7 Stage B: every facility, how it was made (operator link / self-serve),
+//                                                  when, and its manager's name
 // Refuses anyone not in OPERATOR_EMAILS (403). Uses the admin client only after that check.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -90,6 +92,22 @@ Deno.serve(async (req) => {
       .eq('token', token).is('used_at', null).select('token')
     if (error) return json({ error: error.message }, 500)
     return json({ ok: true, cancelled: (data || []).length })
+  }
+  if (action === 'facilities') {
+    const { data: orgs, error } = await admin.from('organizations')
+      .select('id, name, created_via, created_at, manager_login').order('created_at', { ascending: false }).limit(200)
+    if (error) return json({ error: error.message }, 500)
+    const ids = [...new Set((orgs || []).map((o: any) => o.manager_login))]
+    const { data: mgrs, error: pErr } = ids.length
+      ? await admin.from('profiles').select('id, full_name, email_verified_at').in('id', ids)
+      : { data: [], error: null }
+    if (pErr) return json({ error: pErr.message }, 500)
+    const byId = new Map((mgrs || []).map((m: any) => [m.id, m]))
+    return json({ ok: true, facilities: (orgs || []).map((o: any) => {
+      const m: any = byId.get(o.manager_login)
+      return { name: o.name, created_via: o.created_via, created_at: o.created_at, manager_name: m ? m.full_name : null,
+               manager_verified: !!(m && m.email_verified_at) }
+    }) })
   }
   return json({ error: 'unknown action' }, 400)
 })

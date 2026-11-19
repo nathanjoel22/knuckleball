@@ -100,7 +100,7 @@
       <span class="tagline">Always a Step Ahead</span>
     </div><div><span class="role-tag slant-tag">Operator</span>
       <h2 class="display">Facility <span class="last">signup link</span></h2>
-      <p class="sub">Facilities can also sign themselves up (Create account → Facility); use a link when you set one up by hand. The link works once, for 14 days, and only for the manager's email. They get a baseball side and a softball side.</p></div></header>
+      <p class="sub">For a facility that emailed you. The link works once, for 14 days, and only for the manager's email. They get a baseball side and a softball side.</p></div></header>
     <div class="field"><label class="field-label" for="f-name">Facility name</label><input class="text-input" id="f-name" maxlength="60" placeholder="e.g. Diamond Pitching Lab"></div>
     <div class="field"><label class="field-label" for="f-email">Manager's email</label><input class="text-input" id="f-email" type="email" placeholder="Must be new to Knuckleball"></div>
     <div class="field"><span class="field-label">Baseball level</span><div class="op-levels">
@@ -124,13 +124,6 @@
     </div>
   </form>
 
-  <!-- R7 Stage B (Nov 19 2026): every facility, made from a link here or self-serve on the New account form -->
-  <div class="card op-card step-hidden" id="fac-card">
-    <h2 class="display" style="font-size:24px;margin:0;">Facilities</h2>
-    <div class="op-list" id="fac-list"></div>
-    <div class="error-msg" id="fac-error"></div>
-  </div>
-
   <div class="card op-card step-hidden" id="list-card">
     <h2 class="display" style="font-size:24px;margin:0;">Recent links</h2>
     <div class="op-list" id="list"></div>
@@ -141,7 +134,7 @@
 <script>
   var FN = SUPABASE_URL + '/functions/v1/facility-invites';
   var LEVEL = { little_league: 'Little League', high_school: 'High School', college: 'College', high_school_up: 'High School & up' };
-  function show(ids){ ['signin-card', 'refused-card', 'fac-card', 'make-card', 'list-card'].forEach(function(i){ document.getElementById(i).classList.toggle('step-hidden', ids.indexOf(i) < 0); }); }
+  function show(ids){ ['signin-card', 'refused-card', 'make-card', 'list-card'].forEach(function(i){ document.getElementById(i).classList.toggle('step-hidden', ids.indexOf(i) < 0); }); }
   function esc(t){ var d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
   function day(iso){ return iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''; }
   async function call(body){
@@ -189,23 +182,10 @@
     });
     return true;
   }
-  async function loadFacilities(){
-    var r = await call({ action: 'facilities' });
-    var list = document.getElementById('fac-list');
-    if(r.status !== 200){ document.getElementById('fac-error').textContent = r.data.error || 'Could not load facilities.'; return; }
-    list.innerHTML = r.data.facilities.length ? '' : '<p class="op-meta">No facilities yet.</p>';
-    r.data.facilities.forEach(function(f){
-      var el = document.createElement('div'); el.className = 'op-item';
-      el.innerHTML = '<span class="op-state">' + esc(f.created_via === 'self_serve' ? 'Self-serve' : 'Operator link') + '</span>'
-        + '<strong>' + esc(f.name) + '</strong><span class="op-meta">' + esc(f.manager_name || 'No name') + ' · made ' + esc(day(f.created_at))
-        + (f.created_via === 'self_serve' && !f.manager_verified ? ' · email not verified yet' : '') + '</span>';
-      list.appendChild(el);
-    });
-  }
   async function start(){
     var s = (await supabaseClient.auth.getSession()).data.session;
     if(!s){ show(['signin-card']); return; }
-    if(await loadList()){ show(['fac-card', 'make-card', 'list-card']); loadFacilities(); }
+    if(await loadList()) show(['make-card', 'list-card']);
   }
   document.getElementById('signin-card').addEventListener('submit', async function(e){
     e.preventDefault();

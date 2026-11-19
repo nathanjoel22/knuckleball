@@ -422,7 +422,6 @@
     if(await maybeShowJoinAs()) return;
     const { data, error } = await joinRpc(null);
     if(error && /sport_mismatch/.test(error.message || '')){ showSportMismatch(); return; }
-    if(isFacilityUnverified(error)){ showFacilityNotOpen(); return; }
     if(data && data.error === 'adult_required'){ showAdultOnly(); return; }   // F1-B: a code is for parents and adult pitchers
     // P1-10: an existing account that hasn't answered the age question yet.
     if(data && data.error === 'attestation_required'){ showCard('attest-card'); return; }
@@ -498,7 +497,6 @@
     document.querySelectorAll('#joinas-card button').forEach(b => { b.disabled = true; });
     const { data, error } = await joinRpc(profileId);
     if(data && data.error === 'attestation_required'){ showCard('attest-card'); return; }
-    if(isFacilityUnverified(error)){ showFacilityNotOpen(); return; }
     if(error || !data || data.error){
       document.querySelectorAll('#joinas-card button').forEach(b => { b.disabled = false; });
       err.textContent = (data && data.error === 'invalid_token') ? 'This invite link is no longer valid. Ask the coach for a current one.'
@@ -537,15 +535,6 @@
     const card = document.getElementById('invalid-card');
     card.querySelector('h2').textContent = 'Team no longer active';
     card.querySelector('.info-msg').textContent = 'This team is no longer active. Ask the coach for a current invite link.';
-    showCard('invalid-card');
-  }
-  // R7 Stage B: a facility that signed itself up takes no one until its manager has verified their email (the server
-  // refuses with facility_unverified).
-  function isFacilityUnverified(error){ return !!(error && /facility_unverified/.test(error.message || '')); }
-  function showFacilityNotOpen(){
-    const card = document.getElementById('invalid-card');
-    card.querySelector('h2').textContent = 'Not open yet';
-    card.querySelector('.info-msg').textContent = "This facility isn't taking new members yet: its manager still has to verify their email. Try again later, or ask them.";
     showCard('invalid-card');
   }
   // F1-B: a pitcher's own login has to be 18 or older to join from a code; teens join through a parent.

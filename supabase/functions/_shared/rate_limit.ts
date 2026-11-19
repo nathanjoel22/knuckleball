@@ -9,7 +9,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-export type RateKind = 'report_email' | 'report_generate' | 'verify_email' | 'guardian_email' | 'removal_notice' | 'email_change' | 'account_deletion' | 'account_export' | 'facility_notify'   // R7 Stage B: facility-notify
+export type RateKind = 'report_email' | 'report_generate' | 'verify_email' | 'guardian_email' | 'removal_notice' | 'email_change' | 'account_deletion' | 'account_export'
 
 export type RateResult = { ok: true } | { ok: false; status: number; body: Record<string, unknown> }
 

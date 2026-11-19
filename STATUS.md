@@ -60,7 +60,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-19 · SR1 Stage E (reader versions) · **staging**, branch `sr1e-reader-versions`, cache `kb-shell-v363`
+## 2026-11-19 · SR1 Stage E (reader versions) · **production** (PR #131, merge `006ee9d`), branch `sr1e-reader-versions`, cache `kb-shell-v363`
+
+- **Live Nov 19 (Joel):** `send-session-report` deployed to production (version 50, the same bundle as staging). Merged
+  (report.html's `&v=` and History's viewer versions with v363). New reports carry their level's versions; reports
+  made before stay as they were.
 
 - **Packet:** `plans/sr1-session-reports.md` Stage E; decisions in `plans/sr1e-preconditions.md` (Joel: yes to all).
   Evidence: `plans/sr1e-evidence.md` (+ `plans/sr1e-evidence/`).
@@ -77,10 +81,6 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - Old reports hash the same.
 - **Staging test data:** Little Leaguer set to Little League with a pitch mix and one pen. The test parent's email was
   marked verified in staging.
-- **Production (Joel):**
-  1. `send-session-report` deployed to production Nov 19 (version 50; staging redeployed from the same files, same
-     bundle).
-  2. Merge.
 - **Open:** none. Next: Stage F (email per recipient and the parent contact).
 
 ---

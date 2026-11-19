@@ -36,7 +36,9 @@ const SB_LEVELS = ['little_league', 'high_school_up']
 const EMAIL_BLOCKS: Record<string, string> = {
   facility: 'This email already runs a facility on Knuckleball.',
   in_use: 'This email already has a Knuckleball account on a team. A facility needs an email that is new to Knuckleball (or a +facility version of it).',
-  not_coach: 'This email already has a pitcher or parent account. A facility needs an email that is new to Knuckleball (or a +facility version of it).'
+  not_coach: 'This email already has a pitcher or parent account. A facility needs an email that is new to Knuckleball (or a +facility version of it).',
+  // R7 Stage C: any adult account may also run a facility (in_use / not_coach no longer come back); only these can't
+  child: "This email is a player's own sign-in or an under-18 account, so it can't run a facility."
 }
 
 Deno.serve(async (req) => {

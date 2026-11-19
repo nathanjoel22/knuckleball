@@ -741,6 +741,7 @@
   .more-go{ font-size:var(--t-20); color:var(--ink-faint); }
   .more-row-on{ cursor:default; }
   .more-row-sport{ cursor:default; }
+  .more-row-form{ flex-direction:column; align-items:stretch; cursor:default; gap:var(--s-8); }   /* R7 C: + Start a facility */
   .more-row-sport .sport-switch{ width:100%; }
   .more-row-sport .sport-switch .seg{ flex:1; }
   .more-row-links{ justify-content:flex-start; cursor:default; }
@@ -777,6 +778,7 @@
   .nav-team .roster-label{ color:var(--on-dark-faint); }
   .nav-team .team-select{ background:transparent; color:var(--on-dark); border-color:var(--brand-line, rgba(255,255,255,.2)); }
   .nav-team .team-select option{ color:var(--ink); }
+  .nav-team .role-switch{ margin-top:var(--s-8); }   /* R7 C: the role switcher under the team */
   .nav-sport{ font-size:var(--t-14); color:var(--on-dark-faint); }
   .nav-items{ display:flex; flex-direction:column; gap:var(--s-2); }
   .nav-item{ display:flex; align-items:center; gap:var(--s-12); width:100%; min-height:48px; padding:0 var(--s-12); border:0; border-radius:var(--radius-control);
@@ -3229,7 +3231,14 @@ async function reloadTeamKeepingPlace(alreadyPainted, giveUp){
   const keep = alreadyPainted ? { team: state.currentTeamId, pitcher: state.currentPitcherId, view: state.view,
     session: state.activeSession, selectedType: state.selectedType, draftAvailable: state.draftAvailable, pendingDraft: state.pendingDraft } : null;
   if(state.teams.length){
-    const team = keep && keep.team && state.teams.some(t => t.id === keep.team) ? keep.team : state.teams[0].id;
+    // R7 Stage C: the role being opened (Your roles, or the switcher) names its team; a fresh sign-in opens a facility
+    // manager's facility; otherwise the team on screen stays.
+    const hint = state.openTeamHint, facFirst = state.openFacilityFirst;
+    state.openTeamHint = null; state.openFacilityFirst = false;
+    const facHead = facFirst && state.teams.find(t => t.kind === 'facility' && t.myRole === 'head' && !t.archived);
+    const team = (hint && state.teams.some(t => t.id === hint)) ? hint
+      : facHead ? facHead.id
+      : keep && keep.team && state.teams.some(t => t.id === keep.team) ? keep.team : state.teams[0].id;
     try{ await netTimeout(onTeamChange(team, true)); }
     catch(e){ if(giveUp && giveUp()) return false; }
   } else if(!isCoach()){   // P2 (Oct 22): a pitcher on no team charts Independent -- no team needed
@@ -3341,6 +3350,7 @@ async function loadFullContextOnline(alreadyPainted){
   state.myProfiles = mine;
   state.profile = pickActiveProfile(mine, session.user.id);
   applySport();
+  loadMyRoles();   // R7 Stage C: the role switcher (background; the device copy draws first)
   // P1-10: an existing login that never answered the age question gets the
   // one-time box -- decided HERE, on the online load only, so it can never
   // appear offline or stand between anyone and charting.
@@ -3902,7 +3912,7 @@ function activeTeams(){ return (state.teams || []).filter(t => !t.archived); }
 // profiles are always read with this explicit list, never select('*').
 // A NEW profiles column is unreadable until it's granted in a migration AND
 // added here (safe by default).
-const PROFILE_COLS = 'id, account_id, is_primary, managed_by, role, sport, full_name, pitch_types, created_at, contact_emails, email_verified_at, email_verify_token_sent_at, throws, relative_accuracy_enabled, uses_radar_gun, setup_dismissed_at, headshot_updated_at, age_attestation, attested_at, attested_via, terms_version, terms_agreed_at, guardian_consent_sent_at, guardian_consented_at, consent_via, level';   // P2: level (Oct 22)
+const PROFILE_COLS = 'id, account_id, is_primary, managed_by, role, sport, full_name, pitch_types, created_at, contact_emails, email_verified_at, email_verify_token_sent_at, throws, relative_accuracy_enabled, uses_radar_gun, setup_dismissed_at, headshot_updated_at, age_attestation, attested_at, attested_via, terms_version, terms_agreed_at, guardian_consent_sent_at, guardian_consented_at, consent_via, level, created_via, opens_profile, opens_team';   // P2: level (Oct 22); R7 C: roles (Nov 19)
 function lastKnownKey(userId){ return 'lastKnownContext:' + userId; }
 
 /* ---------- S4 STAGE A: ONE LOGIN, MANY PROFILES (Joel, Oct 2) ----------
@@ -3942,7 +3952,12 @@ function pickActiveProfile(list, uid){
   // "Which pitcher?" on a fresh sign-in (login.html sets kb:freshSignin); one player opens straight away.
   const fresh = lsGet('kb:freshSignin'); lsDel('kb:freshSignin');
   const primary = list.find(p => p.is_primary);
-  if(fresh && primary && primary.role === 'parent' && !signinSport){
+  // R7 Stage C: a fresh sign-in opens the role chosen in Account → Your roles (on any device); with none chosen, the
+  // primary -- and a facility manager's facility (reloadTeamKeepingPlace).
+  const opening = fresh && primary && primary.opens_profile && list.find(p => p.id === primary.opens_profile);
+  if(fresh){ state.openTeamHint = opening ? (primary.opens_team || null) : null; state.openFacilityFirst = !opening; }
+  if(opening){ pick = opening; }
+  else if(fresh && primary && primary.role === 'parent' && !signinSport){
     const kids = chartable.filter(p => p.managed_by || p.linked_role);
     if(kids.length > 1){ state.whoPicker = kids.map(p => p.id); state.whoPickerTitle = 'Which pitcher?'; pick = kids.find(p => p.id === stored) || kids[0]; }
   }
@@ -4129,6 +4144,103 @@ function renderSportSwitch(){
   }));
   return `<div class="more-row more-row-sport">${segTray(items, { cls: 'sport-switch', label: 'Sport', key: 'acct-sport' })}</div>`;
 }
+/* ---------- R7 Stage C: ONE LOGIN, SEVERAL ROLES (Joel, Nov 19 2026; plans/r7-one-login.md Stage C) ----------
+   my_roles() lists the login's roles in plain words, one row per role and place ("Coach — Cairn Baseball", "Facility —
+   Thayer Pitching Lab", "Pitcher — Thunder 14U", "Parent — Eli"). Kept per login on the device (kb:roles:<uid>) so the
+   switcher draws offline. Sign-in opens the role chosen in Account → Your roles (profiles.opens_profile / opens_team,
+   set_opening_role; else the primary, a facility first); a cold start reopens the last role used on this device. A role
+   is only ever gained on the server, by accepting a link of its kind. What each role reads is the server's business. */
+const ROLE_KIND_NAME = { coach: 'Coach', facility: 'Facility', facility_coach: 'Coach', pitcher: 'Pitcher', parent: 'Parent', family: 'Following' };
+function rolesKey(){ return 'kb:roles:' + (state.session ? state.session.user.id : ''); }
+function myRoles(){
+  if(!state.myRoles){ try{ state.myRoles = JSON.parse(lsGet(rolesKey()) || 'null'); }catch(e){} }
+  // a facility's two sides are one role: the side of the sport open now, else the first
+  const out = [], fac = {};
+  (state.myRoles || []).forEach(r => {
+    if(r.kind === 'facility'){
+      if(fac[r.label] !== undefined){ if(r.sport === currentSport()) out[fac[r.label]] = r; return; }
+      fac[r.label] = out.length;
+    }
+    out.push(r);
+  });
+  return out;
+}
+function hasSeveralRoles(){
+  return new Set(myRoles().map(r => r.kind === 'facility_coach' ? 'coach' : r.kind === 'family' ? 'parent' : r.kind)).size > 1;
+}
+function roleLabel(r){ return (ROLE_KIND_NAME[r.kind] || '') + (r.label ? ' — ' + r.label : ''); }
+function roleIsActive(r){ return !!state.profile && r.profile_id === state.profile.id && (!r.team_id || r.team_id === state.currentTeamId); }
+async function loadMyRoles(){
+  if(!state.session || !isOnline()) return;
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('my_roles'), 8000);
+    if(error || !Array.isArray(data)) return;
+    const was = JSON.stringify(state.myRoles || null);
+    state.myRoles = data; lsSet(rolesKey(), JSON.stringify(data));
+    if(was !== JSON.stringify(data)) render();
+  }catch(e){ /* the device copy stays */ }
+}
+window.switchRole = async function(profileId, teamId){
+  state.navOpen = false; state.acctOpen = false;
+  if(state.profile && profileId === state.profile.id){
+    if(teamId && teamId !== state.currentTeamId && (state.teams || []).some(t => t.id === teamId)) await onTeamChange(teamId);
+    render();
+    return;
+  }
+  state.openTeamHint = teamId || null;   // the background reconcile after the switch opens this team
+  await switchProfile(profileId);
+  if(teamId && state.profile && state.profile.id === profileId && teamId !== state.currentTeamId
+     && (state.teams || []).some(t => t.id === teamId) && isOnline()){ await onTeamChange(teamId); render(); }
+};
+window.switchRoleAt = function(i){ const r = myRoles()[Number(i)]; if(r) switchRole(r.profile_id, r.team_id); };
+// The switcher: rows on phones (More) and in Account's extras; a select in the side menu.
+function renderRoleSwitch(kind){
+  if(!hasSeveralRoles()) return '';
+  const roles = myRoles();
+  if(kind === 'nav'){
+    const cur = roles.findIndex(roleIsActive);
+    return `<label class="team-switch role-switch"><span class="roster-label">Role</span><select class="team-select" aria-label="Switch role" onchange="switchRoleAt(this.value)">${roles.map((r, i) => `<option value="${i}" ${i === cur ? 'selected' : ''}>${escHtml(roleLabel(r))}</option>`).join('')}</select></label>`;
+  }
+  return roles.map((r, i) => roleIsActive(r)
+    ? `<div class="more-row more-row-on"><span class="more-row-main">${escHtml(roleLabel(r))}</span><span class="more-row-right"><span class="acct-check" aria-label="Open now">✓</span></span></div>`
+    : moreRow(escHtml(roleLabel(r)), `switchRoleAt(${i})`)).join('');
+}
+// The profiles a role row already covers (the old one-row-per-profile list leaves them out when roles show).
+function roleProfileIds(){ return hasSeveralRoles() ? new Set(myRoles().map(r => r.profile_id)) : new Set(); }
+// Account → Your roles: which one sign-in opens, on every device (stored on the account).
+function defaultRoleIndex(){
+  const roles = myRoles(), prim = myAccountProfile() || {};
+  const fac = roles.findIndex(r => r.kind === 'facility');
+  if(fac >= 0) return fac;
+  const own = roles.findIndex(r => r.profile_id === prim.id);
+  return own >= 0 ? own : 0;
+}
+function renderYourRoles(){
+  if(!hasSeveralRoles()) return '';
+  const roles = myRoles();
+  const chosen = roles.findIndex(r => r.opens), opens = chosen >= 0 ? chosen : defaultRoleIndex();
+  return `<div class="profile-section" id="acct-roles"><h3>Your roles</h3>
+    <p class="profile-note">One email, ${roles.length} roles. Switch between them in the menu. Signing in opens the one marked, on every device.</p>
+    ${roles.map((r, i) => `<div class="profile-row" style="justify-content:space-between;">
+      <span>${escHtml(roleLabel(r))}${i === opens ? ' <span class="throws-tag">OPENS FIRST</span>' : ''}</span>
+      ${i === opens ? '' : `<button class="btn btn-secondary btn-sm" ${state.rolesBusy ? 'disabled' : ''} onclick="setOpeningRole(${i})">Open this first</button>`}
+    </div>`).join('')}
+    ${state.rolesMsg ? `<p class="profile-note">${escHtml(state.rolesMsg)}</p>` : ''}
+  </div>`;
+}
+window.setOpeningRole = async function(i){
+  const r = myRoles()[i];
+  if(!r) return;
+  if(!isOnline()){ state.rolesMsg = 'Changing this needs a connection.'; render(); return; }
+  state.rolesBusy = true; state.rolesMsg = ''; render();
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('set_opening_role', { p_profile: r.profile_id, p_team: r.team_id || null }), 10000);
+    if(error || !data || !data.ok) throw new Error((data && data.error) || 'failed');
+    state.rolesMsg = 'Saved. Signing in opens ' + roleLabel(r) + '.';
+    await loadMyRoles();
+  }catch(e){ state.rolesMsg = "Couldn't save that. Try again."; }
+  state.rolesBusy = false; render();
+};
 function renderAccountButton(){
   if(!state.profile) return '';
   const all = state.myProfiles && state.myProfiles.length ? state.myProfiles : [state.profile];
@@ -4949,6 +5061,97 @@ window.armHandoff = function(){
   if(!state.handoffTargetId) return;
   state.handoffArmed = true;
   render();
+};
+/* R7 Stage C (Joel's answer 8): a facility hands off as one -- both sides to a coach already on both sides' staff
+   (handoff_facility). The manager stays an assistant on both. Online only. */
+async function loadFacilityHandoff(){
+  const h = state.facHandoff = { loading: true, people: [], target: '', armed: false, busy: false, msg: '' };
+  try{
+    const { data: fac } = await netTimeout(supabaseClient.rpc('my_facility'), 8000);
+    const ids = ((fac && fac.teams) || []).map(t => t.id);
+    const { data } = await netTimeout(supabaseClient.from('team_coaches')
+      .select('team_id, role, coach_id, profiles!team_coaches_coach_id_fkey(account_id, full_name)').in('team_id', ids), 8000);
+    const by = {};
+    (data || []).filter(r => r.role === 'assistant' && r.profiles).forEach(r => {
+      const a = r.profiles.account_id;
+      (by[a] = by[a] || { name: r.profiles.full_name, prof: r.coach_id, teams: new Set() }).teams.add(r.team_id);
+    });
+    h.people = Object.values(by).filter(x => ids.length && ids.every(i => x.teams.has(i)));
+  }catch(e){ h.msg = "Couldn't load the coaches. Check your connection."; }
+  h.loading = false; render();
+}
+function renderFacilityHandoff(){
+  const h = state.facHandoff;
+  if(!h){ if(isOnline()) loadFacilityHandoff(); return ''; }
+  const pick = h.people.find(x => x.prof === h.target);
+  return `<div class="profile-section"><h3>Hand off the facility</h3>
+    <p class="profile-note">The facility, both sides, moves to a coach who is on both sides' staff. They become its manager; you stay on both sides as an assistant. Nothing else about your account changes.</p>
+    ${h.loading ? '<p class="profile-note">Loading…</p>' : !h.people.length
+      ? '<p class="profile-note">Nobody is on both sides\' staff yet. Send them both sides\' staff links first.</p>'
+      : `<div class="profile-row"><select class="text-input" style="max-width:240px;" onchange="state.facHandoff.target=this.value; state.facHandoff.armed=false; render();">
+          <option value="">Choose a coach</option>${h.people.map(x => `<option value="${escHtml(x.prof)}" ${x.prof === h.target ? 'selected' : ''}>${escHtml(x.name)}</option>`).join('')}</select>
+          ${pick && !h.armed ? `<button class="btn btn-secondary btn-sm" onclick="state.facHandoff.armed=true; render();">Hand off</button>` : ''}</div>
+        ${pick && h.armed ? `<p class="invite-regen-warn">This makes ${escHtml(pick.name)} the facility's manager now, on both sides.</p>
+          <div class="invite-regen-confirm-row"><button class="btn btn-danger" ${h.busy ? 'disabled' : ''} onclick="confirmFacilityHandoff()">${h.busy ? 'Handing off…' : 'Confirm hand-off'}</button>
+          <button class="btn btn-secondary" ${h.busy ? 'disabled' : ''} onclick="state.facHandoff.armed=false; render();">Cancel</button></div>` : ''}`}
+    ${h.msg ? `<p class="profile-note">${escHtml(h.msg)}</p>` : ''}
+  </div>`;
+}
+const FAC_HANDOFF_ERRORS = { not_on_both_sides: 'They need to be on both sides\' staff first.', already_manager: 'They already run a facility.',
+  invalid_new_manager: 'Choose someone else.', not_manager: "You don't run this facility." };
+window.confirmFacilityHandoff = async function(){
+  const h = state.facHandoff;
+  if(!h || !h.target) return;
+  if(!isOnline()){ h.msg = 'Handing off needs a connection.'; render(); return; }
+  h.busy = true; h.msg = ''; render();
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('handoff_facility', { p_new_manager: h.target }), 15000);
+    if(error) throw error;
+    if(!data || !data.ok){ h.busy = false; h.msg = FAC_HANDOFF_ERRORS[data && data.error] || "Couldn't hand off. Try again."; render(); return; }
+  }catch(e){ h.busy = false; h.msg = "Couldn't hand off. Check your connection."; render(); return; }
+  location.reload();
+};
+/* R7 Stage C: an adult who's signed in starts a facility from More ("Create account → Facility while signed in"): the
+   same create_facility_self as the New account form, then the operator's email, then the app opens the facility. */
+function canStartFacility(){
+  const prim = myAccountProfile();
+  return !!prim && prim.role !== 'child' && prim.age_attestation === 'adult' && !viewOnlyLinked()
+    && !myRoles().some(r => r.kind === 'facility') && !(isCoach() && isFacilityManager());
+}
+function renderStartFacility(){
+  if(!canStartFacility()) return '';
+  const f = state.startFac;
+  if(!f) return `<button type="button" class="more-row" onclick="state.startFac={ name: '', busy: false, error: '' }; render();"><span class="more-row-main">+ Start a facility</span></button>`;
+  return `<div class="more-row more-row-form">
+    <label class="field-label" for="sf-name">Facility name</label>
+    <input class="text-input" id="sf-name" maxlength="60" value="${escHtml(f.name)}" placeholder="Your facility's name" oninput="state.startFac.name=this.value">
+    <p class="profile-note">A baseball side and a softball side, with you as their manager. Your other roles stay as they are.</p>
+    ${f.error ? `<p class="error-msg">${escHtml(f.error)}</p>` : ''}
+    <div class="invite-regen-confirm-row"><button class="btn btn-primary btn-sm" ${f.busy ? 'disabled' : ''} onclick="startFacility()">${f.busy ? 'Setting up…' : 'Start the facility'}</button>
+    <button class="btn btn-secondary btn-sm" ${f.busy ? 'disabled' : ''} onclick="state.startFac=null; render();">Cancel</button></div>
+  </div>`;
+}
+const START_FAC_ERRORS = { already_manager: 'This account already runs a facility.', name_invalid: 'Facility name: 2 to 60 characters.',
+  adult_required: 'Facilities are for adults (18 or older).', child_login: "A player's own sign-in can't run a facility.",
+  daily_cap: "We've had a lot of new facilities today, so new ones are paused until tomorrow. Email nate@knuckleballonline.com and we'll set yours up." };
+window.startFacility = async function(){
+  const f = state.startFac; if(!f) return;
+  const el = document.getElementById('sf-name'); if(el) f.name = el.value;
+  const name = String(f.name || '').trim();
+  if(name.length < 2 || name.length > 60){ f.error = START_FAC_ERRORS.name_invalid; render(); return; }
+  if(!isOnline()){ f.error = 'Starting a facility needs a connection.'; render(); return; }
+  f.busy = true; f.error = ''; render();
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('create_facility_self', { p_facility_name: name }), 15000);
+    if(error) throw error;
+    if(!data || !data.ok){ f.busy = false; f.error = START_FAC_ERRORS[data && data.error] || ('Something went wrong: ' + ((data && data.error) || 'unknown')); render(); return; }
+  }catch(e){ f.busy = false; f.error = "Couldn't set up the facility. Check your connection and try again."; render(); return; }
+  lsSet('kb:facNotify', '1');   // R7 Stage B: the operator's one email (loadFacilityVerify sends it)
+  state.startFac = null;
+  await reloadMyProfiles();
+  await loadMyRoles();
+  const r = myRoles().find(x => x.kind === 'facility' && x.sport === currentSport()) || myRoles().find(x => x.kind === 'facility');
+  if(r) await switchRole(r.profile_id, r.team_id); else render();
 };
 window.cancelHandoff = function(){
   state.handoffArmed = false;
@@ -13918,9 +14121,9 @@ function renderMoreView(){
   const acct = myAccountProfile() || state.profile;
   const email = state.myVerification && state.myVerification.email;
   const badge = p => p.linked_role ? (p.linked_role === 'child' ? '' : ` <span class="acct-badge">${p.linked_role === 'family' ? 'View only' : 'Parent'}</span>`) : p.managed_by ? ' <span class="acct-badge">Player</span>' : '';
-  const own = ownSportProfiles();
-  const others = own.length > 1 ? list.filter(p => !own.includes(p)) : list;
-  const profileRows = renderSportSwitch() + (list.length > 1 ? others.map(p => p.id === state.profile.id
+  const own = ownSportProfiles(), covered = roleProfileIds();
+  const others = (own.length > 1 ? list.filter(p => !own.includes(p)) : list).filter(p => !covered.has(p.id));
+  const profileRows = renderRoleSwitch('more') + renderSportSwitch() + (list.length > 1 && others.length ? others.map(p => p.id === state.profile.id
       ? `<div class="more-row more-row-on"><span class="more-row-main">${escHtml(p.full_name)}${badge(p)} ${profileChip(p)}</span><span class="more-row-right"><span class="acct-check" aria-label="Active">✓</span></span></div>`
       : moreRow(`${escHtml(p.full_name)}${badge(p)} ${profileChip(p)}`, `switchProfile('${p.id}')`)).join('') : '');
   const adds = sportsToAdd().map(sp => `<button type="button" class="more-row" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')"><span class="more-row-main">+ Add ${sp}</span></button>`).join('');
@@ -13936,7 +14139,7 @@ function renderMoreView(){
     <div class="more-card">
       <div class="more-group-label">Your account</div>
       ${moreRow(`${escHtml(acct.full_name || '')}${ROLE_NAME[acct.role] ? ' · ' + ROLE_NAME[acct.role] : ''}${email ? `<span class="more-row-sub">${escHtml(email)}</span>` : ''}`, 'acctGoProfile()')}
-      ${profileRows}${adds}
+      ${profileRows}${adds}${renderStartFacility()}
       ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
       ${team ? `<div class="more-group-label">Team</div>${team}` : ''}
       <div class="more-group-label">Help</div>
@@ -13979,7 +14182,7 @@ function renderSideNav(teamSelector){
       <button type="button" class="nav-toggle" onclick="toggleNav()" aria-label="${state.navOpen ? 'Close the menu' : 'Open the menu'}" aria-expanded="${state.navOpen ? 'true' : 'false'}">${state.navOpen ? '✕' : DOCK_ICONS.more}</button>
       ${facHasLook(currentFacBrand()) ? renderFacIdentity(currentFacBrand(), 'in-nav') : `<div class="brand brand-lockup brand-home" role="link" tabindex="0" aria-label="${PLACE.home}" onclick="navGo('home')" onkeydown="if(event.key==='Enter'){navGo('home');}">${KB_MARK_SVG}<span class="display brand-word">KNUCKLEBALL</span></div>`}
     </div>
-    <div class="nav-team">${teamSelector}<span class="nav-sport">${escHtml(SPORT_NAME[currentSport()] || '')}</span>${renderOfflinePill()}</div>
+    <div class="nav-team">${teamSelector}${renderRoleSwitch('nav')}<span class="nav-sport">${escHtml(SPORT_NAME[currentSport()] || '')}</span>${renderOfflinePill()}</div>
     ${renderOutboxBadge()}
     <div class="nav-items">
       ${item('home', DOCK_ICONS.home, PLACE.home, v === 'home', "navGo('home')")}
@@ -14187,12 +14390,13 @@ function renderCoachesPage(){
 function renderAccountExtras(){
   const all = state.myProfiles && state.myProfiles.length ? state.myProfiles : [state.profile];
   const list = all.filter(x => !isAccountOnlyProfile(x));
-  const own = ownSportProfiles();
-  const rows = renderSportSwitch() + (list.length > 1 ? (own.length > 1 ? list.filter(x => !own.includes(x)) : list).map(x => x.id === state.profile.id
+  const own = ownSportProfiles(), covered = roleProfileIds();
+  const rest = (own.length > 1 ? list.filter(x => !own.includes(x)) : list).filter(x => !covered.has(x.id));
+  const rows = renderRoleSwitch('more') + renderSportSwitch() + (list.length > 1 && rest.length ? rest.map(x => x.id === state.profile.id
       ? `<div class="more-row more-row-on"><span class="more-row-main">${escHtml(x.full_name)} ${profileChip(x)}</span><span class="more-row-right"><span class="acct-check" aria-label="Active">✓</span></span></div>`
       : moreRow(`${escHtml(x.full_name)} ${profileChip(x)}`, `switchProfile('${x.id}')`)).join('') : '');
   const adds = sportsToAdd().map(sp => `<button type="button" class="more-row" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')"><span class="more-row-main">+ Add ${sp}</span></button>`).join('')
-    + (canAddPlayer() ? moreRow("Create Child's Profile", 'openAddPlayer()') : '');
+    + (canAddPlayer() ? moreRow("Create Child's Profile", 'openAddPlayer()') : '') + renderStartFacility();
   return `<div class="more-card acct-extras">
       ${rows || adds ? `<div class="more-group-label">Profiles</div>${rows}${adds}` : ''}
       ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
@@ -15472,7 +15676,7 @@ function renderCoachTeamAdmin(part){
   }).join('') || '<p class="profile-note">No coaches found.</p>');
 
   const assistants = (staff || []).filter(c => c.role === 'assistant');
-  const handoffSection = (head && assistants.length) ? `
+  const handoffSection = isFacilityManager() ? (head ? renderFacilityHandoff() : '') : (head && assistants.length) ? `
     <div class="profile-section">
       <h3>Hand off head coach</h3>
       <p class="profile-note">Head moves to the assistant you pick. You become an assistant on this team; nothing else about your account changes.</p>
@@ -15617,7 +15821,7 @@ function placeHead(label, sub){
 function renderProfileView(){
   const msg = state.profileMsg ? `<p class="profile-msg">${state.profileMsg}</p>` : '';
   if(isCoach()){
-    return `<div class="profile-page">${placeHead(PLACE.account)}${msg}${renderFacilityLook()}${renderCoachTeamAdmin('invites')}${renderNameSection(mapProfile(state.profile), true)}${renderCoachTeamAdmin('rest')}${renderCoachTeamAdmin('danger')}${renderDataSection(renderEmailSection() + renderPasswordSection())}</div>`;
+    return `<div class="profile-page">${placeHead(PLACE.account)}${msg}${renderYourRoles()}${renderFacilityLook()}${renderCoachTeamAdmin('invites')}${renderNameSection(mapProfile(state.profile), true)}${renderCoachTeamAdmin('rest')}${renderCoachTeamAdmin('danger')}${renderDataSection(renderEmailSection() + renderPasswordSection())}</div>`;
   }
   if(activeLinked()) return renderLinkedProfileView(msg);   // F1-G
   const p = currentPitcher();
@@ -15640,6 +15844,7 @@ function renderProfileView(){
     ${renderRadarGunSection(p, true)}
     ${activePlayerIsMine() ? renderPlayerAccessSection() : ''}
     ${placeHead(PLACE.account)}
+    ${renderYourRoles()}
     ${renderDataSection(renderEmailSection() + renderPasswordSection())}
   </div>`;
 }

@@ -60,7 +60,14 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-19 · SR1 Stage B (history baselines) · **staging**, branch `sr1b-baselines`, no cache change (no page changed)
+## 2026-11-19 · SR1 Stage B (history baselines) · **production** (PR #125, merge `e0da3c7`), branch `sr1b-baselines`, no cache change (no page changed)
+
+- **Live Nov 19 (Joel):**
+  - Backup `2026-11-19-1305`. `db push` ran only `20261124000000_sr1b_baselines`.
+  - Production's two functions match staging's by checksum; policies stay 32 / 12.
+  - The read-only check on production (`scripts/sr1b-compare.js`, the pitcher with the most pens and the one with the
+    most games) gave 558 checks and 0 differences.
+  - Merged.
 
 - **Packet:** `plans/sr1-session-reports.md` Stage B; decisions in `plans/sr1b-preconditions.md` (Joel: yes to all).
   Evidence: `plans/sr1b-evidence.md`.
@@ -75,11 +82,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - `supabase/tests/sr1b_baselines.sql`: 0 fails.
   - `scripts/sr1b-compare.js`: 1,796 checks over four demo pitchers (60 pens, 32 games), 0 differences against
     sums made by hand from the pitches.
-- **Production (Joel):**
-  1. Backup.
-  2. `supabase db push --project-ref fkgccjhuimkkbupbanxp` (only `20261124000000`).
-  3. Merge (nothing to deploy for the site).
-- **Open:** after production, run `scripts/sr1b-compare.js` against production for two real pitchers (read-only).
+- **Open:** none. Next: Stage C (the tabbed report), preconditions first.
 
 ---
 

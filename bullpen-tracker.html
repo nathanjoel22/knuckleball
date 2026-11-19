@@ -16734,12 +16734,31 @@ function feedAutoMark(s, eligible){
 // A report that draws ABOVE the screen would push everything down (iPhone Safari has no scroll anchoring, and the
 // page sets overflow-anchor:none so every browser behaves the same): the page scrolls by the height it added, so the
 // reader stays where they were and can always scroll back up to the top (Joel, Nov 5).
+// SR1 Stage E (decision 10): History shows each report's version for who is looking -- a pitcher's own login or a
+// teen's own sign-in sees the player version; a parent, or a linked parent or family member, the parent version;
+// coaches and facility staff the coach version. A report without that version (high school / college parents, every
+// report made before Stage E) shows the coach version.
+function reportViewerVersion(){
+  if(isCoach()) return 'coach';
+  const lr = activeLinked();
+  if(lr === 'child') return 'player';
+  if(lr === 'guardian' || lr === 'family') return 'parent';
+  return state.profile && state.profile.managed_by ? 'parent' : 'player';
+}
+function applyReportVersion(host){
+  const root = host.shadowRoot || host, body = root.querySelector('.kr-body') || root;
+  const page = body.querySelector('.page'), carried = ((page && page.getAttribute('data-kr-versions')) || '').split(' ');
+  const v = reportViewerVersion();
+  body.classList.remove('kr-as-player', 'kr-as-parent');
+  if((v === 'player' || v === 'parent') && carried.indexOf(v) >= 0) body.classList.add('kr-as-' + v);
+}
 function drawFeedSlots(path){
   document.querySelectorAll('.feed-report[data-rp="' + path + '"]').forEach(slot => {
     const host = feedHosts.get(path);
     if(host){
       const before = slot.getBoundingClientRect();
       const above = before.bottom <= 0;
+      applyReportVersion(host);   // SR1 E: the version for whoever is looking, set at every draw (roles can switch)
       slot.innerHTML = ''; slot.appendChild(host); slot.classList.add('is-drawn');
       if(above){ const grew = slot.getBoundingClientRect().height - before.height; if(grew) window.scrollBy(0, grew); }
       return;

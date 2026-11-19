@@ -97,6 +97,28 @@ Applies to reports made from Stage C on; every report made before stays exactly 
 - **Colours:** seven new `REPORT_VARS` tokens per sport (`up`, `down`, `info`, `band`, `warn-bg`, `warn-line`, `hl`).
   Baseball's "up" is #1A7F50 (contrast). Up / down always carry a sign or an arrow.
 
+## Reader versions (SR1 Stage E, Joel, Nov 19 2026; decisions in `plans/sr1e-preconditions.md`)
+
+- **One stored file carries its level's versions** (decision 10; `data-kr-versions` on `.page`):
+  - little league: coach · player · parent;
+  - high school (softball "High school & up" too) and college: coach · player.
+  - The level is the report's own (`session_workload` / `session_baselines`), so the level confirmation matters.
+- **Which shows:** `kr-as-player` / `kr-as-parent` on an ancestor; none = coach. The rules live in the stored file
+  (`ver()`, `tabBarVersions` in `send-session-report/sr1.ts`).
+  - **report.html** reads `&v=player|parent`. Its CSP hash was recomputed.
+  - **History** sets the class from who is looking (`reportViewerVersion`, `applyReportVersion`, at every draw):
+    - a pitcher's own login or a teen's own sign-in → player;
+    - a parent, a linked parent or family → parent;
+    - coaches and facility staff → coach.
+  - A version the file doesn't carry (high school / college parents, every report from before Stage E) shows the
+    coach version.
+- **Player versions** speak in "you"; coach and parent versions use the first name.
+  - **Little league player:** Summary · Where it went · Progress; two tiles, What went well (or the best pitch's line),
+    the kid's 7-day wording, and **no velocity shown anywhere**. It's hidden by CSS, not removed (Joel accepted).
+  - **Little league parent:** Summary · Progress; workload and rest first, then How it went.
+  - **High school player:** four tiles, the top two items. **College player:** the full report in "you".
+- **Copy Report URL** stays the plain (coach) link; Stage F's emails carry `&v=` per recipient.
+
 ## Workload, rest and level (SR1 Stage D, Joel, Nov 19 2026; decisions in `plans/sr1d-preconditions.md`)
 
 - **Baseball only.** Joel: "leave softball alone, pitch count rules don't apply there". Softball has no age group, no

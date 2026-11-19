@@ -60,6 +60,30 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-19 · SR1 Stage E (reader versions) · **staging**, branch `sr1e-reader-versions`, cache `kb-shell-v363`
+
+- **Packet:** `plans/sr1-session-reports.md` Stage E; decisions in `plans/sr1e-preconditions.md` (Joel: yes to all).
+  Evidence: `plans/sr1e-evidence.md` (+ `plans/sr1e-evidence/`).
+- **Function (staging only):** `send-session-report`. Each new report carries its level's player (and, for little
+  league, parent) Summary and tab set beside the coach version (`data-kr-versions`).
+- **Pages:** report.html reads `&v=` (CSP hash recomputed); History shows each viewer their version.
+- **Checked:**
+  - Acceptance 1–4, 18 and 19 PASS:
+    - every version's tabs match decision 10;
+    - no velocity in the little league player version's shown text;
+    - a college or high school `v=parent` shows the coach version;
+    - in History, a pitcher sees player, a parent and a linked guardian see parent, a coach sees coach.
+  - Sizes: pen up to 140 KB and game up to 352 KB (little league, three versions), from 111 / 305 KB.
+  - Old reports hash the same.
+- **Staging test data:** Little Leaguer set to Little League with a pitch mix and one pen. The test parent's email was
+  marked verified in staging.
+- **Production (Joel):**
+  1. `supabase functions deploy send-session-report --project-ref fkgccjhuimkkbupbanxp`.
+  2. Merge.
+- **Open:** none. Next: Stage F (email per recipient and the parent contact).
+
+---
+
 ## 2026-11-19 · SR1 Stage D (workload, rest and team settings) · **staging**, branch `sr1d-workload`, cache `kb-shell-v362`
 
 - **Packet:** `plans/sr1-session-reports.md` Stage D; decisions in `plans/sr1d-preconditions.md` (Joel: softball left

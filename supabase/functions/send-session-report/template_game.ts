@@ -24,7 +24,8 @@ import {
   type Comparison, NO_COMPARISON, type StoodOut, type TileSpec, WINDOWS, SR1_CSS, ids, radios, tabBar, windowSwitch, wb, panel,
   takeaway, card, tileFor, windowCaption, stoodOutCard, sparkCard, simpleTable, typeCell, footer, firstName, word, ordinal, pctOf,
   pickFastball, avgVelo, gunned, outsideRange, rangeText, sortStoodOut, sidePattern, clusterPattern, typeMin, inningMin,
-  restCard, sevenDayCard, type Voice, type LevelGroup, levelGroup, versionsFor, ver, tabBarVersions
+  restCard, sevenDayCard, type Voice, type LevelGroup, levelGroup, versionsFor, ver, tabBarVersions,
+  type EmailVersion, emailComment, shortDate, sevenDayEmailLine, restEmailLine, comparedEmailLine
 } from './sr1.ts'
 
 // The one definition this report does NOT compute itself -- it's the exact
@@ -653,6 +654,30 @@ function gameTiles(f: GameFacts): TileSpec[] {
     { label: 'In zone', cur: s.in_zone_pct, unit: '%', key: 'in_zone_pct' }
   ]
 }
+// SR1 Stage F: each version's email (e01), frozen into the report; the bullets never repeat the headline
+const gBullets = (items: StoodOut[], headline: string) => items.filter(i => i.text !== headline).slice(0, 2).map(i => i.text)
+function gameEmails(p: GameReportPayload, f: GameFacts, c: Comparison, g: LevelGroup, items: StoodOut[], itemsYou: StoodOut[]): Record<string, EmailVersion> {
+  const s = f.s, name = p.pitcherName, first = escapeHtml(firstName(name)), date = shortDate(p.date), ip = fmtIP(s.outs_recorded), r = gameRank(f, c)
+  const four = [{ v: `${s.strike_pct}%`, l: 'Strike' }, { v: s.first_pitch_strike_pct === null ? '—' : `${s.first_pitch_strike_pct}%`, l: '1st pitch' }, { v: `${s.k} / ${s.bb}`, l: 'K / BB' }, { v: String(pitchCount(s)), l: 'Pitches' }]
+  const subject = `Game report: ${name} · ${ip} IP, ${s.k} K · ${date}`
+  const rest = restEmailLine(c.workload, pitchCount(s), p.date)
+  const lines = (who: string, kid = false) => [rest, sevenDayEmailLine(c.workload, kid), who ? comparedEmailLine(c, who, 'game') : null].filter(Boolean) as EmailVersion['lines']
+  const out: Record<string, EmailVersion> = {
+    coach: { subject, headline: gameHeadline(p, f, c, items), stats: four, bullets: gBullets(items, gameHeadline(p, f, c, items)), lines: lines(first + "'s"), button: 'Open the full report' }
+  }
+  const youSubject = `Your game report: ${ip} IP, ${s.k} K · ${date}`
+  if (g === 'll') {
+    out.player = { subject: youSubject, headline: s.k ? `You pitched ${ip} innings and struck out ${s.k}!` : `You pitched ${ip} innings and threw ${s.strike_pct}% strikes.`,
+      stats: [{ v: `${s.strike_pct}%`, l: 'Strikes' }, { v: s.first_pitch_strike_pct === null ? '—' : `${s.first_pitch_strike_pct}%`, l: '1st pitch' }, { v: String(s.k), l: 'K' }],
+      bullets: [], lines: lines('', true), button: 'See where every pitch went' }
+    out.parent = { subject, headline: `${ip} innings, ${s.k} strikeout${s.k === 1 ? '' : 's'}, ${s.bb} walk${s.bb === 1 ? '' : 's'}${p.opponent ? ` against ${escapeHtml(p.opponent)}` : ''}.`,
+      stats: [{ v: ip, l: 'IP' }, { v: String(s.k), l: 'K' }, { v: String(s.bb), l: 'BB' }, { v: String(pitchCount(s)), l: 'Pitches' }],
+      bullets: [`${s.strike_pct}% strikes${r.best ? `, ${first}'s best in the last ${word(r.k)} games` : ''}.`], lines: lines(first + "'s"), button: 'Open the full report' }
+  } else {
+    out.player = { subject: youSubject, headline: gameHeadline(p, f, c, itemsYou, 'you'), stats: four, bullets: gBullets(itemsYou, gameHeadline(p, f, c, itemsYou, 'you')), lines: lines('your'), button: 'Open the full report' }
+  }
+  return out
+}
 function gameCaptions(p: GameReportPayload): string {
   const note = viewNote(p.chartingPerspective).replace('class="header-note"', 'class="caption"')
   return (note || `<p class="caption">Every grid in this report is drawn in the ${VIEW_NAME}, ${REPORT_VIEW === 'pitcher' ? 'looking in from the mound toward home plate' : 'looking out toward the mound'}.</p>`)
@@ -800,6 +825,7 @@ ${g === 'll' ? panel(7, gameWhereItWent(p, f)) + panel(8, gameProgressLite(p)) :
 </main>
 ${footer(firstName(p.pitcherName), links, true)}
 </div>
+${emailComment(gameEmails(p, f, c, g, items, itemsYou))}
 </body>
 </html>`)
 }

@@ -60,6 +60,29 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-19 · SR1 Stage F (email per recipient and the parent contact) · **staging**, branch `sr1f-email-parent`, cache `kb-shell-v364`
+
+- **Packet:** `plans/sr1-session-reports.md` Stage F; decisions in `plans/sr1f-preconditions.md` (Joel: yes to all;
+  test inboxes nate+chaos…@knuckleballonline.com). Evidence: `plans/sr1f-evidence.md` (+ `plans/sr1f-evidence/`).
+- **Function (staging only):** `send-session-report`.
+  - One message per recipient (cap 4), each with its slot's version and `&v=` link.
+  - Each new report freezes its versions' emails in a comment.
+  - `_shared/email.ts` gains an optional summary block.
+- **App:** "Parent or guardian" in the contacts panel (not for college-only players); the sends include it.
+- **Checked:**
+  - Acceptance 1–4 and 20 PASS: one real send to Joel's three addresses gave three messages (coach / player / parent
+    versions); the parent field saves; a college-only player isn't offered it.
+  - Old reports keep the plain email.
+- **Open:**
+  - Acceptance 21: Joel screenshots the three emails in Gmail (web, iPhone) and Apple Mail.
+  - Found: the contacts panel isn't reachable on phones (since N1 Stage B). Suggested fix: Report contacts in Pitcher
+    settings.
+- **Production (Joel):**
+  1. `supabase functions deploy send-session-report --project-ref fkgccjhuimkkbupbanxp`.
+  2. Merge.
+
+---
+
 ## 2026-11-19 · SR1 Stage E (reader versions) · **production** (PR #131, merge `006ee9d`), branch `sr1e-reader-versions`, cache `kb-shell-v363`
 
 - **Live Nov 19 (Joel):** `send-session-report` deployed to production (version 50, the same bundle as staging). Merged

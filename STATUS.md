@@ -60,7 +60,14 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-19 · R7 Stage B (facility self-serve) · **staging** (DB + functions + local site), branch `r7b-facility-self-serve`, cache `kb-shell-v359`
+## 2026-11-19 · R7 Stage B (facility self-serve) · **production** (PR #117, merge `4666698`), branch `r7b-facility-self-serve`, cache `kb-shell-v359`
+
+- **Live Nov 19 (Joel):**
+  - Backup `2026-11-19-0918`.
+  - `db push` ran only `20261121000000_r7b_facility_self_serve`. Production's functions match staging's checksums;
+    the 4 existing facilities are `operator_link`; policies stay 32 / 12.
+  - `facility-notify` (v1) and `facility-invites` (v2) deployed; both refuse an unsigned request (401).
+  - Merged; knuckleballonline.com and knuckleball.pages.dev serve `kb-shell-v359` with the Facility form.
 
 - **Packet:** `plans/r7-one-login.md` Stage B; decisions in `plans/r7-preconditions.md` item 5 (Joel: yes to all).
   Evidence: `plans/r7b-evidence.md` (+ `plans/r7b-evidence/`).
@@ -86,8 +93,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Slip (no harm):** the first dry runs went to production (bare `--linked`). All were rolled back, and production was
   checked unchanged; details in the evidence. A memory rule now requires `--project-ref` for staging.
 - **Open:**
-  - Joel's check.
-  - Production order: backup → `db push` → deploy `facility-notify` and `facility-invites` → merge.
+  - Joel to open operator.html once and see the Facilities list.
   - Then Stage C.
 
 ---

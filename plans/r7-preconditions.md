@@ -2,6 +2,12 @@ Written against: `974bef4` (main; production v357). Packet: `plans/r7-one-login.
 
 # R7 · One login · preconditions report (Nov 19, 2026)
 
+**Joel, Nov 19 2026:** "1. apple approved 34101 2. yes, as written 3. right now everything 4. yes 5. yes 6. yes 7. yes 8. yes".
+So: build 34101 is approved (R7 may ship after Joel's check, with the review notes rewritten for the next submission);
+facility sign-up is open and self-serve; a self-serve facility gets everything for now; the four sign-up pages become
+forwards; a daily cap and Joel's email stand in for a device limit; "the union, never more" is the RLS rule;
+`opens_profile` chooses the opening role; Stage C adds a facility hand-off.
+
 Nothing is built. Line numbers:
 - `S` = `supabase/schema/schema.sql`;
 - `BT` = `bullpen-tracker.html`;

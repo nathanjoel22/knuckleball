@@ -97,6 +97,29 @@ Applies to reports made from Stage C on; every report made before stays exactly 
 - **Colours:** seven new `REPORT_VARS` tokens per sport (`up`, `down`, `info`, `band`, `warn-bg`, `warn-line`, `hl`).
   Baseball's "up" is #1A7F50 (contrast). Up / down always carry a sign or an arrow.
 
+## Workload, rest and level (SR1 Stage D, Joel, Nov 19 2026; decisions in `plans/sr1d-preconditions.md`)
+
+- **Baseball only.** Joel: "leave softball alone, pitch count rules don't apply there". Softball has no age group, no
+  rest card and no 7-day card.
+- **A Pitch Smart age group** (MLB / USA Baseball's seven groups):
+  - `teams.pitch_smart_age`: the head coach sets it in Account → Team, through `set_team_age_group`;
+  - `profiles.pitch_smart_age`: a pitcher's own, in Pitcher settings, for Independent games.
+  - None set: the report says so; it never guesses from the level.
+- **The level is confirmed once per team** (`teams.level_confirmed_at`, stamped by `set_team_level`).
+  - Until then the head coach's Home shows "Confirm your team's level": Level of play, plus the age group for
+    baseball.
+  - Save confirms it on every device; Not now hides it on that device.
+  - Stage E's reader versions depend on the level.
+- **Reports** (from Stage D on):
+  - **Rest card** on games: Pitch Smart's table (`PITCH_SMART` in `send-session-report/sr1.ts`, from
+    mlb.com/pitch-smart, checked Nov 19 2026) for the game's pitch count. Back on the game's Eastern date + rest days
+    + 1. Above the table, its top band; above the daily max, one plain line.
+  - **7-day card** on every report: `session_workload()`, the 7 days up to the session, counted like
+    `pitcher_workload`, under the caller's read rules. A heads-up past 100 / 125 / 150 (little league / high school /
+    college; no level = college); it never says a pitcher can't throw.
+- Migration `20261125000000_sr1d_workload`; rollback in `supabase/rollback/`; test `supabase/tests/sr1d_workload.sql`;
+  report-side check `scripts/sr1d-check.ts`. Policies 32 / 12.
+
 ## Sports: baseball and softball (Track S — S1 + S2, Joel, Oct 1 2026)
 
 - Every profile, team and session has a `sport` ('baseball' | 'softball'), derived by SECURITY DEFINER triggers (`20261001000000_s1_sport.sql`). Cross-sport team joins are refused; a team's or session's sport never changes; a profile's sport can't change once it has a team or sessions. Sign-in checks the account's sport and role; every login/sign-up link carries `?sport=`. The sport / role picker (`signin.html`, formerly `index.html`) always opens on "Which sport?".

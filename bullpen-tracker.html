@@ -3882,12 +3882,12 @@ async function loadTeams(){
     // get_team_invite_links().
     const { data } = await supabaseClient
       .from('team_coaches')
-      .select('role, teams(id, name, level, archived_at, kind)')
+      .select('role, teams(id, name, level, archived_at, kind, pitch_smart_age, level_confirmed_at)')
       .eq('coach_id', state.profile.id)
       .order('team_id');
     state.teams = sortTeamsActiveFirst((data || []).filter(r => r.teams).map(r => ({ ...r.teams, archived: !!r.teams.archived_at, myRole: r.role })));
   } else {
-    const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name, level, archived_at, kind)').eq('pitcher_id', state.profile.id);
+    const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name, level, archived_at, kind, pitch_smart_age, level_confirmed_at)').eq('pitcher_id', state.profile.id);
     state.teams = sortTeamsActiveFirst((data || []).filter(r => r.teams).map(r => ({ ...r.teams, archived: !!r.teams.archived_at, uniform_number: r.uniform_number })));
   }
 }
@@ -3912,7 +3912,7 @@ function activeTeams(){ return (state.teams || []).filter(t => !t.archived); }
 // profiles are always read with this explicit list, never select('*').
 // A NEW profiles column is unreadable until it's granted in a migration AND
 // added here (safe by default).
-const PROFILE_COLS = 'id, account_id, is_primary, managed_by, role, sport, full_name, pitch_types, created_at, contact_emails, email_verified_at, email_verify_token_sent_at, throws, relative_accuracy_enabled, uses_radar_gun, setup_dismissed_at, headshot_updated_at, age_attestation, attested_at, attested_via, terms_version, terms_agreed_at, guardian_consent_sent_at, guardian_consented_at, consent_via, level, created_via, opens_profile, opens_team';   // P2: level (Oct 22); R7 C: roles (Nov 19)
+const PROFILE_COLS = 'id, account_id, is_primary, managed_by, role, sport, full_name, pitch_types, created_at, contact_emails, email_verified_at, email_verify_token_sent_at, throws, relative_accuracy_enabled, uses_radar_gun, setup_dismissed_at, headshot_updated_at, age_attestation, attested_at, attested_via, terms_version, terms_agreed_at, guardian_consent_sent_at, guardian_consented_at, consent_via, level, created_via, opens_profile, opens_team, pitch_smart_age';   // P2: level (Oct 22); R7 C: roles (Nov 19); SR1 D: age group
 function lastKnownKey(userId){ return 'lastKnownContext:' + userId; }
 
 /* ---------- S4 STAGE A: ONE LOGIN, MANY PROFILES (Joel, Oct 2) ----------
@@ -4009,10 +4009,10 @@ window.switchProfile = async function(id){
 // live state the screen is drawing from.
 async function fetchTeamsFor(prof){
   if(prof.role === 'coach'){
-    const { data } = await supabaseClient.from('team_coaches').select('role, teams(id, name, level, archived_at, kind)').eq('coach_id', prof.id).order('team_id');
+    const { data } = await supabaseClient.from('team_coaches').select('role, teams(id, name, level, archived_at, kind, pitch_smart_age, level_confirmed_at)').eq('coach_id', prof.id).order('team_id');
     return sortTeamsActiveFirst((data || []).filter(r => r.teams).map(r => ({ ...r.teams, archived: !!r.teams.archived_at, myRole: r.role })));
   }
-  const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name, level, archived_at, kind)').eq('pitcher_id', prof.id);
+  const { data } = await supabaseClient.from('pitcher_teams').select('team_id, uniform_number, teams(id, name, level, archived_at, kind, pitch_smart_age, level_confirmed_at)').eq('pitcher_id', prof.id);
   return sortTeamsActiveFirst((data || []).filter(r => r.teams).map(r => ({ ...r.teams, archived: !!r.teams.archived_at, uniform_number: r.uniform_number })));
 }
 async function fetchRosterFor(teamId, team){
@@ -14619,6 +14619,7 @@ function renderCoachHome(){
   const title = `<div class="place-head"><h2 class="display">This week</h2><span class="place-sub">${escHtml(team ? team.name : '')} · ${escHtml(weekRangeLabel())}</span></div>`;
   return `<div class="home-page coach-home${mgr ? ' mgr-home' : ''}">
     ${title}
+    ${renderLevelConfirm()}
     <div class="home-tiles-num">${tile('Active', active.length, ` of ${roster.length}`, !mgr)}${tile('Sessions', weekSessions)}${tile('Pitches', weekPitches)}</div>
     ${stale}
     ${archived ? '' : roster.length ? `<button type="button" class="btn btn-primary home-cta" onclick="setView('session')">${state.draftAvailable ? 'Resume' : 'Start a session'}</button>`
@@ -15463,8 +15464,24 @@ function renderLevelSection(p){
   const lv = LEVELS[currentSport()], cur = p.level || state.profile.level || null;
   return `<div class="profile-section"><h3>Level</h3>
     <div class="profile-row">${segTray(lv.map(([k, l]) => ({ label: l, selected: cur === k, onclick: `setMyLevel('${k}')` })), { key: 'level', label: 'Level', cls: 'tray-fit' })}</div>
-    <p class="profile-note">Used for extra innings in Live Games you chart on your own (Independent).</p></div>`;
+    <p class="profile-note">Used for extra innings in Live Games you chart on your own (Independent).</p>
+    ${currentSport() === 'baseball' ? `<h3 style="margin-top:var(--s-16);">Pitch Smart age group</h3>
+    <div class="profile-row">${psAgeSelect(p.pitch_smart_age || (state.profile && state.profile.pitch_smart_age) || '', "setMyAgeGroup(this.value)", !isOnline())}</div>
+    <p class="profile-note">Sets the rest days on the reports of Live Games you chart on your own (Independent).</p>` : ''}</div>`;
 }
+// SR1 Stage D (Joel, Nov 19): MLB / USA Baseball Pitch Smart's age groups, baseball only (no softball table)
+const PS_AGES = ['7-8', '9-10', '11-12', '13-14', '15-16', '17-18', '19-22'];
+function psAgeSelect(cur, onchange, disabled){
+  return `<select class="text-input" style="max-width:240px;" ${disabled ? 'disabled' : ''} onchange="${onchange}">
+    <option value="" ${cur ? '' : 'selected'}>Not set</option>${PS_AGES.map(a => `<option value="${a}" ${cur === a ? 'selected' : ''}>Ages ${a.replace('-', '–')}</option>`).join('')}</select>`;
+}
+window.setMyAgeGroup = async function(val){
+  if(isCoach() || !state.profile) return;
+  const { error } = await supabaseClient.from('profiles').update({ pitch_smart_age: val || null }).eq('id', state.profile.id);
+  state.profileMsg = error ? 'Could not save. Check your connection and try again.' : '';
+  if(!error){ state.profile.pitch_smart_age = val || null; await saveLastKnownContext(); }
+  render();
+};
 window.setMyLevel = async function(val){
   if(isCoach() || !state.profile) return;
   const { error } = await supabaseClient.from('profiles').update({ level: val }).eq('id', state.profile.id);
@@ -15796,7 +15813,13 @@ function renderCoachTeamAdmin(part){
         </select></div>` : `<div class="profile-row"><strong>${escHtml(curLabel[1])}</strong></div>`}
       <p class="profile-note">Extra innings start in the ${curLabel[2]}th${head ? '' : ' (set by the head coach)'}. Live Games already in progress keep the level they started with.${head && !isOnline() ? ' Changing it needs a connection.' : ''}</p>
       ${state.levelError ? `<p class="profile-msg">${escHtml(state.levelError)}</p>` : ''}
-    </div>`;
+    </div>
+    ${currentSport() === 'baseball' ? `<div class="profile-section">
+      <h3>Pitch Smart age group</h3>
+      ${head ? `<div class="profile-row">${psAgeSelect(team.pitch_smart_age || '', `setTeamAgeGroup('${team.id}', this.value)`, state.levelBusy || !isOnline())}</div>`
+        : `<div class="profile-row"><strong>${team.pitch_smart_age ? 'Ages ' + escHtml(team.pitch_smart_age.replace('-', '–')) : 'Not set'}</strong></div>`}
+      <p class="profile-note">Sets the rest days on this team's game reports (MLB / USA Baseball Pitch Smart)${head ? '' : '; set by the head coach'}.</p>
+    </div>` : ''}`;
 
   if(part === 'invites') return `<div id="acct-invites"></div>${codesSection}${linksSection}`;
   if(part === 'danger') return realHead ? renderTeamDangerSection(team) : '';
@@ -15823,13 +15846,69 @@ function renderCoachTeamAdmin(part){
     </div>
   `;
 }
+// SR1 Stage D: the team's Pitch Smart age group (head coach, baseball)
+window.setTeamAgeGroup = async function(teamId, age){
+  state.levelError = null; state.levelBusy = true; render();
+  try{
+    const { error } = await netTimeout(supabaseClient.rpc('set_team_age_group', { p_team_id: teamId, p_age: age || null }), 10000);
+    if(error) throw error;
+    const t = state.teams.find(x => x.id === teamId);
+    if(t) t.pitch_smart_age = age || null;
+    await saveLastKnownContext();
+  } catch(e){
+    console.error('set age group failed', e);
+    state.levelError = "Couldn't change the age group. Check your connection and try again.";
+  }
+  state.levelBusy = false;
+  render();
+};
+// SR1 Stage D (decision 15): a head coach confirms each team's level once (and, for baseball, its age group). Save
+// stamps the team (level_confirmed_at) so it's gone on every device; Not now hides it on this device only.
+function lvlConfirmKey(teamId){ return 'kb:lvlConfirm:' + teamId; }
+function renderLevelConfirm(){
+  if(!isCoach() || !isOnline()) return '';
+  const due = (state.teams || []).filter(t => t.myRole === 'head' && !t.archived && !t.level_confirmed_at && !(() => { try{ return localStorage.getItem(lvlConfirmKey(t.id)); }catch(e){ return null; } })());
+  if(!due.length) return '';
+  const levels = LEVELS[currentSport()], baseball = currentSport() === 'baseball';
+  state.lvlConfirm = state.lvlConfirm || {};
+  return due.map(t => {
+    const d = state.lvlConfirm[t.id] || (state.lvlConfirm[t.id] = { level: t.level || levels[levels.length - 1][0], age: t.pitch_smart_age || '' });
+    return `<div class="more-card lvl-confirm"><div class="more-group-label">Confirm your team's level</div>
+      <div class="profile-row"><label class="profile-note" style="min-width:150px;">${escHtml(t.name)} plays at</label>
+        <select class="text-input" style="max-width:240px;" onchange="state.lvlConfirm['${t.id}'].level=this.value">${levels.map(l => `<option value="${l[0]}" ${l[0] === d.level ? 'selected' : ''}>${escHtml(l[1])}</option>`).join('')}</select></div>
+      ${baseball ? `<div class="profile-row"><label class="profile-note" style="min-width:150px;">Pitch Smart age group</label>${psAgeSelect(d.age, `state.lvlConfirm['${t.id}'].age=this.value`, false)}</div>` : ''}
+      <p class="profile-note">Used for extra innings${baseball ? ' and the rest days on game reports' : ''}, and for who each report is written for.</p>
+      ${state.lvlConfirmError === t.id ? `<p class="profile-msg">Couldn't save. Check your connection and try again.</p>` : ''}
+      <div class="profile-row" style="justify-content:flex-end;gap:var(--s-8);">
+        <button type="button" class="btn btn-secondary" onclick="dismissLevelConfirm('${t.id}')">Not now</button>
+        <button type="button" class="btn btn-primary" ${state.lvlConfirmBusy ? 'disabled' : ''} onclick="saveLevelConfirm('${t.id}')">Save</button></div></div>`;
+  }).join('');
+}
+window.dismissLevelConfirm = function(teamId){ try{ localStorage.setItem(lvlConfirmKey(teamId), String(Date.now())); }catch(e){} render(); };
+window.saveLevelConfirm = async function(teamId){
+  const d = (state.lvlConfirm || {})[teamId]; if(!d) return;
+  state.lvlConfirmBusy = true; state.lvlConfirmError = null; render();
+  try{
+    const r1 = await netTimeout(supabaseClient.rpc('set_team_level', { p_team_id: teamId, p_level: d.level }), 10000);
+    if(r1.error) throw r1.error;
+    if(currentSport() === 'baseball'){
+      const r2 = await netTimeout(supabaseClient.rpc('set_team_age_group', { p_team_id: teamId, p_age: d.age || null }), 10000);
+      if(r2.error) throw r2.error;
+    }
+    const t = state.teams.find(x => x.id === teamId);
+    if(t){ t.level = d.level; t.pitch_smart_age = currentSport() === 'baseball' ? (d.age || null) : t.pitch_smart_age; t.level_confirmed_at = new Date().toISOString(); }
+    await saveLastKnownContext();
+  } catch(e){ console.error('confirm level failed', e); state.lvlConfirmError = teamId; }
+  state.lvlConfirmBusy = false;
+  render();
+};
 window.setTeamLevel = async function(teamId, level){
   state.levelError = null; state.levelBusy = true; render();
   try{
     const { error } = await netTimeout(supabaseClient.rpc('set_team_level', { p_team_id: teamId, p_level: level }), 10000);
     if(error) throw error;
     const t = state.teams.find(x => x.id === teamId);
-    if(t) t.level = level;
+    if(t){ t.level = level; t.level_confirmed_at = t.level_confirmed_at || new Date().toISOString(); }   // SR1 D: chosen = confirmed
     await saveLastKnownContext();
   } catch(e){
     console.error('set level failed', e);

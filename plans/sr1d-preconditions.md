@@ -185,3 +185,10 @@ columns.
 - **In the app** (staging, 390 and 820): the age group row, the prompt showing once and never after Save, the
   report's rest and 7-day cards beside `b06` / `g01` / `g07`, and the softball report without a guideline.
 - **The rest:** old reports hash the same; `kb-shell-v362`; STATUS, CLAUDE.md.
+
+## Joel's answers (Nov 19, 2026)
+
+- **Question 1:** "leave softball alone, pitch count rules don't apply there."
+  - Softball gets no age group, no rest card and no 7-day card.
+  - The confirm prompt still asks softball teams for their level only, which Stage E's reader versions use.
+- **Questions 2–6:** "good to go", as recommended.

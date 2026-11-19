@@ -60,6 +60,37 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-19 · SR1 Stage D (workload, rest and team settings) · **staging**, branch `sr1d-workload`, cache `kb-shell-v362`
+
+- **Packet:** `plans/sr1-session-reports.md` Stage D; decisions in `plans/sr1d-preconditions.md` (Joel: softball left
+  alone, the rest as recommended). Evidence: `plans/sr1d-evidence.md` (+ `plans/sr1d-evidence/`).
+- **Database (staging only):** migration `20261125000000_sr1d_workload`.
+  - Columns: `teams.pitch_smart_age`, `teams.level_confirmed_at`, `profiles.pitch_smart_age`.
+  - Functions: `set_team_level` stamps the confirmation; new `set_team_age_group`, `sr1_session_age`,
+    `session_workload`.
+  - Policies 32 / 12.
+- **Function (staging only):** `send-session-report`: the rest card (games) and the 7-day card (every report),
+  baseball only.
+- **App:**
+  - the age group in Account → Team and in Pitcher settings (baseball);
+  - "Confirm your team's level" on the head coach's Home;
+  - teams and profile reads carry the new columns.
+- **Checked:**
+  - Acceptance 1–4 and 15–17 PASS: `sr1d_workload.sql` 0 fails; `scripts/sr1d-check.ts` 0 fails.
+  - Save / Not now / reload in the app, as a baseball head, a softball head and a pitcher.
+  - Stored reports' cards correct; old reports hash the same.
+- **Deviation:** the 7-day sentence says "in this pen / game", not "today" (a report is read later).
+- **Production (Joel):**
+  1. Backup.
+  2. `supabase db push --project-ref fkgccjhuimkkbupbanxp` (only `20261125000000`).
+  3. `supabase functions deploy send-session-report --project-ref fkgccjhuimkkbupbanxp`.
+  4. Merge.
+
+  The database goes first.
+- **Open:** none. Next: Stage E (reader versions), which needs heads to have confirmed their level.
+
+---
+
 ## 2026-11-19 · SR1 Stage C (the answer-first report, coach version) · **staging**, branch `sr1c-report-tabs`, no cache change (no page changed)
 
 - **Packet:** `plans/sr1-session-reports.md` Stage C; decisions in `plans/sr1c-preconditions.md` (Joel: Q1 the

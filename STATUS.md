@@ -60,7 +60,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-19 · Three fixes (no packet; Joel's request) · **staging**, branch `fix-three-nov19`, cache `kb-shell-v365`
+## 2026-11-19 · Three fixes (no packet; Joel's request) · **production** (PR #135, merge `170104e`), branch `fix-three-nov19`, cache `kb-shell-v365`
+
+- **Live Nov 19 (Joel):** `send-verification-email` deployed to production (version 7, the same bundle as staging).
+  Merged.
 
 - **Verify email colours (Joel: "baseball is using the softball colors and softball the baseball colors"):**
   - **Cause:** `send-verification-email` took any profile on the login with a sport, in no order, so a login holding
@@ -76,9 +79,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - Two teams plus Independent wrap to a second row, with nothing cut off (measured).
 - **No pitches yet on the charting screen:** the "Add pitches" button is gone (the "+" is right there). The line reads
   "No pitches yet. Tap + to add them and start charting." Checked on a player with no pitches.
-- **Production (Joel):**
-  1. `supabase functions deploy send-verification-email --project-ref fkgccjhuimkkbupbanxp`.
-  2. Merge.
+- **Open:** Joel to tap Resend on the verify banner once in each sport and check the colours.
 
 ---
 

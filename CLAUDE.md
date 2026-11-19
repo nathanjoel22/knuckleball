@@ -58,6 +58,21 @@ storage.
 - **Reports:** a U14 session gets per-pitch-type exact / RA grids inside each batter-side block (exact `--brand-mid` via `--kr-link`, RA `--brand-soft`, misses as hollow rings; legend only with RA on; headline "H hits of N — E exact, R RA"). Pens charted with no batter get a "No batter" block. Intent games get them too. These use inline styles only, so the report stylesheet is unchanged.
 - **Reset (Joel's instruction):** `supabase/scripts/u14_reset_list.sql`, then `u14_reset_run.sql`. It clears every zone and switch and proves the pitches unchanged by checksum. The lists are in `plans/u14-evidence/`; cleared zones are not restored.
 
+## Session tags (SR1 Stage A, Joel, Nov 19 2026; `plans/sr1-session-reports.md`, decisions in `plans/sr1a-preconditions.md`)
+
+- **Asked on a bullpen's start screen**, after "Turn on Relative Accuracy?": "What's this pen for?" Command · Velocity ·
+  Short pen · No tag (`SESSION_TAGS`; two rows of two). The default is No tag every time; nothing is remembered.
+  Games are never asked.
+- **Fixed at Start bullpen** (`s.purpose`): a pill beside RA on / off while charting. Stored as `sessions.purpose`
+  (`command` / `velocity` / `short_pen`, null = no tag) through `sync_session`, which saves anything else as null.
+  It's locked at the save (`sessions_h1_lock`).
+- **Copied to `session_stats.purpose`**, so baselines filter without a join (SR1 Stage B: a tagged pen compares only
+  with pens of the same tag; an untagged pen with all pens).
+- **Shown** as a chip on History's card (pending ones too) and in the report header ("Nov 18 · Command pen · team"). The
+  report reads it from the session row, never the payload. Untagged pens and games render byte-for-byte as before.
+- Migration `20261123000000_sr1a_session_tags`; rollback in `supabase/rollback/`; test
+  `supabase/tests/sr1a_session_tags.sql`. Policies 32 / storage 12, unchanged.
+
 ## Sports: baseball and softball (Track S — S1 + S2, Joel, Oct 1 2026)
 
 - Every profile, team and session has a `sport` ('baseball' | 'softball'), derived by SECURITY DEFINER triggers (`20261001000000_s1_sport.sql`). Cross-sport team joins are refused; a team's or session's sport never changes; a profile's sport can't change once it has a team or sessions. Sign-in checks the account's sport and role; every login/sign-up link carries `?sport=`. The sport / role picker (`signin.html`, formerly `index.html`) always opens on "Which sport?".
@@ -525,7 +540,7 @@ There are 32 RLS policies on production and staging (since F1-A, Oct 29 2026: + 
 **Saved sessions and sync (H1, Joel, Oct 3 2026; absorbs SC2).**
 - **Nothing reaches the server until "End session & save"** (Joel accepts this). In-session edits and Undo are device-only; every session row is saved (`ended_at` set) when it's written.
 - **One atomic call per saved session:** the outbox sends `sync_session(p_session, p_pitches, p_events)`, which checks entitlement itself (the pitcher's own profile, or a coach of the session's team, charting as one of their own profiles), inserts session + pitches + events (the sport and team triggers still fire) and sets `sessions.sealed_at` -- all or nothing. An id that's already saved and sealed returns `already_saved` and writes nothing, never a merge; the app clears the item and tells the user. Any other refusal keeps the item queued with its reason and retries; nothing is ever discarded. Never write sessions/pitches/game_events directly from the app.
-- **The lock (every caller, server functions included):** `sessions_h1_lock` -- a saved session can't be un-saved, re-timed or change pitcher/team/kind/sport/start/game fields; the tombstone fields are writable only by the server's own functions (`delete_session`); `report_path`/`report_generated_at` stay writable. `h1_child_lock` -- a saved session's pitches/events can't change (an identical re-send is skipped; the `after_pitch_id` FK may still clear itself), and nothing can be added once sealed.
+- **The lock (every caller, server functions included):** `sessions_h1_lock` -- a saved session can't be un-saved, re-timed or change pitcher/team/kind/sport/start/game fields or its purpose (SR1 A); the tombstone fields are writable only by the server's own functions (`delete_session`); `report_path`/`report_generated_at` stay writable. `h1_child_lock` -- a saved session's pitches/events can't change (an identical re-send is skipped; the `after_pitch_id` FK may still clear itself), and nothing can be added once sealed.
 - **Deleting is only `delete_session()`** (the pitcher for own sessions, the team's HEAD coach; assistants refused), which writes the tombstone. No client DELETE rule on any of the three tables.
 - **Grace path: CLOSED on production Oct 21 2026** (Joel; migration `20261023000000_h1_grace_close`, after backup 2026-10-21-1538). It let devices on v144 and earlier sync through the old direct path (INSERT into saved-but-unsealed sessions) via five "H1 grace" policies -- not six, as this file used to say. Closed after no old-path write since Oct 7: the five policies dropped (34 -> 29) and every saved session sealed (69 on production, contents unchanged). Every saved session is now sealed; only `sync_session` writes sessions, pitches and game_events. Rollback re-creates the policies (`supabase/rollback/20261023000000_h1_grace_close_down.sql`); sealing is never undone. Test: `supabase/tests/h1_grace_closed.sql`.
 
@@ -558,6 +573,7 @@ There are 32 RLS policies on production and staging (since F1-A, Oct 29 2026: + 
 - Any change to how a stat is computed changes the app AND `finalize_session_stats` together (bump
   `stats_version` in both, recompute). Then `scripts/sc1-compare.js` and `scripts/sc1b-compare.js` must show 0
   differences.
+- A column only carried from the session, not computed (SR1 A's `purpose`), needs no bump and no recompute.
 - Rollback: `supabase/rollback/20261028000000_sc1_session_stats_down.sql`; test: `supabase/tests/sc1_session_stats.sql`.
   SC1-B: rollback `supabase/rollback/20261029000000_sc1b_stats_v2_down.sql`; test `supabase/tests/sc1b_workload_rls.sql`.
 

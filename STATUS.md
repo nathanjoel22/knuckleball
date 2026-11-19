@@ -60,7 +60,15 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-19 · SR1 Stage A (session tags) · **staging** (local staging site), branch `sr1a-session-tags`, cache `kb-shell-v361`
+## 2026-11-19 · SR1 Stage A (session tags) · **production** (PR #123, merge `cc9e8f4`), branch `sr1a-session-tags`, cache `kb-shell-v361`
+
+- **Live Nov 19 (Joel):**
+  - Backup `2026-11-19-1246`.
+  - Before `db push`, production's `sync_session` / `finalize_session_stats` / `sessions_h1_lock` matched the
+    rollback's copies by checksum. `db push` ran only `20261123000000_sr1a_session_tags`.
+  - After: production's functions match staging's, policies stay 32 / 12, `session_stats_failures` 0.
+  - `send-session-report` deployed (version 47, the same bundle hash as staging).
+  - Merged. No production report was made as a test (it would write a real report file).
 
 - **Packet:** `plans/sr1-session-reports.md` Stage A; decisions in `plans/sr1a-preconditions.md` (Joel: yes to all).
   Evidence: `plans/sr1a-evidence.md` (+ `plans/sr1a-evidence/`).
@@ -79,14 +87,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - Reports sent before Stage A hash the same.
   - Untagged pens and games render byte-identical with old and new code.
 - **Deviation:** the four choices sit in two rows of two (one row didn't fit at 390).
-- **Production (Joel):**
-  1. Backup.
-  2. `supabase db push --project-ref fkgccjhuimkkbupbanxp` (only `20261123000000`).
-  3. `supabase functions deploy send-session-report --project-ref fkgccjhuimkkbupbanxp`.
-  4. Merge.
-
-  The database must go first.
-- **Open:** none. Stage B (history baselines) starts after Stage A is on production.
+- **Open:** Joel to see the start question once on his iPhone. Next: Stage B (history baselines), preconditions first.
 
 ---
 

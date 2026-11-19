@@ -60,6 +60,29 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-19 · SR1 Stage B (history baselines) · **staging**, branch `sr1b-baselines`, no cache change (no page changed)
+
+- **Packet:** `plans/sr1-session-reports.md` Stage B; decisions in `plans/sr1b-preconditions.md` (Joel: yes to all).
+  Evidence: `plans/sr1b-evidence.md`.
+- **Database (staging only):** migration `20261124000000_sr1b_baselines`: `session_baselines(session)` (SECURITY
+  INVOKER) and `sr1_session_level(session)`. No table, column or policy change; policies 32 / 12.
+- **Built:** the baselines Stage C's report will show.
+  - Windows: 1 / 3 / 12 months, this season, a year ago.
+  - Averages from 3 sessions, ranges from 5, per pitch type too.
+  - Only sessions with 10+ pitches count, and a tagged pen counts only same-tag pens.
+  - Nothing on screen changes yet.
+- **Checked:**
+  - `supabase/tests/sr1b_baselines.sql`: 0 fails.
+  - `scripts/sr1b-compare.js`: 1,796 checks over four demo pitchers (60 pens, 32 games), 0 differences against
+    sums made by hand from the pitches.
+- **Production (Joel):**
+  1. Backup.
+  2. `supabase db push --project-ref fkgccjhuimkkbupbanxp` (only `20261124000000`).
+  3. Merge (nothing to deploy for the site).
+- **Open:** after production, run `scripts/sr1b-compare.js` against production for two real pitchers (read-only).
+
+---
+
 ## 2026-11-19 · SR1 Stage A (session tags) · **production** (PR #123, merge `cc9e8f4`), branch `sr1a-session-tags`, cache `kb-shell-v361`
 
 - **Live Nov 19 (Joel):**

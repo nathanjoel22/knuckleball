@@ -576,6 +576,17 @@ There are 32 RLS policies on production and staging (since F1-A, Oct 29 2026: + 
 - A column only carried from the session, not computed (SR1 A's `purpose`), needs no bump and no recompute.
 - Rollback: `supabase/rollback/20261028000000_sc1_session_stats_down.sql`; test: `supabase/tests/sc1_session_stats.sql`.
   SC1-B: rollback `supabase/rollback/20261029000000_sc1b_stats_v2_down.sql`; test `supabase/tests/sc1b_workload_rls.sql`.
+- **History baselines (SR1 Stage B, Joel, Nov 19 2026; decisions in `plans/sr1b-preconditions.md`).**
+  - `session_baselines(session)` (SECURITY INVOKER: it counts what the caller can read, like `pitcher_workload`) pools a
+    pitcher's earlier sessions of the same kind from this table. A tagged pen counts only same-tag pens; the session
+    itself and anything later never count, nor sessions under 10 pitches.
+  - Windows: 1, 3 and 12 months; this season (Nov 15, or Sep 1 for college, Eastern time); a year ago (not college).
+  - Averages from 3 sessions, the 10th-90th percentile range from 5, per pitch type too.
+  - The level is the team's, else the pitcher's profile level, else the sport's last level (`sr1_session_level`).
+  - A game's first-pitch strikes are rebuilt from the stored rounded % (exact under 100 first pitches).
+  - This is the one server-side read a report makes on purpose (landmine 5 otherwise stands).
+  - Proof: `supabase/tests/sr1b_baselines.sql`, and `scripts/sr1b-compare.js <ref> <pitcher>...` (by hand from the
+    pitches, 0 differences). Any change to a stat's computation re-runs it.
 
 **Training facilities (F1-A, Joel, Oct 29 2026; `plans/f1-training-facilities.md` v2, decisions in
 `plans/f1a-preconditions.md`; staging, v321).** A third login area beside Pitcher and Coach.

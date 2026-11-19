@@ -11,6 +11,7 @@
 --      same reach as pitcher_workload. Windows end before the session starts and never include it:
 --        1m / 3m / 12m before it; this season (Nov 15 through high school, Sep 1 college, in Eastern time); a year ago
 --        (the 3 months ending a year before it; not for college).
+--      Only sessions with 10+ pitches count (Joel, Nov 19: test pens and abandoned starts left out).
 --      Each window: n sessions; pooled values (decision 4) once n >= 3; the 10th / 90th percentile of the per-session
 --      values once n >= 5 (decision 6); the same per pitch type (a type's n = sessions that threw it).
 --        bullpen: strike % (strikes / pitches), on the spot (hits / pitches), velocity (gunned pitches), pitches.
@@ -61,6 +62,7 @@ declare
   -- Starting values (packet section 2): one place each
   c_min_avg   constant int := 3;      -- sessions needed for an average
   c_min_range constant int := 5;      -- sessions needed for the normal range
+  c_min_pitches constant int := 10;   -- a session counts in a baseline only with this many pitches (Joel, Nov 19)
   c_lo        constant numeric := 0.1;
   c_hi        constant numeric := 0.9;
   c_tz        constant text := 'America/New_York';
@@ -100,6 +102,7 @@ begin
       select x.* from public.session_stats x
        where x.pitcher_id = s.pitcher_id and x.kind = s.kind and x.session_id <> s.id
          and x.started_at >= w.f and x.started_at < w.t
+         and x.pitches >= c_min_pitches
          and (s.kind <> 'bullpen' or s.purpose is null or x.purpose = s.purpose)
     ),
     per as (       -- one row per session: the pooled parts and the session's own values
@@ -184,7 +187,7 @@ begin
 
   return jsonb_build_object(
     'session', s.id, 'kind', s.kind, 'purpose', s.purpose, 'level', v_level, 'season_start', v_season,
-    'min_avg', c_min_avg, 'min_range', c_min_range, 'windows', v_wins);
+    'min_avg', c_min_avg, 'min_range', c_min_range, 'min_pitches', c_min_pitches, 'windows', v_wins);
 end;
 $function$;
 revoke all on function public.session_baselines(uuid) from public, anon;

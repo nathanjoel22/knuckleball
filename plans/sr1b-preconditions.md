@@ -145,3 +145,9 @@ session_baselines(<a pen>) →
   themselves, not from `session_stats`. It shows 0 differences, or stops.
 - **The rest:** policies 32 / 12 before and after, and a STATUS entry plus a CLAUDE.md line in the PR. No `.html`
   changes, so there's no cache bump.
+
+## Joel's answers (Nov 19, 2026)
+
+"yes to all": questions 1–6 as recommended. The caller's reach; 10+ pitches to count (`c_min_pitches`); two of the
+first three shown without a comparison in Stage C; softball High school & up = through high school; no level = the
+sport's last level; Eastern time.

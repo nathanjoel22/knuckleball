@@ -60,7 +60,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-19 · SR1 Stage F (email per recipient and the parent contact) · **staging**, branch `sr1f-email-parent`, cache `kb-shell-v364`
+## 2026-11-19 · SR1 Stage F (email per recipient and the parent contact) · **production** (PR #133, merge `650523f`), branch `sr1f-email-parent`, cache `kb-shell-v364`
+
+- **Live Nov 19 (Joel):** `send-session-report` deployed to production (version 51, the same bundle as staging).
+  Merged (the Parent or guardian contact, v364). New reports send each recipient their version; older reports keep the
+  plain email.
 
 - **Packet:** `plans/sr1-session-reports.md` Stage F; decisions in `plans/sr1f-preconditions.md` (Joel: yes to all;
   test inboxes nate+chaos…@knuckleballonline.com). Evidence: `plans/sr1f-evidence.md` (+ `plans/sr1f-evidence/`).
@@ -77,9 +81,6 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - Acceptance 21: Joel screenshots the three emails in Gmail (web, iPhone) and Apple Mail.
   - Found: the contacts panel isn't reachable on phones (since N1 Stage B). Suggested fix: Report contacts in Pitcher
     settings.
-- **Production (Joel):**
-  1. `supabase functions deploy send-session-report --project-ref fkgccjhuimkkbupbanxp`.
-  2. Merge.
 
 ---
 

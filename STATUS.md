@@ -60,9 +60,47 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-19 · R7 Stage B (facility self-serve) · **production** (PR #117, merge `4666698`), branch `r7b-facility-self-serve`, cache `kb-shell-v359`
+
+- **Live Nov 19 (Joel):**
+  - Backup `2026-11-19-0918`.
+  - `db push` ran only `20261121000000_r7b_facility_self_serve`. Production's functions match staging's checksums;
+    the 4 existing facilities are `operator_link`; policies stay 32 / 12.
+  - `facility-notify` (v1) and `facility-invites` (v2) deployed; both refuse an unsigned request (401).
+  - Merged; knuckleballonline.com and knuckleball.pages.dev serve `kb-shell-v359` with the Facility form.
+
+- **Packet:** `plans/r7-one-login.md` Stage B; decisions in `plans/r7-preconditions.md` item 5 (Joel: yes to all).
+  Evidence: `plans/r7b-evidence.md` (+ `plans/r7b-evidence/`).
+- **Database (staging only):**
+  - Migration `20261121000000_r7b_facility_self_serve`:
+    - `organizations.created_via` / `notified_at`;
+    - `f1_make_facility` (shared by `create_facility` and the new `create_facility_self`);
+    - the verify-gate trigger on `pitcher_teams` / `team_coaches`;
+    - `my_facility_needs_verify`;
+    - the daily cap (`facility_self_serve_day`, 20) and the `facility_notify` limit kind.
+  - Policies 32 / storage 12, unchanged.
+  - The test passes with 0 hard fails, and every facility test gives the same result before and after.
+  - The rollback was run on staging and the migration re-applied.
+- **Functions (staging):** new `facility-notify` (one email to the operator per self-serve facility); `facility-invites`
+  gains the Facilities list.
+- **Built:**
+  - New account → Facility makes the facility on the spot.
+  - An unverified self-serve manager can't add coaches or pitchers (banner, notes, "Not open yet" on the join pages).
+  - operator.html lists every facility with how it was made.
+  - The landing page's facility line now links to the form.
+- **Checked:** Done when 8 and 9 PASS. The Facilities list hasn't been run under the operator login; Joel to open it
+  once.
+- **Slip (no harm):** the first dry runs went to production (bare `--linked`). All were rolled back, and production was
+  checked unchanged; details in the evidence. A memory rule now requires `--project-ref` for staging.
+- **Open:**
+  - Joel to open operator.html once and see the Facilities list.
+  - Then Stage C.
+
+---
+
 ## 2026-11-19 · R7 Stage A (one sign-in, one New account form) · **production** (PR #115, merge `651b9ec`), branch `r7-one-login`, cache `kb-shell-v358`
 
-- **Live Nov 19:** merged by Joel; GitHub Pages built `651b9ec`; knuckleballonline.com and knuckleball.pages.dev serve `kb-shell-v358`, the new `login.html` and the forwarding `signin.html` / sign-up pages. No database change. App Store build 34101 was already approved, so nothing was in review.
+- **Live Nov 19:** merged by Joel. GitHub Pages built `651b9ec`. knuckleballonline.com and knuckleball.pages.dev serve `kb-shell-v358`, the new `login.html` and the forwarding `signin.html` / sign-up pages. No database change. App Store build 34101 was already approved, so nothing was in review.
 
 - **Packet:** `plans/r7-one-login.md` (Joel, Nov 19, saved verbatim). Report and Joel's answers (all 8 as recommended):
   `plans/r7-preconditions.md`. Evidence: `plans/r7a-evidence.md` (+ `plans/r7a-evidence/`).

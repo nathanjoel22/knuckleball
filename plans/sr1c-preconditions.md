@@ -208,10 +208,14 @@ today's links line (Knuckleball LLC 2026 · knuckleballonline.com · Privacy · 
 
 ## 6. Questions for you
 
-1. **The fastball for "FB avg mph"** and the velocity tab. Pitch names vary (production: Four Seam 253 sessions, Two
-   Seam 59, softball "Fastball").
-   - **Recommendation:** the session's most-thrown type whose name contains "Fastball", labelled "FB". If there's no
-     fastball, the most-thrown type, labelled by its name ("SLIDER AVG MPH").
+1. **The fastball for "FB avg mph"** and the velocity tab. **Answered (Joel, Nov 19):** baseball has two,
+   Four Seam Fastball (4SFB) and Two Seam Fastball (2SFB); softball has one, Fastball (FB).
+   - **Rule:** of those three catalog pitches, the one thrown most in the session (a tie goes to the four-seam).
+   - **Label:** its own abbreviation: "4SFB AVG MPH", "2SFB AVG MPH", softball "FB AVG MPH". Velocity's chart and
+     headline name it the same way.
+   - **No fastball thrown:** the tile shows the most-thrown pitch by its abbreviation.
+   - **Older names:** a few old sessions carry free-text names such as "2S" (7 on production). They aren't treated as
+     fastballs.
 2. **No radar** (no gunned pitches): **Recommendation:** the tile reads "—" with "radar off" under it, and Velocity's
    chart is replaced by one line. The four-tile layout stays.
 3. **Two of the first three for strikes:** what counts.
@@ -245,3 +249,9 @@ today's links line (Knuckleball LLC 2026 · knuckleballonline.com · Privacy · 
 - **Words:** no "he / his / him" in a softball or a baseball stored file (grep).
 - **Sizes and old reports:** sizes before and after. Old reports hash the same.
 - **The rest:** pre-push checks; no cache bump (no page changes); a STATUS entry and the CLAUDE.md lines in the PR.
+
+## Joel's answers (Nov 19, 2026)
+
+- Question 1: the fastball is 4SFB / 2SFB (baseball) or FB (softball), the most thrown, labelled by its abbreviation
+  (written into question 1 above).
+- Questions 2–9: "yes" as recommended.

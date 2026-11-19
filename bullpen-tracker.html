@@ -3405,7 +3405,7 @@ async function loadFullContextOnline(alreadyPainted){
   // Bullpen/Live Game chooser needs to be reachable underneath it on a
   // brand-new pitcher's very first New Session too, which a full-page
   // takeover would have blocked.
-  if(!isCoach() && state.profile && !state.profile.setup_dismissed_at && !state.draftAvailable && !activeLinked()){   // F1-G: the creator sets the profile up
+  if(!isCoach() && state.profile && !state.profile.setup_dismissed_at && !state.draftAvailable && !activeLinked() && !(state.whoPicker && state.whoPicker.length > 1)){   // F1-G: the creator sets the profile up; R7: not under "Which pitcher?"
     state.showSetupModal = true;
   }
   // Joel, Oct 1 (both sports): a brand-new coach -- head of a team with no
@@ -3938,6 +3938,14 @@ function pickActiveProfile(list, uid){
     else if(pool.length > 1){ state.whoPicker = pool.map(p => p.id); pick = pool.find(p => p.id === stored) || pool[0]; }
     else state.addSportBanner = signinSport;
   }
+  // R7 (Joel, Nov 19 2026): one sign-in, no cards -- the account decides. A parent with more than one player is asked
+  // "Which pitcher?" on a fresh sign-in (login.html sets kb:freshSignin); one player opens straight away.
+  const fresh = lsGet('kb:freshSignin'); lsDel('kb:freshSignin');
+  const primary = list.find(p => p.is_primary);
+  if(fresh && primary && primary.role === 'parent' && !signinSport){
+    const kids = chartable.filter(p => p.managed_by || p.linked_role);
+    if(kids.length > 1){ state.whoPicker = kids.map(p => p.id); state.whoPickerTitle = 'Which pitcher?'; pick = kids.find(p => p.id === stored) || kids[0]; }
+  }
   lsSet(activeProfileKey(uid), pick.id);
   if(pick.sport) lsSet('kb:sport', pick.sport);
   return pick;
@@ -3969,7 +3977,7 @@ window.switchProfile = async function(id){
   // it can't be on a plain-http address -- so a reload made offline
   // switching depend on something it shouldn't. Same steps as a cold start
   // from the cache, then the usual background refresh when online.
-  state.whoPicker = null; state.addSportBanner = null; state.acctMsg = '';
+  state.whoPicker = null; state.whoPickerTitle = null; state.addSportBanner = null; state.acctMsg = '';
   state.expandedSessionId = null; state.sessionSheetOpen = false; state.sessionDiscardArmed = false;
   state.showSetupModal = false; state.setupNeeded = null; state.pendingTarget = null; state.hint = '';
   applyCachedContext(next);          // also re-themes (applySport)
@@ -4165,6 +4173,9 @@ window.addPlayerBack = function(){ state.addPlayerOpen = false; state.addPlayerE
 function addPlayerForm(){
   const f = state.addPlayer || (state.addPlayer = { name: '', sport: null, throws: null, consent: false });
   if(!f.sport) f.sport = (state.profile && state.profile.sport) || lsGet('kb:sport') || 'baseball';
+  // R7: a pitcher under 13 who started their own sign-up becomes a parent account; the name they typed is the player's
+  const carried = lsGet('kb:playerNamePending');
+  if(carried && !f.name){ f.name = carried; lsDel('kb:playerNamePending'); }
   return f;
 }
 function renderAddPlayerScreen(){
@@ -4241,7 +4252,7 @@ window.submitAddPlayer = async function(){
 function renderWhoPicker(){
   const pool = (state.whoPicker || []).map(id => (state.myProfiles || []).find(p => p.id === id)).filter(Boolean);
   return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="Who's charting?"><div class="who-card attest-card">
-    <div class="display" style="font-size:24px;margin-bottom:var(--s-2);">Who's charting?</div>
+    <div class="display" style="font-size:24px;margin-bottom:var(--s-2);">${escHtml(state.whoPickerTitle || "Who's charting?")}</div>
     ${pool.map(p => `<button type="button" class="btn btn-tertiary acct-item" onclick="switchProfile('${p.id}')">
       <span class="acct-avatar">${escHtml(initialsOf(p.full_name))}</span>
       <span class="acct-who"><span class="acct-name">${escHtml(p.full_name)}</span><span class="acct-meta">${profileChip(p)} ${ROLE_NAME[p.role] || ''}</span></span>
@@ -15796,6 +15807,7 @@ function renderSetupView(){
     ${renderSetupHeadshot(p)}
     ${uniformRows ? `<div class="profile-section"><h3>Uniform number</h3>${uniformRows}</div>` : ''}
     ${renderThrowsSection(p)}
+    ${renderLevelSection(p)}   <!-- R7: asked here now, not on the one sign-up form -->
     ${renderPitchMixSection(p)}
     ${renderRelAccuracySection(p)}
     <div class="profile-section"><h3>Radar gun</h3>

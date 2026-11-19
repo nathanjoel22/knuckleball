@@ -345,8 +345,10 @@
     teamSport = sp === 'softball' ? 'softball' : 'baseball';
     document.documentElement.setAttribute('data-sport', teamSport);
     // S1: this page's links lead to the team's sport.
-    document.querySelectorAll('a[href^="signin.html"]').forEach(a => a.setAttribute('href', 'signin.html?sport=' + teamSport));   // L1: the sport / role picker moved from index.html
-    document.querySelectorAll('a[href^="login.html"]').forEach(a => a.setAttribute('href', 'login.html?sport=' + teamSport));
+    document.querySelectorAll('a[href^="signin.html"]').forEach(a => a.setAttribute('href', 'login.html?sport=' + teamSport));   // R7: the one sign-in
+    // R7: "Log in" comes back to this join link afterwards (it used to lose the token)
+    const back = (location.pathname.split('/').pop() || '') + location.search;
+    document.querySelectorAll('a[href^="login.html"]').forEach(a => a.setAttribute('href', 'login.html?sport=' + teamSport + '&next=' + encodeURIComponent(back)));
     kbPolicyLinks(teamSport);
     setParentLinks();   // S4 B
   }

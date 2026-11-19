@@ -1067,6 +1067,10 @@
   .start-q-mid{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:8px 0 6px; }   /* Oct 20: starting mid-game */
   .start-q-mid-lbl{ font-size:13px; font-weight:600; }
   .start-yn{ max-width:240px; }
+  /* Joel, Nov 19: Which team is this for? -- room for a 25-character team name: the tray takes the row, each button its
+     own width, and a third choice (two teams) wraps to a new row instead of squeezing */
+  .start-yn.start-file{ max-width:100%; flex-wrap:wrap; }
+  .start-file .seg{ flex:1 1 auto; padding:0 var(--s-16); }
   .start-q-input{ font-size:16px; min-height:44px; }
   .start-q-actions{ display:flex; gap:var(--s-8); margin-top:var(--s-4); }
   .start-q-actions .start-q-go{ flex:1; }
@@ -5452,7 +5456,8 @@ window.resendVerification = async function(){
     }
     const res = await fetch(VERIFY_EMAIL_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token }
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token },
+      body: JSON.stringify({ sport: currentSport() })   // Nov 19: in the sport the app is in
     });
     if(!res.ok){
       const body = await res.json().catch(() => ({}));
@@ -5734,11 +5739,11 @@ function renderPitchTypeLabel(p, noPlus){
   return plus ? `<div class="ptype-label-row"><span class="field-label">Pitch type</span>${plus}</div>`
     : `<div class="field-label" style="margin-bottom:var(--s-8);">Pitch type</div>`;
 }
-// No pitches yet: open the bubble right here when this viewer can edit; otherwise say who can.
+// No pitches yet: point at the "+" when this viewer can edit (Joel, Nov 19: the "+" is right there, so no separate Add
+// pitches button); otherwise say who can.
 function renderMixPrompt(p){
   if(p.pitchTypes && p.pitchTypes.length) return '';
-  if(canEditArsenal(p)) return `<p class="mix-prompt">${isCoach() ? escHtml(p.name) + ' has no pitches yet.' : 'No pitches yet.'} Add them to start charting.</p>
-    <button class="btn btn-secondary" onclick="openArsenalSheet(null, true)">Add pitches</button>`;
+  if(canEditArsenal(p)) return `<p class="mix-prompt">${isCoach() ? escHtml(p.name) + ' has no pitches yet.' : 'No pitches yet.'} Tap + to add them and start charting.</p>`;
   return `<p class="mix-prompt">${escHtml(p.name)} has no pitches yet. A coach or the pitcher can add them.</p>`;
 }
 // Holding a pitch chip (500 ms, cancelled by a move so the strip still swipes) opens the bubble on that pitch.
@@ -8418,7 +8423,7 @@ function fileStartQuestion(q){
   const teams = fileChoices();
   if(!teams.length) return '';
   const tray = segTray(teams.map(t => ({ label: t.name, selected: q.file === t.id, onclick: `setStartQ('file', ${JSON.stringify(t.id).replace(/"/g, '&quot;')})` }))
-    .concat([{ label: 'Independent', selected: q.file === 'none', onclick: "setStartQ('file', 'none')" }]), { key: 'sq-file', label: 'Session for', cls: 'start-yn' });
+    .concat([{ label: 'Independent', selected: q.file === 'none', onclick: "setStartQ('file', 'none')" }]), { key: 'sq-file', label: 'Session for', cls: 'start-yn start-file' });
   return `<div class="start-q-item"><div class="start-q-label">Which team is this for?</div>${tray}
     <p class="start-q-note">${q.file === 'none' ? 'Independent: yours alone. Your coaches can read it; only you can send its report or delete it.' : 'Your team\'s coaches can see it and send its report.'}</p></div>`;
 }

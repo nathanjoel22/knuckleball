@@ -60,6 +60,28 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-19 · Three fixes (no packet; Joel's request) · **staging**, branch `fix-three-nov19`, cache `kb-shell-v365`
+
+- **Verify email colours (Joel: "baseball is using the softball colors and softball the baseball colors"):**
+  - **Cause:** `send-verification-email` took any profile on the login with a sport, in no order, so a login holding
+    both sports (every facility, anyone who added a sport) could get either. A brand-new signup's email went out
+    before its profile existed, so it always got baseball.
+  - **Fix:** the page asking now sends its sport (signup's pick, the app's current sport, the join link's team sport).
+    Otherwise the function uses the login's primary profile, then its oldest profile with a sport.
+  - **Proof:** on staging, the U15 softball head coach's login (primary softball, also a baseball profile) got
+    baseball from the old query.
+  - `send-verification-email` deployed to staging.
+- **Team names on "Which team is this for?":** the tray now takes the row, and each button takes its own width.
+  - A 25-character name ("Mountain View Raiders 14U") fits at 390 with room.
+  - Two teams plus Independent wrap to a second row, with nothing cut off (measured).
+- **No pitches yet on the charting screen:** the "Add pitches" button is gone (the "+" is right there). The line reads
+  "No pitches yet. Tap + to add them and start charting." Checked on a player with no pitches.
+- **Production (Joel):**
+  1. `supabase functions deploy send-verification-email --project-ref fkgccjhuimkkbupbanxp`.
+  2. Merge.
+
+---
+
 ## 2026-11-19 · SR1 Stage F (email per recipient and the parent contact) · **production** (PR #133, merge `650523f`), branch `sr1f-email-parent`, cache `kb-shell-v364`
 
 - **Live Nov 19 (Joel):** `send-session-report` deployed to production (version 51, the same bundle as staging).

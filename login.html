@@ -452,11 +452,11 @@
     return d;
   }
   function kbVerifyUrl(){ return (typeof VERIFY_EMAIL_URL !== 'undefined' && VERIFY_EMAIL_URL.indexOf('YOUR_') !== 0) ? VERIFY_EMAIL_URL : ''; }
-  async function kbEdgeFn(url){
+  async function kbEdgeFn(url, body){
     try{
       var s = (await supabaseClient.auth.getSession()).data.session;
       if(!s || !url) return;
-      await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token } });
+      await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }, body: body ? JSON.stringify(body) : undefined });
     }catch(e){ /* the app's banner has a Resend button */ }
   }
   // R7 Stage B: the operator's one email about a self-serve facility (facility-notify). Kept as pending on the device
@@ -546,7 +546,7 @@
     }
     // R0: our own verification email (best effort; the app's banner can resend) -- as the pitcher and parent pages did.
     // R7 Stage B: a facility's manager too -- the facility can't add people until it's verified.
-    if(role !== 'coach') await kbEdgeFn(kbVerifyUrl());
+    if(role !== 'coach') await kbEdgeFn(kbVerifyUrl(), { sport: sport });   // Nov 19: the email's colours are the sport picked here
     kbMarkFreshSignin();
     kbGo();   // a parent opens on "Create your pitcher's profile" (or, from a join link, the join page's + New player)
   });

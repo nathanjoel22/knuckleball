@@ -23,7 +23,8 @@ import { renderPitchesThatMattered, renderBullpenToGame, CONNECT_CSS, type PenPi
 import {
   type Comparison, NO_COMPARISON, type StoodOut, type TileSpec, WINDOWS, SR1_CSS, ids, radios, tabBar, windowSwitch, wb, panel,
   takeaway, card, tileFor, windowCaption, stoodOutCard, sparkCard, simpleTable, typeCell, footer, firstName, word, ordinal, pctOf,
-  pickFastball, avgVelo, gunned, outsideRange, rangeText, sortStoodOut, sidePattern, clusterPattern, typeMin, inningMin
+  pickFastball, avgVelo, gunned, outsideRange, rangeText, sortStoodOut, sidePattern, clusterPattern, typeMin, inningMin,
+  restCard, sevenDayCard
 } from './sr1.ts'
 
 // The one definition this report does NOT compute itself -- it's the exact
@@ -638,6 +639,7 @@ function gameSummaryTab(p: GameReportPayload, f: GameFacts, c: Comparison, id: s
     f.innings.findIndex(i => i.inning === hlInning))) : ''
   const note = viewNote(p.chartingPerspective).replace('class="header-note"', 'class="caption"')
   return head + strip + compare + inningTable + stoodOutCard(items, !!c.baselines?.windows?.['3m']?.range, first)
+    + restCard(c.workload, pitchCount(s), p.date, p.teamName === 'Independent') + sevenDayCard(c.workload)
     + (note || `<p class="caption">Every grid in this report is drawn in the ${VIEW_NAME}, ${REPORT_VIEW === 'pitcher' ? 'looking in from the mound toward home plate' : 'looking out toward the mound'}.</p>`)
     + `<p class="caption">A strike is: called strike, swinging strike, foul, any ball in play, sac bunt/fly, dropped third. A ball is: ball, HBP. Interference and "other" count toward pitches but neither bucket.</p>`
 }

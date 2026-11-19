@@ -51,12 +51,17 @@ export interface WindowStats {
 }
 export interface Baselines { level: string | null; windows: Record<string, WindowStats> }
 export interface RecentRow { pitches: number; strikes: number; hits: number; game: Record<string, number> | null }
-export interface Comparison { baselines: Baselines | null; recent: RecentRow[]; throws: 'R' | 'L' | null }
-export const NO_COMPARISON: Comparison = { baselines: null, recent: [], throws: null }
+export interface Workload { level: string | null; age_group: string | null; sport: string; seven_day: number; parts: { kind: string; started_at: string; pitches: number; this: boolean }[] }
+export interface Comparison { baselines: Baselines | null; recent: RecentRow[]; throws: 'R' | 'L' | null; workload?: Workload | null }
+export const NO_COMPARISON: Comparison = { baselines: null, recent: [], throws: null, workload: null }
 
 // deno-lint-ignore no-explicit-any
 export async function loadComparison(db: any, s: { id: string; pitcher_id: string; kind: string; purpose?: string | null; started_at: string }): Promise<Comparison> {
-  const out: Comparison = { baselines: null, recent: [], throws: null }
+  const out: Comparison = { baselines: null, recent: [], throws: null, workload: null }
+  try {   // SR1 D: the 7 days up to this session, level and age group (session_workload, caller's reach)
+    const { data } = await db.rpc('session_workload', { p_session: s.id })
+    if (data && typeof data === 'object' && !('error' in data)) out.workload = data as Workload
+  } catch (_) { /* no workload cards */ }
   try {
     const { data } = await db.rpc('session_baselines', { p_session: s.id })
     if (data && typeof data === 'object' && !('error' in data) && data.windows) out.baselines = data as Baselines
@@ -73,6 +78,70 @@ export async function loadComparison(db: any, s: { id: string; pitcher_id: strin
     if (data && (data.throws === 'R' || data.throws === 'L')) out.throws = data.throws
   } catch (_) { /* left / right as drawn */ }
   return out
+}
+
+// ---------- SR1 Stage D: rest and the 7-day count (baseball only: Joel, Nov 19, "pitch count rules don't apply" to softball) ----------
+// MLB / USA Baseball Pitch Smart, "Pitch Count Limits and Required Rest Recommendations",
+// https://www.mlb.com/pitch-smart/pitching-guidelines (checked Nov 19, 2026). For each age group: the daily max and the
+// top of each rest band (0, 1, 2, 3, 4 days). A count above the last band takes the last band (Joel, Nov 19).
+export const PITCH_SMART: Record<string, { max: number; bands: number[] }> = {
+  '7-8': { max: 50, bands: [20, 35, 50] },
+  '9-10': { max: 75, bands: [20, 35, 50, 65, 75] },
+  '11-12': { max: 85, bands: [20, 35, 50, 65, 85] },
+  '13-14': { max: 95, bands: [20, 35, 50, 65, 95] },
+  '15-16': { max: 95, bands: [30, 45, 60, 75, 95] },
+  '17-18': { max: 105, bands: [30, 45, 60, 80, 105] },
+  '19-22': { max: 120, bands: [30, 45, 60, 80, 105] }
+}
+// The 7-day guideline by level (packet decision 9): a heads-up past it, never "can't pitch"
+export const SEVEN_DAY_GUIDE: Record<string, number> = { little_league: 100, high_school: 125, college: 150 }
+const LEVEL_WORD: Record<string, string> = { little_league: 'little league', high_school: 'high school', college: 'college' }
+const TZ = 'America/New_York'
+export function restDays(age: string, pitches: number): number | null {
+  const ps = PITCH_SMART[age]
+  if (!ps || pitches <= 0) return null
+  const i = ps.bands.findIndex(top => pitches <= top)
+  return i === -1 ? ps.bands.length - 1 : i
+}
+const eastern = (ms: number) => { const p = new Intl.DateTimeFormat('en-US', { timeZone: TZ, year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(new Date(ms))
+  const g = (k: string) => Number(p.find(x => x.type === k)?.value); return Date.UTC(g('year'), g('month') - 1, g('day')) }
+const dayFmt = (utcMidnight: number, opts: Intl.DateTimeFormatOptions) => new Date(utcMidnight).toLocaleDateString('en-US', { ...opts, timeZone: 'UTC' })
+// back on the game's (Eastern) date + rest days + 1
+export function backDate(gameMs: number, days: number): string {
+  return dayFmt(eastern(gameMs) + (days + 1) * 86400000, { weekday: 'short', month: 'short', day: 'numeric' })
+}
+export function restCard(w: Workload | null | undefined, gamePitches: number, gameMs: number, independent: boolean): string {
+  if (!w || w.sport !== 'baseball') return ''
+  if (!w.age_group || !PITCH_SMART[w.age_group]) {
+    return `<section class="kr-card kr-rest-none"><h3 class="kr-label">Rest</h3><p class="kr-sub">${independent
+      ? 'No Pitch Smart age group set. Set it in Pitcher settings → Level.'
+      : 'No Pitch Smart age group set for this team. The head coach sets it in Account → Team.'}</p></section>`
+  }
+  const d = restDays(w.age_group, gamePitches)
+  if (d === null) return ''
+  const ps = PITCH_SMART[w.age_group], age = w.age_group.replace('-', '–')
+  const big = d === 0 ? `No rest day needed · back ${backDate(gameMs, 0)}` : `${d} day${d === 1 ? '' : 's'} · back ${backDate(gameMs, d)}`
+  const over = gamePitches > ps.max ? ` Above Pitch Smart's daily max for ages ${age} (${ps.max}).` : ''
+  return `<section class="kr-card kr-rest"><h3 class="kr-label">Rest · Pitch Smart ages ${age}</h3><div class="kr-rest-big">${big}</div><p class="kr-rest-sub">${gamePitches} game pitch${gamePitches === 1 ? '' : 'es'}.${over}</p></section>`
+}
+export function sevenDayCard(w: Workload | null | undefined): string {
+  if (!w || w.sport !== 'baseball') return ''
+  const level = w.level && SEVEN_DAY_GUIDE[w.level] ? w.level : 'college'   // no level = college (Joel, Nov 19)
+  const guide = SEVEN_DAY_GUIDE[level], n = w.seven_day, over = n > guide
+  const mine = w.parts.find(x => x.this)
+  const others = w.parts.filter(x => !x.this)
+  const games = others.filter(x => x.kind === 'game').map(x => `${x.pitches} in ${dayFmt(eastern(Date.parse(x.started_at)), { weekday: 'long' })}'s game`)
+  const pens = others.filter(x => x.kind !== 'game').map(x => x.pitches)
+  const penText = !pens.length ? '' : pens.length === 1 ? `a pen of ${pens[0]}` : `pens of ${pens.slice(0, -1).join(', ')} and ${pens[pens.length - 1]}`
+  const rest = [...games, penText].filter(Boolean)
+  const head = mine ? `${mine.pitches} in this ${mine.kind === 'game' ? 'game' : 'pen'}` : ''
+  const parts = rest.length ? `${head} + ${rest.join(' + ')} this week.` : `${head}, nothing else in the last 7 days.`
+  const tail = over
+    ? ` Above the ${guide} guideline for ${LEVEL_WORD[level]}. Keeping this pace makes fatigue or injury more likely. A heads-up, not a stop.`
+    : ` Guideline for ${LEVEL_WORD[level]}: about ${guide} in 7 days.`
+  const scale = Math.max(n, guide) * 1.08
+  const bar = `<svg class="kr-7bar" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="2.5" width="100" height="3" rx="1.5" fill="var(--kr-line)"/><rect x="0" y="2.5" width="${(100 * n / scale).toFixed(1)}" height="3" rx="1.5" fill="${over ? 'var(--kr-down)' : 'var(--kr-link)'}"/><rect x="${(100 * guide / scale - 0.4).toFixed(1)}" y="0" width="0.8" height="8" fill="var(--kr-ink)"/></svg>`
+  return `<section class="kr-card kr-7d${over ? ' over' : ''}"><h3 class="kr-label">${over ? '⚠ ' : ''}Last 7 days</h3><div class="kr-7d-num">${n} pitch${n === 1 ? '' : 'es'}</div>${bar}<p class="kr-sub">${parts}${tail}</p></section>`
 }
 
 // ---------- small pure helpers ----------
@@ -313,6 +382,15 @@ export const SR1_CSS = `
   .kr-main .section{ margin:18px 0; }
   .kr-foot{ text-align:center; }
   .kr-chips{ display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12px; color:var(--kr-ink-dim); margin:8px 0 0; }
+  .kr-rest{ background:var(--kr-brand); border-color:var(--kr-brand); color:var(--kr-on-dark); }
+  .kr-rest .kr-label{ color:var(--kr-on-dark-dim); }
+  .kr-rest-big{ font-family:var(--kr-display); font-size:26px; font-weight:900; line-height:1.1; }
+  .kr-rest-sub{ margin:6px 0 0; font-size:13px; color:var(--kr-on-dark-dim); }
+  .kr-7d-num{ font-family:var(--kr-display); font-size:24px; font-weight:900; }
+  .kr-7bar{ display:block; width:100%; height:10px; margin:6px 0 8px; }
+  .kr-7d.over{ background:var(--kr-warn-bg); border-color:var(--kr-warn-line); }
+  .kr-7d.over .kr-label{ color:var(--kr-down); }
+  .kr-7d.over .kr-sub{ color:var(--kr-ink-dim); }
   @media (min-width:640px){ .kr-tiles{ grid-template-columns:repeat(4, 1fr); } }
   @media (max-width:600px){ .kr-tabs{ margin:8px -20px 0; } .kr-head h1{ font-size:30px; } }
 `

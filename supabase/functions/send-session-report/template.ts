@@ -12,7 +12,7 @@ import {
   type Comparison, NO_COMPARISON, type StoodOut, type TileSpec, WINDOWS, SR1_CSS, ids, radios, tabBar, windowSwitch, wb, wi, panel,
   takeaway, card, tileFor, windowCaption, stoodOutCard, sparkCard, simpleTable, typeCell, footer, firstName, penWord, word,
   ordinal, pctOf, pickFastball, avgVelo, gunned, outsideRange, rangeText, sortStoodOut, missPattern, missDirs, DIR_WORDS,
-  fadePattern, sidePattern, typeMin
+  fadePattern, sidePattern, typeMin, sevenDayCard
 } from './sr1.ts'
 
 // SR1 Stage A: a pen's purpose (sessions.purpose; the tracker's SESSION_TAGS) as the header says it
@@ -324,7 +324,7 @@ function penSummary(p: ReportPayload, f: PenFacts, c: Comparison, id: string, it
     ? windowSwitch(id, wins) + wins.map(k => wb(k, windowCaption(first, k, c.baselines!.windows[k], 'pen', extra)
         + `<div class="kr-tiles">${tiles.map(t => tileFor(t, c.baselines!.windows[k], 'pen')).join('')}</div>`)).join('')
     : `<div class="kr-tiles">${tiles.map(t => tileFor(t, undefined, 'pen')).join('')}</div><p class="kr-wcap">No earlier sessions to compare with yet.</p>`
-  return head + compare + stoodOutCard(items, !!c.baselines?.windows?.['3m']?.range, first) + penViewCaption(p)
+  return head + compare + stoodOutCard(items, !!c.baselines?.windows?.['3m']?.range, first) + sevenDayCard(c.workload) + penViewCaption(p)
 }
 function penViewCaption(p: ReportPayload): string {
   const note = viewNote(p.chartingPerspective).replace('class="header-note"', 'class="caption"')

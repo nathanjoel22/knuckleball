@@ -159,6 +159,38 @@ export const versionsFor = (g: LevelGroup) => g === 'll' ? ['coach', 'player', '
 // a block only some versions show (block-level); kr-ver-* classes
 export const ver = (vs: string[], html: string, inline = false) => `<${inline ? 'span' : 'div'} class="kr-ver ${vs.map(v => 'kr-ver-' + v).join(' ')}">${html}</${inline ? 'span' : 'div'}>`
 
+// ---------- SR1 Stage F: each version's email, frozen inside the report ----------
+// The report file ends with one HTML comment holding each version's email summary (JSON), written at save, so a resend
+// says exactly what the frozen report says. A report made before Stage F has none: it keeps the plain email.
+export interface EmailVersion { subject: string; headline: string; stats: { v: string; l: string }[]; bullets: string[]; lines: { html: string; tone?: 'warn' | 'faint' }[]; button: string }
+export function emailComment(m: Record<string, EmailVersion>): string {
+  return `<!--kr-email ${JSON.stringify(m).replace(/--/g, '-\\u002d').replace(/>/g, '\\u003e')}-->`
+}
+export function readEmailComment(html: string): Record<string, EmailVersion> | null {
+  const m = html.match(/<!--kr-email ([\s\S]*?)-->/)
+  if (!m) return null
+  try { return JSON.parse(m[1]) } catch (_) { return null }
+}
+export const shortDate = (ms: number) => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: TZ })
+// the 7-day heads-up, only when over the line (baseball)
+export function sevenDayEmailLine(w: Workload | null | undefined, kid = false): { html: string; tone: 'warn' } | null {
+  if (!w || w.sport !== 'baseball') return null
+  const level = w.level && SEVEN_DAY_GUIDE[w.level] ? w.level : 'college', g = SEVEN_DAY_GUIDE[level]
+  if (w.seven_day <= g) return null
+  return { tone: 'warn', html: kid ? `⚠ <strong>${w.seven_day} pitches in 7 days.</strong> That's more than the ${g} guideline. Talk with your coach about rest.`
+    : `⚠ <strong>${w.seven_day} pitches in 7 days</strong>, above the ${g} guideline for ${LEVEL_WORD[level]}. A heads-up, not a stop.` }
+}
+export function restEmailLine(w: Workload | null | undefined, gamePitches: number, gameMs: number): { html: string } | null {
+  if (!w || w.sport !== 'baseball' || !w.age_group || !PITCH_SMART[w.age_group]) return null
+  const d = restDays(w.age_group, gamePitches)
+  if (d === null) return null
+  return { html: `<strong>Rest:</strong> ${d === 0 ? 'no rest day needed' : `${d} day${d === 1 ? '' : 's'}`} (Pitch Smart, ages ${w.age_group.replace('-', '–')}) · back <strong>${backDate(gameMs, d)}</strong>.` }
+}
+export function comparedEmailLine(c: Comparison, who: string, noun: string): { html: string; tone: 'faint' } | null {
+  const n = c.baselines?.windows?.['3m']?.n ?? 0
+  return n >= 3 ? { tone: 'faint', html: `Compared with ${who} 3-month average (${n} ${noun}s).` } : null
+}
+
 // ---------- small pure helpers ----------
 export const pctOf = (a: number, b: number) => b ? Math.round(100 * a / b) : null
 const r1 = (x: number) => Math.round(x * 10) / 10

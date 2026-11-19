@@ -5824,6 +5824,15 @@ window.openPitcherProfile = function(){
   render();
 };
 
+// SR1 Stage F (Joel, Nov 19): the Parent or guardian contact is offered to every player who isn't college-only -- a
+// player whose own level is college, or (with no level of their own) whose every current team is college.
+function collegeOnlyPlayer(){
+  const lv = (state.profile && state.profile.level) || null;
+  const teams = (state.teams || []).filter(t => !t.archived);
+  if(lv && lv !== 'college') return false;
+  if(teams.some(t => (t.level || 'college') !== 'college')) return false;
+  return lv === 'college' || teams.length > 0;
+}
 window.saveContactEmails = async function(){
   // R0: pitcher is no longer a form field -- always the account email
   // (see contactsPanel's own comment). There is no #contact-pitcher input
@@ -5831,7 +5840,9 @@ window.saveContactEmails = async function(){
   const emails = {
     coach: (document.getElementById('contact-coach').value || '').trim(),
     pitchingCoach: (document.getElementById('contact-pitching-coach').value || '').trim(),
-    pitcher: state.myVerification.email || ''
+    pitcher: state.myVerification.email || '',
+    // SR1 F: a parent or guardian (gets the report's parent version; the field isn't offered to a college-only player)
+    parent: document.getElementById('contact-parent') ? (document.getElementById('contact-parent').value || '').trim() : ((state.profile.contact_emails || {}).parent || '')
   };
   const { error } = await supabaseClient.from('profiles').update({ contact_emails: emails }).eq('id', state.profile.id);
   if(!error){ state.profile.contact_emails = emails; state.contactsSavedAt = Date.now(); }
@@ -13371,7 +13382,7 @@ function renderHistoryView(){
       const callerVerified = currentCallerVerified();
       const pConsent = currentPitcherConsent(p);   /* P1-10 */ const pEligible = pVerified && pOnTeam && callerVerified && pConsent;
       const emailList = pEligible
-        ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean)
+        ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher, contacts.parent].map(e => (e||'').trim()).filter(Boolean)
         : [];
       const rs = state.reportStatus && state.reportStatus.sessionId === s.id ? state.reportStatus : null;
       const viewControl = s.reportPath
@@ -13502,7 +13513,7 @@ function renderHistoryView(){
     const callerVerified = currentCallerVerified();
     const pConsent = currentPitcherConsent(p);   /* P1-10 */ const pEligible = pVerified && pOnTeam && callerVerified && pConsent;
     const emailList = pEligible
-      ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean)
+      ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher, contacts.parent].map(e => (e||'').trim()).filter(Boolean)
       : [];
     const rs = state.reportStatus && state.reportStatus.sessionId === s.id ? state.reportStatus : null;
     // U4b follow-up: viewing doesn't need any contact emails set (only
@@ -16556,7 +16567,7 @@ window.sendSessionReport = async function(sessionId){
   // this just keeps normal usage from ever hitting that path.
   const pEligible = currentPitcherVerified(p) && currentPitcherOnTeam(p) && currentCallerVerified();
   const emails = pEligible
-    ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher].map(e => (e||'').trim()).filter(Boolean)
+    ? [contacts.coach, contacts.pitchingCoach, contacts.pitcher, contacts.parent].map(e => (e||'').trim()).filter(Boolean)
     : [];
   if(!emails.length) return;
 
@@ -17007,6 +17018,7 @@ function render(){
       <div class="contacts-panel">
         <div class="field"><span class="field-label">Coach email</span><input class="text-input" id="contact-coach" value="${escHtml(coachFieldValue)}" placeholder="coach@example.com"></div>
         <div class="field"><span class="field-label">Additional contact (optional)</span><input class="text-input" id="contact-pitching-coach" value="${escHtml(contacts.pitchingCoach||'')}" placeholder="e.g. pitching coach"></div>
+        ${collegeOnlyPlayer() ? '' : `<div class="field"><span class="field-label">Parent or guardian (optional)</span><input class="text-input" id="contact-parent" value="${escHtml(contacts.parent||'')}" placeholder="parent@example.com"></div>`}
         <div class="field">
           <span class="field-label">${state.profile && state.profile.managed_by ? 'Parent email (reports go here)' : 'Your email'}</span>
           <input class="text-input" value="${escHtml(myEmail)}${state.myVerification.emailConfirmed ? '' : ' (unverified)'}" disabled style="opacity:0.7;">

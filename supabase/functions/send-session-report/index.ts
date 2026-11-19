@@ -44,7 +44,7 @@ import type { Pitch, HistoryEntry } from './compute.ts'
 // (drafting decision 1) -- GameSummary just names its return shape.
 import { buildGameReportHtml, type GameReportPayload, type GameSummary } from './template_game.ts'
 import type { GamePitch } from './compute_game.ts'
-import { loadComparison } from './sr1.ts'
+import { loadComparison, readEmailComment } from './sr1.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -52,7 +52,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 }
 
-const MAX_RECIPIENTS = 3
+const MAX_RECIPIENTS = 4   // SR1 F: coach, additional contact, the pitcher's own, parent or guardian
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // Where the emailed report link opens. Production leaves this unset (the live
 // site). Staging sets REPORT_SITE_ORIGIN to the Mac's address on Joel's Wi-Fi (CLAUDE.md "Staging report links") so its report
@@ -310,9 +310,10 @@ Deno.serve(async (req) => {
   // H1 Part 3b (Joel, Oct 3): a report is emailed only to the report contacts saved in the
   // player's Profile (edited only by the pitcher, or the parent for a parent-created player).
   // Coaches send to those contacts and can't add others. Read through the caller's own client.
+  const recipientVersion: Record<string, string> = {}
   if (emails.length) {
     const { data: prof, error: profErr } = await callerClient
-      .from('profiles').select('contact_emails').eq('id', pitcherId).maybeSingle()
+      .from('profiles').select('contact_emails, managed_by').eq('id', pitcherId).maybeSingle()
     if (profErr || !prof) {
       return new Response(JSON.stringify({ error: 'Could not read the player\'s report contacts.' }), { status: 500, headers: corsHeaders })
     }
@@ -321,6 +322,14 @@ Deno.serve(async (req) => {
     const notSaved = emails.filter((e) => !saved.has(e.trim().toLowerCase()))
     if (notSaved.length) {
       return new Response(JSON.stringify({ error: 'Reports can only be emailed to the report contacts saved in the player\'s Profile.', code: 'recipient_not_saved' }), { status: 400, headers: corsHeaders })
+    }
+    // SR1 F: which slot each address is saved in decides its version (coach / additional contact → coach; the
+    // pitcher's own → player, or parent for a parent-created player, whose "own" address is the parent's; parent →
+    // parent). An address saved in two slots takes the first of coach, pitchingCoach, parent, pitcher.
+    const ce = (prof.contact_emails || {}) as Record<string, unknown>
+    for (const e of emails) {
+      const key = ['coach', 'pitchingCoach', 'parent', 'pitcher'].find((k) => typeof ce[k] === 'string' && (ce[k] as string).trim().toLowerCase() === e.trim().toLowerCase())
+      recipientVersion[e] = key === 'pitcher' ? (prof.managed_by ? 'parent' : 'player') : key === 'parent' ? 'parent' : 'coach'
     }
   }
 
@@ -333,6 +342,7 @@ Deno.serve(async (req) => {
   }
 
   let reportPath: string = session.report_path
+  let generatedHtml: string | null = null   // SR1 F: this request's new report, read for its emails
 
   if (!reportPath) {
     // Never regenerated once set -- this branch only runs the FIRST time a
@@ -444,6 +454,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    generatedHtml = html
     const token = randomReportToken()
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     // Service-role, used for exactly this one call -- the `reports` bucket
@@ -487,12 +498,27 @@ Deno.serve(async (req) => {
 
     const dateStr = body.date ? new Date(body.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
     const isGame = session.kind === 'game'
-    const resendRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: emails,
+    // SR1 F: the frozen report carries each version's email; a report made before Stage F has none and keeps the
+    // plain email. Read from the public file (no service role).
+    let stored = generatedHtml
+    if (!stored) {
+      try { const r = await fetch(`${supabaseUrl}/storage/v1/object/public/reports/${reportPath}`); if (r.ok) stored = await r.text() } catch (_) { /* plain email */ }
+    }
+    const versions = stored ? readEmailComment(stored) : null
+    const failed: string[] = []
+    // One message per recipient (SR1 F), so each gets their own version and link
+    for (const to of emails) {
+      const want = recipientVersion[to] || 'coach'
+      const ev = versions ? (versions[want] ?? versions.coach) : null
+      const v = ev && versions && versions[want] ? want : 'coach'
+      const href = v === 'coach' ? reportUrl : `${reportUrl}&v=${v}`
+      const message = ev ? {
+        subject: ev.subject,
+        html: brandedEmail({ sport: session.sport, title: ev.subject, paragraphs: [],
+          summary: { headline: ev.headline, stats: ev.stats, bullets: ev.bullets, lines: ev.lines },
+          button: { href, label: ev.button },
+          footnote: "This link works for anyone it's shared with -- there's no login required to view it." })
+      } : {
         subject: `${isGame ? 'Game Report' : 'Bullpen Session Report'} — ${pitcherName}${dateStr ? ' — ' + dateStr : ''}`,
         // Branded emails (Joel, Oct 22): the session's sport; a game says so
         html: brandedEmail({
@@ -502,18 +528,18 @@ Deno.serve(async (req) => {
           button: { href: reportUrl, label: 'View the report' },
           footnote: "This link works for anyone it's shared with -- there's no login required to view it.",
         })
+      }
+      const resendRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: fromEmail, to: [to], subject: message.subject, html: message.html })
       })
-    })
-
-    if (!resendRes.ok) {
-      const errText = await resendRes.text()
-      return new Response(JSON.stringify({ error: 'Resend send failed: ' + errText }), { status: 502, headers: corsHeaders })
+      if (!resendRes.ok) failed.push(`${to}: ${await resendRes.text()}`)
+    }
+    if (failed.length) {
+      return new Response(JSON.stringify({ error: `Resend send failed for ${failed.length} of ${emails.length}: ` + failed.join('; ') }), { status: 502, headers: corsHeaders })
     }
   }
 
-  // reportPath included alongside reportUrl so the client can update its
-  // own local session state (for the "View report" link) without having
-  // to parse a URL or re-fetch the session. emailed tells the caller
-  // whether Resend was actually invoked, for status-message wording.
   return new Response(JSON.stringify({ ok: true, reportUrl, reportPath, emailed: emails.length > 0 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 })

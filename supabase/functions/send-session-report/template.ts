@@ -13,7 +13,7 @@ import {
   takeaway, card, tileFor, windowCaption, stoodOutCard, sparkCard, simpleTable, typeCell, footer, firstName, penWord, word,
   ordinal, pctOf, pickFastball, avgVelo, gunned, outsideRange, rangeText, sortStoodOut, missPattern, missDirs, DIR_WORDS,
   fadePattern, sidePattern, typeMin, sevenDayCard, type Voice, type LevelGroup, levelGroup, versionsFor, ver, tabBarVersions,
-  restDays, backDate
+  restDays, backDate, type EmailVersion, emailComment, shortDate, sevenDayEmailLine, comparedEmailLine, abbrOf
 } from './sr1.ts'
 
 // SR1 Stage A: a pen's purpose (sessions.purpose; the tracker's SESSION_TAGS) as the header says it
@@ -390,6 +390,32 @@ function penSummaryLLParent(p: ReportPayload, f: PenFacts, c: Comparison): strin
   const tiles = `<div class="kr-tiles kr-tiles-3">${tile('Strikes', `${f.strikePct ?? 0}%`, wordFor(f.strikePct, a3?.strike_pct))}${tile('On the spot', `${f.spot ?? 0}%`, wordFor(f.spot, a3?.spot_pct, r.best))}${tile('Pitches', String(f.n), '')}</div>`
   return workload + how + tiles
 }
+// SR1 Stage F: each version's email (packet section 3 Stage F; e02), frozen into the report. The bullets never repeat
+// the headline (it is often the top item).
+const bullets = (items: StoodOut[], headline: string) => items.filter(i => i.text !== headline).slice(0, 2).map(i => i.text)
+function penEmails(p: ReportPayload, f: PenFacts, c: Comparison, g: LevelGroup, items: StoodOut[], itemsYou: StoodOut[]): Record<string, EmailVersion> {
+  const name = p.pitcherName, first = firstName(name), date = shortDate(p.date), r = penRank(f, c)
+  const velo = f.fbVelo !== null ? [{ v: String(Math.round(f.fbVelo)), l: `${f.fb.label} avg` }] : []
+  const four = [{ v: `${f.spot ?? 0}%`, l: 'On the spot' }, { v: `${f.strikePct ?? 0}%`, l: 'Strike' }, ...velo, { v: String(f.n), l: 'Pitches' }]
+  const subject = `Bullpen report: ${name} · ${f.hits} of ${f.n} on the spot · ${date}`
+  const lines = (who: string, kid = false) => [sevenDayEmailLine(c.workload, kid), comparedEmailLine(c, who, 'pen')].filter(Boolean) as EmailVersion['lines']
+  const out: Record<string, EmailVersion> = {
+    coach: { subject, headline: penHeadline(p, f, c, items), stats: four, bullets: bullets(items, penHeadline(p, f, c, items)), lines: lines(escapeHtml(first) + "'s"), button: 'Open the full report' }
+  }
+  const youSubject = `Your bullpen report: ${f.hits} of ${f.n} on the spot · ${date}`
+  if (g === 'll') {
+    const top = f.byType.filter(t => t.n >= 1).sort((a, b) => b.hits / b.n - a.hits / a.n)[0]
+    out.player = { subject: youSubject, headline: `${f.hits} of your ${f.n} pitches hit your spot.${r.best ? ` Your best pen of the last ${word(r.k)}!` : ''}`,
+      stats: [{ v: `${f.strikePct ?? 0}%`, l: 'Strikes' }, { v: `${f.spot ?? 0}%`, l: 'On your spot' }, ...(top ? [{ v: `${top.hits}/${top.n}`, l: `${escapeHtml(abbrOf(top.type))} on spot` }] : [])],
+      bullets: [], lines: [sevenDayEmailLine(c.workload, true)].filter(Boolean) as EmailVersion['lines'], button: 'See where every pitch went' }
+    out.parent = { subject, headline: `${f.hits} of ${f.n} pitches hit the spot${r.best ? `, ${escapeHtml(first)}'s best pen of the last ${word(r.k)}` : ''}.`,
+      stats: [{ v: `${f.strikePct ?? 0}%`, l: 'Strikes' }, { v: `${f.spot ?? 0}%`, l: 'On the spot' }, { v: String(f.n), l: 'Pitches' }],
+      bullets: [], lines: lines(escapeHtml(first) + "'s"), button: 'Open the full report' }
+  } else {
+    out.player = { subject: youSubject, headline: penHeadline(p, f, c, itemsYou, 'you'), stats: four, bullets: bullets(itemsYou, penHeadline(p, f, c, itemsYou, 'you')), lines: lines('your'), button: 'Open the full report' }
+  }
+  return out
+}
 function penViewCaption(p: ReportPayload): string {
   const note = viewNote(p.chartingPerspective).replace('class="header-note"', 'class="caption"')
   return (note || `<p class="caption">Every grid in this report is drawn in the ${VIEW_NAME}, ${REPORT_VIEW === 'pitcher' ? 'looking in from the mound toward home plate' : 'looking out toward the mound'}.</p>`)
@@ -539,6 +565,7 @@ ${g === 'll' ? panel(5, penWhereItWent(p, f, c)) + panel(6, penProgressLite(p, f
 </main>
 ${footer(firstName(p.pitcherName), links, true)}
 </div>
+${emailComment(penEmails(p, f, c, g, items, itemsYou))}
 </body>
 </html>`)
 }

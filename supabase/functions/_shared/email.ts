@@ -14,6 +14,11 @@ const PALETTE: Record<EmailSport, { brand: string; accent: string; onAccent: str
 const SITE = 'https://knuckleballonline.com'
 const FONT = "'Helvetica Neue', Helvetica, Arial, sans-serif"
 
+// SR1 Stage F: a report email's summary (the recipient's version): its headline in sentence case, a row of numbers,
+// bullets and plain lines (warn = the 7-day heads-up). Optional: every other email renders exactly as before.
+export interface ReportSummary { headline: string; stats: { v: string; l: string }[]; bullets: string[]; lines: { html: string; tone?: 'warn' | 'faint' }[] }
+const WARN: Record<EmailSport, string> = { baseball: '#B4511B', softball: '#B0175A' }
+
 export function escapeEmailHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
@@ -25,6 +30,7 @@ export function brandedEmail(o: {
   paragraphs: string[]
   button?: { href: string; label: string }
   footnote?: string
+  summary?: ReportSummary   // SR1 F: paragraphs, title and button stay as given; strings in it are already escaped HTML
 }): string {
   const sport: EmailSport = o.sport === 'softball' ? 'softball' : 'baseball'
   const c = PALETTE[sport]
@@ -45,7 +51,7 @@ export function brandedEmail(o: {
         </td></tr>
         <tr><td bgcolor="${c.accent}" style="background:${c.accent};height:6px;line-height:6px;font-size:0;">&nbsp;</td></tr>
         <tr><td style="padding:28px 24px 8px;">
-          <h1 style="margin:0 0 16px;font-family:${FONT};font-size:26px;line-height:1.15;font-weight:800;letter-spacing:0.01em;text-transform:uppercase;color:${c.ink};">${escapeEmailHtml(o.title)}</h1>
+          ${o.summary ? reportSummaryHtml(o.summary, c, WARN[sport]) : `<h1 style="margin:0 0 16px;font-family:${FONT};font-size:26px;line-height:1.15;font-weight:800;letter-spacing:0.01em;text-transform:uppercase;color:${c.ink};">${escapeEmailHtml(o.title)}</h1>`}
           ${o.paragraphs.map(p).join('')}
           ${button}
           ${o.footnote ? `<p style="margin:0 0 20px;font-family:${FONT};font-size:13px;line-height:1.5;color:${c.inkFaint};">${o.footnote}</p>` : ''}
@@ -55,4 +61,14 @@ export function brandedEmail(o: {
     </td></tr>
   </table>
 </body></html>`
+}
+
+function reportSummaryHtml(s: ReportSummary, c: { ink: string; inkDim: string; inkFaint: string }, warn: string): string {
+  const cell = (st: { v: string; l: string }, i: number) => `<td align="center" style="padding:12px 6px;${i ? 'border-left:1px solid #D5DDD7;' : ''}font-family:${FONT};">
+      <div style="font-size:24px;line-height:1.1;font-weight:800;color:${c.ink};">${st.v}</div>
+      <div style="margin-top:4px;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${c.inkFaint};">${st.l}</div></td>`
+  return `<h1 style="margin:0 0 16px;font-family:${FONT};font-size:24px;line-height:1.2;font-weight:800;color:${c.ink};">${s.headline}</h1>
+          ${s.stats.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #D5DDD7;border-radius:8px;margin:0 0 16px;"><tr>${s.stats.map(cell).join('')}</tr></table>` : ''}
+          ${s.bullets.length ? `<ul style="margin:0 0 16px;padding-left:20px;font-family:${FONT};font-size:15px;line-height:1.5;color:${c.inkDim};">${s.bullets.map(b => `<li style="margin:0 0 6px;">${b}</li>`).join('')}</ul>` : ''}
+          ${s.lines.map(l => `<p style="margin:0 0 14px;font-family:${FONT};font-size:15px;line-height:1.5;color:${l.tone === 'warn' ? warn : l.tone === 'faint' ? c.inkFaint : c.inkDim};">${l.html}</p>`).join('')}`
 }

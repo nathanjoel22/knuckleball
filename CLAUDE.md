@@ -119,6 +119,26 @@ Applies to reports made from Stage C on; every report made before stays exactly 
   - **High school player:** four tiles, the top two items. **College player:** the full report in "you".
 - **Copy Report URL** stays the plain (coach) link; Stage F's emails carry `&v=` per recipient.
 
+## Report emails per recipient (SR1 Stage F, Joel, Nov 19 2026; decisions in `plans/sr1f-preconditions.md`)
+
+- **One message per recipient** (up to 4: coach, additional contact, the pitcher's own, parent or guardian), each with
+  its slot's version.
+- **Slot → version:**
+  - coach / additional contact → coach;
+  - the pitcher's own → player, or **parent** for a parent-created player (that slot is the parent's own address);
+  - parent → parent.
+  - A version the report doesn't carry → coach.
+- **The button** opens the report with that `&v=`.
+- **Frozen with the report:** each new report ends with an HTML comment (`<!--kr-email {...}-->`, `emailComment` /
+  `readEmailComment` in `send-session-report/sr1.ts`) holding each version's subject, headline, numbers, bullets,
+  rest / 7-day / compared-with lines and button label. So a resend says what the frozen report says.
+  - A report made before Stage F has none and keeps the plain "report is ready" email.
+- **The layout** is `brandedEmail`'s optional `summary` (tables and inline styles); every other email is unchanged.
+- **The "Parent or guardian" contact** (`contact_emails.parent`) is offered to every player who isn't college-only
+  (`collegeOnlyPlayer`).
+- Sending limits unchanged (H1 counts recipients already).
+- **Known gap:** a player's contacts panel is reachable only on the iPad / computer charting screen (since N1 Stage B).
+
 ## Workload, rest and level (SR1 Stage D, Joel, Nov 19 2026; decisions in `plans/sr1d-preconditions.md`)
 
 - **Baseball only.** Joel: "leave softball alone, pitch count rules don't apply there". Softball has no age group, no

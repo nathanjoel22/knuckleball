@@ -60,7 +60,15 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-19 · R7 Stage C (one login, several roles) · **staging** (DB + local site), branch `r7c-roles`, cache `kb-shell-v360`
+## 2026-11-19 · R7 Stage C (one login, several roles) · **production** (PR #120, merge `c7ab201`), branch `r7c-roles`, cache `kb-shell-v360`
+
+- **Live Nov 19 (Joel):**
+  - Backup `2026-11-19-0956`.
+  - `db push` ran only `20261122000000_r7c_roles`. Before it, production's six functions matched the rollback's copies;
+    after it, production matches staging. Policies stay 32 / 12.
+  - The live v359 site's old-style join calls still resolve.
+  - `facility-invites` deployed.
+  - Merged; knuckleballonline.com and knuckleball.pages.dev serve `kb-shell-v360`. **R7 is complete.**
 
 - **Packet:** `plans/r7-one-login.md` Stage C; decisions in `plans/r7-preconditions.md` items 4, 6 and 8 (Joel: yes to
   all). Evidence: `plans/r7c-evidence.md` (+ `plans/r7c-evidence/`).
@@ -87,10 +95,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Tests changed:**
   - `f1g_acceptance` drops the "a pitcher / coach can't be a guardian" cases (now allowed on purpose).
   - `f1a_rls_matrix` leaves R7's new columns out of its fingerprint.
-- **Open:**
-  - Joel's check.
-  - Production order: backup → `db push` → deploy `facility-invites` → merge. The site needs the database first:
-    `PROFILE_COLS` reads the new columns.
+- **Open:** none from Stage C. Still open from Stage B: Joel to open operator.html once.
 
 ---
 

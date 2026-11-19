@@ -213,7 +213,7 @@
     document.getElementById('made-mail').href = mailto(email, name, r.data.link, r.data.expires_at);
     document.getElementById('made-copy').onclick = function(){ copy(r.data.link, this); };
     document.getElementById('made-note').textContent = 'Works once, until ' + day(r.data.expires_at) + ', only with ' + email + '.'
-      + (r.data.existing_login ? ' This email already has a Knuckleball login with no team: they sign in with their existing password on the Training facility card.' : '');
+      + (r.data.existing_login ? ' This email already has a Knuckleball login with no team: they sign in with their existing password.' : '');
     loadList();
   });
   start();

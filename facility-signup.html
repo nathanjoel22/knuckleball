@@ -68,7 +68,7 @@
     </div>
     <h2 class="display">Facility <span class="last">signup</span></h2></header>
     <div class="info-msg" id="link-msg">Checking your signup link…</div>
-    <a href="login.html?role=facility" id="link-signin" class="step-hidden">Go to the facility sign-in &rarr;</a>
+    <a href="login.html" id="link-signin" class="step-hidden">Go to sign in &rarr;</a>
   </div>
 
   <form class="card step-hidden" id="signup-form" autocomplete="off">
@@ -99,7 +99,7 @@
     <div class="error-msg" id="error-msg"></div>
     <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Create facility</button>
     <div class="foot-row">
-      <a href="login.html?role=facility">Already set up? Sign in</a>
+      <a href="login.html">Already set up? Sign in</a>
     </div>
   </form>
 
@@ -109,8 +109,8 @@
       <span class="tagline">Always a Step Ahead</span>
     </div>
     <h2 class="display">Check your <span class="last">email</span></h2></header>
-    <div class="info-msg">We sent a confirmation link to your email. Click it, then sign in on the Training facility card on this device to finish setting up your facility.</div>
-    <a href="login.html?role=facility">Go to the facility sign-in &rarr;</a>
+    <div class="info-msg">We sent a confirmation link to your email. Click it, then sign in on this device to finish setting up your facility.</div>
+    <a href="login.html">Go to sign in &rarr;</a>
   </div>
 
 <script src="supabase-config.js"></script>
@@ -129,7 +129,7 @@
   var CONTACT = 'Contact nate@knuckleballonline.com for a new one.';
   var LINK_MSGS = {
     not_found: "This signup link isn't valid. Check that you copied all of it, or " + CONTACT.charAt(0).toLowerCase() + CONTACT.slice(1),
-    used: 'This signup link has already been used. If your facility is set up, sign in on the Training facility card. Otherwise ' + CONTACT.charAt(0).toLowerCase() + CONTACT.slice(1),
+    used: 'This signup link has already been used. If your facility is set up, sign in. Otherwise ' + CONTACT.charAt(0).toLowerCase() + CONTACT.slice(1),
     done: 'Your facility is set up.',
     expired: 'This signup link has expired. ' + CONTACT
   };
@@ -193,7 +193,7 @@
       options: { data: { full_name: fullName, intended_role: 'coach', intended_sport: 'baseball' } } });
     if(up.error){
       errorEl.textContent = /already|registered|exists/i.test(up.error.message || '')
-        ? 'This email already has an account. Sign in on the Training facility card to finish setting up your facility.'
+        ? 'This email already has an account. Sign in to finish setting up your facility.'
         : up.error.message;
       submitBtn.disabled = false; submitBtn.textContent = 'Create facility';
       return;

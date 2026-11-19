@@ -247,6 +247,45 @@ body.landing .foot a{ color:inherit; text-decoration:underline; }
 .next-pitch{ white-space:nowrap; }   /* D1/D2: the one Next Pitch component (variants: .g5-nextpitch under the field, .g5-act-next in the field actions) */
 body.signin .card > .btn-primary{ box-shadow:var(--ring-plate); }   /* Joel, Oct 13: a dark plate behind the sign-in pages' main button */
 
+/* R7 (Joel, Nov 19 2026): the one New account form -- today's sport and role cards (signin.html), smaller. The sport
+   cards keep their sport's own colors; a chosen card wears the cards' hover look, ringed. Wide: a row of two, then a
+   row of four; phones: two by two. */
+body.signin.signin-wide .card-wide{ max-width:720px; }
+body.signin .foot-center{ justify-content:center; }
+body.signin .pick-cards{ display:grid; gap:var(--s-8); margin-top:var(--s-6); }
+body.signin .pick-sports{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+body.signin .pick-roles{ grid-template-columns:repeat(4, minmax(0, 1fr)); }
+body.signin .pick-card{
+  display:flex; flex-direction:column; align-items:center; gap:var(--s-6); padding:var(--s-12) var(--s-8); min-width:0;
+  background:var(--card); color:var(--ink); border:1px solid var(--border-strong); border-radius:var(--radius-control);
+  cursor:pointer; text-align:center; font:inherit;
+  transition:border-color var(--duration-fast) ease, transform var(--duration-fast) ease, background var(--duration-fast) ease;
+}
+body.signin .pick-card:hover{ border-color:var(--brand-mid); background:var(--card-2); transform:translateY(-2px); }
+body.signin .pick-card[aria-pressed="true"]{ border-color:var(--brand-mid); background:var(--card-2); box-shadow:0 0 0 2px var(--brand-mid); }
+body.signin .pick-icon{ width:36px; height:36px; border-radius:var(--radius-circle); background:var(--surface); display:flex; align-items:center; justify-content:center; flex:none; }
+body.signin .pick-icon svg{ width:18px; height:18px; color:var(--ink); }
+body.signin .pick-title{ font-family:var(--font-display); font-size:var(--t-20, 20px); font-weight:800; text-transform:uppercase; letter-spacing:var(--tr-display); line-height:1; }
+body.signin .pick-desc{ font-size:var(--t-12); color:var(--ink-faint); line-height:1.35; }
+body.signin .pick-card.sport-bb{ background:var(--bb-brand); border-color:transparent; color:#FFFFFF; }
+body.signin .pick-card.sport-bb .pick-title{ color:var(--bb-accent); }
+body.signin .pick-card.sport-bb .pick-desc{ color:var(--bb-on-dark-dim); }
+body.signin .pick-card.sport-bb .pick-mark{ --mark-lit:var(--bb-accent); }
+body.signin .pick-card.sport-bb:hover{ background:var(--bb-brand-2); border-color:var(--bb-accent); }
+body.signin .pick-card.sport-bb[aria-pressed="true"]{ background:var(--bb-brand-2); border-color:var(--bb-accent); box-shadow:0 0 0 2px var(--bb-accent); }
+body.signin .pick-card.sport-sb{ background:var(--sb-brand); border-color:transparent; color:#FFFFFF; }
+body.signin .pick-card.sport-sb .pick-title{ color:var(--sb-accent); }
+body.signin .pick-card.sport-sb .pick-desc{ color:var(--sb-on-dark-dim); }
+body.signin .pick-card.sport-sb .pick-mark{ --mark-lit:var(--sb-accent); }
+body.signin .pick-card.sport-sb:hover{ background:var(--sb-brand-2); border-color:var(--sb-accent); }
+body.signin .pick-card.sport-sb[aria-pressed="true"]{ background:var(--sb-brand-2); border-color:var(--sb-accent); box-shadow:0 0 0 2px var(--sb-accent); }
+body.signin .pick-icon.pick-mark{ background:transparent; }
+body.signin .pick-icon.pick-mark svg.mark{ width:34px; height:34px; color:#FFFFFF; }
+@media (max-width:500px){
+  body.signin .pick-roles{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  body.signin .pick-desc{ font-size:11px; }
+}
+
 /* F1-A: the facility sign-in's contact line (plain text to copy; no link, no form) */
 body.signin .facility-contact{ margin:0; font-size:var(--t-12); color:var(--ink-soft, var(--ink)); text-align:center; line-height:1.5; }
 body.signin .facility-email{ font-weight:700; user-select:all; -webkit-user-select:all; word-break:break-all; }

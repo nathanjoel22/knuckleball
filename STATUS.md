@@ -60,6 +60,36 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-19 · R7 Stage A (one sign-in, one New account form) · **staging** (local staging site), branch `r7-one-login`, cache `kb-shell-v358`
+
+- **Packet:** `plans/r7-one-login.md` (Joel, Nov 19, saved verbatim). Report and Joel's answers (all 8 as recommended):
+  `plans/r7-preconditions.md`. Evidence: `plans/r7a-evidence.md` (+ `plans/r7a-evidence/`).
+- **Built:**
+  - **`login.html` is the one sign-in:** email and password, no sport screen, no role cards, no card refusals.
+  - **New account (`#new`) is one form:** name, email, password, the sport cards, then Pitcher · Parent · Coach ·
+    Facility (today's cards, smaller), then the P1-10 age and terms questions for that type, then Create account.
+    - Under 13 turns it into a Parent account.
+    - Facility keeps the contact line until Stage B.
+  - **Old addresses kept as forwards:** `signin.html` and the pitcher / coach / parent sign-up pages. `?next=` brings
+    a join-link visitor back to the link.
+  - **In the app:**
+    - "Which pitcher?" for a parent with two or more players on a fresh sign-in.
+    - The pitcher's level is asked in the setup popup.
+    - The add-player screen takes the under-13 name.
+  - **Copy:** Help, the landing page's links and splash, the operator page.
+  - **Store:** knuckleball-app PR #12 rewrites the review notes (34101 was approved Nov 19 with text that named no
+    card).
+- **Checked:** Done when 1-7 PASS, on staging at 390, 820 and 1280.
+- **Deviations:**
+  - The level moved to the setup popup.
+  - The Play sign-in screenshot needs retaking.
+  - Test accounts on staging (`@example.com`).
+- **Open:**
+  - Joel's check and merge.
+  - Then Stage B (facility self-serve) and Stage C (more roles by link), each its own PR.
+
+---
+
 ## 2026-11-18 · Live Game: a ball in play's buttons centred under home plate (no packet; Joel's request) · **staging** (local staging site), branch `play-buttons-centered`, cache `kb-shell-v357`
 
 - **Joel, Nov 18:** "when a ball is put in play, move the outcome buttons like O, H, etc... and all subsequent buttons of

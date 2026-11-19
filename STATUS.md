@@ -60,7 +60,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-19 · SR1 Stage C (the answer-first report, coach version) · **staging**, branch `sr1c-report-tabs`, no cache change (no page changed)
+## 2026-11-19 · SR1 Stage C (the answer-first report, coach version) · **production** (PR #127, merge `c13832a`), branch `sr1c-report-tabs`, no cache change (no page changed)
+
+- **Live Nov 19 (Joel):** `send-session-report` deployed to production (version 48). Staging was redeployed from the
+  same files, and both carry the same bundle (`e6ec9ab2…`). Merged. No test report was made on production (it would
+  write a real report file); the first real report made from now on is the first new one.
 
 - **Packet:** `plans/sr1-session-reports.md` Stage C; decisions in `plans/sr1c-preconditions.md` (Joel: Q1 the
   fastball = 4SFB / 2SFB / FB, Q2–9 yes). Evidence: `plans/sr1c-evidence.md` (+ `plans/sr1c-evidence/`, each picture
@@ -92,10 +96,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - Trends and the ranking skip pens under 10 pitches;
   - the Pitches change is grey;
   - print shows the open tab until Stage G.
-- **Production (Joel):**
-  1. `supabase functions deploy send-session-report --project-ref fkgccjhuimkkbupbanxp`.
-  2. Merge.
-- **Open:** none. Next: Stage D (workload, rest and team settings).
+- **Open:** Joel to open a fresh report on his phone once. Next: Stage D (workload, rest and team settings).
 
 ---
 

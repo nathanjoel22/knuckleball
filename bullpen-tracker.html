@@ -4349,6 +4349,7 @@ window.onTeamChange = async function(teamId, skipRender){
   await saveLastKnownContext();
   loadRosterDots();   // U10 (3): background
   loadGroupCodes();   // F1-B: this side's join codes (background)
+  loadFacilityVerify();   // R7 Stage B: a self-serve facility's manager verifies before inviting (background)
   loadFacilityBrandings();   // N1-G: the facility's look (background; the device copy first)
   if(!skipRender) render();
 };
@@ -5021,6 +5022,36 @@ async function loadGroupCodes(){
     render();
   }catch(e){ /* the last codes stay */ }
 }
+// R7 Stage B: a facility that signed itself up can't add coaches or pitchers until its manager's email is verified (the
+// server refuses the joins: my_facility_needs_verify, the r7 gate trigger). The app says so where the codes and links
+// would be, and sends the operator's one email about the facility if login.html couldn't (kb:facNotify).
+async function loadFacilityVerify(){
+  if(!state.session || !isFacilityManager() || !isOnline()) return;
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('my_facility_needs_verify'), 8000);
+    if(!error && (data === true) !== !!state.facNeedsVerify){ state.facNeedsVerify = data === true; render(); }
+  }catch(e){}
+  if(lsGet('kb:facNotify') && typeof VERIFY_EMAIL_URL !== 'undefined' && VERIFY_EMAIL_URL.indexOf('YOUR_') !== 0){
+    try{
+      const r = await fetch(VERIFY_EMAIL_URL.replace('send-verification-email', 'facility-notify'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token } });
+      if(r.ok) localStorage.removeItem('kb:facNotify');
+    }catch(e){}
+  }
+}
+function facVerifyBlocked(){ return isFacilityManager() && !!state.facNeedsVerify; }
+// The unverified manager's banner, on the screens a facility with no pitchers yet shows (Home, Roster, Account).
+function renderFacVerifyBanner(){
+  if(!facVerifyBlocked() || state.myVerification.emailConfirmed) return '';
+  return `<div class="verify-banner">
+    <p>Verify your email to invite coaches and pitchers. ${state.verifyResendStatus === 'sent' ? 'Verification email sent — check your inbox.' : ''}${state.verifyResendStatus === 'error' ? escHtml(state.verifyResendMsg || 'Could not resend — try again in a moment.') : ''}</p>
+    <div class="verify-banner-actions">
+      <button class="btn btn-secondary" ${state.verifyResendStatus === 'sending' ? 'disabled' : ''} onclick="resendVerification()">${state.verifyResendStatus === 'sending' ? 'Sending…' : 'Resend'}</button>
+      <button class="btn btn-secondary" onclick="goToProfileEmail()">Wrong email? Change it in ${PLACE.account}</button>
+    </div>
+  </div>`;
+}
+const FAC_VERIFY_NOTE = 'Verify your email to invite coaches and pitchers. We sent you a link when you signed up.';
 function groupCodeUrl(c){ return new URL('join.html?c=' + encodeURIComponent(c.token), location.href).href; }
 // The code as an SVG (black on white, the standard 4-module quiet zone).
 function qrSvg(text){
@@ -5029,6 +5060,7 @@ function qrSvg(text){
 }
 // At the top of the facility roster: the coach's own code (and, for the manager, everyone's).
 function renderJoinCodeBar(){
+  if(facVerifyBlocked()) return '';   // the verify banner above says why
   const codes = groupCodes();
   if(!codes.length || currentTeamArchived()) return '';
   const mine = codes.find(c => c.mine);
@@ -15460,15 +15492,17 @@ function renderCoachTeamAdmin(part){
     </div>` : '';
 
   // F1-B: at a facility, the join codes (every coach their own; the manager all of them)
-  const codesSection = (currentTeamIsFacility() && !team.archived && groupCodes().length) ? `
+  const codesSection = (currentTeamIsFacility() && !team.archived && (groupCodes().length || facVerifyBlocked())) ? `
     <div class="profile-section">
       <h3>Join codes</h3>
       <p class="profile-note">A parent scans a coach's code, signs in or makes an account, and the player joins that coach's group (marked New).</p>
-      ${renderJoinCodeBar()}
-      ${isFacilityManager() ? `<button class="btn btn-secondary btn-sm" onclick="printJoinCodes('all')">Print all codes</button>` : ''}
+      ${facVerifyBlocked() ? `<p class="profile-note">${FAC_VERIFY_NOTE}</p>` : renderJoinCodeBar()}
+      ${isFacilityManager() && !facVerifyBlocked() ? `<button class="btn btn-secondary btn-sm" onclick="printJoinCodes('all')">Print all codes</button>` : ''}
     </div>` : '';
 
-  const linksSection = (head && state.teamInviteLinks) ? `
+  const linksSection = (head && state.teamInviteLinks && facVerifyBlocked()) ? `
+    <div class="profile-section"><h3>Invite links</h3><p class="profile-note">${FAC_VERIFY_NOTE}</p></div>`
+    : (head && state.teamInviteLinks) ? `
     <div class="profile-section">
       <h3>Invite links</h3>
       <div class="field-label" style="margin-bottom:var(--s-6);">Pitcher invite link</div>
@@ -16607,7 +16641,7 @@ function render(){
   } else if(!p && state.view === 'more'){
     main = renderMoreView();   // N1-A
   } else if(!p && (state.view === 'roster' || state.view === 'pitcher')){
-    main = renderRosterPage(rosterItems, teamSelector, null);   // N1-B: an empty roster still has its page
+    main = renderFacVerifyBanner() + renderRosterPage(rosterItems, teamSelector, null);   // N1-B: an empty roster still has its page
   } else if(!p && state.view === 'coaches'){
     main = renderCoachesPage();
   } else if(!p && state.view === 'chat'){
@@ -16616,7 +16650,7 @@ function render(){
     // U9: 'pitcherProfile' with no pitcher selected has its own message
     // ("Select a pitcher to see his profile," not this generic one) --
     // renderPitcherProfileView() already handles p === null itself.
-    main = renderAddSportBanner() + (state.view === 'home' ? '' : renderTabs()) + (state.view === 'home'
+    main = renderAddSportBanner() + renderFacVerifyBanner() + (state.view === 'home' ? '' : renderTabs()) + (state.view === 'home'
       ? renderHomeView()
       : state.view === 'profile'
       ? renderProfileView()
@@ -16663,9 +16697,9 @@ function render(){
     // can look around while unverified. Item (f): Change Email is one tap
     // from here, not a separate settings hunt.
     // F1-G: friends and family send no reports, so no banner for them
-    const verifyBanner = (!isCoach() && !viewOnlyLinked() && !state.myVerification.emailConfirmed) ? `
+    const verifyBanner = ((!isCoach() || facVerifyBlocked()) && !viewOnlyLinked() && !state.myVerification.emailConfirmed) ? `
       <div class="verify-banner">
-        <p>Verify your email so we can send you your reports. ${state.verifyResendStatus === 'sent' ? 'Verification email sent — check your inbox.' : ''}${state.verifyResendStatus === 'error' ? escHtml(state.verifyResendMsg || 'Could not resend — try again in a moment.') : ''}</p>
+        <p>${facVerifyBlocked() ? 'Verify your email to invite coaches and pitchers.' : 'Verify your email so we can send you your reports.'} ${state.verifyResendStatus === 'sent' ? 'Verification email sent — check your inbox.' : ''}${state.verifyResendStatus === 'error' ? escHtml(state.verifyResendMsg || 'Could not resend — try again in a moment.') : ''}</p>
         <div class="verify-banner-actions">
           <button class="btn btn-secondary" ${state.verifyResendStatus === 'sending' ? 'disabled' : ''} onclick="resendVerification()">${state.verifyResendStatus === 'sending' ? 'Sending…' : 'Resend'}</button>
           <button class="btn btn-secondary" onclick="goToProfileEmail()">Wrong email? Change it in ${PLACE.account}</button>

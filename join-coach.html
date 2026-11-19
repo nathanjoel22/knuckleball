@@ -326,6 +326,7 @@
     } catch (e) { /* recoverable via Resend, same as join.html */ }
     const { data, error } = await supabaseClient.rpc('join_team_as_coach', { p_token: token });
     if(error && /sport_mismatch/.test(error.message || '')){ showSportMismatch(); return; }
+    if(isFacilityUnverified(error)){ showFacilityNotOpen(); return; }
     if(data && data.error === 'attestation_required'){ showCard('attest-card'); return; }   // P1-10
     if(data && data.error === 'coaches_must_be_adults'){ showCard('refused-card'); return; }
     if(data && data.error === 'pitcher_cannot_join'){
@@ -341,6 +342,15 @@
   }
 
   // P1-09: an archived team's invite links stop working.
+  // R7 Stage B: a facility that signed itself up takes no coaches until its manager has verified their email (the server
+  // refuses with facility_unverified).
+  function isFacilityUnverified(error){ return !!(error && /facility_unverified/.test(error.message || '')); }
+  function showFacilityNotOpen(){
+    const card = document.getElementById('invalid-card');
+    card.querySelector('h2').textContent = 'Not open yet';
+    card.querySelector('.info-msg').textContent = "This facility isn't taking new members yet: its manager still has to verify their email. Try again later, or ask them.";
+    showCard('invalid-card');
+  }
   function showTeamArchived(){
     const card = document.getElementById('invalid-card');
     card.querySelector('h2').textContent = 'Team no longer active';

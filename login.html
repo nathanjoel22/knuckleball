@@ -267,12 +267,18 @@
       <label class="terms-check"><input type="checkbox" id="terms-ok"> <span>I agree to the <a href="terms.html" target="_blank" class="policy-link">Terms</a> and <a href="privacy.html" target="_blank" class="policy-link">Privacy Policy</a>.</span></label>
     </div>
     <p class="age-stop step-hidden" id="under13-note">Players under 13 need a parent or guardian to create their account, so this is now a <b>Parent</b> account. Enter the parent or guardian's own name and email; your player's profile comes next, with the name you typed.</p>
+    <!-- R7 Stage B (Joel, Nov 19 2026): a facility signs itself up here (create_facility_self); the 18+ box below. -->
+    <div class="role-extra step-hidden" id="extra-facility">
+      <div class="field">
+        <label class="field-label" for="su-facility">Facility name</label>
+        <input class="text-input" id="su-facility" placeholder="Your facility's name" autocomplete="organization" maxlength="60">
+        <p class="age-note">You'll run a baseball side and a softball side, and invite your pitching coaches to each. It opens in the sport you picked.</p>
+      </div>
+    </div>
+
     <div class="role-extra step-hidden" id="extra-adult">
       <label class="terms-check"><input type="checkbox" id="adult-ok"> <span>I am 18 or older and I agree to the <a href="terms.html" target="_blank" class="policy-link">Terms</a> and <a href="privacy.html" target="_blank" class="policy-link">Privacy Policy</a>.</span></label>
     </div>
-    <!-- Until Stage B: facility accounts are still set up by Knuckleball (F1-A). -->
-    <p class="facility-contact step-hidden" id="extra-facility">Facility accounts are set up by Knuckleball. Contact us for your signup link: <span class="facility-email">nate@knuckleballonline.com</span></p>
-
     <div class="error-msg" id="su-error"></div>
     <button type="submit" class="btn btn-primary btn-block" id="su-submit" disabled>Create account</button>
     <div class="foot-row foot-center">
@@ -383,19 +389,20 @@
     su.role = role;
     document.querySelectorAll('.pick-roles .pick-card').forEach(function(b){ b.setAttribute('aria-pressed', b.getAttribute('data-role') === role ? 'true' : 'false'); });
     $('extra-pitcher').classList.toggle('step-hidden', role !== 'pitcher');
-    $('extra-adult').classList.toggle('step-hidden', role !== 'coach' && role !== 'parent');
+    $('extra-adult').classList.toggle('step-hidden', role !== 'coach' && role !== 'parent' && role !== 'facility');
     $('extra-facility').classList.toggle('step-hidden', role !== 'facility');
     if(role !== 'parent') $('under13-note').classList.add('step-hidden');
     $('su-name-label').textContent = role === 'parent' ? "Your name (the parent or guardian)" : 'Full name';
     $('su-email-label').textContent = role === 'parent' ? 'Your email' : 'Email';
     suCheck();
   }
-  // Create account: name, email, password, sport and type all set. Facility waits for Stage B (set up by Knuckleball).
+  // Create account: name, email, password, sport and type all set (and a facility's name).
   function suCheck(){
-    var ok = !!($('su-name').value.trim() && $('su-email').value.trim() && $('su-password').value && su.sport && su.role) && su.role !== 'facility';
+    var ok = !!($('su-name').value.trim() && $('su-email').value.trim() && $('su-password').value && su.sport && su.role)
+      && (su.role !== 'facility' || $('su-facility').value.trim().length >= 2);
     suBtn.disabled = !ok;
   }
-  ['su-name', 'su-email', 'su-password'].forEach(function(id){ $(id).addEventListener('input', suCheck); });
+  ['su-name', 'su-email', 'su-password', 'su-facility'].forEach(function(id){ $(id).addEventListener('input', suCheck); });
   document.querySelectorAll('.pick-sports .pick-card').forEach(function(b){ b.addEventListener('click', function(){ setSport(b.getAttribute('data-sport')); }); });
   document.querySelectorAll('.pick-roles .pick-card').forEach(function(b){ b.addEventListener('click', function(){ setRole(b.getAttribute('data-role')); }); });
   // P1-10: 13-17 asks for a guardian's email. Under 13 can't have their own account: the form becomes a Parent account,
@@ -452,6 +459,26 @@
       await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token } });
     }catch(e){ /* the app's banner has a Resend button */ }
   }
+  // R7 Stage B: the operator's one email about a self-serve facility (facility-notify). Kept as pending on the device
+  // (kb:facNotify) until it goes; the app tries again once on its next online load.
+  async function kbFacilityNotify(){
+    try{ localStorage.setItem('kb:facNotify', '1'); }catch(e){}
+    try{
+      var s = (await supabaseClient.auth.getSession()).data.session, url = kbVerifyUrl().replace('send-verification-email', 'facility-notify');
+      if(!s || !url) return;
+      var r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token } });
+      if(r.ok) localStorage.removeItem('kb:facNotify');
+    }catch(e){}
+  }
+  var KB_FACILITY_ERRORS = {
+    already_manager: 'This account already runs a facility.',
+    login_in_use: "This account is already on a team, so it can't also run a facility.",
+    not_a_coach_login: "This account is a pitcher or parent account, so it can't run a facility.",
+    name_invalid: 'Facility name: 2 to 60 characters.',
+    name_required: 'Enter your name.',
+    adult_required: "Confirm you're 18 or older and agree to the Terms and Privacy Policy.",
+    daily_cap: "We've had a lot of new facilities today, so new ones are paused until tomorrow. Email nate@knuckleballonline.com and we'll set yours up."
+  };
   // A signup's answer survives the (defensive) confirm-email round trip, as on the old pages.
   function kbStashAttest(a){ try{ sessionStorage.setItem('kb:pendingAttest', JSON.stringify(a)); }catch(e){} }
   async function kbFlushStashedAttest(){
@@ -471,16 +498,21 @@
     var fullName = $('su-name').value.trim(), email = $('su-email').value.trim(), password = $('su-password').value;
     var role = su.role, sport = su.sport;
     if(!fullName || !email || !password || !sport || !role){ suErr.textContent = 'Fill in every field to continue.'; return; }
-    if(role === 'facility') return;
+    var facilityName = role === 'facility' ? $('su-facility').value.trim() : '';
+    if(role === 'facility' && (facilityName.length < 2 || facilityName.length > 60)){ suErr.textContent = KB_FACILITY_ERRORS.name_invalid; return; }
     if(password.length < 8){ suErr.textContent = 'Password should be at least 8 characters.'; return; }
     var attest = kbAgeRead(role !== 'pitcher', email);   // P1-10: coaches and parents only ever make the adult statement
     if(attest.error){ suErr.textContent = attest.error; return; }
     kbStashAttest(attest);
     suBtn.disabled = true;
     suBtn.textContent = 'Creating account…';
-    var meta = { full_name: fullName, intended_role: role };
+    var meta = { full_name: fullName, intended_role: role === 'facility' ? 'coach' : role };   // a facility's manager is a coach on both sides
     if(role !== 'parent') meta.intended_sport = sport;   // a parent's own profile has no sport; the player's comes next
-    var res = await supabaseClient.auth.signUp({ email: email, password: password, options: { data: meta } });
+    // A facility whose account was made but whose facility wasn't (a dropped connection): Try again just finishes it.
+    var cur = null; try{ cur = (await supabaseClient.auth.getSession()).data.session; }catch(x){}
+    var res = (role === 'facility' && cur && cur.user && String(cur.user.email).toLowerCase() === email.toLowerCase())
+      ? { data: { session: cur } }
+      : await supabaseClient.auth.signUp({ email: email, password: password, options: { data: meta } });
     if(res.error){
       suErr.textContent = res.error.message;
       suBtn.disabled = false; suBtn.textContent = 'Create account';
@@ -498,9 +530,22 @@
     }
     // The signup trigger has made the profile; the idempotent setup call makes sure (a coach with no team yet is asked
     // for the team's name in the app, as when ensure_account_setup finds none).
-    await supabaseClient.rpc('ensure_account_setup', { p_role: role, p_full_name: fullName });
-    await kbFlushStashedAttest();   // P1-10 (if this fails, the app asks once on first load)
+    await supabaseClient.rpc('ensure_account_setup', { p_role: role === 'facility' ? 'coach' : role, p_full_name: fullName });
+    var att = await kbFlushStashedAttest();   // P1-10 (if this fails, the app asks once on first load)
+    if(role === 'facility'){
+      // R7 Stage B: the facility exists before anything else; it needs the 18+ answer on record first.
+      if(att && !att.ok && !/already/.test(att.message || '')){ suErr.textContent = att.message; suBtn.disabled = false; suBtn.textContent = 'Try again'; return; }
+      var made = await supabaseClient.rpc('create_facility_self', { p_facility_name: facilityName });
+      if(made.error || !made.data || !made.data.ok){
+        suErr.textContent = made.error ? "Couldn't set up your facility. Check your connection and try again."
+          : (KB_FACILITY_ERRORS[made.data && made.data.error] || ('Something went wrong: ' + ((made.data && made.data.error) || 'unknown')));
+        suBtn.disabled = false; suBtn.textContent = 'Try again';
+        return;
+      }
+      await kbFacilityNotify();
+    }
     // R0: our own verification email (best effort; the app's banner can resend) -- as the pitcher and parent pages did.
+    // R7 Stage B: a facility's manager too -- the facility can't add people until it's verified.
     if(role !== 'coach') await kbEdgeFn(kbVerifyUrl());
     kbMarkFreshSignin();
     kbGo();   // a parent opens on "Create your pitcher's profile" (or, from a join link, the join page's + New player)

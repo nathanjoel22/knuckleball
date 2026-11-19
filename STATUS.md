@@ -60,6 +60,36 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-19 · SR1 Stage A (session tags) · **staging** (local staging site), branch `sr1a-session-tags`, cache `kb-shell-v361`
+
+- **Packet:** `plans/sr1-session-reports.md` Stage A; decisions in `plans/sr1a-preconditions.md` (Joel: yes to all).
+  Evidence: `plans/sr1a-evidence.md` (+ `plans/sr1a-evidence/`).
+- **Database (staging only):**
+  - Migration `20261123000000_sr1a_session_tags`: `sessions.purpose` with a check (bullpens only, the list),
+    `session_stats.purpose`, and `sync_session` / `sessions_h1_lock` / `finalize_session_stats` taking it.
+  - Policies 32 / 12, unchanged. `supabase/tests/sr1a_session_tags.sql`: 0 fails.
+  - The migration and rollback were dry-run together first (rolled back; the functions came back to their checksums).
+- **Function (staging only):** `send-session-report` reads `purpose` from the session row for the pen header.
+- **Built:**
+  - "What's this pen for?" on a bullpen's start screen: Command · Velocity · Short pen · No tag (default No tag).
+  - A tag pill while charting.
+  - The tag in the outbox, the sync, History's card (pending too) and the report header.
+- **Checked:**
+  - Acceptance checks 1-6 PASS. That includes an offline save that synced with its tag.
+  - Reports sent before Stage A hash the same.
+  - Untagged pens and games render byte-identical with old and new code.
+- **Deviation:** the four choices sit in two rows of two (one row didn't fit at 390).
+- **Production (Joel):**
+  1. Backup.
+  2. `supabase db push --project-ref fkgccjhuimkkbupbanxp` (only `20261123000000`).
+  3. `supabase functions deploy send-session-report --project-ref fkgccjhuimkkbupbanxp`.
+  4. Merge.
+
+  The database must go first.
+- **Open:** none. Stage B (history baselines) starts after Stage A is on production.
+
+---
+
 ## 2026-11-19 · R7 Stage C (one login, several roles) · **production** (PR #120, merge `c7ab201`), branch `r7c-roles`, cache `kb-shell-v360`
 
 - **Live Nov 19 (Joel):**

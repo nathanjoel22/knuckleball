@@ -228,7 +228,7 @@ Deno.serve(async (req) => {
   // same as any other RLS-filtered read.
   const { data: session, error: sessionErr } = await callerClient
     .from('sessions')
-    .select('id, pitcher_id, report_path, kind, deleted_at, sport, ra_on')
+    .select('id, pitcher_id, report_path, kind, deleted_at, sport, ra_on, purpose')
     .eq('id', sessionId)
     .maybeSingle()
   if (sessionErr) {
@@ -417,6 +417,7 @@ Deno.serve(async (req) => {
         pitcherId: body.pitcherId,
         sport: asSport(session.sport),   // S1: the session row's sport, whatever the payload says
         raOn: session.ra_on === true,     // U14: from the session row
+        purpose: session.purpose ?? null,  // SR1 A: from the session row, never the payload
         pitcherName: body.pitcherName,
         uniformNumber: body.uniformNumber ?? null,
         teamName: body.teamName ?? null,

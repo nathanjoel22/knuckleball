@@ -120,7 +120,7 @@ export interface RenderedReport { html: string; kind: string; sport: string; pay
 // Everything read with `db` (the rerender job passes the admin client; it is operator-gated).
 export async function renderReportFromRows(db: SupabaseClient, sessionId: string): Promise<RenderedReport> {
   const { data: s, error: sErr } = await db.from('sessions')
-    .select('id, pitcher_id, team_id, logged_by, started_at, charting_perspective, kind, opponent, sport, deleted_at, ra_on')
+    .select('id, pitcher_id, team_id, logged_by, started_at, charting_perspective, kind, opponent, sport, deleted_at, ra_on, purpose')
     .eq('id', sessionId).maybeSingle()
   if (sErr || !s) throw new Error('session not found: ' + (sErr?.message || sessionId))
   if (s.deleted_at) throw new Error('session is deleted')
@@ -160,7 +160,7 @@ export async function renderReportFromRows(db: SupabaseClient, sessionId: string
       .filter(x => x.id !== s.id && x.kind === 'bullpen')
       .sort((a, b) => a.date - b.date)
       .map(x => { const st = historyStats(x.pitches); return { date: x.date, dateLabel: dateLabel(x.date), ...st } as HistoryEntry })
-    const payload: ReportPayload = { ...common, teamName: team ? String(team.name) : '', pitches: pitches as unknown as Pitch[], history }
+    const payload: ReportPayload = { ...common, purpose: (s.purpose ?? null) as string | null, teamName: team ? String(team.name) : '', pitches: pitches as unknown as Pitch[], history }
     return { html: buildReportHtml(payload), kind: 'bullpen', sport: String(s.sport), payload }
   }
 

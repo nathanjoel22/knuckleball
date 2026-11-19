@@ -12,6 +12,9 @@ import {
   computeVelocityDepth, computeWorkload, computeTrends, type Pitch, type HistoryEntry
 } from './compute.ts'
 
+// SR1 Stage A: a pen's purpose (sessions.purpose; the tracker's SESSION_TAGS) as the header says it
+const SESSION_TAG_LABELS: Record<string, string> = { command: 'Command pen', velocity: 'Velocity pen', short_pen: 'Short pen' }
+
 export interface ReportPayload {
   // S1: from the SESSION ROW (index.ts), never from the client's payload.
   sport?: Sport
@@ -28,6 +31,7 @@ export interface ReportPayload {
   pitches: Pitch[]
   history: HistoryEntry[]
   raOn?: boolean   // U14: the session's answer to "Turn on Relative Accuracy?" (session row)
+  purpose?: string | null   // SR1 A: the pen's tag (session row); null = No tag
 }
 
 // S1 (Joel, Oct 1): the footer link goes to THIS sport's sign-in page.
@@ -51,12 +55,13 @@ function renderHeader(p: ReportPayload): string {
   const sided = p.pitches.filter(x => x.batterSide === 'R' || x.batterSide === 'L').length
   const batterBit = !p.pitches.length ? '' : sided === 0 ? ' · No batter' : sided < p.pitches.length ? ' · Mixed' : ''
   const perspectiveNote = viewNote(p.chartingPerspective)   // Amendment 16
+  const tagBit = SESSION_TAG_LABELS[p.purpose ?? ''] ? ' · ' + SESSION_TAG_LABELS[p.purpose ?? ''] : ''   // SR1 A: none = today's line, byte for byte
   return `
   <header class="report-header">
     <div class="brand-mark">KNUCKLEBALL</div>
     <span class="sport-tag">${asSport(p.sport) === 'softball' ? 'Softball' : 'Baseball'} · Bullpen</span>
     <h1>${escapeHtml(p.pitcherName)}${numBit}</h1>
-    <p class="header-meta">${dateStr}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''} · ${p.pitches.length} pitch${p.pitches.length === 1 ? '' : 'es'}${batterBit} · charted by ${chartedBy}</p>
+    <p class="header-meta">${dateStr}${tagBit}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''} · ${p.pitches.length} pitch${p.pitches.length === 1 ? '' : 'es'}${batterBit} · charted by ${chartedBy}</p>
     ${perspectiveNote}
   </header>`
 }

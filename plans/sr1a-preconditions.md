@@ -196,3 +196,8 @@ The packet's 1–6:
 - **Where it shows:** History and the report header.
 - **Sent reports:** one sent before Stage A, hashed before and after.
 - **The rest:** the pre-push checks, `kb-shell-v361`, a STATUS entry, the CLAUDE.md lines, all in the PR.
+
+## Joel's answers (Nov 19, 2026)
+
+"yes to all": questions 1–5 as recommended. Labels Command · Velocity · Short pen · No tag; No tag every time; fixed at
+Start bullpen; shown in History (pending cards too) and the report header only; Stage A deploys `send-session-report`.

@@ -4509,11 +4509,19 @@ function gameHitScore(s, pending, persp, side){
 }
 // U14: "a pitch type with no cells marked for that side is exact-only for that pitch, and the screen says so once" --
 // once per session for each pitch type and side, on the hint line.
+// SR1 Stage A: a bullpen's purpose, asked at the start ("What's this pen for?"); null = No tag. Stored as
+// sessions.purpose (sync_session, locked at the save); its comparisons use only pens with the same tag. Games have none.
+const SESSION_TAGS = [['command', 'Command'], ['velocity', 'Velocity'], ['short_pen', 'Short pen']];
+function sessionTagLabel(purpose){
+  const t = SESSION_TAGS.find(x => x[0] === purpose);
+  return t ? (t[0] === 'short_pen' ? 'Short pen' : t[1] + ' pen') : '';
+}
 // U14: the session's answer, read-only once charting starts (the question comes before the first pitch)
 function raPill(){
   const s = state.activeSession;
   if(!isU14Session(s) || (s.kind === 'game' && !s.intent)) return '';
-  return `<span class="ra-pill${s.raOn ? ' on' : ''}" title="Relative Accuracy, chosen at the start of this session">RA ${s.raOn ? 'on' : 'off'}</span>`;
+  const tag = s.kind === 'bullpen' && s.purpose ? ` <span class="ra-pill" title="This pen's purpose, chosen at the start">${sessionTagLabel(s.purpose)}</span>` : '';   // SR1 A
+  return `<span class="ra-pill${s.raOn ? ' on' : ''}" title="Relative Accuracy, chosen at the start of this session">RA ${s.raOn ? 'on' : 'off'}</span>${tag}`;
 }
 function raCheckCells(type){
   const s = state.activeSession, side = sessionBatterSide(s);
@@ -6670,6 +6678,7 @@ window.endSession = async function(){
     gameFinalInning: state.activeSession.kind === 'game' ? gameLastInning(state.activeSession) : null,   // Oct 20: not the inning a third out rolled on to
     gameOutsRecorded: state.activeSession.kind === 'game' ? Math.max(0, (state.activeSession.inning - 1) * 3 + state.activeSession.outs - (state.activeSession.carryOutsBefore || 0)) : null,   // a reliever who took over mid-game (Oct 19) counts only his own outs
     raOn: state.activeSession.raOn === true,   // U14
+    purpose: state.activeSession.kind === 'bullpen' ? (state.activeSession.purpose || null) : null,   // SR1 A
     pitchCountAdjust: state.activeSession.kind === 'game' ? gamePitchCountAdj(state.activeSession) : 0,   // Oct 19: + / - pitch count, saved
     inheritedRunners: state.activeSession.kind === 'game' && Number.isInteger(state.activeSession.inheritedRunners) ? state.activeSession.inheritedRunners : null,   // Oct 21
     runnersLeft: state.activeSession.kind === 'game' ? [1, 2, 3].filter(b => state.activeSession.runners && state.activeSession.runners[b]).length : null,   // Oct 21: on base when he came out
@@ -6821,6 +6830,7 @@ function pendingSessionsForCurrentSelection(){
       // loadSessionsForCurrentSelection.
       kind: item.kind || 'bullpen',
       raOn: item.raOn === true,   // U14
+      purpose: item.purpose || null,   // SR1 A
       pitchCountAdjust: item.pitchCountAdjust || 0,   // Oct 19
       events: item.events || [],   // Oct 20: the game card's K / BB / R
       outsRecorded: item.gameOutsRecorded == null ? null : item.gameOutsRecorded,   // History's IP
@@ -6912,6 +6922,7 @@ async function syncOutbox(){
       game_final_inning: (item.gameFinalInning === undefined) ? null : item.gameFinalInning,
       game_outs_recorded: (item.gameOutsRecorded === undefined) ? null : item.gameOutsRecorded,
       ra_on: item.raOn === true,   // U14: the start question's answer (false for anything queued before U14)
+      purpose: item.purpose || null,   // SR1 A: the pen's tag (null: No tag, a game, or queued before Stage A)
       pitch_count_adjust: item.kind === 'game' ? (item.pitchCountAdjust || 0) : 0,   // Oct 19: + / - pitch count
       inherited_runners: item.kind === 'game' && Number.isInteger(item.inheritedRunners) ? item.inheritedRunners : null,   // Oct 21: a reliever's IR
       runners_left: item.kind === 'game' && Number.isInteger(item.runnersLeft) ? item.runnersLeft : null,   // Oct 21: left on base when he came out
@@ -7157,7 +7168,7 @@ function workloadBanner(){
 const STATS_VERSION = 2;
 const HISTORY_PREFETCH_N = 20;
 const HISTORY_CACHE_MAX = 200;
-const SESSION_COLS = 'id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, pitch_count_adjust, final_at, exit_runs, exit_er, exit_bb, game_outs_recorded';
+const SESSION_COLS = 'id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, purpose, pitch_count_adjust, final_at, exit_runs, exit_er, exit_bb, game_outs_recorded';
 const PITCH_COLS = 'type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, accuracy_hit_kind, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, runs_scored, unearned_runs, inherited_runs, charged_prev, fielders, batter_to, runner_advances, outs_on_play, sacrifice';
 const EVENT_COLS = 'event_type, balls_before, strikes_before, runs_scored, unearned_runs, inherited_runs, charged_prev';
 const STATS_COLS = 'stats_version, pitches, pitch_count, strikes, hits, exact_hits, ra_hits, zone_total, zone_hits, velo_n, velo_sum, velo_min, velo_max, ttp_n, ttp_sum, by_type, game';
@@ -7355,6 +7366,7 @@ function mapSessionRow(s, teamId){
     // every such row is, definitionally, a bullpen.
     kind: s.kind || 'bullpen',
     raOn: s.ra_on === true,   // U14 (false for every session from before it)
+    purpose: s.purpose || null,   // SR1 A: the pen's tag (null for every session from before it)
     pitchCountAdjust: s.pitch_count_adjust || 0,   // Oct 19: + / - pitch count (games)
     // R3 (B6): his line is open while runners he left on can still score (final_at NULL); runs / ER / walks charged
     // to him after he left come from the relief games' saves
@@ -8298,7 +8310,7 @@ window.chooseSessionKind = async function(kind){
   // Defaults come from the profile; the answers belong to this session only.
   const pq = currentPitcher();
   state.activeSession.typeOrder = pitchTypesFor(pq).slice();   // U15: this session's colour order (colorTypesFor)
-  state.activeSession.startQ = { radar: !!(pq && pq.usesRadarGun), rel: raLastAnswer(pq), intent: false, intentHelp: false, file: fileDefault() };
+  state.activeSession.startQ = { radar: !!(pq && pq.usesRadarGun), rel: raLastAnswer(pq), intent: false, intentHelp: false, file: fileDefault(), purpose: null };   // SR1 A: No tag to start, every time
   const handoff = kind === 'game' ? gameHandoff() : null;
   if(handoff){ state.activeSession.startQ.carry = true; if(handoff.opponent && !state.activeSession.opponent) state.activeSession.opponent = handoff.opponent; }
   if(kind === 'game') loadOpponents();   // the saved list, refreshed in the background when online
@@ -8409,6 +8421,7 @@ window.startSessionNow = async function(){
   }
   s.usesRadarGun = !!q.radar; s.radarAsked = true;
   if(s.kind === 'bullpen') s.relAccuracyToday = !!q.rel;
+  s.purpose = s.kind === 'bullpen' && SESSION_TAGS.some(x => x[0] === q.purpose) ? q.purpose : null;   // SR1 A: fixed from here on
   // U14: the answer is the session's own (stored as sessions.ra_on); a Live Game asks only with Intent on
   s.raOn = s.kind === 'game' ? !!(q.intent && q.rel) : !!q.rel;
   if(s.kind === 'bullpen' || q.intent) rememberRaAnswer(currentPitcher(), !!q.rel);
@@ -8475,6 +8488,16 @@ function raStartQuestion(q, who){
   const yn = segTray([{ label: 'Yes', selected: !!q.rel, onclick: "setStartQ('rel', true)" }, { label: 'No', selected: !q.rel, onclick: "setStartQ('rel', false)" }], { key: 'sq-rel', label: 'rel', cls: 'start-yn' });
   return `<div class="start-q-item"><div class="start-q-label">Turn on Relative Accuracy?</div>${yn}
       <p class="start-q-note">${q.rel ? `A pitch that lands on the target, or on one of the cells marked in ${who} profile for that pitch, counts as accurate.` : 'A pitch counts as accurate only when it lands on the target.'}</p></div>`;
+}
+// SR1 Stage A: "What's this pen for?" (bullpens only); No tag selected to start
+function tagStartQuestion(q, who){
+  const tray = segTray(SESSION_TAGS.map(([k, l]) => ({ label: l, selected: q.purpose === k, onclick: `setStartQ('purpose', '${k}')` }))
+    .concat([{ label: 'No tag', selected: !q.purpose, onclick: "setStartQ('purpose', null)" }]), { key: 'sq-tag', label: 'Pen purpose', cls: 'start-yn tray-grid' });
+  const yours = who === 'your' ? 'your' : who;
+  const note = !q.purpose ? `Compared with all ${yours} pens.`
+    : (q.purpose === 'short_pen' ? 'A light pen between starts. ' : '') + `Compared only with ${yours} other ${sessionTagLabel(q.purpose).toLowerCase().replace(/ pen$/, '')} pens.`;
+  return `<div class="start-q-item"><div class="start-q-label">What's this pen for?</div>${tray}
+      <p class="start-q-note">${note}</p></div>`;
 }
 // Release 2 (E2 / E3): a reliever taking over -- the runners on base are inherited (IR; the hand-off keeps whether each
 // one's run would be unearned), and the batter at the plate, if the count is 2-0 / 2-1 / 3-0 / 3-1 / 3-2, is the
@@ -8584,6 +8607,7 @@ function renderStartQuestions(p){
     ${fileStartQuestion(q)}
     <div class="start-q-item"><div class="start-q-label">Will you be using a radar gun today?</div>${yn('radar', q.radar)}</div>
     ${game ? '' : raStartQuestion(q, who)}
+    ${game ? '' : tagStartQuestion(q, who)}
     ${game ? `<div class="start-q-item"><div class="start-q-label intent-q">Turn on Intent?
         <span class="info-wrap"><button type="button" class="btn btn-icon btn-sm info-q" aria-label="What is Intent?" aria-expanded="${q.intentHelp ? 'true' : 'false'}" onclick="setStartQ('intentHelp', ${q.intentHelp ? 'false' : 'true'})">?</button>
         <span class="info-tip" role="tooltip">For use with Pitchcom, Game Day Watches, GoRout, etc...</span></span></div>
@@ -13537,7 +13561,7 @@ function renderHistoryView(){
       <div class="session-card" data-sid="${s.id}">
         <div class="session-card-head has-thumb" role="button" tabindex="0" aria-expanded="${state.openSessions[s.id] ? 'true' : 'false'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
           ${renderZoneThumb(s, p)}
-          <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${teamChipHtml(s)}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${pendingTag}</div>
+          <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${s.purpose ? ` <span class="team-chip">${sessionTagLabel(s.purpose)}</span>` : ''}${teamChipHtml(s)}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${pendingTag}</div>
           <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
             <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>

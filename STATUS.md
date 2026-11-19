@@ -78,13 +78,21 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Staging test data:** Little Leaguer set to Little League with a pitch mix and one pen. The test parent's email was
   marked verified in staging.
 - **Production (Joel):**
-  1. `supabase functions deploy send-session-report --project-ref fkgccjhuimkkbupbanxp`.
+  1. `send-session-report` deployed to production Nov 19 (version 50; staging redeployed from the same files, same
+     bundle).
   2. Merge.
 - **Open:** none. Next: Stage F (email per recipient and the parent contact).
 
 ---
 
-## 2026-11-19 · SR1 Stage D (workload, rest and team settings) · **staging**, branch `sr1d-workload`, cache `kb-shell-v362`
+## 2026-11-19 · SR1 Stage D (workload, rest and team settings) · **production** (PR #129, merge `049e2dc`), branch `sr1d-workload`, cache `kb-shell-v362`
+
+- **Live Nov 19 (Joel):**
+  - Backup `2026-11-19-1352`.
+  - Before `db push`, production's `set_team_level` matched the rollback's copy (`3cf009fa…`). `db push` ran only
+    `20261125000000_sr1d_workload`. After it, the four functions match staging, and policies stay 32 / 12.
+  - `send-session-report` deployed (version 49, the same bundle as staging).
+  - Merged.
 
 - **Packet:** `plans/sr1-session-reports.md` Stage D; decisions in `plans/sr1d-preconditions.md` (Joel: softball left
   alone, the rest as recommended). Evidence: `plans/sr1d-evidence.md` (+ `plans/sr1d-evidence/`).
@@ -104,14 +112,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - Save / Not now / reload in the app, as a baseball head, a softball head and a pitcher.
   - Stored reports' cards correct; old reports hash the same.
 - **Deviation:** the 7-day sentence says "in this pen / game", not "today" (a report is read later).
-- **Production (Joel):**
-  1. Backup.
-  2. `supabase db push --project-ref fkgccjhuimkkbupbanxp` (only `20261125000000`).
-  3. `supabase functions deploy send-session-report --project-ref fkgccjhuimkkbupbanxp`.
-  4. Merge.
-
-  The database goes first.
-- **Open:** none. Next: Stage E (reader versions), which needs heads to have confirmed their level.
+- **Open:** head coaches confirm their level (the card on Home). Next: Stage E (reader versions), once they have.
 
 ---
 

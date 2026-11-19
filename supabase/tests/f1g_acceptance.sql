@@ -75,7 +75,9 @@ begin
 
   -- ---------- 3. accepting ----------
   out := out || ' | 3 accept:';
-  for who in select * from (values ('PIT as guardian', PIT, tG), ('CA as guardian', CA, tG), ('PAR own player', PAR, tG),
+  -- R7 Stage C (Nov 19 2026): any adult login may now accept a guardian or family link (it gains the Parent role), so
+  -- 'PIT as guardian' and 'CA as guardian' are no longer refused here; that rule is tested in r7c_roles.sql (11c, 12).
+  for who in select * from (values ('PAR own player', PAR, tG),
                                     ('G2 as guardian', G2, tG), ('X same link again', X, tG), ('G2 again', G2, tG),
                                     ('FAM as family', FAM, tF), ('PIT as child', PIT, tC), ('CH as child', CH, tC)) t(nm, id, tk) loop
     perform set_config('request.jwt.claims', json_build_object('sub', who.id, 'role', 'authenticated')::text, true); set local role authenticated;

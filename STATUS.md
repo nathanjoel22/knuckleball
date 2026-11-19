@@ -60,6 +60,40 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-19 · R7 Stage C (one login, several roles) · **staging** (DB + local site), branch `r7c-roles`, cache `kb-shell-v360`
+
+- **Packet:** `plans/r7-one-login.md` Stage C; decisions in `plans/r7-preconditions.md` items 4, 6 and 8 (Joel: yes to
+  all). Evidence: `plans/r7c-evidence.md` (+ `plans/r7c-evidence/`).
+- **Database (staging only):**
+  - Migration `20261122000000_r7c_roles`:
+    - `profiles.created_via` / `opens_profile` / `opens_team`;
+    - `r7_add_role_profile`;
+    - `p_add_role` on `join_team_via_invite` / `join_group_via_token` / `join_team_as_coach`;
+    - any adult login for `accept_player_link`, `f1_make_facility` and `facility_email_status`;
+    - `my_roles()`, `set_opening_role()`.
+  - Policies 32 / 12, unchanged.
+  - The rollback was run on staging and the migration re-applied.
+  - `facility-invites` redeployed to staging.
+- **Built:**
+  - "Pitch for <team> too?" and "Coach <team> too?" on the join pages; any adult may follow a player.
+  - The role switcher (More on phones, a Role select in the side menu).
+  - Account → Your roles with "Open this first" (every device).
+  - Account → Hand off the facility.
+  - More → + Start a facility.
+- **Checked:**
+  - Done when 10-16 PASS.
+  - The union-only matrix shows 0 differences; the F1-A read matrix is identical before and after.
+  - Two old tests (`r4_rls_matrix`, `p2_rls_matrix`) fail the same way without Stage C (they predate F1-G).
+- **Tests changed:**
+  - `f1g_acceptance` drops the "a pitcher / coach can't be a guardian" cases (now allowed on purpose).
+  - `f1a_rls_matrix` leaves R7's new columns out of its fingerprint.
+- **Open:**
+  - Joel's check.
+  - Production order: backup → `db push` → deploy `facility-invites` → merge. The site needs the database first:
+    `PROFILE_COLS` reads the new columns.
+
+---
+
 ## 2026-11-19 · R7 Stage B (facility self-serve) · **production** (PR #117, merge `4666698`), branch `r7b-facility-self-serve`, cache `kb-shell-v359`
 
 - **Live Nov 19 (Joel):**

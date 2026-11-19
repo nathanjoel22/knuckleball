@@ -23,7 +23,8 @@ begin
         select string_agg(format('%I', a.attname), ', ' order by a.attnum) into cols from pg_attribute a
           where a.attrelid = ('public.' || quote_ident(t.relname))::regclass and a.attnum > 0 and not a.attisdropped
             and has_column_privilege('authenticated', a.attrelid, a.attname, 'SELECT')
-            and not (t.relname = 'teams' and a.attname in ('org_id', 'kind'));   -- F1-A's new columns: compared in the facility matrix
+            and not (t.relname = 'teams' and a.attname in ('org_id', 'kind'))   -- F1-A's new columns: compared in the facility matrix
+            and not (t.relname = 'profiles' and a.attname in ('created_via', 'opens_profile', 'opens_team'));   -- R7 Stage C's: in r7_roles_matrix
         execute format('select count(*), coalesce(md5(string_agg(md5(x::text), '','' order by md5(x::text))), ''-'') from (select %s from public.%I) x', coalesce(cols, '1'), t.relname) into n, h;
       exception when insufficient_privilege then n := -1; h := 'denied';
       end;

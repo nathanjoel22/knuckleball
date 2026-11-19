@@ -114,7 +114,7 @@
       <p class="sub" id="a-sub"></p></div></header>
     <div class="ap-choices" role="radiogroup" aria-label="Your account">
       <label class="attest-opt"><input type="radio" name="a-mode" value="new" checked> I'm new to Knuckleball</label>
-      <label class="attest-opt"><input type="radio" name="a-mode" value="signin"> I have a parent account</label>
+      <label class="attest-opt"><input type="radio" name="a-mode" value="signin"> I already have a Knuckleball account</label>
     </div>
     <div class="field" id="a-name-field"><label class="field-label" for="a-name">Your name</label>
       <input class="text-input" id="a-name" placeholder="First and last name" autocomplete="name"></div>
@@ -156,7 +156,9 @@
     done: "You've joined. Open Knuckleball to see the player."
   };
   var ACCEPT_ERRORS = {
-    not_a_parent_login: "This account isn't a parent account. Use a different email to make a parent account for following players.",
+    // R7 Stage C: any adult account may follow a player (a coach or pitcher too); only a player's own sign-in can't
+    not_a_parent_login: "This account isn't set up yet. Open Knuckleball once, then this link again.",
+    child_login: "A player's own sign-in can't follow other players. Sign out, then use a parent's account.",
     adult_required: 'Answer the age question in Knuckleball first (parents are 18 or older), then open this link again.',
     login_in_use: 'This account already has profiles of its own. Your own sign-in needs a new email address.',
     already_yours: 'This player is already on your account.',
@@ -297,7 +299,7 @@
         options: { data: { full_name: name, intended_role: 'parent' } } });
       if(up.error){
         if(!(/already|registered|exists/i.test(up.error.message || '') && await signInInstead(email, password))){
-          err.textContent = /already|registered|exists/i.test(up.error.message || '') ? 'This email already has an account. Choose "I have a parent account" and sign in.' : up.error.message;
+          err.textContent = /already|registered|exists/i.test(up.error.message || '') ? 'This email already has an account. Choose "I already have a Knuckleball account" and sign in.' : up.error.message;
           btn.disabled = false; btn.textContent = label; return;
         }
       } else if(!up.data.session){ try{ localStorage.setItem('kb:pendingParentAttest', '{"status":"adult"}'); }catch(x){} show('confirm-card'); return; }

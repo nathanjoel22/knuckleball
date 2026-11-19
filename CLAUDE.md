@@ -478,7 +478,35 @@ The real tables (from the dump): `profiles` (incl. `contact_emails jsonb`), `tea
 
 There are 32 RLS policies on production and staging (since F1-A, Oct 29 2026: + the two facility group read rules; F1-G edits rules but adds none) (production and staging, Oct 28 2026 after SC1: + the `session_stats` read rule; 29 after the H1 grace close, Oct 21 2026 -- 34 before it, Oct 5 after the teams hotfix; S3 session_notes: coaches add, author deletes, author/pitcher/current coaches read via `is_coach_of_session`; the report page reads notes through `get_report_notes(token)`). Since H1 nobody holds FOR ALL on sessions, pitches or game_events: see "Saved sessions and sync (H1)" below. Decision D3 is settled and built: sessions belong to the pitcher, team affiliation is optional (`team_id` nullable since P2-01, migration `20261026000000_p2_01_team_optional`).
 
-**Profiles vs logins (S4 Stage A, Oct 2 2026).** A login (auth user) owns one or more profiles (`profiles.account_id`); its primary profile has `id = account_id` and holds email verification. Profiles no longer reference `auth.users`; `sessions.pitcher_id/logged_by/deleted_by`, `teams.coach_id` and `invites.invited_by` reference `profiles`. Every policy and function checks ownership with `is_my_profile(p)` (team helpers: "the caller owns a profile in that row"); functions acting as the caller take an optional profile id and otherwise use the login's only profile (`my_single_profile()`), refusing with `profile_required` when the login has several -- never `auth.uid()` as a profile id. "Add a sport" = `add_sport_profile(sport)`. Report eligibility reads verification through the profile's login. The app runs one ACTIVE profile at a time (`kb:activeProfile:<uid>`, per-profile offline snapshots `lastKnownContext:<uid>:<profile>`), switches in place without a reload, and sign-in never refuses for sport (the sign-in cards do check the kind of login: see F1-A's Cards). Down migration: `supabase/rollback/20261002020000_s4a_profiles_down.sql`. RLS proof: `supabase/tests/s4_rls_matrix.sql` (identical before/after on staging).
+**Profiles vs logins (S4 Stage A, Oct 2 2026).** A login (auth user) owns one or more profiles (`profiles.account_id`); its primary profile has `id = account_id` and holds email verification. Profiles no longer reference `auth.users`; `sessions.pitcher_id/logged_by/deleted_by`, `teams.coach_id` and `invites.invited_by` reference `profiles`. Every policy and function checks ownership with `is_my_profile(p)` (team helpers: "the caller owns a profile in that row"); functions acting as the caller take an optional profile id and otherwise use the login's only profile (`my_single_profile()`), refusing with `profile_required` when the login has several -- never `auth.uid()` as a profile id. "Add a sport" = `add_sport_profile(sport)`. Report eligibility reads verification through the profile's login. The app runs one ACTIVE profile at a time (`kb:activeProfile:<uid>`, per-profile offline snapshots `lastKnownContext:<uid>:<profile>`), switches in place without a reload, and sign-in never refuses for sport (nor, since R7 Stage A, for the kind of login). Down migration: `supabase/rollback/20261002020000_s4a_profiles_down.sql`. RLS proof: `supabase/tests/s4_rls_matrix.sql` (identical before/after on staging).
+
+**One login, several roles (R7 Stage C, Joel, Nov 19 2026; `plans/r7-one-login.md` Stage C, decisions in
+`plans/r7-preconditions.md`, evidence `plans/r7c-evidence.md`).**
+- **A role** is a profile on the login (coach or pitcher, per sport), a parent's players or `player_links` rows, or a
+  facility (`organizations.manager_login`). No new table.
+- **Gained only by accepting a link, and only when the page asks (`p_add_role`):**
+  - `join_team_via_invite` / `join_group_via_token`: a coach or parent login → Pitcher ("Pitch for <team> too?");
+  - `join_team_as_coach`: an adult pitcher or parent login → Coach ("Coach <team> too?");
+  - `accept_player_link`: any adult login → Parent of that player;
+  - `create_facility_self` / More → "+ Start a facility": any adult login → Facility.
+  - New profiles are made in one place, `r7_add_role_profile` (adults only, never a child sign-in), with
+    `profiles.created_via` (`team_link` / `qr_code` / `staff_link` / `facility`; null = signup).
+  - Without `p_add_role` the joins behave as before (old apps).
+- **Kept:** every age rule, `coaches_must_be_adults`, a child sign-in's single role, one facility per login,
+  `create_team` for coaches. A facility manager's own coach profile can join another team's staff (Joel's case).
+- **What a two-role login reads = the union of its roles, never more** (decision 6; `supabase/tests/r7_roles_matrix.sql`
+  splits each role onto a twin login and compares row for row). The app shows each role only its own screens.
+- **The switcher** (`my_roles()`, cached in `kb:roles:<uid>`; `renderRoleSwitch`): More → Your account on phones, a
+  Role select under the team in the side menu, Account's extras. Plain names: "Coach — <team>", "Facility — <name>",
+  "Pitcher — <teams>", "Parent — <player>". Shown only with more than one role. `switchRole(profile, team)`.
+- **What sign-in opens:** Account → **Your roles** → "Open this first" (`set_opening_role` → the primary's
+  `opens_profile` / `opens_team`, so every device). Unset: the primary, a facility manager's facility first. A cold
+  start reopens the last role used on the device (as before).
+- **Facility hand-off** in Account (`renderFacilityHandoff`, `handoff_facility`): both sides to a coach already on both
+  staffs. Deleting the account stays refused (`still_head`) until then.
+- Delete and export already cover every profile on the login (A1), so every role.
+- Migration `20261122000000_r7c_roles`; rollback `supabase/rollback/20261122000000_r7c_roles_down.sql`; tests
+  `supabase/tests/r7c_roles.sql`, `r7_roles_matrix.sql`. Policies 32 / storage 12, unchanged.
 
 **Parent accounts and players (S4 Stage B, Oct 2 2026).** A parent login has a primary profile with role `parent` (no sport; never charts, never joins a team) created by `ensure_account_setup('parent', name)` from `parent-signup.html`. Any login attested 'adult' can `add_player(name, sport, throws, consent)`: a managed pitcher profile (`account_id` = that login, `managed_by` = its primary profile, `guardian_consented_at` + `consent_via = 'parent_created'`, reports to the login's email via `contact_emails.pitcher`); no email, login or age is ever stored for a player. Players join teams through `join.html`'s "Join as:" picker (shown only to logins that are parents or manage players). Coaches see "Parent account" (`get_roster_verification.managed`). Parents, like coaches, can only attest 'adult'. Under 13 is possible ONLY as a parent-added player -- self-signup still has no under-13 answer. One-time notices in the tracker (the age box, "Who's charting?") share one overlay path in `render()`: dead-center over the app on the shaded backdrop (`--scrim`: since D2, the sport's own dark), one at a time. Rollback: `supabase/rollback/20261002060000_s4b_players_down.sql`; acceptance: `supabase/tests/s4b_acceptance.sql`.
 

@@ -68,6 +68,19 @@
     <p class="spinner-msg">Loading invite…</p>
   </div>
 
+  <!-- R7 Stage C: "Pitch for this team too?" for a signed-in coach or parent (the same login gains a pitcher role) -->
+  <div class="card step-hidden" id="addrole-card">
+    <header class="signin-head"><div class="brand-block">
+      <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
+      <span class="tagline">Always a Step Ahead</span>
+    </div>
+    <h2 class="display">Pitch for <span class="last" id="addrole-team">this team</span> too?</h2></header>
+    <div class="info-msg">This link adds a pitcher. Your account stays as it is; you'll also be a pitcher here, with the same email and password, and switch between the two in the menu. If you only opened it to check it, go back.</div>
+    <div class="error-msg" id="addrole-error"></div>
+    <button type="button" class="btn btn-primary btn-block" id="addrole-go">Join as a pitcher</button>
+    <a href="bullpen-tracker.html">No, back to Knuckleball</a>
+  </div>
+
   <div class="card step-hidden" id="invalid-card">
     <header class="signin-head"><div class="brand-block">
       <div class="brand"><h1 class="display brand-word">KNUCKLEBALL</h1></div>
@@ -317,7 +330,7 @@
 <script src="report-config.js"></script>
 <script>
   function showCard(id){
-    ['loading-card','invalid-card','join-form','confirm-card','joining-card','attest-card','joinas-card','code-card'].forEach(cid => {
+    ['loading-card','invalid-card','join-form','confirm-card','joining-card','attest-card','joinas-card','code-card','addrole-card'].forEach(cid => {
       document.getElementById(cid).classList.toggle('step-hidden', cid !== id);
     });
   }
@@ -327,10 +340,33 @@
   // F1-B: a coach's join code at a training facility (join.html?c=) instead of a team link
   const code = (params.get('c') || '').trim();
   const coachMode = !token && !!code;
-  function joinRpc(profileId){
-    return coachMode
-      ? supabaseClient.rpc('join_group_via_token', profileId ? { p_token: code, p_profile: profileId } : { p_token: code })
-      : supabaseClient.rpc('join_team_via_invite', profileId ? { p_token: token, p_profile: profileId } : { p_token: token });
+  function joinRpc(profileId, addRole){
+    const args = Object.assign(coachMode ? { p_token: code } : { p_token: token }, profileId ? { p_profile: profileId } : {}, addRole ? { p_add_role: true } : {});
+    return supabaseClient.rpc(coachMode ? 'join_group_via_token' : 'join_team_via_invite', args);
+  }
+  // R7 Stage C (Joel, Nov 19 2026): a coach's (or parent's) login can pitch for a team too -- one email, two roles. Asked
+  // first, never automatic (a coach opening their own link to check it just goes back).
+  function showAddRole(){
+    const t = document.getElementById('addrole-team'); if(teamName) t.textContent = teamName;
+    showCard('addrole-card');
+    const go = document.getElementById('addrole-go');
+    go.onclick = async () => {
+      go.disabled = true; go.textContent = 'Joining…';
+      const { data, error } = await joinRpc(null, true);
+      if(error || !data || data.error){
+        go.disabled = false; go.textContent = 'Join as a pitcher';
+        document.getElementById('addrole-error').textContent = isFacilityUnverified(error) ? "This facility isn't taking new members yet."
+          : (data && data.error === 'adult_required') ? 'This code is for parents and for pitchers 18 or older.'
+          : (data && data.error === 'coach_cannot_join') ? "This account can't pitch for a team." : "Couldn't join. Check your connection and try again.";
+        return;
+      }
+      try{
+        const { data: { session: s } } = await supabaseClient.auth.getSession();
+        if(s && data.profile_id) localStorage.setItem('kb:activeProfile:' + s.user.id, data.profile_id);
+        if(teamSport) localStorage.setItem('kb:sport', teamSport);
+      }catch(e){}
+      window.location.href = 'bullpen-tracker.html';
+    };
   }
 
   const form = document.getElementById('join-form');
@@ -426,12 +462,9 @@
     if(data && data.error === 'adult_required'){ showAdultOnly(); return; }   // F1-B: a code is for parents and adult pitchers
     // P1-10: an existing account that hasn't answered the age question yet.
     if(data && data.error === 'attestation_required'){ showCard('attest-card'); return; }
-    // A coach opening a team link (e.g. testing it) is not a pitcher: nothing
-    // to join, just take them to their app.
-    if(data && data.error === 'coach_cannot_join'){
-      window.location.href = 'bullpen-tracker.html';
-      return;
-    }
+    // A coach opening a team link: before R7 straight back to the app; now asked whether to pitch here too (Stage C).
+    if(data && (data.error === 'coach_cannot_join' || data.error === 'profile_required')){ showAddRole(); return; }   // R7 C: profile_required =
+    // a login with several profiles and no pitcher one in this sport (it used to read as an invalid link)
     if(data && data.error === 'team_archived'){ showTeamArchived(); return; }
     if(error || !data || data.error){
       showCard('invalid-card');

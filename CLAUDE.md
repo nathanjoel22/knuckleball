@@ -73,6 +73,30 @@ storage.
 - Migration `20261123000000_sr1a_session_tags`; rollback in `supabase/rollback/`; test
   `supabase/tests/sr1a_session_tags.sql`. Policies 32 / storage 12, unchanged.
 
+## Reports, answer-first (SR1 Stage C, Joel, Nov 19 2026; `plans/sr1-session-reports.md`, decisions in `plans/sr1c-preconditions.md`)
+
+Applies to reports made from Stage C on; every report made before stays exactly as it was.
+- **Tabs:** a pen has Summary · Command · Velocity & workload · Trends; a game has Summary · Location · Batters · Pitch
+  types · Trends · Every pitch.
+  - They're radio inputs + labels with `:checked` rules: no script, and report.html / History unchanged.
+  - Every id / name carries the session's first 8 characters (`ids()` in `send-session-report/sr1.ts`).
+  - Every section the old reports had is kept inside a tab. The game's full pitching line opens Every pitch.
+- **Summary:** a headline sentence (rules, never free text: `penHeadline` / `gameHeadline`), the window switch (1 / 3 /
+  12 months, season, a year ago except college; 3 months default), four tiles against `session_baselines()` (change
+  vs the window's average, range bar from 5 sessions, "only N · needs 3"), and What stood out.
+  - What stood out has at most three items, judged on 3 months only, by the rules and sizes in `sr1.ts`.
+  - The game's "2 of first 3" tile has no comparison.
+- **The fastball** for "FB avg mph" (Joel): the most thrown of 4SFB / 2SFB (baseball) or FB (softball), labelled by
+  its abbreviation.
+- **The comparison is read on the server at save time** through the caller's own client (`loadComparison`): the
+  baselines, the last five same-kind (same-tag) sessions for "best of the last six", and `profiles.throws` for arm /
+  glove side (left / right as drawn when unset). This is the report's one deliberate server read (landmine 5 stands
+  for the pitches and the Trends history).
+- **No he / his / him in report text;** the footer is "Numbers and patterns only: compared with <First name>'s own
+  sessions, never graded." The pitcher's-view caption (Amendment 16) sits at the end of Summary.
+- **Colours:** seven new `REPORT_VARS` tokens per sport (`up`, `down`, `info`, `band`, `warn-bg`, `warn-line`, `hl`).
+  Baseball's "up" is #1A7F50 (contrast). Up / down always carry a sign or an arrow.
+
 ## Sports: baseball and softball (Track S — S1 + S2, Joel, Oct 1 2026)
 
 - Every profile, team and session has a `sport` ('baseball' | 'softball'), derived by SECURITY DEFINER triggers (`20261001000000_s1_sport.sql`). Cross-sport team joins are refused; a team's or session's sport never changes; a profile's sport can't change once it has a team or sessions. Sign-in checks the account's sport and role; every login/sign-up link carries `?sport=`. The sport / role picker (`signin.html`, formerly `index.html`) always opens on "Which sport?".

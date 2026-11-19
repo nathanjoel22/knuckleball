@@ -44,6 +44,7 @@ import type { Pitch, HistoryEntry } from './compute.ts'
 // (drafting decision 1) -- GameSummary just names its return shape.
 import { buildGameReportHtml, type GameReportPayload, type GameSummary } from './template_game.ts'
 import type { GamePitch } from './compute_game.ts'
+import { loadComparison } from './sr1.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -228,7 +229,7 @@ Deno.serve(async (req) => {
   // same as any other RLS-filtered read.
   const { data: session, error: sessionErr } = await callerClient
     .from('sessions')
-    .select('id, pitcher_id, report_path, kind, deleted_at, sport, ra_on, purpose')
+    .select('id, pitcher_id, report_path, kind, deleted_at, sport, ra_on, purpose, started_at')
     .eq('id', sessionId)
     .maybeSingle()
   if (sessionErr) {
@@ -340,6 +341,10 @@ Deno.serve(async (req) => {
     // point can drift (new prior-session history, say) without the report
     // itself ever silently changing underneath a link someone already has.
     let html: string
+    // SR1 C: the comparison -- Stage B's baselines, the last same-kind sessions and the throwing hand -- read through
+    // the CALLER's client, so it counts only sessions this caller can read (as pitcher_workload does). A failed read
+    // leaves the report without comparisons; it never stops it.
+    const comparison = await loadComparison(callerClient, session)
 
     if (session.kind === 'game') {
       // G2 approach (g): the ONE definition (drafting decision 1) -- called
@@ -376,6 +381,7 @@ Deno.serve(async (req) => {
       const gamePayload: GameReportPayload = {
         sport: asSport(session.sport),   // S1: the session row's sport
         raOn: session.ra_on === true,     // U14: from the session row, like the sport
+        comparison,
         sessionId: body.sessionId,
         pitcherId: body.pitcherId,
         pitcherName: body.pitcherName,
@@ -418,6 +424,7 @@ Deno.serve(async (req) => {
         sport: asSport(session.sport),   // S1: the session row's sport, whatever the payload says
         raOn: session.ra_on === true,     // U14: from the session row
         purpose: session.purpose ?? null,  // SR1 A: from the session row, never the payload
+        comparison,
         pitcherName: body.pitcherName,
         uniformNumber: body.uniformNumber ?? null,
         teamName: body.teamName ?? null,

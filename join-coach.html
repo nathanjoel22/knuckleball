@@ -333,7 +333,8 @@
       if(s && !alreadyVerified && typeof VERIFY_EMAIL_URL !== 'undefined' && VERIFY_EMAIL_URL.indexOf('YOUR_') !== 0){
         await fetch(VERIFY_EMAIL_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token }
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token },
+          body: teamSport ? JSON.stringify({ sport: teamSport }) : undefined   // Nov 19: the team's sport sets the email's colours
         });
       }
     } catch (e) { /* recoverable via Resend, same as join.html */ }

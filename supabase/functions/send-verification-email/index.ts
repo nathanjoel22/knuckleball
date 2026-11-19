@@ -63,10 +63,20 @@ Deno.serve(async (req) => {
 
   const verifyLink = `${redirectBase}?t=${encodeURIComponent(token)}`
   const toEmail = user.email!
-  // Branded emails (Joel, Oct 22): in the account's sport (a profile on this login with one; a parent login: baseball)
-  const { data: sportRow } = await callerClient.from('profiles').select('sport').eq('account_id', user.id).not('sport', 'is', null).limit(1).maybeSingle()
+  // Branded emails (Joel, Oct 22): in the account's sport. Nov 19 fix (Joel: the colours came out swapped): the sport
+  // the page asking is in (the signup's pick, or the app's current sport), else the login's primary profile, else its
+  // oldest profile with a sport; a parent login with none: baseball. It used to take any profile with a sport, so a login
+  // with both sports could get either, and a brand-new signup (no profile yet) always got baseball.
+  let asked: unknown = null
+  try { asked = (await req.json())?.sport } catch (_) { /* old pages send no body */ }
+  let sport = asked === 'baseball' || asked === 'softball' ? asked as string : null
+  if (!sport) {
+    const { data: rows } = await callerClient.from('profiles').select('id, sport, created_at').eq('account_id', user.id).not('sport', 'is', null).order('created_at', { ascending: true })
+    const list = (rows ?? []) as { id: string; sport: string }[]
+    sport = (list.find((r) => r.id === user.id) ?? list[0])?.sport ?? null
+  }
   const html = brandedEmail({
-    sport: sportRow ? (sportRow as { sport: string }).sport : null,
+    sport,
     title: 'Verify your email',
     paragraphs: ['Tap the button below to verify your Knuckleball account email.'],
     button: { href: verifyLink, label: 'Verify email' },

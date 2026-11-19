@@ -37,13 +37,16 @@ const REPORT_VARS: Record<Sport, Record<string, string>> = {
     bg: '#F3F5F2', card: '#FFFFFF', surface: '#E8EDE9', line: '#D5DDD7', hair: '#E8EDE9',
     ink: '#07140F', 'ink-dim': '#26342D', 'ink-faint': '#56645C', axis: '#56645C', grid: '#E6EAE7',
     brand: '#061A12', 'on-dark': '#FFFFFF', 'on-dark-dim': '#C2CEC6', 'on-dark-faint': '#86978C',
-    accent: '#FFB81C', 'accent-on-dark': '#FFB81C', 'on-accent': '#07140F', 'accent-ink': '#8A5A00', link: '#16593D', print: '#07140F'
+    accent: '#FFB81C', 'accent-on-dark': '#FFB81C', 'on-accent': '#07140F', 'accent-ink': '#8A5A00', link: '#16593D', print: '#07140F',
+    // SR1 C: comparison roles (up / down always with a sign or an arrow); text ones are 4.5:1 or more on white
+    up: '#1A7F50', down: '#B4511B', info: '#2F6FD6', band: '#BCD9C9', 'warn-bg': '#FFF1E6', 'warn-line': '#F2B48A', hl: '#FFF6DD'
   },
   softball: {
     bg: '#F4F7FB', card: '#FFFFFF', surface: '#E6F1FA', line: '#CFE0EE', hair: '#E6F1FA',
     ink: '#0B2540', 'ink-dim': '#2C4560', 'ink-faint': '#5A6E84', axis: '#5A6E84', grid: '#E3EAF2',
     brand: '#0B2540', 'on-dark': '#FFFFFF', 'on-dark-dim': '#C5D3E2', 'on-dark-faint': '#8A9BB0',
-    accent: '#FF4F9A', 'accent-on-dark': '#FF79B3', 'on-accent': '#0B2540', 'accent-ink': '#B0175A', link: '#1F5C99', print: '#0B2540'
+    accent: '#FF4F9A', 'accent-on-dark': '#FF79B3', 'on-accent': '#0B2540', 'accent-ink': '#B0175A', link: '#1F5C99', print: '#0B2540',
+    up: '#1D6FB0', down: '#B0175A', info: '#6A4BC4', band: '#C8DCEF', 'warn-bg': '#FFF0F6', 'warn-line': '#F2A9C8', hl: '#FDEFF6'
   }
 }
 const REPORT_FONTS =

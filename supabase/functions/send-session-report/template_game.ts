@@ -20,6 +20,11 @@ import { computeVelocityDepth } from './compute.ts'
 import { type GameEvent } from './compute_game.ts'
 import { renderSprayCharts, renderWhatLedToIt, renderBaseStates, DIAMOND_CSS } from './diamond.ts'
 import { renderPitchesThatMattered, renderBullpenToGame, CONNECT_CSS, type PenPitch } from './connect.ts'
+import {
+  type Comparison, NO_COMPARISON, type StoodOut, type TileSpec, WINDOWS, SR1_CSS, ids, radios, tabBar, windowSwitch, wb, panel,
+  takeaway, card, tileFor, windowCaption, stoodOutCard, sparkCard, simpleTable, typeCell, footer, firstName, word, ordinal, pctOf,
+  pickFastball, avgVelo, gunned, outsideRange, rangeText, sortStoodOut, sidePattern, clusterPattern, typeMin, inningMin
+} from './sr1.ts'
 
 // The one definition this report does NOT compute itself -- it's the exact
 // object public.compute_game_summary(session_id) returns, fetched by
@@ -71,6 +76,7 @@ export interface GameReportPayload {
   summary: GameSummary
   events?: GameEvent[]   // G3: no-pitch events, read server-side under the caller's RLS
   raOn?: boolean   // U14: the session's answer to "Turn on Relative Accuracy?" (session row)
+  comparison?: Comparison   // SR1 C: Stage B's baselines, the last games, the throwing hand (read at save, caller's reach)
 }
 
 function fmtVelo(v: number | null): string { return v === null ? '—' : String(Math.round(v)) + ' mph' }
@@ -88,48 +94,6 @@ function fmtIP(outs: number): string {
 }
 function allTypesOf(p: GameReportPayload): string[] {
   return p.pitchTypes.length ? p.pitchTypes : Array.from(new Set(p.pitches.map(x => x.type)))
-}
-
-// ---------- 1. Header ----------
-function renderHeader(p: GameReportPayload): string {
-  const s = p.summary
-  const dateStr = new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  const numBit = p.uniformNumber !== null && p.uniformNumber !== undefined ? ` <span class="header-num">#${escapeHtml(p.uniformNumber)}</span>` : ''
-  const chartedBy = p.loggedByCoach ? 'the coaching staff' : escapeHtml(p.pitcherName)
-  const perspectiveNote = viewNote(p.chartingPerspective)   // Amendment 16
-  const oppBit = p.opponent ? ` vs ${escapeHtml(p.opponent)}` : ''
-  const ipNote = s.outs_source === 'derived' ? ' (outs from pitches)' : ''
-  return `
-  <header class="report-header">
-    <div class="brand-mark">KNUCKLEBALL</div>
-    <span class="sport-tag">${asSport(p.sport) === 'softball' ? 'Softball' : 'Baseball'} · Live Game</span>
-    <h1>${escapeHtml(p.pitcherName)}${numBit}</h1>
-    <p class="header-meta">${dateStr}${oppBit}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''} · Live Game</p>
-    <p class="header-meta">${fmtIP(s.outs_recorded)} IP${ipNote} · ${s.outs_recorded} outs recorded · ${s.batters_faced} batters faced · ${pitchCount(s)} pitches · charted by ${chartedBy}</p>
-    ${perspectiveNote}
-  </header>`
-}
-
-// ---------- 2. Summary tiles ----------
-function renderSummary(p: GameReportPayload): string {
-  const s = p.summary
-  const vd = computeVelocityDepth(p.pitches as unknown as Parameters<typeof computeVelocityDepth>[0], allTypesOf(p))
-  const tiles = [
-    tile(String(pitchCount(s)), 'Pitches'),
-    tile(s.strike_pct + '%', 'Strike %'),
-    tile(s.in_zone_pct + '%', 'In-zone %'),
-    s.first_pitch_strike_pct !== null ? tile(s.first_pitch_strike_pct + '%', 'First-pitch strike %') : '',
-    tile(String(s.k), 'K'),
-    tile(String(s.bb), 'BB'),
-    tile(String(s.h) + (s.xbh ? ` (${s.xbh} XBH)` : ''), 'H'),
-    s.runs != null ? tile(String(s.runs), 'R') : ''
-  ]
-  if (vd.hasVelo) {
-    const velos = p.pitches.map(x => safeNum(x.velo)).filter((v): v is number => v !== null)
-    tiles.push(tile(fmtVelo(Math.max(...velos)), 'Peak velocity'))
-    tiles.push(tile(fmtVelo(Math.round(velos.reduce((a, b) => a + b, 0) / velos.length)), 'Average velocity'))
-  }
-  return `<section class="tiles">${tiles.filter(Boolean).join('')}</section>`
 }
 
 // ---------- 3. Pitching line ----------
@@ -176,8 +140,8 @@ function renderPitchingLine(p: GameReportPayload): string {
         <td>${s.hbp}</td><td>${wp}</td><td>${bk}</td><td>${s.errors}</td><td>${s.outs_in_play}</td>${s.runs != null ? `<td>${s.runs}</td>` : ''}${hasEr ? `<td>${s.er}</td>` : ''}${hasIr ? `<td>${s.ir}/${s.irs ?? 0}</td>` : ''}${hasSac ? `<td>${sf}/${sac}</td>` : ''}
       </tr></tbody>
     </table></div>
-    ${typeof s.runners_left === 'number' && s.runners_left > 0 ? `<p class="caption">Left ${s.runners_left} runner${s.runners_left === 1 ? '' : 's'} on base when he came out${(s.exit_runs ?? 0) > 0 ? `; ${s.exit_runs} of them scored after he left and ${(s.exit_runs ?? 0) === 1 ? 'is' : 'are'} in his R${hasEr ? ` (${s.exit_er ?? 0} earned)` : ''}` : ''}.</p>` : ''}
-    ${hasIr && (s.irs ?? 0) > 0 ? `<p class="caption">${s.irs} of the ${s.ir} runner${s.ir === 1 ? '' : 's'} he inherited scored — charged to the previous pitcher, not in his R or ER.</p>` : ''}
+    ${typeof s.runners_left === 'number' && s.runners_left > 0 ? `<p class="caption">Left ${s.runners_left} runner${s.runners_left === 1 ? '' : 's'} on base when the pitcher came out${(s.exit_runs ?? 0) > 0 ? `; ${s.exit_runs} of them scored after and ${(s.exit_runs ?? 0) === 1 ? 'is' : 'are'} in this line's R${hasEr ? ` (${s.exit_er ?? 0} earned)` : ''}` : ''}.</p>` : ''}
+    ${hasIr && (s.irs ?? 0) > 0 ? `<p class="caption">${s.irs} of the ${s.ir} inherited runner${s.ir === 1 ? '' : 's'} scored — charged to the previous pitcher, not in this line's R or ER.</p>` : ''}
     ${posRows ? `
     <div class="table-scroll" style="margin-top:12px;"><table class="data-table">
       <thead><tr><th>Fielder</th><th>Outs</th><th>Hits</th><th>Errors</th></tr></thead>
@@ -538,17 +502,6 @@ function renderAtBatLog(p: GameReportPayload): string {
   </section>`
 }
 
-// ---------- 13. Footer ----------
-function renderFooter(p: GameReportPayload): string {
-  return `
-  <footer class="report-footer">
-    <p>Numbers and patterns only -- this report doesn't grade or compare to a benchmark. That's a conversation between a pitcher and his coach.</p>
-    <p>A strike is: called strike, swinging strike, foul, any ball in play, sac bunt/fly, dropped third. A ball is: ball, HBP. Interference and "other" count toward pitches but neither bucket.</p>
-    <p>Grids are always drawn in the ${VIEW_NAME}, ${REPORT_VIEW === 'pitcher' ? 'looking in from the mound toward home plate' : 'looking out toward the mound'}.</p>
-    <p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="https://knuckleballonline.com/login.html?sport=${asSport(p.sport)}">knuckleballonline.com</a> &middot; <a href="https://knuckleballonline.com/privacy.html#${asSport(p.sport)}">Privacy</a> &middot; <a href="https://knuckleballonline.com/terms.html#${asSport(p.sport)}">Terms</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-  </footer>`
-}
-
 const GAME_CSS = `
   .ab-inning{ margin:14px 0; }
   .ab-row{ font-size:12px; padding:4px 0; border-bottom:1px solid var(--kr-hair); }
@@ -556,37 +509,227 @@ const GAME_CSS = `
   .ab-ending{ float:right; font-weight:700; color:var(--kr-ink); }
 `
 
+// ---------- SR1 Stage C: the answer-first game report (coach version) ----------
+const GAME_TABS = ['Summary', 'Location', 'Batters', 'Pitch types', 'Trends', 'Every pitch']
+const G_STRIKES = new Set(['strike_looking', 'strike_swinging', 'foul', 'foul_tip', 'in_play', 'sac_bunt', 'sac_fly', 'dropped_third'])
+const gStrike = (x: GamePitch) => G_STRIKES.has(x.result)
+const gCounts = (x: GamePitch) => x.result !== 'interference' && x.result !== 'other'
+const gHit = (x: GamePitch) => x.result === 'in_play' && x.inPlayOutcome === 'hit'
+function gameDate(p: GameReportPayload): string {
+  return new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+function gameHeader(p: GameReportPayload, id: string): string {
+  const numBit = p.uniformNumber !== null && p.uniformNumber !== undefined ? ` <span class="header-num">#${escapeHtml(p.uniformNumber)}</span>` : ''
+  return `
+  <header class="report-header kr-head">
+    <div class="kr-head-top"><div class="brand-mark">KNUCKLEBALL</div><span class="sport-tag">${asSport(p.sport) === 'softball' ? 'Softball' : 'Baseball'} · Live Game</span></div>
+    <h1>${escapeHtml(p.pitcherName)}${numBit}</h1>
+    <p class="header-meta">${gameDate(p)}${p.opponent ? ` vs ${escapeHtml(p.opponent)}` : ''}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''}</p>
+    ${tabBar(id, GAME_TABS)}
+  </header>`
+}
+function gameFacts(p: GameReportPayload) {
+  const ps = p.pitches, s = p.summary, allTypes = allTypesOf(p)
+  const thrown = allTypes.filter(t => ps.some(x => x.type === t))
+  const fb = pickFastball(ps)
+  const log = computeAtBatLog(ps, p.events ?? []).filter(e => e.pitches.length > 0)
+  const done = log.filter(e => !e.incomplete)
+  // Two of the first three for strikes (Joel, Nov 19): two of a batter's first three pitches were strikes, or the
+  // at-bat ended on a strike before the third pitch
+  const twoOfThree = done.filter(e => {
+    const f3 = e.pitches.slice(0, 3)
+    return f3.filter(gStrike).length >= 2 || (e.pitches.length < 3 && gStrike(e.pitches[e.pitches.length - 1]))
+  }).length
+  const innings = Array.from(new Set(ps.map(x => x.inning))).filter(i => typeof i === 'number').sort((a, b) => a - b).map(inn => {
+    const ip = ps.filter(x => x.inning === inn), den = ip.filter(gCounts).length
+    return { inning: inn, n: ip.length, strikes: ip.filter(x => gStrike(x) && gCounts(x)).length, den, strikePct: pctOf(ip.filter(x => gStrike(x) && gCounts(x)).length, den),
+      fbVelo: fb.type ? avgVelo(ip.filter(x => x.type === fb.type)) : null }
+  })
+  const byType = thrown.map(t => {
+    const tp = ps.filter(x => x.type === t), den = tp.filter(gCounts).length
+    return { type: t, n: tp.length, strikes: tp.filter(x => gStrike(x) && gCounts(x)).length, den, velo: avgVelo(tp),
+      k: done.filter(e => e.ending.startsWith('K') && e.pitches[e.pitches.length - 1].type === t).length }
+  })
+  return { ps, s, allTypes, thrown, fb, log, done, twoOfThree, innings, byType,
+    fbVelo: fb.type ? avgVelo(ps.filter(x => x.type === fb.type)) : null, anyVelo: ps.some(x => gunned(x.velo)) }
+}
+type GameFacts = ReturnType<typeof gameFacts>
+
+function gameStoodOut(p: GameReportPayload, f: GameFacts, c: Comparison): StoodOut[] {
+  const ws = c.baselines?.windows?.['3m']
+  const first = escapeHtml(firstName(p.pitcherName))
+  const s = f.s, items: StoodOut[] = []
+  const rate = (metric: string, cur: number | null, range: [number, number] | undefined, minW: number, text: (dir: string, r: string) => string, unit: string, neutral = false) => {
+    const o = outsideRange(cur, range, minW)
+    if (!o || !range || cur === null) return
+    items.push({ kind: 'rate', metric, value: cur, dir: o.dir, size: o.size, mark: neutral ? 'info' : o.dir === 'above' ? 'up' : 'down', text: text(o.dir, rangeText(range, unit)) })
+  }
+  if (ws?.range) {
+    rate('strike', s.strike_pct, ws.range.strike_pct, 5, (d, r) => `Strikes ${s.strike_pct}% of ${s.strike_pct_denominator} pitches, ${d} ${first}'s normal range (${r}).`, '%')
+    const fpN = Math.round((s.first_pitch_strike_pct ?? 0) * s.first_pitch_pitches / 100)
+    rate('fp', s.first_pitch_strike_pct, ws.range.fp_strike_pct, 5, (d, r) => `First pitch was a strike to ${fpN} of ${s.first_pitch_pitches} batters (${s.first_pitch_strike_pct}%), ${d} ${first}'s normal range (${r}).`, '%')
+    rate('zone', s.in_zone_pct, ws.range.in_zone_pct, 5, (d, r) => `${s.in_zone} of ${s.pitches} pitches in the zone (${s.in_zone_pct}%), ${d} ${first}'s normal range (${r}).`, '%')
+    rate('pitches', pitchCount(s), ws.range.pitches, 5, (d, r) => `${pitchCount(s)} pitches, ${d === 'above' ? 'more' : 'fewer'} than ${first}'s normal range (${r}).`, '', true)
+  }
+  for (const t of f.byType) {
+    const tr = ws?.types?.[t.type]?.range
+    if (!tr) continue
+    if (t.n >= typeMin) rate('type', pctOf(t.strikes, t.den), tr.strike_pct, 5, (d, r) => `${escapeHtml(t.type)} strikes ${pctOf(t.strikes, t.den)}% (${t.strikes} of ${t.den}), ${d} ${first}'s normal range (${r}).`, '%')
+    if (t.type === f.fb.type && f.fbVelo !== null) rate('velo', f.fbVelo, tr.velo, 1, (d, r) => `${escapeHtml(f.fb.label)} averaged ${f.fbVelo} mph, ${d} ${first}'s normal range (${r} mph).`, 'mph')
+  }
+  const sr = ws?.range?.strike_pct
+  if (sr) {
+    const inn = f.innings.filter(i => i.n >= inningMin && i.strikePct !== null)
+      .map(i => ({ i, o: outsideRange(i.strikePct, sr, 5) })).filter(x => x.o).sort((a, b) => b.o!.size - a.o!.size)[0]
+    if (inn) {
+      const one = f.innings[0]
+      const velo = inn.i.fbVelo !== null && one && one.fbVelo !== null && inn.i.inning !== one.inning && Math.round(one.fbVelo - inn.i.fbVelo) >= 1
+        ? ` and ${escapeHtml(f.fb.label)} ${Math.round(one.fbVelo - inn.i.fbVelo)} mph under the ${ordinal(one.inning)} (${Math.round(one.fbVelo)} → ${Math.round(inn.i.fbVelo)})` : ''
+      items.push({ kind: 'inning', mark: 'info', size: inn.o!.size, inning: inn.i.inning, dir: inn.o!.dir, value: inn.i.strikePct!,
+        text: `${ordinal(inn.i.inning)} inning: ${inn.i.strikePct}% strikes${velo}.` })
+    }
+  }
+  const cl = clusterPattern(f.ps.filter(gHit)); if (cl) items.push(cl)
+  const side = sidePattern(f.ps.filter(gCounts), gStrike as (p: never) => boolean); if (side) items.push(side)
+  return sortStoodOut(items)
+}
+
+function gameHeadline(p: GameReportPayload, f: GameFacts, c: Comparison, items: StoodOut[]): string {
+  const s = f.s
+  const rateItem = items.find(i => i.kind === 'rate' && (i.metric === 'fp' || i.metric === 'strike' || i.metric === 'zone'))
+  const inn = items.find(i => i.kind === 'inning')
+  if (rateItem && inn) {
+    const name = rateItem.metric === 'fp' ? 'First-pitch strikes' : rateItem.metric === 'zone' ? 'In-zone pitches' : 'Strikes'
+    const up = rateItem.dir === 'above', innUp = inn.dir === 'above'
+    return `${name} ${up ? 'up' : 'down'} to ${rateItem.value}%, ${up === innUp ? 'and' : 'but'} strikes ${innUp ? 'rose' : 'faded'} to ${inn.value}% in the ${ordinal(inn.inning ?? 0)}.`
+  }
+  const k = Math.min(6, 1 + c.recent.length)
+  if (k >= 4 && s.strike_pct_denominator >= 10) {
+    const prior = c.recent.slice(0, k - 1).map(r => r.game && r.game.strike_pct_denominator ? 100 * r.game.strikes / r.game.strike_pct_denominator : 0)
+    if (s.strike_pct > Math.max(...prior)) return `Best strike-throwing game of the last ${word(k)}: ${s.strike_pct}% strikes.`
+    if (s.strike_pct < Math.min(...prior)) return `${s.strike_pct}% strikes, the fewest of the last ${word(k)} games.`
+  }
+  if (items.length) return items[0].text
+  return `${fmtIP(s.outs_recorded)} innings, ${pitchCount(s)} pitches: ${s.strike_pct}% strikes${s.first_pitch_strike_pct !== null ? `, ${s.first_pitch_strike_pct}% first-pitch strikes` : ''}.`
+}
+
+function gameSummaryTab(p: GameReportPayload, f: GameFacts, c: Comparison, id: string, items: StoodOut[]): string {
+  const s = f.s
+  const chartedBy = p.loggedByCoach ? 'the coaching staff' : escapeHtml(p.pitcherName)
+  const head = card('', `<h2 class="kr-headline">${gameHeadline(p, f, c, items)}</h2>
+    <p class="kr-sub">${gameDate(p)}${p.opponent ? ` vs ${escapeHtml(p.opponent)}` : ''} · ${s.batters_faced} batter${s.batters_faced === 1 ? '' : 's'} · charted by ${chartedBy}</p>`)
+  const strip = `<div class="kr-strip">${[[fmtIP(s.outs_recorded), 'IP'], [String(pitchCount(s)), 'P'], [String(s.k), 'K'], [String(s.bb), 'BB'], [String(s.h), 'H'], [s.runs != null ? String(s.runs) : '—', 'R']]
+    .map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>`
+  const tiles: TileSpec[] = [
+    { label: 'Strike %', cur: s.strike_pct, unit: '%', key: 'strike_pct' },
+    { label: '1st-pitch strike', cur: s.first_pitch_strike_pct, unit: '%', key: 'fp_strike_pct' },
+    { label: '2 of first 3', cur: pctOf(f.twoOfThree, f.done.length), unit: '%', key: 'two_of_three', plain: true, sub: `${f.twoOfThree} of ${f.done.length} batters` },
+    { label: 'In zone', cur: s.in_zone_pct, unit: '%', key: 'in_zone_pct' }
+  ]
+  const first = firstName(p.pitcherName)
+  const wins = c.baselines ? WINDOWS.map(w => w.key).filter(k => c.baselines!.windows[k]) : []
+  const compare = wins.length
+    ? windowSwitch(id, wins) + wins.map(k => wb(k, windowCaption(first, k, c.baselines!.windows[k], 'game', '')
+        + `<div class="kr-tiles">${tiles.map(t => tileFor(t, c.baselines!.windows[k], 'game')).join('')}</div>`)).join('')
+    : `<div class="kr-tiles">${tiles.map(t => tileFor(t, undefined, 'game')).join('')}</div><p class="kr-wcap">No earlier games to compare with yet.</p>`
+  const hlInning = items.find(i => i.kind === 'inning')?.inning
+  const inningTable = f.innings.length ? card('By inning', simpleTable(['Inn', 'Pitches', 'Strike', `${escapeHtml(f.fb.label)} mph`],
+    f.innings.map(i => [String(i.inning), String(i.n), i.strikePct === null ? '—' : `${i.strikePct}%`, i.fbVelo === null ? '—' : String(Math.round(i.fbVelo))]),
+    f.innings.findIndex(i => i.inning === hlInning))) : ''
+  const note = viewNote(p.chartingPerspective).replace('class="header-note"', 'class="caption"')
+  return head + strip + compare + inningTable + stoodOutCard(items, !!c.baselines?.windows?.['3m']?.range, first)
+    + (note || `<p class="caption">Every grid in this report is drawn in the ${VIEW_NAME}, ${REPORT_VIEW === 'pitcher' ? 'looking in from the mound toward home plate' : 'looking out toward the mound'}.</p>`)
+    + `<p class="caption">A strike is: called strike, swinging strike, foul, any ball in play, sac bunt/fly, dropped third. A ball is: ball, HBP. Interference and "other" count toward pitches but neither bucket.</p>`
+}
+
+function gameLocationTab(p: GameReportPayload, f: GameFacts): string {
+  const s = f.s
+  return takeaway(`${s.in_zone} of ${s.pitches} pitches in the zone (${s.in_zone_pct}%)`)
+    + renderLocationCharts(p) + renderTypeGrids(p) + renderPitchesThatMattered(p.pitches, allTypesOf(p), p.gridSize ?? 5)
+}
+
+function gameBattersTab(p: GameReportPayload, f: GameFacts): string {
+  const groups: { label: string; b: number; h: number; k: number; bb: number }[] = []
+  f.done.forEach((e, i) => {
+    const g = Math.floor(i / 9)
+    groups[g] ||= { label: ordinal(g + 1), b: 0, h: 0, k: 0, bb: 0 }
+    const last = e.pitches[e.pitches.length - 1]
+    groups[g].b++
+    if (gHit(last)) groups[g].h++
+    if (e.ending.startsWith('K')) groups[g].k++
+    if (e.ending === 'BB' || e.ending.startsWith('IBB') || /walk/i.test(e.ending)) groups[g].bb++
+  })
+  let hl: string
+  if (groups.length > 1) {
+    const worst = groups.slice().sort((a, b) => b.h / b.b - a.h / a.b)[0]
+    hl = `Hitters did the most damage ${worst.label.toLowerCase()} time through: ${worst.h} hit${worst.h === 1 ? '' : 's'} in ${worst.b}`
+  } else hl = groups.length ? `${groups[0].h} hit${groups[0].h === 1 ? '' : 's'} from ${groups[0].b} batter${groups[0].b === 1 ? '' : 's'}` : 'No completed at-bats'
+  const worstIdx = groups.length > 1 ? groups.indexOf(groups.slice().sort((a, b) => b.h / b.b - a.h / a.b)[0]) : -1
+  const tto = groups.length ? card('', simpleTable(['Time through', 'Batters', 'Hits', 'K', 'BB'], groups.map(g => [g.label, String(g.b), String(g.h), String(g.k), String(g.bb)]), worstIdx)
+    + `<p class="caption">A new time through the order every 9 batters this pitcher faced.</p>`) : ''
+  const reached = (e: typeof f.done[number]) => gHit(e.pitches[e.pitches.length - 1]) || e.ending === 'BB' || e.ending.startsWith('IBB')
+  const ahead = f.done.filter(e => gStrike(e.pitches[0])), behind = f.done.filter(e => !gStrike(e.pitches[0]))
+  const afterFirst = f.done.length ? card('After the first pitch', simpleTable(['Count', 'Batters', 'Reached (H + BB)'],
+    [['0–1 (ahead)', String(ahead.length), String(ahead.filter(reached).length)], ['1–0 (behind)', String(behind.length), String(behind.filter(reached).length)]])
+    + `<p class="caption">A first pitch put in play counts as ahead.</p>`) : ''
+  return takeaway(hl) + tto + afterFirst
+    + renderSprayCharts(p.pitches, allTypesOf(p), asSport(p.sport)) + renderWhatLedToIt(p.pitches, allTypesOf(p), p.gridSize ?? 5)
+    + renderBaseStates(p.pitches, allTypesOf(p)) + renderByCount(p) + renderPerSide(p)
+}
+
+function gamePitchTypesTab(p: GameReportPayload, f: GameFacts): string {
+  const top = f.byType.slice().sort((a, b) => b.n - a.n)[0]
+  const hl = top ? `${escapeHtml(top.type)} carried it: ${top.n} of ${f.ps.length}, ${pctOf(top.strikes, top.den) ?? 0}% strikes` : 'No pitches charted'
+  const table = card('', simpleTable(['Pitch', '#', 'Strike', 'Avg', 'K'], f.byType.map(t => [typeCell(t.type, f.allTypes), String(t.n),
+    t.den ? `${pctOf(t.strikes, t.den)}%` : '—', t.velo === null ? '—' : String(Math.round(t.velo)), String(t.k)])))
+  const fbInn = f.innings.filter(i => i.fbVelo !== null)
+  const fbCard = fbInn.length >= 2 ? sparkCard(`${f.fb.label} mph by inning`, fbInn.map(i => i.fbVelo), `${Math.round(fbInn[0].fbVelo!)} → ${Math.round(fbInn[fbInn.length - 1].fbVelo!)}`,
+    `innings ${fbInn[0].inning}–${fbInn[fbInn.length - 1].inning}`, 'var(--kr-accent)') : ''
+  return takeaway(hl) + table + fbCard + renderByType(p) + renderVelocity(p)
+}
+
+function gameTrendsTab(p: GameReportPayload): string {
+  const t = (p.gameTrend ?? []).slice(-6)
+  const vals = t.map(g => safeNum(g.strikePct)).filter((v): v is number => v !== null)
+  const hl = vals.length >= 2 ? `Last ${word(vals.length)} games: strikes ${vals[0]}% → ${vals[vals.length - 1]}%` : 'Trends start once there are a few games'
+  return takeaway(hl) + renderGameTrends(p) + renderRecentPens(p)
+    + renderBullpenToGame(p.pitches, p.recentPenPitches, allTypesOf(p), p.gridSize ?? 5)
+}
+
+function gameEveryPitchTab(p: GameReportPayload, f: GameFacts): string {
+  return takeaway(`${f.s.batters_faced} batter${f.s.batters_faced === 1 ? '' : 's'}, ${pitchCount(f.s)} pitches`)
+    + renderPitchingLine(p) + renderOtherEvents(p) + renderAtBatLog(p)
+}
+
 export function buildGameReportHtml(p: GameReportPayload): string {
   const title = `Game Report — ${p.pitcherName}${p.opponent ? ' vs ' + p.opponent : ''}`
+  const c = p.comparison ?? NO_COMPARISON
+  const id = ids(p.sessionId)
+  const f = gameFacts(p)
+  const items = gameStoodOut(p, f, c)
+  const wins = c.baselines ? WINDOWS.map(w => w.key).filter(k => c.baselines!.windows[k]) : []
+  const links = `<p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="https://knuckleballonline.com/login.html?sport=${asSport(p.sport)}">knuckleballonline.com</a> &middot; <a href="https://knuckleballonline.com/privacy.html#${asSport(p.sport)}">Privacy</a> &middot; <a href="https://knuckleballonline.com/terms.html#${asSport(p.sport)}">Terms</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>`
   // D2: this report's own colors and fonts (--kr-*) for its sport -- no hex swap, no site stylesheet.
   return (`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
-<style>${reportVars(asSport(p.sport))}${PEN_CSS}${GAME_CSS}${DIAMOND_CSS}${CONNECT_CSS}</style>
+<style>${reportVars(asSport(p.sport))}${PEN_CSS}${GAME_CSS}${DIAMOND_CSS}${CONNECT_CSS}${SR1_CSS}</style>
 </head>
 <body>
-<div class="page">
-${renderHeader(p)}
-${renderSummary(p)}
-${renderPitchingLine(p)}
-${renderLocationCharts(p)}
-${renderTypeGrids(p)}
-${renderPitchesThatMattered(p.pitches, allTypesOf(p), p.gridSize ?? 5)}
-${renderSprayCharts(p.pitches, allTypesOf(p), asSport(p.sport))}
-${renderWhatLedToIt(p.pitches, allTypesOf(p), p.gridSize ?? 5)}
-${renderBaseStates(p.pitches, allTypesOf(p))}
-${renderByType(p)}
-${renderByInning(p)}
-${renderByCount(p)}
-${renderPerSide(p)}
-${renderVelocity(p)}
-${renderRecentPens(p)}
-${renderBullpenToGame(p.pitches, p.recentPenPitches, allTypesOf(p), p.gridSize ?? 5)}
-${renderGameTrends(p)}
-${renderOtherEvents(p)}${renderAtBatLog(p)}
-${renderFooter(p)}
+<div class="page kr">
+${radios(id, GAME_TABS, wins)}
+${gameHeader(p, id)}
+<main class="kr-main">
+${panel(1, gameSummaryTab(p, f, c, id, items))}
+${panel(2, gameLocationTab(p, f))}
+${panel(3, gameBattersTab(p, f))}
+${panel(4, gamePitchTypesTab(p, f))}
+${panel(5, gameTrendsTab(p))}
+${panel(6, gameEveryPitchTab(p, f))}
+</main>
+${footer(firstName(p.pitcherName), links)}
 </div>
 </body>
 </html>`)

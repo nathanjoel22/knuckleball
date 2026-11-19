@@ -60,6 +60,45 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-19 · SR1 Stage C (the answer-first report, coach version) · **staging**, branch `sr1c-report-tabs`, no cache change (no page changed)
+
+- **Packet:** `plans/sr1-session-reports.md` Stage C; decisions in `plans/sr1c-preconditions.md` (Joel: Q1 the
+  fastball = 4SFB / 2SFB / FB, Q2–9 yes). Evidence: `plans/sr1c-evidence.md` (+ `plans/sr1c-evidence/`, each picture
+  beside the built screen).
+- **Function (staging only):** `send-session-report`.
+  - New `sr1.ts`: the comparison read, the rules, the tabs, tiles and cards.
+  - `template.ts` and `template_game.ts` rebuilt as tabs.
+  - `REPORT_VARS` gains seven tokens.
+  - `index.ts` and `from_rows.ts` read the comparison through their own client.
+- **Built:**
+  - Pen: Summary · Command · Velocity & workload · Trends.
+  - Game: Summary · Location · Batters · Pitch types · Trends · Every pitch.
+  - Summary: headline sentence, window switch, four tiles against Stage B's baselines, What stood out.
+  - New: where misses went, times through the order, after the first pitch, two of the first three, fastball by
+    pitch order, by inning.
+  - Footer and runner lines with no gendered pronoun.
+- **Checked:**
+  - Acceptance 1–4 and 10–14 PASS:
+    - tabs and windows in report.html (820) and History's shadow root (390);
+    - two new reports in the no-shadow fallback with no cross-talk;
+    - tiles equal `session_baselines()`;
+    - What stood out cases;
+    - 0 gendered words in a softball and a baseball stored file.
+  - Sizes: demo pen 112.5 → 111.2 KB, game 298.2 → 305.5 KB.
+  - The reports sent before SR1 hash the same.
+- **Deviations:** see `plans/sr1c-evidence.md`, mainly:
+  - every old section kept in its tab in its current style;
+  - Trends velocity is the all-pitch average (no per-type history);
+  - Trends and the ranking skip pens under 10 pitches;
+  - the Pitches change is grey;
+  - print shows the open tab until Stage G.
+- **Production (Joel):**
+  1. `supabase functions deploy send-session-report --project-ref fkgccjhuimkkbupbanxp`.
+  2. Merge.
+- **Open:** none. Next: Stage D (workload, rest and team settings).
+
+---
+
 ## 2026-11-19 · SR1 Stage B (history baselines) · **staging**, branch `sr1b-baselines`, no cache change (no page changed)
 
 - **Packet:** `plans/sr1-session-reports.md` Stage B; decisions in `plans/sr1b-preconditions.md` (Joel: yes to all).

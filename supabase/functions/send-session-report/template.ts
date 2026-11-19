@@ -6,11 +6,14 @@
 // object it's given.
 // ============================================================================
 import { escapeHtml, safeNum, colorForType, TYPE_PALETTE_HEX, isStrikeCell, timesToHomeLine, reportVars, asSport, type Sport, VIEW_NAME, REPORT_VIEW, viewNote } from './helpers.ts'
-import { drawGrid, drawLegend, drawLineChart, drawTypeGrids, drawHitTypeGrids } from './svg.ts'
+import { drawGrid, drawLegend, drawHitTypeGrids } from './svg.ts'
+import { computePerSideBlock, computeExcludedNullSide, isU14, isHit, type Pitch, type HistoryEntry } from './compute.ts'
 import {
-  computeSummary, computeCommandDetail, computePerSideBlock, computeExcludedNullSide, isU14, isHit,
-  computeVelocityDepth, computeWorkload, computeTrends, type Pitch, type HistoryEntry
-} from './compute.ts'
+  type Comparison, NO_COMPARISON, type StoodOut, type TileSpec, WINDOWS, SR1_CSS, ids, radios, tabBar, windowSwitch, wb, wi, panel,
+  takeaway, card, tileFor, windowCaption, stoodOutCard, sparkCard, simpleTable, typeCell, footer, firstName, penWord, word,
+  ordinal, pctOf, pickFastball, avgVelo, gunned, outsideRange, rangeText, sortStoodOut, missPattern, missDirs, DIR_WORDS,
+  fadePattern, sidePattern, typeMin
+} from './sr1.ts'
 
 // SR1 Stage A: a pen's purpose (sessions.purpose; the tracker's SESSION_TAGS) as the header says it
 const SESSION_TAG_LABELS: Record<string, string> = { command: 'Command pen', velocity: 'Velocity pen', short_pen: 'Short pen' }
@@ -32,6 +35,7 @@ export interface ReportPayload {
   history: HistoryEntry[]
   raOn?: boolean   // U14: the session's answer to "Turn on Relative Accuracy?" (session row)
   purpose?: string | null   // SR1 A: the pen's tag (session row); null = No tag
+  comparison?: Comparison   // SR1 C: Stage B's baselines, the last same-kind pens, the throwing hand (read at save, caller's reach)
 }
 
 // S1 (Joel, Oct 1): the footer link goes to THIS sport's sign-in page.
@@ -39,46 +43,6 @@ const signInUrl = (sport: Sport) => `https://knuckleballonline.com/login.html?sp
 
 function fmtVelo(v: number | null): string {
   return v === null ? '—' : String(Math.round(v)) + ' mph'
-}
-
-function tile(value: string, label: string): string {
-  return `<div class="tile"><div class="tile-val">${value}</div><div class="tile-lbl">${escapeHtml(label)}</div></div>`
-}
-
-// ---------- 1. Header ----------
-function renderHeader(p: ReportPayload): string {
-  const dateStr = new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  const numBit = p.uniformNumber !== null && p.uniformNumber !== undefined ? ` <span class="header-num">#${escapeHtml(p.uniformNumber)}</span>` : ''
-  const chartedBy = p.loggedByCoach ? 'the coaching staff' : escapeHtml(p.pitcherName)
-  // U11 (5): "No batter" when no pitch in the pen had a hitter standing in
-  // (batter_side NULL on every pitch), "Mixed" when some did and some didn't.
-  const sided = p.pitches.filter(x => x.batterSide === 'R' || x.batterSide === 'L').length
-  const batterBit = !p.pitches.length ? '' : sided === 0 ? ' · No batter' : sided < p.pitches.length ? ' · Mixed' : ''
-  const perspectiveNote = viewNote(p.chartingPerspective)   // Amendment 16
-  const tagBit = SESSION_TAG_LABELS[p.purpose ?? ''] ? ' · ' + SESSION_TAG_LABELS[p.purpose ?? ''] : ''   // SR1 A: none = today's line, byte for byte
-  return `
-  <header class="report-header">
-    <div class="brand-mark">KNUCKLEBALL</div>
-    <span class="sport-tag">${asSport(p.sport) === 'softball' ? 'Softball' : 'Baseball'} · Bullpen</span>
-    <h1>${escapeHtml(p.pitcherName)}${numBit}</h1>
-    <p class="header-meta">${dateStr}${tagBit}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''} · ${p.pitches.length} pitch${p.pitches.length === 1 ? '' : 'es'}${batterBit} · charted by ${chartedBy}</p>
-    ${perspectiveNote}
-  </header>`
-}
-
-// ---------- 2. Summary tiles ----------
-function renderSummary(p: ReportPayload): string {
-  const s = computeSummary(p.pitches, p.gridSize)
-  const tiles = [
-    tile(String(s.total), 'Total pitches'),
-    s.strikePct !== null ? tile(s.strikePct + '%', 'Strike %') : '',
-    s.commandPct !== null ? tile(s.commandPct + '%', s.commandLabel === 'accuracy' ? 'Accuracy' : s.commandLabel === 'zone' ? 'Command % (zone)' : 'Command % (exact hit)') : ''
-  ]
-  if (s.hasVelo) {
-    tiles.push(tile(fmtVelo(s.peakVelo), 'Peak velocity'))
-    tiles.push(tile(fmtVelo(s.avgVelo), 'Average velocity'))
-  }
-  return `<section class="tiles">${tiles.filter(Boolean).join('')}</section>`
 }
 
 // ---------- 3. Location chart (mixed sides, physical) ----------
@@ -94,57 +58,6 @@ function renderLocationChart(p: ReportPayload): string {
     <h2>Location — ${VIEW_NAME}</h2>
     <div class="grid-row">${grid}${drawLegend(allTypes)}</div>
     <p class="caption">Every pitch this pen, both batter sides mixed. Numbers and directional words like "inside" depend on who's hitting, so this plot uses neither.</p>
-  </section>`
-}
-
-// ---------- 3b. Location by pitch type (U11) ----------
-// Strike % here is the same location-based strike % the Command detail
-// table uses (in the strike zone), so the two never disagree.
-function renderTypeGrids(p: ReportPayload): string {
-  const allTypes = p.pitchTypes.length ? p.pitchTypes : Array.from(new Set(p.pitches.map(x => x.type)))
-  const stats: Record<string, { count: number; strikePct: number | null }> = {}
-  for (const t of allTypes) {
-    const tp = p.pitches.filter(x => x.type === t)
-    const strikes = tp.filter(x => isStrikeCell(x.actualRow, x.actualCol, p.gridSize ?? 5)).length
-    stats[t] = { count: tp.length, strikePct: tp.length ? Math.round((strikes / tp.length) * 100) : null }
-  }
-  if (!allTypes.some(t => stats[t].count > 0)) return ''
-  return `
-  <section class="section">
-    <h2>Location by pitch type — ${VIEW_NAME}</h2>
-    ${drawTypeGrids({ gridSize: p.gridSize, allTypes, stats, pitches: p.pitches.map(x => ({ row: x.actualRow, col: x.actualCol, type: x.type })) })}
-    <p class="caption">Where each pitch type went, both batter sides mixed. Strike % is in the strike zone. A small count means read it lightly.</p>
-  </section>`
-}
-
-// ---------- 4. Command detail + miss tendency ----------
-function renderCommandDetail(p: ReportPayload): string {
-  const allTypes = p.pitchTypes.length ? p.pitchTypes : Array.from(new Set(p.pitches.map(x => x.type)))
-  const rows = computeCommandDetail(p.pitches, allTypes, p.gridSize)
-  if (!rows.length) return ''
-  const u14 = isU14(p.pitches)   // U14: one Accuracy % column in place of Zone % and Exact %
-  const body = rows.map(r => {
-    const count = r.thin ? ` (${r.count})` : ''
-    const zoneCell = r.hasZone ? `${r.zoneAccuracyPct}%` : '—'
-    const veloCell = r.hasVelo ? `${fmtVelo(r.avgVelo)} avg · ${fmtVelo(r.peakVelo)} peak` : '—'
-    const miss = r.missTendency
-      ? `up ${r.missTendency.up}% · down ${r.missTendency.down}% · left ${REPORT_VIEW === 'pitcher' ? r.missTendency.right : r.missTendency.left}% · right ${REPORT_VIEW === 'pitcher' ? r.missTendency.left : r.missTendency.right}%`   /* computed catcher-frame; shown as drawn */
-      : 'On target every pitch.'
-    return `<tr>
-      <td><span class="dot" style="background:${colorForType(r.type, allTypes)}"></span>${escapeHtml(r.type)}</td>
-      <td>${r.count}${count}</td><td>${r.usagePct}%</td><td>${r.strikePct}%</td>
-      ${u14 ? `<td>${r.accuracyPct}%</td>` : `<td>${zoneCell}</td><td>${r.exactHitPct}%</td>`}<td>${veloCell}</td>
-      <td class="miss">${miss}</td>
-    </tr>`
-  }).join('')
-  return `
-  <section class="section">
-    <h2>Command detail</h2>
-    <div class="table-scroll"><table class="data-table wide">
-      <thead><tr><th>Type</th><th>Count</th><th>Usage</th><th>Strike %</th>${u14 ? '<th>Accuracy %</th>' : '<th>Zone %</th><th>Exact %</th>'}<th>Velocity</th><th>Miss tendency</th></tr></thead>
-      <tbody>${body}</tbody>
-    </table></div>
-    <p class="caption">Miss tendency is direction on this same ${VIEW_NAME} grid (up/down/left/right), not "arm side" or "inside" -- those depend on batter side.</p>
   </section>`
 }
 
@@ -222,123 +135,12 @@ function renderPerSideBlocks(p: ReportPayload): string {
   </section>`
 }
 
-// ---------- 6. Velocity depth ----------
-function renderVelocityDepth(p: ReportPayload): string {
-  const allTypes = p.pitchTypes.length ? p.pitchTypes : Array.from(new Set(p.pitches.map(x => x.type)))
-  const vd = computeVelocityDepth(p.pitches, allTypes)
-  if (!vd.hasVelo) return ''
-  const rows = vd.perType.map(t => {
-    const count = t.thin ? ` (${t.count})` : ''
-    return `<tr><td><span class="dot" style="background:${colorForType(t.type, allTypes)}"></span>${escapeHtml(t.type)}${count}</td>
-      <td>${fmtVelo(t.avg)}</td><td>${fmtVelo(t.peak)}</td><td>${t.range} mph</td></tr>`
-  }).join('')
-
-  let driftChart = ''
-  if (vd.drift.length >= 2) {
-    const velos = vd.drift.map(d => d.velo as number)
-    const lo = Math.floor(Math.min(...velos) / 5) * 5, hi = Math.ceil(Math.max(...velos) / 5) * 5
-    const range = Math.max(1, hi - lo)
-    const byType: Record<string, (number | null)[]> = {}
-    for (const t of allTypes) byType[t] = vd.drift.map(d => d.type === t ? ((d.velo as number) - lo) / range : null)
-    const series = allTypes.filter(t => vd.drift.some(d => d.type === t)).map(t => ({ label: t, color: colorForType(t, allTypes), points: byType[t] }))
-    const chart = drawLineChart({
-      series,
-      xLabels: vd.drift.map((_, i) => String(i + 1)),
-      yAxisLabels: [String(lo), String(Math.round((lo + hi) / 2)), String(hi)]
-    })
-    driftChart = `<div class="drift"><h3>Velocity by pitch order</h3>${chart}<p class="caption">Each point is one gunned pitch, in the order it was thrown, whole mph.</p></div>`
-  }
-
-  return `
-  <section class="section">
-    <h2>Velocity depth</h2>
-    <div class="table-scroll"><table class="data-table">
-      <thead><tr><th>Type</th><th>Average</th><th>Peak</th><th>Range</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>
-    ${driftChart}
-  </section>`
-}
-
-// ---------- 7. Workload and pitch mix ----------
-function renderWorkload(p: ReportPayload): string {
-  const allTypes = p.pitchTypes.length ? p.pitchTypes : Array.from(new Set(p.pitches.map(x => x.type)))
-  const recentTotals = p.history.map(h => safeNum(h.total)).filter((n): n is number => n !== null)
-  const wl = computeWorkload(p.pitches, allTypes, recentTotals)
-  const rows = wl.byType.map(t =>
-    `<tr><td><span class="dot" style="background:${colorForType(t.type, allTypes)}"></span>${escapeHtml(t.type)}</td><td>${t.count}</td><td>${t.usagePct}%</td></tr>`
-  ).join('')
-  const compare = wl.recentAvg !== null
-    ? `<p class="caption">Recent average for this pitcher on this team: ${wl.recentAvg} pitches. This pen: ${wl.total}.</p>`
-    : ''
-  return `
-  <section class="section">
-    <h2>Workload and pitch mix</h2>
-    <div class="table-scroll"><table class="data-table"><thead><tr><th>Type</th><th>Count</th><th>Usage</th></tr></thead><tbody>${rows}</tbody></table></div>
-    ${compare}
-    ${asSport(p.sport) === 'softball' ? '' : deliverySplitLine(p)}
-    ${asSport(p.sport) === 'softball' ? '' : timesToHomeLine(p.pitches)}
-  </section>`
-}
 // U11 (6): Windup / Set split, only when a pen used both.
 function deliverySplitLine(p: ReportPayload): string {
   const windup = p.pitches.filter(x => x.delivery === 'windup').length
   const set = p.pitches.filter(x => x.delivery === 'set').length
   if (!windup || !set) return ''
   return `<p class="caption"><strong>Delivery:</strong> ${windup} from the windup · ${set} from the stretch</p>`
-}
-
-// ---------- 8. Trends ----------
-function renderTrends(p: ReportPayload): string {
-  const trend = computeTrends(p.history)
-  if (!trend) return ''
-  const xLabels = trend.map(h => h.dateLabel)
-  const strikeSeries = trend.map(h => safeNum(h.strikePct))
-  const commandSeries = trend.map(h => safeNum(h.commandPct))
-  const veloSeries = trend.map(h => h.hasVelo ? safeNum(h.avgVelo) : null)
-  const pitchCountSeries = trend.map(h => safeNum(h.total))
-
-  const pctChart = drawLineChart({
-    series: [
-      { label: 'Strike %', color: 'var(--kr-accent)', points: strikeSeries.map(v => v === null ? null : v / 100) },
-      { label: 'Command %', color: '#22B573', points: commandSeries.map(v => v === null ? null : v / 100) }
-    ],
-    xLabels, yAxisLabels: ['0%', '50%', '100%']
-  })
-  const veloValues = veloSeries.filter((v): v is number => v !== null)
-  const anyVelo = veloValues.length > 0
-  const vLo = anyVelo ? Math.floor(Math.min(...veloValues) / 5) * 5 : 0
-  const vHi = anyVelo ? Math.ceil(Math.max(...veloValues) / 5) * 5 : 1
-  const vRange = Math.max(1, vHi - vLo)
-  const veloChart = anyVelo ? drawLineChart({
-    series: [{ label: 'Avg velocity', color: '#FF6B35', points: veloSeries.map(v => v === null ? null : (v - vLo) / vRange) }],
-    xLabels, yAxisLabels: [String(vLo), String(Math.round((vLo + vHi) / 2)), String(vHi)]
-  }) : ''
-  const maxCount = Math.max(1, ...pitchCountSeries.filter((v): v is number => v !== null))
-  const countChart = drawLineChart({
-    series: [{ label: 'Pitch count', color: '#3D8BFF', points: pitchCountSeries.map(v => v === null ? null : v / maxCount) }],
-    xLabels, yAxisLabels: ['0', String(Math.round(maxCount / 2)), String(maxCount)]
-  })
-
-  return `
-  <section class="section">
-    <h2>Trends (last ${trend.length} pens)</h2>
-    <div class="trend-grid">
-      <div><h3>Strike % and Command %</h3>${pctChart}</div>
-      ${anyVelo ? `<div><h3>Average velocity</h3>${veloChart}</div>` : ''}
-      <div><h3>Pitch count</h3>${countChart}</div>
-    </div>
-  </section>`
-}
-
-// ---------- 9. Footer ----------
-function renderFooter(p: ReportPayload): string {
-  return `
-  <footer class="report-footer">
-    <p>Numbers and patterns only -- this report doesn't grade or compare to a benchmark. That's a conversation between a pitcher and his coach.</p>
-    <p>Grids are always drawn in the ${VIEW_NAME}, ${REPORT_VIEW === 'pitcher' ? 'looking in from the mound toward home plate' : 'looking out toward the mound'}.</p>
-    <p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="${signInUrl(asSport(p.sport))}">knuckleballonline.com</a> &middot; <a href="https://knuckleballonline.com/privacy.html#${asSport(p.sport)}">Privacy</a> &middot; <a href="https://knuckleballonline.com/terms.html#${asSport(p.sport)}">Terms</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-  </footer>`
 }
 
 // Exported so the G2 game report (template_game.ts) can reuse it verbatim
@@ -417,28 +219,235 @@ export const CSS = `
   }
 `
 
+// ---------- SR1 Stage C: the answer-first report (coach version) ----------
+const PEN_TABS = ['Summary', 'Command', 'Velocity & workload', 'Trends']
+function penDate(p: ReportPayload): string {
+  return new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+function penHeader(p: ReportPayload, id: string): string {
+  const numBit = p.uniformNumber !== null && p.uniformNumber !== undefined ? ` <span class="header-num">#${escapeHtml(p.uniformNumber)}</span>` : ''
+  const tagBit = SESSION_TAG_LABELS[p.purpose ?? ''] ? ' · ' + SESSION_TAG_LABELS[p.purpose ?? ''] : ''
+  return `
+  <header class="report-header kr-head">
+    <div class="kr-head-top"><div class="brand-mark">KNUCKLEBALL</div><span class="sport-tag">${asSport(p.sport) === 'softball' ? 'Softball' : 'Baseball'} · Bullpen</span></div>
+    <h1>${escapeHtml(p.pitcherName)}${numBit}</h1>
+    <p class="header-meta">${penDate(p)}${tagBit}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''}</p>
+    ${tabBar(id, PEN_TABS)}
+  </header>`
+}
+// The pen's own numbers, everything the tabs and the rules read
+function penFacts(p: ReportPayload) {
+  const gs = p.gridSize ?? 5
+  const ps = p.pitches
+  const allTypes = p.pitchTypes.length ? p.pitchTypes : Array.from(new Set(ps.map(x => x.type)))
+  const thrown = allTypes.filter(t => ps.some(x => x.type === t))
+  const strike = (x: Pitch) => isStrikeCell(x.actualRow, x.actualCol, gs)
+  const fb = pickFastball(ps)
+  const byType = thrown.map(t => {
+    const tp = ps.filter(x => x.type === t)
+    return { type: t, n: tp.length, strikes: tp.filter(strike).length, hits: tp.filter(isHit).length, velo: avgVelo(tp),
+      lo: Math.min(...tp.map(x => x.velo).filter(gunned)), hi: Math.max(...tp.map(x => x.velo).filter(gunned)) }
+  })
+  return {
+    gs, ps, allTypes, thrown, strike, fb, byType,
+    n: ps.length, hits: ps.filter(isHit).length, strikes: ps.filter(strike).length,
+    spot: pctOf(ps.filter(isHit).length, ps.length), strikePct: pctOf(ps.filter(strike).length, ps.length),
+    fbVelo: fb.type ? avgVelo(ps.filter(x => x.type === fb.type)) : null,
+    anyVelo: ps.some(x => gunned(x.velo))
+  }
+}
+type PenFacts = ReturnType<typeof penFacts>
+
+function penStoodOut(p: ReportPayload, f: PenFacts, c: Comparison): StoodOut[] {
+  const ws = c.baselines?.windows?.['3m']
+  const first = escapeHtml(firstName(p.pitcherName))
+  const items: StoodOut[] = []
+  const rate = (cur: number | null, range: [number, number] | undefined, minW: number, text: (dir: string, r: string) => string, unit: string, neutral = false) => {
+    const o = outsideRange(cur, range, minW)
+    if (!o || !range) return
+    items.push({ kind: 'rate', size: o.size, mark: neutral ? 'info' : o.dir === 'above' ? 'up' : 'down', text: text(o.dir, rangeText(range, unit)) })
+  }
+  if (ws?.range) {
+    rate(f.spot, ws.range.spot_pct, 5, (d, r) => `On the spot ${f.spot}% (${f.hits} of ${f.n}), ${d} ${first}'s normal range (${r}).`, '%')
+    rate(f.strikePct, ws.range.strike_pct, 5, (d, r) => `Strikes ${f.strikePct}% (${f.strikes} of ${f.n}), ${d} ${first}'s normal range (${r}).`, '%')
+    rate(f.n, ws.range.pitches, 5, (d, r) => `${f.n} pitches, ${d === 'above' ? 'more' : 'fewer'} than ${first}'s normal range (${r}).`, '', true)
+  }
+  for (const t of f.byType) {
+    const tr = ws?.types?.[t.type]?.range
+    if (!tr) continue
+    if (t.n >= typeMin) {
+      const tn = escapeHtml(t.type)
+      rate(pctOf(t.hits, t.n), tr.spot_pct, 5, (d, r) => `${tn} hit its spot ${pctOf(t.hits, t.n)}% (${t.hits} of ${t.n}), ${d} ${first}'s normal range (${r}).`, '%')
+      rate(pctOf(t.strikes, t.n), tr.strike_pct, 5, (d, r) => `${tn} strikes ${pctOf(t.strikes, t.n)}% (${t.strikes} of ${t.n}), ${d} ${first}'s normal range (${r}).`, '%')
+    }
+    if (t.type === f.fb.type && f.fbVelo !== null) rate(f.fbVelo, tr.velo, 1, (d, r) => `${escapeHtml(f.fb.label)} averaged ${f.fbVelo} mph, ${d} ${first}'s normal range (${r} mph).`, 'mph')
+  }
+  items.push(...missPattern(f.ps, isHit as (p: never) => boolean, c.throws, f.thrown))
+  const fade = fadePattern(f.ps, f.fb.type, f.fb.label); if (fade) items.push(fade)
+  const side = sidePattern(f.ps, f.strike as (p: never) => boolean); if (side) items.push(side)
+  return sortStoodOut(items)
+}
+
+function penHeadline(p: ReportPayload, f: PenFacts, c: Comparison, items: StoodOut[]): string {
+  const pen = penWord(p.purpose)
+  const k = Math.min(6, 1 + c.recent.length)
+  if (f.n >= 10 && f.spot !== null && k >= 4) {
+    const spots = c.recent.slice(0, k - 1).map(r => r.pitches ? 100 * r.hits / r.pitches : 0)
+    const lead = f.byType.filter(t => t.n >= typeMin).sort((a, b) => b.hits / b.n - a.hits / a.n)[0]
+    if (f.spot > Math.max(...spots)) return `Best ${pen} of the last ${word(k)}: ${f.spot}% on the spot${lead ? `, led by the ${escapeHtml(lead.type.toLowerCase())}` : ''}.`
+    if (f.spot < Math.min(...spots)) {
+      const miss = items.find(i => i.kind === 'misses')
+      return `Toughest ${pen} of the last ${word(k)}: ${f.spot}% on the spot${miss ? `, ${escapeHtml((miss.type ?? '').toLowerCase())} misses went ${DIR_WORDS[miss.dir ?? ''] ?? ''}` : ''}.`
+    }
+  }
+  if (items.length) return items[0].text
+  return `${f.spot ?? 0}% on the spot and ${f.strikePct ?? 0}% strikes over ${f.n} pitch${f.n === 1 ? '' : 'es'}.`
+}
+
+function penSummary(p: ReportPayload, f: PenFacts, c: Comparison, id: string, items: StoodOut[]): string {
+  const chartedBy = p.loggedByCoach ? 'the coaching staff' : escapeHtml(p.pitcherName)
+  const sided = f.ps.filter(x => x.batterSide === 'R' || x.batterSide === 'L').length
+  const batterBit = !f.n ? '' : sided === 0 ? ' · No batter' : sided < f.n ? ' · Mixed' : ''
+  const tag = p.purpose && SESSION_TAG_LABELS[p.purpose] ? ` · ${penWord(p.purpose)} (tagged at start)` : ''
+  const head = card('', `<h2 class="kr-headline">${penHeadline(p, f, c, items)}</h2>
+    <p class="kr-sub">${penDate(p)}${tag} · ${f.n} pitch${f.n === 1 ? '' : 'es'} · ${f.thrown.length} pitch type${f.thrown.length === 1 ? '' : 's'}${batterBit} · charted by ${chartedBy}</p>`)
+  const tiles: TileSpec[] = [
+    { label: 'On the spot', cur: f.spot, unit: '%', key: 'spot_pct' },
+    { label: 'Strike %', cur: f.strikePct, unit: '%', key: 'strike_pct' },
+    { label: `${f.fb.label} avg mph`, cur: f.fbVelo, unit: 'mph', key: 'velo', type: f.fb.type ?? undefined, sub: f.anyVelo ? 'not gunned' : 'radar off' },
+    { label: 'Pitches', cur: f.n, unit: '', key: 'pitches', neutral: true }
+  ]
+  const first = firstName(p.pitcherName)
+  const extra = p.purpose && SESSION_TAG_LABELS[p.purpose] ? ` · ${penWord(p.purpose)}s only` : ''
+  const wins = c.baselines ? WINDOWS.map(w => w.key).filter(k => c.baselines!.windows[k]) : []
+  const compare = wins.length
+    ? windowSwitch(id, wins) + wins.map(k => wb(k, windowCaption(first, k, c.baselines!.windows[k], 'pen', extra)
+        + `<div class="kr-tiles">${tiles.map(t => tileFor(t, c.baselines!.windows[k], 'pen')).join('')}</div>`)).join('')
+    : `<div class="kr-tiles">${tiles.map(t => tileFor(t, undefined, 'pen')).join('')}</div><p class="kr-wcap">No earlier sessions to compare with yet.</p>`
+  return head + compare + stoodOutCard(items, !!c.baselines?.windows?.['3m']?.range, first) + penViewCaption(p)
+}
+function penViewCaption(p: ReportPayload): string {
+  const note = viewNote(p.chartingPerspective).replace('class="header-note"', 'class="caption"')
+  return (note || `<p class="caption">Every grid in this report is drawn in the ${VIEW_NAME}, ${REPORT_VIEW === 'pitcher' ? 'looking in from the mound toward home plate' : 'looking out toward the mound'}.</p>`)
+}
+
+function penCommand(p: ReportPayload, f: PenFacts, c: Comparison): string {
+  const ok = f.byType.filter(t => t.n >= typeMin).sort((a, b) => b.hits / b.n - a.hits / a.n)
+  const hl = !ok.length ? (f.byType.length ? `${f.spot ?? 0}% on the spot over ${f.n} pitches` : 'No pitches charted')
+    : ok.length === 1 ? `${escapeHtml(ok[0].type)} found its spot ${pctOf(ok[0].hits, ok[0].n)}%`
+    : `${escapeHtml(ok[0].type)} found its spot ${pctOf(ok[0].hits, ok[0].n)}%; ${escapeHtml(ok[ok.length - 1].type.toLowerCase())} ${pctOf(ok[ok.length - 1].hits, ok[ok.length - 1].n)}%`
+  const grids = drawHitTypeGrids({ gridSize: f.gs, batterSide: null, allTypes: f.allTypes, raOn: !!p.raOn,
+    pitches: f.ps.map(x => ({ type: x.type, row: x.actualRow, col: x.actualCol, kind: x.accuracyHitKind || (isHit(x) ? 'exact' : 'miss') })) })
+  const wins = c.baselines ? WINDOWS.map(w => w.key).filter(k => c.baselines!.windows[k]) : []
+  const vsAvg = (t: string, cur: number | null) => {
+    if (cur === null || !wins.length) return '—'
+    return wins.map(k => {
+      const a = c.baselines!.windows[k].types?.[t]?.avg?.spot_pct
+      if (a === undefined || a === null) return wi(k, '—')
+      const d = cur - Math.round(a)   // from the average as shown
+      return wi(k, `<span class="${d > 0 ? 'kr-up' : d < 0 ? 'kr-down' : 'kr-faint'}">${d > 0 ? '+' : d < 0 ? '−' : ''}${Math.abs(d)}</span>`)
+    }).join('')
+  }
+  const typeTable = simpleTable(['Pitch', '#', 'Strike', 'Spot', 'vs avg'],
+    f.byType.map(t => [typeCell(t.type, f.allTypes), String(t.n), `${pctOf(t.strikes, t.n)}%`, `${pctOf(t.hits, t.n)}%`, vsAvg(t.type, pctOf(t.hits, t.n))]))
+  const dirs = c.throws ? ['up', 'down', 'arm', 'glove'] : ['up', 'down', 'left', 'right']
+  const dirHead = c.throws ? ['Up', 'Down', 'Arm', 'Glove'] : ['Up', 'Down', 'Left', 'Right']
+  const missRow = (label: string, ps: Pitch[]) => {
+    const cnt: Record<string, number> = {}
+    ps.filter(x => !isHit(x)).forEach(m => missDirs(m, c.throws).forEach(d => { cnt[d] = (cnt[d] || 0) + 1 }))
+    const max = Math.max(0, ...dirs.map(d => cnt[d] || 0))
+    return [label, ...dirs.map(d => (cnt[d] || 0) && (cnt[d] || 0) === max ? `<strong>${cnt[d]}</strong>` : String(cnt[d] || 0))]
+  }
+  const missRows = [missRow('All', f.ps), ...f.byType.filter(t => t.n > t.hits).map(t => missRow(escapeHtml(t.type), f.ps.filter(x => x.type === t.type)))]
+  const missCap = c.throws ? 'From each pitch\'s target. A miss up and to one side counts in both.' : 'From each pitch\'s target, left and right as drawn (the throwing hand isn\'t set). A miss up and to one side counts in both.'
+  const sideRow = (label: string, ps: Pitch[]) => ps.length ? [label, String(ps.length), `${pctOf(ps.filter(f.strike).length, ps.length)}%`, `${pctOf(ps.filter(isHit).length, ps.length)}%`] : null
+  const sideRows = [sideRow('vs right', f.ps.filter(x => x.batterSide === 'R')), sideRow('vs left', f.ps.filter(x => x.batterSide === 'L')), sideRow('No batter', f.ps.filter(x => !x.batterSide))].filter((r): r is string[] => !!r)
+  return takeaway(hl)
+    + card('', `${grids}<p class="caption">Filled = hit the spot · ring = missed it. ${VIEW_NAME[0].toUpperCase() + VIEW_NAME.slice(1)}.</p>`)
+    + card('By pitch type', typeTable + (wins.length ? `<p class="caption">vs avg: on-the-spot points against the window chosen on Summary.</p>` : ''))
+    + (f.n > f.hits ? card('Where misses went', simpleTable(['', ...dirHead], missRows) + `<p class="caption">${missCap}</p>`) : '')
+    + (sideRows.length ? card('By batter side', simpleTable(['', 'Pitches', 'Strike', 'Spot'], sideRows)) : '')
+    + renderPerSideBlocks(p) + renderLocationChart(p)
+}
+
+function penVelocity(p: ReportPayload, f: PenFacts): string {
+  const fbV = f.fb.type ? f.ps.filter(x => x.type === f.fb.type).map(x => x.velo).filter(gunned) : []
+  const label = escapeHtml(f.fb.label)
+  let hl: string
+  if (!f.anyVelo) hl = 'No velocity today: the radar gun was off'
+  else if (fbV.length >= 20 && fadePattern(f.ps, f.fb.type, f.fb.label)) {
+    const head = fbV.slice(0, -10), tail = fbV.slice(-10)
+    hl = `${label} held ${Math.min(...head)}–${Math.max(...head)} for ${head.length} pitches, then slid to ${Math.min(...tail)}–${Math.max(...tail)}`
+  } else if (fbV.length) hl = `${label} averaged ${avgVelo(f.ps.filter(x => x.type === f.fb.type))} mph (${Math.min(...fbV)}–${Math.max(...fbV)})`
+  else hl = 'Velocity by pitch type'
+  const chart = fbV.length >= 2 ? card('', fbOrderChart(fbV) + `<p class="caption">Each point is one gunned ${label}, in order.</p>`) : ''
+  const rows = f.byType.map(t => [typeCell(t.type, f.allTypes), t.velo === null ? '—' : String(Math.round(t.velo)), t.velo === null ? '—' : (t.lo === t.hi ? String(t.lo) : `${t.lo}–${t.hi}`), `${pctOf(t.n, f.n)}%`])
+  const recentTotals = p.history.map(h => safeNum(h.total)).filter((n): n is number => n !== null)
+  const recentAvg = recentTotals.length ? Math.round(recentTotals.reduce((a, b) => a + b, 0) / recentTotals.length) : null
+  const delivery = asSport(p.sport) === 'softball' ? '' : deliverySplitLine(p).replace('<strong>Delivery:</strong> ', '') + timesToHomeLine(p.pitches)
+  return takeaway(hl)
+    + chart
+    + card('', simpleTable(['Pitch', 'Avg', 'Range', 'Mix'], rows) + (recentAvg !== null ? `<p class="caption">Recent average for this pitcher on this team: ${recentAvg} pitches. This pen: ${f.n}.</p>` : ''))
+    + (delivery.trim() ? card('Delivery', delivery) : '')
+}
+function fbOrderChart(v: number[]): string {
+  const lo = Math.floor(Math.min(...v)) - 1, hi = Math.ceil(Math.max(...v)) + 1, W = 560, H = 170, L = 34, R = 10, T = 12, B = 22
+  const X = (i: number) => L + (W - L - R) * i / Math.max(1, v.length - 1), Y = (y: number) => T + (H - T - B) * (hi - y) / Math.max(1, hi - lo)
+  const ticks = [lo, Math.round((lo + hi) / 2), hi]
+  const band = v.length > 10 ? `<rect x="${X(v.length - 10).toFixed(1)}" y="${T}" width="${(X(v.length - 1) - X(v.length - 10)).toFixed(1)}" height="${H - T - B}" fill="var(--kr-hl)"/><text x="${((X(v.length - 10) + X(v.length - 1)) / 2).toFixed(1)}" y="${T + 14}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--kr-accent-ink)">last 10: ${(Math.round(v.slice(-10).reduce((a, b) => a + b, 0)) / 10).toFixed(1).replace(/\.0$/, '')}</text>` : ''
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Fastball velocity by pitch order">${band}${ticks.map(t => `<line x1="${L}" x2="${W - R}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}" stroke="var(--kr-grid)"/><text x="${L - 6}" y="${(Y(t) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--kr-axis)">${t}</text>`).join('')}<polyline fill="none" stroke="var(--kr-accent)" stroke-width="2.5" stroke-linejoin="round" points="${v.map((y, i) => X(i).toFixed(1) + ',' + Y(y).toFixed(1)).join(' ')}"/><text x="${L}" y="${H - 4}" font-size="11" fill="var(--kr-axis)">1st</text><text x="${W - R}" y="${H - 4}" text-anchor="end" font-size="11" fill="var(--kr-axis)">${ordinal(v.length)}</text></svg>`
+}
+
+function penTrends(p: ReportPayload, f: PenFacts): string {
+  const hist = p.history.filter(h => (safeNum(h.total) ?? 0) >= 10).slice(-5)   // the baselines' 10-pitch rule (Joel, Nov 19)
+  if (hist.length < 2) return takeaway('Trends start once there are three pens') + card('', `<p class="caption">This report draws one line per number once this pitcher has at least three pens of 10 or more pitches on this team.</p>`)
+  const k = hist.length + 1
+  const allVelo = avgVelo(f.ps)
+  const series = [
+    { label: 'On the spot', name: 'On-the-spot rate', v: [...hist.map(h => h.commandPct), f.spot], txt: `${f.spot ?? 0}%` },
+    { label: 'Strike %', name: 'Strike rate', v: [...hist.map(h => h.strikePct), f.strikePct], txt: `${f.strikePct ?? 0}%` },
+    { label: 'Avg mph', name: 'Velocity', v: [...hist.map(h => h.hasVelo ? h.avgVelo : null), allVelo], txt: allVelo === null ? '—' : String(Math.round(allVelo)) },
+    { label: 'Pitches', name: 'Pitch count', v: [...hist.map(h => h.total), f.n], txt: String(f.n) }
+  ]
+  let hl = `${word(k)[0].toUpperCase() + word(k).slice(1)} pens of trends: on the spot, strikes, velocity and pitches`
+  let best = 0
+  for (const s of series.slice(0, 3)) {
+    const v = s.v.filter((x): x is number => x !== null && x !== undefined)
+    let up = 0, down = 0
+    for (let i = 1; i < v.length; i++) { if (v[i] > v[i - 1]) up++; else if (v[i] < v[i - 1]) down++ }
+    const m = Math.max(up, down)
+    if (v.length >= 4 && m >= 3 && m > best) { best = m; hl = `${s.name} has ${up >= down ? 'climbed' : 'fallen'} in ${m} of the last ${v.length - 1} pens` }
+  }
+  return takeaway(hl) + series.map(s => sparkCard(s.label, s.v.map(x => x ?? null), s.txt, `last ${k} pens`)).join('')
+}
+
 export function buildReportHtml(p: ReportPayload): string {
   const title = `Bullpen Report — ${p.pitcherName}`
+  const c = p.comparison ?? NO_COMPARISON
+  const id = ids(p.sessionId)
+  const f = penFacts(p)
+  const items = penStoodOut(p, f, c)
+  const wins = c.baselines ? WINDOWS.map(w => w.key).filter(k => c.baselines!.windows[k]) : []
+  const links = `<p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="${signInUrl(asSport(p.sport))}">knuckleballonline.com</a> &middot; <a href="https://knuckleballonline.com/privacy.html#${asSport(p.sport)}">Privacy</a> &middot; <a href="https://knuckleballonline.com/terms.html#${asSport(p.sport)}">Terms</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>`
   // D2: this report's own colors and fonts (--kr-*) for its sport -- no hex swap, no site stylesheet.
   return (`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
-<style>${reportVars(asSport(p.sport))}${CSS}</style>
+<style>${reportVars(asSport(p.sport))}${CSS}${SR1_CSS}</style>
 </head>
 <body>
-<div class="page">
-${renderHeader(p)}
-${renderSummary(p)}
-${renderLocationChart(p)}
-${renderTypeGrids(p)}
-${renderCommandDetail(p)}
-${renderPerSideBlocks(p)}
-${renderVelocityDepth(p)}
-${renderWorkload(p)}
-${renderTrends(p)}
-${renderFooter(p)}
+<div class="page kr">
+${radios(id, PEN_TABS, wins)}
+${penHeader(p, id)}
+<main class="kr-main">
+${panel(1, penSummary(p, f, c, id, items))}
+${panel(2, penCommand(p, f, c))}
+${panel(3, penVelocity(p, f))}
+${panel(4, penTrends(p, f))}
+</main>
+${footer(firstName(p.pitcherName), links)}
 </div>
 </body>
 </html>`)

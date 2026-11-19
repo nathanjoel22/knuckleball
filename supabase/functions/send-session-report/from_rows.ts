@@ -13,6 +13,7 @@ import { buildGameReportHtml, type GameReportPayload, type GameSummary } from '.
 import type { Pitch, HistoryEntry } from './compute.ts'
 import type { GamePitch, RecentPenTypeRow, GameHistoryEntry } from './compute_game.ts'
 import { asSport, useSportPalette } from './helpers.ts'
+import { loadComparison } from './sr1.ts'
 
 const U6_CUTOFF_TS = 1789965601000   // the app's U6_CUTOFF_TS: a 65 mph reading before it is the old default, not a real speed
 const PITCH_COLS = 'session_id, type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, in_accuracy_zone, ' +
@@ -151,7 +152,9 @@ export async function renderReportFromRows(db: SupabaseClient, sessionId: string
     date,
     chartingPerspective: (s.charting_perspective ?? null) as ReportPayload['chartingPerspective'],
     loggedByCoach: s.logged_by !== s.pitcher_id,
-    pitchTypes: Array.isArray(prof?.pitch_types) ? prof!.pitch_types as string[] : []
+    pitchTypes: Array.isArray(prof?.pitch_types) ? prof!.pitch_types as string[] : [],
+    // SR1 C: the same comparison read as the live path, through this caller's client
+    comparison: await loadComparison(db, { id: s.id, pitcher_id: s.pitcher_id, kind: s.kind || 'bullpen', purpose: s.purpose ?? null, started_at: s.started_at })
   }
 
   useSportPalette(asSport(s.sport))

@@ -98,7 +98,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-19 · R7 Stage A (one sign-in, one New account form) · **staging** (local staging site), branch `r7-one-login`, cache `kb-shell-v358`
+## 2026-11-19 · R7 Stage A (one sign-in, one New account form) · **production** (PR #115, merge `651b9ec`), branch `r7-one-login`, cache `kb-shell-v358`
+
+- **Live Nov 19:** merged by Joel. GitHub Pages built `651b9ec`. knuckleballonline.com and knuckleball.pages.dev serve `kb-shell-v358`, the new `login.html` and the forwarding `signin.html` / sign-up pages. No database change. App Store build 34101 was already approved, so nothing was in review.
 
 - **Packet:** `plans/r7-one-login.md` (Joel, Nov 19, saved verbatim). Report and Joel's answers (all 8 as recommended):
   `plans/r7-preconditions.md`. Evidence: `plans/r7a-evidence.md` (+ `plans/r7a-evidence/`).
@@ -123,8 +125,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   - The Play sign-in screenshot needs retaking.
   - Test accounts on staging (`@example.com`).
 - **Open:**
-  - Joel's check and merge.
-  - Then Stage B (facility self-serve) and Stage C (more roles by link), each its own PR.
+  - Merge knuckleball-app PR #12 (review notes) before the next submission.
+  - Stage B shipped the same day (entry above); Stage C next.
 
 ---
 

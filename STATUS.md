@@ -60,6 +60,25 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-20 · F2 Stage 1 (one-session assignments) · **staging** (PR pending), branch `f2-stage1` (on Stage 2), cache `kb-shell-v369`
+
+- **Migration** `20261126000000_f2s1_session_assignments` on staging (dry run first, rollback written first):
+  - `session_assignments` (no grant, no policy);
+  - search, side coaches, assign, cancel, `my_assignments`;
+  - `sync_session` accepts and releases an assignment, and answers `already_saved` to a session's own charter.
+- **App:** Search facility gets "In the facility" results → Assign for a session (Yourself or a coach). There's also
+  Manage → Assign for a session, "Assigned for a session" at the top of the Roster, and charting from the narrow read.
+  The recap after an assigned save shows only Done; Discard cancels. History says "Charted by a coach".
+- **Checks:** policies 32 / 12, unchanged. The F1-A matrix denies the new table to all 58 staging logins. Evidence:
+  `plans/f2s1-evidence.md` (Done when 6–12: PASS).
+- **DRAFT policy sentence** for the facility pages is in the evidence and the PR, for Joel. Not on any page.
+- **Open:**
+  - `supabase/tests/live_game_r3b.sql` needs new fixture pitchers: one of its hard-coded staging pitchers left the
+    team. Unrelated.
+  - **Production (Joel):** backup, db push, merge.
+
+---
+
 ## 2026-11-20 · F2 Stage 2 (roster top row: Search facility, Join Codes, Assign Pitchers) · **staging** (PR pending), branch `f2-stage2` (on Stage H), cache `kb-shell-v368`
 
 - **The facility roster's top row:**

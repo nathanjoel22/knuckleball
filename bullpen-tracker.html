@@ -2737,7 +2737,7 @@ function renderAttestScreen(){
       ${state.attestChoice === 'minor_13_17' ? `<div><div class="field-label" style="margin-bottom:var(--s-6);">Parent or guardian email</div>
         <input class="text-input" id="attest-guardian" type="email" placeholder="Not your own email" value="${escHtml(state.attestGuardian || '')}" oninput="state.attestGuardian = this.value">
         <p class="note-hint" style="margin-top:var(--s-6);">We'll email them a link to approve your account. Until they do, you can chart, but you can't view or send reports.</p></div>` : ''}
-      ${state.attestChoice === 'under_13' ? `<p class="attest-stop">Players under 13 need a parent or guardian to create their profile. Ask them to sign up and choose "Create Child's Profile". Contact <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a> about this account.</p>` : ''}
+      ${state.attestChoice === 'under_13' ? `<p class="attest-stop">Players under 13 need a parent or guardian to create their profile. Ask them to sign up and choose "Create Your Child's Profile". Contact <a href="mailto:nate@knuckleballonline.com">nate@knuckleballonline.com</a> about this account.</p>` : ''}
       <label class="attest-check"><input type="checkbox" id="attest-terms" ${state.attestTerms ? 'checked' : ''} onchange="state.attestTerms = this.checked"> <span>I agree to the ${terms}.</span></label>`;
   return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="One quick question"><div class="who-card attest-card">
     <div class="display" style="font-size:32px;line-height:1;">One quick question</div>
@@ -4260,7 +4260,7 @@ function renderAccountButton(){
         </button>`).join('')}
       ${currentPitcher() ? '' : `<button type="button" class="btn btn-tertiary acct-item acct-profile" role="menuitem" onclick="acctGoProfile()"><span class="acct-name">${PLACE.account}</span></button>`}
       ${sportsToAdd().map(sp => `<button type="button" class="btn btn-secondary btn-sm acct-add" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')">+ Add ${sp}</button>`).join('')}
-      ${canAddPlayer() ? `<button type="button" class="btn btn-secondary btn-sm acct-add" onclick="openAddPlayer()">+ Create Child's Profile</button>` : ''}
+      ${canAddPlayer() ? `<button type="button" class="btn btn-secondary btn-sm acct-add" onclick="openAddPlayer()">+ Create Your Child's Profile</button>` : ''}
       ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
       <a class="btn btn-tertiary btn-sm acct-help" role="menuitem" href="help.html">Help &amp; getting started</a>   <!-- P2-06 -->
     </div>` : '';
@@ -4305,7 +4305,7 @@ function renderAddPlayerScreen(){
     <div class="main">
       <div class="empty-state" style="max-width:440px;margin:0 auto;">
         ${first ? '' : `<div class="acct-row kb-back-row" style="align-self:stretch;"><button type="button" class="btn btn-secondary btn-sm kb-back" onclick="addPlayerBack()">‹ Back</button></div>`}
-        <div class="display" style="font-size:32px;">Create Child's Profile</div>
+        <div class="display" style="font-size:32px;">Create Your Child's Profile</div>
         <p style="color:var(--ink-dim);font-size:14px;margin:0;">Set up your child's profile. They don't need an email or a login: you chart for them from this account${email ? `, and their reports come to <strong>${escHtml(email)}</strong>` : ''}.</p>
         <div class="invite-form" style="width:100%;text-align:left;">
           <div><span class="field-label">Player's name</span>
@@ -14174,7 +14174,7 @@ function renderMoreView(){
   // the same tests as renderCoachTeamAdmin's codes (a facility side's coaches) and links (a team's head) sections
   const hasCodes = coachTeam && !coachTeam.archived && (currentTeamIsFacility() || isHeadOfCurrentTeam());
   const team = (teamSwitchHtml() ? `<div class="more-row">${teamSwitchHtml()}</div>` : '')   // N1-B: phones switch team here
-    + (canAddPlayer() ? moreRow("Create Child's Profile", 'openAddPlayer()') : '')
+    + (canAddPlayer() ? moreRow("Create Your Child's Profile", 'openAddPlayer()') : '')
     + (hasCodes ? moreRow('Join codes and invite links', "goAccountSection('acct-invites')") : '')
     + (coachTeam ? moreRow('Team settings', "goAccountSection('acct-team')") : '');
   return `<div class="more-page">
@@ -14439,7 +14439,7 @@ function renderAccountExtras(){
       ? `<div class="more-row more-row-on"><span class="more-row-main">${escHtml(x.full_name)} ${profileChip(x)}</span><span class="more-row-right"><span class="acct-check" aria-label="Active">✓</span></span></div>`
       : moreRow(`${escHtml(x.full_name)} ${profileChip(x)}`, `switchProfile('${x.id}')`)).join('') : '');
   const adds = sportsToAdd().map(sp => `<button type="button" class="more-row" ${state.acctBusy ? 'disabled' : ''} onclick="addSport('${sp}')"><span class="more-row-main">+ Add ${sp}</span></button>`).join('')
-    + (canAddPlayer() ? moreRow("Create Child's Profile", 'openAddPlayer()') : '') + renderStartFacility();
+    + (canAddPlayer() ? moreRow("Create Your Child's Profile", 'openAddPlayer()') : '') + renderStartFacility();
   return `<div class="more-card acct-extras">
       ${rows || adds ? `<div class="more-group-label">Profiles</div>${rows}${adds}` : ''}
       ${state.acctMsg ? `<p class="acct-msg">${escHtml(state.acctMsg)}</p>` : ''}
@@ -14694,7 +14694,7 @@ const GS_STEPS = {
     { id: 'who', label: 'See who can view your charts', hint: 'Help explains it', go: "gsMark('who');location.href='help.html#pitcher-visibility'", done: () => gsMarked('who') }
   ],
   parent: [   // Joel, Q3: no "Approve the guardian email" step -- a parent's own players never need it
-    { id: 'player', label: "Create your child's profile", hint: "More, then Create Child's Profile", go: 'openAddPlayer()', done: c => c.playersN > 0 },
+    { id: 'player', label: "Create Your Child's Profile", hint: "More, then Create Your Child's Profile", go: 'openAddPlayer()', done: c => c.playersN > 0 },
     { id: 'team', label: "Join the team with the coach's link", hint: "Open the link and choose your player", go: "location.href='help.html#parent-join'", done: c => c.teamsN > 0 },
     { id: 'read', label: 'Open the latest report', hint: 'History shows each report under its session', go: "setView('history')", done: () => gsMarked('report-read') }
   ]

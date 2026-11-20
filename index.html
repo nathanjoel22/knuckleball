@@ -373,25 +373,21 @@ img{max-width:100%}
 <script>
 /* The iPhone and iPad app's opening film (signed out; signed in, the head script already left for the app). Then a quick
    fade to black, The spot and the KNUCKLEBALL wordmark held 1.5 seconds (Joel, Oct 23 2026), then a fade to "Which sport?".
-   Joel, Nov 18 2026: the first time on a device, the whole film (14.8 s); after that, one of three parts at random --
-   the opening (0-3.5 s: the backyard), the mitt and the middle-school boy and girl (5.0-8.25 s), or the older pair and
-   their strikeout pitches (8.3-14.25 s). A part stops on its own last frame, so the next scene never shows. The device
-   remembers the whole film only once it has played to the end (kb:introSeen). With no signal the film can't load (it's
-   never cached), so after 4.5 seconds it goes on regardless. */
+   Joel, Nov 20 2026 (F2 Stage H, replacing Nov 18's three random parts): every signed-out launch plays the film's
+   first 5 seconds (the backyard, up to the mitt), stopping on that frame. No signal: no film (the film is never cached),
+   straight on. Nov 18's parts that started mid-film waited for metadata iOS never loads before play(), so most launches
+   showed dark and then the sign-in -- the 5 seconds start at 0 and play at once. */
 (function(){
   var root=document.documentElement; if(root.className.indexOf('kb-app-splash')<0) return;
   /* an iPad (its short side is 600+ points; every iPhone's is under 500) always gets the wide film */
   var pad=Math.min(screen.width,screen.height)>=600; if(pad) root.className+=' kb-splash-pad';
   var el=document.getElementById('kb-splash'), tall=!pad && innerHeight>=innerWidth, done=false;
   el.style.backgroundImage='url(media/'+(tall?'hero-poster-4x5.jpg':'hero-poster.jpg')+')';
-  var seen=false; try{ seen=localStorage.getItem('kb:introSeen')==='1'; }catch(e){}
-  var CLIPS=[[0,3.5],[5.0,8.25],[8.3,14.25]], clip=seen ? CLIPS[Math.floor(Math.random()*CLIPS.length)] : null;   /* null: the whole film */
-  if(clip && clip[0]>0) el.style.backgroundImage='none';   /* the poster is the opening's frame; a later part starts on dark */
+  var CLIP=5;   /* seconds of the film */
   var v=document.createElement('video'); v.muted=true; v.playsInline=true; v.setAttribute('playsinline','');
-  v.preload='auto'; v.src='media/'+(tall?'hero-4x5.mp4':'hero-1080p.mp4'); el.appendChild(v);
-  function start(){ v.play().catch(function(){}); }
-  if(clip && clip[0]>0){ v.addEventListener('loadedmetadata',function(){ v.currentTime=clip[0]; },{once:true}); v.addEventListener('seeked',start,{once:true}); }
-  else { v.autoplay=true; start(); }
+  v.preload='auto'; v.src='media/'+(tall?'hero-4x5.mp4':'hero-1080p.mp4');
+  var offline=navigator.onLine===false;
+  if(!offline){ el.appendChild(v); v.autoplay=true; v.play().catch(function(){}); }
   /* the logo is in the page from the start (hidden), so the wordmark's font is loaded before it shows */
   var logo=document.createElement('div'); logo.className='kb-logo';
   logo.innerHTML='<svg viewBox="0 0 100 100" aria-hidden="true"><g transform="translate(50 50) skewX(-14) translate(-38 -38)" fill="currentColor">'
@@ -404,18 +400,14 @@ img{max-width:100%}
     setTimeout(function(){ try{ v.pause(); }catch(e){} el.className='logo'; },450);
     setTimeout(function(){ el.className='logo out'; },450+350+1500);
     setTimeout(function(){ location.replace('login.html'); },450+350+1500+350); }
-  var t=setTimeout(go,4500);
+  var t=setTimeout(go,offline?0:4500);   /* a film that never starts (a weak signal) still goes on */
   function stop(){ try{ v.pause(); }catch(e){} go(); }
   v.addEventListener('playing',function(){
     clearTimeout(t);
-    if(!clip){   /* the whole film: to its end, then remembered */
-      v.addEventListener('ended',function(){ try{ localStorage.setItem('kb:introSeen','1'); }catch(e){} go(); },{once:true});
-      t=setTimeout(go,(v.duration||14.8)*1000+1500);   /* in case 'ended' never comes */
-      return;
-    }
-    (function watch(){ if(done) return; if(v.currentTime>=clip[1]-0.04) return stop(); requestAnimationFrame(watch); })();
-    t=setTimeout(stop,(clip[1]-clip[0])*1000+1000);
+    (function watch(){ if(done) return; if(v.currentTime>=CLIP-0.04) return stop(); requestAnimationFrame(watch); })();
+    t=setTimeout(stop,CLIP*1000+1000);
   },{once:true});
+  try{ localStorage.removeItem('kb:introSeen'); }catch(e){}   /* Nov 18's memory, retired */
   /* the hidden landing page's own film: emptied once it's parsed (kept in the page, which its own script expects), so
      it stops downloading in the app */
   document.addEventListener('DOMContentLoaded',function(){ var h=document.getElementById('hero'); if(!h) return;

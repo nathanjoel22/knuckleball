@@ -24,7 +24,7 @@ import {
   type Comparison, NO_COMPARISON, type StoodOut, type TileSpec, WINDOWS, SR1_CSS, ids, radios, tabBar, windowSwitch, wb, panel,
   takeaway, card, tileFor, windowCaption, stoodOutCard, sparkCard, simpleTable, typeCell, footer, firstName, word, ordinal, pctOf,
   pickFastball, avgVelo, gunned, outsideRange, rangeText, sortStoodOut, sidePattern, clusterPattern, typeMin, inningMin,
-  restCard, sevenDayCard, type Voice, type LevelGroup, levelGroup, versionsFor, ver, tabBarVersions,
+  restCard, sevenDayCard, type Voice, type LevelGroup, levelGroup, versionsFor, ver, tabBarVersions, printTitle,
   type EmailVersion, emailComment, shortDate, sevenDayEmailLine, restEmailLine, comparedEmailLine
 } from './sr1.ts'
 
@@ -799,6 +799,7 @@ export function buildGameReportHtml(p: GameReportPayload): string {
   const itemsYou = gameStoodOut(p, f, c, 'you')
   const g = levelGroup(c.workload?.level ?? c.baselines?.level ?? null)   // SR1 E: the versions this file carries
   const wins = c.baselines ? WINDOWS.map(w => w.key).filter(k => c.baselines!.windows[k]) : []
+  const tl = gameTabLabels(g), pt = printTitle(p.pitcherName, 'Live Game', gameDate(p), wins)   // SR1 G: print
   const links = `<p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="https://knuckleballonline.com/login.html?sport=${asSport(p.sport)}">knuckleballonline.com</a> &middot; <a href="https://knuckleballonline.com/privacy.html#${asSport(p.sport)}">Privacy</a> &middot; <a href="https://knuckleballonline.com/terms.html#${asSport(p.sport)}">Terms</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>`
   // D2: this report's own colors and fonts (--kr-*) for its sport -- no hex swap, no site stylesheet.
   return (`<!doctype html>
@@ -815,13 +816,13 @@ ${gameHeader(p, id, g)}
 <main class="kr-main">
 ${panel(1, ver(['coach'], gameSummaryTab(p, f, c, id, items))
   + (g === 'll' ? ver(['player'], gameSummaryLLPlayer(p, f, c, id, itemsYou)) + ver(['parent'], gameSummaryLLParent(p, f, c))
-    : ver(['player'], gameSummaryTab(p, f, c, id, itemsYou, 'you', g === 'hs' ? 2 : 3))))}
-${panel(2, gameLocationTab(p, f))}
-${panel(3, gameBattersTab(p, f))}
-${panel(4, gamePitchTypesTab(p, f))}
-${panel(5, gameTrendsTab(p))}
-${panel(6, gameEveryPitchTab(p, f))}
-${g === 'll' ? panel(7, gameWhereItWent(p, f)) + panel(8, gameProgressLite(p)) : ''}
+    : ver(['player'], gameSummaryTab(p, f, c, id, itemsYou, 'you', g === 'hs' ? 2 : 3))), tl, pt)}
+${panel(2, gameLocationTab(p, f), tl, pt)}
+${panel(3, gameBattersTab(p, f), tl, pt)}
+${panel(4, gamePitchTypesTab(p, f), tl, pt)}
+${panel(5, gameTrendsTab(p), tl, pt)}
+${panel(6, gameEveryPitchTab(p, f), tl, pt)}
+${g === 'll' ? panel(7, gameWhereItWent(p, f), tl, pt) + panel(8, gameProgressLite(p), tl, pt) : ''}
 </main>
 ${footer(firstName(p.pitcherName), links, true)}
 </div>

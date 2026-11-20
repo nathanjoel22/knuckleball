@@ -139,6 +139,22 @@ Applies to reports made from Stage C on; every report made before stays exactly 
 - Sending limits unchanged (H1 counts recipients already).
 - **Known gap:** a player's contacts panel is reachable only on the iPad / computer charting screen (since N1 Stage B).
 
+## Printing a report (SR1 Stage G, Joel, Nov 19 2026; decisions in `plans/sr1g-preconditions.md`)
+
+- **One page per tab.** A report made from Stage G on prints every tab of the version on screen, each from a new page,
+  Summary first. The rules are the stored file's own `@media print` in `SR1_CSS` (`send-session-report/sr1.ts`).
+  - Hidden in print: the tab row and the window switch.
+  - The window chosen on screen is the one printed.
+  - The header prints on page 1 only. Pages 2 onward start with a print-only title line (`.kr-ptitle`):
+    "<tab> · <name> · Bullpen · <date> · compared with 3 months".
+- **Each panel carries its versions** (`kr-pv-coach` / `-player` / `-parent`, from the same labels as the tab row;
+  `panel(i, html, labels, title)`), so a `&v=` link or a player's History prints only that version's pages.
+- **Where you print:** report.html (its Print button, Share → Print, a browser's Print / Save as PDF). History stays a
+  screen view.
+- **No split** inside a card, tile row, chart, table row or at-bat line. A tall older section may continue onto the
+  next sheet between its blocks.
+- Reports made before Stage G print as they always did (the open tab only).
+
 ## Workload, rest and level (SR1 Stage D, Joel, Nov 19 2026; decisions in `plans/sr1d-preconditions.md`)
 
 - **Baseball only.** Joel: "leave softball alone, pitch count rules don't apply there". Softball has no age group, no

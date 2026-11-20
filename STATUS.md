@@ -60,6 +60,34 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-19 · SR1 Stage G (print) · **staging** (PR #139), branch `sr1g-print`, no cache bump (no `.html` changed)
+
+- **Production function (Joel, Nov 19):** `send-session-report` deployed to production (version 52, the same bundle as
+  staging's version 87). The merge is still pending.
+
+- **Built:** a report made from now on prints every tab of the version on screen, one tab per page, Summary first.
+  - The tab row and the window switch are hidden in print; the window chosen on screen is the one printed.
+  - Pages 2 onward start with a print-only title ("COMMAND · name · Bullpen · date · compared with 3 months").
+  - Each panel carries the versions whose tabs use it, so a player's or parent's link prints only their pages.
+  - No card, tile row, chart, table row or at-bat line splits across pages.
+  - The rules live in the stored file (`SR1_CSS` `@media print`, `panel()` in `sr1.ts`).
+  - `send-session-report` is on staging (version 87).
+- **Checked:**
+  - Chrome PDFs of every version of a demo pen and game, plus a real staging pen through report.html.
+  - On screen nothing changed: 108 tab and window views identical to main at 390.
+  - History's drawn report hides the print titles.
+  - Older reports are untouched and still print one tab.
+  - Evidence: `plans/sr1g-evidence.md`.
+- **Deviations:** none from the packet. Long tabs (a game's Batters and Every pitch, a busy Command) run to more than
+  one page each, as the preconditions allowed.
+- **Found, not changed:** report header dates are formatted in UTC (since before SR1), so a session charted after
+  about 7–8 pm Eastern shows the next day. A separate small fix.
+- **Open:**
+  - Joel: Safari on iPhone (Share → Print) on a staging pen and game report.
+  - Production: deploy `send-session-report`, then merge.
+
+---
+
 ## 2026-11-19 · Phone pen: say why a tap does nothing (no packet; a facility's report) · **production** (PR #137, merge `e927fc9`), branch `fix-phone-edit-hint`, cache `kb-shell-v366`
 
 - **Live Nov 19 (Joel):** merged; v366 on knuckleballonline.com and knuckleball.pages.dev, the fix in the served tracker.

@@ -65,7 +65,7 @@ retries, the locks). `p2_stage1` passes (a coach filing Independent is still `no
 - `live_game_r3b` stops at its first insert ("This pitcher isn't on that team"): one of its two hard-coded staging
   pitchers has left "Staging Knights" since Oct 22. That's fixture drift, not this change.
 
-## Policy wording (DRAFT, for Joel; not on any page yet)
+## Policy wording (APPROVED by Joel, Nov 20 2026; on privacy.html, "At a training facility", Version 2026-11-20, a quiet update)
 
 "At a training facility, any of the facility's coaches can find a pitcher on the facility's roster by name and, when
 assigned, chart one session for them; a temporary team or camp coach can chart the camp's pitchers on the camp's dates.

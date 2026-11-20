@@ -60,6 +60,24 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-20 · F2 Stage H (housekeeping: opening film, Create Your Child's Profile, Pitcher Name / Parent Name) · **staging** (PR #143), branch `f2-report`, cache `kb-shell-v367`
+
+- **Packet:** `plans/f2-facility-assignments-birthdays-camps.md` (Joel, Nov 20; saved verbatim). Report:
+  `plans/f2-preconditions.md`. Joel: "keep going and don't stop to ask", so the build uses the report's defaults.
+- **The film:**
+  - **Cause:** Nov 18's mid-film parts waited for metadata iOS never loads before `play()`, so most launches showed dark,
+    then sign-in.
+  - **New rule:** signed out, every launch plays the first 5 s, then the logo and sign-in. No signal, no film.
+    `kb:introSeen` retired.
+  - The fix is in `index.html`; there's no app build.
+- **The label:** "Create Your Child's Profile" everywhere: the app, the join pages' under-13 messages, Help.
+- **Sign-up:** with Pitcher chosen, Pitcher Name then Parent Name (required for 13–17) on login.html, join.html and
+  accept-invite.html. Kept in the auth sign-up metadata (`parent_name`). Under 13 carries the parent's name over.
+- **Evidence:** `plans/f2h-evidence.md`.
+- **Open (Joel):** the film on an iPhone and an iPad build, signed out.
+
+---
+
 ## 2026-11-19 · Report dates in Eastern time (no packet; Joel's request) · **production** (PR #141, merge `99861e1`), branch `fix-report-dates-eastern`, no cache bump (no `.html` changed)
 
 - **The bug (found in Stage G):** the report header date, "generated" and the plain email's subject were formatted on

@@ -185,6 +185,11 @@
       <label class="field-label" for="su-name" id="su-name-label">Full name</label>
       <input class="text-input" id="su-name" placeholder="Your name" autocomplete="name">
     </div>
+    <div class="field step-hidden" id="su-parent-field">
+      <label class="field-label" for="su-parent">Parent Name</label>
+      <input class="text-input" id="su-parent" placeholder="Parent or guardian's name" autocomplete="off" maxlength="80">
+      <p class="age-note">Needed for pitchers under 18.</p>
+    </div>
     <div class="field">
       <label class="field-label" for="su-email" id="su-email-label">Email</label>
       <input class="text-input" id="su-email" type="email" placeholder="you@example.com" autocomplete="email">
@@ -392,7 +397,9 @@
     $('extra-adult').classList.toggle('step-hidden', role !== 'coach' && role !== 'parent' && role !== 'facility');
     $('extra-facility').classList.toggle('step-hidden', role !== 'facility');
     if(role !== 'parent') $('under13-note').classList.add('step-hidden');
-    $('su-name-label').textContent = role === 'parent' ? "Your name (the parent or guardian)" : 'Full name';
+    // F2 Stage H (Joel, Nov 20 2026): a pitcher's form asks Pitcher Name, then Parent Name (required under 18)
+    $('su-name-label').textContent = role === 'parent' ? "Your name (the parent or guardian)" : role === 'pitcher' ? 'Pitcher Name' : 'Full name';
+    $('su-parent-field').classList.toggle('step-hidden', role !== 'pitcher');
     $('su-email-label').textContent = role === 'parent' ? 'Your email' : 'Email';
     suCheck();
   }
@@ -413,7 +420,8 @@
       $('age-guardian').classList.toggle('step-hidden', v !== 'minor_13_17');
       if(v === 'under_13'){
         su.under13Name = $('su-name').value.trim() || null;
-        $('su-name').value = ''; $('su-email').value = ''; $('su-password').value = '';
+        $('su-name').value = $('su-parent').value.trim(); $('su-email').value = ''; $('su-password').value = '';   // the parent's own name, if typed
+        $('su-parent').value = '';
         r.checked = false;
         setRole('parent');
         $('under13-note').classList.remove('step-hidden');
@@ -503,11 +511,14 @@
     if(password.length < 8){ suErr.textContent = 'Password should be at least 8 characters.'; return; }
     var attest = kbAgeRead(role !== 'pitcher', email);   // P1-10: coaches and parents only ever make the adult statement
     if(attest.error){ suErr.textContent = attest.error; return; }
+    var parentName = role === 'pitcher' ? $('su-parent').value.trim() : '';
+    if(role === 'pitcher' && attest.status === 'minor_13_17' && !parentName){ suErr.textContent = 'Enter the Parent Name.'; return; }
     kbStashAttest(attest);
     suBtn.disabled = true;
     suBtn.textContent = 'Creating account…';
     var meta = { full_name: fullName, intended_role: role === 'facility' ? 'coach' : role };   // a facility's manager is a coach on both sides
     if(role !== 'parent') meta.intended_sport = sport;   // a parent's own profile has no sport; the player's comes next
+    if(parentName) meta.parent_name = parentName;   // F2 Stage H: kept with the sign-up (no column yet)
     // A facility whose account was made but whose facility wasn't (a dropped connection): Try again just finishes it.
     var cur = null; try{ cur = (await supabaseClient.auth.getSession()).data.session; }catch(x){}
     var res = (role === 'facility' && cur && cur.user && String(cur.user.email).toLowerCase() === email.toLowerCase())

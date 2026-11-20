@@ -81,8 +81,13 @@
       <div class="email-readout" id="email-display">—</div>
     </div>
     <div class="field">
-      <label class="field-label" for="full-name">Your name</label>
+      <label class="field-label" for="full-name">Pitcher Name</label>
       <input class="text-input" id="full-name" placeholder="Full name"><script>/* the first box takes focus only with a mouse or trackpad: on a phone or iPad it would raise the keyboard at once and set the page scrolling (Joel, Oct 23 2026) */if(window.matchMedia&&matchMedia('(hover:hover) and (pointer:fine)').matches)document.getElementById('full-name').focus();</script>
+    </div>
+    <div class="field" id="parent-name-field">
+      <label class="field-label" for="parent-name">Parent Name</label>
+      <input class="text-input" id="parent-name" placeholder="Parent or guardian's name" autocomplete="off" maxlength="80">
+      <p class="age-note">Needed for pitchers under 18.</p>
     </div>
     <div class="field">
       <label class="field-label" for="password">Choose a password</label>
@@ -103,7 +108,7 @@
       <input class="text-input" id="guardian-email" type="email" placeholder="Not your own email" autocomplete="off">
       <p class="age-note">We'll email them a link to approve your account. Until they do, you can chart your pitches, but you can't view or send reports.</p>
     </div>
-    <p class="age-stop step-hidden" id="age-stop">Players under 13 need a parent or guardian to create their profile. Ask them to <a href="parent-signup.html" class="parent-link">set up a parent account</a> and choose &ldquo;Create Child&rsquo;s Profile&rdquo;.</p>
+    <p class="age-stop step-hidden" id="age-stop">Players under 13 need a parent or guardian to create their profile. Ask them to <a href="parent-signup.html" class="parent-link">set up a parent account</a> and choose &ldquo;Create Your Child&rsquo;s Profile&rdquo;.</p>
     <label class="terms-check"><input type="checkbox" id="terms-ok"> <span>I agree to the <a href="terms.html" target="_blank" class="policy-link">Terms</a> and <a href="privacy.html" target="_blank" class="policy-link">Privacy Policy</a>.</span></label>
     <div class="error-msg" id="error-msg"></div>
     <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Finish setup</button>
@@ -153,7 +158,7 @@
     }
     var v = kbAgeValue(px);
     if(!v) return { error: 'Tell us how old you are.' };
-    if(v === 'under_13') return { error: "Players under 13 need a parent or guardian to create their profile. Ask them to set up a parent account and choose 'Create Child\'s Profile'." };
+    if(v === 'under_13') return { error: "Players under 13 need a parent or guardian to create their profile. Ask them to set up a parent account and choose 'Create Your Child\'s Profile'." };
     var g = null;
     if(v === 'minor_13_17'){
       g = (document.getElementById(px + 'guardian-email').value || '').trim().toLowerCase();
@@ -263,11 +268,13 @@
     const s0 = (await supabaseClient.auth.getSession()).data.session;
     const attest = kbAgeRead('', false, s0 && s0.user && s0.user.email);   // P1-10
     if(attest.error){ errorEl.textContent = attest.error; return; }
+    const parentName = document.getElementById('parent-name').value.trim();   // F2 Stage H: required under 18
+    if(attest.status === 'minor_13_17' && !parentName){ errorEl.textContent = 'Enter the Parent Name.'; return; }
 
     submitBtn.disabled = true;
     submitBtn.textContent = 'Setting up…';
 
-    const { data: updateData, error: updateErr } = await supabaseClient.auth.updateUser({ password });
+    const { data: updateData, error: updateErr } = await supabaseClient.auth.updateUser(parentName ? { password, data: { parent_name: parentName } } : { password });   // never the email
     if(updateErr){
       errorEl.textContent = updateErr.message;
       submitBtn.disabled = false;

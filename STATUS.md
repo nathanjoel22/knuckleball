@@ -60,7 +60,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-19 · Phone pen: say why a tap does nothing (no packet; a facility's report) · **staging** (PR #137), branch `fix-phone-edit-hint`, cache `kb-shell-v366`
+## 2026-11-19 · Phone pen: say why a tap does nothing (no packet; a facility's report) · **production** (PR #137, merge `e927fc9`), branch `fix-phone-edit-hint`, cache `kb-shell-v366`
+
+- **Live Nov 19 (Joel):** merged; v366 on knuckleballonline.com and knuckleball.pages.dev, the fix in the served tracker.
 
 - **Reported (Joel, with a screen recording):** a new softball facility's coach charted 1 pitch on an iPhone; every
   tap after that did nothing.

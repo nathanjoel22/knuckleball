@@ -60,6 +60,23 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-20 · F2 Stage 4 (Temporary Team/Camp Roster) · **staging** (PR pending), branch `f2-stage4` (on Stage 1), cache `kb-shell-v370`
+
+- **Migration** `20261127000000_f2s4_camps` on staging:
+  - `camp_rosters` / `camp_roster_pitchers` (no grant, no policy);
+  - `sessions.camp_id` and `camp_name` (locked once saved);
+  - create / update / end, the manager's and the coach's lists;
+  - `sync_session` takes a camp on its Eastern days.
+- **App:**
+  - More → Create Temporary Team/Camp Roster (manager).
+  - The camp under its coach's Roster (chartable on its days), and at the bottom of the manager's Roster (expandable;
+    Edit, End early).
+  - History shows the camp chip.
+- **Production order:** db push **before** the merge. History asks for `camp_name`, so the app needs the column first.
+- **Evidence:** `plans/f2s4-evidence.md` (Done when 13–16: PASS).
+
+---
+
 ## 2026-11-20 · F2 Stage 1 (one-session assignments) · **staging** (PR pending), branch `f2-stage1` (on Stage 2), cache `kb-shell-v369`
 
 - **Migration** `20261126000000_f2s1_session_assignments` on staging (dry run first, rollback written first):

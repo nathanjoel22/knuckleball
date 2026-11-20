@@ -62,6 +62,9 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ## 2026-11-19 · SR1 Stage G (print) · **staging** (PR #139), branch `sr1g-print`, no cache bump (no `.html` changed)
 
+- **Production function (Joel, Nov 19):** `send-session-report` deployed to production (version 52, the same bundle as
+  staging's version 87). The merge is still pending.
+
 - **Built:** a report made from now on prints every tab of the version on screen, one tab per page, Summary first.
   - The tab row and the window switch are hidden in print; the window chosen on screen is the one printed.
   - Pages 2 onward start with a print-only title ("COMMAND · name · Bullpen · date · compared with 3 months").

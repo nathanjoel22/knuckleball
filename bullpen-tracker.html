@@ -534,6 +534,8 @@
   .fac-tools-note{ margin:0 0 var(--s-8); }
   .jc-pick{ display:flex; align-items:center; gap:var(--s-8); padding:var(--s-8) 0; border-top:1px solid #ddd; font-size:15px; cursor:pointer; }
   .jc-pick input{ width:20px; height:20px; flex:none; }
+  .camp-pitchers{ max-height:240px; overflow:auto; }
+  .camp-dates{ display:flex; gap:var(--s-8); flex-wrap:wrap; } .camp-dates label{ display:flex; flex-direction:column; gap:4px; font-size:13px; flex:1; min-width:140px; }
   .jc-sub{ margin:var(--s-8) 0 0; font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#555; }
   .jc-overlay{ position:fixed; inset:0; z-index:1000; background:var(--scrim, rgba(0,0,0,.6)); display:flex; align-items:center; justify-content:center; padding:max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); overflow:auto; }
   .jc-sheet{ background:#fff; color:#000; border-radius:16px; width:100%; max-width:440px; padding:var(--s-16); display:flex; flex-direction:column; gap:var(--s-8); max-height:100%; overflow:auto; }
@@ -2681,7 +2683,7 @@ function readableTextOn(hex){
 }
 function currentPitcher(){
   if(!isCoach()) return mapProfile(state.profile);
-  return state.roster.find(p => p.id === state.currentPitcherId) || assignedPitcher(state.currentPitcherId);
+  return state.roster.find(p => p.id === state.currentPitcherId) || assignedPitcher(state.currentPitcherId) || campPitcher(state.currentPitcherId);
 }
 // R0 item (g), UI half: whether the currently-viewed pitcher's OWN account
 // email is confirmed -- source differs by who's asking, since currentPitcher()
@@ -4620,6 +4622,7 @@ async function loadRosterForTeam(teamId){
   await applyRosterClosing(state.roster, teamId);
   await applyFacilityGroups(state.roster, (state.teams || []).find(t => t.id === teamId));   // F1-A
   await loadAssignments();   // F2 Stage 1
+  await loadCamps();         // F2 Stage 4
 }
 
 // F1-A: on a facility side, the side's coach groups (team.groups: [{ id, coachId, coachName }]) and each pitcher's
@@ -5376,7 +5379,7 @@ function renderFacilityRoster(rosterRow){
   const assigned = q ? '' : renderAssignedSection(), remote = renderFacRemote();   // F2 Stage 1
   if(!mgr){
     return assigned + (all.map(p => row(p, groups.find(g => mine.includes(g.id) && (p.groups || []).some(y => y.id === g.id)) || null)).join('')
-      || (q && !remote ? '<p class="profile-note">No pitcher on your roster matches.</p>' : '')) + remote;
+      || (q && !remote ? '<p class="profile-note">No pitcher on your roster matches.</p>' : '')) + remote + (q ? '' : renderCoachCamps());
   }
   const shut = q ? {} : (state.facCollapsed || {});
   const section = (id, title, list) => {
@@ -5390,7 +5393,7 @@ function renderFacilityRoster(rosterRow){
   const loose = all.filter(p => !(p.groups || []).length);
   if(q && !all.length) return remote || '<p class="profile-note">No pitcher on the roster matches.</p>';
   return assigned + groups.map(g => section(g.id, escHtml(g.coachName) + (mine.includes(g.id) ? ' (you)' : ''), inGroup(g.id))).join('')
-    + section('none', 'No coach yet', loose) + remote;
+    + section('none', 'No coach yet', loose) + remote + (q ? '' : renderCoachCamps() + renderManagerCamps(rosterRow));
 }
 window.toggleFacMenu = function(key){ state.facMenu = state.facMenu === key ? null : key; state.facError = ''; state.removeArmedPitcherId = null; render(); };
 /* F2 Stage 1 (Joel, Nov 20 2026): a facility coach can be assigned any facility pitcher for ONE session (by themself or
@@ -5533,6 +5536,158 @@ function renderSessionAssignOverlay(){
     ${a.coaches === null ? '<p class="profile-note">Loading coaches…</p>' : a.coaches.map(c => `<label class="jc-pick"><input type="radio" name="sa-to" ${a.to === c.id ? 'checked' : ''} onchange="pickSessionAssign('${c.id}')"> ${c.me ? 'Yourself' : escHtml(c.name)}</label>`).join('')}
     ${a.err ? `<p class="jc-msg">${escHtml(a.err)}</p>` : ''}
     <div class="jc-actions"><button class="btn btn-primary" ${a.to && !a.busy ? '' : 'disabled'} onclick="confirmSessionAssign()">${a.busy ? 'Assigning…' : 'Assign'}</button><button class="btn btn-tertiary" onclick="closeSessionAssign()">Cancel</button></div>
+  </div></div>`;
+}
+
+/* F2 Stage 4 (Joel, Nov 20 2026): temporary team / camp rosters. The manager makes one (More → Create Temporary
+   Team/Camp Roster): a name, one coach, pitchers from anywhere on the side, one day or From–To (Eastern days). The camp
+   coach's Roster lists it (my_camps: the charting fields only, kept per login for offline); they chart its pitchers on
+   its days only, each session carrying camp_id (the server copies the name on). The manager's Roster lists every live
+   camp after "No coach yet" (facility_camps). After the last day it's gone from both; sessions keep their label. */
+function campsKey(){ return 'kb:camps:' + ((state.session && state.session.user && state.session.user.id) || ''); }
+function todayET(){
+  try{ return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
+  catch(e){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+}
+function myCamps(){
+  if(!state.myCamps){ try{ state.myCamps = JSON.parse(localStorage.getItem(campsKey()) || '[]'); }catch(e){ state.myCamps = []; } }
+  const t = todayET();
+  return (state.myCamps || []).filter(c => c.team_id === state.currentTeamId && c.last_day >= t);
+}
+function campOpenToday(id){ const c = myCamps().find(x => x.id === id), t = todayET(); return !!c && c.first_day <= t && t <= c.last_day; }
+function campPitcher(id){
+  if(!id || !isCoach()) return null;
+  const t = todayET();
+  for(const c of myCamps()){
+    if(c.first_day > t) continue;
+    const x = (c.pitchers || []).find(p => p.id === id);
+    if(x){ const p = mapProfile(x); p.campId = c.id; p.assigned = true; return p; }
+  }
+  return null;
+}
+async function loadCamps(){
+  if(!isCoach() || !currentTeamIsFacility() || !isOnline()) return;
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('my_camps'), 10000);
+    if(!error && Array.isArray(data)){
+      state.myCamps = data;
+      try{ localStorage.setItem(campsKey(), JSON.stringify(data)); }catch(e){}
+      data.forEach(c => (c.pitchers || []).forEach(x => {   // their RA cells, for charting
+        if(state.roster.some(r => r.id === x.id)) return;
+        const byType = {};
+        (x.zones || []).forEach(z => { (byType[z.pitch_type] = byType[z.pitch_type] || {})[z.batter_side] = z.cells || []; });
+        state.zones = Object.assign({}, state.zones, { [x.id]: byType });
+      }));
+    }
+    if(isFacilityManager()){
+      const r = await netTimeout(supabaseClient.rpc('facility_camps', { p_team: state.currentTeamId }), 10000);
+      if(r && r.data && r.data.ok) state.facCamps = r.data.camps;
+    }
+  }catch(e){ /* offline: the copy on the device stands */ }
+}
+function campDays(c){
+  const f = d => new Date(d + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return c.first_day === c.last_day ? f(c.first_day) : f(c.first_day) + '–' + f(c.last_day);
+}
+window.chartCamp = async function(campId, pid){
+  if(!campOpenToday(campId)) return;
+  state.chartCamp = { id: campId, pid };
+  state.currentPitcherId = pid; state.assignMode = false; state.navOpen = false;
+  await refreshDraftState();
+  setView('session');
+};
+// The camp coach's Roster: each camp with its days and pitchers; charting opens on its days.
+function renderCoachCamps(){
+  const list = myCamps(); if(!list.length) return '';
+  const t = todayET();
+  return list.map(c => {
+    const open = c.first_day <= t && t <= c.last_day;
+    return `<div class="fac-group fac-camp">
+      <div class="fac-group-head"><span class="fac-group-name">${escHtml(c.name)} · ${escHtml(campDays(c))}</span><span class="fac-group-count">${(c.pitchers || []).length}</span></div>
+      ${(c.pitchers || []).map(x => `<div class="roster-item-wrap"><div class="roster-item" style="display:flex;">
+        <button type="button" class="roster-name-btn" ${open ? `onclick="chartCamp('${c.id}', '${x.id}')"` : 'disabled'}>
+          <div class="roster-item-main"><span class="roster-item-name">${escHtml(x.full_name || '')}${x.throws ? `<span class="throws-tag">${escHtml(x.throws)}HP</span>` : ''}</span>
+            <span class="roster-item-types">${open ? 'Camp · chart today' : 'Charting opens ' + escHtml(campDays({ first_day: c.first_day, last_day: c.first_day }))}</span></div>
+          <span class="roster-item-num">${open ? 'Chart' : '—'}</span></button></div></div>`).join('')}
+    </div>`;
+  }).join('');
+}
+// The manager's Roster: every live camp after "No coach yet", expandable like a coach's group.
+function renderManagerCamps(rosterRow){
+  const t = todayET(), list = (state.facCamps || []).filter(c => c.last_day >= t);
+  if(!list.length) return '';
+  const shut = state.facCollapsed || {};
+  return list.map(c => {
+    const key = 'camp:' + c.id, closed = shut[key] !== false;   // camps start closed
+    const rows = (c.pitchers || []).map(x => { const rp = (state.roster || []).find(r => r.id === x.id); return rp ? rosterRow(rp, { tags: '' }) : ''; }).join('');
+    return `<div class="fac-group fac-camp">
+      <button type="button" class="fac-group-head" aria-expanded="${!closed}" onclick="toggleCampGroup('${c.id}')"><span class="fac-group-name">${escHtml(c.name)}</span><span class="fac-group-count">${escHtml(c.coach_name || 'No coach')} · ${escHtml(campDays(c))} · ${(c.pitchers || []).length}</span><span class="roster-chevron${closed ? '' : ' open'}">▾</span></button>
+      ${closed ? '' : `${rows}<div class="jc-bar"><button type="button" class="btn btn-secondary btn-sm" onclick="openCampEditor('${c.id}')">Edit camp</button></div>`}
+    </div>`;
+  }).join('');
+}
+window.toggleCampGroup = function(id){ const k = 'camp:' + id; const cur = (state.facCollapsed || {})[k]; state.facCollapsed = Object.assign({}, state.facCollapsed, { [k]: cur === false }); render(); };
+const CAMP_ERRORS = { not_allowed: 'Only the facility manager can do that.', team_archived: 'This facility is archived, so it is read only.',
+  name_invalid: 'Give it a name of 2 to 60 characters.', dates_invalid: 'Pick a date (and an end date on or after it, at most 3 months later).',
+  not_a_coach: "Pick a coach on this side of the facility.", no_pitchers: 'Pick at least one pitcher.', not_on_side: "A pitcher you picked isn't on this side any more.",
+  camp_ended: 'That camp has ended.' };
+window.openCampEditor = async function(id){
+  const c = id ? (state.facCamps || []).find(x => x.id === id) : null;
+  state.campEdit = { id: id || null, name: c ? c.name : '', coach: c ? c.coach_id : null, pitchers: c ? (c.pitchers || []).map(x => x.id) : [],
+    first: c ? c.first_day : todayET(), last: c && c.last_day !== c.first_day ? c.last_day : '', q: '', coaches: null, err: '', busy: false, endArmed: false };
+  state.navOpen = false; render();
+  try{
+    const { data } = await netTimeout(supabaseClient.rpc('facility_side_coaches', { p_team: state.currentTeamId }), 8000);
+    if(state.campEdit){ state.campEdit.coaches = data && data.ok ? data.coaches : []; render(); }
+  }catch(e){ if(state.campEdit){ state.campEdit.coaches = []; state.campEdit.err = 'This needs a connection.'; render(); } }
+};
+window.closeCampEditor = function(){ state.campEdit = null; render(); };
+window.campField = function(k, v){ if(state.campEdit){ state.campEdit[k] = v; state.campEdit.err = ''; } };
+window.campPick = function(k, v){ const e = state.campEdit; if(!e) return; if(k === 'coach') e.coach = v; else e.pitchers = e.pitchers.includes(v) ? e.pitchers.filter(x => x !== v) : e.pitchers.concat([v]); e.err = ''; render(); };
+window.campSearch = function(el){ const at = el.selectionStart; if(state.campEdit) state.campEdit.q = el.value; render(); const again = document.getElementById('camp-q'); if(again){ again.focus(); try{ again.setSelectionRange(at, at); }catch(e){} } };
+window.saveCamp = async function(){
+  const e = state.campEdit; if(!e || e.busy) return;
+  if(!isOnline()){ e.err = 'This needs a connection.'; render(); return; }
+  e.busy = true; e.err = ''; render();
+  const args = { p_name: e.name, p_coach: e.coach, p_pitchers: e.pitchers, p_first: e.first || null, p_last: e.last || null };
+  let res; try{ res = await netTimeout(e.id ? supabaseClient.rpc('update_camp', Object.assign({ p_id: e.id }, args)) : supabaseClient.rpc('create_camp', Object.assign({ p_team: state.currentTeamId }, args)), 10000); }catch(x){ res = { error: x }; }
+  const d = res && res.data; e.busy = false;
+  if(res.error || !d || !d.ok){ e.err = (d && CAMP_ERRORS[d.error]) || "Couldn't save the camp. Check your connection and try again."; render(); return; }
+  state.campEdit = null; state.facNote = `${args.p_name.trim()} saved.`;
+  await loadCamps(); setView('roster');
+};
+window.endCamp = async function(){
+  const e = state.campEdit; if(!e || !e.id || e.busy) return;
+  if(!e.endArmed){ e.endArmed = true; render(); return; }
+  e.busy = true; render();
+  let res; try{ res = await netTimeout(supabaseClient.rpc('end_camp', { p_id: e.id }), 10000); }catch(x){ res = { error: x }; }
+  e.busy = false;
+  if(res.error || !res.data || !res.data.ok){ e.err = "Couldn't end the camp. Check your connection and try again."; render(); return; }
+  state.campEdit = null; state.facNote = 'Camp ended. Its sessions keep its name.';
+  await loadCamps(); render();
+};
+function renderCampEditor(){
+  const e = state.campEdit; if(!e) return '';
+  const q = (e.q || '').trim().toLowerCase();
+  const pitchers = (state.roster || []).filter(p => !q || String(p.name || '').toLowerCase().includes(q) || e.pitchers.includes(p.id));
+  return `<div class="jc-overlay" role="dialog" aria-modal="true" aria-label="Temporary Team/Camp Roster"><div class="jc-sheet">
+    <div class="jc-top"><h2 class="display jc-title">${e.id ? 'Edit camp' : 'Temporary Team/Camp Roster'}</h2><button class="btn btn-icon btn-secondary" onclick="closeCampEditor()" aria-label="Close">✕</button></div>
+    <label class="jc-sub" for="camp-name">Team/Camp Name</label>
+    <input class="text-input" id="camp-name" maxlength="60" value="${escHtml(e.name)}" oninput="campField('name', this.value)" placeholder="This is what will get displayed">
+    <p class="jc-sub">Assign a coach</p>
+    ${e.coaches === null ? '<p class="profile-note">Loading coaches…</p>' : e.coaches.map(c => `<label class="jc-pick"><input type="radio" name="camp-coach" ${e.coach === c.id ? 'checked' : ''} onchange="campPick('coach','${c.id}')"> ${c.me ? 'Yourself' : escHtml(c.name)}</label>`).join('')}
+    <p class="jc-sub">Assign pitchers · ${e.pitchers.length} picked</p>
+    <input type="search" class="text-input" id="camp-q" placeholder="Search facility" value="${escHtml(e.q || '')}" oninput="campSearch(this)" autocomplete="off">
+    <div class="camp-pitchers">${pitchers.map(p => `<label class="jc-pick"><input type="checkbox" ${e.pitchers.includes(p.id) ? 'checked' : ''} onchange="campPick('pitcher','${p.id}')"> ${escHtml(p.name || '')}</label>`).join('') || '<p class="profile-note">No pitcher matches.</p>'}</div>
+    <p class="jc-sub">Set date</p>
+    <div class="camp-dates"><label>From <input type="date" class="text-input" value="${escHtml(e.first || '')}" onchange="campField('first', this.value)"></label>
+      <label>To <input type="date" class="text-input" value="${escHtml(e.last || '')}" onchange="campField('last', this.value)"></label></div>
+    <p class="profile-note">Leave To empty for one day. The coach can chart these pitchers on these days only, and sees nothing else about them.</p>
+    ${e.err ? `<p class="jc-msg">${escHtml(e.err)}</p>` : ''}
+    <div class="jc-actions"><button class="btn btn-primary" ${e.busy ? 'disabled' : ''} onclick="saveCamp()">${e.busy ? 'Saving…' : e.id ? 'Save changes' : 'Create'}</button>
+      ${e.id ? `<button class="btn ${e.endArmed ? 'btn-danger' : 'btn-tertiary'}" onclick="endCamp()">${e.endArmed ? 'Yes, end it now' : 'End early…'}</button>` : ''}
+      <button class="btn btn-tertiary" onclick="closeCampEditor()">Cancel</button></div>
+    ${e.endArmed ? '<p class="jc-msg">It leaves the coach\'s roster today. Sessions already charted keep its name.</p>' : ''}
   </div></div>`;
 }
 
@@ -6925,6 +7080,7 @@ window.endSession = async function(){
     raOn: state.activeSession.raOn === true,   // U14
     purpose: state.activeSession.kind === 'bullpen' ? (state.activeSession.purpose || null) : null,   // SR1 A
     assignmentId: state.activeSession.assignmentId || null,   // F2 Stage 1
+    campId: state.activeSession.campId || null,               // F2 Stage 4
     pitchCountAdjust: state.activeSession.kind === 'game' ? gamePitchCountAdj(state.activeSession) : 0,   // Oct 19: + / - pitch count, saved
     inheritedRunners: state.activeSession.kind === 'game' && Number.isInteger(state.activeSession.inheritedRunners) ? state.activeSession.inheritedRunners : null,   // Oct 21
     runnersLeft: state.activeSession.kind === 'game' ? [1, 2, 3].filter(b => state.activeSession.runners && state.activeSession.runners[b]).length : null,   // Oct 21: on base when he came out
@@ -6956,7 +7112,7 @@ window.endSession = async function(){
   await refreshOutboxState();
   state.view = 'history';
   state.historyLandingNoClear = state.currentPitcherId;   // U10 (3): the saver keeps his dots
-  if(!state.skipRecap){ const rp = currentPitcher(); if(rp) state.recap = { item, p: rp, note: '', assigned: !!item.assignmentId }; }
+  if(!state.skipRecap){ const rp = currentPitcher(); if(rp) state.recap = { item, p: rp, note: '', assigned: !!item.assignmentId || (!!item.campId && !state.roster.some(x => x.id === item.pitcherId)) }; }
   if(item.assignmentId){ const st = assignStore(); st.used = (st.used || []).concat([item.assignmentId]); assignSave(); }   // F2 Stage 1: off the roster now   // N1-E: the recap, one screen before History
   render();
 
@@ -7171,6 +7327,7 @@ async function syncOutbox(){
       ra_on: item.raOn === true,   // U14: the start question's answer (false for anything queued before U14)
       purpose: item.purpose || null,   // SR1 A: the pen's tag (null: No tag, a game, or queued before Stage A)
       assignment_id: item.assignmentId || null,   // F2 Stage 1: the server releases it in the same save
+      camp_id: item.campId || null,               // F2 Stage 4: the camp (and its name) rides on the session
       pitch_count_adjust: item.kind === 'game' ? (item.pitchCountAdjust || 0) : 0,   // Oct 19: + / - pitch count
       inherited_runners: item.kind === 'game' && Number.isInteger(item.inheritedRunners) ? item.inheritedRunners : null,   // Oct 21: a reliever's IR
       runners_left: item.kind === 'game' && Number.isInteger(item.runnersLeft) ? item.runnersLeft : null,   // Oct 21: left on base when he came out
@@ -7416,7 +7573,7 @@ function workloadBanner(){
 const STATS_VERSION = 2;
 const HISTORY_PREFETCH_N = 20;
 const HISTORY_CACHE_MAX = 200;
-const SESSION_COLS = 'id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, purpose, pitch_count_adjust, final_at, exit_runs, exit_er, exit_bb, game_outs_recorded';
+const SESSION_COLS = 'id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, purpose, camp_name, pitch_count_adjust, final_at, exit_runs, exit_er, exit_bb, game_outs_recorded';
 const PITCH_COLS = 'type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, accuracy_hit_kind, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, runs_scored, unearned_runs, inherited_runs, charged_prev, fielders, batter_to, runner_advances, outs_on_play, sacrifice';
 const EVENT_COLS = 'event_type, balls_before, strikes_before, runs_scored, unearned_runs, inherited_runs, charged_prev';
 const STATS_COLS = 'stats_version, pitches, pitch_count, strikes, hits, exact_hits, ra_hits, zone_total, zone_hits, velo_n, velo_sum, velo_min, velo_max, ttp_n, ttp_sum, by_type, game';
@@ -7615,6 +7772,7 @@ function mapSessionRow(s, teamId){
     kind: s.kind || 'bullpen',
     raOn: s.ra_on === true,   // U14 (false for every session from before it)
     purpose: s.purpose || null,   // SR1 A: the pen's tag (null for every session from before it)
+    campName: s.camp_name || null,   // F2 Stage 4: the temporary team / camp it was charted for
     pitchCountAdjust: s.pitch_count_adjust || 0,   // Oct 19: + / - pitch count (games)
     // R3 (B6): his line is open while runners he left on can still score (final_at NULL); runs / ER / walks charged
     // to him after he left come from the relief games' saves
@@ -8672,6 +8830,8 @@ window.startSessionNow = async function(){
   s.purpose = s.kind === 'bullpen' && SESSION_TAGS.some(x => x[0] === q.purpose) ? q.purpose : null;   // SR1 A: fixed from here on
   { const ap = isCoach() && !state.roster.some(r => r.id === state.currentPitcherId) ? assignedPitcher(state.currentPitcherId) : null;
     s.assignmentId = ap ? ap.assignmentId : null; }   // F2 Stage 1: charted under a one-session assignment
+  s.campId = (state.chartCamp && state.chartCamp.pid === state.currentPitcherId && campOpenToday(state.chartCamp.id)) ? state.chartCamp.id : null;   // F2 Stage 4
+  state.chartCamp = null;
   // U14: the answer is the session's own (stored as sessions.ra_on); a Live Game asks only with Intent on
   s.raOn = s.kind === 'game' ? !!(q.intent && q.rel) : !!q.rel;
   if(s.kind === 'bullpen' || q.intent) rememberRaAnswer(currentPitcher(), !!q.rel);
@@ -13686,7 +13846,7 @@ function renderHistoryView(){
         <div class="session-card" data-sid="${s.id}">
           <div class="session-card-head has-thumb" role="button" tabindex="0" aria-expanded="${state.openSessions[s.id] ? 'true' : 'false'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
             ${renderZoneThumb(s, p)}
-            <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Charted by a former coach' : 'Charted by a coach'}</span>` : ''}${lineOpen ? ' <span class="coach-logged-tag">Line open</span>' : ''}${pendingTag}</div>
+            <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.campName ? ` <span class="team-chip">${escHtml(s.campName)}</span>` : ''}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Charted by a former coach' : 'Charted by a coach'}</span>` : ''}${lineOpen ? ' <span class="coach-logged-tag">Line open</span>' : ''}${pendingTag}</div>
             <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
               <div class="meta-item"><span class="meta-num mono">${gameIpText(stats.outs)}</span><span class="meta-lbl">IP</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
@@ -13823,7 +13983,7 @@ function renderHistoryView(){
       <div class="session-card" data-sid="${s.id}">
         <div class="session-card-head has-thumb" role="button" tabindex="0" aria-expanded="${state.openSessions[s.id] ? 'true' : 'false'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
           ${renderZoneThumb(s, p)}
-          <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${s.purpose ? ` <span class="team-chip">${sessionTagLabel(s.purpose)}</span>` : ''}${teamChipHtml(s)}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Charted by a former coach' : 'Charted by a coach'}</span>` : ''}${pendingTag}</div>
+          <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${s.purpose ? ` <span class="team-chip">${sessionTagLabel(s.purpose)}</span>` : ''}${s.campName ? ` <span class="team-chip">${escHtml(s.campName)}</span>` : ''}${teamChipHtml(s)}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Charted by a former coach' : 'Charted by a coach'}</span>` : ''}${pendingTag}</div>
           <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
             <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
@@ -14419,7 +14579,8 @@ function renderMoreView(){
   const team = (teamSwitchHtml() ? `<div class="more-row">${teamSwitchHtml()}</div>` : '')   // N1-B: phones switch team here
     + (canAddPlayer() ? moreRow("Create Your Child's Profile", 'openAddPlayer()') : '')
     + (hasCodes ? moreRow('Join codes and invite links', "goAccountSection('acct-invites')") : '')
-    + (coachTeam ? moreRow('Team settings', "goAccountSection('acct-team')") : '');
+    + (coachTeam ? moreRow('Team settings', "goAccountSection('acct-team')") : '')
+    + (isFacilityManager() && !currentTeamArchived() ? moreRow('Create Temporary Team/Camp Roster', 'openCampEditor()') : '');   // F2 Stage 4
   return `<div class="more-page">
     ${placeHead(PLACE.more)}
     <div class="more-card">
@@ -17369,7 +17530,7 @@ function render(){
   const phoneTop = isPhoneWidth() && !phoneSession && !onChartingScreen();
   applyFacilityTheme();   // N1-G
   if(app.classList){ app.classList.toggle('has-nav', wideNav); app.classList.toggle('nav-open', wideNav && !!state.navOpen); }
-  app.innerHTML = (wideNav ? renderSideNav(teamSelector) : '') + `<div class="main${phoneSession ? ' ph-main' : ''}">${phoneTop ? phoneHead : ''}${main}${policyFoot}</div>` + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + renderAssignOverlay() + renderSessionAssignOverlay() + renderSignOutSheet() + renderPickSheet() + renderManageSheet() + renderRecap() + renderCardPngSheet() + (dockOn && !state.recap ? renderCoachDock() : '');
+  app.innerHTML = (wideNav ? renderSideNav(teamSelector) : '') + `<div class="main${phoneSession ? ' ph-main' : ''}">${phoneTop ? phoneHead : ''}${main}${policyFoot}</div>` + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + renderAssignOverlay() + renderSessionAssignOverlay() + renderCampEditor() + renderSignOutSheet() + renderPickSheet() + renderManageSheet() + renderRecap() + renderCardPngSheet() + (dockOn && !state.recap ? renderCoachDock() : '');
   if(app.classList) app.classList.toggle('has-dock', dockOn);
   if(dockOn) attachCoachDock();
   animateRecap();   // N1-E: no-op unless the recap just opened

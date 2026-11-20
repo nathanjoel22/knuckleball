@@ -185,6 +185,25 @@ Applies to reports made from Stage C on; every report made before stays exactly 
 - Migration `20261126000000_f2s1_session_assignments`; rollback in `supabase/rollback/`; test
   `supabase/tests/f2s1_session_assignments.sql`.
 
+## Temporary Team/Camp Rosters (F2 Stage 4, Joel, Nov 20 2026; decisions in `plans/f2-preconditions.md`)
+
+- **The manager makes one:** More → **Create Temporary Team/Camp Roster** (`renderCampEditor`, `create_camp`). It
+  takes a Team/Camp Name, one coach on the side, pitchers from anywhere on the side, and a day or From–To (≤ 3 months).
+- **Where it shows:**
+  - **The camp coach's Roster:** "<name> · <days>" with its pitchers (`my_camps`: the same charting fields as a
+    one-session assignment, kept per login, `kb:camps:<uid>`). Chartable on its days only.
+  - **The manager's Roster:** every live camp after "No coach yet" (`facility_camps`), collapsed until tapped, with
+    Edit camp (name, coach, pitchers, dates; **End early**).
+- **Days are Eastern:** `f2_today_et()` / `todayET()`. The server checks the session's `started_at` in Eastern, so a
+  later sync is fine. After the last day it leaves both lists.
+- **Each camp session** carries `sessions.camp_id` and a copy of the name (`camp_name`, written by `sync_session`,
+  locked by `sessions_f2_camp_lock`). History shows it as a chip; a later rename never changes it.
+- **Session tags aren't used:** a tag is a bullpen-only enum that drives baselines.
+- **The camp coach** charts any number of sessions on its days and sees nothing else (no History, reports, notes or
+  chat). The camp tables have no grant and no policy (policies unchanged). A pitcher's permanent coach never changes.
+  Camps are never deleted, only ended.
+- Migration `20261127000000_f2s4_camps`; rollback in `supabase/rollback/`; test `supabase/tests/f2s4_camps.sql`.
+
 ## Workload, rest and level (SR1 Stage D, Joel, Nov 19 2026; decisions in `plans/sr1d-preconditions.md`)
 
 - **Baseball only.** Joel: "leave softball alone, pitch count rules don't apply there". Softball has no age group, no

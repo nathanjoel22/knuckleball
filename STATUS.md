@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-19 · Report dates in Eastern time (no packet; Joel's request) · **staging** (PR #141), branch `fix-report-dates-eastern`, no cache bump (no `.html` changed)
+## 2026-11-19 · Report dates in Eastern time (no packet; Joel's request) · **production** (PR #141, merge `99861e1`), branch `fix-report-dates-eastern`, no cache bump (no `.html` changed)
 
 - **The bug (found in Stage G):** the report header date, "generated" and the plain email's subject were formatted on
   the server with no time zone, so in UTC. A session charted after about 7–8 pm Eastern read as the next day. This
@@ -72,8 +72,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   reading "Nov 19, 2026" in the header and print titles, "generated November 19, 2026", and the email subject "· Nov 19".
   The earlier staging pen (00:27 UTC) rebuilt with the fix reads Nov 19 where its stored report says Nov 20.
 - **Reports already sent keep their date** (nothing is re-rendered).
-- **Production function (Joel, Nov 19):** `send-session-report` deployed to production (version 53, the same bundle as
-  staging's version 88). The merge is still pending.
+- **Live Nov 19 (Joel):** `send-session-report` deployed to production (version 53, the same bundle as staging's
+  version 88), then merged.
 
 ---
 

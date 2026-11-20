@@ -72,7 +72,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   reading "Nov 19, 2026" in the header and print titles, "generated November 19, 2026", and the email subject "· Nov 19".
   The earlier staging pen (00:27 UTC) rebuilt with the fix reads Nov 19 where its stored report says Nov 20.
 - **Reports already sent keep their date** (nothing is re-rendered).
-- **Production (Joel):** deploy `send-session-report`, then merge.
+- **Production function (Joel, Nov 19):** `send-session-report` deployed to production (version 53, the same bundle as
+  staging's version 88). The merge is still pending.
 
 ---
 

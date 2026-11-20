@@ -249,6 +249,7 @@
   .ph-hint{ position:absolute; top:-2px; left:0; right:0; z-index:5; text-align:center; font-size:12px; font-weight:600;
     color:var(--warning); pointer-events:none; }
   .ph-layout .zone-caption{ margin-top:calc(-1 * var(--s-2)); }
+  .ph-tap-hint{ margin-top:var(--s-6); text-align:center; font-size:13px; font-weight:700; color:var(--warning); }   /* a refused tap says why */
   .pb-zone .zone-grid{ margin-bottom:0 !important; }
   .pb-zone .kb-batter{ display:none !important; }
   .pb-pill-row{ display:flex; justify-content:center; }
@@ -6505,7 +6506,7 @@ function renderVoiceToggle(){
 }
 
 window.handleZoneTap = async function(row, col){
-  if(state.editDraftRow !== null){ state.hint = 'Finish editing that pitch first'; render(); return; }
+  if(state.editDraftRow !== null){ state.hint = 'Finish editing that pitch first: Save or Cancel under Recent pitches'; render(); return; }
   if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
   state.hint = '';
 
@@ -6608,6 +6609,7 @@ window.startEditDraftRow = function(realIdx){
 window.cancelEditDraftRow = function(){
   state.editDraftRow = null;
   state.editVeloError = '';
+  state.hint = '';
   render();
 };
 window.saveEditDraftRow = async function(realIdx){
@@ -6640,6 +6642,7 @@ window.saveEditDraftRow = async function(realIdx){
   }
   state.editVeloError = '';
   state.editDraftRow = null;
+  state.hint = '';
   await storSet(draftKey(), state.activeSession);
   render();
 };
@@ -12865,7 +12868,7 @@ function renderSessionView(){
         <div class="ph-grid-wrap">${renderPhoneHint()}
           <div class="zone-wrap pb-zone">
             ${v1PenStage(pitches, chartingPerspective, currentBatterSide)}
-            <div class="zone-caption">${zoneCaption}</div>${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
+            <div class="zone-caption">${zoneCaption}</div>${state.hint ? `<div class="ph-tap-hint">${escHtml(state.hint)}</div>` : ''}${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
           </div>
         </div>
         ${renderPenBatterPill()}

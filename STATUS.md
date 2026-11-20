@@ -60,6 +60,25 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-19 · Phone pen: say why a tap does nothing (no packet; a facility's report) · **staging** (PR pending), branch `fix-phone-edit-hint`, cache `kb-shell-v366`
+
+- **Reported (Joel, with a screen recording):** a new softball facility's coach charted 1 pitch on an iPhone; every
+  tap after that did nothing.
+- **Cause:** the recording shows the pitch's **edit** row open under Recent pitches (off screen, below the chart).
+  While a pitch is being edited the chart refuses taps (`handleZoneTap`: "Finish editing that pitch first"), but on
+  phones the bullpen never showed the hint (`renderPhoneHint` returns '' since Oct 19), so nothing said why.
+  "Select a pitch type first" was invisible on phones the same way.
+- **Fix:** the phone bullpen shows the hint on its own line under the prompt (`.ph-tap-hint`), so "Now tap where it
+  actually landed" stays. The edit refusal now says "Finish editing that pitch first: Save or Cancel under Recent
+  pitches"; Save and Cancel clear it. iPad / laptop and Live Game unchanged.
+- **Proof (staging, 440 wide):** 1 pitch → edit open → two taps refused, the line shown, still 1 pitch → Cancel →
+  the line gone → two taps chart pitch 2.
+- **Her data:** nothing is lost. The 1-pitch pen is a draft on her phone; production has no saved session for her
+  facility.
+- **Open:** tell her to tap **Cancel** (or Save) under Recent pitches, then keep charting.
+
+---
+
 ## 2026-11-19 · Three fixes (no packet; Joel's request) · **production** (PR #135, merge `170104e`), branch `fix-three-nov19`, cache `kb-shell-v365`
 
 - **Live Nov 19 (Joel):** `send-verification-email` deployed to production (version 7, the same bundle as staging).

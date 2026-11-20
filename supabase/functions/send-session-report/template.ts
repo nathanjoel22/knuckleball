@@ -12,7 +12,7 @@ import {
   type Comparison, NO_COMPARISON, type StoodOut, type TileSpec, WINDOWS, SR1_CSS, ids, radios, tabBar, windowSwitch, wb, wi, panel,
   takeaway, card, tileFor, windowCaption, stoodOutCard, sparkCard, simpleTable, typeCell, footer, firstName, penWord, word,
   ordinal, pctOf, pickFastball, avgVelo, gunned, outsideRange, rangeText, sortStoodOut, missPattern, missDirs, DIR_WORDS,
-  fadePattern, sidePattern, typeMin, sevenDayCard, type Voice, type LevelGroup, levelGroup, versionsFor, ver, tabBarVersions, printTitle,
+  fadePattern, sidePattern, typeMin, sevenDayCard, type Voice, type LevelGroup, levelGroup, versionsFor, ver, tabBarVersions, printTitle, TZ,
   restDays, backDate, type EmailVersion, emailComment, shortDate, sevenDayEmailLine, comparedEmailLine, abbrOf
 } from './sr1.ts'
 
@@ -222,7 +222,7 @@ export const CSS = `
 
 // ---------- SR1 Stage C: the answer-first report (coach version) ----------
 function penDate(p: ReportPayload): string {
-  return new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: TZ })
 }
 function penHeader(p: ReportPayload, id: string, g: LevelGroup): string {
   const numBit = p.uniformNumber !== null && p.uniformNumber !== undefined ? ` <span class="header-num">#${escapeHtml(p.uniformNumber)}</span>` : ''
@@ -542,7 +542,7 @@ export function buildReportHtml(p: ReportPayload): string {
   const g = levelGroup(c.workload?.level ?? c.baselines?.level ?? null)   // SR1 E: the versions this file carries
   const wins = c.baselines ? WINDOWS.map(w => w.key).filter(k => c.baselines!.windows[k]) : []
   const tl = penTabLabels(g), pt = printTitle(p.pitcherName, 'Bullpen', penDate(p), wins)   // SR1 G: print
-  const links = `<p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="${signInUrl(asSport(p.sport))}">knuckleballonline.com</a> &middot; <a href="https://knuckleballonline.com/privacy.html#${asSport(p.sport)}">Privacy</a> &middot; <a href="https://knuckleballonline.com/terms.html#${asSport(p.sport)}">Terms</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>`
+  const links = `<p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="${signInUrl(asSport(p.sport))}">knuckleballonline.com</a> &middot; <a href="https://knuckleballonline.com/privacy.html#${asSport(p.sport)}">Privacy</a> &middot; <a href="https://knuckleballonline.com/terms.html#${asSport(p.sport)}">Terms</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: TZ })}</p>`
   // D2: this report's own colors and fonts (--kr-*) for its sport -- no hex swap, no site stylesheet.
   return (`<!doctype html>
 <html lang="en">

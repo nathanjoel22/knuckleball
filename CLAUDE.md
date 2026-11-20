@@ -94,6 +94,9 @@ Applies to reports made from Stage C on; every report made before stays exactly 
   for the pitches and the Trends history).
 - **No he / his / him in report text;** the footer is "Numbers and patterns only: compared with <First name>'s own
   sessions, never graded." The pitcher's-view caption (Amendment 16) sits at the end of Summary.
+- **Dates are Eastern** (Joel, Nov 19 2026): every date a report or its email prints uses `TZ` (`America/New_York`,
+  `send-session-report/sr1.ts`): the header, print titles, "generated", and email subjects. Before that the header and
+  "generated" were UTC, so an evening session showed the next day; reports already sent keep their date.
 - **Colours:** seven new `REPORT_VARS` tokens per sport (`up`, `down`, `info`, `band`, `warn-bg`, `warn-line`, `hl`).
   Baseball's "up" is #1A7F50 (contrast). Up / down always carry a sign or an arrow.
 

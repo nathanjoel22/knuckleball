@@ -96,7 +96,7 @@ export const PITCH_SMART: Record<string, { max: number; bands: number[] }> = {
 // The 7-day guideline by level (packet decision 9): a heads-up past it, never "can't pitch"
 export const SEVEN_DAY_GUIDE: Record<string, number> = { little_league: 100, high_school: 125, college: 150 }
 const LEVEL_WORD: Record<string, string> = { little_league: 'little league', high_school: 'high school', college: 'college' }
-const TZ = 'America/New_York'
+export const TZ = 'America/New_York'   // every date a report or its email prints (Eastern)
 export function restDays(age: string, pitches: number): number | null {
   const ps = PITCH_SMART[age]
   if (!ps || pitches <= 0) return null

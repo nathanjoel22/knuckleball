@@ -60,6 +60,21 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-20 · F2 Stage 2 (roster top row: Search facility, Join Codes, Assign Pitchers) · **staging** (PR pending), branch `f2-stage2` (on Stage H), cache `kb-shell-v368`
+
+- **The facility roster's top row:**
+  - Search facility on the left; it filters the roster this login already sees, and every section opens while
+    searching.
+  - **Join Codes** on the right opens a sheet with Show my join code and (manager) All join codes.
+  - **Assign Pitchers** (manager): under Join Codes on phones, beside it from 501 px. Over 860 the row spans both
+    columns.
+- **Assign mode:** tapping a pitcher opens a sheet of the side's coaches (the current one marked). Confirm moves them
+  through Manage's path (`facAct` move / add). A pitcher in two groups is asked which coach they move from. Manage's
+  "Choose a coach…" stays.
+- **No database.** Evidence: `plans/f2s2-evidence.md`.
+
+---
+
 ## 2026-11-20 · F2 Stage H (housekeeping: opening film, Create Your Child's Profile, Pitcher Name / Parent Name) · **staging** (PR #143), branch `f2-report`, cache `kb-shell-v367`
 
 - **Packet:** `plans/f2-facility-assignments-birthdays-camps.md` (Joel, Nov 20; saved verbatim). Report:

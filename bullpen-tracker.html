@@ -524,6 +524,17 @@
   .fac-group{ display:flex; flex-direction:column; gap:var(--s-6); }
   /* F1-B: join codes -- black on white so any phone camera reads them */
   .jc-bar{ display:flex; flex-wrap:wrap; gap:var(--s-8); margin:0 0 var(--s-8); }
+  /* F2 Stage 2: the facility roster's top row -- Search facility left, Join Codes right (Assign Pitchers under it on phones) */
+  .fac-tools{ display:flex; gap:var(--s-8); align-items:flex-start; margin:0 0 var(--s-8); }
+  .fac-tools .fac-search{ flex:1; min-width:0; }
+  .fac-tools-btns{ display:flex; flex-direction:column; gap:var(--s-6); flex:none; }
+  .fac-tools-btns .btn{ white-space:nowrap; }
+  @media (min-width:501px){ .fac-tools-btns{ flex-direction:row; } }
+  .roster-split-wrap > .fac-tools{ margin-bottom:var(--s-12); }
+  .fac-tools-note{ margin:0 0 var(--s-8); }
+  .jc-pick{ display:flex; align-items:center; gap:var(--s-8); padding:var(--s-8) 0; border-top:1px solid #ddd; font-size:15px; cursor:pointer; }
+  .jc-pick input{ width:20px; height:20px; flex:none; }
+  .jc-sub{ margin:var(--s-8) 0 0; font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#555; }
   .jc-overlay{ position:fixed; inset:0; z-index:1000; background:var(--scrim, rgba(0,0,0,.6)); display:flex; align-items:center; justify-content:center; padding:max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); overflow:auto; }
   .jc-sheet{ background:#fff; color:#000; border-radius:16px; width:100%; max-width:440px; padding:var(--s-16); display:flex; flex-direction:column; gap:var(--s-8); max-height:100%; overflow:auto; }
   .jc-sheet .profile-note{ color:#333; }
@@ -5313,6 +5324,14 @@ function renderJoinCodeOverlay(){
   const id = state.codeView; if(!id) return '';
   const codes = groupCodes(), sideName = SPORT_NAME[currentSport()] || '';
   const msg = state.codeMsg ? `<p class="jc-msg">${escHtml(state.codeMsg)}</p>` : '';
+  if(id === 'menu'){   // F2 Stage 2: the roster's one Join Codes button
+    const mine = codes.find(c => c.mine);
+    return `<div class="jc-overlay" role="dialog" aria-modal="true" aria-label="Join Codes"><div class="jc-sheet">
+      <div class="jc-top"><h2 class="display jc-title">Join Codes</h2><button class="btn btn-icon btn-secondary" onclick="closeJoinCode()" aria-label="Close">✕</button></div>
+      ${mine ? `<button class="btn btn-primary" onclick="showJoinCode('${mine.group_id}')">Show my join code</button>` : ''}
+      ${isFacilityManager() ? `<button class="btn btn-secondary" onclick="showJoinCode('all')">All join codes</button>` : ''}
+    </div></div>`;
+  }
   if(id === 'all'){
     return `<div class="jc-overlay" role="dialog" aria-modal="true" aria-label="Join codes"><div class="jc-sheet">
       <div class="jc-top"><h2 class="display jc-title">Join codes · ${escHtml(sideName)}</h2><button class="btn btn-icon btn-secondary" onclick="closeJoinCode()" aria-label="Close">✕</button></div>
@@ -5349,10 +5368,15 @@ function renderFacilityRoster(rosterRow){
     const inG = g ? (p.groups || []).find(x => x.id === g.id) : null;
     return rosterRow(p, { tags: (inG && inG.isNew) ? '<span class="verify-badge roster-verify-badge fac-new-tag">New</span>' : '' });
   };
+  // F2 Stage 2: Search facility filters what this roster already shows (by name); every section opens while searching
+  const q = (state.facSearch || '').trim().toLowerCase();
+  const hit = p => !q || String(p.name || '').toLowerCase().includes(q);
+  const all = (state.roster || []).filter(hit);
   if(!mgr){
-    return renderJoinCodeBar() + (state.roster || []).map(p => row(p, groups.find(g => mine.includes(g.id) && (p.groups || []).some(y => y.id === g.id)) || null)).join('');
+    return all.map(p => row(p, groups.find(g => mine.includes(g.id) && (p.groups || []).some(y => y.id === g.id)) || null)).join('')
+      || (q ? '<p class="profile-note">No pitcher on your roster matches.</p>' : '');
   }
-  const shut = state.facCollapsed || {};
+  const shut = q ? {} : (state.facCollapsed || {});
   const section = (id, title, list) => {
     const n = list.filter(p => (p.groups || []).some(y => y.isNew && y.id === id)).length;
     return `<div class="fac-group">
@@ -5360,12 +5384,68 @@ function renderFacilityRoster(rosterRow){
       ${shut[id] ? '' : (list.length ? list.map(p => row(p, groups.find(g => g.id === id) || null)).join('') : '<p class="fac-empty">No pitchers yet.</p>')}
     </div>`;
   };
-  const inGroup = id => (state.roster || []).filter(p => (p.groups || []).some(y => y.id === id));
-  const loose = (state.roster || []).filter(p => !(p.groups || []).length);
-  return renderJoinCodeBar() + groups.map(g => section(g.id, escHtml(g.coachName) + (mine.includes(g.id) ? ' (you)' : ''), inGroup(g.id))).join('')
+  const inGroup = id => all.filter(p => (p.groups || []).some(y => y.id === id));
+  const loose = all.filter(p => !(p.groups || []).length);
+  if(q && !all.length) return '<p class="profile-note">No pitcher on the roster matches.</p>';
+  return groups.map(g => section(g.id, escHtml(g.coachName) + (mine.includes(g.id) ? ' (you)' : ''), inGroup(g.id))).join('')
     + section('none', 'No coach yet', loose);
 }
 window.toggleFacMenu = function(key){ state.facMenu = state.facMenu === key ? null : key; state.facError = ''; state.removeArmedPitcherId = null; render(); };
+// F2 Stage 2 (Joel, Nov 20 2026): Search facility · Join Codes · (manager) Assign Pitchers, above the facility roster.
+function renderFacTools(){
+  if(!isCoach() || !currentTeamIsFacility()) return '';
+  const codes = groupCodes(), mgr = isFacilityManager();
+  const jc = !facVerifyBlocked() && codes.length && !currentTeamArchived();
+  const assign = mgr && !currentTeamArchived() && facilityGroups().length;
+  return `<div class="fac-tools">
+      <input type="search" id="fac-search" class="text-input fac-search" placeholder="Search facility" aria-label="Search facility" autocomplete="off" value="${escHtml(state.facSearch || '')}" oninput="facSearchInput(this)">
+      ${jc || assign ? `<div class="fac-tools-btns">
+        ${jc ? `<button type="button" class="btn btn-secondary btn-sm" onclick="showJoinCode('menu')">Join Codes</button>` : ''}
+        ${assign ? `<button type="button" class="btn ${state.assignMode ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="toggleAssignMode()">${state.assignMode ? 'Done' : 'Assign Pitchers'}</button>` : ''}
+      </div>` : ''}
+    </div>${state.assignMode ? `<p class="profile-note fac-tools-note">${state.assignMsg ? escHtml(state.assignMsg) : 'Tap a pitcher to assign them to a coach.'}</p>` : ''}`;
+}
+window.facSearchInput = function(el){
+  const at = el.selectionStart;
+  state.facSearch = el.value; render();
+  const again = document.getElementById('fac-search');
+  if(again){ again.focus(); try{ again.setSelectionRange(at, at); }catch(e){} }
+};
+window.toggleAssignMode = function(){ state.assignMode = !state.assignMode; state.assignFor = null; state.assignMsg = ''; render(); };
+window.openAssign = function(id){ state.assignFor = id; state.assignTo = null; state.assignFrom = null; state.assignErr = ''; render(); };
+window.closeAssign = function(){ state.assignFor = null; state.assignErr = ''; render(); };
+window.pickAssign = function(kind, id){ if(kind === 'to') state.assignTo = id; else state.assignFrom = id; state.assignErr = ''; render(); };
+// The same server path as Manage (facAct): a move from the one current coach, an add when there's none; a pitcher in two
+// coaches' groups says which coach they move away from. Permanent until reassigned.
+window.assignConfirm = async function(){
+  const pid = state.assignFor, to = state.assignTo; if(!pid || !to || state.assignBusy) return;
+  const p = (state.roster || []).find(x => x.id === pid);
+  const cur = ((p && p.groups) || []).map(g => g.id);
+  if(cur.includes(to)){ state.assignFor = null; render(); return; }
+  const from = cur.length === 1 ? cur[0] : cur.length > 1 ? state.assignFrom : null;
+  if(cur.length > 1 && !from){ state.assignErr = 'Pick which coach they move from.'; render(); return; }
+  state.assignBusy = true; state.assignErr = ''; render();
+  await window.facAct(from ? 'move' : 'add', from, pid, to);
+  state.assignBusy = false;
+  if(state.facError){ state.assignErr = state.facError; state.facError = ''; render(); return; }
+  const g = facilityGroups().find(x => x.id === to);
+  state.assignFor = null; state.assignMsg = `${(p && p.name) || 'The pitcher'} is now with ${(g && g.coachName) || 'that coach'}.`;
+  render();
+};
+function renderAssignOverlay(){
+  const pid = state.assignFor; if(!pid) return '';
+  const p = (state.roster || []).find(x => x.id === pid); if(!p) return '';
+  const groups = facilityGroups(), cur = (p.groups || []).map(g => g.id);
+  const coach = g => escHtml(g.coachName) + (isMine(g.coachId) ? ' (you)' : '');
+  return `<div class="jc-overlay" role="dialog" aria-modal="true" aria-label="Assign ${escHtml(p.name)}"><div class="jc-sheet">
+    <div class="jc-top"><h2 class="display jc-title">${escHtml(p.name)}</h2><button class="btn btn-icon btn-secondary" onclick="closeAssign()" aria-label="Close">✕</button></div>
+    <p class="profile-note">Assign to a pitching coach. That change is permanent until reassigned.</p>
+    ${cur.length > 1 ? `<p class="jc-sub">Moving from</p>${groups.filter(g => cur.includes(g.id)).map(g => `<label class="jc-pick"><input type="radio" name="as-from" ${state.assignFrom === g.id ? 'checked' : ''} onchange="pickAssign('from','${g.id}')"> ${coach(g)}</label>`).join('')}<p class="jc-sub">To</p>` : ''}
+    ${groups.map(g => `<label class="jc-pick"><input type="radio" name="as-to" ${state.assignTo === g.id ? 'checked' : ''} ${cur.includes(g.id) ? 'disabled' : ''} onchange="pickAssign('to','${g.id}')"> ${coach(g)}${cur.includes(g.id) ? ' · current' : ''}</label>`).join('')}
+    ${state.assignErr ? `<p class="jc-msg">${escHtml(state.assignErr)}</p>` : ''}
+    <div class="jc-actions"><button class="btn btn-primary" ${state.assignTo && !state.assignBusy ? '' : 'disabled'} onclick="assignConfirm()">${state.assignBusy ? 'Saving…' : 'Confirm'}</button><button class="btn btn-tertiary" onclick="closeAssign()">Cancel</button></div>
+  </div></div>`;
+}
 window.toggleFacGroup = function(id){ state.facCollapsed = Object.assign({}, state.facCollapsed, { [id]: !(state.facCollapsed || {})[id] }); render(); };
 const FAC_ERRORS = {
   not_allowed: "Only the facility manager or this pitcher's own coach can do that.",
@@ -14250,19 +14330,21 @@ function teamSwitchHtml(){
   return `<label class="team-switch"><span class="roster-label">Team</span><select class="team-select" onchange="onTeamChange(this.value)">${state.teams.map(opt).join('')}</select></label>`;
 }
 window.openPitcherPage = async function(id){
+  if(state.assignMode && (state.view === 'roster' || state.view === 'pitcher')) return window.openAssign(id);   // F2 Stage 2
   state.navOpen = false; state.manage = null; state.manageMove = null;
   await selectPitcher(id, 'pitcher');
 };
 function renderRosterPage(rosterItems, teamSelector, p){
-  const wide = isWideSession();
+  const wide = isWideSession(), tools = renderFacTools();   // F2 Stage 2: over 860 the row spans both columns
   const list = `<div class="roster-page-list">
-      ${placeHead(PLACE.roster)}
+      ${wide ? '' : placeHead(PLACE.roster)}
       ${isPhoneWidth() ? teamSwitchHtml() : ''}
+      ${wide ? '' : tools}
       <div class="roster-list">${rosterItems || '<p class="profile-note">No pitchers on this team yet.</p>'}</div>
     </div>`;
   if(state.view === 'pitcher' && !wide) return p ? renderPitcherPage(p) : list;
   if(!wide) return list;
-  return `<div class="roster-split">${list}<div class="roster-page-detail">${p ? renderPitcherPage(p) : '<p class="profile-note">Pick a pitcher.</p>'}</div></div>`;
+  return `<div class="roster-split-wrap">${placeHead(PLACE.roster)}${tools}<div class="roster-split">${list}<div class="roster-page-detail">${p ? renderPitcherPage(p) : '<p class="profile-note">Pick a pitcher.</p>'}</div></div></div>`;
 }
 // The pitcher's page: header, recent sessions, Pitcher settings, Manage.
 function renderPitcherPage(p){
@@ -16959,7 +17041,7 @@ function render(){
     // One roster row. x (F1-A, facility sides): tags after the name.
     const rosterRow = (p, x) => `
       <div class="roster-item-wrap">
-        <div class="roster-item${p.id===state.currentPitcherId?' active':''}" style="display:flex;">
+        <div class="roster-item${p.id===state.currentPitcherId && !state.assignMode?' active':''}" style="display:flex;">
           ${hasRosterDot(p.id) ? '<span class="roster-dot" aria-label="New session"></span>' : ''}
           <button type="button" class="roster-name-btn" onclick="openPitcherPage('${p.id}')">
             <div class="roster-item-main">
@@ -17115,7 +17197,7 @@ function render(){
   const phoneTop = isPhoneWidth() && !phoneSession && !onChartingScreen();
   applyFacilityTheme();   // N1-G
   if(app.classList){ app.classList.toggle('has-nav', wideNav); app.classList.toggle('nav-open', wideNav && !!state.navOpen); }
-  app.innerHTML = (wideNav ? renderSideNav(teamSelector) : '') + `<div class="main${phoneSession ? ' ph-main' : ''}">${phoneTop ? phoneHead : ''}${main}${policyFoot}</div>` + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + renderSignOutSheet() + renderPickSheet() + renderManageSheet() + renderRecap() + renderCardPngSheet() + (dockOn && !state.recap ? renderCoachDock() : '');
+  app.innerHTML = (wideNav ? renderSideNav(teamSelector) : '') + `<div class="main${phoneSession ? ' ph-main' : ''}">${phoneTop ? phoneHead : ''}${main}${policyFoot}</div>` + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + renderAssignOverlay() + renderSignOutSheet() + renderPickSheet() + renderManageSheet() + renderRecap() + renderCardPngSheet() + (dockOn && !state.recap ? renderCoachDock() : '');
   if(app.classList) app.classList.toggle('has-dock', dockOn);
   if(dockOn) attachCoachDock();
   animateRecap();   // N1-E: no-op unless the recap just opened

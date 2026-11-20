@@ -441,7 +441,12 @@ Plans and decisions: `plans/live-game-r1.md`, `plans/live-game-r2.md`; the full 
     Sessions and Trends for a coach, or a parent with more than one player; picking keeps the view. Switching team
     keeps the view too (a pitcher's page becomes the roster; an archived team turns Chart into History). Picking on the
     Roster page opens the pitcher's page; launch still opens Home.
-  - **Coaches and groups** (`'coaches'`, facility manager): the side's coaches with their group sizes and Show code, No
+  - **The facility roster's top row (F2 Stage 2, Joel, Nov 20 2026; `renderFacTools`):** Search facility (left; filters
+    the rows this login sees, every section open while searching), **Join Codes** (right; a sheet with Show my join code
+    and, for the manager, All join codes), and for the manager **Assign Pitchers** (under Join Codes on phones). Assign
+    mode: a tap opens the side's coaches (current marked); Confirm uses Manage's `facAct` move / add ("permanent until
+    reassigned"); a pitcher in two groups says which coach they move from. Over 860px the row spans both columns.
+- **Coaches and groups** (`'coaches'`, facility manager): the side's coaches with their group sizes and Show code, No
     coach yet, and Print all codes.
 - **Home is the week (N1 Stage C, Joel, Nov 17 2026, v345; `plans/n1c-preconditions.md`, evidence `plans/n1c-evidence.md`):**
   `renderHomeView` replaces the four squares (`renderHomeTiles` is kept but unused); Home has no pitcher header.

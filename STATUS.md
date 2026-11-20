@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-20 · F2 Stage H (housekeeping: opening film, Create Your Child's Profile, Pitcher Name / Parent Name) · **staging** (PR pending), branch `f2-report`, cache `kb-shell-v367`
+## 2026-11-20 · F2 Stage H (housekeeping: opening film, Create Your Child's Profile, Pitcher Name / Parent Name) · **staging** (PR #143), branch `f2-report`, cache `kb-shell-v367`
 
 - **Packet:** `plans/f2-facility-assignments-birthdays-camps.md` (Joel, Nov 20; saved verbatim). Report:
   `plans/f2-preconditions.md`. Joel: "keep going and don't stop to ask", so the build uses the report's defaults.

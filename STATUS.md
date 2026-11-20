@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-19 · SR1 Stage G (print) · **staging** (PR pending), branch `sr1g-print`, no cache bump (no `.html` changed)
+## 2026-11-19 · SR1 Stage G (print) · **staging** (PR #139), branch `sr1g-print`, no cache bump (no `.html` changed)
 
 - **Built:** a report made from now on prints every tab of the version on screen, one tab per page, Summary first.
   - The tab row and the window switch are hidden in print; the window chosen on screen is the one printed.

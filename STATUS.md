@@ -60,7 +60,32 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-20 · F2 Stage 3 (birthdays, September 1 level move) · **staging only** (PR pending), branch `f2-stage3` (on Stage 4), cache `kb-shell-v371`
+## 2026-11-20 · F2 shipped (Stages H, 2, 1, 4, 3) · **production** · cache `kb-shell-v372`
+
+- **Merged in order** by Joel: #143 (H), #144 (2), #145 (1), #146 (4), #147 (3).
+- **Production database:**
+  - a backup before each migration: `~/knuckleball-backups/2026-11-20-1632-*`, `-1635-*`, `-1638-*`;
+  - then each migration alone, before its merge: `20261126000000_f2s1_session_assignments`, `20261127000000_f2s4_camps`,
+    `20261128000000_f2s3_birthdays`;
+  - checks after each: policies 32 / storage 12, no client grants on the new tables, `sync_session(p_session, p_pitches,
+    p_events)` unchanged; the September 1 job `f2-level-switch` scheduled; the level table's edges as Joel set them.
+- **Edge Function:** `export-account` deployed to production (v5, `birthdays.csv`).
+- **Joel's decisions (Nov 20):**
+  - P1-10's "no date of birth" reversed;
+  - the birthday wording approved, with `TERMS_VERSION` 2026-11-20, so every login agrees once;
+  - the facility sentence for Stages 1/4 approved (a quiet update);
+  - contradictions matter only under 18;
+  - levels on Sept 1: 12 or under LL, 13–17 HS, 18+ College;
+  - Android's film ignored for now.
+- **Open:**
+  - App Store privacy label and Play Data safety: add "Date of birth" (Joel).
+  - The film on an iPhone and an iPad, signed out (Joel).
+  - `live_game_r3b.sql` fails on staging from fixture drift (a fixed pitcher left the team); not caused by F2.
+  - The guardian approval email still says "Because they told us they're 13 to 17" (left as it is; true either way).
+
+---
+
+## 2026-11-20 · F2 Stage 3 (birthdays, September 1 level move) · **production** (PR #147, merge `9ad1934`), branch `f2-stage3`, cache `kb-shell-v372`
 
 - **Joel's answers (Nov 20):** P1-10's "no date of birth" reversed; the policy wording approved and `TERMS_VERSION`
   bumped to 2026-11-20 (everyone agrees once; cache `kb-shell-v372`); contradictions only matter under 18 (kept as
@@ -79,7 +104,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-20 · F2 Stage 4 (Temporary Team/Camp Roster) · **staging** (PR pending), branch `f2-stage4` (on Stage 1), cache `kb-shell-v370`
+## 2026-11-20 · F2 Stage 4 (Temporary Team/Camp Roster) · **production** (PR #146, merge `885e940`), branch `f2-stage4`, cache `kb-shell-v370`
 
 - **Migration** `20261127000000_f2s4_camps` on staging:
   - `camp_rosters` / `camp_roster_pitchers` (no grant, no policy);
@@ -96,7 +121,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-20 · F2 Stage 1 (one-session assignments) · **staging** (PR pending), branch `f2-stage1` (on Stage 2), cache `kb-shell-v369`
+## 2026-11-20 · F2 Stage 1 (one-session assignments) · **production** (PR #145, merge `e51c94d`), branch `f2-stage1`, cache `kb-shell-v369`
 
 - **Migration** `20261126000000_f2s1_session_assignments` on staging (dry run first, rollback written first):
   - `session_assignments` (no grant, no policy);
@@ -115,7 +140,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-20 · F2 Stage 2 (roster top row: Search facility, Join Codes, Assign Pitchers) · **staging** (PR pending), branch `f2-stage2` (on Stage H), cache `kb-shell-v368`
+## 2026-11-20 · F2 Stage 2 (roster top row: Search facility, Join Codes, Assign Pitchers) · **production** (PR #144, merge `b86600e`), branch `f2-stage2`, cache `kb-shell-v368`
 
 - **The facility roster's top row:**
   - Search facility on the left; it filters the roster this login already sees, and every section opens while
@@ -130,7 +155,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-20 · F2 Stage H (housekeeping: opening film, Create Your Child's Profile, Pitcher Name / Parent Name) · **staging** (PR #143), branch `f2-report`, cache `kb-shell-v367`
+## 2026-11-20 · F2 Stage H (housekeeping: opening film, Create Your Child's Profile, Pitcher Name / Parent Name) · **production** (PR #143, merge `b5ad6f1`), branch `f2-report`, cache `kb-shell-v367`
 
 - **Packet:** `plans/f2-facility-assignments-birthdays-camps.md` (Joel, Nov 20; saved verbatim). Report:
   `plans/f2-preconditions.md`. Joel: "keep going and don't stop to ask", so the build uses the report's defaults.

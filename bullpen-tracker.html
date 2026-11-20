@@ -2820,6 +2820,7 @@ window.submitAttestation = async function(){
     state.attestNeeded = false; state.attestBusy = false; state.attestChoice = null; state.attestGuardian = '';
     await saveLastKnownContext();
     render();
+    loadBirthdays();   // F2 Stage 3: the birthday question comes after the age answer
   }catch(e){
     console.error('attestation failed', e);
     state.attestBusy = false; state.attestError = "Couldn't save your answer. Check your connection and try again."; render();
@@ -2849,6 +2850,101 @@ async function sendTermsAgreement(){
     await saveLastKnownContext();
   }catch(e){ /* retried on the next online load */ }
 }
+/* F2 Stage 3 (Joel, Nov 20 2026): birthdays. Asked once, online only, after the age answer: a pitcher for themself, a
+   parent for each player they created (and a linked parent or a teen's own sign-in), one at a time, before anything
+   else. Coach-added players get a quiet prompt on the Roster instead (the coach may answer, or "I don't know", but
+   never sees it again). The server (set_birthday) refuses a date that contradicts the sign-up's age answer; that case
+   goes to the operator and the person is told to contact us. The level moves up silently each September 1. */
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function bdayFields(px, iso){
+  const [y, m, d] = String(iso || '').split('-').map(Number), yNow = new Date().getFullYear();
+  const opt = (v, t, on) => `<option value="${v}" ${on ? 'selected' : ''}>${t}</option>`;
+  return `<div class="bday-row" style="display:flex;gap:var(--s-8);">
+    <select class="text-input" id="${px}-m" aria-label="Month" style="flex:1.4;min-width:0;">${opt('', 'Month')}${MONTHS.map((n, i) => opt(i + 1, n, m === i + 1)).join('')}</select>
+    <select class="text-input" id="${px}-d" aria-label="Day" style="flex:0.8;min-width:0;">${opt('', 'Day')}${Array.from({ length: 31 }, (_, i) => opt(i + 1, i + 1, d === i + 1)).join('')}</select>
+    <select class="text-input" id="${px}-y" aria-label="Year" style="flex:1;min-width:0;">${opt('', 'Year')}${Array.from({ length: 101 }, (_, i) => opt(yNow - i, yNow - i, y === yNow - i)).join('')}</select>
+  </div>`;
+}
+function bdayRead(px){
+  const g = id => (document.getElementById(px + id) || {}).value;
+  const m = g('-m'), d = g('-d'), y = g('-y');
+  if(!m || !d || !y) return null;
+  const dt = new Date(Number(y), Number(m) - 1, Number(d));
+  if(dt.getMonth() !== Number(m) - 1 || dt > new Date()) return null;
+  return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+const BDAY_ERRORS = { date_invalid: 'That date doesn\'t look right.', date_required: 'Enter a birthday.', not_allowed: "You can't set this birthday.",
+  contradiction: "That date doesn't match the age given when this account was made. Contact nate@knuckleballonline.com and we'll sort it out.",
+  answer_age_first: 'Answer the age question first, then the birthday.' };
+async function loadBirthdays(){
+  if(!state.session || !isOnline()) return;
+  try{
+    const pend = lsGet('kb:bdayPending');   // given at sign-up: saved now that the age answer is on record
+    if(pend){
+      const mine = (state.myProfiles || []).filter(p => p.role === 'pitcher' && !p.managed_by);
+      let ok = !mine.length;
+      for(const p of mine){ const { data } = await netTimeout(supabaseClient.rpc('set_birthday', { p_profile: p.id, p_date: pend, p_unknown: false }), 8000); if(data && data.ok) ok = true; }
+      if(ok) lsDel('kb:bdayPending');
+    }
+    const { data, error } = await netTimeout(supabaseClient.rpc('my_birthdays'), 8000);
+    if(error || !Array.isArray(data)) return;
+    state.bdayAsk = data.filter(x => x.access === 'read' && !x.answered).map(x => ({ id: x.profile_id, name: x.name, own: x.profile_id === state.session.user.id || (state.myProfiles || []).some(p => p.id === x.profile_id && !p.managed_by) }));
+    state.bdayCoach = data.filter(x => x.access === 'write' && !x.answered).map(x => ({ id: x.profile_id, name: x.name }));
+    if(!state.bdayAsk.length) state.bdayAsk = null;
+    render();
+  }catch(e){ /* asked on a later online load */ }
+}
+function renderBdayQuestion(){
+  const q = state.bdayAsk && state.bdayAsk[0]; if(!q) return '';
+  const first = String(q.name || '').split(' ')[0];
+  return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="Birthday"><div class="attest-card">
+    <div class="display" style="font-size:26px;margin-bottom:var(--s-4);">${q.own ? 'Your birthday' : `${escHtml(first)}'s birthday`}</div>
+    <p style="color:var(--ink-dim);font-size:14px;margin:0 0 var(--s-12);">Knuckleball uses it for its age rules and to move ${q.own ? 'you' : escHtml(first)} up a level of play each September 1. Only ${q.own ? 'you and your parents' : `${escHtml(first)} and their parents`} can see it, never coaches.</p>
+    ${bdayFields('bq')}
+    ${state.bdayErr ? `<p class="invite-status invite-status-error">${escHtml(state.bdayErr)}</p>` : ''}
+    <div class="form-row-buttons" style="margin-top:var(--s-12);">
+      <button class="btn btn-primary" ${state.bdayBusy ? 'disabled' : ''} onclick="saveBdayAnswer()">${state.bdayBusy ? 'Saving…' : 'Save'}</button>
+      ${state.bdayErrCode === 'contradiction' ? '<button class="btn btn-secondary" onclick="skipBdayAnswer()">Not now</button>' : ''}
+    </div>
+  </div></div>`;
+}
+window.saveBdayAnswer = async function(){
+  const q = state.bdayAsk && state.bdayAsk[0]; if(!q || state.bdayBusy) return;
+  const v = bdayRead('bq');
+  if(!v){ state.bdayErr = 'Pick a month, day and year (not a date still to come).'; state.bdayErrCode = null; render(); return; }
+  if(!isOnline()){ state.bdayErr = 'Saving needs a connection.'; render(); return; }
+  state.bdayBusy = true; state.bdayErr = ''; render();
+  let res; try{ res = await netTimeout(supabaseClient.rpc('set_birthday', { p_profile: q.id, p_date: v, p_unknown: false }), 8000); }catch(e){ res = { error: e }; }
+  state.bdayBusy = false;
+  const d = res && res.data;
+  if(res.error || !d || !d.ok){ state.bdayErrCode = d && d.error; state.bdayErr = BDAY_ERRORS[d && d.error] || "Couldn't save it. Check your connection and try again."; render(); return; }
+  state.bdayErr = ''; state.bdayErrCode = null;
+  state.bdayAsk.shift(); if(!state.bdayAsk.length) state.bdayAsk = null;
+  render();
+};
+window.skipBdayAnswer = function(){ state.bdayAsk.shift(); if(!state.bdayAsk.length) state.bdayAsk = null; state.bdayErr = ''; state.bdayErrCode = null; render(); };   // asked again next sign-in
+// A coach's players with no email of their own: a quiet line on the Roster, never a blocking screen.
+function renderCoachBdayPrompt(){
+  const list = state.bdayCoach || []; if(!list.length || !isCoach()) return '';
+  const q = state.bdayCoachOpen ? list[0] : null;
+  if(!q) return `<div class="verify-banner acct-banner"><p>Add a birthday for ${list.length === 1 ? escHtml(list[0].name) : list.length + ' players you created'} so ${list.length === 1 ? 'their' : 'each'} level of play moves up on its own.</p>
+    <div style="display:flex;gap:var(--s-8);flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="state.bdayCoachOpen=true;render()">Add</button><button class="btn btn-secondary btn-sm" onclick="state.bdayCoach=[];render()">Not now</button></div></div>`;
+  return `<div class="verify-banner acct-banner"><p><strong>${escHtml(q.name)}</strong>'s birthday (you won't see it again once saved)</p>
+    ${bdayFields('bc')}
+    ${state.bdayErr ? `<p class="invite-status invite-status-error">${escHtml(state.bdayErr)}</p>` : ''}
+    <div style="display:flex;gap:var(--s-8);flex-wrap:wrap;margin-top:var(--s-8);"><button class="btn btn-primary btn-sm" onclick="saveCoachBday(false)">Save</button><button class="btn btn-secondary btn-sm" onclick="saveCoachBday(true)">I don't know</button></div></div>`;
+}
+window.saveCoachBday = async function(unknown){
+  const q = (state.bdayCoach || [])[0]; if(!q) return;
+  const v = unknown ? null : bdayRead('bc');
+  if(!unknown && !v){ state.bdayErr = 'Pick a month, day and year.'; render(); return; }
+  let res; try{ res = await netTimeout(supabaseClient.rpc('set_birthday', { p_profile: q.id, p_date: v, p_unknown: !!unknown }), 8000); }catch(e){ res = { error: e }; }
+  const d = res && res.data;
+  if(res.error || !d || !d.ok){ state.bdayErr = BDAY_ERRORS[d && d.error] || "Couldn't save it. Check your connection and try again."; render(); return; }
+  state.bdayErr = ''; state.bdayCoach.shift(); if(!state.bdayCoach.length) state.bdayCoachOpen = false;
+  render();
+};
+
 function renderTermsNotice(){
   const links = `<a href="${policyHref('privacy.html')}" target="_blank" rel="noopener">Privacy Policy</a> and <a href="${policyHref('terms.html')}" target="_blank" rel="noopener">Terms</a>`;
   return `<div class="attest-backdrop" role="dialog" aria-modal="true" aria-label="Updated Privacy Policy and Terms"><div class="who-card attest-card">
@@ -3373,6 +3469,7 @@ async function loadFullContextOnline(alreadyPainted){
   // one-time box -- decided HERE, on the online load only, so it can never
   // appear offline or stand between anyone and charting.
   state.attestNeeded = !(myAccountProfile() || {}).age_attestation;
+  if(!state.attestNeeded) loadBirthdays();   // F2 Stage 3: online only, like the age box
   termsCheckOnLoad(session.user.id);   // Oct 17: "I agree" to terms 2026-10-17, same online-only rule
   await a1LoadStatus();   // A1: a login scheduled for deletion sees that first
 
@@ -4306,6 +4403,8 @@ function addPlayerForm(){
   // R7: a pitcher under 13 who started their own sign-up becomes a parent account; the name they typed is the player's
   const carried = lsGet('kb:playerNamePending');
   if(carried && !f.name){ f.name = carried; lsDel('kb:playerNamePending'); }
+  const bd = lsGet('kb:playerBdayPending');   // F2 Stage 3: from an under-13 sign-up
+  if(bd && !f.bday){ f.bday = bd; lsDel('kb:playerBdayPending'); }
   return f;
 }
 function renderAddPlayerScreen(){
@@ -4323,6 +4422,9 @@ function renderAddPlayerScreen(){
         <div class="invite-form" style="width:100%;text-align:left;">
           <div><span class="field-label">Player's name</span>
             <input id="ap-name" class="text-input" style="margin-top:var(--s-4);" value="${escHtml(f.name)}" placeholder="First and last name" oninput="state.addPlayer.name = this.value"></div>
+          <div><span class="field-label">Birthday</span>
+            <div style="margin-top:var(--s-4);">${bdayFields('ap-bd', f.bday)}</div>
+            ${isCoach() ? `<label class="attest-check" style="margin-top:var(--s-6);"><input type="checkbox" id="ap-bd-unknown" ${f.bdayUnknown ? 'checked' : ''} onchange="state.addPlayer.bdayUnknown = this.checked"> <span>I don't know</span></label>` : ''}</div>
           <div><span class="field-label">Sport</span>
             <div class="ap-choices">${radio('ap-sport', 'baseball', 'Baseball', f.sport === 'baseball')}${radio('ap-sport', 'softball', 'Softball', f.sport === 'softball')}</div></div>
           <div><span class="field-label">Throws</span>
@@ -4354,6 +4456,8 @@ window.submitAddPlayer = async function(){
   state.addPlayerError = null;
   if(!f.name.trim()){ state.addPlayerError = "Enter the player's name."; render(); return; }
   if(!f.consent){ state.addPlayerError = ADD_PLAYER_ERRORS.consent_required; render(); return; }
+  f.bday = bdayRead('ap-bd'); const unk = document.getElementById('ap-bd-unknown'); f.bdayUnknown = !!(unk && unk.checked);
+  if(!f.bday && !(isCoach() && f.bdayUnknown)){ state.addPlayerError = isCoach() ? "Enter the player's birthday, or tick I don't know." : "Enter your child's birthday."; render(); return; }
   if(!isOnline()){ state.addPlayerError = 'Adding a player needs a connection.'; render(); return; }
   state.addPlayerBusy = true; render();
   try{
@@ -4367,6 +4471,8 @@ window.submitAddPlayer = async function(){
       render();
       return;
     }
+    // F2 Stage 3: the birthday (best effort: if this fails, the birthday question asks on the next load)
+    try{ await netTimeout(supabaseClient.rpc('set_birthday', { p_profile: data.id, p_date: f.bday || null, p_unknown: !f.bday }), 8000); }catch(e){}
     const { data: owned } = await fetchMyProfiles(state.session.user.id);
     if(owned && owned.length) state.myProfiles = owned;
     state.addPlayerBusy = false; state.addPlayerOpen = false; state.addPlayer = null;
@@ -14663,7 +14769,7 @@ function renderRosterPage(rosterItems, teamSelector, p){
   const list = `<div class="roster-page-list">
       ${wide ? '' : placeHead(PLACE.roster)}
       ${isPhoneWidth() ? teamSwitchHtml() : ''}
-      ${wide ? '' : tools}
+      ${wide ? '' : tools}${renderCoachBdayPrompt()}
       <div class="roster-list">${rosterItems || '<p class="profile-note">No pitchers on this team yet.</p>'}</div>
     </div>`;
   if(state.view === 'pitcher' && !wide) return p ? renderPitcherPage(p) : list;
@@ -17318,6 +17424,7 @@ function render(){
     : (state.a1 && state.a1.screen && state.session) ? renderA1Delete
     : (state.attestNeeded && state.session) ? renderAttestScreen
     : (state.termsNeeded && state.session && !onChartingScreen()) ? renderTermsNotice
+    : (state.bdayAsk && state.session && !onChartingScreen()) ? renderBdayQuestion
     : (state.whoPicker && state.whoPicker.length > 1) ? renderWhoPicker
     : null;
   if(overlay){

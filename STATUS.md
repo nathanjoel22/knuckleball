@@ -60,6 +60,23 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-20 · F2 Stage 3 (birthdays, September 1 level move) · **staging only** (PR pending), branch `f2-stage3` (on Stage 4), cache `kb-shell-v371`
+
+- **Not for production** until Joel approves the DRAFT privacy / terms / consent wording and the contradiction
+  handling (`plans/f2s3-evidence.md`).
+- **Migration** `20261128000000_f2s3_birthdays` and `export-account` on staging.
+  - Birthdays live in `profile_birthdays` (no grant, no policy), read only by the pitcher and their parents.
+  - The September 1 job moves levels up silently.
+- **App:**
+  - Birthday on the pitcher sign-up pages (it drives the existing age paths) and on Create Your Child's Profile (a
+    coach may say "I don't know").
+  - Asked once for existing profiles; a quiet Roster line for coach-added players.
+- **Deviation:** a contradicting birthday isn't saved (operator list, "Contact us"), rather than re-running the sign-up
+  rules on the account. Joel decides.
+- **Evidence:** Done when 17–21, 23 PASS; 22 and 24 pending Joel.
+
+---
+
 ## 2026-11-20 · F2 Stage 4 (Temporary Team/Camp Roster) · **staging** (PR pending), branch `f2-stage4` (on Stage 1), cache `kb-shell-v370`
 
 - **Migration** `20261127000000_f2s4_camps` on staging:

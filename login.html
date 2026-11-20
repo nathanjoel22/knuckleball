@@ -257,8 +257,13 @@
     <!-- shown for the account type chosen -->
     <div class="role-extra step-hidden" id="extra-pitcher">
       <div class="field">
-        <span class="field-label">How old are you?</span>
-        <div class="age-options">
+        <span class="field-label">Birthday</span>
+        <div class="bday-row" style="display:flex;gap:8px;">
+          <select class="text-input" id="bd-m" aria-label="Month" style="flex:1.4;min-width:0;"><option value="">Month</option></select>
+          <select class="text-input" id="bd-d" aria-label="Day" style="flex:0.8;min-width:0;"><option value="">Day</option></select>
+          <select class="text-input" id="bd-y" aria-label="Year" style="flex:1;min-width:0;"><option value="">Year</option></select>
+        </div>
+        <div class="age-options" style="display:none;" aria-hidden="true">
           <label class="age-opt"><input type="radio" name="age" value="adult"> 18 or older</label>
           <label class="age-opt"><input type="radio" name="age" value="minor_13_17"> 13&ndash;17</label>
           <label class="age-opt"><input type="radio" name="age" value="under_13"> Under 13</label>
@@ -374,6 +379,33 @@
   var suBtn = document.getElementById('su-submit');
   function $(id){ return document.getElementById(id); }
   function kbAgeValue(){ var r = document.querySelector('input[name="age"]:checked'); return r ? r.value : null; }
+  // F2 Stage 3 (Joel, Nov 20 2026): a pitcher gives a Birthday (month, day, year), not an age bracket. The date picks the
+  // bracket the existing P1-10 rules run on (the hidden radios below), so under 13 and 13-17 behave exactly as before.
+  // The date is kept on this device until the app saves it (set_birthday) once the account's age answer is on record.
+  function kbBdayValue(px){
+    var m = (document.getElementById(px + 'bd-m') || {}).value, d = (document.getElementById(px + 'bd-d') || {}).value, y = (document.getElementById(px + 'bd-y') || {}).value;
+    if(!m || !d || !y) return null;
+    var dt = new Date(Number(y), Number(m) - 1, Number(d));
+    if(dt.getMonth() !== Number(m) - 1 || dt > new Date()) return null;   // Feb 30, or a date not yet come
+    return y + '-' + ('0' + m).slice(-2) + '-' + ('0' + d).slice(-2);
+  }
+  function kbBdayInit(px){
+    var mEl = document.getElementById(px + 'bd-m'), dEl = document.getElementById(px + 'bd-d'), yEl = document.getElementById(px + 'bd-y');
+    if(!mEl || mEl.options.length > 1) return;
+    ['January','February','March','April','May','June','July','August','September','October','November','December'].forEach(function(n, i){ mEl.add(new Option(n, String(i + 1))); });
+    for(var d = 1; d <= 31; d++) dEl.add(new Option(String(d), String(d)));
+    for(var y = new Date().getFullYear(); y >= new Date().getFullYear() - 100; y--) yEl.add(new Option(String(y), String(y)));
+    [mEl, dEl, yEl].forEach(function(el){ el.addEventListener('change', function(){
+      var v = kbBdayValue(px); if(!v) return;
+      var b = new Date(v + 'T12:00:00'), t = new Date(), age = t.getFullYear() - b.getFullYear();
+      if(t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) age--;
+      var want = age >= 18 ? 'adult' : age >= 13 ? 'minor_13_17' : 'under_13';
+      var r = document.querySelector('input[name="' + px + 'age"][value="' + want + '"]');
+      if(r && !r.checked){ r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); }
+    }); });
+  }
+  function kbBdayStash(px){ var v = kbBdayValue(px); try{ if(v) localStorage.setItem('kb:bdayPending', v); }catch(e){} }
+  kbBdayInit('');
   function showPanel(which){
     $('login-form').classList.toggle('step-hidden', which !== 'login');
     $('signup-form').classList.toggle('step-hidden', which !== 'new');
@@ -420,6 +452,7 @@
       $('age-guardian').classList.toggle('step-hidden', v !== 'minor_13_17');
       if(v === 'under_13'){
         su.under13Name = $('su-name').value.trim() || null;
+        su.under13Bday = kbBdayValue('');   // F2 Stage 3: carried on to Create Your Child's Profile
         $('su-name').value = $('su-parent').value.trim(); $('su-email').value = ''; $('su-password').value = '';   // the parent's own name, if typed
         $('su-parent').value = '';
         r.checked = false;
@@ -436,7 +469,7 @@
       return { status: 'adult' };
     }
     var v = kbAgeValue();
-    if(!v) return { error: 'Tell us how old you are.' };
+    if(!v) return { error: 'Enter your birthday.' };
     var g = null;
     if(v === 'minor_13_17'){
       g = ($('guardian-email').value || '').trim().toLowerCase();
@@ -519,6 +552,7 @@
     var meta = { full_name: fullName, intended_role: role === 'facility' ? 'coach' : role };   // a facility's manager is a coach on both sides
     if(role !== 'parent') meta.intended_sport = sport;   // a parent's own profile has no sport; the player's comes next
     if(parentName) meta.parent_name = parentName;   // F2 Stage H: kept with the sign-up (no column yet)
+    if(role === 'pitcher') kbBdayStash('');   // F2 Stage 3: the app saves it after the age answer
     // A facility whose account was made but whose facility wasn't (a dropped connection): Try again just finishes it.
     var cur = null; try{ cur = (await supabaseClient.auth.getSession()).data.session; }catch(x){}
     var res = (role === 'facility' && cur && cur.user && String(cur.user.email).toLowerCase() === email.toLowerCase())
@@ -532,6 +566,7 @@
     try{
       localStorage.setItem('kb:sport', sport);
       if(role === 'parent' && su.under13Name) localStorage.setItem('kb:playerNamePending', su.under13Name);
+      if(role === 'parent' && su.under13Bday) localStorage.setItem('kb:playerBdayPending', su.under13Bday);
     }catch(e){}
     // Confirm email ON (defensive, as on the old pages): sign in after confirming; the app finishes setup.
     if(!res.data.session){

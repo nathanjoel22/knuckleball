@@ -204,6 +204,30 @@ Applies to reports made from Stage C on; every report made before stays exactly 
   Camps are never deleted, only ended.
 - Migration `20261127000000_f2s4_camps`; rollback in `supabase/rollback/`; test `supabase/tests/f2s4_camps.sql`.
 
+## Birthdays and the September 1 level move (F2 Stage 3, Joel, Nov 20 2026; STAGING until Joel approves the policy wording)
+
+- **This reverses P1-10 / S4's "no date of birth, ever"** (Joel's packet).
+- **Asked:**
+  - **A pitcher signing up:** Birthday (month, day, year) replaces the bracket question on `login.html`, `join.html` and
+    `accept-invite.html`. The date sets the hidden bracket, so the P1-10 paths run as before. The date is kept on the
+    device (`kb:bdayPending`) until the app saves it after the age answer.
+  - **Create Your Child's Profile:** required for a parent. A coach may tick "I don't know".
+  - **Existing profiles, once, online only, after the age box:** a pitcher for themself, a parent for each player
+    (`renderBdayQuestion`). Coach-added players get a quiet Roster line (`renderCoachBdayPrompt`).
+- **Stored in `profile_birthdays`**, not on `profiles`: no grant, no policy. Read only through `my_birthdays()` (the
+  pitcher's own login, the creating parent, a linked guardian or child). A coach-added player's coach may write and
+  never read it. Policies unchanged; not in any report, email, chat or roster read.
+  - In the owner's export (`birthdays.csv`); deleted with the profile.
+- **Contradictions** (said 18+ but under 18 by date; said 13–17 but under 13) are not saved: `contradiction`, the
+  operator list `birthday_contradictions`, and "Contact us". Pending Joel's decision on handling.
+- **September 1 (`f2-level-switch`, `53 9 1 9 *`, `f2_level_switch`):** each pitcher with a birthday moves up to their
+  age's level on that Sept 1: 13 or under Little League; 14–18 High school (softball High school & up); 19+ College
+  (softball High school & up).
+  - Never down, so a higher hand-set level is kept. Silent; logged in `level_switch_log` (operator only).
+  - Only `profiles.level` changes: team games keep the team's level, and no session, report or stats row is
+    recomputed.
+- Migration `20261128000000_f2s3_birthdays`; rollback in `supabase/rollback/`; test `supabase/tests/f2s3_birthdays.sql`.
+
 ## Workload, rest and level (SR1 Stage D, Joel, Nov 19 2026; decisions in `plans/sr1d-preconditions.md`)
 
 - **Baseball only.** Joel: "leave softball alone, pitch count rules don't apply there". Softball has no age group, no

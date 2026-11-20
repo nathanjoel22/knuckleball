@@ -12,7 +12,7 @@ import {
   type Comparison, NO_COMPARISON, type StoodOut, type TileSpec, WINDOWS, SR1_CSS, ids, radios, tabBar, windowSwitch, wb, wi, panel,
   takeaway, card, tileFor, windowCaption, stoodOutCard, sparkCard, simpleTable, typeCell, footer, firstName, penWord, word,
   ordinal, pctOf, pickFastball, avgVelo, gunned, outsideRange, rangeText, sortStoodOut, missPattern, missDirs, DIR_WORDS,
-  fadePattern, sidePattern, typeMin, sevenDayCard, type Voice, type LevelGroup, levelGroup, versionsFor, ver, tabBarVersions,
+  fadePattern, sidePattern, typeMin, sevenDayCard, type Voice, type LevelGroup, levelGroup, versionsFor, ver, tabBarVersions, printTitle,
   restDays, backDate, type EmailVersion, emailComment, shortDate, sevenDayEmailLine, comparedEmailLine, abbrOf
 } from './sr1.ts'
 
@@ -541,6 +541,7 @@ export function buildReportHtml(p: ReportPayload): string {
   const itemsYou = penStoodOut(p, f, c, 'you')
   const g = levelGroup(c.workload?.level ?? c.baselines?.level ?? null)   // SR1 E: the versions this file carries
   const wins = c.baselines ? WINDOWS.map(w => w.key).filter(k => c.baselines!.windows[k]) : []
+  const tl = penTabLabels(g), pt = printTitle(p.pitcherName, 'Bullpen', penDate(p), wins)   // SR1 G: print
   const links = `<p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="${signInUrl(asSport(p.sport))}">knuckleballonline.com</a> &middot; <a href="https://knuckleballonline.com/privacy.html#${asSport(p.sport)}">Privacy</a> &middot; <a href="https://knuckleballonline.com/terms.html#${asSport(p.sport)}">Terms</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>`
   // D2: this report's own colors and fonts (--kr-*) for its sport -- no hex swap, no site stylesheet.
   return (`<!doctype html>
@@ -557,11 +558,11 @@ ${penHeader(p, id, g)}
 <main class="kr-main">
 ${panel(1, ver(['coach'], penSummary(p, f, c, id, items))
   + (g === 'll' ? ver(['player'], penSummaryLLPlayer(p, f, c, id, itemsYou)) + ver(['parent'], penSummaryLLParent(p, f, c))
-    : ver(['player'], penSummary(p, f, c, id, itemsYou, 'you', g === 'hs' ? 2 : 3))))}
-${panel(2, penCommand(p, f, c))}
-${panel(3, penVelocity(p, f))}
-${panel(4, penTrends(p, f))}
-${g === 'll' ? panel(5, penWhereItWent(p, f, c)) + panel(6, penProgressLite(p, f)) : ''}
+    : ver(['player'], penSummary(p, f, c, id, itemsYou, 'you', g === 'hs' ? 2 : 3))), tl, pt)}
+${panel(2, penCommand(p, f, c), tl, pt)}
+${panel(3, penVelocity(p, f), tl, pt)}
+${panel(4, penTrends(p, f), tl, pt)}
+${g === 'll' ? panel(5, penWhereItWent(p, f, c), tl, pt) + panel(6, penProgressLite(p, f), tl, pt) : ''}
 </main>
 ${footer(firstName(p.pitcherName), links, true)}
 </div>

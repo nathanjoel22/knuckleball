@@ -298,7 +298,7 @@ export function tabBar(id: string, tabs: string[]): string {
   return `<nav class="kr-tabs">${tabs.map((t, i) => `<label class="kr-tl kr-tl${i + 1}" for="kt${i + 1}-${id}">${escapeHtml(t)}</label>`).join('')}</nav>`
 }
 // SR1 E: one row of labels for every version; each label names its panel and the versions that show it
-export function tabBarVersions(id: string, labels: { panel: number; label: string; versions: string[] }[]): string {
+export function tabBarVersions(id: string, labels: TabLabel[]): string {
   return `<nav class="kr-tabs">${labels.map(l => `<label class="kr-tl kr-tl${l.panel} kr-ver ${l.versions.map(v => 'kr-ver-' + v).join(' ')}" for="kt${l.panel}-${id}">${escapeHtml(l.label)}</label>`).join('')}</nav>`
 }
 export function windowSwitch(id: string, windows: string[]): string {
@@ -307,7 +307,21 @@ export function windowSwitch(id: string, windows: string[]): string {
 // a block (or an inline run) shown only while its window is chosen
 export const wb = (k: string, html: string) => `<div class="kr-wb kr-v-${k}">${html}</div>`
 export const wi = (k: string, html: string) => `<span class="kr-wi kr-v-${k}">${html}</span>`
-export const panel = (i: number, html: string) => `<div class="kr-panel kr-p${i}">${html}</div>`
+export type TabLabel = { panel: number; label: string; versions: string[] }
+// SR1 G: a panel carries the versions whose tabs use it (print shows only those) and, after Summary, a print-only
+// title line: this version's tab name, then `title` (the session and the window shown)
+export const panel = (i: number, html: string, labels?: TabLabel[], title = '') => {
+  if (!labels) return `<div class="kr-panel kr-p${i}">${html}</div>`
+  const mine = labels.filter(l => l.panel === i)
+  const vs = Array.from(new Set(mine.flatMap(l => l.versions)))
+  const names = mine.map(l => `<span class="kr-ver ${l.versions.map(v => 'kr-ver-' + v).join(' ')}">${escapeHtml(l.label)}</span>`).join('')
+  return `<div class="kr-panel kr-p${i} ${vs.map(v => 'kr-pv-' + v).join(' ')}">${i > 1 ? `<p class="kr-ptitle">${names} · ${title}</p>` : ''}${html}</div>`
+}
+const PRINT_WINDOW: Record<string, string> = { '1m': '1 month', '3m': '3 months', '12m': '12 months', season: 'this season', year_ago: 'a year ago' }
+// SR1 G: "<name> · Bullpen · Nov 18, 2026 · compared with 3 months" (the window as chosen on screen)
+export function printTitle(name: string, kind: string, date: string, wins: string[]): string {
+  return `${escapeHtml(name)} · ${kind} · ${date}${wins.map(k => wi(k, ' · compared with ' + (PRINT_WINDOW[k] ?? k))).join('')}`
+}
 export const takeaway = (s: string) => `<h2 class="kr-takeaway">${s}</h2>`
 export const card = (label: string, html: string, cls = '') => `<section class="kr-card${cls ? ' ' + cls : ''}">${label ? `<h3 class="kr-label">${label}</h3>` : ''}${html}</section>`
 
@@ -452,6 +466,21 @@ export const SR1_CSS = `
   .kr-7d.over{ background:var(--kr-warn-bg); border-color:var(--kr-warn-line); }
   .kr-7d.over .kr-label{ color:var(--kr-down); }
   .kr-7d.over .kr-sub{ color:var(--kr-ink-dim); }
+  .kr-ptitle{ display:none; }
+  /* SR1 G: print every tab of the version on screen, one tab per page (hide before show: a panel two versions use) */
+  @media print{
+    .kr-tabs, .kr-ws{ display:none !important; }
+    .report-header.kr-head{ border-radius:12px; padding-bottom:16px; margin-bottom:0; }
+    .kr-panel{ display:none !important; }
+    .kr-panel.kr-pv-coach{ display:block !important; }
+    .kr-as-player .kr-panel.kr-pv-coach, .kr-as-parent .kr-panel.kr-pv-coach{ display:none !important; }
+    .kr-as-player .kr-panel.kr-pv-player, .kr-as-parent .kr-panel.kr-pv-parent{ display:block !important; }
+    .kr-panel:not(.kr-p1){ break-before:page; page-break-before:always; }
+    .kr-ptitle{ display:block; margin:0 0 14px; padding-bottom:8px; border-bottom:2px solid var(--kr-ink); font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:var(--kr-ink); }
+    .kr-card, .kr-tile, .kr-tiles, .kr-strip, .kr-trend, .kr-so, .kr-takeaway{ break-inside:avoid; page-break-inside:avoid; }
+    .kr-takeaway, .kr-label{ break-after:avoid; page-break-after:avoid; }
+    .kr-main .section{ break-inside:auto; page-break-inside:auto; }   /* a tall older section may continue; its charts, rows and blocks still never split */
+  }
   @media (min-width:640px){ .kr-tiles{ grid-template-columns:repeat(4, 1fr); } }
   @media (max-width:600px){ .kr-tabs{ margin:8px -20px 0; } .kr-head h1{ font-size:30px; } }
 `

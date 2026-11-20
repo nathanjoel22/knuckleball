@@ -132,14 +132,15 @@ $$;
 revoke all on function public.set_birthday(uuid, date, boolean) from public, anon;
 grant execute on function public.set_birthday(uuid, date, boolean) to authenticated;
 
--- The level a birthday gives on a September 1 (Joel's table, to confirm): 13 or under Little League; 14-18 High school
--- (softball High school & up); 19 or over College (softball High school & up).
+-- The level a birthday gives on a September 1 (Joel, Nov 20 2026): 12 or under Little League; 13-17 High school, so a
+-- senior who turns 18 during the school year stays High school; 18 or over on that September 1 is College. Softball:
+-- 12 or under Little League, then High school & up.
 create or replace function public.f2_level_for(p_sport text, p_age int)
  returns text language sql immutable set search_path to '' as $$
   select case
-    when p_age <= 13 then 'little_league'
+    when p_age <= 12 then 'little_league'
     when p_sport = 'softball' then 'high_school_up'
-    when p_age <= 18 then 'high_school'
+    when p_age <= 17 then 'high_school'
     else 'college' end
 $$;
 create or replace function public.f2_level_rank(p_level text)

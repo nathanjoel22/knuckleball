@@ -204,9 +204,13 @@ Applies to reports made from Stage C on; every report made before stays exactly 
   Camps are never deleted, only ended.
 - Migration `20261127000000_f2s4_camps`; rollback in `supabase/rollback/`; test `supabase/tests/f2s4_camps.sql`.
 
-## Birthdays and the September 1 level move (F2 Stage 3, Joel, Nov 20 2026; STAGING until Joel approves the policy wording)
+## Birthdays and the September 1 level move (F2 Stage 3, Joel, Nov 20 2026; decisions in `plans/f2-preconditions.md`)
 
-- **This reverses P1-10 / S4's "no date of birth, ever"** (Joel's packet).
+- **This reverses P1-10 / S4's "no date of birth, ever"** (Joel, Nov 20: "it's going to be a useful thing for teams").
+- **Policy text approved by Joel (Nov 20 2026), not quiet:** privacy / terms / guardian-consent at Version 2026-11-20 and
+  `TERMS_VERSION` 2026-11-20 on every page that records it, so every login sees "I agree" once (`renderTermsNotice`: the
+  birthday paragraph, plus the Oct 17 licensing paragraph only for a login that never agreed to 2026-10-17,
+  `TERMS_LICENSING`).
 - **Asked:**
   - **A pitcher signing up:** Birthday (month, day, year) replaces the bracket question on `login.html`, `join.html` and
     `accept-invite.html`. The date sets the hidden bracket, so the P1-10 paths run as before. The date is kept on the
@@ -218,11 +222,13 @@ Applies to reports made from Stage C on; every report made before stays exactly 
   pitcher's own login, the creating parent, a linked guardian or child). A coach-added player's coach may write and
   never read it. Policies unchanged; not in any report, email, chat or roster read.
   - In the owner's export (`birthdays.csv`); deleted with the profile.
-- **Contradictions** (said 18+ but under 18 by date; said 13–17 but under 13) are not saved: `contradiction`, the
-  operator list `birthday_contradictions`, and "Contact us". Pending Joel's decision on handling.
+- **Contradictions** matter only under 18 (Joel, Nov 20: once past 18 the birthday is irrelevant to the age rules).
+  A date that puts the person at 18+ today is always saved, whatever they answered. One that puts them under 18 when
+  they said 18+, or under 13 when they said 13–17, is not saved: `contradiction`, the operator list
+  `birthday_contradictions`, and "Contact us"; their access is unchanged until the operator acts.
 - **September 1 (`f2-level-switch`, `53 9 1 9 *`, `f2_level_switch`):** each pitcher with a birthday moves up to their
-  age's level on that Sept 1: 13 or under Little League; 14–18 High school (softball High school & up); 19+ College
-  (softball High school & up).
+  age's level on that Sept 1 (Joel, Nov 20; `f2_level_for`): 12 or under Little League; 13–17 High school (a senior who
+  turns 18 during the year stays); 18 or over College. Softball: 12 or under Little League, then High school & up.
   - Never down, so a higher hand-set level is kept. Silent; logged in `level_switch_log` (operator only).
   - Only `profiles.level` changes: team games keep the team's level, and no session, report or stats row is
     recomputed.
@@ -714,7 +720,7 @@ There are 32 RLS policies on production and staging (since F1-A, Oct 29 2026: + 
 
 **Migration history.** Every schema change up to P1-08 was applied to production by hand; `supabase/migrations/20260826082320_baseline.sql` is the snapshot of that state and the first real migration this repo has. The baseline was later registered on production, and `supabase migration list` (Oct 6 2026) showed every migration recorded there, identical to this repo; `db push` runs only new files (see DEPLOY.md). Keep regenerating the dump in `supabase/schema/schema.sql` after any approved schema change — it stays the human-readable source of truth.
 
-**Report gate invariant (P1-10, Oct 2 2026; P2-01 removed the team condition, Oct 22 2026 -- Amendment 11's temporary restriction retired).** A report can be generated or sent only when: the pitcher's LOGIN is email-verified AND the calling coach is verified (Amendment 11) AND the pitcher's login is attested 'adult' OR has guardian approval (13-17) AND, for a parent-added player, the player's own consent stamp is set (S4 B). Existing logins that haven't answered the one-time age box get NO reports until they answer (Joel, option a). The age bracket, terms version and guardian state live on the login's PRIMARY profile; `guardian_email` and `guardian_consent_token` are never client-readable; guardian emails go only to the stored address, once per 10 minutes (`claim_guardian_send`). The one-time box is decided only on the online load -- it never appears offline. Policy pages (`privacy.html`, `terms.html`, Version 2026-10-29: parent accounts and under-13s approved Oct 2, the accurate leaderboard sentence Oct 3, in-app deletion / export and 7-day backups Oct 14, training facilities and chat Oct 29, linked sign-ins Oct 29 -- quiet updates, `TERMS_VERSION` stays 2026-10-17 so no "I agree" box) were approved by Joel; any text change needs his re-approval in the commit message. Fonts and supabase-js are self-hosted under `vendor/` -- pages load nothing from third-party hosts; keep it that way (the privacy policy says so).
+**Report gate invariant (P1-10, Oct 2 2026; P2-01 removed the team condition, Oct 22 2026 -- Amendment 11's temporary restriction retired).** A report can be generated or sent only when: the pitcher's LOGIN is email-verified AND the calling coach is verified (Amendment 11) AND the pitcher's login is attested 'adult' OR has guardian approval (13-17) AND, for a parent-added player, the player's own consent stamp is set (S4 B). Existing logins that haven't answered the one-time age box get NO reports until they answer (Joel, option a). The age bracket, terms version and guardian state live on the login's PRIMARY profile; `guardian_email` and `guardian_consent_token` are never client-readable; guardian emails go only to the stored address, once per 10 minutes (`claim_guardian_send`). The one-time box is decided only on the online load -- it never appears offline. Policy pages (`privacy.html`, `terms.html`, Version 2026-11-20: parent accounts and under-13s approved Oct 2, the accurate leaderboard sentence Oct 3, in-app deletion / export and 7-day backups Oct 14, training facilities and chat Oct 29, linked sign-ins Oct 29 -- quiet updates, `TERMS_VERSION` stayed 2026-10-17; Version 2026-11-20: one-session and camp charting at a facility (quiet) and birthdays, which bumped `TERMS_VERSION` to 2026-11-20, so every login agrees once) were approved by Joel; any text change needs his re-approval in the commit message. Fonts and supabase-js are self-hosted under `vendor/` -- pages load nothing from third-party hosts; keep it that way (the privacy policy says so).
 
 **Change Email (Joel signed off as an auth-flow change, Oct 2 2026).** The address lives ONLY in `auth.users` (no `profiles.email`). The client never calls `supabase.auth.updateUser({ email })`. `request-email-change` (Edge Function, caller's JWT) calls `begin_email_change()` (records the request in hidden profile columns, cancels any outstanding verify link, 1 per 10 minutes), has Supabase GENERATE (not send) the email-change link with the admin client -- its only admin use -- and sends ONE Knuckleball email via Resend to the new address. Landing (`bullpen-tracker.html?email_change=1`) runs `confirm_email_change()`: the login's `auth.users` email must equal the requested address with nothing pending; it sets `email_verified_at` and moves `contact_emails.pitcher` on every profile the login owns. The account stays verified on its old address while a change is pending. `verify_email` links are bound to the address they were sent to (`email_verify_sent_to`). Only `verify_email` and `confirm_email_change` set `email_verified_at`; neither reads `email_confirmed_at` (Amendment 9). Requires, in BOTH projects' Auth settings: "Secure email change" OFF, and the tracker's `?email_change=1` URL in the redirect allow-list. Rollback: `supabase/rollback/20261002070000_email_change_down.sql`.
 

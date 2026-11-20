@@ -125,7 +125,13 @@ begin
     fails := fails + 1;
   end if;
   n := public.f2_level_switch(make_date(extract(year from today)::int, 9, 1));
-  out := out || ', a second run moves ' || n; if n <> 0 then fails := fails + 1; end if;
+  out := out || ', a second run moves ' || n;
+  -- Joel's table at its edges (age on Sept 1): 12 LL, 13 HS, 17 HS, 18 College; softball 12 LL, 13 and 18 HS & up.
+  v := public.f2_level_for('baseball', 12) || ',' || public.f2_level_for('baseball', 13) || ',' || public.f2_level_for('baseball', 17) || ','
+    || public.f2_level_for('baseball', 18) || ',' || public.f2_level_for('softball', 12) || ',' || public.f2_level_for('softball', 13) || ','
+    || public.f2_level_for('softball', 18);
+  out := out || ' | table edges: ' || v;
+  if v <> 'little_league,high_school,high_school,college,little_league,high_school_up,high_school_up' then fails := fails + 1; end if; if n <> 0 then fails := fails + 1; end if;
   out := out || ' | job: ' || (select schedule || ' ' || command from cron.job where jobname = 'f2-level-switch');
 
   -- ---------- 23. delete removes it ----------

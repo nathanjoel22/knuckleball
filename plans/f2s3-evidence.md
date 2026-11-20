@@ -66,16 +66,22 @@ as a new sign-up of that age) would change report access and adult roles on its 
     - A 9-year-old set to College by hand **kept College** (only up). A second run moves 0.
     - Log rows are written. Sessions are byte-identical before and after (nothing recomputed). No email or notice.
     - The job is `53 9 1 9 * select public.f2_level_switch()` (Sept 1, 09:53 UTC).
-22. **The contradiction cases: PENDING JOEL.** Built as above (not saved, operator list, contact us). Joel approves or
+22. **The contradiction cases: DECIDED (Joel, Nov 20: only under 18 matters).** Kept as built: not saved, operator list,
+    contact us, for an under-18 date only; an 18+ date is always saved. Was: Joel approves or
     changes this before production.
 23. **Export includes the birthday; delete removes it: PASS.**
     - The new pitcher's **Download my data** ZIP has `birthdays.csv` (`profile_id,birth_date,unknown,set_at`, the
       year-2001 row).
     - A coach-added player's birthday is left out of the coach's export.
     - SQL: deleting the profile leaves 0 birthday rows (on delete cascade, as A1's purge does).
-24. **DRAFT policy sentences:** below. Not on any page and not on production.
+24. **Policy sentences: APPROVED by Joel (Nov 20 2026)** and on the pages (privacy, terms, guardian-consent; Version
+    2026-11-20). `TERMS_VERSION` 2026-11-20 on every page that records it. Staging: a 2026-10-17 login saw the birthday
+    notice (no licensing paragraph), I agree recorded 2026-11-20 on the server, then the birthday question opened; an
+    older login's notice also carries the licensing paragraph.
+25. **Level table (Joel, Nov 20 2026):** 12 or under LL, 13–17 HS, 18+ on Sept 1 College (softball LL, then HS & up).
+    `f2s3_birthdays.sql` re-run on staging after the change: fails=0, the table's edges 12/13/17/18 as listed.
 
-## Policy wording: DRAFT, for Joel's approval (nothing changed on the pages yet)
+## Policy wording: APPROVED by Joel, Nov 20 2026 (on the pages; the guardian email's wording was left as it is)
 
 - **Privacy, replacing "We never ask for or store a date of birth"** (`privacy.html:81`): "Birthday: a pitcher's date of
   birth, entered by the pitcher or by the parent who set the player up. We use it only to apply our age rules (who needs

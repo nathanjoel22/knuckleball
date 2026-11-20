@@ -74,6 +74,11 @@ async function buildExport(admin: any, user: { id: string; email?: string }) {
   const profiles = (profRows || []).map((p: any) => Object.fromEntries(Object.entries(p).filter(([k]) => !PROFILE_SECRET.has(k))))
   const ids: string[] = profiles.map((p: any) => p.id)
   if (!ids.length) throw new Error('no profile on this login')
+  // F2 Stage 3: birthdays of this login's pitchers (its own, and players a parent created) -- never a coach-added
+  // player's, which the coach may enter but not see
+  const coachIds = new Set(profiles.filter((p: any) => p.role === 'coach').map((p: any) => p.id))
+  const bdayIds = profiles.filter((p: any) => p.role === 'pitcher' && !(p.managed_by && coachIds.has(p.managed_by))).map((p: any) => p.id)
+  const birthdays = bdayIds.length ? await all(() => admin.from('profile_birthdays').select('profile_id, birth_date, unknown, set_at').in('profile_id', bdayIds)) : []
 
   const memberships = await all(() => admin.from('pitcher_teams').select('pitcher_id, team_id, uniform_number, joined_at, teams(name, sport)').in('pitcher_id', ids))
   const staff = await all(() => admin.from('team_coaches').select('coach_id, team_id, role, teams(name, sport)').in('coach_id', ids))
@@ -125,6 +130,7 @@ async function buildExport(admin: any, user: { id: string; email?: string }) {
     { name: 'notes.csv', data: toCsv(notes) },
     { name: 'chat_messages.csv', data: toCsv(chat) },
     { name: 'player_access.csv', data: toCsv(links) },
+    { name: 'birthdays.csv', data: toCsv(birthdays) },
     { name: 'reports.txt', data: (reports.length ? reports.join('\n') : 'No reports.') + '\n' },
     { name: 'README.txt', data: README(sessions.length, pitches.length, events.length, notes.length, chat.length, links.length) }
   ]
@@ -157,6 +163,7 @@ pitches.csv      ${np} pitches, every stored column. Coordinates are the CATCHER
 game_events.csv  ${ne} Live Game events that aren't pitches (steals, balks, automatic balls/strikes, ...).
 notes.csv        ${nn} notes you wrote on sessions.
 chat_messages.csv ${nc} chat messages you wrote at a training facility (body is the text; deleted_at marks one you deleted).
+birthdays.csv    your birthday, and your players' (only you and their parents can see these).
 player_access.csv ${nl} links: who else can see a player you created (a parent/guardian, the player's own sign-in, or
                  friends and family), and the players you can see.
 reports.txt      Links to the session reports. Anyone with a link can open it; links stop working when the

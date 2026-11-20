@@ -276,11 +276,14 @@ Each one is built with the default **(D)**.
     - 13–17 → guardian approval;
     - adult roles are flagged, not removed.
 
-    **(D: yes; your approval before production)**
-15. The level rule (13 or under LL; 14–18 HS / HS & up; 19+ College / HS & up, on Sep 1), only ever up, with a
-    hand-set higher level kept. **(D: yes)**
+    **(D: yes; your approval before production)** **Built instead, and Joel, Nov 20 2026: contradictions matter only under
+    18.** A date that makes the person 18+ today is always saved; an under-18 contradiction is not saved, goes on the
+    operator list, and the person is asked to contact us. Nothing else changes.
+15. The level rule, only ever up, with a hand-set higher level kept. **Joel, Nov 20 2026: 12 or under LL; 13–17 HS
+    (HS & up); 18+ on Sep 1 College (softball HS & up).**
 16. A report made after a switch for an older independent session uses the new level. **(D: accept)**
-17. `TERMS_VERSION` is bumped with the birthday wording. **(D: yes; yours)**
+17. `TERMS_VERSION` is bumped with the birthday wording. **Joel, Nov 20 2026: yes (2026-11-20), and the wording is
+    approved. P1-10's "no date of birth" is reversed.** Android's film: ignored for now (Joel).
 
 ## 7. What the existing rules make impossible as written
 - **"Nothing deleted, sessions untouched" for an existing under-13 login:** it can't become a parent-made player without

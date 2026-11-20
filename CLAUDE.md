@@ -158,6 +158,33 @@ Applies to reports made from Stage C on; every report made before stays exactly 
   next sheet between its blocks.
 - Reports made before Stage G print as they always did (the open tab only).
 
+## One-session assignments at a facility (F2 Stage 1, Joel, Nov 20 2026; decisions in `plans/f2-preconditions.md`)
+
+- **Search facility** finds every pitcher on the facility side by name (`facility_pitcher_search`):
+  - for any coach on the side's staff, the manager included;
+  - 2+ letters, at most 20 results;
+  - names only, plus the coach's name when two results share a name.
+- **Assign for a session** (from a search result, or Manage for the pitcher's own coach and the manager;
+  `assign_session`): the chosen coach, themself or another, can chart **one** session.
+  - **Assigned to yourself:** straight to "Bullpen or Live Game?".
+  - **Assigned to someone else:** it shows at the top of their Roster under "Assigned for a session".
+- **What the assigned coach gets:** `my_assignments()` only: name, pitch types, throws, radar gun, the RA default and
+  cells, kept per login (`kb:assign:<uid>`) for offline charting.
+  - Never History, Trends, reports, notes, card, contacts, level, headshot or chat. Nothing grants anything else:
+    `session_assignments` has no grant and no policy (policies 32 / 12), and no existing rule or chat function reads it.
+- **Release:**
+  - The draft carries `assignmentId`; `sync_session` accepts the session when the assignment is the caller's, for that
+    pitcher and side, and the session **started** inside its 24 h window and before any cancel. So an offline save
+    days later still lands. The same transaction releases the assignment.
+  - A save here marks it used at once: the recap shows only Done, and the pitcher leaves the roster.
+  - **Discard** cancels it (`cancel_assignment`: the assigner, the assigned coach or the manager). Unused, it ends
+    after 24 h (computed).
+  - A charter whose session is already saved gets `already_saved` even when they can't read it any more.
+- **History wording:** every coach-charted session reads **"Charted by a coach"** ("Charted by a former coach"). No
+  coach is ever named.
+- Migration `20261126000000_f2s1_session_assignments`; rollback in `supabase/rollback/`; test
+  `supabase/tests/f2s1_session_assignments.sql`.
+
 ## Workload, rest and level (SR1 Stage D, Joel, Nov 19 2026; decisions in `plans/sr1d-preconditions.md`)
 
 - **Baseball only.** Joel: "leave softball alone, pitch count rules don't apply there". Softball has no age group, no

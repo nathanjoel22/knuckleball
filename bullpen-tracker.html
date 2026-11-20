@@ -2681,7 +2681,7 @@ function readableTextOn(hex){
 }
 function currentPitcher(){
   if(!isCoach()) return mapProfile(state.profile);
-  return state.roster.find(p => p.id === state.currentPitcherId) || null;
+  return state.roster.find(p => p.id === state.currentPitcherId) || assignedPitcher(state.currentPitcherId);
 }
 // R0 item (g), UI half: whether the currently-viewed pitcher's OWN account
 // email is confirmed -- source differs by who's asking, since currentPitcher()
@@ -4619,6 +4619,7 @@ async function loadRosterForTeam(teamId){
   });
   await applyRosterClosing(state.roster, teamId);
   await applyFacilityGroups(state.roster, (state.teams || []).find(t => t.id === teamId));   // F1-A
+  await loadAssignments();   // F2 Stage 1
 }
 
 // F1-A: on a facility side, the side's coach groups (team.groups: [{ id, coachId, coachName }]) and each pitcher's
@@ -5372,9 +5373,10 @@ function renderFacilityRoster(rosterRow){
   const q = (state.facSearch || '').trim().toLowerCase();
   const hit = p => !q || String(p.name || '').toLowerCase().includes(q);
   const all = (state.roster || []).filter(hit);
+  const assigned = q ? '' : renderAssignedSection(), remote = renderFacRemote();   // F2 Stage 1
   if(!mgr){
-    return all.map(p => row(p, groups.find(g => mine.includes(g.id) && (p.groups || []).some(y => y.id === g.id)) || null)).join('')
-      || (q ? '<p class="profile-note">No pitcher on your roster matches.</p>' : '');
+    return assigned + (all.map(p => row(p, groups.find(g => mine.includes(g.id) && (p.groups || []).some(y => y.id === g.id)) || null)).join('')
+      || (q && !remote ? '<p class="profile-note">No pitcher on your roster matches.</p>' : '')) + remote;
   }
   const shut = q ? {} : (state.facCollapsed || {});
   const section = (id, title, list) => {
@@ -5386,11 +5388,154 @@ function renderFacilityRoster(rosterRow){
   };
   const inGroup = id => all.filter(p => (p.groups || []).some(y => y.id === id));
   const loose = all.filter(p => !(p.groups || []).length);
-  if(q && !all.length) return '<p class="profile-note">No pitcher on the roster matches.</p>';
-  return groups.map(g => section(g.id, escHtml(g.coachName) + (mine.includes(g.id) ? ' (you)' : ''), inGroup(g.id))).join('')
-    + section('none', 'No coach yet', loose);
+  if(q && !all.length) return remote || '<p class="profile-note">No pitcher on the roster matches.</p>';
+  return assigned + groups.map(g => section(g.id, escHtml(g.coachName) + (mine.includes(g.id) ? ' (you)' : ''), inGroup(g.id))).join('')
+    + section('none', 'No coach yet', loose) + remote;
 }
 window.toggleFacMenu = function(key){ state.facMenu = state.facMenu === key ? null : key; state.facError = ''; state.removeArmedPitcherId = null; render(); };
+/* F2 Stage 1 (Joel, Nov 20 2026): a facility coach can be assigned any facility pitcher for ONE session (by themself or
+   another coach; the manager from Manage). The device gets only what charting needs (my_assignments: name, pitch
+   types, throws, radar gun, the RA default and cells), kept per login for offline charting. The save names the
+   assignment (assignment_id) and the server releases it; a session saved here marks it used at once, so the pitcher
+   leaves the roster before it syncs. No History, reports, notes, card or chat for an assigned pitcher. */
+function assignKey(){ return 'kb:assign:' + ((state.session && state.session.user && state.session.user.id) || ''); }
+function assignStore(){
+  if(!state.assignStore){ try{ state.assignStore = JSON.parse(localStorage.getItem(assignKey()) || 'null'); }catch(e){} }
+  if(!state.assignStore) state.assignStore = { list: [], used: [], cancels: [] };
+  return state.assignStore;
+}
+function assignSave(){ try{ localStorage.setItem(assignKey(), JSON.stringify(assignStore())); }catch(e){} }
+function myAssignments(){
+  const st = assignStore(), now = Date.now();
+  return (st.list || []).filter(a => a.team_id === state.currentTeamId && !(st.used || []).includes(a.id)
+    && !(st.cancels || []).includes(a.id) && new Date(a.window_ends_at).getTime() > now);
+}
+function assignedPitcher(id){
+  if(!id || !isCoach()) return null;
+  const a = myAssignments().find(x => x.pitcher && x.pitcher.id === id); if(!a) return null;
+  const p = mapProfile(a.pitcher); p.assignmentId = a.id; p.assigned = true;
+  return p;
+}
+async function loadAssignments(){
+  if(!isCoach() || !currentTeamIsFacility() || !isOnline()) return;
+  const st = assignStore();
+  for(const id of (st.cancels || []).slice()){   // a discard made offline
+    try{ const { error } = await netTimeout(supabaseClient.rpc('cancel_assignment', { p_id: id }), 8000); if(!error) st.cancels = st.cancels.filter(x => x !== id); }catch(e){ break; }
+  }
+  try{
+    const { data, error } = await netTimeout(supabaseClient.rpc('my_assignments'), 10000);
+    if(error || !Array.isArray(data)) return;
+    st.list = data;
+    st.used = (st.used || []).filter(id => data.some(a => a.id === id));   // released on the server: forget it
+    data.forEach(a => {   // the RA cells, for charting (the only zones an assigned coach gets)
+      const byType = {};
+      (a.zones || []).forEach(z => { (byType[z.pitch_type] = byType[z.pitch_type] || {})[z.batter_side] = z.cells || []; });
+      state.zones = Object.assign({}, state.zones, { [a.pitcher.id]: byType });
+    });
+    assignSave();
+  }catch(e){ /* offline: the copy on the device stands */ }
+}
+window.chartAssigned = async function(pid){
+  state.currentPitcherId = pid; state.assignMode = false; state.navOpen = false;
+  await refreshDraftState();
+  setView('session');
+};
+window.releaseAssigned = async function(aid){
+  const st = assignStore();
+  if(!(st.cancels || []).includes(aid)) st.cancels = (st.cancels || []).concat([aid]);
+  assignSave(); render();
+  await loadAssignments(); render();
+};
+function renderAssignedSection(){
+  const list = myAssignments(); if(!list.length) return '';
+  const until = a => new Date(a.window_ends_at).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  return `<div class="fac-group fac-assigned">
+      <div class="fac-group-head"><span class="fac-group-name">Assigned for a session</span><span class="fac-group-count">${list.length}</span></div>
+      ${list.map(a => `<div class="roster-item-wrap"><div class="roster-item" style="display:flex;">
+        <button type="button" class="roster-name-btn" onclick="chartAssigned('${a.pitcher.id}')">
+          <div class="roster-item-main"><span class="roster-item-name">${escHtml(a.pitcher.full_name || '')}${a.pitcher.throws ? `<span class="throws-tag">${escHtml(a.pitcher.throws)}HP</span>` : ''}</span>
+            <span class="roster-item-types">One session · until ${escHtml(until(a))}</span></div>
+          <span class="roster-item-num">Chart</span>
+        </button>
+        <button type="button" class="btn btn-tertiary btn-sm" onclick="releaseAssigned('${a.id}')" aria-label="Release ${escHtml(a.pitcher.full_name || '')}">Release</button>
+      </div></div>`).join('')}
+    </div>`;
+}
+// Search facility, past this roster: every pitcher on the side by name (2+ letters), from the server.
+let facSearchTimer = null;
+function facRemoteSearch(){
+  clearTimeout(facSearchTimer);
+  const q = (state.facSearch || '').trim();
+  if(q.length < 2 || !isOnline() || !currentTeamIsFacility()){ state.facRemote = null; return; }
+  facSearchTimer = setTimeout(async () => {
+    try{
+      const { data } = await netTimeout(supabaseClient.rpc('facility_pitcher_search', { p_team: state.currentTeamId, p_q: q }), 8000);
+      if((state.facSearch || '').trim() !== q) return;
+      state.facRemote = data && data.ok ? data.results : [];
+      const el = document.activeElement && document.activeElement.id === 'fac-search' ? document.activeElement : null, at = el ? el.selectionStart : 0;
+      render();
+      if(el){ const again = document.getElementById('fac-search'); if(again){ again.focus(); try{ again.setSelectionRange(at, at); }catch(e){} } }
+    }catch(e){}
+  }, 300);
+}
+function renderFacRemote(){
+  const q = (state.facSearch || '').trim(); if(q.length < 2) return '';
+  const res = (state.facRemote || []).filter(r => !r.mine && !(state.roster || []).some(p => p.id === r.id));
+  if(state.facRemote === null || state.facRemote === undefined) return isOnline() ? '' : '<p class="profile-note">Searching the facility needs a connection.</p>';
+  if(!res.length) return '';
+  return `<div class="fac-group"><div class="fac-group-head"><span class="fac-group-name">In the facility</span><span class="fac-group-count">${res.length}</span></div>
+    ${res.map(r => `<div class="roster-item-wrap"><div class="roster-item" style="display:flex;"><button type="button" class="roster-name-btn" onclick="openSessionAssign('${r.id}', ${escHtml(JSON.stringify(r.name || ''))})">
+      <div class="roster-item-main"><span class="roster-item-name">${escHtml(r.name || '')}</span>${r.coach ? `<span class="roster-item-types">${escHtml(r.coach)}</span>` : ''}</div>
+      <span class="roster-item-num">Assign</span></button></div></div>`).join('')}</div>`;
+}
+window.openSessionAssign = async function(pid, name){
+  state.sessAssign = { pid, name, coaches: null, to: null, err: '', busy: false };
+  render();
+  try{
+    const { data } = await netTimeout(supabaseClient.rpc('facility_side_coaches', { p_team: state.currentTeamId }), 8000);
+    if(state.sessAssign && state.sessAssign.pid === pid){
+      state.sessAssign.coaches = data && data.ok ? data.coaches : [];
+      const me = state.sessAssign.coaches.find(c => c.me); if(me) state.sessAssign.to = me.id;
+      render();
+    }
+  }catch(e){ if(state.sessAssign){ state.sessAssign.err = 'Assigning needs a connection.'; render(); } }
+};
+window.closeSessionAssign = function(){ state.sessAssign = null; render(); };
+window.pickSessionAssign = function(id){ if(state.sessAssign){ state.sessAssign.to = id; state.sessAssign.err = ''; render(); } };
+const ASSIGN_ERRORS = { not_allowed: "Only this facility's coaches can do that.", team_archived: 'This facility is archived, so it is read only.',
+  not_on_side: "That pitcher isn't on this side of the facility any more.", not_a_coach: "That coach isn't on this side any more." };
+window.confirmSessionAssign = async function(){
+  const a = state.sessAssign; if(!a || !a.to || a.busy) return;
+  if(!isOnline()){ a.err = 'Assigning needs a connection.'; render(); return; }
+  a.busy = true; a.err = ''; render();
+  let res; try{ res = await netTimeout(supabaseClient.rpc('assign_session', { p_team: state.currentTeamId, p_pitcher: a.pid, p_coach: a.to }), 10000); }catch(e){ res = { error: e }; }
+  const d = res && res.data;
+  a.busy = false;
+  if(res.error || !d || !d.ok){ a.err = (d && ASSIGN_ERRORS[d.error]) || "Couldn't assign. Check your connection and try again."; render(); return; }
+  const coach = (a.coaches || []).find(c => c.id === a.to) || {};
+  state.sessAssign = null; state.facSearch = ''; state.facRemote = null;
+  if(coach.me){
+    if(d.status === 'already_coach'){ await window.openPitcherPage(a.pid); return; }
+    await loadAssignments();
+    await window.chartAssigned(a.pid);
+    return;
+  }
+  state.assignMsg = d.status === 'already_coach' ? `${a.name} is already with ${coach.name || 'that coach'}.` : `${a.name} is assigned to ${coach.name || 'that coach'} for one session.`;
+  state.facNote = state.assignMsg;
+  render();
+};
+function renderSessionAssignOverlay(){
+  const a = state.sessAssign; if(!a) return '';
+  return `<div class="jc-overlay" role="dialog" aria-modal="true" aria-label="Assign ${escHtml(a.name)} for a session"><div class="jc-sheet">
+    <div class="jc-top"><h2 class="display jc-title">${escHtml(a.name)}</h2><button class="btn btn-icon btn-secondary" onclick="closeSessionAssign()" aria-label="Close">✕</button></div>
+    <p class="jc-sub">Assign for a session</p>
+    <p class="profile-note">The coach charts one session for this pitcher, then they leave that coach's roster. Nothing else about them is shared.</p>
+    ${a.coaches === null ? '<p class="profile-note">Loading coaches…</p>' : a.coaches.map(c => `<label class="jc-pick"><input type="radio" name="sa-to" ${a.to === c.id ? 'checked' : ''} onchange="pickSessionAssign('${c.id}')"> ${c.me ? 'Yourself' : escHtml(c.name)}</label>`).join('')}
+    ${a.err ? `<p class="jc-msg">${escHtml(a.err)}</p>` : ''}
+    <div class="jc-actions"><button class="btn btn-primary" ${a.to && !a.busy ? '' : 'disabled'} onclick="confirmSessionAssign()">${a.busy ? 'Assigning…' : 'Assign'}</button><button class="btn btn-tertiary" onclick="closeSessionAssign()">Cancel</button></div>
+  </div></div>`;
+}
+
 // F2 Stage 2 (Joel, Nov 20 2026): Search facility · Join Codes · (manager) Assign Pitchers, above the facility roster.
 function renderFacTools(){
   if(!isCoach() || !currentTeamIsFacility()) return '';
@@ -5403,11 +5548,12 @@ function renderFacTools(){
         ${jc ? `<button type="button" class="btn btn-secondary btn-sm" onclick="showJoinCode('menu')">Join Codes</button>` : ''}
         ${assign ? `<button type="button" class="btn ${state.assignMode ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="toggleAssignMode()">${state.assignMode ? 'Done' : 'Assign Pitchers'}</button>` : ''}
       </div>` : ''}
-    </div>${state.assignMode ? `<p class="profile-note fac-tools-note">${state.assignMsg ? escHtml(state.assignMsg) : 'Tap a pitcher to assign them to a coach.'}</p>` : ''}`;
+    </div>${state.assignMode ? `<p class="profile-note fac-tools-note">${state.assignMsg ? escHtml(state.assignMsg) : 'Tap a pitcher to assign them to a coach.'}</p>`
+      : state.facNote ? `<p class="profile-note fac-tools-note">${escHtml(state.facNote)}</p>` : ''}`;
 }
 window.facSearchInput = function(el){
   const at = el.selectionStart;
-  state.facSearch = el.value; render();
+  state.facSearch = el.value; state.facNote = ''; facRemoteSearch(); render();
   const again = document.getElementById('fac-search');
   if(again){ again.focus(); try{ again.setSelectionRange(at, at); }catch(e){} }
 };
@@ -6778,6 +6924,7 @@ window.endSession = async function(){
     gameOutsRecorded: state.activeSession.kind === 'game' ? Math.max(0, (state.activeSession.inning - 1) * 3 + state.activeSession.outs - (state.activeSession.carryOutsBefore || 0)) : null,   // a reliever who took over mid-game (Oct 19) counts only his own outs
     raOn: state.activeSession.raOn === true,   // U14
     purpose: state.activeSession.kind === 'bullpen' ? (state.activeSession.purpose || null) : null,   // SR1 A
+    assignmentId: state.activeSession.assignmentId || null,   // F2 Stage 1
     pitchCountAdjust: state.activeSession.kind === 'game' ? gamePitchCountAdj(state.activeSession) : 0,   // Oct 19: + / - pitch count, saved
     inheritedRunners: state.activeSession.kind === 'game' && Number.isInteger(state.activeSession.inheritedRunners) ? state.activeSession.inheritedRunners : null,   // Oct 21
     runnersLeft: state.activeSession.kind === 'game' ? [1, 2, 3].filter(b => state.activeSession.runners && state.activeSession.runners[b]).length : null,   // Oct 21: on base when he came out
@@ -6809,7 +6956,8 @@ window.endSession = async function(){
   await refreshOutboxState();
   state.view = 'history';
   state.historyLandingNoClear = state.currentPitcherId;   // U10 (3): the saver keeps his dots
-  if(!state.skipRecap){ const rp = currentPitcher(); if(rp) state.recap = { item, p: rp, note: '' }; }   // N1-E: the recap, one screen before History
+  if(!state.skipRecap){ const rp = currentPitcher(); if(rp) state.recap = { item, p: rp, note: '', assigned: !!item.assignmentId }; }
+  if(item.assignmentId){ const st = assignStore(); st.used = (st.used || []).concat([item.assignmentId]); assignSave(); }   // F2 Stage 1: off the roster now   // N1-E: the recap, one screen before History
   render();
 
   triggerSync();
@@ -7022,6 +7170,7 @@ async function syncOutbox(){
       game_outs_recorded: (item.gameOutsRecorded === undefined) ? null : item.gameOutsRecorded,
       ra_on: item.raOn === true,   // U14: the start question's answer (false for anything queued before U14)
       purpose: item.purpose || null,   // SR1 A: the pen's tag (null: No tag, a game, or queued before Stage A)
+      assignment_id: item.assignmentId || null,   // F2 Stage 1: the server releases it in the same save
       pitch_count_adjust: item.kind === 'game' ? (item.pitchCountAdjust || 0) : 0,   // Oct 19: + / - pitch count
       inherited_runners: item.kind === 'game' && Number.isInteger(item.inheritedRunners) ? item.inheritedRunners : null,   // Oct 21: a reliever's IR
       runners_left: item.kind === 'game' && Number.isInteger(item.runnersLeft) ? item.runnersLeft : null,   // Oct 21: left on base when he came out
@@ -8521,6 +8670,8 @@ window.startSessionNow = async function(){
   s.usesRadarGun = !!q.radar; s.radarAsked = true;
   if(s.kind === 'bullpen') s.relAccuracyToday = !!q.rel;
   s.purpose = s.kind === 'bullpen' && SESSION_TAGS.some(x => x[0] === q.purpose) ? q.purpose : null;   // SR1 A: fixed from here on
+  { const ap = isCoach() && !state.roster.some(r => r.id === state.currentPitcherId) ? assignedPitcher(state.currentPitcherId) : null;
+    s.assignmentId = ap ? ap.assignmentId : null; }   // F2 Stage 1: charted under a one-session assignment
   // U14: the answer is the session's own (stored as sessions.ra_on); a Live Game asks only with Intent on
   s.raOn = s.kind === 'game' ? !!(q.intent && q.rel) : !!q.rel;
   if(s.kind === 'bullpen' || q.intent) rememberRaAnswer(currentPitcher(), !!q.rel);
@@ -12649,6 +12800,18 @@ window.openSessionSheet = function(){ state.sessionSheetOpen = true; state.sessi
 window.closeSessionSheet = function(){ state.sessionSheetOpen = false; state.sessionDiscardArmed = false; render(); };
 window.armDiscardSession = function(){ state.sessionDiscardArmed = true; render(); };
 window.discardActiveSession = async function(){
+  if(state.activeSession && state.activeSession.assignmentId){   // F2 Stage 1: a discard ends the assignment
+    const st = assignStore(); st.cancels = (st.cancels || []).concat([state.activeSession.assignmentId]); assignSave();
+    loadAssignments();
+    await storDelete(draftKey());
+    state.currentPitcherId = (state.roster[0] || {}).id || null;
+    state.activeSession = await freshActiveSession();
+    state.pendingTarget = null; state.veloTargetIdx = null; state.hint = '';
+    state.sessionSheetOpen = false; state.sessionDiscardArmed = false;
+    await refreshDraftState();
+    setView('roster');
+    return;
+  }
   await storDelete(draftKey());
   state.activeSession = await freshActiveSession();
   state.pendingTarget = null; state.veloTargetIdx = null; state.hint = '';
@@ -13523,7 +13686,7 @@ function renderHistoryView(){
         <div class="session-card" data-sid="${s.id}">
           <div class="session-card-head has-thumb" role="button" tabindex="0" aria-expanded="${state.openSessions[s.id] ? 'true' : 'false'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
             ${renderZoneThumb(s, p)}
-            <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${lineOpen ? ' <span class="coach-logged-tag">Line open</span>' : ''}${pendingTag}</div>
+            <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Charted by a former coach' : 'Charted by a coach'}</span>` : ''}${lineOpen ? ' <span class="coach-logged-tag">Line open</span>' : ''}${pendingTag}</div>
             <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
               <div class="meta-item"><span class="meta-num mono">${gameIpText(stats.outs)}</span><span class="meta-lbl">IP</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
@@ -13660,7 +13823,7 @@ function renderHistoryView(){
       <div class="session-card" data-sid="${s.id}">
         <div class="session-card-head has-thumb" role="button" tabindex="0" aria-expanded="${state.openSessions[s.id] ? 'true' : 'false'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
           ${renderZoneThumb(s, p)}
-          <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${s.purpose ? ` <span class="team-chip">${sessionTagLabel(s.purpose)}</span>` : ''}${teamChipHtml(s)}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Logged by former coach' : 'Logged by coach'}</span>` : ''}${pendingTag}</div>
+          <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${s.purpose ? ` <span class="team-chip">${sessionTagLabel(s.purpose)}</span>` : ''}${teamChipHtml(s)}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Charted by a former coach' : 'Charted by a coach'}</span>` : ''}${pendingTag}</div>
           <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
             <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
             <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
@@ -14394,6 +14557,8 @@ function renderManage(p){
       if(x.isNew) rows.push(`<button type="button" class="more-row" onclick="facAct('clear', '${x.id}', '${p.id}')"><span class="more-row-main">Clear "New"<span class="more-row-sub">${escHtml(x.g.coachName)}'s group</span></span></button>`);
       rows.push(`<button type="button" class="more-row" onclick="openManageSheet('group', '${p.id}', '${x.id}')"><span class="more-row-main more-danger">${mine.includes(x.id) ? 'Remove from my group' : `Remove from ${escHtml(x.g.coachName)}'s group`}</span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>`);
     });
+    // F2 Stage 1: the manager, or this pitcher's own coach, can have another coach chart one session
+    if(mgr || inGroups.some(x => mine.includes(x.id))) rows.push(`<button type="button" class="more-row" onclick="openSessionAssign('${p.id}', ${escHtml(JSON.stringify(p.name || ''))})"><span class="more-row-main">Assign for a session<span class="more-row-sub">Another coach charts one session</span></span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>`);
     if(mgr){
       const others = groups.filter(g => !(p.groups || []).some(y => y.id === g.id));
       const from = inGroups.length === 1 ? inGroups[0].id : '';
@@ -14910,12 +15075,14 @@ function renderRecap(){
         <div class="rc-plot">${renderHistoryPlot({ kind: item.kind, pitches: item.pitches }, p, { small: true, legend: false, caption: '' })}</div>
         <div class="rc-types">${types}${call ? `<div class="rc-call">${escHtml(call)}</div>` : ''}</div>
       </div>
-      ${isCoach() ? `<label class="rc-note"><span class="rc-lbl">Note to the pitcher (optional)</span><input class="text-input" id="recap-note" maxlength="280" value="${escHtml(r.note || '')}" oninput="state.recap.note=this.value" placeholder="One line for ${escHtml(String(p.name || '').split(' ')[0])}"></label>` : ''}
-      <div class="rc-actions">
+      ${isCoach() && !r.assigned ? `<label class="rc-note"><span class="rc-lbl">Note to the pitcher (optional)</span><input class="text-input" id="recap-note" maxlength="280" value="${escHtml(r.note || '')}" oninput="state.recap.note=this.value" placeholder="One line for ${escHtml(String(p.name || '').split(' ')[0])}"></label>` : ''}
+      <div class="rc-actions">${r.assigned ? `
+        <p class="rc-wait">Saved to ${escHtml(String(p.name || '').split(' ')[0])}'s history. Their own coach and family see it and its report.</p>
+        <button type="button" class="btn btn-primary" onclick="recapGo('done')">Done</button>` : `
         <button type="button" class="btn btn-primary" onclick="recapGo('send')">Send report</button>
         ${synced ? '' : '<p class="rc-wait">Available once this session has synced.</p>'}
         <button type="button" class="btn btn-secondary rc-view" onclick="recapGo('view')">View report</button>
-        <button type="button" class="rc-done" onclick="recapGo('done')">Done</button>
+        <button type="button" class="rc-done" onclick="recapGo('done')">Done</button>`}
       </div>
     </div>
   </div>`;
@@ -14928,6 +15095,11 @@ window.recapGo = async function(where){
     setNoteQueue(noteQueue().concat([{ sessionId: r.item.id, authorId: me.id, authorName: me.full_name || 'Coach', body: body.slice(0, 280), queuedAt: Date.now() }]));
   }
   state.recap = null;
+  if(r.assigned){   // F2 Stage 1: the pitcher has left this coach's roster
+    state.currentPitcherId = (state.roster[0] || {}).id || null;
+    setView('roster');
+    return;
+  }
   state.view = 'history';
   render();
   if(body) flushNoteQueue();
@@ -17197,7 +17369,7 @@ function render(){
   const phoneTop = isPhoneWidth() && !phoneSession && !onChartingScreen();
   applyFacilityTheme();   // N1-G
   if(app.classList){ app.classList.toggle('has-nav', wideNav); app.classList.toggle('nav-open', wideNav && !!state.navOpen); }
-  app.innerHTML = (wideNav ? renderSideNav(teamSelector) : '') + `<div class="main${phoneSession ? ' ph-main' : ''}">${phoneTop ? phoneHead : ''}${main}${policyFoot}</div>` + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + renderAssignOverlay() + renderSignOutSheet() + renderPickSheet() + renderManageSheet() + renderRecap() + renderCardPngSheet() + (dockOn && !state.recap ? renderCoachDock() : '');
+  app.innerHTML = (wideNav ? renderSideNav(teamSelector) : '') + `<div class="main${phoneSession ? ' ph-main' : ''}">${phoneTop ? phoneHead : ''}${main}${policyFoot}</div>` + setupModalHtml + renderSessionSheet() + renderArsenalSheet() + renderSwitchSheet() + renderJoinCodeOverlay() + renderAssignOverlay() + renderSessionAssignOverlay() + renderSignOutSheet() + renderPickSheet() + renderManageSheet() + renderRecap() + renderCardPngSheet() + (dockOn && !state.recap ? renderCoachDock() : '');
   if(app.classList) app.classList.toggle('has-dock', dockOn);
   if(dockOn) attachCoachDock();
   animateRecap();   // N1-E: no-op unless the recap just opened

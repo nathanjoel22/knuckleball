@@ -44,7 +44,7 @@ import type { Pitch, HistoryEntry } from './compute.ts'
 // (drafting decision 1) -- GameSummary just names its return shape.
 import { buildGameReportHtml, type GameReportPayload, type GameSummary } from './template_game.ts'
 import type { GamePitch } from './compute_game.ts'
-import { loadComparison, readEmailComment } from './sr1.ts'
+import { loadComparison, readEmailComment, TZ } from './sr1.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -496,7 +496,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Server email config missing' }), { status: 500, headers: corsHeaders })
     }
 
-    const dateStr = body.date ? new Date(body.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+    const dateStr = body.date ? new Date(body.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: TZ }) : ''
     const isGame = session.kind === 'game'
     // SR1 F: the frozen report carries each version's email; a report made before Stage F has none and keeps the
     // plain email. Read from the public file (no service role).

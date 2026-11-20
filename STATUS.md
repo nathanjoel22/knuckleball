@@ -60,6 +60,23 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-19 · Report dates in Eastern time (no packet; Joel's request) · **staging** (PR #141), branch `fix-report-dates-eastern`, no cache bump (no `.html` changed)
+
+- **The bug (found in Stage G):** the report header date, "generated" and the plain email's subject were formatted on
+  the server with no time zone, so in UTC. A session charted after about 7–8 pm Eastern read as the next day. This
+  predates SR1.
+- **Fix:** they use `TZ` (`America/New_York`), as the rest of the report already did (window captions, rest dates, the
+  Stage F email subjects). Changed: `penDate` / `gameDate`, both "generated" lines, and the plain email's date in
+  `index.ts`.
+- **Proof (staging, function deployed):** a pen started 2026-11-20 00:58 UTC (7:58 pm Eastern, Nov 19) stored a report
+  reading "Nov 19, 2026" in the header and print titles, "generated November 19, 2026", and the email subject "· Nov 19".
+  The earlier staging pen (00:27 UTC) rebuilt with the fix reads Nov 19 where its stored report says Nov 20.
+- **Reports already sent keep their date** (nothing is re-rendered).
+- **Production function (Joel, Nov 19):** `send-session-report` deployed to production (version 53, the same bundle as
+  staging's version 88). The merge is still pending.
+
+---
+
 ## 2026-11-19 · SR1 Stage G (print) · **production** (PR #139, merge `a279436`), branch `sr1g-print`, no cache bump (no `.html` changed)
 
 - **Live Nov 19 (Joel):** `send-session-report` deployed to production (version 52, the same bundle as staging's

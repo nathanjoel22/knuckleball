@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-19 · Report dates in Eastern time (no packet; Joel's request) · **staging** (PR pending), branch `fix-report-dates-eastern`, no cache bump (no `.html` changed)
+## 2026-11-19 · Report dates in Eastern time (no packet; Joel's request) · **staging** (PR #141), branch `fix-report-dates-eastern`, no cache bump (no `.html` changed)
 
 - **The bug (found in Stage G):** the report header date, "generated" and the plain email's subject were formatted on
   the server with no time zone, so in UTC. A session charted after about 7–8 pm Eastern read as the next day. This

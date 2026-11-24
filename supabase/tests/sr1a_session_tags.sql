@@ -1,6 +1,6 @@
 -- SR1 Stage A acceptance (staging; everything rolled back -- the block ends by raising its results).
 -- Fixture: one pitcher login P (example.invalid) saves pens and a game through sync_session, as the app's outbox does.
--- Checks are numbered after the packet's acceptance check 5 (each tag stores; No tag = null; a game has none) and the
+-- Checks are numbered after the packet's acceptance check 5 (each tag stores; Feel Good, once "No tag", = null; a game has none) and the
 -- lock and stats copy from plans/sr1a-preconditions.md section 5.
 do $$
 declare
@@ -18,7 +18,7 @@ begin
   insert into public.profiles (id, role, full_name, sport) select P, 'pitcher', 'Pat Pens', 'baseball'
    where not exists (select 1 from public.profiles where id = P);   -- landmine 3
 
-  -- ---------- 5. each tag stores as sent; No tag, an unknown value and a game store null ----------
+  -- ---------- 5. each tag stores as sent; Feel Good (null), an unknown value and a game store null ----------
   perform set_config('request.jwt.claims', json_build_object('sub', P, 'role', 'authenticated')::text, true); set local role authenticated;
   for i in 1 .. 6 loop
     r := public.sync_session(

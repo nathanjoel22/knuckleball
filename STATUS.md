@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-25 · C1 edits 2 (Joel's notes) · **staging** (PR #160), branch `c1-edits-2`, cache `kb-shell-v378`
+## 2026-11-25 · C1 edits 2 (Joel's notes) · **production** (PR #160, merge `7114dc3`), branch `c1-edits-2`, cache `kb-shell-v378`
 
 - **New batter:** the caller picks the side again on the dark flashing side columns (the Outcome & Response device
   clears it).
@@ -72,7 +72,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **No pitch is removed;** Back reads "‹ Undo Selection".
 - **The Outcome device:** pitch type and Windup / Set lock while a call is in, and open again for the next pitch.
 - **Checked:** two devices on staging (`plans/c1b-evidence.md`'s harness). No database change.
-- **Production (Joel):** merge only.
+- **On production (Nov 25, Joel):** merged (no database change).
 
 ---
 

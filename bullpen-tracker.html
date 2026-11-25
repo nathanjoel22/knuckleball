@@ -4639,7 +4639,8 @@ function gameHitScore(s, pending, persp, side){
 }
 // U14: "a pitch type with no cells marked for that side is exact-only for that pitch, and the screen says so once" --
 // once per session for each pitch type and side, on the hint line.
-// SR1 Stage A: a bullpen's purpose, asked at the start ("What's this pen for?"); null = No tag. Stored as
+// SR1 Stage A: a bullpen's purpose, asked at the start ("What's this pen for?"); null = Feel Good (no tag; Joel, Nov 24 2026: the
+// choice once labelled "No tag"). Stored as
 // sessions.purpose (sync_session, locked at the save); its comparisons use only pens with the same tag. Games have none.
 const SESSION_TAGS = [['command', 'Command'], ['velocity', 'Velocity'], ['short_pen', 'Short pen']];
 function sessionTagLabel(purpose){
@@ -7437,7 +7438,7 @@ async function syncOutbox(){
       game_final_inning: (item.gameFinalInning === undefined) ? null : item.gameFinalInning,
       game_outs_recorded: (item.gameOutsRecorded === undefined) ? null : item.gameOutsRecorded,
       ra_on: item.raOn === true,   // U14: the start question's answer (false for anything queued before U14)
-      purpose: item.purpose || null,   // SR1 A: the pen's tag (null: No tag, a game, or queued before Stage A)
+      purpose: item.purpose || null,   // SR1 A: the pen's tag (null: Feel Good / no tag, a game, or queued before Stage A)
       assignment_id: item.assignmentId || null,   // F2 Stage 1: the server releases it in the same save
       camp_id: item.campId || null,               // F2 Stage 4: the camp (and its name) rides on the session
       pitch_count_adjust: item.kind === 'game' ? (item.pitchCountAdjust || 0) : 0,   // Oct 19: + / - pitch count
@@ -8828,7 +8829,7 @@ window.chooseSessionKind = async function(kind){
   // Defaults come from the profile; the answers belong to this session only.
   const pq = currentPitcher();
   state.activeSession.typeOrder = pitchTypesFor(pq).slice();   // U15: this session's colour order (colorTypesFor)
-  state.activeSession.startQ = { radar: !!(pq && pq.usesRadarGun), rel: raLastAnswer(pq), intent: false, intentHelp: false, file: fileDefault(), purpose: null };   // SR1 A: No tag to start, every time
+  state.activeSession.startQ = { radar: !!(pq && pq.usesRadarGun), rel: raLastAnswer(pq), intent: false, intentHelp: false, file: fileDefault(), purpose: null };   // SR1 A: Feel Good (no tag) to start, every time
   const handoff = kind === 'game' ? gameHandoff() : null;
   if(handoff){ state.activeSession.startQ.carry = true; if(handoff.opponent && !state.activeSession.opponent) state.activeSession.opponent = handoff.opponent; }
   if(kind === 'game') loadOpponents();   // the saved list, refreshed in the background when online
@@ -9011,10 +9012,10 @@ function raStartQuestion(q, who){
   return `<div class="start-q-item"><div class="start-q-label">Turn on Relative Accuracy?</div>${yn}
       <p class="start-q-note">${q.rel ? `A pitch that lands on the target, or on one of the cells marked in ${who} profile for that pitch, counts as accurate.` : 'A pitch counts as accurate only when it lands on the target.'}</p></div>`;
 }
-// SR1 Stage A: "What's this pen for?" (bullpens only); No tag selected to start
+// SR1 Stage A: "What's this pen for?" (bullpens only); Feel Good (no tag, null) selected to start
 function tagStartQuestion(q, who){
   const tray = segTray(SESSION_TAGS.map(([k, l]) => ({ label: l, selected: q.purpose === k, onclick: `setStartQ('purpose', '${k}')` }))
-    .concat([{ label: 'No tag', selected: !q.purpose, onclick: "setStartQ('purpose', null)" }]), { key: 'sq-tag', label: 'Pen purpose', cls: 'start-yn tray-grid' });
+    .concat([{ label: 'Feel Good', selected: !q.purpose, onclick: "setStartQ('purpose', null)" }]), { key: 'sq-tag', label: 'Pen purpose', cls: 'start-yn tray-grid' });
   const yours = who === 'your' ? 'your' : who;
   const note = !q.purpose ? `Compared with all ${yours} pens.`
     : (q.purpose === 'short_pen' ? 'A light pen between starts. ' : '') + `Compared only with ${yours} other ${sessionTagLabel(q.purpose).toLowerCase().replace(/ pen$/, '')} pens.`;

@@ -60,6 +60,23 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-24 · "No tag" renamed "Feel Good" (no packet; Joel) · **staging** (PR #149), branch `feel-good-tag`, cache `kb-shell-v373`
+
+- **Label only:** the fourth choice under "What's this pen for?" on a bullpen's start screen reads **Feel Good**.
+  - It's still the default every time, and still saves the pen with no purpose (null).
+  - Still no pill while charting and no chip in History.
+  - No change to the database, `sync_session`, History or the report.
+- **Also renamed** in the tracker's comments, CLAUDE.md (Session tags) and `supabase/tests/sr1a_session_tags.sql`'s comments. No help page named it.
+- **Staging check (local staging site, a staging test pitcher, phone width):**
+  - the choices read Command · Velocity · Short pen · Feel Good, with Feel Good selected and "Compared with all your
+    pens.";
+  - "No tag" appears nowhere;
+  - Start bullpen gives `purpose: null` and no tag pill.
+  - `sr1a_session_tags.sql` on staging: hard fails 0 (none → null, policies 32 → 32).
+- **Deviations / open:** none.
+
+---
+
 ## 2026-11-20 · F2 shipped (Stages H, 2, 1, 4, 3) · **production** · cache `kb-shell-v372`
 
 - **Merged in order** by Joel: #143 (H), #144 (2), #145 (1), #146 (4), #147 (3).

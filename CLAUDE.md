@@ -61,7 +61,8 @@ storage.
 ## Session tags (SR1 Stage A, Joel, Nov 19 2026; `plans/sr1-session-reports.md`, decisions in `plans/sr1a-preconditions.md`)
 
 - **Asked on a bullpen's start screen**, after "Turn on Relative Accuracy?": "What's this pen for?" Command · Velocity ·
-  Short pen · No tag (`SESSION_TAGS`; two rows of two). The default is No tag every time; nothing is remembered.
+  Short pen · Feel Good (`SESSION_TAGS`; two rows of two). Feel Good is the untagged choice (null; it read "No tag"
+  until Joel renamed it, Nov 24 2026, label only). It's the default every time; nothing is remembered.
   Games are never asked.
 - **Fixed at Start bullpen** (`s.purpose`): a pill beside RA on / off while charting. Stored as `sessions.purpose`
   (`command` / `velocity` / `short_pen`, null = no tag) through `sync_session`, which saves anything else as null.

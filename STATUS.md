@@ -60,6 +60,27 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-25 · C1 Stage C (putting shared sessions together) · **staging** (PR #155), branch `c1-stage-c`, cache `kb-shell-v376`
+
+- **One combined session:** when every piece of a shared session is saved, the server builds one combined session,
+  pitch by pitch. The call comes from the Intent piece; everything else from the Outcome piece.
+  - History shows it once, "Charted on two devices", with one report.
+  - The pieces stay unchanged but hidden; they have no stats, leaderboard row or baseline.
+- **The save screen** in a shared session shows what that charter recorded (part, pitches, matched, left empty). No
+  Send or View.
+- **Three hours:** pg_cron `c1-compile-stale` (every 15 min) closes and compiles a session left open three hours,
+  filling an unsaved part from what reached the server.
+- **Also (Joel, mid-build):** the parts question is two Yes / No rows like the other start questions.
+- **Staging database:** `20261201000000_c1c_compile`. It also compiled the 8 Stage B test sessions, with no errors.
+  Policies 32 / 12.
+- **Evidence:** `plans/c1c-evidence.md` (Done when 15–19 PASS; 16 by the database test). Older stale tests are listed
+  there; none is caused by C1.
+- **Deviation:** before compiling, a piece shows in History, marked "Shared · waiting for the other device", with no
+  report.
+- **Production order (Joel):** backup → `db push` → merge.
+
+---
+
 ## 2026-11-25 · C1 Stage B (shared charting between two devices) · **production** (PR #153, merge `4ff4eef`), branch `c1-stage-b`, cache `kb-shell-v375`
 
 - **When a session is live:** it was started with one part and a signal. Anyone who can chart that pitcher sees it:

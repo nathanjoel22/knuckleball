@@ -60,6 +60,28 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-25 · RP1 "The Play" (field places by name in game reports) · **staging** (function only; PR pending), branch `rp1-the-play`
+
+- **Packet:** `plans/rp1-the-play.md` (verbatim). Joel's answers: yes to 1, 3, 4, 5, 6. Decision 2 was replaced: the
+  charter's own Infield / Outfield / Foul answer decides; the fielder never does, except on box 24 (the packet's rule).
+- **Built (`send-session-report`, no database change):**
+  - "By field box" is now **The Play**: one row per play sentence (how it was hit + what + where), most frequent first.
+    The names and rules are `playPlace` / `playSentence` in `diamond.ts`.
+  - The at-bat log names the place in place of "box N"; the spray caption says "on the field".
+  - Boxes 5–9 say "over the fence" only for a home run, otherwise "deep …" (decision 5). No contact stored: the sentence
+    starts with the result (decision 6).
+  - A box with foul ground (3, 11, 15, 17, 23) and no IF / OF saved is a foul out ("in foul ground down the third-base
+    line" etc.: wording added for those five boxes).
+  - Every sentence for every box, and what production's 920 balls in play would read: `plans/rp1-sentences.md`.
+- **Checked:** `scripts/rp1-check.ts` (233 of 233: every sentence, both sports, every level; nothing outside The Play,
+  the at-bat endings and the caption changed; the same versions carry it). `scripts/c1a-report-check.ts`: pens
+  identical; its 27 game cases differ only in those three places. Three sent staging game reports hash the same after
+  the deploy.
+- **Production (Joel):** merge, then `supabase functions deploy send-session-report`. No app cache bump (no app file
+  changed).
+
+---
+
 ## 2026-11-25 · C1: the Outcome device's pitch buttons don't blink (Joel) · **production** (PR #162), branch `c1-no-type-blink`, cache `kb-shell-v379`
 
 - In a shared session the pitch type is the caller's, so only the Intent side's pitch buttons blink for "Select Pitch

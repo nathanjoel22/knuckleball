@@ -14,6 +14,7 @@
 // never shows, so there is nothing for it to disagree with.
 // ============================================================================
 import { isStrikeCell, zoneNumber, pct, safeNum, hasLocation } from './helpers.ts'
+import { playPlace } from './diamond.ts'
 
 export interface GamePitch {
   type: string
@@ -392,12 +393,12 @@ function atBatEndingLabel(lastPitch: GamePitch, isDroppedThirdReached: boolean):
     case 'foul': return lastPitch.bbType === 'bunt' && lastPitch.strikesBefore >= 2 ? 'K' : ''   // Oct 20: foul bunt, strike three
     case 'ball': return lastPitch.ballsBefore >= 3 ? 'BB' : ''
     case 'in_play': {
-      // G5: "Hit · LD · box 22" -- what was charted; no hit type or fielder is invented.
+      // G5: "Hit · LD · in shallow Right field" (RP1: the box by name) -- what was charted; no hit type or fielder is invented.
       if (typeof lastPitch.sprayBox === 'number') {
         // Oct 20: hits carry 1B / 2B / 3B / HR, and FC is its own outcome. Release 2: fielders as the scorebook writes
         // them (6-3, F8, E6, to LF) and SF / SAC.
         const what = lastPitch.inPlayOutcome === 'hit' ? (lastPitch.hitType ?? 'Hit') : lastPitch.inPlayOutcome === 'error' ? 'Error' : lastPitch.inPlayOutcome === 'fc' ? 'FC' : 'Out'
-        return [what, playNotation(lastPitch), lastPitch.sacrifice ?? '', lastPitch.bbType ? (G5_BB_LABEL[lastPitch.bbType] ?? '') : '', `box ${lastPitch.sprayBox}`].filter(Boolean).join(' · ')
+        return [what, playNotation(lastPitch), lastPitch.sacrifice ?? '', lastPitch.bbType ? (G5_BB_LABEL[lastPitch.bbType] ?? '') : '', playPlace(lastPitch)].filter(Boolean).join(' · ')   // RP1: the place by name
       }
       if (lastPitch.inPlayOutcome === 'hit') return `${lastPitch.hitType ?? 'Hit'}${fielder ? ' to ' + fielder : ''}`
       if (lastPitch.inPlayOutcome === 'error') return `Error${fielder ? ' (' + fielder + ')' : ''}`

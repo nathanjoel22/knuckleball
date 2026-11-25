@@ -1,24 +1,27 @@
-# RP1 — every sentence the rules produce (draft for Joel, Nov 25 2026)
+# RP1 — every sentence the rules produce (Nov 25 2026)
 
-Built from `plans/rp1-the-play.md` plus the proposals in the report (5: boxes 5–9 say "deep …" unless it's a home run; 6: no contact stored → the sentence starts with what it was).
+Made by the report function itself (`playSentence` in `send-session-report/diamond.ts`), with Joel's answers: yes to 1, 3, 4, 5, 6; decision 2 replaced — **the charter's own Infield / Outfield / Foul answer decides** (the game flow asks it before who fielded it). A box with foul ground and no IF / OF saved is a foul out (that's how the app saves one).
 
-Each table is one way the ball was hit. Each row is one place, written with **out**; the other results replace that word the same way: *error*, *fielder's choice*, *single*, *double*, *triple*, *home run*, *hit* (a hit with no 1B/2B/3B/HR stored). Boxes 5–9 show both wordings (home run / anything else).
+Each table is one way the ball was hit; each row one place, written with **out**. The other results swap that word the same way: *error*, *fielder's choice*, *single*, *double*, *triple*, *home run*, *hit* (a hit with no 1B / 2B / 3B / HR stored).
 
 ## Groundball
 
 | Box | Sentence |
 |---|---|
-| 1 | Groundball out in foul ground behind home, third-base side |
-| 2 | Groundball out in foul ground on the third-base side |
-| 3 | Groundball out down the Left-field line |
+| 1 (foul ground) | Groundball out in foul ground behind home, third-base side |
+| 2 (foul ground) | Groundball out in foul ground on the third-base side |
+| 12 (foul ground) | Groundball out in foul ground on the first-base side |
+| 13 (foul ground) | Groundball out in foul ground behind home, first-base side |
+| 14 (foul ground) | Groundball out in foul ground right of home |
+| 16 (foul ground) | Groundball out in foul ground left of home |
+| 3 fair | Groundball out down the Left-field line |
+| 3 foul | Groundball out in foul ground down the Left-field line |
+| 11 fair | Groundball out down the Right-field line |
+| 11 foul | Groundball out in foul ground down the Right-field line |
+| 15 fair | Groundball out at Home plate |
+| 15 foul | Groundball out in foul ground behind home |
 | 4 | Groundball out in the Left-field corner |
 | 10 | Groundball out in the Right-field corner |
-| 11 | Groundball out down the Right-field line |
-| 12 | Groundball out in foul ground on the first-base side |
-| 13 | Groundball out in foul ground behind home, first-base side |
-| 14 | Groundball out in foul ground right of home |
-| 15 | Groundball out at Home plate |
-| 16 | Groundball out in foul ground left of home |
 | 19 | Groundball out in Left field |
 | 20 | Groundball out in Center field |
 | 21 | Groundball out in Right field |
@@ -34,12 +37,14 @@ Each table is one way the ball was hit. Each row is one place, written with **ou
 | 9 (home run) | Groundball home run over the fence down the Right-field line |
 | 17 infield | Groundball out at Third base (3B) |
 | 17 outfield | Groundball out down the shallow Left-field line |
+| 17 foul | Groundball out in foul ground down the third-base line |
+| 23 infield | Groundball out at First base (1B) |
+| 23 outfield | Groundball out down the shallow Right-field line |
+| 23 foul | Groundball out in foul ground down the first-base line |
 | 18 infield | Groundball out at Shortstop (SS) |
 | 18 outfield | Groundball out in shallow Left field |
 | 22 infield | Groundball out at Second base (2B) |
 | 22 outfield | Groundball out in shallow Right field |
-| 23 infield | Groundball out at First base (1B) |
-| 23 outfield | Groundball out down the shallow Right-field line |
 | 25 infield | Groundball out up the middle |
 | 25 outfield | Groundball out in shallow Center field |
 | 24, fielded by P / C / nobody recorded | Groundball out at the Pitcher's mound |
@@ -52,17 +57,20 @@ Each table is one way the ball was hit. Each row is one place, written with **ou
 
 | Box | Sentence |
 |---|---|
-| 1 | Line drive out in foul ground behind home, third-base side |
-| 2 | Line drive out in foul ground on the third-base side |
-| 3 | Line drive out down the Left-field line |
+| 1 (foul ground) | Line drive out in foul ground behind home, third-base side |
+| 2 (foul ground) | Line drive out in foul ground on the third-base side |
+| 12 (foul ground) | Line drive out in foul ground on the first-base side |
+| 13 (foul ground) | Line drive out in foul ground behind home, first-base side |
+| 14 (foul ground) | Line drive out in foul ground right of home |
+| 16 (foul ground) | Line drive out in foul ground left of home |
+| 3 fair | Line drive out down the Left-field line |
+| 3 foul | Line drive out in foul ground down the Left-field line |
+| 11 fair | Line drive out down the Right-field line |
+| 11 foul | Line drive out in foul ground down the Right-field line |
+| 15 fair | Line drive out at Home plate |
+| 15 foul | Line drive out in foul ground behind home |
 | 4 | Line drive out in the Left-field corner |
 | 10 | Line drive out in the Right-field corner |
-| 11 | Line drive out down the Right-field line |
-| 12 | Line drive out in foul ground on the first-base side |
-| 13 | Line drive out in foul ground behind home, first-base side |
-| 14 | Line drive out in foul ground right of home |
-| 15 | Line drive out at Home plate |
-| 16 | Line drive out in foul ground left of home |
 | 19 | Line drive out in Left field |
 | 20 | Line drive out in Center field |
 | 21 | Line drive out in Right field |
@@ -78,12 +86,14 @@ Each table is one way the ball was hit. Each row is one place, written with **ou
 | 9 (home run) | Line drive home run over the fence down the Right-field line |
 | 17 infield | Line drive out at Third base (3B) |
 | 17 outfield | Line drive out down the shallow Left-field line |
+| 17 foul | Line drive out in foul ground down the third-base line |
+| 23 infield | Line drive out at First base (1B) |
+| 23 outfield | Line drive out down the shallow Right-field line |
+| 23 foul | Line drive out in foul ground down the first-base line |
 | 18 infield | Line drive out at Shortstop (SS) |
 | 18 outfield | Line drive out in shallow Left field |
 | 22 infield | Line drive out at Second base (2B) |
 | 22 outfield | Line drive out in shallow Right field |
-| 23 infield | Line drive out at First base (1B) |
-| 23 outfield | Line drive out down the shallow Right-field line |
 | 25 infield | Line drive out up the middle |
 | 25 outfield | Line drive out in shallow Center field |
 | 24, fielded by P / C / nobody recorded | Line drive out at the Pitcher's mound |
@@ -96,17 +106,20 @@ Each table is one way the ball was hit. Each row is one place, written with **ou
 
 | Box | Sentence |
 |---|---|
-| 1 | Flyball out in foul ground behind home, third-base side |
-| 2 | Flyball out in foul ground on the third-base side |
-| 3 | Flyball out down the Left-field line |
+| 1 (foul ground) | Flyball out in foul ground behind home, third-base side |
+| 2 (foul ground) | Flyball out in foul ground on the third-base side |
+| 12 (foul ground) | Flyball out in foul ground on the first-base side |
+| 13 (foul ground) | Flyball out in foul ground behind home, first-base side |
+| 14 (foul ground) | Flyball out in foul ground right of home |
+| 16 (foul ground) | Flyball out in foul ground left of home |
+| 3 fair | Flyball out down the Left-field line |
+| 3 foul | Flyball out in foul ground down the Left-field line |
+| 11 fair | Flyball out down the Right-field line |
+| 11 foul | Flyball out in foul ground down the Right-field line |
+| 15 fair | Flyball out at Home plate |
+| 15 foul | Flyball out in foul ground behind home |
 | 4 | Flyball out in the Left-field corner |
 | 10 | Flyball out in the Right-field corner |
-| 11 | Flyball out down the Right-field line |
-| 12 | Flyball out in foul ground on the first-base side |
-| 13 | Flyball out in foul ground behind home, first-base side |
-| 14 | Flyball out in foul ground right of home |
-| 15 | Flyball out at Home plate |
-| 16 | Flyball out in foul ground left of home |
 | 19 | Flyball out in Left field |
 | 20 | Flyball out in Center field |
 | 21 | Flyball out in Right field |
@@ -122,12 +135,14 @@ Each table is one way the ball was hit. Each row is one place, written with **ou
 | 9 (home run) | Flyball home run over the fence down the Right-field line |
 | 17 infield | Flyball out at Third base (3B) |
 | 17 outfield | Flyball out down the shallow Left-field line |
+| 17 foul | Flyball out in foul ground down the third-base line |
+| 23 infield | Flyball out at First base (1B) |
+| 23 outfield | Flyball out down the shallow Right-field line |
+| 23 foul | Flyball out in foul ground down the first-base line |
 | 18 infield | Flyball out at Shortstop (SS) |
 | 18 outfield | Flyball out in shallow Left field |
 | 22 infield | Flyball out at Second base (2B) |
 | 22 outfield | Flyball out in shallow Right field |
-| 23 infield | Flyball out at First base (1B) |
-| 23 outfield | Flyball out down the shallow Right-field line |
 | 25 infield | Flyball out up the middle |
 | 25 outfield | Flyball out in shallow Center field |
 | 24, fielded by P / C / nobody recorded | Flyball out at the Pitcher's mound |
@@ -136,65 +151,24 @@ Each table is one way the ball was hit. Each row is one place, written with **ou
 | 24, fielded by 2B | Shallow 2B flyball out |
 | 24, fielded by 1B | Shallow 1B flyball out |
 
-## Pop up
-
-| Box | Sentence |
-|---|---|
-| 1 | Pop up out in foul ground behind home, third-base side |
-| 2 | Pop up out in foul ground on the third-base side |
-| 3 | Pop up out down the Left-field line |
-| 4 | Pop up out in the Left-field corner |
-| 10 | Pop up out in the Right-field corner |
-| 11 | Pop up out down the Right-field line |
-| 12 | Pop up out in foul ground on the first-base side |
-| 13 | Pop up out in foul ground behind home, first-base side |
-| 14 | Pop up out in foul ground right of home |
-| 15 | Pop up out at Home plate |
-| 16 | Pop up out in foul ground left of home |
-| 19 | Pop up out in Left field |
-| 20 | Pop up out in Center field |
-| 21 | Pop up out in Right field |
-| 5 (not a home run) | Pop up out deep down the Left-field line |
-| 5 (home run) | Pop up home run over the fence down the Left-field line |
-| 6 (not a home run) | Pop up out deep in Left field |
-| 6 (home run) | Pop up home run over the fence in Left field |
-| 7 (not a home run) | Pop up out deep in Center field |
-| 7 (home run) | Pop up home run over the fence in Center field |
-| 8 (not a home run) | Pop up out deep in Right field |
-| 8 (home run) | Pop up home run over the fence in Right field |
-| 9 (not a home run) | Pop up out deep down the Right-field line |
-| 9 (home run) | Pop up home run over the fence down the Right-field line |
-| 17 infield | Pop up out at Third base (3B) |
-| 17 outfield | Pop up out down the shallow Left-field line |
-| 18 infield | Pop up out at Shortstop (SS) |
-| 18 outfield | Pop up out in shallow Left field |
-| 22 infield | Pop up out at Second base (2B) |
-| 22 outfield | Pop up out in shallow Right field |
-| 23 infield | Pop up out at First base (1B) |
-| 23 outfield | Pop up out down the shallow Right-field line |
-| 25 infield | Pop up out up the middle |
-| 25 outfield | Pop up out in shallow Center field |
-| 24, fielded by P / C / nobody recorded | Pop up out at the Pitcher's mound |
-| 24, fielded by 3B | Shallow 3B pop up out |
-| 24, fielded by SS | Shallow SS pop up out |
-| 24, fielded by 2B | Shallow 2B pop up out |
-| 24, fielded by 1B | Shallow 1B pop up out |
-
 ## Bunt
 
 | Box | Sentence |
 |---|---|
-| 1 | Bunt out in foul ground behind home, third-base side |
-| 2 | Bunt out in foul ground on the third-base side |
-| 3 | Bunt out down the Left-field line |
+| 1 (foul ground) | Bunt out in foul ground behind home, third-base side |
+| 2 (foul ground) | Bunt out in foul ground on the third-base side |
+| 12 (foul ground) | Bunt out in foul ground on the first-base side |
+| 13 (foul ground) | Bunt out in foul ground behind home, first-base side |
+| 14 (foul ground) | Bunt out in foul ground right of home |
+| 16 (foul ground) | Bunt out in foul ground left of home |
+| 3 fair | Bunt out down the Left-field line |
+| 3 foul | Bunt out in foul ground down the Left-field line |
+| 11 fair | Bunt out down the Right-field line |
+| 11 foul | Bunt out in foul ground down the Right-field line |
+| 15 fair | Bunt out at Home plate |
+| 15 foul | Bunt out in foul ground behind home |
 | 4 | Bunt out in the Left-field corner |
 | 10 | Bunt out in the Right-field corner |
-| 11 | Bunt out down the Right-field line |
-| 12 | Bunt out in foul ground on the first-base side |
-| 13 | Bunt out in foul ground behind home, first-base side |
-| 14 | Bunt out in foul ground right of home |
-| 15 | Bunt out at Home plate |
-| 16 | Bunt out in foul ground left of home |
 | 19 | Bunt out in Left field |
 | 20 | Bunt out in Center field |
 | 21 | Bunt out in Right field |
@@ -210,12 +184,14 @@ Each table is one way the ball was hit. Each row is one place, written with **ou
 | 9 (home run) | Bunt home run over the fence down the Right-field line |
 | 17 infield | Bunt out at Third base (3B) |
 | 17 outfield | Bunt out down the shallow Left-field line |
+| 17 foul | Bunt out in foul ground down the third-base line |
+| 23 infield | Bunt out at First base (1B) |
+| 23 outfield | Bunt out down the shallow Right-field line |
+| 23 foul | Bunt out in foul ground down the first-base line |
 | 18 infield | Bunt out at Shortstop (SS) |
 | 18 outfield | Bunt out in shallow Left field |
 | 22 infield | Bunt out at Second base (2B) |
 | 22 outfield | Bunt out in shallow Right field |
-| 23 infield | Bunt out at First base (1B) |
-| 23 outfield | Bunt out down the shallow Right-field line |
 | 25 infield | Bunt out up the middle |
 | 25 outfield | Bunt out in shallow Center field |
 | 24, fielded by P / C / nobody recorded | Bunt out at the Pitcher's mound |
@@ -228,17 +204,20 @@ Each table is one way the ball was hit. Each row is one place, written with **ou
 
 | Box | Sentence |
 |---|---|
-| 1 | Out in foul ground behind home, third-base side |
-| 2 | Out in foul ground on the third-base side |
-| 3 | Out down the Left-field line |
+| 1 (foul ground) | Out in foul ground behind home, third-base side |
+| 2 (foul ground) | Out in foul ground on the third-base side |
+| 12 (foul ground) | Out in foul ground on the first-base side |
+| 13 (foul ground) | Out in foul ground behind home, first-base side |
+| 14 (foul ground) | Out in foul ground right of home |
+| 16 (foul ground) | Out in foul ground left of home |
+| 3 fair | Out down the Left-field line |
+| 3 foul | Out in foul ground down the Left-field line |
+| 11 fair | Out down the Right-field line |
+| 11 foul | Out in foul ground down the Right-field line |
+| 15 fair | Out at Home plate |
+| 15 foul | Out in foul ground behind home |
 | 4 | Out in the Left-field corner |
 | 10 | Out in the Right-field corner |
-| 11 | Out down the Right-field line |
-| 12 | Out in foul ground on the first-base side |
-| 13 | Out in foul ground behind home, first-base side |
-| 14 | Out in foul ground right of home |
-| 15 | Out at Home plate |
-| 16 | Out in foul ground left of home |
 | 19 | Out in Left field |
 | 20 | Out in Center field |
 | 21 | Out in Right field |
@@ -254,12 +233,14 @@ Each table is one way the ball was hit. Each row is one place, written with **ou
 | 9 (home run) | Home run over the fence down the Right-field line |
 | 17 infield | Out at Third base (3B) |
 | 17 outfield | Out down the shallow Left-field line |
+| 17 foul | Out in foul ground down the third-base line |
+| 23 infield | Out at First base (1B) |
+| 23 outfield | Out down the shallow Right-field line |
+| 23 foul | Out in foul ground down the first-base line |
 | 18 infield | Out at Shortstop (SS) |
 | 18 outfield | Out in shallow Left field |
 | 22 infield | Out at Second base (2B) |
 | 22 outfield | Out in shallow Right field |
-| 23 infield | Out at First base (1B) |
-| 23 outfield | Out down the shallow Right-field line |
 | 25 infield | Out up the middle |
 | 25 outfield | Out in shallow Center field |
 | 24, fielded by P / C / nobody recorded | Out at the Pitcher's mound |
@@ -268,7 +249,56 @@ Each table is one way the ball was hit. Each row is one place, written with **ou
 | 24, fielded by 2B | Shallow 2B out |
 | 24, fielded by 1B | Shallow 1B out |
 
-## Games charted before the field chart (no box; placed by the fielder)
+## Pop up (games charted before Nov 18 only)
+
+| Box | Sentence |
+|---|---|
+| 1 (foul ground) | Pop up out in foul ground behind home, third-base side |
+| 2 (foul ground) | Pop up out in foul ground on the third-base side |
+| 12 (foul ground) | Pop up out in foul ground on the first-base side |
+| 13 (foul ground) | Pop up out in foul ground behind home, first-base side |
+| 14 (foul ground) | Pop up out in foul ground right of home |
+| 16 (foul ground) | Pop up out in foul ground left of home |
+| 3 fair | Pop up out down the Left-field line |
+| 3 foul | Pop up out in foul ground down the Left-field line |
+| 11 fair | Pop up out down the Right-field line |
+| 11 foul | Pop up out in foul ground down the Right-field line |
+| 15 fair | Pop up out at Home plate |
+| 15 foul | Pop up out in foul ground behind home |
+| 4 | Pop up out in the Left-field corner |
+| 10 | Pop up out in the Right-field corner |
+| 19 | Pop up out in Left field |
+| 20 | Pop up out in Center field |
+| 21 | Pop up out in Right field |
+| 5 (not a home run) | Pop up out deep down the Left-field line |
+| 5 (home run) | Pop up home run over the fence down the Left-field line |
+| 6 (not a home run) | Pop up out deep in Left field |
+| 6 (home run) | Pop up home run over the fence in Left field |
+| 7 (not a home run) | Pop up out deep in Center field |
+| 7 (home run) | Pop up home run over the fence in Center field |
+| 8 (not a home run) | Pop up out deep in Right field |
+| 8 (home run) | Pop up home run over the fence in Right field |
+| 9 (not a home run) | Pop up out deep down the Right-field line |
+| 9 (home run) | Pop up home run over the fence down the Right-field line |
+| 17 infield | Pop up out at Third base (3B) |
+| 17 outfield | Pop up out down the shallow Left-field line |
+| 17 foul | Pop up out in foul ground down the third-base line |
+| 23 infield | Pop up out at First base (1B) |
+| 23 outfield | Pop up out down the shallow Right-field line |
+| 23 foul | Pop up out in foul ground down the first-base line |
+| 18 infield | Pop up out at Shortstop (SS) |
+| 18 outfield | Pop up out in shallow Left field |
+| 22 infield | Pop up out at Second base (2B) |
+| 22 outfield | Pop up out in shallow Right field |
+| 25 infield | Pop up out up the middle |
+| 25 outfield | Pop up out in shallow Center field |
+| 24, fielded by P / C / nobody recorded | Pop up out at the Pitcher's mound |
+| 24, fielded by 3B | Shallow 3B pop up out |
+| 24, fielded by SS | Shallow SS pop up out |
+| 24, fielded by 2B | Shallow 2B pop up out |
+| 24, fielded by 1B | Shallow 1B pop up out |
+
+## Games charted before the field chart (no box; placed by the fielder; infield wording)
 
 | Fielder | Sentence (groundball out) |
 |---|---|
@@ -282,9 +312,9 @@ Each table is one way the ball was hit. Each row is one place, written with **ou
 | CF | Groundball out in Center field |
 | RF | Groundball out in Right field |
 
-## What production's games would read today
+## What production's games would read
 
-Every ball in play saved on production (920, all games, counts only), as these rules would write it: 170 distinct sentences.
+Every ball in play saved on production (920, counts only): 170 distinct sentences.
 
 | Balls in play | Sentence |
 |---|---|
@@ -413,7 +443,7 @@ Every ball in play saved on production (920, all games, counts only), as these r
 | 1 | Groundball double at Third base (3B) |
 | 1 | Bunt hit at First base (1B) |
 | 1 | Line drive single down the Right-field line |
-| 1 | Out at Home plate |
+| 1 | Out in foul ground behind home |
 | 1 | Out at Third base (3B) |
 | 1 | Pop up error in shallow Left field |
 | 1 | Groundball single down the Left-field line |

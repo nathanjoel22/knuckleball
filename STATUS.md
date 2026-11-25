@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-25 · C1 edits 2 (Joel's notes) · **staging** (PR pending), branch `c1-edits-2`, cache `kb-shell-v378`
+## 2026-11-25 · C1 edits 2 (Joel's notes) · **staging** (PR #160), branch `c1-edits-2`, cache `kb-shell-v378`
 
 - **New batter:** the caller picks the side again on the dark flashing side columns (the Outcome & Response device
   clears it).

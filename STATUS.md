@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-25 · RP1 "The Play" (field places by name in game reports) · **staging** (function only; PR #164), branch `rp1-the-play`
+## 2026-11-25 · RP1 "The Play" (field places by name in game reports) · **production** (PR #164, merge `318e7a1`; function v55), branch `rp1-the-play`
 
 - **Packet:** `plans/rp1-the-play.md` (verbatim). Joel's answers: yes to 1, 3, 4, 5, 6. Decision 2 was replaced: the
   charter's own Infield / Outfield / Foul answer decides; the fielder never does, except on box 24 (the packet's rule).
@@ -81,8 +81,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   Right-field corner".
 - **Left on staging:** that test game (b709c0bd) and two one-pitch games from interrupted test runs (47581dd4,
   af88049d) on a facility team; the demo logins aren't allowed to delete them.
-- **Production (Joel):** merge, then `supabase functions deploy send-session-report`. No app cache bump (no app file
-  changed).
+- **On production (Nov 25, Joel):** merged and `send-session-report` deployed (v55). Three production game reports sent
+  before the change hash the same after the deploy. No app cache bump (no app file changed).
 
 ---
 

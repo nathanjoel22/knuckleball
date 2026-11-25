@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-25 · C1 edits (Joel's notes after Stage C) · **staging** (PR pending), branch `c1-edits`, cache `kb-shell-v377`
+## 2026-11-25 · C1 edits (Joel's notes after Stage C) · **staging** (PR #158), branch `c1-edits`, cache `kb-shell-v377`
 
 - **Back on the Outcome device (shared session):** before this change, a game's Back could undo pitches already charted
   with the caller. Now it stays inside the pitch being charted ("A pitch charted with the caller stays as it is"), and

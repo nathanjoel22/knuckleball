@@ -4,7 +4,8 @@
 // ============================================================================
 import { isStrikeCell, zoneNumber, colorForType, escapeHtml, viewCol, RESULT_COLOR, hitColors } from './helpers.ts'
 
-export interface Pt { row: number; col: number; type: string }
+// C1 Stage A: row / col are null for a pitch with no location (no Outcome charted) -- it gets no dot
+export interface Pt { row: number | null; col: number | null; type: string }
 
 // The ONE pitch-location dot, used by every report grid (drawGrid and
 // drawGridByResult) -- callers only choose the color. Each dot gets a halo
@@ -18,12 +19,13 @@ export interface Pt { row: number; col: number; type: string }
 // Overlapping pitches at the same cell spiral outward (golden-angle
 // jitter), same technique the PDF used. Radius was clamp(cell*0.09, 2.2,
 // 3.6) before -- 3.6 on every 5x5, 260px report grid -- now +25%.
-interface DotPt { row: number; col: number; color: string }
+interface DotPt { row: number | null; col: number | null; color: string }
 function drawDots(pitches: DotPt[], cell: number): string {
   const r = +Math.max(2.75, Math.min(4.5, cell * 0.1125)).toFixed(2)
   const seen: Record<string, number> = {}
   let halos = '', dots = ''
   for (const p of pitches) {
+    if (p.row === null || p.col === null) continue   // C1: never a dot for a pitch with no location
     const key = p.row + '-' + p.col
     const idx = seen[key] || 0
     seen[key] = idx + 1
@@ -65,7 +67,7 @@ export function drawGrid(opts: {
     }
   }
 
-  const dots = drawDots(pitches.map(p => ({ row: p.row, col: viewCol(p.col, gridSize), color: colorForType(p.type, allTypes) })), cell)
+  const dots = drawDots(pitches.map(p => ({ row: p.row, col: p.col === null ? null : viewCol(p.col, gridSize), color: colorForType(p.type, allTypes) })), cell)
 
   return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Pitch location grid">` +
     `<rect x="0" y="0" width="${size}" height="${size}" style="fill:var(--kr-card);stroke:var(--kr-line)"/>` + cells + dots + `</svg>`
@@ -128,7 +130,7 @@ export const RESULT_LABELS: Record<ResultCategory, string> = {
 // 'foul' (a foul-ball-family outcome, not a separate bucket the spec asked
 // for) -- deliberately NOT folded into STRIKE_RESULTS/is_strike anywhere;
 // this is a location-chart bucket only, unrelated to strike-% counting.
-export function resultCategoryOf(result: string): ResultCategory {
+export function resultCategoryOf(result: string | null): ResultCategory {
   switch (result) {
     case 'ball': return 'ball'
     case 'strike_looking': return 'called_strike'
@@ -139,7 +141,7 @@ export function resultCategoryOf(result: string): ResultCategory {
   }
 }
 
-export interface ResultPt { row: number; col: number; category: ResultCategory }
+export interface ResultPt { row: number | null; col: number | null; category: ResultCategory }
 
 export function drawGridByResult(opts: {
   size?: number
@@ -165,7 +167,7 @@ export function drawGridByResult(opts: {
     }
   }
 
-  const dots = drawDots(pitches.map(p => ({ row: p.row, col: viewCol(p.col, gridSize), color: RESULT_COLORS[p.category] })), cell)
+  const dots = drawDots(pitches.map(p => ({ row: p.row, col: p.col === null ? null : viewCol(p.col, gridSize), color: RESULT_COLORS[p.category] })), cell)
 
   return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Pitch location by result">` +
     `<rect x="0" y="0" width="${size}" height="${size}" style="fill:var(--kr-card);stroke:var(--kr-line)"/>` + cells + dots + `</svg>`
@@ -230,7 +232,7 @@ export function drawLineChart(opts: {
 // exact hits dark, relative-accuracy hits soft, misses as faint hollow rings (so the three counts add to the pitch
 // count). Pitcher's view (Amendment 16), D8 numbers from the STORED column. A sibling of drawGrid, which stays as is.
 export type HitKind = 'exact' | 'ra' | 'miss'
-export function drawHitGrid(opts: { size?: number; gridSize?: number; batterSide: 'R' | 'L' | null; pts: { row: number; col: number; kind: HitKind }[] }): string {
+export function drawHitGrid(opts: { size?: number; gridSize?: number; batterSide: 'R' | 'L' | null; pts: { row: number | null; col: number | null; kind: HitKind }[] }): string {
   const size = opts.size ?? 150
   const gridSize = opts.gridSize ?? 5
   const cell = size / gridSize
@@ -251,6 +253,7 @@ export function drawHitGrid(opts: { size?: number; gridSize?: number; batterSide
   // misses first, so a hit in the same cell sits on top
   const ordered = [...opts.pts.filter(p => p.kind === 'miss'), ...opts.pts.filter(p => p.kind !== 'miss')]
   for (const p of ordered) {
+    if (p.row === null || p.col === null) continue   // C1: no location, no mark
     const vc = viewCol(p.col, gridSize)
     const key = p.row + '-' + vc
     const idx = seen[key] || 0
@@ -269,7 +272,7 @@ export function drawHitGrid(opts: { size?: number; gridSize?: number; batterSide
 
 // U14: per pitch type, one hit grid, headline "H hits of N — E exact, R RA" (RA off: exact only, no RA count)
 export function drawHitTypeGrids(opts: { gridSize?: number; batterSide: 'R' | 'L' | null; allTypes: string[]; raOn: boolean;
-  pitches: { type: string; row: number; col: number; kind: HitKind }[] }): string {
+  pitches: { type: string; row: number | null; col: number | null; kind: HitKind }[] }): string {
   const hc = hitColors()
   const grids = opts.allTypes.map(type => {
     const pts = opts.pitches.filter(p => p.type === type)
@@ -291,4 +294,54 @@ export function drawHitTypeGrids(opts: { gridSize?: number; batterSide: 'R' | 'L
     : ''
   // inline styles only: the report stylesheet stays byte-identical for every report without U14 pitches
   return `<div style="margin-top:14px">${legend}<div class="type-grids">${grids}</div></div>`
+}
+
+// C1 Stage A (Joel, Nov 25 2026): a session charted Intent only has targets and no locations, so its grids show the
+// CALLED SPOTS: one hollow ring in the pitch type's colour per call, at its target. Never a filled dot (a dot always
+// means where a pitch went). Same cells, jitter and pitcher's view (Amendment 16) as drawGrid; D8 numbers from the
+// STORED column when a side is given. Inline styles only, so the report stylesheet is unchanged.
+export function drawCalledGrid(opts: { size?: number; gridSize?: number; batterSide: 'R' | 'L' | null; pitches: Pt[]; allTypes: string[] }): string {
+  const size = opts.size ?? 260
+  const gridSize = opts.gridSize ?? 5
+  const cell = size / gridSize
+  let cells = ''
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      const x = col * cell, y = row * cell
+      const inZone = isStrikeCell(row, col, gridSize)
+      cells += `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" style="fill:${inZone ? 'var(--kr-surface)' : 'var(--kr-card)'};stroke:var(--kr-line)" stroke-width="1"/>`
+      const num = opts.batterSide ? zoneNumber(row, viewCol(col, gridSize), opts.batterSide, gridSize) : null
+      if (num !== null) cells += `<text x="${x + 4}" y="${y + 11}" font-size="8" style="fill:var(--kr-axis);font-family:var(--kr-sans)">${num}</text>`
+    }
+  }
+  const r = +Math.max(3, Math.min(5, cell * 0.12)).toFixed(2)
+  const seen: Record<string, number> = {}
+  let rings = ''
+  for (const p of opts.pitches) {
+    if (p.row === null || p.col === null) continue
+    const vc = viewCol(p.col, gridSize)
+    const key = p.row + '-' + vc
+    const idx = seen[key] || 0
+    seen[key] = idx + 1
+    const cx = vc * cell + cell / 2, cy = p.row * cell + cell / 2
+    const angle = idx * 137.508 * (Math.PI / 180)
+    const radius = idx === 0 ? 0 : Math.min(cell * 0.32, 2.5 + idx * 1.8)
+    const x = (cx + radius * Math.cos(angle)).toFixed(1), y = (cy + radius * Math.sin(angle)).toFixed(1)
+    rings += `<circle cx="${x}" cy="${y}" r="${r}" style="fill:none;stroke:${colorForType(p.type, opts.allTypes)}" stroke-width="2"/>`
+  }
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Called spots (targets)">` +
+    `<rect x="0" y="0" width="${size}" height="${size}" style="fill:var(--kr-card);stroke:var(--kr-line)"/>` + cells + rings + `</svg>`
+}
+// One small called-spots grid per pitch type, "N called" under each
+export function drawCalledTypeGrids(opts: { gridSize?: number; batterSide: 'R' | 'L' | null; allTypes: string[]; pitches: Pt[] }): string {
+  const grids = opts.allTypes.map(type => {
+    const pts = opts.pitches.filter(p => p.type === type && p.row !== null && p.col !== null)
+    if (!pts.length) return ''
+    return `<div class="type-grid">
+      <h3><span class="legend-dot" style="background:${colorForType(type, opts.allTypes)}"></span>${escapeHtml(type)}</h3>
+      ${drawCalledGrid({ size: 150, gridSize: opts.gridSize, batterSide: opts.batterSide, pitches: pts, allTypes: opts.allTypes })}
+      <p class="type-grid-stats">${pts.length} called</p>
+    </div>`
+  }).join('')
+  return grids ? `<div class="type-grids">${grids}</div>` : ''
 }

@@ -107,7 +107,26 @@ export function pct(numerator: number, denominator: number): number | null {
   return Math.round((numerator / denominator) * 100)
 }
 
-export function isStrikeCell(row: number, col: number, gridSize = 5): boolean {
+// C1 Stage A (Joel, Nov 25 2026; plans/c1-preconditions.md): a session charts Intent (the call: type and target),
+// Outcome (a pen: where it landed; a game: where it went, the result and everything after), or both. A part that wasn't
+// charted is EMPTY on every pitch (null), never a default. Accuracy reads only pitches with both (isScored); strike % and
+// the zone only pitches with a location. Every session before C1 charted both (sessions.charted_intent / charted_outcome
+// are true), so these never change its report.
+type Cells = { targetRow?: number | null; targetCol?: number | null; actualRow?: number | null; actualCol?: number | null }
+const isCell = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+export function hasTarget(p: Cells): boolean { return isCell(p.targetRow) && isCell(p.targetCol) }
+export function hasLocation(p: Cells): boolean { return isCell(p.actualRow) && isCell(p.actualCol) }
+export function isScored(p: Cells): boolean { return hasTarget(p) && hasLocation(p) }
+// Which parts a session charted, from the SESSION ROW (index.ts / from_rows.ts); absent = both (every older session).
+export interface Parts { intent: boolean; outcome: boolean }
+export function partsOf(p: { chartedIntent?: boolean | null; chartedOutcome?: boolean | null }): Parts {
+  const intent = p.chartedIntent !== false, outcome = p.chartedOutcome !== false
+  return intent || outcome ? { intent, outcome } : { intent: true, outcome: true }   // the database refuses neither
+}
+
+export function isStrikeCell(row: number | null, col: number | null, gridSize = 5): boolean {
+  if (row === null || col === null) return false   // C1: no location, never a strike by location
+
   const inset = Math.floor(gridSize / 2) - 1 // 5->1, 7->2, matching the 3x3-of-5 / 5x5-of-7 strike zone
   return row >= inset && row < gridSize - inset && col >= inset && col < gridSize - inset
 }
@@ -132,8 +151,8 @@ export function viewNote(chartingPerspective: string | null | undefined): string
   return `<p class="header-note">Charted from behind the ${chartedFromPitcher ? 'pitcher' : 'catcher'}. Every plot in this report is drawn in the ${VIEW_NAME}.</p>`
 }
 
-export function zoneNumber(row: number, col: number, batterSide: 'R' | 'L', gridSize = 5): number | null {
-  if (!isStrikeCell(row, col, gridSize)) return null
+export function zoneNumber(row: number | null, col: number | null, batterSide: 'R' | 'L', gridSize = 5): number | null {
+  if (row === null || col === null || !isStrikeCell(row, col, gridSize)) return null
   const inset = Math.floor(gridSize / 2) - 1
   const zoneSize = gridSize - inset * 2 // 3 for a 5-grid, 3 for a 7-grid (7x7's strike zone is still 3x3 per U2)
   const rr = row - inset

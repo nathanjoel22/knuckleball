@@ -7,21 +7,21 @@
 // it in the game. Descriptive only -- it lines the two days up; it doesn't
 // claim one caused the other.
 // ============================================================================
-import { escapeHtml, colorForType, isStrikeCell, viewCol } from './helpers.ts'
+import { escapeHtml, colorForType, isStrikeCell, viewCol, hasLocation } from './helpers.ts'
 import { drawGrid } from './svg.ts'
 import type { GamePitch } from './compute_game.ts'
 
 // A bullpen pitch as the app sends it (catcher-frame location, like every stored pitch).
 export interface PenPitch {
   type: string
-  actualRow: number; actualCol: number
+  actualRow: number | null; actualCol: number | null   // C1 Stage A: null in a pen charted Intent only (left out below)
   targetRow: number | null; targetCol: number | null
   inAccuracyZone: boolean | null
   accuracyHitKind?: 'exact' | 'ra' | 'miss' | null   // U14
 }
 
 const STRIKE_RESULTS = new Set(['strike_looking', 'strike_swinging', 'foul', 'foul_tip', 'in_play', 'sac_bunt', 'sac_fly', 'dropped_third'])
-const isStrikeResult = (p: GamePitch) => STRIKE_RESULTS.has(p.result)
+const isStrikeResult = (p: GamePitch) => !!p.result && STRIKE_RESULTS.has(p.result)
 const isK = (p: GamePitch) => p.result === 'dropped_third' || ((p.result === 'strike_looking' || p.result === 'strike_swinging' || p.result === 'foul_tip') && p.strikesBefore >= 2)
     || (p.result === 'foul' && p.bbType === 'bunt' && p.strikesBefore >= 2)   // Oct 20: a two-strike foul bunt is a K (Joel)
 const isBB = (p: GamePitch) => p.result === 'ball' && p.ballsBefore >= 3
@@ -69,12 +69,14 @@ const penCommand = (p: PenPitch) => p.accuracyHitKind   // U14: exact + RA is ac
   ? (p.accuracyHitKind === 'exact' || p.accuracyHitKind === 'ra')
   : (p.inAccuracyZone === true || p.inAccuracyZone === false)
   ? p.inAccuracyZone
-  : (p.targetRow !== null && p.targetCol !== null ? (p.targetRow === p.actualRow && p.targetCol === p.actualCol) : null)
+  : (p.targetRow !== null && p.targetCol !== null && hasLocation(p) ? (p.targetRow === p.actualRow && p.targetCol === p.actualCol) : null)   // C1: needs both
 const pct = (n: number, d: number) => d ? Math.round(100 * n / d) + '%' : '—'
 
-export function renderBullpenToGame(pitches: GamePitch[], pen: PenPitch[] | undefined, allTypes: string[], gridSize: number): string {
-  if (!pen || !pen.length || !pitches.length) return ''
-  const key = (t: string, r: number, c: number) => `${t}|${r}|${c}`
+export function renderBullpenToGame(allPitches: GamePitch[], allPen: PenPitch[] | undefined, allTypes: string[], gridSize: number): string {
+  // C1 Stage A: "same pitch, same spot" pairs locations, so a pitch with no location (a part not charted) sits out
+  const pitches = allPitches.filter(hasLocation), pen = (allPen ?? []).filter(hasLocation)
+  if (!pen.length || !pitches.length) return ''
+  const key = (t: string, r: number | null, c: number | null) => `${t}|${r}|${c}`
   const game: Record<string, GamePitch[]> = {}
   for (const p of pitches) (game[key(p.type, p.actualRow, p.actualCol)] ||= []).push(p)
   const pens: Record<string, PenPitch[]> = {}

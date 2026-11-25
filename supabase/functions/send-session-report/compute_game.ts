@@ -13,15 +13,19 @@
 // per-side, velocity by inning, recent-pens, cross-game trend) that History
 // never shows, so there is nothing for it to disagree with.
 // ============================================================================
-import { isStrikeCell, zoneNumber, pct, safeNum } from './helpers.ts'
+import { isStrikeCell, zoneNumber, pct, safeNum, hasLocation } from './helpers.ts'
 
 export interface GamePitch {
   type: string
   velo: number | null
-  actualRow: number; actualCol: number
+  // C1 Stage A: a game charted Intent only has a type, a target and a batter side and nothing else -- location,
+  // result, counts, inning and at-bat are null (that report is built by c1.ts and never reaches the readers below,
+  // which still skip a pitch with no location or no result).
+  actualRow: number | null; actualCol: number | null
+  targetRow?: number | null; targetCol?: number | null   // the called spot (Intent); null in an Intent-off game
   batterSide: 'R' | 'L' | null
   ts: number
-  result: string
+  result: string | null
   inPlayOutcome: 'hit' | 'out' | 'error' | 'reached' | 'fc' | null
   hitType: '1B' | '2B' | '3B' | 'HR' | null
   fielder: string | null
@@ -49,6 +53,9 @@ export interface GamePitch {
   unearnedRuns?: number | null
   inheritedRuns?: number | null
   chargedPrev?: boolean | null
+  // C1 Stage A (More Plays): markers the other columns can't express -- 'infield_fly', 'ground_rule_double',
+  // 'fan_interference', 'foul_error' (pitches.play_flags)
+  playFlags?: string[] | null
 }
 
 // Decision 2 + Joel's foul-tip ruling (Sept 28, 2026 chat -- not yet a
@@ -64,8 +71,8 @@ const STRIKE_RESULTS = new Set(['strike_looking', 'strike_swinging', 'foul', 'fo
 const EXCLUDED_FROM_PCT = new Set(['interference', 'other'])
 const THIN_SAMPLE = 5
 
-function isStrikeResult(p: GamePitch): boolean { return STRIKE_RESULTS.has(p.result) }
-function countsTowardPct(p: GamePitch): boolean { return !EXCLUDED_FROM_PCT.has(p.result) }
+function isStrikeResult(p: GamePitch): boolean { return !!p.result && STRIKE_RESULTS.has(p.result) }
+function countsTowardPct(p: GamePitch): boolean { return !!p.result && !EXCLUDED_FROM_PCT.has(p.result) }   // C1: no result, not counted
 function isSwing(p: GamePitch): boolean {
   // Decision 5: swings = swinging strikes + fouls + balls in play. Takes
   // (called strikes, balls) are not swings.
@@ -98,7 +105,7 @@ export function computeGameByType(pitches: GamePitch[], allTypes: string[], grid
     if (!tp.length) return null
     const counted = tp.filter(countsTowardPct)
     const strikes = counted.filter(isStrikeResult)
-    const inZone = tp.filter(p => isStrikeCell(p.actualRow, p.actualCol, gridSize))
+    const inZone = tp.filter(p => isStrikeCell(p.actualRow, p.actualCol, gridSize)), tpLocated = tp.filter(hasLocation).length
     const swings = tp.filter(isSwing)
     const whiffs = tp.filter(isWhiff)
     const calledStrikes = tp.filter(p => p.result === 'strike_looking')
@@ -110,7 +117,7 @@ export function computeGameByType(pitches: GamePitch[], allTypes: string[], grid
       thin: tp.length < THIN_SAMPLE,
       usagePct: pct(tp.length, total),
       strikePct: counted.length ? pct(strikes.length, counted.length) : null,
-      inZonePct: pct(inZone.length, tp.length),
+      inZonePct: pct(inZone.length, tpLocated),
       whiffPct: swings.length ? pct(whiffs.length, swings.length) : null,
       whiffSwings: swings.length,
       calledStrikePct: pct(calledStrikes.length, tp.length),
@@ -128,12 +135,12 @@ export function computeGameByType(pitches: GamePitch[], allTypes: string[], grid
 
 // ---------- By inning (content spec section 6) ----------
 export function computeGameByInning(pitches: GamePitch[], gridSize = 5) {
-  const innings = Array.from(new Set(pitches.map(p => p.inning))).sort((a, b) => a - b)
+  const innings = Array.from(new Set(pitches.map(p => p.inning))).filter((i): i is number => typeof i === 'number').sort((a, b) => a - b)
   return innings.map(inning => {
     const ip = pitches.filter(p => p.inning === inning)
     const counted = ip.filter(countsTowardPct)
     const strikes = counted.filter(isStrikeResult)
-    const inZone = ip.filter(p => isStrikeCell(p.actualRow, p.actualCol, gridSize))
+    const inZone = ip.filter(p => isStrikeCell(p.actualRow, p.actualCol, gridSize)), ipLocated = ip.filter(hasLocation).length
     const bf = new Set(ip.map(p => p.atBatIndex).filter((n): n is number => n !== null)).size
     const k = ip.filter(isK).length
     const bb = ip.filter(isBB).length
@@ -144,7 +151,7 @@ export function computeGameByInning(pitches: GamePitch[], gridSize = 5) {
       pitches: ip.length,
       strikes: strikes.length,
       strikePct: counted.length ? pct(strikes.length, counted.length) : null,
-      inZonePct: pct(inZone.length, ip.length),
+      inZonePct: pct(inZone.length, ipLocated),
       battersFaced: bf,
       k, bb, h,
       avgVelo: velos.length ? Math.round(velos.reduce((a, b) => a + b, 0) / velos.length) : null,
@@ -214,7 +221,7 @@ export function computeGamePerSideBlock(pitches: GamePitch[], side: 'R' | 'L', g
   if (!sp.length) return null
   const counted = sp.filter(countsTowardPct)
   const strikes = counted.filter(isStrikeResult)
-  const inZone = sp.filter(p => isStrikeCell(p.actualRow, p.actualCol, gridSize))
+  const inZone = sp.filter(p => isStrikeCell(p.actualRow, p.actualCol, gridSize)), spLocated = sp.filter(hasLocation).length
   const swings = sp.filter(isSwing)
   const whiffs = sp.filter(isWhiff)
   const k = sp.filter(isK).length
@@ -226,7 +233,7 @@ export function computeGamePerSideBlock(pitches: GamePitch[], side: 'R' | 'L', g
     total: sp.length,
     battersFaced: bf,
     strikePct: counted.length ? pct(strikes.length, counted.length) : null,
-    inZonePct: pct(inZone.length, sp.length),
+    inZonePct: pct(inZone.length, spLocated),
     whiffPct: swings.length ? pct(whiffs.length, swings.length) : null,
     k, bb, h,
     pitches: sp,
@@ -252,7 +259,7 @@ export function computeGameExcludedNullSide(pitches: GamePitch[]): number {
 // computeVelocityDepth from compute.ts unchanged (spec item 7: "the
 // renderer goes through the one function anyway") -- not duplicated here.
 export function computeGameVelocityByInning(pitches: GamePitch[]) {
-  const innings = Array.from(new Set(pitches.map(p => p.inning))).sort((a, b) => a - b)
+  const innings = Array.from(new Set(pitches.map(p => p.inning))).filter((i): i is number => typeof i === 'number').sort((a, b) => a - b)
   return innings.map(inning => {
     const velos = pitches.filter(p => p.inning === inning).map(p => safeNum(p.velo)).filter((v): v is number => v !== null)
     if (!velos.length) return { inning, hasVelo: false as const, avg: null, peak: null }
@@ -312,6 +319,7 @@ export function computeGameTrends(history: GameHistoryEntry[]): GameHistoryEntry
 // (restated here, can't be imported across runtimes), so "incomplete" here
 // can never disagree with what actually happened live.
 function pitchEndsAtBat(p: GamePitch): boolean {
+  if (!p.result) return false   // C1: a pitch with no result (Intent only) never ends an at-bat
   switch (p.result) {
     case 'ball': return p.ballsBefore >= 3
     case 'strike_looking': case 'strike_swinging': return p.strikesBefore >= 2
@@ -359,6 +367,11 @@ export function runsText(x: { runsScored?: number | null; unearnedRuns?: number 
   const inh = x.inheritedRuns ?? 0, charged = r - inh
   const er = typeof x.unearnedRuns === 'number' ? charged - x.unearnedRuns : null
   return `${r} R` + (inh ? ` (${inh} inherited)` : '') + (er !== null && charged > 0 ? `, ${er} ER` : '')
+}
+// C1 Stage A (More Plays): each flag as the at-bat log writes it, next to the play
+export const PLAY_FLAG_LABEL: Record<string, string> = { infield_fly: 'IFR', ground_rule_double: 'GRD', fan_interference: 'fan interference', foul_error: 'E on foul' }
+export function playFlagsText(p: { playFlags?: string[] | null }): string {
+  return Array.isArray(p.playFlags) ? p.playFlags.map(f => PLAY_FLAG_LABEL[f] ?? '').filter(Boolean).join(' · ') : ''
 }
 const FIELDER_LABEL: Record<string, string> = {
   P: 'P', C: 'C', '1B': '1B', '2B': '2B', '3B': '3B', SS: 'SS', LF: 'LF', CF: 'CF', RF: 'RF'
@@ -425,6 +438,7 @@ export interface AtBatLogEntry {
   ending: string   // '' when incomplete
   incomplete: boolean
   detail?: string  // Release 2 (E6): runner moves and runs during the at-bat
+  flagsInEnding?: boolean   // C1 (More Plays): the last pitch's flags are already in `ending`
 }
 // G3 item 2 (Joel, Oct 2): no-pitch events as stored in game_events. Never
 // pitches -- they stay out of every pitch stat -- but an IBB, an auto ball
@@ -505,8 +519,9 @@ export function computeAtBatLog(pitches: GamePitch[], events: GameEvent[] = []):
       side: ps[0].batterSide,
       delivery: ps[0].delivery,
       pitches: ps,
-      ending: complete ? atBatEndingLabel(last, droppedThirdReached) : '',
+      ending: complete ? [atBatEndingLabel(last, droppedThirdReached), playFlagsText(last)].filter(Boolean).join(' · ') : '',
       incomplete: !complete,
+      flagsInEnding: complete,
       detail: detailOf(idx, ps)
     }
   })

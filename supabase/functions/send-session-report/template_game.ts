@@ -6,14 +6,15 @@
 // game-only stylesheet addition below, so the two reports read as one
 // product (content spec: "Same theme and typography as the pen report").
 // ============================================================================
-import { escapeHtml, safeNum, colorForType, timesToHomeLine, asSport, reportVars, type Sport, VIEW_NAME, REPORT_VIEW, viewNote } from './helpers.ts'
+import { escapeHtml, safeNum, colorForType, timesToHomeLine, asSport, reportVars, type Sport, VIEW_NAME, REPORT_VIEW, viewNote, partsOf } from './helpers.ts'
+import { intentOnlyReport, partBit } from './c1.ts'
 import { ZONE_NAMES } from './helpers.ts'
 import { drawGrid, drawLegend, drawLineChart, drawGridByResult, drawResultLegend, resultCategoryOf, drawTypeGrids, drawHitTypeGrids } from './svg.ts'
 import { CSS as PEN_CSS } from './template.ts'
 import {
   type GamePitch, computeGameByType, computeGameByInning, computeGameByCount, computeLeadoffReached,
   computeGamePerSideBlock, computeGameExcludedNullSide, computeGameVelocityByInning,
-  computeRecentPensComparison, computeGameTrends, computeAtBatLog, resultGlyph,
+  computeRecentPensComparison, computeGameTrends, computeAtBatLog, resultGlyph, playFlagsText,
   type RecentPenTypeRow, type GameHistoryEntry
 } from './compute_game.ts'
 import { computeVelocityDepth } from './compute.ts'
@@ -24,7 +25,7 @@ import {
   type Comparison, NO_COMPARISON, type StoodOut, type TileSpec, WINDOWS, SR1_CSS, ids, radios, tabBar, windowSwitch, wb, panel,
   takeaway, card, tileFor, windowCaption, stoodOutCard, sparkCard, simpleTable, typeCell, footer, firstName, word, ordinal, pctOf,
   pickFastball, avgVelo, gunned, outsideRange, rangeText, sortStoodOut, sidePattern, clusterPattern, typeMin, inningMin,
-  restCard, sevenDayCard, type Voice, type LevelGroup, levelGroup, versionsFor, ver, tabBarVersions, printTitle, TZ,
+  restCard, sevenDayCard, type Voice, type LevelGroup, levelGroup, versionsFor, ver, tabBarVersions, printTitle, TZ, type TabLabel,
   type EmailVersion, emailComment, shortDate, sevenDayEmailLine, restEmailLine, comparedEmailLine
 } from './sr1.ts'
 
@@ -79,6 +80,10 @@ export interface GameReportPayload {
   events?: GameEvent[]   // G3: no-pitch events, read server-side under the caller's RLS
   raOn?: boolean   // U14: the session's answer to "Turn on Relative Accuracy?" (session row)
   comparison?: Comparison   // SR1 C: Stage B's baselines, the last games, the throwing hand (read at save, caller's reach)
+  // C1 Stage A: which parts were charted (session row, never the payload); absent = both. A game charted Intent only
+  // has no summary (index.ts doesn't call compute_game_summary for it) and builds c1.ts's report instead.
+  chartedIntent?: boolean
+  chartedOutcome?: boolean
 }
 
 function fmtVelo(v: number | null): string { return v === null ? '—' : String(Math.round(v)) + ' mph' }
@@ -487,7 +492,10 @@ function renderAtBatLog(p: GameReportPayload): string {
         const g = resultGlyph(pt)
         const veloBit = pt.velo !== null && pt.velo !== undefined ? `${escapeHtml(pt.type)} ${Math.round(pt.velo)}` : escapeHtml(pt.type)
         const ttpBit = typeof pt.timeToPlate === 'number' ? ` ⏱${pt.timeToPlate.toFixed(2)}` : ''   // U11 (7)
-        return `${veloBit} ${g.glyph}${g.label ? ' ' + g.label : ''}${ttpBit}`
+        // C1 Stage A (More Plays): a flag on a pitch that didn't end the at-bat (an error on a foul) sits with the pitch;
+        // the ending pitch's flags are in the ending (computeAtBatLog)
+        const flags = ab.flagsInEnding && pt === ab.pitches[ab.pitches.length - 1] ? '' : playFlagsText(pt)
+        return `${veloBit} ${g.glyph}${g.label ? ' ' + g.label : ''}${ttpBit}${flags ? ' · ' + escapeHtml(flags) : ''}`
       }).join(' · ')
       const ending = ab.incomplete ? 'incomplete' : escapeHtml(ab.ending)
       // Release 2 (E6): the runners' moves (with why) and the runs, after the ending
@@ -528,20 +536,20 @@ function gameTabLabels(g: LevelGroup) {
   ]
 }
 const G_STRIKES = new Set(['strike_looking', 'strike_swinging', 'foul', 'foul_tip', 'in_play', 'sac_bunt', 'sac_fly', 'dropped_third'])
-const gStrike = (x: GamePitch) => G_STRIKES.has(x.result)
-const gCounts = (x: GamePitch) => x.result !== 'interference' && x.result !== 'other'
+const gStrike = (x: GamePitch) => !!x.result && G_STRIKES.has(x.result)
+const gCounts = (x: GamePitch) => !!x.result && x.result !== 'interference' && x.result !== 'other'   // C1: no result, not counted
 const gHit = (x: GamePitch) => x.result === 'in_play' && x.inPlayOutcome === 'hit'
 function gameDate(p: GameReportPayload): string {
   return new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: TZ })
 }
-function gameHeader(p: GameReportPayload, id: string, g: LevelGroup): string {
+function gameHeader(p: GameReportPayload, id: string, labels: TabLabel[], parts = ''): string {
   const numBit = p.uniformNumber !== null && p.uniformNumber !== undefined ? ` <span class="header-num">#${escapeHtml(p.uniformNumber)}</span>` : ''
   return `
   <header class="report-header kr-head">
     <div class="kr-head-top"><div class="brand-mark">KNUCKLEBALL</div><span class="sport-tag">${asSport(p.sport) === 'softball' ? 'Softball' : 'Baseball'} · Live Game</span></div>
     <h1>${escapeHtml(p.pitcherName)}${numBit}</h1>
-    <p class="header-meta">${gameDate(p)}${p.opponent ? ` vs ${escapeHtml(p.opponent)}` : ''}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''}</p>
-    ${tabBarVersions(id, gameTabLabels(g))}
+    <p class="header-meta">${gameDate(p)}${p.opponent ? ` vs ${escapeHtml(p.opponent)}` : ''}${parts}${p.teamName ? ' · ' + escapeHtml(p.teamName) : ''}</p>
+    ${tabBarVersions(id, labels)}
   </header>`
 }
 function gameFacts(p: GameReportPayload) {
@@ -790,17 +798,31 @@ function gameEveryPitchTab(p: GameReportPayload, f: GameFacts): string {
     + renderPitchingLine(p) + renderOtherEvents(p) + renderAtBatLog(p)
 }
 
+function gameLinks(p: GameReportPayload): string {
+  return `<p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="https://knuckleballonline.com/login.html?sport=${asSport(p.sport)}">knuckleballonline.com</a> &middot; <a href="https://knuckleballonline.com/privacy.html#${asSport(p.sport)}">Privacy</a> &middot; <a href="https://knuckleballonline.com/terms.html#${asSport(p.sport)}">Terms</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: TZ })}</p>`
+}
+
 export function buildGameReportHtml(p: GameReportPayload): string {
   const title = `Game Report — ${p.pitcherName}${p.opponent ? ' vs ' + p.opponent : ''}`
   const c = p.comparison ?? NO_COMPARISON
   const id = ids(p.sessionId)
+  // C1 Stage A: a game charted Intent only (nobody on Outcome & Response) has only the calls: pitch mix and the called
+  // spots, no pitching line, spray, at-bats, rest or 7-day card. Outcome & Response only is today's Intent-off game.
+  if (!partsOf(p).outcome) {
+    return intentOnlyReport({
+      kind: 'game', sport: p.sport, sessionId: p.sessionId, pitcherName: p.pitcherName, date: p.date, dateText: gameDate(p),
+      subExtra: p.opponent ? ` vs ${escapeHtml(p.opponent)}` : '', chartedBy: p.loggedByCoach ? 'the coaching staff' : escapeHtml(p.pitcherName),
+      chartingPerspective: p.chartingPerspective, pitches: p.pitches, allTypes: allTypesOf(p), gridSize: p.gridSize, comparison: c, title,
+      css: PEN_CSS + GAME_CSS, header: (hid, labels) => gameHeader(p, hid, labels, partBit('intent')), links: gameLinks(p)
+    })
+  }
   const f = gameFacts(p)
   const items = gameStoodOut(p, f, c)
   const itemsYou = gameStoodOut(p, f, c, 'you')
   const g = levelGroup(c.workload?.level ?? c.baselines?.level ?? null)   // SR1 E: the versions this file carries
   const wins = c.baselines ? WINDOWS.map(w => w.key).filter(k => c.baselines!.windows[k]) : []
   const tl = gameTabLabels(g), pt = printTitle(p.pitcherName, 'Live Game', gameDate(p), wins)   // SR1 G: print
-  const links = `<p><span class="brand-mark small">Knuckleball LLC 2026</span> &middot; <a href="https://knuckleballonline.com/login.html?sport=${asSport(p.sport)}">knuckleballonline.com</a> &middot; <a href="https://knuckleballonline.com/privacy.html#${asSport(p.sport)}">Privacy</a> &middot; <a href="https://knuckleballonline.com/terms.html#${asSport(p.sport)}">Terms</a> &middot; generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: TZ })}</p>`
+  const links = gameLinks(p)
   // D2: this report's own colors and fonts (--kr-*) for its sport -- no hex swap, no site stylesheet.
   return (`<!doctype html>
 <html lang="en">
@@ -812,7 +834,7 @@ export function buildGameReportHtml(p: GameReportPayload): string {
 <body>
 <div class="page kr" data-kr-versions="${versionsFor(g).join(' ')}">
 ${radios(id, ['1', '2', '3', '4', '5', '6', '7', '8'], wins)}
-${gameHeader(p, id, g)}
+${gameHeader(p, id, gameTabLabels(g))}
 <main class="kr-main">
 ${panel(1, ver(['coach'], gameSummaryTab(p, f, c, id, items))
   + (g === 'll' ? ver(['player'], gameSummaryLLPlayer(p, f, c, id, itemsYou)) + ver(['parent'], gameSummaryLLParent(p, f, c))

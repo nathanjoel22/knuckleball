@@ -60,6 +60,32 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-25 · C1 Stage A (charting in parts, alone; More Plays) · **staging** (PR pending), branch `c1-stage-a`, cache `kb-shell-v374`
+
+- **Joel's answers** to the report (`plans/c1-preconditions.md`): yes to all, except Relative Accuracy is now bullpen-only
+  (Live Games never ask or score it).
+- **App:** the parts question first (Intent; Outcome / Outcome & Response); Intent-only screens for pens and games
+  (Confirm Pitch, Next Pitch, Back; the call on Confirm); Outcome-only pens; More Plays; every reader handles empty
+  parts ("—", never 0); a killed tab comes back at the same step.
+- **Staging database:** migration `20261129000000_c1a_charting_parts`:
+  - `sessions.charted_intent` / `charted_outcome`;
+  - nullable locations, target / location pairs;
+  - `pitches.play_flags`;
+  - `sync_session`;
+  - stats v3 (`located`, `scored`), every existing stats row byte-identical;
+  - leaderboard and baselines use full sessions only.
+- **Staging functions:** `send-session-report` and `rerender-reports` (partial reports; full reports byte-identical).
+- **Evidence:** `plans/c1a-evidence.md` (Done when 1–8 PASS).
+- **Deviations:** WP / PB on the pitch stays on the runner diamond (not More Plays); obstruction / runner's
+  interference are between-pitch runner reasons; see the evidence file.
+- **Production order (Joel):**
+  1. backup;
+  2. `db push`;
+  3. deploy `send-session-report` and `rerender-reports` (they read the new columns);
+  4. merge (History asks for `charted_intent`).
+
+---
+
 ## 2026-11-24 · "No tag" renamed "Feel Good" (no packet; Joel) · **staging** (PR #149), branch `feel-good-tag`, cache `kb-shell-v373`
 
 - **Label only:** the fourth choice under "What's this pen for?" on a bullpen's start screen reads **Feel Good**.

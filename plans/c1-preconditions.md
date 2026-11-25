@@ -433,3 +433,14 @@ Also: a "No pitch" that the offline device never saw leaves its outcome to pair 
    runners. Those questions are hidden there.
 10. **Stage B counts on a signal on both devices.** A charter who loses signal keeps charting (packet), but the Live
     marks and joining need one.
+
+---
+
+## Joel's answers (Nov 25, 2026)
+
+**Yes to every item in section 10, except 8, which Joel changed:** "let's make relative accuracy only something that
+is measured and recorded in bullpens. in live games, relative accuracy is not something we measure anymore."
+
+- **Bullpens:** Relative Accuracy is asked only when both parts are on the device (as 8 proposed).
+- **Live Games:** never asked, never scored. A new game's Intent pitches score exact / miss only and `ra_on` is false.
+  Games saved before keep what they stored, and their reports are frozen as they are.

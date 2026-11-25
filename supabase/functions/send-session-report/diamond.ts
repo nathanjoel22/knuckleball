@@ -183,7 +183,7 @@ export function renderWhatLedToIt(pitches: GamePitch[], allTypes: string[], grid
 // ---------- Reports 3: base states ----------
 const BASE_STATES: [number, string][] = [[0, 'Empty'], [1, '1st'], [2, '2nd'], [4, '3rd'], [3, '1st + 2nd'], [5, '1st + 3rd'], [6, '2nd + 3rd'], [7, 'Loaded']]
 function stateCells(ps: GamePitch[], withMix: boolean): string {
-  const strikes = ps.filter(p => ['strike_looking', 'strike_swinging', 'foul', 'foul_tip', 'in_play', 'sac_bunt', 'sac_fly', 'dropped_third'].includes(p.result)).length
+  const strikes = ps.filter(p => !!p.result && ['strike_looking', 'strike_swinging', 'foul', 'foul_tip', 'in_play', 'sac_bunt', 'sac_fly', 'dropped_third'].includes(p.result)).length
   const bip = ps.filter(p => p.result === 'in_play')
   return `<td>${ps.length}</td><td>${ps.length ? Math.round(100 * strikes / ps.length) + '%' : '—'}</td>${withMix ? `<td>${mixText(ps)}</td>` : ''}` +
     `<td>${bip.length}</td><td>${bip.filter(p => p.inPlayOutcome === 'hit').length}</td><td>${bip.filter(p => p.inPlayOutcome === 'out').length}</td>` +

@@ -3,13 +3,14 @@
 // return plain data so they can be unit-tested against a hand calculation
 // independently of how the template renders them.
 // ============================================================================
-import { isStrikeCell, zoneNumber, pct, safeNum } from './helpers.ts'
+import { isStrikeCell, zoneNumber, pct, safeNum, hasLocation, isScored } from './helpers.ts'
 
 export interface Pitch {
   type: string
   velo: number | null
-  targetRow: number; targetCol: number
-  actualRow: number; actualCol: number
+  // C1 Stage A: null when that part wasn't charted (target: no Intent; actual: no Outcome) -- never a default
+  targetRow: number | null; targetCol: number | null
+  actualRow: number | null; actualCol: number | null
   accuracyMode: string | null
   inAccuracyZone: boolean | null
   batterSide: 'R' | 'L' | null
@@ -22,7 +23,7 @@ export interface Pitch {
 const THIN_SAMPLE = 5 // spec item 3: below this, show the count beside the percentage
 
 export function isExactHit(p: Pitch): boolean {
-  return p.actualRow === p.targetRow && p.actualCol === p.targetCol
+  return isScored(p) && p.actualRow === p.targetRow && p.actualCol === p.targetCol   // C1: two empties are never a hit
 }
 // U14 (Joel, Oct 15): a session whose pitches carry a stored hit kind gets ONE accuracy number -- exact + RA hits over
 // all pitches. Anything else (every session from before U14) takes exactly the code path it always did.
@@ -30,24 +31,29 @@ export function isU14(pitches: Pitch[]): boolean { return pitches.some(p => !!p.
 export function isHit(p: Pitch): boolean {
   return p.accuracyHitKind ? (p.accuracyHitKind === 'exact' || p.accuracyHitKind === 'ra') : isExactHit(p)
 }
+// C1: accuracy is over the pitches with both a target and a location; strike % and the zone over those with a location.
+// A session charted in full has both on every pitch, so these are all of its pitches.
+const scoredOf = (ps: Pitch[]) => ps.filter(isScored)
+const locatedOf = (ps: Pitch[]) => ps.filter(hasLocation)
 
 // ---------- Summary (spec section 2) ----------
 export function computeSummary(pitches: Pitch[], gridSize = 5) {
   const total = pitches.length
-  const strikes = pitches.filter(p => isStrikeCell(p.actualRow, p.actualCol, gridSize)).length
-  const zonePitches = pitches.filter(p => p.inAccuracyZone === true || p.inAccuracyZone === false)
+  const scored = scoredOf(pitches), located = locatedOf(pitches)
+  const strikes = located.filter(p => isStrikeCell(p.actualRow, p.actualCol, gridSize)).length
+  const zonePitches = scored.filter(p => p.inAccuracyZone === true || p.inAccuracyZone === false)
   const hasZone = zonePitches.length > 0
-  const exactHits = pitches.filter(isExactHit).length
+  const exactHits = scored.filter(isExactHit).length
   const u14 = isU14(pitches)
-  const commandPct = u14 ? pct(pitches.filter(isHit).length, total)
+  const commandPct = u14 ? pct(scored.filter(isHit).length, scored.length)
     : hasZone
     ? pct(zonePitches.filter(p => p.inAccuracyZone === true).length, zonePitches.length)
-    : pct(exactHits, total)
+    : pct(exactHits, scored.length)
   const velos = pitches.map(p => safeNum(p.velo)).filter((v): v is number => v !== null)
   const hasVelo = velos.length > 0
   return {
     total,
-    strikePct: pct(strikes, total),
+    strikePct: pct(strikes, located.length),
     commandPct,
     commandLabel: u14 ? 'accuracy' as const : hasZone ? 'zone' as const : 'exact' as const,
     hasZone,
@@ -64,15 +70,16 @@ export function computeCommandDetail(pitches: Pitch[], allTypes: string[], gridS
   return allTypes.map(type => {
     const typePitches = pitches.filter(p => p.type === type)
     if (!typePitches.length) return null
-    const strikes = typePitches.filter(p => isStrikeCell(p.actualRow, p.actualCol, gridSize)).length
-    const exactHits = typePitches.filter(isExactHit).length
-    const zonePitches = typePitches.filter(p => p.inAccuracyZone === true || p.inAccuracyZone === false)
+    const typeScored = scoredOf(typePitches), typeLocated = locatedOf(typePitches)
+    const strikes = typeLocated.filter(p => isStrikeCell(p.actualRow, p.actualCol, gridSize)).length
+    const exactHits = typeScored.filter(isExactHit).length
+    const zonePitches = typeScored.filter(p => p.inAccuracyZone === true || p.inAccuracyZone === false)
     const velos = typePitches.map(p => safeNum(p.velo)).filter((v): v is number => v !== null)
 
-    const misses = typePitches.filter(p => u14 ? !isHit(p) : !isExactHit(p))   // U14: an RA hit is not a miss
+    const misses = typeScored.filter(p => u14 ? !isHit(p) : !isExactHit(p))   // U14: an RA hit is not a miss
     let up = 0, down = 0, left = 0, right = 0
     for (const p of misses) {
-      const dRow = p.actualRow - p.targetRow, dCol = p.actualCol - p.targetCol
+      const dRow = (p.actualRow as number) - (p.targetRow as number), dCol = (p.actualCol as number) - (p.targetCol as number)
       if (Math.abs(dRow) >= Math.abs(dCol)) { if (dRow < 0) up++; else down++ }
       else { if (dCol < 0) left++; else right++ }
     }
@@ -85,9 +92,9 @@ export function computeCommandDetail(pitches: Pitch[], allTypes: string[], gridS
       count: typePitches.length,
       thin: typePitches.length < THIN_SAMPLE,
       usagePct: pct(typePitches.length, total),
-      strikePct: pct(strikes, typePitches.length),
-      exactHitPct: pct(exactHits, typePitches.length),
-      accuracyPct: pct(typePitches.filter(isHit).length, typePitches.length),   // U14: the one number
+      strikePct: pct(strikes, typeLocated.length),
+      exactHitPct: pct(exactHits, typeScored.length),
+      accuracyPct: pct(typeScored.filter(isHit).length, typeScored.length),   // U14: the one number
       zoneAccuracyPct: zonePitches.length ? pct(zonePitches.filter(p => p.inAccuracyZone === true).length, zonePitches.length) : null,
       hasZone: zonePitches.length > 0,
       avgVelo: velos.length ? Math.round(velos.reduce((a, b) => a + b, 0) / velos.length) : null,
@@ -102,15 +109,17 @@ export function computeCommandDetail(pitches: Pitch[], allTypes: string[], gridS
 export function computePerSideBlock(pitches: Pitch[], side: 'R' | 'L', allTypes: string[], gridSize = 5) {
   const sidePitches = pitches.filter(p => p.batterSide === side)
   if (!sidePitches.length) return null
-  const strikes = sidePitches.filter(p => isStrikeCell(p.actualRow, p.actualCol, gridSize)).length
-  const zonePitches = sidePitches.filter(p => p.inAccuracyZone === true || p.inAccuracyZone === false)
+  const sideScored = scoredOf(sidePitches), sideLocated = locatedOf(sidePitches)
+  const strikes = sideLocated.filter(p => isStrikeCell(p.actualRow, p.actualCol, gridSize)).length
+  const zonePitches = sideScored.filter(p => p.inAccuracyZone === true || p.inAccuracyZone === false)
   const hasZone = zonePitches.length > 0
-  const exactHits = sidePitches.filter(isExactHit).length
+  const exactHits = sideScored.filter(isExactHit).length
   const u14 = isU14(sidePitches)
-  const commandPct = u14 ? pct(sidePitches.filter(isHit).length, sidePitches.length)
+  // C1: null when no pitch has both (a pen charted one part) -- the template then leaves accuracy out
+  const commandPct = u14 ? pct(sideScored.filter(isHit).length, sideScored.length)
     : hasZone
     ? pct(zonePitches.filter(p => p.inAccuracyZone === true).length, zonePitches.length)
-    : pct(exactHits, sidePitches.length)
+    : pct(exactHits, sideScored.length)
   const usageByType = allTypes
     .map(type => ({ type, count: sidePitches.filter(p => p.type === type).length }))
     .filter(t => t.count > 0)
@@ -118,7 +127,7 @@ export function computePerSideBlock(pitches: Pitch[], side: 'R' | 'L', allTypes:
   return {
     side,
     total: sidePitches.length,
-    strikePct: pct(strikes, sidePitches.length),
+    strikePct: pct(strikes, sideLocated.length),
     commandPct,
     commandLabel: u14 ? 'accuracy' as const : hasZone ? 'zone' as const : 'exact' as const,
     u14,

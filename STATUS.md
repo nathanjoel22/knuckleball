@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-25 · C1 Stage A (charting in parts, alone; More Plays) · **staging** (PR pending), branch `c1-stage-a`, cache `kb-shell-v374`
+## 2026-11-25 · C1 Stage A (charting in parts, alone; More Plays) · **staging** (PR #151), branch `c1-stage-a`, cache `kb-shell-v374`
 
 - **Joel's answers** to the report (`plans/c1-preconditions.md`): yes to all, except Relative Accuracy is now bullpen-only
   (Live Games never ask or score it).

@@ -3200,6 +3200,7 @@ function gameBatterSides(s){
 // Step 2 of a Live Game pitch: the batter's side is chosen and no pitch type is yet.
 function v1TypeStep(){
   const s = state.activeSession;
+  if(s && s.live && s.live.part === 'outcome' && liveIntentElsewhere(s)) return false;   // C1 (Joel, Nov 25): the type is the caller's -- only the Intent side's pitch buttons blink
   return !!(s && s.kind === 'game' && !s.g5 && !s.startQ && gameBatterChosen(s) && !state.selectedType);
 }
 function gameBatterChosen(s){

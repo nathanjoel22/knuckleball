@@ -60,6 +60,14 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-25 · C1: the Outcome device's pitch buttons don't blink (Joel) · **staging** (PR pending), branch `c1-no-type-blink`, cache `kb-shell-v379`
+
+- In a shared session the pitch type is the caller's, so only the Intent side's pitch buttons blink for "Select Pitch
+  Type" (`v1TypeStep` is false on the Outcome device while someone holds Intent). Checked with two devices: caller
+  blinking, Outcome device not. No database change; merge only.
+
+---
+
 ## 2026-11-25 · C1 edits 2 (Joel's notes) · **production** (PR #160, merge `7114dc3`), branch `c1-edits-2`, cache `kb-shell-v378`
 
 - **New batter:** the caller picks the side again on the dark flashing side columns (the Outcome & Response device

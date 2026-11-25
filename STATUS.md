@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-25 · C1 Stage C (putting shared sessions together) · **staging** (PR #155), branch `c1-stage-c`, cache `kb-shell-v376`
+## 2026-11-25 · C1 Stage C (putting shared sessions together) · **production** (PR #155, merge `a03d212`), branch `c1-stage-c`, cache `kb-shell-v376`
 
 - **One combined session:** when every piece of a shared session is saved, the server builds one combined session,
   pitch by pitch. The call comes from the Intent piece; everything else from the Outcome piece.
@@ -77,7 +77,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   there; none is caused by C1.
 - **Deviation:** before compiling, a piece shows in History, marked "Shared · waiting for the other device", with no
   report.
-- **Production order (Joel):** backup → `db push` → merge.
+- **On production (Nov 24, Joel):** backup `~/knuckleball-backups/2026-11-24-2257-*`; the migration (299 stats rows
+  identical, policies 32 / 12, `c1-compile-stale` scheduled); merged. **C1 is complete.**
 
 ---
 

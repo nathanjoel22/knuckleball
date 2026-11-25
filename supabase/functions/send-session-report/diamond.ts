@@ -31,6 +31,60 @@ export function sprayBoxOf(p: GamePitch): number | null {
   return p.fielder ? (FIELDER_BOX[p.fielder] ?? null) : null
 }
 
+// ---------- RP1 (Joel, Nov 25 2026): a ball in play by name, never by box number (plans/rp1-the-play.md) ----------
+const PLAY_HOW: Record<string, string> = { ground: 'groundball', line: 'line drive', fly: 'flyball', pop: 'pop up', bunt: 'bunt' }   // pop: games before Nov 18 only
+const PLAY_HIT: Record<string, string> = { '1B': 'single', '2B': 'double', '3B': 'triple', HR: 'home run' }
+const PLACE: Record<number, string> = {
+  1: 'in foul ground behind home, third-base side', 2: 'in foul ground on the third-base side', 3: 'down the Left-field line',
+  4: 'in the Left-field corner', 5: 'over the fence down the Left-field line', 6: 'over the fence in Left field',
+  7: 'over the fence in Center field', 8: 'over the fence in Right field', 9: 'over the fence down the Right-field line',
+  10: 'in the Right-field corner', 11: 'down the Right-field line', 12: 'in foul ground on the first-base side',
+  13: 'in foul ground behind home, first-base side', 14: 'in foul ground right of home', 15: 'at Home plate',
+  16: 'in foul ground left of home', 19: 'in Left field', 20: 'in Center field', 21: 'in Right field'
+}
+// boxes 5-9 hold deep outs and extra-base hits as well as home runs: only a home run is "over the fence" (decision 5)
+const PLACE_DEEP: Record<number, string> = { 5: 'deep down the Left-field line', 6: 'deep in Left field', 7: 'deep in Center field', 8: 'deep in Right field', 9: 'deep down the Right-field line' }
+// boxes that depend on the IF / OF answer: [infield, outfield]
+const PLACE_SPLIT: Record<number, [string, string]> = {
+  17: ['at Third base (3B)', 'down the shallow Left-field line'], 18: ['at Shortstop (SS)', 'in shallow Left field'],
+  22: ['at Second base (2B)', 'in shallow Right field'], 23: ['at First base (1B)', 'down the shallow Right-field line'],
+  25: ['up the middle', 'in shallow Center field']
+}
+// Boxes with foul ground in them: a ball caught there in foul ground is saved with no IF / OF (the app's FOUL answer)
+const FOUL_BOXES = [1, 2, 3, 11, 12, 13, 14, 15, 16, 17, 23]
+const PLACE_FOUL: Record<number, string> = {
+  3: 'in foul ground down the Left-field line', 11: 'in foul ground down the Right-field line', 15: 'in foul ground behind home',
+  17: 'in foul ground down the third-base line', 23: 'in foul ground down the first-base line'
+}
+// Infield, outfield or foul: the charter's own answer, which the game flow asks before who fielded it (Joel, Nov 25).
+// No answer on a box with foul ground = FOUL (that's how a foul out is saved; a home run over the fence also has none,
+// but it's never in those boxes). No answer anywhere else -- games charted before the field chart, placed by the
+// fielder -- reads as infield (decision 4).
+function playField(p: GamePitch, box: number): 'IF' | 'OF' | 'FOUL' {
+  if (p.sprayField === 'IF' || p.sprayField === 'OF') return p.sprayField
+  if (typeof p.sprayBox === 'number' && FOUL_BOXES.includes(box) && p.hitType !== 'HR') return 'FOUL'
+  return 'IF'
+}
+// "in the Right-field corner"; box 24 fielded by an infielder is "shallow SS", which the sentence puts first
+export function playPlace(p: GamePitch): string {
+  const box = sprayBoxOf(p)
+  if (!box) return ''
+  if (box === 24) return p.fielder && ['3B', 'SS', '2B', '1B'].includes(p.fielder) ? 'shallow ' + p.fielder : "at the Pitcher's mound"
+  const field = playField(p, box)
+  if (field === 'FOUL' && PLACE_FOUL[box]) return PLACE_FOUL[box]
+  if (PLACE_SPLIT[box]) return PLACE_SPLIT[box][field === 'OF' ? 1 : 0]
+  if (PLACE_DEEP[box] && p.hitType !== 'HR') return PLACE_DEEP[box]
+  return PLACE[box] ?? ''
+}
+// "Flyball out in the Right-field corner" / "Shallow SS groundball out": how it was hit + what it was + where
+export function playSentence(p: GamePitch): string {
+  const place = playPlace(p)
+  const what = p.inPlayOutcome === 'hit' ? (p.hitType ? PLAY_HIT[p.hitType] : 'hit') : p.inPlayOutcome === 'error' ? 'error' : p.inPlayOutcome === 'fc' ? "fielder's choice" : 'out'
+  const lead = place.startsWith('shallow ')
+  const s = [lead ? place : '', p.bbType ? PLAY_HOW[p.bbType] ?? '' : '', what, lead ? '' : place].filter(Boolean).join(' ')
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 const FIELD_COLORS = {
   baseball: { fence: '#B9D1C4', grass: '#C7DCBD', infield: '#B4C8AC', dirt: '#C9A97C', mound: '#B8956A', line: '#0F241B', shade: '15,36,27' },
   softball: { fence: '#BFDCEF', grass: '#CFE4F5', infield: '#BCD7EC', dirt: '#C9A97C', mound: '#B8956A', line: '#234B6E', shade: '35,75,110' }
@@ -128,7 +182,7 @@ export function renderSprayCharts(pitches: GamePitch[], allTypes: string[], spor
     ${byResult.length ? `<h3>By result</h3><div class="grid-row">${byResult.map(([o, ps]) => figure(OUTCOME_LABEL[o], d(ps), ps.length)).join('')}</div>` : ''}
     ${byBB.length ? `<h3>By how it was hit</h3><div class="grid-row">${byBB.map(([t, ps]) => figure(BB_LABEL[t], d(ps), ps.length)).join('')}</div>` : ''}
     <h3>By pitch type</h3><div class="grid-row">${byType.map(([t, ps]) => figure(t.toUpperCase(), d(ps, colorForType(t, allTypes)), ps.length)).join('')}</div>
-    <p class="caption">Where each ball in play was fielded, on the field's 25 boxes (foul ground included). Each baseball is one ball in play (by pitch type, ringed in its colour); darker means more.${oldGame ? ' Games charted before the field chart are placed by the fielder who made the play.' : ''}</p>
+    <p class="caption">Where each ball in play was fielded, on the field (foul ground included). Each baseball is one ball in play (by pitch type, ringed in its colour); darker means more.${oldGame ? ' Games charted before the field chart are placed by the fielder who made the play.' : ''}</p>
   </section>`
 }
 
@@ -154,10 +208,11 @@ function isBBDecider(p: GamePitch): boolean { return p.result === 'ball' && p.ba
 export function renderWhatLedToIt(pitches: GamePitch[], allTypes: string[], gridSize: number): string {
   if (!pitches.length) return ''
   const bip = pitches.filter(p => sprayBoxOf(p) !== null)
-  const boxRows = Array.from(new Set(bip.map(p => sprayBoxOf(p) as number))).sort((a, b) => a - b).map(box => {
-    const ps = bip.filter(p => sprayBoxOf(p) === box)
-    return `<tr><td>Box ${box}</td><td>${ps.length}</td><td>${mixText(ps)}</td><td>${smallGrid(ps, allTypes, gridSize)}</td></tr>`
-  }).join('')
+  // RP1: one row per play, said in words, most frequent first (first seen first on a tie)
+  const plays = new Map<string, GamePitch[]>()
+  for (const p of bip) { const k = playSentence(p); plays.set(k, [...(plays.get(k) ?? []), p]) }
+  const boxRows = Array.from(plays).sort((a, b) => b[1].length - a[1].length).map(([play, ps]) =>
+    `<tr><td>${escapeHtml(play)}</td><td>${ps.length}</td><td>${mixText(ps)}</td><td>${smallGrid(ps, allTypes, gridSize)}</td></tr>`).join('')
   const bbRows = BB_ORDER.map(t => [t, bip.filter(p => p.bbType === t)] as const).filter(([, ps]) => ps.length).map(([t, ps]) =>
     `<tr><td>${BB_LABEL[t]}</td><td>${ps.length}</td><td>${mixText(ps)}</td><td>${smallGrid(ps, allTypes, gridSize)}</td></tr>`).join('')
   const types = allTypes.filter(t => pitches.some(p => p.type === t))
@@ -169,7 +224,7 @@ export function renderWhatLedToIt(pitches: GamePitch[], allTypes: string[], grid
   return `
   <section class="section">
     <h2>What led to it</h2>
-    ${boxRows ? `<h3>By field box</h3><div class="table-scroll"><table class="data-table">${tableHead}<tbody>${boxRows}</tbody></table></div>` : ''}
+    ${boxRows ? `<h3>The Play</h3><div class="table-scroll"><table class="data-table">${tableHead}<tbody>${boxRows}</tbody></table></div>` : ''}
     ${bbRows ? `<h3>By how it was hit</h3><div class="table-scroll"><table class="data-table">${tableHead}<tbody>${bbRows}</tbody></table></div>` : ''}
     <h3>Pitch type × result</h3>
     <div class="table-scroll"><table class="data-table wide">

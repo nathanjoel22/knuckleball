@@ -1084,8 +1084,8 @@
   /* Joel, Nov 19: Which team is this for? -- room for a 25-character team name: the tray takes the row, each button its
      own width, and a third choice (two teams) wraps to a new row instead of squeezing */
   .start-yn.start-file{ max-width:100%; flex-wrap:wrap; }
-  .start-yn.start-parts{ max-width:420px; display:grid; grid-template-columns:1fr; }   /* C1 A: the parts, one per row */
-  .start-parts .seg{ min-height:48px; white-space:normal; line-height:1.2; padding:6px 12px; }
+  .start-q-sub-item{ margin-top:var(--s-12); }   /* C1 A: the parts, a Yes / No each */
+  .start-q-sub-item .start-q-sub{ font-size:15px; margin-bottom:var(--s-8); }
   /* C1 Stage A: the Intent-only controls under the chart. Each button has the No batter pill's height; three share the
      row (they can't each be 160px wide on a phone). The pulse is the target dot's, as a ring; reduced motion: steady. */
   .c1-ctl{ display:flex; flex-direction:column; gap:var(--s-8); width:100%; max-width:520px; margin:var(--s-8) auto 0; }
@@ -3119,7 +3119,14 @@ function chartsOutcome(s){ if(!s) return true; if(s.parts) return !!s.parts.outc
 function intentOnly(s){ return !!s && chartsIntent(s) && !chartsOutcome(s); }
 function outcomeOnlyPen(s){ return !!s && s.kind === 'bullpen' && !chartsIntent(s); }
 // History / Home: the chip that names what a session didn't chart (C1 A)
+// C1 C: a piece's History card says where its report will be
+function c1PiecePanel(s){
+  return `<div class="report-panel"><div class="field-label">Shared session</div>
+    <p class="report-recipients">This is the part charted on this device (${s.livePart === 'intent' ? 'the calls' : 'where each pitch went'}). When every device has saved, or three hours after the last save, the parts are put together into one session, and its report is made there.</p></div>`;
+}
 function partChip(s){
+  if(s && s.livePart) return ` <span class="coach-logged-tag">Shared · ${s.livePart === 'intent' ? 'your calls' : 'your locations'} · waiting for the other device</span>`;   // C1 C
+  if(s && s.compiledFrom) return ` <span class="coach-logged-tag">Charted on two devices</span>` + (partialSession(s) ? ` <span class="coach-logged-tag">${chartsIntent(s) ? 'Intent only' : 'Outcome only'}</span>` : '');
   if(!s || !partialSession(s)) return '';
   return ` <span class="coach-logged-tag">${s.kind === 'game' ? 'Intent only' : chartsIntent(s) ? 'Intent only' : 'Outcome only'}</span>`;
 }
@@ -7789,6 +7796,7 @@ function pendingSessionsForCurrentSelection(){
       raOn: item.raOn === true,   // U14
       purpose: item.purpose || null,   // SR1 A
       chartedIntent: item.chartedIntent !== false, chartedOutcome: item.chartedOutcome !== false,   // C1 Stage A
+      liveSessionId: item.liveSessionId || null, livePart: item.livePart || null,                  // C1 Stage B / C: a piece
       pitchCountAdjust: item.pitchCountAdjust || 0,   // Oct 19
       events: item.events || [],   // Oct 20: the game card's K / BB / R
       outsRecorded: item.gameOutsRecorded == null ? null : item.gameOutsRecorded,   // History's IP
@@ -8133,7 +8141,7 @@ function workloadBanner(){
 const STATS_VERSION = 3;   // C1 Stage A: v3 adds located / scored and the session's parts (every older value unchanged)
 const HISTORY_PREFETCH_N = 20;
 const HISTORY_CACHE_MAX = 200;
-const SESSION_COLS = 'id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, purpose, camp_name, charted_intent, charted_outcome, pitch_count_adjust, final_at, exit_runs, exit_er, exit_bb, game_outs_recorded';
+const SESSION_COLS = 'id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, purpose, camp_name, charted_intent, charted_outcome, live_session_id, live_part, compiled_from, pitch_count_adjust, final_at, exit_runs, exit_er, exit_bb, game_outs_recorded';
 const PITCH_COLS = 'type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, accuracy_hit_kind, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, runs_scored, unearned_runs, inherited_runs, charged_prev, fielders, batter_to, runner_advances, outs_on_play, sacrifice, play_flags';
 const EVENT_COLS = 'event_type, balls_before, strikes_before, runs_scored, unearned_runs, inherited_runs, charged_prev';
 const STATS_COLS = 'stats_version, pitches, pitch_count, strikes, hits, exact_hits, ra_hits, zone_total, zone_hits, velo_n, velo_sum, velo_min, velo_max, ttp_n, ttp_sum, by_type, game, located, scored, charted_intent, charted_outcome';
@@ -8335,6 +8343,7 @@ function mapSessionRow(s, teamId){
     purpose: s.purpose || null,   // SR1 A: the pen's tag (null for every session from before it)
     campName: s.camp_name || null,   // F2 Stage 4: the temporary team / camp it was charted for
     chartedIntent: s.charted_intent !== false, chartedOutcome: s.charted_outcome !== false,   // C1 Stage A: its parts
+    liveSessionId: s.live_session_id || null, livePart: s.live_part || null, compiledFrom: s.compiled_from || null,   // C1 B / C
     pitchCountAdjust: s.pitch_count_adjust || 0,   // Oct 19: + / - pitch count (games)
     // R3 (B6): his line is open while runners he left on can still score (final_at NULL); runs / ER / walks charged
     // to him after he left come from the relief games' saves
@@ -8356,8 +8365,10 @@ function applySessionRows(rows, teamId){
   // P1-15: soft-deleted sessions never enter state.sessions, so every existing
   // calc (stats, trends, report history) excludes them for free. They render
   // only as tombstones in the history view.
-  state.sessions = all.filter(s => !s.deletedAt);
-  state.deletedSessions = all.filter(s => s.deletedAt);
+  // C1 Stage C (Joel, Nov 25): a shared session's pieces are hidden once their combined session exists
+  const compiled = new Set(all.map(s => s.compiledFrom).filter(Boolean));
+  state.sessions = all.filter(s => !s.deletedAt && !(s.livePart && compiled.has(s.liveSessionId)));
+  state.deletedSessions = all.filter(s => s.deletedAt && !(s.livePart && compiled.has(s.liveSessionId)));
 }
 // Offline start / profile switch: the device's copy of this pitcher's History, if he's one it keeps.
 async function loadSessionsFromDevice(){
@@ -9631,18 +9642,21 @@ window.setMidFrom = async function(i){
 // start (today's), at least one. Intent = the call; Outcome = where it went (a game: and everything after it). In a
 // Live Game, choosing Intent replaces "Turn on Intent?".
 function partsStartQuestion(q, game){
+  // Joel, Nov 25: one Yes / No per part, like the other start questions
   const pi = q.pi !== false, po = q.po !== false;
   const lv = q.live ? (q.liveOpen || []) : null;   // C1 B: joining -- only the open part; the other is on another device
-  const busy = k => lv && !lv.includes(k) ? ' · on another device' : '';
-  const tray = segTray([
-    { label: 'Intent — Pitch Calling' + busy('intent'), selected: pi, disabled: !!busy('intent'), onclick: `setStartQ('pi', ${pi ? 'false' : 'true'})` },
-    { label: (game ? 'Outcome & Response — Pitch Locations and Results' : 'Outcome — Pitch Locations') + busy('outcome'), selected: po, disabled: !!busy('outcome'), onclick: `setStartQ('po', ${po ? 'false' : 'true'})` }
-  ], { label: 'Parts of charting (choose one or both)', cls: 'start-yn start-parts' });   // no sliding indicator: both can be on
+  const busy = k => !!(lv && !lv.includes(k));
+  const yn = (k, on, part) => segTray([
+    { label: 'Yes', selected: on, disabled: busy(part), onclick: `setStartQ('${k}', true)` },
+    { label: 'No', selected: !on, disabled: busy(part), onclick: `setStartQ('${k}', false)` }], { key: 'sq-' + k, label: k, cls: 'start-yn' });
+  const row = (k, on, part, label) => `<div class="start-q-sub-item"><div class="start-q-label start-q-sub">${label}${busy(part) ? ' <span class="live-join-note">· on another device</span>' : ''}</div>${yn(k, on, part)}</div>`;
   const note = !pi && !po ? 'Choose at least one part.'
     : pi && po ? (game ? 'Tap where the catcher calls the pitch, then where it went.' : 'Tap where each pitch is aimed, then where it landed.')
     : pi ? 'You call each pitch: tap where it\'s aimed, then Confirm Pitch. Where it goes isn\'t charted here.'
     : (game ? 'Tap where each pitch went, then what happened, as usual. No calls are charted here.' : 'Tap where each pitch landed. No targets, so no accuracy for this pen.');
-  return `<div class="start-q-item"><div class="start-q-label">What parts of charting will you be handling?</div>${lv ? '<p class="start-q-note live-join-note"><span class="live-dot" aria-hidden="true"></span>In progress on another device: you\'ll pick up at the next pitch.</p>' : ''}${tray}
+  return `<div class="start-q-item"><div class="start-q-label">What parts of charting will you be handling?</div>${lv ? '<p class="start-q-note live-join-note"><span class="live-dot" aria-hidden="true"></span>In progress on another device: you\'ll pick up at the next pitch.</p>' : ''}
+    ${row('pi', pi, 'intent', 'Intent — Pitch Calling')}
+    ${row('po', po, 'outcome', game ? 'Outcome &amp; Response — Pitch Locations and Results' : 'Outcome — Pitch Locations')}
     <p class="start-q-note">${note}</p>${state.liveStartError ? `<p class="profile-msg">${escHtml(state.liveStartError)}</p>` : ''}</div>`;
 }
 function renderStartQuestions(p){
@@ -14619,7 +14633,7 @@ function renderHistoryView(){
       const viewControl = s.reportPath
         ? `${copyReportBtn(s)}${shareReportBtn(s.reportPath)}`
         : (pEligible ? `<button class="btn btn-secondary" onclick="viewSessionReport('${s.id}')">Create report</button>` : '');
-      const reportPanel = (s.otherTeam || viewOnlyLinked()) ? otherTeamReportPanel(s) : s.pending ? `
+      const reportPanel = s.livePart ? c1PiecePanel(s) : (s.otherTeam || viewOnlyLinked()) ? otherTeamReportPanel(s) : s.pending ? `
         <div class="report-panel">
           <div class="field-label">Email this report</div>
           <p class="report-recipients">Available once this session has synced.</p>
@@ -14754,7 +14768,7 @@ function renderHistoryView(){
     const viewControl = s.reportPath
       ? `${copyReportBtn(s)}${shareReportBtn(s.reportPath)}`
       : (pEligible ? `<button class="btn btn-secondary" onclick="viewSessionReport('${s.id}')">Create report</button>` : '');
-    const reportPanel = (s.otherTeam || viewOnlyLinked()) ? otherTeamReportPanel(s) : s.pending ? `
+    const reportPanel = s.livePart ? c1PiecePanel(s) : (s.otherTeam || viewOnlyLinked()) ? otherTeamReportPanel(s) : s.pending ? `
       <div class="report-panel">
         <div class="field-label">Email this report</div>
         <p class="report-recipients">Available once this session has synced.</p>
@@ -16031,8 +16045,34 @@ function recapCallout(item, p, by){
   });
   return best ? `Best ${pitchLabel(best.t)} accuracy in ${prev.length + 1} sessions` : '';
 }
+// C1 Stage C (Joel, Nov 25): a shared session's save screen says what this charter recorded -- their part, how many
+// pitches, how many were matched to the other device and how many were left empty -- in the recap's own design. No Send
+// or View: the report belongs to the combined session, made when every piece is in (or three hours after the last).
+function renderPieceRecap(r){
+  const item = r.item, p = r.p, game = item.kind === 'game', n = item.pitches.length;
+  const matched = item.pitches.filter(x => Number.isInteger(x.liveSeq)).length, empty = n - matched;
+  const part = item.livePart === 'intent' ? 'Intent — the calls' : game ? 'Outcome & Response — where it went and what happened' : 'Outcome — where each pitch landed';
+  const when = new Date(item.endedAt);
+  return `<div class="recap-screen" role="dialog" aria-modal="true" aria-label="Your part of the session">
+    <div class="recap-inner">
+      <div class="rc-top"><span class="brand-word">KNUCKLEBALL</span><span class="rc-when">${escHtml(when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))} · ${escHtml(when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))}</span></div>
+      <span class="rc-tag slant-tag">Saved · your part · ${game ? 'Live Game' : 'Bullpen'}</span>
+      <h2 class="display rc-name">${escHtml(p.name)}</h2>
+      <div class="rc-nums"><div class="rc-num"><span class="rc-val display">${n}</span><span class="rc-lbl">${item.livePart === 'intent' ? 'Pitches called' : 'Pitches'}</span></div>
+        <div class="rc-num"><span class="rc-val display">${matched}</span><span class="rc-lbl">Matched</span></div>
+        <div class="rc-num"><span class="rc-val display">${empty}</span><span class="rc-lbl">Left empty</span></div></div>
+      <div class="rc-mid">
+        <div class="rc-plot">${renderHistoryPlot({ kind: item.kind, pitches: item.pitches }, p, { small: true, legend: false, caption: '' })}</div>
+        <div class="rc-types"><div class="rc-call">You charted: ${escHtml(part)}.</div>
+          <p class="rc-wait">${empty ? `${empty} pitch${empty === 1 ? '' : 'es'} couldn't be matched to the other device (charted without a signal), so ${empty === 1 ? 'it' : 'they'} won't be in the report. ` : ''}The report comes when every device has saved, or three hours after the last save. It shows up in History as one session.</p></div>
+      </div>
+      <div class="rc-actions"><button type="button" class="btn btn-primary" onclick="recapGo('done')">Done</button></div>
+    </div>
+  </div>`;
+}
 function renderRecap(){
   const r = state.recap; if(!r) return '';
+  if(r.item && r.item.liveSessionId) return renderPieceRecap(r);   // C1 C
   const item = r.item, p = r.p, st = sessionStats(item.pitches), game = item.kind === 'game';
   const top = st.hasVelo ? st.maxVelo : null;
   const gl = game ? gameStats(item.pitches, item.pitchCountAdjust || 0, item.events || []) : null;
@@ -17987,6 +18027,7 @@ function feedReportSlot(s){
 }
 // A session from FEED_AUTO_FROM on, with no report yet, that this viewer may create: a marker the feed watches.
 function feedAutoMark(s, eligible){
+  if(s.livePart) return '';   // C1 C: a piece has no report (its combined session has it)
   if(s.reportPath || s.pending || s.tombstone || s.otherTeam || viewOnlyLinked() || !eligible || gameLineOpen(s)
      || !(s.date >= FEED_AUTO_FROM) || feedAutoTried.has(s.id)) return '';
   return `<span class="feed-auto" data-sid="${s.id}"></span>`;

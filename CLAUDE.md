@@ -61,8 +61,8 @@ storage.
 ## Charting in parts (C1 Stage A, Joel, Nov 25 2026; `plans/c1-charting-parts.md`, decisions in `plans/c1-preconditions.md`)
 
 Where this and the sections above differ (U14's Live Game question, "Turn on Intent?", U16's voice), this wins.
-- **The first start question, bullpen and Live Game:** "What parts of charting will you be handling?" Two switches, both
-  on to start, at least one (`partsStartQuestion`; `s.parts`):
+- **The first start question, bullpen and Live Game:** "What parts of charting will you be handling?" A Yes / No for each
+  part (Joel, Nov 25), both Yes to start, at least one (`partsStartQuestion`; `s.parts`):
   - **Intent — Pitch Calling** (the type and where it's aimed);
   - **Outcome — Pitch Locations** (a pen) / **Outcome & Response — Pitch Locations and Results** (a game: where it went
     and everything after; never split).
@@ -146,6 +146,34 @@ Where this and the sections above differ (U14's Live Game question, "Turn on Int
   Policies 32 / 12.
 - **Migrations:** `20261130000000_c1b_live_sessions` and `20261130000001_c1b_piece_columns`; rollbacks in
   `supabase/rollback/`; test `supabase/tests/c1b_live_sessions.sql` (the access matrix).
+
+## Putting shared sessions together (C1 Stage C, Joel, Nov 25 2026; `plans/c1-charting-parts.md`, decisions in `plans/c1-preconditions.md`)
+
+- **When:** once every part's holder has left and every piece they left with is saved (or deleted), the server CREATES
+  one combined session (`c1_compile`, called by `sync_session` after a piece saves and by `live_leave`; `c1_try_compile`
+  never stops a save -- an error is kept on `live_sessions.compile_error`).
+- **Pitch by pitch, by `live_seq`:** the call (type, target) from the Intent piece; everything else (location, result, the
+  play, velocity, a game's events and line) from the Outcome piece.
+  - An unmatched Outcome pitch is kept with no call; an unmatched call is left out.
+  - A part nobody took is empty (`charted_intent` / `charted_outcome`).
+  - Pens score exact / miss where both parts exist (no Relative Accuracy: it needs both parts on one device).
+- **The pieces are never edited:** the combined session points back (`sessions.compiled_from`, locked once saved).
+  - The app hides a piece once its combined session exists (`applySessionRows`); until then it shows with "Shared ·
+    waiting for the other device" and no report (`c1PiecePanel`).
+  - A piece never has a stats row, leaderboard row or baseline (`finalize_session_stats`, `get_team_leaderboard`).
+- **The save screen in a shared session** (`renderPieceRecap`): what that charter recorded -- their part, pitches, how
+  many were matched and how many left empty -- and Done. No Send or View.
+- **Three hours:** pg_cron `c1-compile-stale` (every 15 min, `c1_compile_stale`). A live session with no activity for
+  three hours, or three hours after its last saved piece, is closed and compiled "as it was": an open part with no
+  saved piece is filled from `live_pitches`.
+- **The combined session's report:** made like any new session's (the first time someone with report rights has it on
+  screen), then frozen. History shows "Charted on two devices".
+- **Deleting:** a piece deleted before compiling leaves its part empty. After compiling, deleting a piece changes
+  nothing, and the combined session is deleted like any other.
+- **Export and account deletion:** they already cover both pieces and combined sessions (ordinary sessions of the
+  pitcher). The live tables go with the pitcher's profile.
+- Migration `20261201000000_c1c_compile`; rollback in `supabase/rollback/`; test `supabase/tests/c1c_compile.sql`.
+  Policies 32 / 12.
 
 ## Session tags (SR1 Stage A, Joel, Nov 19 2026; `plans/sr1-session-reports.md`, decisions in `plans/sr1a-preconditions.md`)
 

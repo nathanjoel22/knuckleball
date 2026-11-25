@@ -102,6 +102,51 @@ Where this and the sections above differ (U14's Live Game question, "Turn on Int
 - Migration `20261129000000_c1a_charting_parts`; rollback in `supabase/rollback/`; test
   `supabase/tests/c1a_charting_parts.sql`. Policies 32 / 12.
 
+## Shared charting (C1 Stage B, Joel, Nov 25 2026; `plans/c1-charting-parts.md`, decisions in `plans/c1-preconditions.md`)
+
+- **When a session is live:** started with ONE part and a signal (`live_start`). Both parts on one device, or no signal at
+  the start: private, as Stage A. The one exception to "nothing reaches the server before End session & save": calls and
+  outcomes go to `live_sessions` / `live_parts` / `live_pitches` as they're tapped. They're never sessions or pitches.
+- **Who sees it and joins:** anyone who can chart that pitcher now, by `sync_session`'s own tests (`c1_can_chart`: the
+  pitcher, their parents and linked guardian / teen sign-in, a coach who sees them on that team, an open F2 assignment,
+  a camp on its day).
+  - The marks: the Home notice ("Live … in progress · Chart Now"), a red Live mark on Chart (bar and menu), and "In
+    Progress — Chart Now" on the card (`live_summary`, `renderLiveNotice`).
+  - Tapping gives the parts question with only the open part (`live_join`). One person per part; the first tap wins
+    (a unique index). They pick up at the next pitch (`from_seq`).
+  - A second start for the same pitcher and kind is refused (`live_exists`) and offered the open part.
+- **In step:** pitches are numbered by the server.
+  - **Intent:** Confirm Pitch sends the call (`live_put_intent`).
+  - **The other device** opens for a pitch only when its call arrives ("Waiting for the call"), takes the caller's pitch
+    type, and draws the call on its chart (`liveNextCall`). After 4 s with no call, "Chart without it" (skipped).
+  - **"No pitch"** releases a call never thrown.
+  - **Back:** the caller's Back works until the other device records that pitch or a later call is confirmed
+    (`live_unconfirm`).
+  - **A game:** the Outcome & Response device moves the at-bat on; either device may set the batter side
+    (`live_set_state`).
+- **Polling, not Realtime:** no new policy.
+  - While charting: 1 s when one device waits on the other, else 3 s, only in front and online (`liveTick`).
+  - The marks: 30 s, on return to the app, and at sign-in.
+  - Each response carries `server_now`; the device keeps a clock offset from the quickest round trip (`liveRpc`,
+    `liveNow`).
+- **No signal:** the device keeps charting its part. Its taps are queued with corrected times and matched by time when the
+  signal returns (`live_put_offline`):
+  - an outcome matches the earliest open call 0.5–30 s before it (±2 s); a call matches an uncalled outcome 0.5–30 s
+    after it; order never crosses;
+  - unmatched = empty for that part.
+- **Leaving:** End session & save leaves; the part opens again from the next pitch, and the session closes when nobody
+  holds one (`live_leave`, run before that piece's sync, after any queued taps).
+  - A pitching change (Save and switch) by the Outcome & Response device points the next pitcher's live session back
+    (`successor_id`). The caller is asked "Keep calling for <name>?".
+- **Each charter's piece** is saved through `sync_session` as today, with `sessions.live_session_id` / `live_part` and each
+  pitch's `pitches.live_seq` (null: not matched). It's locked once saved. Stage C puts the pieces together; until then
+  each shows in History as its own Intent-only / Outcome-only session.
+- **Access:** the three live tables have no grant and no policy. Every function checks `c1_can_chart` and, beyond the list
+  and joining, that the caller holds a part (`c1_my_part`). An assigned or camp coach who joins still reads no history.
+  Policies 32 / 12.
+- **Migrations:** `20261130000000_c1b_live_sessions` and `20261130000001_c1b_piece_columns`; rollbacks in
+  `supabase/rollback/`; test `supabase/tests/c1b_live_sessions.sql` (the access matrix).
+
 ## Session tags (SR1 Stage A, Joel, Nov 19 2026; `plans/sr1-session-reports.md`, decisions in `plans/sr1a-preconditions.md`)
 
 - **Asked on a bullpen's start screen**, after "Turn on Relative Accuracy?": "What's this pen for?" Command · Velocity ·

@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-25 · C1 Stage C (putting shared sessions together) · **staging** (PR pending), branch `c1-stage-c`, cache `kb-shell-v376`
+## 2026-11-25 · C1 Stage C (putting shared sessions together) · **staging** (PR #155), branch `c1-stage-c`, cache `kb-shell-v376`
 
 - **One combined session:** when every piece of a shared session is saved, the server builds one combined session,
   pitch by pitch. The call comes from the Intent piece; everything else from the Outcome piece.

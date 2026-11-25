@@ -60,6 +60,18 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-25 · C1 deviations approved (no packet; Joel) · docs only
+
+- **Joel approved the C1 deviations:**
+  - WP / PB on the pitch stays on the runner diamond (not More Plays);
+  - obstruction and runner's interference are between-pitch runner reasons, not ball-in-play markers;
+  - before compiling, a shared session's piece shows in History, "Shared · waiting for the other device", with no
+    report.
+- Recorded in `plans/c1a-evidence.md` and `plans/c1c-evidence.md`. Still open: Joel's two-phone check and the iPhone
+  voice / More Plays checks.
+
+---
+
 ## 2026-11-25 · C1 Stage C (putting shared sessions together) · **production** (PR #155, merge `a03d212`), branch `c1-stage-c`, cache `kb-shell-v376`
 
 - **One combined session:** when every piece of a shared session is saved, the server builds one combined session,

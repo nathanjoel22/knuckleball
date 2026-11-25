@@ -74,7 +74,7 @@ charting a demo pitcher.
   spots).
 - Policies 32 / storage 12 before and after.
 
-## Deviations (for Joel)
+## Deviations (approved by Joel, Nov 25 2026)
 1. **WP / PB on the pitch** isn't a More Plays button: More Plays only shows during a ball in play, and a wild pitch on
    ball four or strike three isn't one. It's already chartable: answer the runners question with the forced base, then
    move the runner from the status-bar diamond with Wild pitch / Passed ball (a `wild_pitch` / `passed_ball` event after

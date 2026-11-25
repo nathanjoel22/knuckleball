@@ -60,6 +60,23 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-25 · C1 edits (Joel's notes after Stage C) · **staging** (PR #158), branch `c1-edits`, cache `kb-shell-v377`
+
+- **Back on the Outcome device (shared session):** before this change, a game's Back could undo pitches already charted
+  with the caller. Now it stays inside the pitch being charted ("A pitch charted with the caller stays as it is"), and
+  recorded pitches have no edit or ✕.
+- **The Outcome device's screen:** "Awaiting Pitch Intent" until the call arrives, then "Intent logged, Select Pitch
+  Outcome". The board blinks slowly; there's no target dot or anything else showing where it was called.
+- **The caller's game screen:** inning, outs, count, runs and pitch count from the Outcome & Response device. Needs
+  migration `20261202000000_c1d_live_scoreboard` (`live_set_state` keeps them). The caller's batter side now reaches the
+  other device at once.
+- **More Plays:** a full-width row beside ‹ Back (it had shrunk to one box after the contact step).
+- **The IF / OF / FOUL / over-the-fence shading** covers all of that ground on the drawn field, phone and wide.
+- **iPad / computer scoreboard:** one even row (Runners was lower than the rest), plus a total **Pitches** count.
+- **Production order (Joel):** backup → `db push` (one function) → merge.
+
+---
+
 ## 2026-11-25 · C1 deviations approved (no packet; Joel) · docs only
 
 - **Joel approved the C1 deviations:**

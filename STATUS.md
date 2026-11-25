@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-24 · "No tag" renamed "Feel Good" (no packet; Joel) · **staging** (PR #149), branch `feel-good-tag`, cache `kb-shell-v373`
+## 2026-11-24 · "No tag" renamed "Feel Good" (no packet; Joel) · **production** (PR #149, merge `fd1e7a7`), branch `feel-good-tag`, cache `kb-shell-v373`
 
 - **Label only:** the fourth choice under "What's this pen for?" on a bullpen's start screen reads **Feel Good**.
   - It's still the default every time, and still saves the pen with no purpose (null).

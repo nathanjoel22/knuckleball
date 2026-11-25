@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-25 · C1: the Outcome device's pitch buttons don't blink (Joel) · **staging** (PR #162), branch `c1-no-type-blink`, cache `kb-shell-v379`
+## 2026-11-25 · C1: the Outcome device's pitch buttons don't blink (Joel) · **production** (PR #162), branch `c1-no-type-blink`, cache `kb-shell-v379`
 
 - In a shared session the pitch type is the caller's, so only the Intent side's pitch buttons blink for "Select Pitch
   Type" (`v1TypeStep` is false on the Outcome device while someone holds Intent). Checked with two devices: caller

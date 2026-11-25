@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-25 · Ball-in-play shading on iPad Safari (Joel) · **staging** (PR #166), branch `g5-shade-ipad`, cache `kb-shell-v380`
+## 2026-11-25 · Ball-in-play shading on iPad Safari (Joel) · **production** (PR #166), branch `g5-shade-ipad`, cache `kb-shell-v380`
 
 - **Joel's screenshots (iPad Safari):** the Outfield and Foul shading stopped at the sides of the field's box square
   instead of covering all that ground. Chrome draws the shade past the drawing's box (`overflow:visible`); iPad Safari
@@ -70,7 +70,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
   marks sit where they did.
 - **Checked:** headless Chrome at 390, 1200 and 1600 wide, with the svg forced to clip to its box as Safari does: IF,
   OF and Foul cover all of their ground to the stage's edges and bottom. Not checked on a real iPad (Joel's check).
-- No database or report change; merge only.
+- No database or report change. **On production (Nov 25, Joel):** merged.
 
 ---
 

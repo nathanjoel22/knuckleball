@@ -229,7 +229,7 @@ Deno.serve(async (req) => {
   // same as any other RLS-filtered read.
   const { data: session, error: sessionErr } = await callerClient
     .from('sessions')
-    .select('id, pitcher_id, report_path, kind, deleted_at, sport, ra_on, purpose, started_at')
+    .select('id, pitcher_id, report_path, kind, deleted_at, sport, ra_on, purpose, started_at, charted_intent, charted_outcome')
     .eq('id', sessionId)
     .maybeSingle()
   if (sessionErr) {
@@ -355,8 +355,29 @@ Deno.serve(async (req) => {
     // the CALLER's client, so it counts only sessions this caller can read (as pitcher_workload does). A failed read
     // leaves the report without comparisons; it never stops it.
     const comparison = await loadComparison(callerClient, session)
+    // C1 Stage A: which parts this session charted, from the session ROW (like purpose), never the payload. Every
+    // session before C1 has both (absent = both).
+    const chartedIntent = session.charted_intent !== false, chartedOutcome = session.charted_outcome !== false
 
-    if (session.kind === 'game') {
+    if (session.kind === 'game' && !chartedOutcome) {
+      // C1 Stage A: a game charted Intent only has no results, counts or outs -- no compute_game_summary (the stats
+      // trigger skips it too), no line to wait for, no events. c1.ts builds its report from the calls alone.
+      const gamePayload: GameReportPayload = {
+        sport: asSport(session.sport), raOn: false, comparison, chartedIntent, chartedOutcome,
+        sessionId: body.sessionId, pitcherId: body.pitcherId, pitcherName: body.pitcherName,
+        uniformNumber: body.uniformNumber ?? null, teamName: body.teamName ?? null, date: body.date, opponent: body.opponent ?? null,
+        chartingPerspective: body.chartingPerspective ?? null, loggedByCoach: !!body.loggedByCoach,
+        pitchTypes: Array.isArray(body.pitchTypes) ? body.pitchTypes : [], gridSize: body.gridSize,
+        pitches: body.pitches as unknown as GamePitch[], gameTrend: [],
+        summary: null as unknown as GameSummary   // never read on this path
+      }
+      try {
+        useSportPalette(asSport(session.sport))
+        html = buildGameReportHtml(gamePayload)
+      } catch (err) {
+        return new Response(JSON.stringify({ error: 'Report generation failed: ' + (err as Error).message }), { status: 500, headers: corsHeaders })
+      }
+    } else if (session.kind === 'game') {
       // G2 approach (g): the ONE definition (drafting decision 1) -- called
       // fresh here, never trusted from the client, so this can never
       // disagree with what History's own game row already showed for the
@@ -392,6 +413,7 @@ Deno.serve(async (req) => {
         sport: asSport(session.sport),   // S1: the session row's sport
         raOn: session.ra_on === true,     // U14: from the session row, like the sport
         comparison,
+        chartedIntent, chartedOutcome,    // C1 Stage A: from the session row
         sessionId: body.sessionId,
         pitcherId: body.pitcherId,
         pitcherName: body.pitcherName,
@@ -435,6 +457,7 @@ Deno.serve(async (req) => {
         raOn: session.ra_on === true,     // U14: from the session row
         purpose: session.purpose ?? null,  // SR1 A: from the session row, never the payload
         comparison,
+        chartedIntent, chartedOutcome,     // C1 Stage A: from the session row, never the payload
         pitcherName: body.pitcherName,
         uniformNumber: body.uniformNumber ?? null,
         teamName: body.teamName ?? null,

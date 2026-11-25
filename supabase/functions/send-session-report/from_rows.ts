@@ -12,19 +12,19 @@ import { buildReportHtml, type ReportPayload } from './template.ts'
 import { buildGameReportHtml, type GameReportPayload, type GameSummary } from './template_game.ts'
 import type { Pitch, HistoryEntry } from './compute.ts'
 import type { GamePitch, RecentPenTypeRow, GameHistoryEntry } from './compute_game.ts'
-import { asSport, useSportPalette } from './helpers.ts'
+import { asSport, useSportPalette, isScored } from './helpers.ts'
 import { loadComparison } from './sr1.ts'
 
 const U6_CUTOFF_TS = 1789965601000   // the app's U6_CUTOFF_TS: a 65 mph reading before it is the old default, not a real speed
 const PITCH_COLS = 'session_id, type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, in_accuracy_zone, ' +
   'accuracy_zone_cells, batter_side, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, ' +
   'balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, ' +
-  'accuracy_hit_kind, fielders, sacrifice, batter_to, runner_advances, runs_scored, unearned_runs, inherited_runs, charged_prev'   // Release 2
+  'accuracy_hit_kind, fielders, sacrifice, batter_to, runner_advances, runs_scored, unearned_runs, inherited_runs, charged_prev, play_flags'   // Release 2; C1 A
 
 type Row = Record<string, unknown>
 // deno-lint-ignore no-explicit-any
 type AppPitch = Record<string, any>
-interface AppSession { id: string; date: number; kind: string; deletedAt: number | null; pitches: AppPitch[] }
+interface AppSession { id: string; date: number; kind: string; deletedAt: number | null; pitches: AppPitch[]; full?: boolean }   // C1: full = both parts charted
 
 const nn = (v: unknown) => (v === null || v === undefined ? null : v)
 export function pitchFromRow(p: Row): AppPitch {
@@ -50,13 +50,14 @@ export function pitchFromRow(p: Row): AppPitch {
     bbType: p.bb_type || null, runnersBefore: nn(p.runners_before), sprayBox: nn(p.spray_box), sprayField: p.spray_field || null, runnersAfter: nn(p.runners_after),
     // Release 2: same as the app's mapping (loadSessionsForCurrentSelection)
     fielders: p.fielders || null, sacrifice: p.sacrifice || null, batterTo: nn(p.batter_to), runnerAdvances: p.runner_advances || null,
-    runsScored: nn(p.runs_scored), unearnedRuns: nn(p.unearned_runs), inheritedRuns: nn(p.inherited_runs), chargedPrev: p.charged_prev === true
+    runsScored: nn(p.runs_scored), unearnedRuns: nn(p.unearned_runs), inheritedRuns: nn(p.inherited_runs), chargedPrev: p.charged_prev === true,
+    playFlags: Array.isArray(p.play_flags) && p.play_flags.length ? p.play_flags : null   // C1 Stage A (More Plays)
   }
 }
 const isDefaultVelo = (pt: AppPitch) => pt.velo === 65 && pt.ts < U6_CUTOFF_TS
-const isStrikeCell = (r: number, c: number) => r >= 1 && r <= 3 && c >= 1 && c <= 3
+const isStrikeCell = (r: number | null, c: number | null) => r !== null && c !== null && r >= 1 && r <= 3 && c >= 1 && c <= 3
 const isAccurate = (p: AppPitch) => p.accuracyHitKind ? (p.accuracyHitKind === 'exact' || p.accuracyHitKind === 'ra')   // U14: one number
-  : p.targetRow === p.actualRow && p.targetCol === p.actualCol
+  : isScored(p) && p.targetRow === p.actualRow && p.targetCol === p.actualCol   // C1: two empties are never a hit
 // The app formats with the viewer's locale; the server uses en-US in the app's home time zone.
 const dateLabel = (ms: number) => new Intl.DateTimeFormat('en-US', { month: 'numeric', day: 'numeric', timeZone: 'America/New_York' }).format(new Date(ms))
 
@@ -79,7 +80,7 @@ function historyStats(pitches: AppPitch[]) {
 
 function recentPensForGame(teamSessions: AppSession[], gameDateMs: number): RecentPenTypeRow[] | undefined {
   const priorPens = teamSessions
-    .filter(s => !s.deletedAt && s.kind === 'bullpen' && s.date < gameDateMs)
+    .filter(s => !s.deletedAt && s.kind === 'bullpen' && s.full !== false && s.date < gameDateMs)   // C1: pens charted in full
     .slice().sort((a, b) => b.date - a.date).slice(0, 5)
   if (priorPens.length < 3) return undefined
   const pooled: Record<string, { count: number; strikes: number; zoneTotal: number; zoneHits: number; exact: number }> = {}
@@ -106,7 +107,7 @@ function recentPensForGame(teamSessions: AppSession[], gameDateMs: number): Rece
 }
 
 function recentPenPitchesForGame(teamSessions: AppSession[], gameDateMs: number) {
-  const pens = teamSessions.filter(s => !s.deletedAt && s.kind === 'bullpen' && s.date < gameDateMs)
+  const pens = teamSessions.filter(s => !s.deletedAt && s.kind === 'bullpen' && s.full !== false && s.date < gameDateMs)   // C1
     .slice().sort((a, b) => b.date - a.date).slice(0, 5)
   const out = pens.flatMap(s => s.pitches.map(p => ({
     type: p.type, actualRow: p.actualRow, actualCol: p.actualCol,
@@ -121,7 +122,7 @@ export interface RenderedReport { html: string; kind: string; sport: string; pay
 // Everything read with `db` (the rerender job passes the admin client; it is operator-gated).
 export async function renderReportFromRows(db: SupabaseClient, sessionId: string): Promise<RenderedReport> {
   const { data: s, error: sErr } = await db.from('sessions')
-    .select('id, pitcher_id, team_id, logged_by, started_at, charting_perspective, kind, opponent, sport, deleted_at, ra_on, purpose')
+    .select('id, pitcher_id, team_id, logged_by, started_at, charting_perspective, kind, opponent, sport, deleted_at, ra_on, purpose, charted_intent, charted_outcome')
     .eq('id', sessionId).maybeSingle()
   if (sErr || !s) throw new Error('session not found: ' + (sErr?.message || sessionId))
   if (s.deleted_at) throw new Error('session is deleted')
@@ -131,7 +132,7 @@ export async function renderReportFromRows(db: SupabaseClient, sessionId: string
     db.from('teams').select('name').eq('id', s.team_id).maybeSingle(),
     db.from('pitcher_teams').select('uniform_number').eq('pitcher_id', s.pitcher_id).eq('team_id', s.team_id).maybeSingle(),
     // The pitcher's sessions charted for THIS team (R4 follow-up): the app's state.sessions, same-team, not deleted.
-    db.from('sessions').select('id, started_at, kind, deleted_at').eq('pitcher_id', s.pitcher_id).eq('team_id', s.team_id).is('deleted_at', null)
+    db.from('sessions').select('id, started_at, kind, deleted_at, charted_intent, charted_outcome').eq('pitcher_id', s.pitcher_id).eq('team_id', s.team_id).is('deleted_at', null)
   ])
   const ids = (teamRows ?? []).map((r: Row) => String(r.id))
   if (!ids.includes(s.id)) ids.push(s.id)
@@ -141,12 +142,15 @@ export async function renderReportFromRows(db: SupabaseClient, sessionId: string
   for (const p of ((pitchRows ?? []) as unknown as Row[])) (bySession[String(p.session_id)] ||= []).push(pitchFromRow(p))
   const teamSessions: AppSession[] = (teamRows ?? []).map((r: Row) => ({
     id: String(r.id), date: new Date(String(r.started_at)).getTime(), kind: String(r.kind || 'bullpen'),
-    deletedAt: null, pitches: bySession[String(r.id)] ?? []
+    deletedAt: null, pitches: bySession[String(r.id)] ?? [],
+    // C1 Stage A: a pen with both parts, a game with its results (Outcome & Response); absent = both (older rows)
+    full: String(r.kind || 'bullpen') === 'game' ? r.charted_outcome !== false : r.charted_intent !== false && r.charted_outcome !== false
   }))
   const date = new Date(String(s.started_at)).getTime()
   const pitches = (bySession[s.id] ?? []).map(pt => isDefaultVelo(pt) ? { ...pt, velo: null } : pt)
   const common = {
     sport: asSport(s.sport), raOn: s.ra_on === true, sessionId: s.id, pitcherId: s.pitcher_id,
+    chartedIntent: s.charted_intent !== false, chartedOutcome: s.charted_outcome !== false,   // C1 Stage A: the row's parts
     pitcherName: String(prof?.full_name ?? ''),
     uniformNumber: (member?.uniform_number ?? null) as number | null,
     date,
@@ -154,19 +158,24 @@ export async function renderReportFromRows(db: SupabaseClient, sessionId: string
     loggedByCoach: s.logged_by !== s.pitcher_id,
     pitchTypes: Array.isArray(prof?.pitch_types) ? prof!.pitch_types as string[] : [],
     // SR1 C: the same comparison read as the live path, through this caller's client
-    comparison: await loadComparison(db, { id: s.id, pitcher_id: s.pitcher_id, kind: s.kind || 'bullpen', purpose: s.purpose ?? null, started_at: s.started_at })
+    comparison: await loadComparison(db, { id: s.id, pitcher_id: s.pitcher_id, kind: s.kind || 'bullpen', purpose: s.purpose ?? null, started_at: s.started_at, charted_intent: s.charted_intent, charted_outcome: s.charted_outcome })
   }
 
   useSportPalette(asSport(s.sport))
   if ((s.kind || 'bullpen') !== 'game') {
     const history: HistoryEntry[] = teamSessions
-      .filter(x => x.id !== s.id && x.kind === 'bullpen')
+      .filter(x => x.id !== s.id && x.kind === 'bullpen' && x.full !== false)   // C1: a pen charted in parts is in no trend
       .sort((a, b) => a.date - b.date)
       .map(x => { const st = historyStats(x.pitches); return { date: x.date, dateLabel: dateLabel(x.date), ...st } as HistoryEntry })
     const payload: ReportPayload = { ...common, purpose: (s.purpose ?? null) as string | null, teamName: team ? String(team.name) : '', pitches: pitches as unknown as Pitch[], history }
     return { html: buildReportHtml(payload), kind: 'bullpen', sport: String(s.sport), payload }
   }
 
+  if (s.charted_outcome === false) {   // C1 Stage A: an Intent-only game -- no summary, no events, the calls alone (c1.ts)
+    const payload: GameReportPayload = { ...common, raOn: false, teamName: team ? String(team.name) : null, opponent: (s.opponent ?? null) as string | null,
+      pitches: pitches as unknown as GamePitch[], gameTrend: [], summary: null as unknown as GameSummary }
+    return { html: buildGameReportHtml(payload), kind: 'game', sport: String(s.sport), payload }
+  }
   const summaryOf = async (id: string) => {
     const { data, error } = await db.rpc('compute_game_summary', { p_session_id: id })
     if (error || !data || (data as Row).error) return null
@@ -174,7 +183,7 @@ export async function renderReportFromRows(db: SupabaseClient, sessionId: string
   }
   const summary = await summaryOf(s.id)
   if (!summary) throw new Error('compute_game_summary failed for ' + s.id)
-  const priorGames = teamSessions.filter(x => x.id !== s.id && x.kind === 'game').sort((a, b) => b.date - a.date).slice(0, 5)
+  const priorGames = teamSessions.filter(x => x.id !== s.id && x.kind === 'game' && x.full !== false).sort((a, b) => b.date - a.date).slice(0, 5)
   const thisSession: AppSession = { id: s.id, date, kind: 'game', deletedAt: null, pitches: bySession[s.id] ?? [] }
   const gameTrend: GameHistoryEntry[] = []
   for (const x of priorGames.slice().reverse().concat([thisSession])) {

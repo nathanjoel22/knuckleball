@@ -6,7 +6,7 @@
 // id / name carries the session's first 8 characters so two reports drawn in one page never collide.
 // Starting values are constants here (packet section 2); change them in one place.
 // ============================================================================
-import { escapeHtml, colorForType } from './helpers.ts'
+import { escapeHtml, colorForType, isScored } from './helpers.ts'
 
 // ---------- starting values ----------
 export const DEFAULT_WINDOW = '3m'
@@ -56,7 +56,7 @@ export interface Comparison { baselines: Baselines | null; recent: RecentRow[]; 
 export const NO_COMPARISON: Comparison = { baselines: null, recent: [], throws: null, workload: null }
 
 // deno-lint-ignore no-explicit-any
-export async function loadComparison(db: any, s: { id: string; pitcher_id: string; kind: string; purpose?: string | null; started_at: string }): Promise<Comparison> {
+export async function loadComparison(db: any, s: { id: string; pitcher_id: string; kind: string; purpose?: string | null; started_at: string; charted_intent?: boolean | null; charted_outcome?: boolean | null }): Promise<Comparison> {
   const out: Comparison = { baselines: null, recent: [], throws: null, workload: null }
   try {   // SR1 D: the 7 days up to this session, level and age group (session_workload, caller's reach)
     const { data } = await db.rpc('session_workload', { p_session: s.id })
@@ -70,6 +70,10 @@ export async function loadComparison(db: any, s: { id: string; pitcher_id: strin
     let q = db.from('session_stats').select('pitches, strikes, hits, game, started_at')
       .eq('pitcher_id', s.pitcher_id).eq('kind', s.kind).lt('started_at', s.started_at).gte('pitches', 10)
     if (s.kind === 'bullpen' && s.purpose) q = q.eq('purpose', s.purpose)
+    // C1 Stage A: "best of the last six" compares only sessions charted in full (a pen with both parts; a game with its
+    // results) -- every session before C1. A pen charted in parts is never ranked (its report has no spot %).
+    q = q.eq('charted_outcome', true)
+    if (s.kind === 'bullpen') q = q.eq('charted_intent', true)
     const { data } = await q.order('started_at', { ascending: false }).limit(5)
     if (Array.isArray(data)) out.recent = data as RecentRow[]
   } catch (_) { /* no ranking */ }
@@ -228,8 +232,9 @@ export function sortStoodOut(items: StoodOut[]): StoodOut[] {
 // A pitch's miss directions from its target (bullpen). Up / down by row (row 0 is the top); arm / glove from the
 // throwing hand -- stored columns are the catcher's frame, so a right-hander's arm side is the lower column. Without
 // the hand: left / right as drawn (the pitcher's view mirrors the stored column).
-export function missDirs(p: { targetRow: number; targetCol: number; actualRow: number; actualCol: number }, throws: 'R' | 'L' | null): string[] {
+export function missDirs(p: { targetRow: number | null; targetCol: number | null; actualRow: number | null; actualCol: number | null }, throws: 'R' | 'L' | null): string[] {
   const d: string[] = []
+  if (p.targetRow === null || p.targetCol === null || p.actualRow === null || p.actualCol === null || !isScored(p)) return d   // C1: a miss needs both
   if (p.actualRow < p.targetRow) d.push('up'); else if (p.actualRow > p.targetRow) d.push('down')
   if (p.actualCol !== p.targetCol) {
     const lower = p.actualCol < p.targetCol
@@ -240,10 +245,10 @@ export function missDirs(p: { targetRow: number; targetCol: number; actualRow: n
   return d
 }
 export const DIR_WORDS: Record<string, string> = { up: 'up', down: 'down', arm: 'to the arm side', glove: 'to the glove side', left: 'to the left', right: 'to the right' }
-export function missPattern(ps: { type: string; targetRow: number; targetCol: number; actualRow: number; actualCol: number }[], isHitFn: (p: never) => boolean, throws: 'R' | 'L' | null, types: string[]): StoodOut[] {
+export function missPattern(ps: { type: string; targetRow: number | null; targetCol: number | null; actualRow: number | null; actualCol: number | null }[], isHitFn: (p: never) => boolean, throws: 'R' | 'L' | null, types: string[]): StoodOut[] {
   const out: StoodOut[] = []
   for (const t of types) {
-    const tp = ps.filter(p => p.type === t)
+    const tp = ps.filter(p => p.type === t && isScored(p))   // C1: only pitches with a target and a location
     const misses = tp.filter(p => !isHitFn(p as never))
     if (misses.length < MISS_MIN) continue
     const c: Record<string, number> = {}
@@ -273,7 +278,8 @@ export function sidePattern(ps: { batterSide: 'R' | 'L' | null }[], isStrike: (p
   return { mark: 'info', kind: 'side', size: Math.abs(r - l) / SIDE_GAP,
     text: `Strikes ${Math.round(r)}% vs right-handed batters, ${Math.round(l)}% vs left-handed.` }
 }
-export function clusterPattern(hits: { actualRow: number }[]): StoodOut | null {
+export function clusterPattern(allHits: { actualRow: number | null }[]): StoodOut | null {
+  const hits = allHits.filter((h): h is { actualRow: number } => typeof h.actualRow === 'number')   // C1: located only
   if (hits.length < CLUSTER_MIN) return null
   const band = (r: number) => r <= 1 ? 'up in' : r === 2 ? 'in the middle of' : 'down in'
   const c: Record<string, number> = {}

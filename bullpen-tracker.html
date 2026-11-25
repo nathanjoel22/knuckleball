@@ -1084,6 +1084,26 @@
   /* Joel, Nov 19: Which team is this for? -- room for a 25-character team name: the tray takes the row, each button its
      own width, and a third choice (two teams) wraps to a new row instead of squeezing */
   .start-yn.start-file{ max-width:100%; flex-wrap:wrap; }
+  .start-yn.start-parts{ max-width:420px; display:grid; grid-template-columns:1fr; }   /* C1 A: the parts, one per row */
+  .start-parts .seg{ min-height:48px; white-space:normal; line-height:1.2; padding:6px 12px; }
+  /* C1 Stage A: the Intent-only controls under the chart. Each button has the No batter pill's height; three share the
+     row (they can't each be 160px wide on a phone). The pulse is the target dot's, as a ring; reduced motion: steady. */
+  .c1-ctl{ display:flex; flex-direction:column; gap:var(--s-8); width:100%; max-width:520px; margin:var(--s-8) auto 0; }
+  .c1-top{ display:flex; align-items:center; gap:var(--s-8); min-height:44px; }
+  .c1-top .c1-back{ flex:0 0 calc((100% - 2 * var(--s-8)) / 3); min-width:0; }
+  .c1-top .c1-ins{ flex:1; margin:0; text-align:center; }
+  .c1-row{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:var(--s-8); }
+  .c1-row .btn{ min-width:0; padding:0 6px; white-space:nowrap; font-size:15px; }
+  .c1-confirm{ background:#E5486B; color:#fff; border-color:#E5486B; }
+  .c1-confirm:disabled{ background:#E5486B; color:#fff; opacity:.4; }
+  .c1-next{ background:var(--accent); color:var(--accent-ink, #111); }
+  .c1-next:disabled{ background:var(--accent); color:var(--accent-ink, #111); opacity:.4; }
+  .c1-pulse{ animation:c1Pulse 1.1s ease-in-out infinite; }
+  .c1-confirm.c1-pulse{ --c1-ring:229,72,107; }
+  .c1-next.c1-pulse{ --c1-ring:255,184,28; }
+  @keyframes c1Pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(var(--c1-ring),.55); } 50%{ box-shadow:0 0 0 7px rgba(var(--c1-ring),.18); } }
+  @media (prefers-reduced-motion: reduce){ .c1-pulse{ box-shadow:0 0 0 5px rgba(var(--c1-ring),.35) !important; } }
+  .sb-blank{ opacity:.55; }
   .start-file .seg{ flex:1 1 auto; padding:0 var(--s-16); }
   .start-q-input{ font-size:16px; min-height:44px; }
   .start-q-actions{ display:flex; gap:var(--s-8); margin-top:var(--s-4); }
@@ -3074,8 +3094,28 @@ function zoneAreaName(cRow, cCol, batterSide = 'R'){
   return name;
 }
 function isAccurate(pitch){
-  return pitch.targetRow === pitch.actualRow && pitch.targetCol === pitch.actualCol;
+  return isScored(pitch) && pitch.targetRow === pitch.actualRow && pitch.targetCol === pitch.actualCol;   // C1 A: never two empties
 }
+/* C1 Stage A (Joel, Nov 25 2026; plans/c1-preconditions.md): charting in parts. A session charts Intent (the call: the
+   type and where it's aimed), Outcome (a pen: where it landed; a game: where it went, the result and everything after),
+   or both (today's). A part that isn't charted is EMPTY on every pitch, never a default, so every reader asks:
+   hasTarget / hasLocation, and accuracy uses only isScored pitches (both). s.parts is set at Start; a session from
+   before has none: a pen charted both, a game charted Intent when s.intent. Saved sessions carry charted_intent /
+   charted_outcome (sessions columns, locked once saved). */
+function chartsIntent(s){ if(!s) return true; if(s.parts) return !!s.parts.intent; if(s.chartedIntent === false) return false; return s.kind === 'game' && s.chartedIntent === undefined ? !!s.intent : true; }
+function chartsOutcome(s){ if(!s) return true; if(s.parts) return !!s.parts.outcome; return s.chartedOutcome !== false; }
+function intentOnly(s){ return !!s && chartsIntent(s) && !chartsOutcome(s); }
+function outcomeOnlyPen(s){ return !!s && s.kind === 'bullpen' && !chartsIntent(s); }
+// History / Home: the chip that names what a session didn't chart (C1 A)
+function partChip(s){
+  if(!s || !partialSession(s)) return '';
+  return ` <span class="coach-logged-tag">${s.kind === 'game' ? 'Intent only' : chartsIntent(s) ? 'Intent only' : 'Outcome only'}</span>`;
+}
+function pctText(v){ return v === null || v === undefined ? '—' : v + '%'; }   // blank, never 0
+function partialSession(s){ return !!s && (s.kind === 'bullpen' ? !(chartsIntent(s) && chartsOutcome(s)) : !chartsOutcome(s)); }
+function hasTarget(p){ return !!p && p.targetRow !== null && p.targetRow !== undefined && p.targetCol !== null && p.targetCol !== undefined; }
+function hasLocation(p){ return !!p && p.actualRow !== null && p.actualRow !== undefined && p.actualCol !== null && p.actualCol !== undefined; }
+function isScored(p){ return hasTarget(p) && hasLocation(p); }
 
 // U5 -- charting perspective. Row never mirrors (up is up from both views);
 // only the column does. mirrorCol is its own inverse, so the same function
@@ -3214,6 +3254,7 @@ const ACCURACY_MODE_LABELS = {
 // supabase/functions/send-session-report/index.ts -- same trap as
 // TYPE_PALETTE_HEX.
 function isRelativelyAccurate(pitch){
+  if(!isScored(pitch)) return false;   // C1 A
   const mode = pitch.accuracyMode;
   if(!mode) return isAccurate(pitch);
   const batterSide = pitch.batterSide || 'R';
@@ -4650,7 +4691,7 @@ function sessionTagLabel(purpose){
 // U14: the session's answer, read-only once charting starts (the question comes before the first pitch)
 function raPill(){
   const s = state.activeSession;
-  if(!isU14Session(s) || (s.kind === 'game' && !s.intent)) return '';
+  if(!isU14Session(s) || s.kind === 'game' || !(chartsIntent(s) && chartsOutcome(s))) return '';   // C1 A (Joel, Nov 25): no RA in Live Games
   const tag = s.kind === 'bullpen' && s.purpose ? ` <span class="ra-pill" title="This pen's purpose, chosen at the start">${sessionTagLabel(s.purpose)}</span>` : '';   // SR1 A
   return `<span class="ra-pill${s.raOn ? ' on' : ''}" title="Relative Accuracy, chosen at the start of this session">RA ${s.raOn ? 'on' : 'off'}</span>${tag}`;
 }
@@ -4667,7 +4708,7 @@ function raNoCellsHint(s, type, side, cells){
   state.hint = `No Relative Accuracy cells marked for ${pitchLabel(type)} vs ${side === 'L' ? 'LHB' : 'RHB'} — this pitch counts exact only.`;
 }
 // the one accuracy predicate: a stored U14 hit kind when there is one, the exact-cell rule otherwise
-function isHit(p){ return p.accuracyHitKind ? (p.accuracyHitKind === 'exact' || p.accuracyHitKind === 'ra') : isAccurate(p); }
+function isHit(p){ return !isScored(p) ? false : p.accuracyHitKind ? (p.accuracyHitKind === 'exact' || p.accuracyHitKind === 'ra') : isAccurate(p); }
 function zoneCellsFor(pitcherId, type, side){
   const z = state.zones[pitcherId];
   const c = z && z[type] && z[type][side];
@@ -6501,7 +6542,8 @@ async function refreshDraftState(){
   // that G1b now deliberately preserves everywhere else -- discarding it
   // here specifically because it happens to be the game's first pitch
   // would silently contradict that.
-  const hasMidFlowProgress = draft && (draft.gamePendingPitch || draft.fieldPlay || draft.adjustRunners || (draft.kind === 'game' && draft.batterSides && !draft.startQ));   // V1 Part B
+  const hasMidFlowProgress = draft && (draft.gamePendingPitch || draft.fieldPlay || draft.adjustRunners || (draft.kind === 'game' && draft.batterSides && !draft.startQ)   // V1 Part B
+    || (draft.parts && draft.kind && !draft.startQ));   // C1 Stage A: any started session, even before its first pitch (Joel, Nov 25)
   if(draft && ((draft.pitches && draft.pitches.length) || hasMidFlowProgress)){
     state.draftAvailable = true;
     state.pendingDraft = draft;
@@ -6528,7 +6570,8 @@ window.resumeDraft = function(){
   state.activeSession = state.pendingDraft;
   // Oct 14: a Live Game resumed mid-play gets its pitch type back (it was cleared on load)
   if(state.activeSession && state.activeSession.gamePendingPitch && state.activeSession.gamePendingPitch.type) state.selectedType = state.activeSession.gamePendingPitch.type;
-  else if(state.activeSession && state.activeSession.kind === 'game' && state.activeSession.selType) state.selectedType = state.activeSession.selType;   // V1 (Q9)
+  else if(state.activeSession && state.activeSession.kind && state.activeSession.selType) state.selectedType = state.activeSession.selType;   // V1 (Q9); C1 A: pens too
+  if(state.activeSession && state.activeSession.kind === 'bullpen' && state.activeSession.penTarget) state.pendingTarget = state.activeSession.penTarget;   // C1 A: tap 1 survives
   // Defensive: a draft persisted before U5/U2a/U9/G1 shipped won't carry
   // these fields. A pre-G1 draft has no `kind` at all -- it can only be a
   // bullpen (the chooser didn't exist yet), so default it rather than
@@ -6586,7 +6629,7 @@ window.discardDraft = async function(){
 
 window.selectType = function(type){
   state.selectedType = type;
-  if(state.activeSession && state.activeSession.kind === 'game'){ state.activeSession.selType = type; storSet(draftKey(), state.activeSession); }   // V1 (Q9)
+  if(state.activeSession && state.activeSession.kind){ state.activeSession.selType = type; storSet(draftKey(), state.activeSession); }   // V1 (Q9); C1 A: pens too (a killed tab keeps it)
   state.hint = '';
   render();
 };
@@ -6970,7 +7013,7 @@ function voiceCallText(s, type, row, col){
 // when something is playing, and then the new call waits a moment; nothing playing = speak at once, inside the tap.
 // The utterance is kept referenced until it ends (iOS can lose one that's collected mid-call).
 let voiceUtter = null;
-function speakCall(type, row, col){
+function speakCall(type, row, col, queue){   // C1 A: queue = Confirm Pitch's call, which never cuts off one still playing
   const s = state.activeSession;
   if(!type || !voiceShown(s) || !voiceOn()) return;
   try{
@@ -6982,7 +7025,9 @@ function speakCall(type, row, col){
     u.rate = 0.9; u.pitch = 1.0;   // Joel, Nov 8: a little slower than normal (was 1.1, then 1.0)
     u.onend = u.onerror = () => { if(voiceUtter === u) voiceUtter = null; };
     voiceUtter = u;
-    if(synth.speaking || synth.pending){
+    if(queue){
+      synth.speak(u);   // the browser plays it after any call still speaking
+    } else if(synth.speaking || synth.pending){
       synth.cancel();
       setTimeout(() => { if(voiceUtter === u){ try{ synth.speak(u); }catch(e){} } }, 60);
     } else {
@@ -7003,14 +7048,18 @@ window.handleZoneTap = async function(row, col){
   if(state.editDraftRow !== null){ state.hint = 'Finish editing that pitch first: Save or Cancel under Recent pitches'; render(); return; }
   if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
   state.hint = '';
+  if(intentOnly(state.activeSession)) return c1AimTap(row, col);       // C1 Stage A: the call only
+  if(outcomeOnlyPen(state.activeSession)) return c1LandTap(row, col);  // C1 Stage A: where it landed only
 
   if(!state.pendingTarget){
     // Tap 1 of a new pitch: the previous pitch's velocity is now locked as it
     // stands, and the strip stays off until this pitch's tap 2.
     speakCall(state.selectedType, row, col);   // U16
     state.pendingTarget = { row, col };
+    state.activeSession.penTarget = state.pendingTarget;   // C1 A (Joel, Nov 25): tap 1 survives a killed tab
     state.veloTargetIdx = null;
     raCheckCells(state.selectedType);   // U14
+    storSet(draftKey(), state.activeSession);
     render();
     return;
   }
@@ -7065,6 +7114,7 @@ window.handleZoneTap = async function(row, col){
     ts: Date.now()
   });
   state.pendingTarget = null;
+  state.activeSession.penTarget = null;   // C1 A
   state.veloTargetIdx = state.activeSession.pitches.length - 1;
   await storSet(draftKey(), state.activeSession);
   const flashKey = uid();
@@ -7079,8 +7129,117 @@ window.handleZoneTap = async function(row, col){
 };
 window.resetTarget = function(){
   state.pendingTarget = null;
+  if(state.activeSession){ state.activeSession.penTarget = null; storSet(draftKey(), state.activeSession); }   // C1 A
   render();
 };
+/* C1 Stage A (Joel, Nov 25 2026): charting one part alone.
+   Intent only (pen and Live Game): pick a type, tap where it's aimed (the target dot; the instruction goes), Confirm
+   Pitch (it pulses) says the call out loud and writes the pitch -- type, target, batter side (a pen: delivery too) and
+   nothing else -- then Next Pitch (it pulses) starts the next. Back steps back: un-confirm, clear the cell, reopen the
+   previous pitch; a pitch is frozen once the following one is confirmed (s.c1.frozen = how many are). The step, the
+   cell and the type are in the draft, so a killed tab comes back at the same step.
+   Outcome only (pen): one tap per pitch, where it landed; no target, so no accuracy. */
+function c1State(){ const s = state.activeSession; if(s && !s.c1) s.c1 = { step: 'aim', cell: null, frozen: 0 }; return s && s.c1; }
+async function c1Save(){ await storSet(draftKey(), state.activeSession); render(); }
+function c1AimTap(row, col){
+  const s = state.activeSession, c = c1State();
+  if(s.kind === 'game' && !gameBatterChosen(s)) return gamePickBatterSide(col);   // V1 step 1 stays
+  if(c.step === 'confirmed'){ state.hint = 'Tap Next Pitch first'; render(); return; }
+  c.cell = { row, col: perspectiveCol(col, sessionPerspective(s)) };   // catcher frame, like every stored coordinate
+  c.step = 'chosen';
+  c1Save();
+}
+window.c1Confirm = function(){
+  const s = state.activeSession, c = c1State();
+  if(!c || c.step !== 'chosen' || !c.cell) return;
+  const type = s.kind === 'game' ? gamePitchType() : state.selectedType;
+  if(!type){ state.hint = 'Select a pitch type first'; render(); return; }
+  // U16: the call goes out now, inside this tap (iOS); Next Pitch never stops it, and a call still playing when the
+  // next Confirm comes is queued, not cut off
+  speakCall(type, c.cell.row, perspectiveCol(c.cell.col, sessionPerspective(s)), true);
+  if(s.pitches.length === 0) s.usesRadarGun = false;   // nothing is timed or clocked on this device
+  const side = s.kind === 'game' ? sessionBatterSide(s) : (isNoBatter(s) ? null : sessionBatterSide(s));
+  const pt = { id: genUUID(), type, velo: null, targetRow: c.cell.row, targetCol: c.cell.col, actualRow: null, actualCol: null,
+    accuracyMode: null, inAccuracyZone: null, accuracyZoneCells: null, accuracyHitKind: null, batterSide: side,
+    delivery: s.kind === 'bullpen' ? (s.delivery || null) : null, timeToPlate: null, ts: Date.now() };
+  if(s.kind === 'game'){ pt.kind = 'game'; pt.seq = s.nextSeq++; }
+  c.frozen = s.pitches.length;          // the previous pitch is now final
+  s.pitches.push(pt);
+  c.step = 'confirmed';
+  c1Save();
+};
+window.c1Next = function(){
+  const c = c1State();
+  if(!c || c.step !== 'confirmed') return;
+  c.step = 'aim'; c.cell = null;
+  c1Save();
+};
+function c1CanBack(){
+  const s = state.activeSession, c = s && s.c1;
+  if(!c) return false;
+  if(c.step === 'chosen' || c.step === 'confirmed') return true;
+  return s.pitches.length > (c.frozen || 0);   // 'aim': reopen the previous pitch while it isn't frozen
+}
+window.c1Back = function(){
+  const s = state.activeSession, c = c1State();
+  if(!c1CanBack()) return;
+  if(c.step === 'chosen'){ c.step = 'aim'; c.cell = null; }
+  else if(c.step === 'confirmed'){   // un-confirm: the pitch comes off; its cell stays chosen
+    const pt = s.pitches.pop();
+    c.cell = { row: pt.targetRow, col: pt.targetCol }; c.step = 'chosen';
+  } else {                           // back to the previous pitch, still confirmed
+    const pt = s.pitches[s.pitches.length - 1];
+    c.cell = { row: pt.targetRow, col: pt.targetCol }; c.step = 'confirmed';
+  }
+  c1Save();
+};
+// The batter button: a pen cycles No batter / vs RHB / vs LHB (today's pill); a Live Game shows the side and flips it
+// for the batter at the plate (V1's Select Batter Side still asks the first time).
+window.c1GameSide = async function(){
+  const s = state.activeSession;
+  if(!s || s.kind !== 'game' || !gameBatterChosen(s)) return;
+  const side = sessionBatterSide(s) === 'R' ? 'L' : 'R';
+  gameBatterSides(s)[s.atBatIndex] = side; s.currentBatterSide = side;
+  await storSet(draftKey(), s);
+  render();
+};
+// The controls under the chart (Joel's layout): Back over the batter button with the yellow instruction beside it,
+// then the batter button, Confirm Pitch (reddish pink) and Next Pitch (yellow); the one to tap next pulses.
+function renderC1Controls(s){
+  const c = s.c1 || { step: 'aim' }, game = s.kind === 'game';
+  const sideChosen = !game || gameBatterChosen(s);
+  const type = game ? gamePitchType() : state.selectedType;
+  const ins = c.step !== 'aim' ? '' : !sideChosen ? 'Select Batter Side' : !type ? 'Select Pitch Type' : "Tap where you're aiming";
+  const batter = game
+    ? `<button type="button" class="btn c1-batter${sideChosen ? ' is-selected' : ' btn-secondary'}" ${sideChosen ? '' : 'disabled'} onclick="c1GameSide()" aria-label="Batter side${sideChosen ? ': ' + (sessionBatterSide(s) === 'R' ? 'right' : 'left') + '. Tap to change.' : ''}">${sideChosen ? (sessionBatterSide(s) === 'R' ? 'vs RHB' : 'vs LHB') : 'Batter'}</button>`
+    : (() => { const none = isNoBatter(s), label = none ? 'No batter' : (sessionBatterSide(s) === 'R' ? 'vs RHB' : 'vs LHB');
+        return `<button type="button" class="btn c1-batter${none ? ' btn-secondary' : ' is-selected'}" onclick="cycleBatterMode()" aria-label="Batter: ${label}. Tap to change.">${label}</button>`; })();
+  return `<div class="c1-ctl">
+    <div class="c1-top">
+      <button type="button" class="btn btn-secondary c1-back" ${c1CanBack() ? '' : 'disabled'} onclick="c1Back()">‹ Back</button>
+      ${ins ? `<div class="zone-caption c1-ins">${ins}</div>` : '<div class="c1-ins"></div>'}
+    </div>${state.hint ? `<div class="ph-tap-hint">${escHtml(state.hint)}</div>` : ''}
+    <div class="c1-row">
+      ${batter}
+      <button type="button" class="btn c1-confirm${c.step === 'chosen' ? ' c1-pulse' : ''}" ${c.step === 'chosen' ? '' : 'disabled'} onclick="c1Confirm()">Confirm Pitch</button>
+      <button type="button" class="btn c1-next${c.step === 'confirmed' ? ' c1-pulse' : ''}" ${c.step === 'confirmed' ? '' : 'disabled'} onclick="c1Next()">Next Pitch</button>
+    </div>
+  </div>`;
+}
+async function c1LandTap(row, col){
+  const s = state.activeSession;
+  if(s.pitches.length === 0) s.usesRadarGun = sessionUsesRadarGun(s);   // U9: frozen at the first pitch
+  s.pitches.push({ id: genUUID(), type: state.selectedType, velo: null, targetRow: null, targetCol: null,
+    actualRow: row, actualCol: perspectiveCol(col, sessionPerspective(s)), accuracyMode: null, inAccuracyZone: null,
+    accuracyZoneCells: null, accuracyHitKind: null, batterSide: isNoBatter(s) ? null : sessionBatterSide(s),
+    delivery: s.delivery || null, timeToPlate: null, ts: Date.now() });
+  state.veloTargetIdx = s.pitches.length - 1;
+  await storSet(draftKey(), s);
+  const flashKey = uid();
+  state.flashCell = { row, col, strike: isStrikeCell(row, col), key: flashKey };
+  render();
+  setTimeout(() => { if(state.flashCell && state.flashCell.key === flashKey){ state.flashCell = null; render(); } }, 1400);
+}
 /* ---------- IN-SESSION PITCH CORRECTION (P1-05, interim) ----------
    Fixes a mis-tap in the moment, on the active draft only -- pure
    localStorage, no network, same persistence path as logging a pitch, so
@@ -7192,6 +7351,7 @@ window.endSession = async function(){
     gameOutsRecorded: state.activeSession.kind === 'game' ? Math.max(0, (state.activeSession.inning - 1) * 3 + state.activeSession.outs - (state.activeSession.carryOutsBefore || 0)) : null,   // a reliever who took over mid-game (Oct 19) counts only his own outs
     raOn: state.activeSession.raOn === true,   // U14
     purpose: state.activeSession.kind === 'bullpen' ? (state.activeSession.purpose || null) : null,   // SR1 A
+    chartedIntent: chartsIntent(state.activeSession), chartedOutcome: chartsOutcome(state.activeSession),   // C1 Stage A
     assignmentId: state.activeSession.assignmentId || null,   // F2 Stage 1
     campId: state.activeSession.campId || null,               // F2 Stage 4
     pitchCountAdjust: state.activeSession.kind === 'game' ? gamePitchCountAdj(state.activeSession) : 0,   // Oct 19: + / - pitch count, saved
@@ -7203,10 +7363,14 @@ window.endSession = async function(){
     lastError: null,
     lastAttemptAt: null
   };
+  if(item.kind === 'game' && !item.chartedOutcome){   // C1 A: an Intent-only game charted no line, outs or runners
+    item.gameFinalInning = null; item.gameOutsRecorded = null; item.runnersLeft = null; item.leftOwners = null;
+    item.relievedSessionId = null; item.inheritedRunners = null; item.pitchCountAdjust = 0;
+  }
   await enqueueOutboxItem(state.session.user.id, item);
   gsMark(item.kind === 'game' ? 'game' : 'pen');   // N1-D: Get started knows at once, offline too
   await storDelete(draftKey());
-  if(item.kind === 'game'){ saveGameHandoff(state.activeSession, item); rememberRecentGame(item); }   // R3 (B5): "Who was pitching?" offline
+  if(item.kind === 'game' && item.chartedOutcome){ saveGameHandoff(state.activeSession, item); rememberRecentGame(item); }   // R3 (B5): "Who was pitching?" offline; C1 A: not from an Intent-only game
 
   await appendVeloHistory(item.pitcherId, item.teamId, item.pitches);
 
@@ -7347,6 +7511,7 @@ function pendingSessionsForCurrentSelection(){
       kind: item.kind || 'bullpen',
       raOn: item.raOn === true,   // U14
       purpose: item.purpose || null,   // SR1 A
+      chartedIntent: item.chartedIntent !== false, chartedOutcome: item.chartedOutcome !== false,   // C1 Stage A
       pitchCountAdjust: item.pitchCountAdjust || 0,   // Oct 19
       events: item.events || [],   // Oct 20: the game card's K / BB / R
       outsRecorded: item.gameOutsRecorded == null ? null : item.gameOutsRecorded,   // History's IP
@@ -7439,6 +7604,7 @@ async function syncOutbox(){
       game_outs_recorded: (item.gameOutsRecorded === undefined) ? null : item.gameOutsRecorded,
       ra_on: item.raOn === true,   // U14: the start question's answer (false for anything queued before U14)
       purpose: item.purpose || null,   // SR1 A: the pen's tag (null: Feel Good / no tag, a game, or queued before Stage A)
+      charted_intent: item.chartedIntent !== false, charted_outcome: item.chartedOutcome !== false,   // C1 Stage A (older items: both)
       assignment_id: item.assignmentId || null,   // F2 Stage 1: the server releases it in the same save
       camp_id: item.campId || null,               // F2 Stage 4: the camp (and its name) rides on the session
       pitch_count_adjust: item.kind === 'game' ? (item.pitchCountAdjust || 0) : 0,   // Oct 19: + / - pitch count
@@ -7506,7 +7672,8 @@ async function syncOutbox(){
       inherited_runs: item.kind === 'game' && Number.isInteger(p.inheritedRuns) ? p.inheritedRuns : null,
       charged_prev: item.kind === 'game' && p.chargedPrev === true ? true : null,
       charged_runs: item.kind === 'game' && p.chargedRuns && p.chargedRuns.length ? p.chargedRuns : null,   // R3 (B3)
-      charged_prev_session: item.kind === 'game' && p.chargedPrev === true ? (item.relievedSessionId || null) : null
+      charged_prev_session: item.kind === 'game' && p.chargedPrev === true ? (item.relievedSessionId || null) : null,
+      play_flags: item.kind === 'game' && p.playFlags && p.playFlags.length ? p.playFlags : null   // C1 Stage A: More Plays
     }));
     // G1b (h): game_events, pitches' sibling in the same queued item.
     // after_pitch_id relies on pitch ids being client-generated UUIDs
@@ -7683,13 +7850,13 @@ function workloadBanner(){
 // IndexedDB, never localStorage (the outbox and drafts live there and must not run out of room), at most
 // HISTORY_CACHE_MAX sessions with pitches device-wide, the least recently opened pitcher's oldest sessions dropped
 // first. Signing out clears this login's copy.
-const STATS_VERSION = 2;
+const STATS_VERSION = 3;   // C1 Stage A: v3 adds located / scored and the session's parts (every older value unchanged)
 const HISTORY_PREFETCH_N = 20;
 const HISTORY_CACHE_MAX = 200;
-const SESSION_COLS = 'id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, purpose, camp_name, pitch_count_adjust, final_at, exit_runs, exit_er, exit_bb, game_outs_recorded';
-const PITCH_COLS = 'type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, accuracy_hit_kind, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, runs_scored, unearned_runs, inherited_runs, charged_prev, fielders, batter_to, runner_advances, outs_on_play, sacrifice';
+const SESSION_COLS = 'id, team_id, started_at, ended_at, pitcher_id, logged_by, deleted_at, deleted_by, deleted_by_role, deleted_by_name, pitch_count, charting_perspective, report_path, kind, opponent, ra_on, purpose, camp_name, charted_intent, charted_outcome, pitch_count_adjust, final_at, exit_runs, exit_er, exit_bb, game_outs_recorded';
+const PITCH_COLS = 'type, velo, target_row, target_col, actual_row, actual_col, accuracy_mode, batter_side, in_accuracy_zone, accuracy_zone_cells, accuracy_hit_kind, ts, result, in_play_outcome, hit_type, fielder, delivery, inning, outs_before, balls_before, strikes_before, at_bat_index, time_to_plate, bb_type, runners_before, spray_box, runners_after, spray_field, runs_scored, unearned_runs, inherited_runs, charged_prev, fielders, batter_to, runner_advances, outs_on_play, sacrifice, play_flags';
 const EVENT_COLS = 'event_type, balls_before, strikes_before, runs_scored, unearned_runs, inherited_runs, charged_prev';
-const STATS_COLS = 'stats_version, pitches, pitch_count, strikes, hits, exact_hits, ra_hits, zone_total, zone_hits, velo_n, velo_sum, velo_min, velo_max, ttp_n, ttp_sum, by_type, game';
+const STATS_COLS = 'stats_version, pitches, pitch_count, strikes, hits, exact_hits, ra_hits, zone_total, zone_hits, velo_n, velo_sum, velo_min, velo_max, ttp_n, ttp_sum, by_type, game, located, scored, charted_intent, charted_outcome';
 
 // The device copy: one IndexedDB store, a record per login | profile | pitcher. Every call resolves null on any
 // failure (private mode, storage off), so History just loads from the network as before.
@@ -7825,7 +7992,8 @@ function mapPitchRow(p){
     fielders: p.fielders || null,
     // Release 2 (E6): the play itself, for the report's at-bat log and the game editor
     batterTo: p.batter_to === null || p.batter_to === undefined ? null : p.batter_to,
-    runnerAdvances: p.runner_advances || null, outsOnPlay: p.outs_on_play || 0, sacrifice: p.sacrifice || null
+    runnerAdvances: p.runner_advances || null, outsOnPlay: p.outs_on_play || 0, sacrifice: p.sacrifice || null,
+    playFlags: p.play_flags || null   // C1 Stage A: More Plays markers (games)
   };
 }
 // Oct 20: the game card counts what the report counts -- IBB / auto ball four as BB, auto strike three as K, runs
@@ -7886,6 +8054,7 @@ function mapSessionRow(s, teamId){
     raOn: s.ra_on === true,   // U14 (false for every session from before it)
     purpose: s.purpose || null,   // SR1 A: the pen's tag (null for every session from before it)
     campName: s.camp_name || null,   // F2 Stage 4: the temporary team / camp it was charted for
+    chartedIntent: s.charted_intent !== false, chartedOutcome: s.charted_outcome !== false,   // C1 Stage A: its parts
     pitchCountAdjust: s.pitch_count_adjust || 0,   // Oct 19: + / - pitch count (games)
     // R3 (B6): his line is open while runners he left on can still score (final_at NULL); runs / ER / walks charged
     // to him after he left come from the relief games' saves
@@ -8007,22 +8176,25 @@ function sessionTtp(s){
 }
 function penStatsFromRow(st){
   const byType = {};
+  // C1 A: a pen missing a part has no accuracy (no Intent or no Outcome) and no strike % (no Outcome): null, shown "—"
+  const noAcc = st.charted_intent === false || st.charted_outcome === false, noLoc = st.charted_outcome === false;
   Object.keys(st.by_type || {}).forEach(t => {
     const b = st.by_type[t], hasVelo = b.velo_n > 0;
     byType[t] = {
       count: b.n, hasVelo, avgVelo: hasVelo ? Math.round(b.velo_sum / b.velo_n) : null,
       minVelo: hasVelo ? b.velo_min : null, maxVelo: hasVelo ? b.velo_max : null,
-      strikePct: statsPct(b.strikes, b.n), accuracyPct: statsPct(b.hits, b.n),
+      strikePct: noLoc ? null : statsPct(b.strikes, b.n), accuracyPct: noAcc ? null : statsPct(b.hits, b.n),
       // History's "Relative Acc%" column. Without a pre-U7 accuracy mode it's the exact-target share (isAccurate):
       // the hits that weren't RA. A pen charted in a pre-U7 mode isn't stored that way (Joel, Oct 28: dropped).
-      relativeAccuracyPct: statsPct(b.hits - (b.ra || 0), b.n),
+      relativeAccuracyPct: noAcc ? null : statsPct(b.hits - (b.ra || 0), b.n),
       hasZone: b.zone_total > 0, zoneTotal: b.zone_total, zoneAccuracyPct: b.zone_total ? statsPct(b.zone_hits, b.zone_total) : null
     };
   });
   const hasVelo = st.velo_n > 0;
   return {
-    total: st.pitches, strikes: st.strikes, strikePct: statsPct(st.strikes, st.pitches),
-    accurate: st.hits, accuracyPct: statsPct(st.hits, st.pitches), exactHits: st.exact_hits, raHits: st.ra_hits,
+    total: st.pitches, strikes: st.strikes, strikePct: noLoc ? null : statsPct(st.strikes, st.pitches),
+    accurate: st.hits, accuracyPct: noAcc ? null : statsPct(st.hits, st.pitches), exactHits: st.exact_hits, raHits: st.ra_hits,
+    located: st.located == null ? st.pitches : st.located, scored: st.scored == null ? st.pitches : st.scored,
     hasZone: st.zone_total > 0, zoneTotal: st.zone_total, zoneHits: st.zone_hits,
     zoneAccuracyPct: st.zone_total ? statsPct(st.zone_hits, st.zone_total) : null,
     hasVelo, avgVelo: hasVelo ? Math.round(st.velo_sum / st.velo_n) : null,
@@ -8119,7 +8291,11 @@ function plotSessionOf(s, p){
 }
 function sessionStats(pitches){
   const total = pitches.length;
-  const strikes = pitches.filter(p => isStrikeCell(p.actualRow, p.actualCol)).length;
+  // C1 A: strike % over the pitches that have a location, accuracy over those with both a target and a location; a
+  // part nobody charted gives null ("—"), never 0. A session charted in full has every pitch in both: as before.
+  const located = pitches.filter(hasLocation).length, scored = pitches.filter(isScored).length;
+  const pctOf = (a, b) => b ? Math.round((a / b) * 100) : (total ? null : 0);
+  const strikes = pitches.filter(p => hasLocation(p) && isStrikeCell(p.actualRow, p.actualCol)).length;
   const accurate = pitches.filter(isHit).length;   // U14: exact + RA for U14 pitches; the exact cell for older ones
   const relativeAccurate = pitches.filter(isRelativelyAccurate).length;
   const exactHits = pitches.filter(p => p.accuracyHitKind === 'exact').length;
@@ -8140,8 +8316,10 @@ function sessionStats(pitches){
     if(!byType[p.type]) byType[p.type] = { count:0, velos:[], strikes:0, accurate:0, relativeAccurate:0, zoneTotal:0, zoneHits:0 };
     if(p.inAccuracyZone === true || p.inAccuracyZone === false){ byType[p.type].zoneTotal++; if(p.inAccuracyZone) byType[p.type].zoneHits++; }
     byType[p.type].count++;
+    if(hasLocation(p)) byType[p.type].located = (byType[p.type].located || 0) + 1;
+    if(isScored(p)) byType[p.type].scored = (byType[p.type].scored || 0) + 1;
     if(p.velo !== null && p.velo !== undefined && !isDefaultVeloReading(p)) byType[p.type].velos.push(p.velo);
-    if(isStrikeCell(p.actualRow, p.actualCol)) byType[p.type].strikes++;
+    if(hasLocation(p) && isStrikeCell(p.actualRow, p.actualCol)) byType[p.type].strikes++;
     if(isHit(p)) byType[p.type].accurate++;
     if(isRelativelyAccurate(p)) byType[p.type].relativeAccurate++;
   });
@@ -8150,16 +8328,16 @@ function sessionStats(pitches){
     t.avgVelo = t.hasVelo ? Math.round(t.velos.reduce((a,b)=>a+b,0) / t.velos.length) : null;
     t.minVelo = t.hasVelo ? Math.min(...t.velos) : null;
     t.maxVelo = t.hasVelo ? Math.max(...t.velos) : null;
-    t.strikePct = Math.round((t.strikes / t.count) * 100);
-    t.accuracyPct = Math.round((t.accurate / t.count) * 100);
-    t.relativeAccuracyPct = Math.round((t.relativeAccurate / t.count) * 100);
+    t.strikePct = t.located ? Math.round((t.strikes / t.located) * 100) : null;
+    t.accuracyPct = t.scored ? Math.round((t.accurate / t.scored) * 100) : null;
+    t.relativeAccuracyPct = t.scored ? Math.round((t.relativeAccurate / t.scored) * 100) : null;
     t.hasZone = t.zoneTotal > 0;
     t.zoneAccuracyPct = t.hasZone ? Math.round((t.zoneHits / t.zoneTotal) * 100) : null;
   });
   return {
-    total, strikes, strikePct: total ? Math.round((strikes/total)*100) : 0,
-    accurate, accuracyPct: total ? Math.round((accurate/total)*100) : 0,
-    relativeAccurate, relativeAccuracyPct: total ? Math.round((relativeAccurate/total)*100) : 0,
+    total, located, scored, strikes, strikePct: pctOf(strikes, located),
+    accurate, accuracyPct: pctOf(accurate, scored),
+    relativeAccurate, relativeAccuracyPct: pctOf(relativeAccurate, scored),
     usesRelativeMode, exactHits, raHits,
     hasZone: zoneTotal > 0, zoneTotal, zoneHits, zoneAccuracyPct: zoneTotal ? Math.round((zoneHits / zoneTotal) * 100) : null,
     hasVelo, avgVelo, minVelo, maxVelo, byType
@@ -8493,6 +8671,7 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
     const zoneNow = ((isBullpenTap && pendingTarget) || gameAim) && litType && sessionRelAccuracy(sa, gp)
       ? zoneCellsFor(state.currentPitcherId, litType, batterSide) : null;
     const sideStep = !isBullpenTap && !!(sa && sa.kind === 'game' && !gameBatterChosen(sa));   // V1 Part B, Select Batter Side
+    const landStep = isBullpenTap && outcomeOnlyPen(sa) && !!state.selectedType;   // C1 A: "Select Pitch Outcome" -- the grid pulses
     const glowCells = zoneNow
       ? new Set(zoneNow.map(k => { const [zr, zc] = k.split('-').map(Number); return zr + '-' + perspectiveCol(zc, chartingPerspective); }))
       : null;
@@ -8513,7 +8692,7 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
         let cls = 'zone-cell' + (inZone ? ' in-zone' : '') + ' clickable';
         let inner = num !== null ? `<span class="zone-number">${num}</span>` : '';
         if(isGlow) inner += `<span class="rel-glow-overlay"></span>`;
-        if(sideStep && (col === 0 || col === GRID_SIZE - 1)) inner += `<span class="rel-glow-overlay v1-side-glow"></span>`;
+        if((sideStep && (col === 0 || col === GRID_SIZE - 1)) || landStep) inner += `<span class="rel-glow-overlay v1-side-glow"></span>`;
         if(isTarget){ cls += ' zone-cell-target'; inner += `<span class="target-dot"><span class="target-dot-core"></span></span>`; }
         if(ballHere){ cls += ' zone-cell-ball' + (state.gameBallFlash ? ' ball-flash' : ''); inner += `<span class="zone-ball">${G5_BALL_SVG}</span>`; }
         if(isFlash){
@@ -8575,14 +8754,18 @@ function renderHistoryPlot(session, p, o){
   }
   const seen = {};
   let halos = '', dots = '';
+  // C1 A: a call with no location (Intent only) is drawn where it was aimed, as a ring: "called spots"
+  const calls = (session.pitches || []).length > 0 && (session.pitches || []).every(pt => !hasLocation(pt) && hasTarget(pt));
   (session.pitches || []).forEach(pt => {
-    const r = pt.actualRow, c = perspectiveCol(pt.actualCol, REPORT_PERSPECTIVE);
+    const called = !hasLocation(pt) && hasTarget(pt);
+    const r = called ? pt.targetRow : pt.actualRow, c = perspectiveCol(called ? pt.targetCol : pt.actualCol, REPORT_PERSPECTIVE);
     if(r === null || r === undefined || c === null || c === undefined) return;
     const key = r + '-' + c, idx = seen[key] || 0;
     seen[key] = idx + 1;
     const angle = idx * 137.508 * Math.PI / 180, rad = idx === 0 ? 0 : Math.min(cell * 0.32, 8 + idx * 6);
     const x = (c * cell + cell / 2 + rad * Math.cos(angle)).toFixed(1), y = (r * cell + cell / 2 + rad * Math.sin(angle)).toFixed(1);
     const color = colorOf(pt.type);
+    if(called){ dots += `<circle cx="${x}" cy="${y}" r="${dotR + 2}" fill="none" stroke="${color}" stroke-width="${many ? 4 : 6}"/>`; return; }
     halos += `<circle cx="${x}" cy="${y}" r="${haloR}" fill="${color}"/>`;
     dots += `<circle cx="${x}" cy="${y}" r="${dotR}" fill="${color}" stroke="#FFFFFF" stroke-width="${many ? 1.5 : 2.5}"/>`;
   });
@@ -8612,7 +8795,7 @@ function renderHistoryPlot(session, p, o){
     </svg>
     ${renderPerspectivePlate()}
     ${legend ? `<div class="hp-legend">${legend}</div>` : ''}
-    ${o.caption !== undefined ? o.caption : `<div class="zone-caption hp-caption">Every pitch this ${what} · ${REPORT_VIEW_NAME} · both batter sides mixed. Numbers and directional words like "inside" depend on who's hitting, so this plot uses neither.</div>`}
+    ${o.caption !== undefined ? o.caption : calls ? `<div class="zone-caption hp-caption">Called spots this ${what} (Intent only: where each pitch was aimed) · ${REPORT_VIEW_NAME} · both batter sides mixed.</div>` : `<div class="zone-caption hp-caption">Every pitch this ${what} · ${REPORT_VIEW_NAME} · both batter sides mixed. Numbers and directional words like "inside" depend on who's hitting, so this plot uses neither.</div>`}
   </div>`;
 }
 // A drawn home plate in perspective from the mound (Joel's ballpark photo, turned around): wide front edge at
@@ -8829,7 +9012,8 @@ window.chooseSessionKind = async function(kind){
   // Defaults come from the profile; the answers belong to this session only.
   const pq = currentPitcher();
   state.activeSession.typeOrder = pitchTypesFor(pq).slice();   // U15: this session's colour order (colorTypesFor)
-  state.activeSession.startQ = { radar: !!(pq && pq.usesRadarGun), rel: raLastAnswer(pq), intent: false, intentHelp: false, file: fileDefault(), purpose: null };   // SR1 A: Feel Good (no tag) to start, every time
+  state.activeSession.startQ = { radar: !!(pq && pq.usesRadarGun), rel: raLastAnswer(pq), file: fileDefault(), purpose: null,   // SR1 A: Feel Good (no tag) to start, every time
+    pi: true, po: true };   // C1 Stage A: the parts this device charts -- both to start (today's), at least one
   const handoff = kind === 'game' ? gameHandoff() : null;
   if(handoff){ state.activeSession.startQ.carry = true; if(handoff.opponent && !state.activeSession.opponent) state.activeSession.opponent = handoff.opponent; }
   if(kind === 'game') loadOpponents();   // the saved list, refreshed in the background when online
@@ -8933,6 +9117,11 @@ function fileStartQuestion(q){
 window.startSessionNow = async function(){
   const s = state.activeSession, q = s && s.startQ;
   if(!q) return;
+  const pi = q.pi !== false, po = q.po !== false;
+  if(!pi && !po) return;   // C1 Stage A: at least one part (Start is disabled too)
+  s.parts = { intent: pi, outcome: po };   // fixed from here on (sessions.charted_intent / charted_outcome)
+  if(!po){ q.radar = false; q.carry = false; q.mid = false; }   // the count, runners and speeds belong to Outcome
+  if(!(pi && po)) q.rel = false;   // Relative Accuracy needs both parts
   if(!isCoach()){   // P2: the filing, fixed now
     const f = fileChoices().length ? (q.file || fileDefault()) : 'none';
     s.fileTeam = f === 'none' ? null : f;
@@ -8945,10 +9134,12 @@ window.startSessionNow = async function(){
     s.assignmentId = ap ? ap.assignmentId : null; }   // F2 Stage 1: charted under a one-session assignment
   s.campId = (state.chartCamp && state.chartCamp.pid === state.currentPitcherId && campOpenToday(state.chartCamp.id)) ? state.chartCamp.id : null;   // F2 Stage 4
   state.chartCamp = null;
-  // U14: the answer is the session's own (stored as sessions.ra_on); a Live Game asks only with Intent on
-  s.raOn = s.kind === 'game' ? !!(q.intent && q.rel) : !!q.rel;
-  if(s.kind === 'bullpen' || q.intent) rememberRaAnswer(currentPitcher(), !!q.rel);
-  if(s.kind === 'game') s.intent = !!q.intent;   // Joel, Oct 12: Live Game intent (target, then where it went)
+  // U14: the answer is the session's own (stored as sessions.ra_on). C1 Stage A (Joel, Nov 25): Live Games no longer
+  // measure Relative Accuracy -- a game is always false; a pen asks only when this device charts both parts.
+  s.raOn = s.kind === 'game' ? false : !!q.rel;
+  if(s.kind === 'bullpen' && pi && po) rememberRaAnswer(currentPitcher(), !!q.rel);
+  if(s.kind === 'game') s.intent = pi;   // Joel, Oct 12: Live Game intent (target, then where it went); C1: the Intent part
+  s.c1 = intentOnly(s) ? { step: 'aim', cell: null, frozen: 0 } : null;   // C1 Stage A: the Intent-only cycle
   if(s.kind === 'game') s.batterSides = {};   // V1 Part B: the first batter's side is asked (Select Batter Side)
   if(s.kind === 'game'){
     const el = document.getElementById('start-opponent');
@@ -9121,31 +9312,45 @@ window.setMidFrom = async function(i){
   await storSet(draftKey(), state.activeSession);
   render();
 };
+// C1 Stage A (Joel, Nov 25 2026): the first start question -- which parts this device charts. Two switches, both on to
+// start (today's), at least one. Intent = the call; Outcome = where it went (a game: and everything after it). In a
+// Live Game, choosing Intent replaces "Turn on Intent?".
+function partsStartQuestion(q, game){
+  const pi = q.pi !== false, po = q.po !== false;
+  const tray = segTray([
+    { label: 'Intent — Pitch Calling', selected: pi, onclick: `setStartQ('pi', ${pi ? 'false' : 'true'})` },
+    { label: game ? 'Outcome & Response — Pitch Locations and Results' : 'Outcome — Pitch Locations', selected: po, onclick: `setStartQ('po', ${po ? 'false' : 'true'})` }
+  ], { label: 'Parts of charting (choose one or both)', cls: 'start-yn start-parts' });   // no sliding indicator: both can be on
+  const note = !pi && !po ? 'Choose at least one part.'
+    : pi && po ? (game ? 'Tap where the catcher calls the pitch, then where it went.' : 'Tap where each pitch is aimed, then where it landed.')
+    : pi ? 'You call each pitch: tap where it\'s aimed, then Confirm Pitch. Where it goes isn\'t charted here.'
+    : (game ? 'Tap where each pitch went, then what happened, as usual. No calls are charted here.' : 'Tap where each pitch landed. No targets, so no accuracy for this pen.');
+  return `<div class="start-q-item"><div class="start-q-label">What parts of charting will you be handling?</div>${tray}
+    <p class="start-q-note">${note}</p></div>`;
+}
 function renderStartQuestions(p){
   const s = state.activeSession, q = s.startQ, game = s.kind === 'game';
   const yn = (k, v) => segTray([{ label: 'Yes', selected: !!v, onclick: `setStartQ('${k}', true)` }, { label: 'No', selected: !v, onclick: `setStartQ('${k}', false)` }], { key: 'sq-' + k, label: k, cls: 'start-yn' });
   const who = isCoach() ? escHtml(p.name) + "'s" : 'your';
+  const pi = q.pi !== false, po = q.po !== false, none = !pi && !po;
+  // C1 Stage A order (Joel): parts first; a pen: purpose, Relative Accuracy (both parts only), radar (Outcome only); a
+  // game: radar, Continue from..., Starting mid-game? (Outcome & Response only), Opponent; then Which team (last).
+  const radar = po ? `<div class="start-q-item"><div class="start-q-label">Will you be using a radar gun today?</div>${yn('radar', q.radar)}</div>` : '';
   return `<div class="start-q">
     <h2 class="display start-q-title">${game ? 'Live Game' : 'Bullpen'}</h2>
-    ${fileStartQuestion(q)}
-    <div class="start-q-item"><div class="start-q-label">Will you be using a radar gun today?</div>${yn('radar', q.radar)}</div>
-    ${game ? '' : raStartQuestion(q, who)}
+    ${partsStartQuestion(q, game)}
     ${game ? '' : tagStartQuestion(q, who)}
-    ${game ? `<div class="start-q-item"><div class="start-q-label intent-q">Turn on Intent?
-        <span class="info-wrap"><button type="button" class="btn btn-icon btn-sm info-q" aria-label="What is Intent?" aria-expanded="${q.intentHelp ? 'true' : 'false'}" onclick="setStartQ('intentHelp', ${q.intentHelp ? 'false' : 'true'})">?</button>
-        <span class="info-tip" role="tooltip">For use with Pitchcom, Game Day Watches, GoRout, etc...</span></span></div>
-      ${q.intentHelp ? '<p class="info-note">For use with Pitchcom, Game Day Watches, GoRout, etc...</p>' : ''}
-      ${yn('intent', q.intent)}
-      <p class="start-q-note">${q.intent ? 'Tap where the catcher calls the pitch, then where it went.' : 'Tap where each pitch went, as usual.'}</p></div>
-      ${q.intent ? raStartQuestion(q, who) : ''}` : ''}
-    ${game && q.carry !== undefined && gameHandoff() ? (() => { const h = gameHandoff(), prev = (state.roster || []).find(x => x.id === h.pitcherId);
+    ${!game && pi && po ? raStartQuestion(q, who) : ''}
+    ${radar}
+    ${game && po && q.carry !== undefined && gameHandoff() ? (() => { const h = gameHandoff(), prev = (state.roster || []).find(x => x.id === h.pitcherId);
       return `<div class="start-q-item"><div class="start-q-label">Continue from where ${prev ? escHtml(prev.name) : 'the last pitcher'} left off?</div>${yn('carry', q.carry)}
       <p class="start-q-note">${q.carry ? escHtml(gameHandoffSummary(h)) : 'Start fresh: inning 1, no outs, 0-0, bases empty.'}</p></div>`; })() : ''}
-    ${game && !(q.carry && gameHandoff()) ? startMidGameQuestion(q) : ''}
+    ${game && po && !(q.carry && gameHandoff()) ? startMidGameQuestion(q) : ''}
     ${game ? `<div class="start-q-item"><label class="start-q-label" for="start-opponent">Opponent (optional)</label>
       <input id="start-opponent" class="text-input start-q-input" list="opponent-list" maxlength="60" autocomplete="off" placeholder="Type or pick a team" value="${escHtml(s.opponent || '')}" oninput="onGameOpponentInput(this.value)">${opponentDatalist()}</div>` : ''}
+    ${fileStartQuestion(q)}
     <div class="start-q-actions">
-      <button type="button" class="btn btn-primary start-q-go" onclick="startSessionNow()">Start ${game ? 'game' : 'bullpen'} ›</button>
+      <button type="button" class="btn btn-primary start-q-go" ${none ? 'disabled' : ''} onclick="startSessionNow()">Start ${game ? 'game' : 'bullpen'} ›</button>
     </div>
   </div>`;
 }
@@ -9181,6 +9386,11 @@ window.handleGameZoneTap = async function(row, col){
     if(pt){ pt.actualRow = row; pt.actualCol = perspectiveCol(col, sessionPerspective(s0)); await storSet(draftKey(), s0); }
     render();
     return;
+  }
+  if(intentOnly(state.activeSession)){   // C1 Stage A: calls only -- no count, no result, no field
+    if(!gameBatterChosen(state.activeSession)) return gamePickBatterSide(col);
+    if(!state.selectedType) return;
+    return c1AimTap(row, col);
   }
   if(tiebreakPending(state.activeSession)){ state.hint = 'Answer the extra-inning question first'; render(); return; }
   if(!gameBatterChosen(state.activeSession)) return gamePickBatterSide(col);   // V1 Part B, step 1: Select Batter Side
@@ -9723,7 +9933,8 @@ window.recordGameResult = async function(result, extra){
     // applyGameResultProgression's return value just below, once it's run.
     batterTo: null, runnerAdvances: null, outsOnPlay: 0, runsScored: 0,
     sacrifice: extra.sacrifice || null,   // Release 2 (C2)
-    sprayBox: extra.sprayBox || null, sprayField: extra.sprayField || null, runnersAfter: null   // G5
+    sprayBox: extra.sprayBox || null, sprayField: extra.sprayField || null, runnersAfter: null,   // G5
+    playFlags: extra.playFlags && extra.playFlags.length ? extra.playFlags.slice() : null   // C1 A: More Plays markers
   });
   const pushedPitch = s.pitches[s.pitches.length - 1];
   const atBatBefore = s.atBatIndex;
@@ -9919,6 +10130,7 @@ window.gameRarePitch = async function(kind, base){
   const x = { g5: true, addOuts: 0 };
   switch(kind){
     case 'foul_bunt': return recordGameResult('foul', { ...x, bunt: true, bbType: 'bunt' });   // two strikes: the strikeout
+    case 'foul_error': return recordGameResult('foul', { ...x, playFlags: ['foul_error'] });   // C1 A: a dropped foul, scored an error
     case 'ci': return recordGameResult('interference', { ...x, runnersAfter: walkMask });
     case 'd3_out': return recordGameResult('dropped_third', { ...x, inPlayOutcome: 'out' });
     case 'd3_reached': return recordGameResult('dropped_third', { ...x, inPlayOutcome: 'reached', runnersAfter: walkMask });
@@ -10041,7 +10253,7 @@ function adjustRunnersDisabledReason(ar, s){
   }
   return null;
 }
-window.commitAdjustEvent = async function(reason){
+window.commitAdjustEvent = async function(reason, how){   // C1 A: how -- a reason with no event type of its own, saved on the move
   const s = state.activeSession;
   const ar = s.adjustRunners;
   if(!ar || adjustRunnersDisabledReason(ar, s)) return;
@@ -10051,7 +10263,7 @@ window.commitAdjustEvent = async function(reason){
   };
   const ledgerBefore = gameLedgerBefore(s);   // Release 2
   const toNum = ar.destination === 'out' ? 0 : ar.destination === 'home' ? 4 : Number(ar.destination);
-  const advances = [{ from: ar.runner, to: toNum }];
+  const advances = [how ? { from: ar.runner, to: toNum, how } : { from: ar.runner, to: toNum }];
   const hadRunnersBefore = gameHasRunners(s);
   const { outsOnPlay, runsScored } = applyRunnerAdvances(s, advances, null);
   s.outs += outsOnPlay;
@@ -10252,7 +10464,13 @@ const GAME_RESULT_LABELS = {
   // the existing generic interference above, which is CI and unchanged.
   batter_interference: "Batter's interference", foul_tip: 'Foul tip'
 };
+// C1 A: the More Plays marker on a pitch, as the log and editor write it
+const C1_FLAG_LABELS = { infield_fly: 'IFR', ground_rule_double: 'GRD', fan_interference: 'fan interference', foul_error: 'E on foul' };
 function gameResultText(pt){
+  const base = gameResultTextBase(pt), f = (pt.playFlags || []).map(k => C1_FLAG_LABELS[k]).filter(Boolean);
+  return f.length ? (base ? base + ' · ' : '') + f.join(' · ') : base;
+}
+function gameResultTextBase(pt){
   if(pt.result === 'in_play'){
     const outcomeLabel = { hit: 'Hit', out: 'Out', error: 'Error', fc: "Fielder's choice" }[pt.inPlayOutcome] || 'In play';
     // Release 2: fielders as the scorebook writes them -- an out 6-3 / F8, an error E6, a hit to LF; SF / SAC
@@ -10290,12 +10508,17 @@ const GAME_EVENT_LABELS = {
   intentional_walk: 'Intentional walk', auto_ball: 'Auto ball', auto_strike: 'Auto strike',
   illegal_pitch: 'Illegal pitch', tiebreak_runner: 'Tiebreak runner on 2B'
 };
+const C1_HOW_LABELS = { defensive_indifference: 'Defensive indifference', obstruction: 'Obstruction', appeal: 'Appeal',
+  runner_interference: "Runner's interference", batting_out_of_order: 'Batting out of order' };
 function gameEventText(ev){
   const label = ev.illegalPitch ? ((ev.eventType === 'balk' || ev.illegalAdv) ? 'Illegal pitch — ADV' : 'Illegal pitch — no ADV')
     : ev.clock ? (ev.eventType === 'auto_ball' ? 'Clock violation — ball' : 'Clock violation — strike')   // Oct 20
     : (GAME_EVENT_LABELS[ev.eventType] || ev.eventType);
-  const parts = [label];
+  // C1 A: More Plays saved as 'other' carry their reason on the move; a pickoff with no move is a throw over
+  const why = (ev.runnerAdvances || []).map(a => C1_HOW_LABELS[a.how]).find(Boolean);
+  const parts = [why || (ev.eventType === 'pickoff' && !(ev.runnerAdvances || []).length ? 'Pickoff throw, no out' : label)];
   (ev.runnerAdvances || []).forEach(a => {
+    if(a.how === 'batting_out_of_order') return;
     const to = a.to === 0 ? 'out' : a.to === 4 ? 'home' : (a.to === 1 ? '1st' : a.to === 2 ? '2nd' : '3rd');
     parts.push(`R${a.from} to ${to}`);
   });
@@ -11877,7 +12100,8 @@ window.g5RunAnswer = async function(dest, outHow, outAt){
   g.bases = (g.bases || 0) & ~(1 << (c - 1));
   if(dest >= 1 && dest <= 3) g.bases |= 1 << (dest - 1);
   if(dest === 4) g.runs = (g.runs || 0) + 1;
-  const how = dest === 0 ? (outHow || 'thrown_out') : (caughtBall ? 'tagged_up' : 'advanced');
+  const how = dest === 0 ? (outHow || 'thrown_out') : g.runErr && dest !== o ? 'on_error' : (caughtBall ? 'tagged_up' : 'advanced');   // C1 A: ADV on an error
+  g.runErr = false;
   g.advances = g.advances || [];
   const e = g.advances.find(a => a.from === o);
   if(e){ if(e.to !== dest){ e.to = dest; e.how = how; } }
@@ -12184,9 +12408,11 @@ window.g5Back = async function(){
 // other Live Game pitch (recordGameResult), then the roll back to the chart.
 async function g5Commit(result){
   const s = state.activeSession, g = s.g5;
+  state.g5MorePlays = false;   // C1 A
   if(!gamePitchType()){ state.hint = 'Pick this pitch\'s type, then tap again'; render(); return; }   // Oct 14: never save a pitch with no type
   const extra = { g5: true, addOuts: g.addOuts || 0 };
   if(result === 'in_play'){
+    if(g.flags && g.flags.length) extra.playFlags = g.flags.slice();   // C1 A: More Plays (infield fly, ground-rule double, fan interference)
     extra.inPlayOutcome = G5_OUTCOME[g.entry];
     extra.bbType = g.bbType;
     extra.sprayBox = g.box;
@@ -12402,15 +12628,73 @@ function g5FieldActions(n){
     return `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button><button type="button" class="btn ${any ? 'btn-primary' : 'btn-secondary'} btn-sm g5-nav-btn" onclick="g5FielderDone()"${wait ? ' disabled' : ''}>${any ? 'Done ›' : 'Skip ›'}</button></div>`;
   }
   const blocked = g5NeedsBatter(g) || g5NeedsFcOut(g) || !!g5RunAsking(g);
+  // C1 A (Joel): "More Plays" next to Back, for the super rare plays: markers on this ball in play
+  const mp = `<button type="button" class="btn btn-secondary btn-sm g5-nav-btn${state.g5MorePlays ? ' on' : ''}" onclick="g5MorePlaysToggle()" aria-expanded="${state.g5MorePlays ? 'true' : 'false'}">More Plays${(g.flags || []).length ? ' · ' + g.flags.length : ''}</button>`;
+  const mpTray = state.g5MorePlays ? `<div class="g5-more" role="group" aria-label="More Plays">${C1_PLAY_FLAGS.map(([k, l]) =>
+    `<button type="button" class="btn btn-secondary btn-sm g5-more-btn" aria-pressed="${(g.flags || []).includes(k) ? 'true' : 'false'}" onclick="g5FlagToggle('${k}')">${(g.flags || []).includes(k) ? '✓ ' : ''}${l}</button>`).join('')}</div>` : '';
   const next = g.step === 'bases' ? `<button type="button" class="btn btn-primary btn-sm g5-nav-btn next-pitch" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>`
-    : '<span class="g5-nav-btn" aria-hidden="true"></span>';
+    : mp;
   if(n){   // lined up with the centred row above (g5PlayBelow)
     const half = Math.max(1, Math.floor(n / 2));
     const nx = next.replace(/^<(button|span) /, `<$1 style="grid-column:${n - half + 1} / span ${half};" `);
-    return `${summary}<div class="g5-nav g5-shift" style="--n:${n}"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" style="grid-column:1 / span ${half};" onclick="g5Back()">‹ Back</button>${nx}</div>`;
+    return `${summary}<div class="g5-nav g5-shift" style="--n:${n}"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" style="grid-column:1 / span ${half};" onclick="g5Back()">‹ Back</button>${nx}</div>${g.step === 'bases' ? `<div class="g5-nav">${mp}</div>` : ''}${mpTray}`;
   }
-  return `${summary}<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button>${next}</div>`;
+  return `${summary}<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" onclick="g5Back()">‹ Back</button>${next}</div>${g.step === 'bases' ? `<div class="g5-nav">${mp}</div>` : ''}${mpTray}`;
 }
+// C1 Stage A: More Plays. A marker on this ball in play (pitches.play_flags); the play is charted as it is today.
+const C1_PLAY_FLAGS = [['infield_fly', 'Infield fly'], ['ground_rule_double', 'Ground-rule double'], ['fan_interference', 'Fan interference']];
+window.g5MorePlaysToggle = function(){ state.g5MorePlays = !state.g5MorePlays; render(); };
+window.g5FlagToggle = function(k){
+  const g = state.activeSession && state.activeSession.g5;
+  if(!g) return;
+  g.flags = (g.flags || []).includes(k) ? g.flags.filter(x => x !== k) : (g.flags || []).concat([k]);
+  return g5Save();
+};
+window.g5RunErrToggle = function(){
+  const g = state.activeSession && state.activeSession.g5;
+  if(!g) return;
+  g.runErr = !g.runErr;
+  return g5Save();
+};
+// C1 A (Rare plays): a throw over with no out -- a pickoff event with no runner moved; and batting out of order -- the
+// batter is out (an 'other' event with one out), then the next batter.
+window.gameThrowOver = async function(){
+  const s = state.activeSession;
+  if(!s || s.kind !== 'game' || (s.g5 && s.g5.step !== 'what') || !gameHasRunners(s)) return;
+  g5MoreClose(); g5Cancel(s);   // not a pitch: a spot already tapped is dropped
+  const ledgerBefore = gameLedgerBefore(s);
+  s.events.push({ id: genUUID(), seq: s.nextSeq++, eventType: 'pickoff', atBatIndex: s.atBatIndex,
+    afterPitchId: s.pitches.length ? s.pitches[s.pitches.length - 1].id : null, runnersBefore: runnersBitmask(s.runners),
+    runnerAdvances: [], outsOnPlay: 0, runsScored: 0, inningBefore: s.inning, outsBeforeCount: s.outs,
+    ballsBefore: s.balls, strikesBefore: s.strikes, atBatIndexBefore: s.atBatIndex });
+  gameLedger(s, s.events[s.events.length - 1], ledgerBefore, { batterTo: null });
+  await storSet(draftKey(), s);
+  render();
+};
+// Baseball: an illegal pitch with the bases empty is a ball (softball's Illegal pitch is unchanged)
+window.gameIllegalPitchEmpty = async function(){
+  const s = state.activeSession;
+  if(!s || s.kind !== 'game' || gameHasRunners(s) || (s.g5 && s.g5.step !== 'what')) return;
+  g5MoreClose(); g5Cancel(s);
+  return commitIllegalPitch(false);
+};
+window.gameBattingOutOfOrder = async function(){
+  const s = state.activeSession;
+  if(!s || s.kind !== 'game' || (s.g5 && s.g5.step !== 'what')) return;
+  g5MoreClose(); g5Cancel(s);
+  const ledgerBefore = gameLedgerBefore(s);
+  const before = { inning: s.inning, outs: s.outs, balls: s.balls, strikes: s.strikes, ab: s.atBatIndex };
+  s.events.push({ id: genUUID(), seq: s.nextSeq++, eventType: 'other', atBatIndex: s.atBatIndex,
+    afterPitchId: s.pitches.length ? s.pitches[s.pitches.length - 1].id : null, runnersBefore: runnersBitmask(s.runners),
+    runnerAdvances: [{ from: 0, to: 0, how: 'batting_out_of_order' }], outsOnPlay: 1, runsScored: 0,
+    inningBefore: before.inning, outsBeforeCount: before.outs, ballsBefore: before.balls, strikesBefore: before.strikes, atBatIndexBefore: before.ab });
+  gameLedger(s, s.events[s.events.length - 1], ledgerBefore, { batterTo: null });
+  s.outs++; s.balls = 0; s.strikes = 0; s.atBatIndex++;
+  if(s.outs >= 3){ s.inning++; s.outs = 0; s.runners = { 1: false, 2: false, 3: false }; }
+  defaultGameDelivery(s);
+  await storSet(draftKey(), s);
+  render();
+};
 /* ---------- Runners on the field (Joel, Oct 12) ----------
    Drag a runner to another base or home -- as eager as the coach dock: it moves the moment the finger does --
    or tap a runner, then a base. Then "Safe or Out?". Between pitches (the status-bar diamond opens the field)
@@ -12420,9 +12704,12 @@ function g5FieldActions(n){
 const G5_HOME_BOX = 15;
 const G5_BOX_BASE = { 23: 1, 25: 2, 17: 3, 15: 'home' };
 const G5_WHY = {
-  safe: [['stolen_base', 'Stolen base'], ['wild_pitch', 'Wild pitch'], ['passed_ball', 'Passed ball'], ['balk', 'Balk'], ['other', 'Other']],
-  out: [['caught_stealing', 'Caught stealing'], ['pickoff', 'Pickoff'], ['other', 'Other']]
+  safe: [['stolen_base', 'Stolen base'], ['wild_pitch', 'Wild pitch'], ['passed_ball', 'Passed ball'], ['balk', 'Balk'],
+    ['defensive_indifference', 'Defensive indifference'], ['obstruction', 'Obstruction'], ['other', 'Other']],   // C1 A: More Plays
+  out: [['caught_stealing', 'Caught stealing'], ['pickoff', 'Pickoff'], ['appeal', 'Appeal'], ['runner_interference', "Runner's interference"], ['other', 'Other']]
 };
+// C1 A: More Plays reasons with no event type of their own are saved as 'other' with the reason on the move (no schema)
+const G5_WHY_OTHER = { defensive_indifference: 1, obstruction: 1, appeal: 1, runner_interference: 1 };
 // Joel, Oct 12: on a hit (or an error -- the batter reaches either way) the field can't turn back over until the
 // batter has been put on a base: tapped onto one, or dragged from home and called safe.
 function g5NeedsBatter(g){ return !!g && g.step === 'bases' && (g.entry === 'H' || g.entry === 'E') && !g.foulOut && !g.hr && !g.batterPlaced; }
@@ -12529,7 +12816,7 @@ window.g5MoveWhy = async function(reason){
     if(currentSport() === 'softball') await commitIllegalPitch(true); else await commitNoPitchEvent('balk');
   } else {
     s.adjustRunners = { step: 'reason', runner: m.from, destination: m.result === 'out' ? 'out' : (m.to === 'home' ? 'home' : String(m.to)) };
-    await commitAdjustEvent(reason);
+    if(G5_WHY_OTHER[reason]) await commitAdjustEvent('other', reason); else await commitAdjustEvent(reason);
   }
   // still on the field for the next move -- unless the bases are now empty (a third out empties them too)
   if(state.activeSession.g5 && !gameHasRunners(state.activeSession)){ g5FlipOut(); state.activeSession.g5 = null; }
@@ -12658,7 +12945,8 @@ function g5HoeRow(){
   if(g && g.step === 'bases' && g5RunAsking(g)){   // Oct 21: where the runner ended up
     const o = g5RunAsking(g);
     return `<div class="g5-pad" role="group" aria-label="Runner from ${['', '1B', '2B', '3B'][o]}">${g5RunOptions(g, o).map(([d, label], i) =>
-      `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${i + 1};" onclick="g5RunAnswer(${d})" aria-label="${label === 'HELD' ? 'Held' : label === 'OUT' ? 'Out' : d === 4 ? 'Scored' : 'Advanced to ' + label.slice(7)}"><span class="g5-res-l g5-res-count g5-res-word g5-res-long g5-res-wrap" aria-hidden="true">${label}</span></button>`).join('')}</div>`;   // Oct 21: one size for every answer
+      `<button type="button" class="btn btn-secondary g5-res" style="grid-column:${i + 1};" onclick="g5RunAnswer(${d})" aria-label="${label === 'HELD' ? 'Held' : label === 'OUT' ? 'Out' : d === 4 ? 'Scored' : 'Advanced to ' + label.slice(7)}"><span class="g5-res-l g5-res-count g5-res-word g5-res-long g5-res-wrap" aria-hidden="true">${label}</span></button>`).join('')}</div>   <!-- Oct 21: one size for every answer -->
+      <div class="g5-more c1-runerr"><button type="button" class="btn btn-secondary btn-sm g5-more-btn" aria-pressed="${g.runErr ? 'true' : 'false'}" onclick="g5RunErrToggle()">${g.runErr ? '✓ ' : ''}Advanced on an error</button></div>`;   // C1 A: More Plays
   }
   if(!g || !G5_PAD_STEPS[g.step]) return '';
   if(!G5_ROW_STEPS[g.step]) return `<div class="g5-pad" role="group" aria-label="${g5Caption(g.step)}">${g5LocationCells(g)}</div>`;
@@ -12727,6 +13015,8 @@ function g5RareTray(s){
     ${b('Dropped 3rd', "g5RareAskSet('d3')", !g5D3Ok(s), true)}${b('Intentional walk', 'gameIntentionalWalk()', midPlay || walk)}
     ${b('Interference', "g5RareAskSet('int')", !ready, true)}${b('Violations', "g5RareAskSet('viol')", walk, true)}
     ${b('Foul bunt', "gameRarePitch('foul_bunt')", !ready)}${currentSport() === 'softball' ? b('Illegal pitch', 'gameBalk()') : b('Balk', 'gameBalk()', !gameHasRunners(s))}
+    ${b('Dropped foul (error)', "gameRarePitch('foul_error')", !ready)}${b('Pickoff throw, no out', 'gameThrowOver()', midPlay || !gameHasRunners(s))}
+    ${b('Batting out of order', 'gameBattingOutOfOrder()', midPlay)}${currentSport() === 'softball' ? '' : b('Illegal pitch, bases empty', 'gameIllegalPitchEmpty()', midPlay || gameHasRunners(s))}
     ${back}
   </div>`;
 }
@@ -12755,7 +13045,8 @@ function g5Surface(pitches, chartingPerspective, currentBatterSide){
   // Joel, Oct 12: while what happened is asked under the chart, the tapped spot stays marked on it
   const sa = state.activeSession, asking = !!(sa && sa.g5 && G5_CHART_STEPS[sa.g5.step]);
   // Intent (Oct 12): the called spot gets the bullpen's target dot; where it went gets the dark box with the ball
-  const mark = (sa && sa.intent) ? (sa.gameTarget || (asking && sa.gamePendingPitch && sa.gamePendingPitch.target) || null) : (asking ? sa.gameDot : null);
+  const mark = intentOnly(sa) ? c1Mark(sa)   // C1 A: the call being made
+    : (sa && sa.intent) ? (sa.gameTarget || (asking && sa.gamePendingPitch && sa.gamePendingPitch.target) || null) : (asking ? sa.gameDot : null);
   state.gameBallCell = (sa && sa.intent && asking) ? sa.gameDot : null;
   let chart = renderZoneGrid(pitches, true, state.flashCell, mark, chartingPerspective, currentBatterSide, 'handleGameZoneTap');
   if(g5Step() === 'velo') chart = chart.replace(/<\/div>$/, g5VeloRows() + '</div>');   // inside .zone-grid, over its last two rows
@@ -12787,8 +13078,64 @@ function v1PhoneUnder(s){
   return ph ? `<div class="v1-under v1-ph"><div class="zone-caption ph-lg-prompt">${ph}</div></div>` : '';
 }
 
+// C1 Stage A: a Live Game charted Intent only. Nothing about the count, outs, innings, runners or results is charted
+// here, so the scoreboard is blank ("–", never 0), there are no result rows, no velocity and no Windup / Set; the chart
+// takes calls (V1's Select Batter Side first), with the Intent-only controls under it.
+function renderC1GameView(p){
+  const s = state.activeSession, pitches = s.pitches;
+  const persp = sessionPerspective(s), side = sessionBatterSide(s);
+  const logRows = pitches.slice().reverse().slice(0, 12).map(pt => {
+    const tn = zoneNumberFor(pt.targetRow, pt.targetCol, pt.batterSide || 'R');
+    return `<div class="pitch-log-row"><span><span class="plr-dot" style="background:${colorForType(p, pt.type)}"></span><span class="mono">${pitchLabel(pt.type)}</span> · <span style="color:var(--ink-faint);">aimed ${tn || 'ball'}${pt.batterSide ? ' · vs ' + (pt.batterSide === 'R' ? 'RHB' : 'LHB') : ''}</span></span></div>`;
+  }).join('') || `<p style="color:var(--ink-faint);font-size:12px;">No calls yet. Pick a type, then tap where it's aimed.</p>`;
+  const stage = g5Surface(pitches, persp, side), ctl = renderC1Controls(s);
+  const statLine = `Intent only · Pitches called: ${pitches.length}`;
+  if(phoneSessionMode(p)){
+    const cell = lbl => `<span class="sb-cell sb-blank"><span class="sb-num ph-item">–</span><span class="sb-lbl">${lbl}</span></span>`;
+    return `
+    <div class="session-grid-layout ph-layout">
+      <div class="panel controls-panel ph-controls">
+        <div class="ph-status on-dark">${cell('Inn')}${cell('Outs')}${cell('Count')}${cell('Runs')}
+          <span class="ph-status-deliv ph-status-persp">${renderPerspButton(false)}</span>
+        </div>${renderPerspNote()}
+        ${renderPhoneDeliveryRow(p, true)}
+        <div class="ph-grid-wrap">${renderPhoneHint()}
+          <div class="zone-wrap lg-phone">${stage}</div>
+        </div>
+        ${ctl}
+      </div>
+      <div class="panel log-panel">
+        <div class="ph-statline mono">${statLine}</div>
+        <div class="field-label">Recent pitches</div>
+        <div class="pitch-log">${logRows}</div>
+        <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
+      </div>
+    </div>`;
+  }
+  const box = lbl => `<div class="stat-box sb-blank"><span class="stat-num mono">–</span><span class="stat-lbl">${lbl}</span></div>`;
+  const bar = `<div class="game-panel-header"><div class="stat-readout">${box('Inning')}${box('Outs')}${box('Count')}${box('Runs')}
+    <div class="stat-box"><span class="stat-num mono">${pitches.length}</span><span class="stat-lbl">Called</span></div></div></div>`;
+  const left = `${renderPerspectiveToggle()}<div>${renderPitchTypeLabel(p, isWideSession())}${pitchTypeTray(p, isWideSession(), isWideSession())}${renderMixPrompt(p)}</div>`;
+  return `
+    <div class="session-grid-layout">
+      <div class="panel controls-panel">
+        ${bar}
+        ${isWideSession() ? `<div class="wide-cols wide-game">
+          <div class="wide-left">${left}</div>
+          <div class="wide-right"><div class="gridwrap"><div class="zone-wrap">${stage}${ctl}</div></div></div>
+          <div class="wide-log"><div class="field-label">Recent pitches</div><div class="pitch-log">${logRows}</div></div>
+        </div>` : `${left}<div class="hint-msg">${state.hint}</div><div class="gridwrap"><div class="zone-wrap">${stage}${ctl}</div></div>`}
+      </div>
+      <div class="panel log-panel">
+        <div class="ph-statline mono">${statLine}</div>
+        ${isWideSession() ? '' : `<div class="field-label">Recent pitches</div><div class="pitch-log">${logRows}</div>`}
+        ${renderEndSessionRow()}
+      </div>
+    </div>`;
+}
 function renderGameSessionView(p){
   const s = state.activeSession;
+  if(intentOnly(s)) return renderC1GameView(p);   // C1 Stage A
   const pitches = s.pitches;
   const stats = gameStats(pitches, gamePitchCountAdj(s), s.events);
   const chartingPerspective = sessionPerspective(s);
@@ -13245,8 +13592,11 @@ function v1StatusSlot(s){
   if(!s.pitches.length) return `<span class="ph-status-deliv ph-status-persp">${renderPerspButton(false)}</span>`;
   return renderStatusDelivery();
 }
+// C1 A: the Intent-only cell (stored catcher frame) where the screen draws it
+function c1Mark(s){ const c = s && s.c1; return c && c.cell && c.step !== 'aim' ? { row: c.cell.row, col: perspectiveCol(c.cell.col, sessionPerspective(s)) } : null; }
 function v1PenStage(pitches, chartingPerspective, currentBatterSide){
-  const grid = renderZoneGrid(pitches, true, state.flashCell, state.pendingTarget, chartingPerspective, currentBatterSide, 'handleZoneTap');
+  const mark = intentOnly(state.activeSession) ? c1Mark(state.activeSession) : state.pendingTarget;
+  const grid = renderZoneGrid(pitches, true, state.flashCell, mark, chartingPerspective, currentBatterSide, 'handleZoneTap');
   return v1Stage(v1View(chartingPerspective), v1Layout(), grid, isNoBatter(state.activeSession) ? {} : { batter: { left: insideColumnOnScreenLeft(chartingPerspective, currentBatterSide) } });
 }
 // Joel, Oct 8 (Live Game, phones): Set/Windup rides on the right of the status bar; the pitch-type row
@@ -13338,6 +13688,10 @@ function renderSessionView(){
         </div>
       </div>`;
     }
+    if(!hasLocation(pt)){   // C1 A: an Intent-only call -- final once the next one is confirmed, so no edit here
+      const tn = zoneNumberFor(pt.targetRow, pt.targetCol, pt.batterSide || 'R');
+      return `<div class="pitch-log-row"><span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pitchLabel(pt.type)}</span> · <span style="color:var(--ink-faint);">aimed ${tn || 'ball'}${pt.batterSide ? ' · vs ' + (pt.batterSide === 'R' ? 'RHB' : 'LHB') : ''}</span></span></div>`;
+    }
     const strike = isStrikeCell(pt.actualRow, pt.actualCol);
     const accurate = pt.accuracyHitKind ? pt.accuracyHitKind === 'exact' : isAccurate(pt);
     const relAccurate = isRelativelyAccurate(pt);
@@ -13356,7 +13710,8 @@ function renderSessionView(){
     const modeTag = pt.accuracyMode ? ` <span style="color:var(--brand-mid);">[${ACCURACY_MODE_LABELS[pt.accuracyMode]}${relAccurate ? ' ✓' : ''}]</span>`
       : (pt.inAccuracyZone === true || pt.inAccuracyZone === false) ? ` <span style="color:var(--brand-mid);">[Relative${pt.inAccuracyZone ? ' ✓' : ''}]</span>`
       : pt.accuracyHitKind === 'ra' ? ' <span style="color:var(--brand-mid);">RA ✓</span>' : '';
-    const locText = `${targetNum ? 'aimed '+targetNum : 'aimed ball'} → ${actualNum ? 'landed '+actualNum : 'landed ball'}${accurate ? ' ✓' : ''}${modeTag}`;
+    const locText = !hasTarget(pt) ? (actualNum ? 'landed ' + actualNum : 'landed ball')   // C1 A: Outcome only
+      : `${targetNum ? 'aimed '+targetNum : 'aimed ball'} → ${actualNum ? 'landed '+actualNum : 'landed ball'}${accurate ? ' ✓' : ''}${modeTag}`;
     return `<div class="pitch-log-row">
       <span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pitchLabel(pt.type)}</span> · ${veloText}${strike ? 'Strike' : 'Ball'} · <span style="color:var(--ink-faint);">${locText}</span></span>
       <span class="pitch-row-actions">
@@ -13366,9 +13721,12 @@ function renderSessionView(){
     </div>`;
   }).join('') || `<p style="color:var(--ink-faint);font-size:12px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
 
-  const zoneCaption = state.pendingTarget
+  const zoneCaption = outcomeOnlyPen(state.activeSession) ? (state.selectedType ? 'Select Pitch Outcome' : 'Select Pitch Type')   // C1 A
+    : state.pendingTarget
     ? `Now tap where it actually landed <a href="#" onclick="resetTarget();return false;" style="color:var(--accent-ink);">(reset target)</a>`
     : `Tap where you're aiming`;
+  const c1i = intentOnly(state.activeSession), pct = v => v === null || v === undefined ? '—' : v + '%';   // C1 A: blank, never 0
+  const partTag = c1i ? 'Intent only' : outcomeOnlyPen(state.activeSession) ? 'Outcome only' : '';
 
   if(phoneSessionMode(p)){
     const locked = pitches.length > 0;
@@ -13384,14 +13742,15 @@ function renderSessionView(){
         <div class="ph-grid-wrap">${renderPhoneHint()}
           <div class="zone-wrap pb-zone">
             ${v1PenStage(pitches, chartingPerspective, currentBatterSide)}
-            <div class="zone-caption">${zoneCaption}</div>${state.hint ? `<div class="ph-tap-hint">${escHtml(state.hint)}</div>` : ''}${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
+            ${c1i ? '' : `<div class="zone-caption">${zoneCaption}</div>${state.hint ? `<div class="ph-tap-hint">${escHtml(state.hint)}</div>` : ''}`}${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
           </div>
         </div>
-        ${renderPenBatterPill()}
+        ${c1i ? renderC1Controls(state.activeSession) : renderPenBatterPill()}
         ${sessionUsesRadarGun(state.activeSession) ? renderVeloSlim() : ''}
       </div>
       <div class="panel log-panel">
-        <div class="ph-statline mono">${stats.total} pitches · Strike% ${stats.strikePct} · Acc ${stats.accuracyPct}%${stats.hasVelo ? ` · ${stats.avgVelo} avg` : ''} ${raPill()}</div>
+        <div class="ph-statline mono">${c1i ? `Intent only · Pitches called: ${stats.total}`
+          : `${stats.total} pitches · Strike% ${stats.strikePct === null ? '—' : stats.strikePct}${partTag ? '' : ` · Acc ${pct(stats.accuracyPct)}`}${stats.hasVelo ? ` · ${stats.avgVelo} avg` : ''}${partTag ? ' · ' + partTag : ''}`} ${raPill()}</div>
         <div class="field-label">Recent pitches</div>
         <div class="pitch-log">${logRows}</div>
         <button class="btn btn-primary end-session-btn" ${state.saving ? 'disabled' : ''} onclick="endSession()">${state.saving ? 'Saving…' : 'End session & save'}</button>
@@ -13404,7 +13763,7 @@ function renderSessionView(){
   if(!isWideSession()) return `
     <div class="session-grid-layout">
       <div class="panel controls-panel">
-        <div class="perspective-delivery-row bullpen-setup-row">${renderPerspectiveToggle()}${renderBatterModeToggle()}${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}</div>
+        <div class="perspective-delivery-row bullpen-setup-row">${renderPerspectiveToggle()}${c1i ? '' : renderBatterModeToggle()}${sportCfg().hasDelivery ? renderDeliveryToggle() : ''}</div>
         <div>
           ${renderPitchTypeLabel(p)}
           ${pitchTypeTray(p, false)}
@@ -13421,7 +13780,7 @@ function renderSessionView(){
         <div>
           <div class="zone-wrap">
             ${v1PenStage(pitches, chartingPerspective, currentBatterSide)}
-            ${v1UnderRow(zoneCaption, isNoBatter(state.activeSession) ? '' : v1BatterPill(), insideColumnOnScreenLeft(chartingPerspective, currentBatterSide))}${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
+            ${c1i ? renderC1Controls(state.activeSession) : v1UnderRow(zoneCaption, isNoBatter(state.activeSession) ? '' : v1BatterPill(), insideColumnOnScreenLeft(chartingPerspective, currentBatterSide))}${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
           </div>
         </div>
         ${sessionUsesRadarGun(state.activeSession) ? `<div>
@@ -13432,8 +13791,8 @@ function renderSessionView(){
       <div class="panel log-panel">
         <div class="stat-readout">
           <div class="stat-box"><span class="stat-num mono">${stats.total}</span><span class="stat-lbl">Pitches</span></div>
-          <div class="stat-box"><span class="stat-num mono">${stats.strikePct}%</span><span class="stat-lbl">Strikes</span></div>
-          <div class="stat-box"><span class="stat-num mono">${stats.accuracyPct}%</span><span class="stat-lbl">Accuracy</span></div>
+          <div class="stat-box"><span class="stat-num mono">${pct(stats.strikePct)}</span><span class="stat-lbl">Strikes</span></div>
+          <div class="stat-box"><span class="stat-num mono">${pct(stats.accuracyPct)}</span><span class="stat-lbl">Accuracy</span></div>
           ${(stats.usesRelativeMode && !stats.hasZone) ? `<div class="stat-box"><span class="stat-num mono">${stats.relativeAccuracyPct}%</span><span class="stat-lbl">Relative Acc.</span></div>` : ''}
           ${stats.hasZone ? `<div class="stat-box"><span class="stat-num mono">${stats.zoneAccuracyPct}%</span><span class="stat-lbl">Relative Acc. (${stats.zoneTotal})</span></div>` : ''}
           <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="stat-lbl">Avg mph</span></div>
@@ -13463,12 +13822,12 @@ function renderSessionView(){
               ${pitchTypeTray(p, true, true)}
               ${renderMixPrompt(p)}
             </div>
-            ${renderBatterModeToggle()}
+            ${c1i ? '' : renderBatterModeToggle()}
           </div>
           <div class="wide-right">
             <div class="zone-wrap">
               ${v1PenStage(pitches, chartingPerspective, currentBatterSide)}
-              ${v1UnderRow(renderWideCaption(zoneCaption), isNoBatter(state.activeSession) ? '' : v1BatterPill(), insideColumnOnScreenLeft(chartingPerspective, currentBatterSide))}${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
+              ${c1i ? renderC1Controls(state.activeSession) : v1UnderRow(renderWideCaption(zoneCaption), isNoBatter(state.activeSession) ? '' : v1BatterPill(), insideColumnOnScreenLeft(chartingPerspective, currentBatterSide))}${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
             </div>
             ${sessionUsesRadarGun(state.activeSession) ? `<div>
               <div class="field-label" style="margin-bottom:var(--s-8);">Velocity</div>
@@ -13481,8 +13840,8 @@ function renderSessionView(){
       <div class="panel log-panel">
         <div class="stat-readout">
           <div class="stat-box"><span class="stat-num mono">${stats.total}</span><span class="stat-lbl">Pitches</span></div>
-          <div class="stat-box"><span class="stat-num mono">${stats.strikePct}%</span><span class="stat-lbl">Strikes</span></div>
-          <div class="stat-box"><span class="stat-num mono">${stats.accuracyPct}%</span><span class="stat-lbl">Accuracy</span></div>
+          <div class="stat-box"><span class="stat-num mono">${pct(stats.strikePct)}</span><span class="stat-lbl">Strikes</span></div>
+          <div class="stat-box"><span class="stat-num mono">${pct(stats.accuracyPct)}</span><span class="stat-lbl">Accuracy</span></div>
           ${(stats.usesRelativeMode && !stats.hasZone) ? `<div class="stat-box"><span class="stat-num mono">${stats.relativeAccuracyPct}%</span><span class="stat-lbl">Relative Acc.</span></div>` : ''}
           ${stats.hasZone ? `<div class="stat-box"><span class="stat-num mono">${stats.zoneAccuracyPct}%</span><span class="stat-lbl">Relative Acc. (${stats.zoneTotal})</span></div>` : ''}
           <div class="stat-box"><span class="stat-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="stat-lbl">Avg mph</span></div>
@@ -13897,6 +14256,7 @@ function renderHistoryView(){
       const dateStr = new Date(s.date).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
       const oppLabel = s.opponent ? `vs ${escHtml(s.opponent)} · ${dateStr}` : `Game · ${dateStr}`;
       const stats = gameCardStats(s);   // SC1-B: the stats row (R3's runs after he left included), or the pitches
+      const calls = !chartsOutcome(s);   // C1 A: an Intent-only game -- calls, no line
       const lineOpen = gameLineOpen(s);
       const pendingTag = s.pending ? ` <span class="coach-logged-tag pending-tag">Pending sync${s.lastError ? ' · retrying' : ''}</span>` : '';
 
@@ -13959,8 +14319,8 @@ function renderHistoryView(){
         <div class="session-card" data-sid="${s.id}">
           <div class="session-card-head has-thumb" role="button" tabindex="0" aria-expanded="${state.openSessions[s.id] ? 'true' : 'false'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
             ${renderZoneThumb(s, p)}
-            <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${s.campName ? ` <span class="team-chip">${escHtml(s.campName)}</span>` : ''}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Charted by a former coach' : 'Charted by a coach'}</span>` : ''}${lineOpen ? ' <span class="coach-logged-tag">Line open</span>' : ''}${pendingTag}</div>
-            <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
+            <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${oppLabel}${teamChipHtml(s)} <span class="coach-logged-tag">Live Game</span>${partChip(s)}${s.campName ? ` <span class="team-chip">${escHtml(s.campName)}</span>` : ''}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Charted by a former coach' : 'Charted by a coach'}</span>` : ''}${lineOpen ? ' <span class="coach-logged-tag">Line open</span>' : ''}${pendingTag}</div>
+            <div class="session-meta">${calls ? `<div class="meta-item"><span class="meta-num mono">${sessionPitchTotal(s)}</span><span class="meta-lbl">Pitches called</span></div>` : !stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
               <div class="meta-item"><span class="meta-num mono">${gameIpText(stats.outs)}</span><span class="meta-lbl">IP</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
               <div class="meta-item"><span class="meta-num mono">${stats.k}</span><span class="meta-lbl">K</span></div>
@@ -13976,7 +14336,7 @@ function renderHistoryView(){
           ${!state.openSessions[s.id] ? '' : `<div class="session-card-body${s.reportPath ? ' feed-body' : ''}">
             ${s.reportPath ? feedReportSlot(s) : `<div class="zone-wrap">${renderHistoryPlot(plotSessionOf(s, p), p)}</div>`}
             <div class="feed-side">
-              ${s.reportPath ? '' : gameHistoryTypeTable(p, s)}${feedAutoMark(s, pEligible)}
+              ${s.reportPath || calls ? '' : gameHistoryTypeTable(p, s)}${feedAutoMark(s, pEligible)}
               ${renderSessionNotes(s)}${reportPanel}
               ${deleteZone}
             </div>
@@ -14018,7 +14378,7 @@ function renderHistoryView(){
     const byType = stats ? stats.byType : {};
     const typeRows = orderPitchTypes(p, Object.keys(byType), t => byType[t].count).map(type => {
       const t = byType[type], color = colorForType(p, type);
-      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${escHtml(type)}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${t.strikePct}%</td><td class="mono">${t.accuracyPct}%</td><td class="mono">${stats.hasZone ? (t.hasZone ? t.zoneAccuracyPct + '% (' + t.zoneTotal + ')' : '—') : (t.relativeAccuracyPct === null ? '—' : t.relativeAccuracyPct + '%')}</td></tr>`;
+      return `<tr><td><span class="plr-dot" style="background:${color}"></span>${escHtml(type)}</td><td class="mono">${t.count}</td><td class="mono">${t.hasVelo ? t.avgVelo+' mph' : '—'}</td><td class="mono">${t.hasVelo ? t.minVelo+'–'+t.maxVelo : '—'}</td><td class="mono">${pctText(t.strikePct)}</td><td class="mono">${pctText(t.accuracyPct)}</td><td class="mono">${stats.hasZone ? (t.hasZone ? t.zoneAccuracyPct + '% (' + t.zoneTotal + ')' : '—') : (t.relativeAccuracyPct === null ? '—' : t.relativeAccuracyPct + '%')}</td></tr>`;
     }).join('');
 
     const contacts = p.contactEmails || {};
@@ -14096,14 +14456,14 @@ function renderHistoryView(){
       <div class="session-card" data-sid="${s.id}">
         <div class="session-card-head has-thumb" role="button" tabindex="0" aria-expanded="${state.openSessions[s.id] ? 'true' : 'false'}" onclick="toggleSessionCollapse('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSessionCollapse('${s.id}');}">
           ${renderZoneThumb(s, p)}
-          <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${s.purpose ? ` <span class="team-chip">${sessionTagLabel(s.purpose)}</span>` : ''}${s.campName ? ` <span class="team-chip">${escHtml(s.campName)}</span>` : ''}${teamChipHtml(s)}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Charted by a former coach' : 'Charted by a coach'}</span>` : ''}${pendingTag}</div>
+          <div class="session-date">${isNewHistoryRow(s) ? '<span class="session-dot" aria-label="New"></span>' : ''}${dateStr}${s.purpose ? ` <span class="team-chip">${sessionTagLabel(s.purpose)}</span>` : ''}${partChip(s)}${s.campName ? ` <span class="team-chip">${escHtml(s.campName)}</span>` : ''}${teamChipHtml(s)}${s.loggedByCoach ? ` <span class="coach-logged-tag logged-by-tag">${s.loggedByFormer ? 'Charted by a former coach' : 'Charted by a coach'}</span>` : ''}${pendingTag}</div>
           <div class="session-meta">${!stats ? '<div class="meta-item"><span class="meta-lbl">Loading…</span></div>' : `
-            <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">Pitches</span></div>
-            <div class="meta-item"><span class="meta-num mono">${stats.strikePct}%</span><span class="meta-lbl">Strikes</span></div>
+            <div class="meta-item"><span class="meta-num mono">${stats.total}</span><span class="meta-lbl">${chartsOutcome(s) ? 'Pitches' : 'Pitches called'}</span></div>
+            <div class="meta-item"><span class="meta-num mono">${pctText(chartsOutcome(s) ? stats.strikePct : null)}</span><span class="meta-lbl">Strikes</span></div>
             ${stats.hasZone
               ? `<div class="meta-item"><span class="meta-num mono">${stats.zoneAccuracyPct}%</span><span class="meta-lbl">Relative Acc. (${stats.zoneTotal})</span></div>
                  <div class="meta-item"><span class="meta-num mono">${stats.accuracyPct}%</span><span class="meta-lbl">Exact hit</span></div>`
-              : `<div class="meta-item"><span class="meta-num mono">${stats.accuracyPct}%</span><span class="meta-lbl">Accuracy</span></div>`}
+              : `<div class="meta-item"><span class="meta-num mono">${pctText(partialSession(s) ? null : stats.accuracyPct)}</span><span class="meta-lbl">Accuracy</span></div>`}
             <div class="meta-item"><span class="meta-num mono">${stats.hasVelo ? stats.avgVelo : '—'}</span><span class="meta-lbl">Avg mph</span></div>
             ${avgTimeToPlateMeta(s)}`}
           </div>
@@ -14239,6 +14599,7 @@ function renderTrendsView(){
   const tray = `${analysisTray()}<div class="chip-row" style="margin-bottom:var(--s-16);">${segTray(opts.map(o => ({ label: o.label, selected: state.trendsFilter === o.key, onclick: `setTrendsFilter('${o.key}')` })), { key: 'tfilter', label: 'Show', cls: 'history-tray' })}</div>`;
   const sessions = pendingSessionsForCurrentSelection().concat(state.sessions)
     .filter(s => sessionPitchTotal(s) && (state.trendsFilter === 'all' || (s.kind || 'bullpen') === state.trendsFilter))
+    .filter(s => !partialSession(s))   // C1 A (Joel, Nov 25): a session missing a part never feeds Trends
     .sort((a, b) => a.date - b.date);
   if(!sessions.length){
     return `${tray}<div class="empty-hist">No saved sessions yet for ${escHtml(p.name)}${state.trendsFilter === 'all' ? '' : ' of this kind'}. Trends fill in as sessions are saved.</div>`;
@@ -14790,7 +15151,7 @@ function renderPitcherPage(p){
   const row = s => {
     const st = s.kind === 'game' ? null : penCardStats(s);
     const n = sessionPitchTotal(s);
-    return `<button type="button" class="more-row" onclick="openSessionInHistory('${s.id}')"><span class="more-row-main">${s.kind === 'game' ? 'Live Game' : 'Bullpen'} · ${escHtml(new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}<span class="more-row-sub">${n} pitch${n === 1 ? '' : 'es'}${st && st.total ? ' · ' + st.accuracyPct + '% accuracy' : ''}${s.pending ? ' · waiting to sync' : ''}</span></span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>`;
+    return `<button type="button" class="more-row" onclick="openSessionInHistory('${s.id}')"><span class="more-row-main">${s.kind === 'game' ? 'Live Game' : 'Bullpen'} · ${escHtml(new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}<span class="more-row-sub">${n} pitch${n === 1 ? '' : 'es'}${st && st.total && !partialSession(s) ? ' · ' + st.accuracyPct + '% accuracy' : ''}${partialSession(s) ? ' · ' + (chartsIntent(s) ? 'Intent only' : 'Outcome only') : ''}${s.pending ? ' · waiting to sync' : ''}</span></span><span class="more-row-right"><span class="more-go" aria-hidden="true">›</span></span></button>`;
   };
   return `<div class="pitcher-page">
     ${renderPitcherCard(p)}
@@ -15080,7 +15441,7 @@ function renderLastSessionCard(p, s, label, withAcc){
       <div class="home-last-plot">${renderHistoryPlot(plotSessionOf(s, p), p, { small: true, legend: false, caption: '' })}</div>
       <div class="home-last-text">
         <div class="home-last-title">${s.kind === 'game' ? 'Live Game' : 'Bullpen'} · ${escHtml(new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}</div>
-        <div class="home-last-meta">${n} pitch${n === 1 ? '' : 'es'}${withAcc && st && st.total ? ' · ' + st.accuracyPct + '% accuracy' : ''}${s.pending ? ' · waiting to sync' : ''}</div>
+        <div class="home-last-meta">${n} pitch${n === 1 ? '' : 'es'}${withAcc && st && st.total && !partialSession(s) ? ' · ' + st.accuracyPct + '% accuracy' : ''}${partialSession(s) ? ' · ' + (chartsIntent(s) ? 'Intent only' : 'Outcome only') : ''}${s.pending ? ' · waiting to sync' : ''}</div>
         ${withAcc ? `<div class="home-last-chips">${chips}</div>` : ''}
         <button type="button" class="home-link" onclick="openSessionInHistory('${s.id}')">Open report ›</button>
       </div>
@@ -15330,19 +15691,21 @@ function renderRecap(){
   const gl = game ? gameStats(item.pitches, item.pitchCountAdjust || 0, item.events || []) : null;
   const when = new Date(item.endedAt);
   const big = (n, label, suffix) => `<div class="rc-num"><span class="rc-val display" data-count="${n}"${suffix ? ` data-suffix="${suffix}"` : ''}>${n}${suffix || ''}</span><span class="rc-lbl">${label}</span></div>`;
-  const nums = game
+  const part = item.chartedOutcome === false ? 'Intent only' : item.chartedIntent === false && !game ? 'Outcome only' : '';   // C1 A
+  const nums = game && part ? big(item.pitches.length, 'Pitches called')
+    : game
     ? big(item.pitches.length + (item.pitchCountAdjust || 0), 'Pitches') + `<div class="rc-num"><span class="rc-val display">${gameIpText(item.gameOutsRecorded || 0)}</span><span class="rc-lbl">IP</span></div>` + big(gl.k, 'K') + big(gl.bb, 'BB') + big(gl.h, 'H')
-    : big(st.total, 'Pitches') + big(st.accuracyPct, 'Accuracy', '%') + (top != null ? big(top, 'Top velo') : '');
+    : big(st.total, part === 'Intent only' ? 'Pitches called' : 'Pitches') + (st.accuracyPct === null ? (part === 'Outcome only' && st.strikePct !== null ? big(st.strikePct, 'Strikes', '%') : '') : big(st.accuracyPct, 'Accuracy', '%')) + (top != null ? big(top, 'Top velo') : '');
   const types = orderPitchTypes(p, Object.keys(st.byType), t => st.byType[t].count).map(t => {
     const c = colorForType(p, t), b = st.byType[t];
-    return `<div class="rc-type"><span class="pitch-chip" style="background:${c};color:${readableTextOn(c)};">${pitchLabel(t)}</span><span>${b.count}${game ? '' : ' · ' + b.accuracyPct + '%'}</span></div>`;
+    return `<div class="rc-type"><span class="pitch-chip" style="background:${c};color:${readableTextOn(c)};">${pitchLabel(t)}</span><span>${b.count}${game || b.accuracyPct === null ? '' : ' · ' + b.accuracyPct + '%'}</span></div>`;
   }).join('');
-  const call = recapCallout(item, p, st.byType);
+  const call = part ? '' : recapCallout(item, p, st.byType);   // C1 A: no "best accuracy" from a session missing a part
   const synced = !(state.outbox || []).some(it => it.id === item.id);
   return `<div class="recap-screen" role="dialog" aria-modal="true" aria-label="Session recap">
     <div class="recap-inner">
       <div class="rc-top"><span class="brand-word">KNUCKLEBALL</span><span class="rc-when">${escHtml(when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))} · ${escHtml(when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))}</span></div>
-      <span class="rc-tag slant-tag">Final · ${game ? 'Live Game' : 'Bullpen'}</span>
+      <span class="rc-tag slant-tag">Final · ${game ? 'Live Game' : 'Bullpen'}${part ? ' · ' + part : ''}</span>
       <h2 class="display rc-name">${escHtml(p.name)}</h2>
       <div class="rc-nums${game ? ' game' : ''}">${nums}</div>
       <div class="rc-mid">
@@ -15404,7 +15767,8 @@ function cardSessions(){
     const velos = ps.map(x => (x.velo != null && !isDefaultVeloReading(x)) ? x.velo : null).filter(v => v != null);
     const top = stats && stats.velo_max != null ? stats.velo_max : (velos.length ? Math.max(...velos) : null);
     const k = game ? (stats && stats.game && stats.game.k != null ? stats.game.k : gameStats(ps, s.pitchCountAdjust || 0, s.events || []).k) : 0;
-    const hits = stats ? (stats.hits || 0) : ps.filter(isHit).length, charted = stats ? (stats.pitches || 0) : ps.length;
+    const part = partialSession(s);   // C1 A: a session missing a part never counts toward the card's accuracy
+    const hits = part ? 0 : stats ? (stats.hits || 0) : ps.filter(isHit).length, charted = part ? 0 : stats ? (stats.pitches || 0) : ps.length;
     return { s, at: +new Date(s.date), kind: game ? 'game' : 'bullpen', n: sessionPitchCountN(s), k, top: top > 0 ? top : null, hits, charted };
   }).sort((a, b) => a.at - b.at);
 }
@@ -16876,7 +17240,7 @@ function buildReportPayload(session, p){
   // rule. Just the per-session aggregates the Trends section actually
   // reads, not the old per-type breakdown the PDF's trend charts used.
   const history = state.sessions
-    .filter(s => s.id !== session.id && (s.kind || 'bullpen') === 'bullpen' && sameReportTeam(s, tid))
+    .filter(s => s.id !== session.id && (s.kind || 'bullpen') === 'bullpen' && sameReportTeam(s, tid) && !partialSession(s))   // C1 A: full pens only
     .slice().sort((a,b) => a.date - b.date)
     .map(s => {
       const sStats = penCardStats(s);   // SC1-B: the stats row's numbers (identical to sessionStats on its pitches)
@@ -16905,6 +17269,7 @@ function buildReportPayload(session, p){
     chartingPerspective: session.chartingPerspective,
     loggedByCoach: session.loggedByCoach,
     raOn: session.raOn === true,   // U14: the legend shows only when RA was on
+    chartedIntent: chartsIntent(session), chartedOutcome: chartsOutcome(session),   // C1 A (the function reads the row; this is for older ones)
     pitchTypes: reportPitchTypes(p, pitchesForReport),
     pitches: pitchesForReport,
     history
@@ -16932,7 +17297,7 @@ function reportPitchTypes(p, pitches){
 // renderer already treats a missing recentPens as "omit the section."
 function buildRecentPensForGame(gameDateMs, tid){
   const priorPens = state.sessions
-    .filter(s => !s.deletedAt && (s.kind || 'bullpen') === 'bullpen' && s.date < gameDateMs && sameReportTeam(s, tid))
+    .filter(s => !s.deletedAt && (s.kind || 'bullpen') === 'bullpen' && s.date < gameDateMs && sameReportTeam(s, tid) && !partialSession(s))   // C1 A
     .slice().sort((a, b) => b.date - a.date)
     .slice(0, 5);
   if(priorPens.length < 3) return undefined;
@@ -16988,7 +17353,7 @@ function buildRecentPensForGame(gameDateMs, tid){
 // (the same pens buildRecentPensForGame pools), with where each landed and whether it hit its target.
 function buildRecentPenPitchesForGame(gameDateMs, tid){
   const pens = state.sessions
-    .filter(s => !s.deletedAt && (s.kind || 'bullpen') === 'bullpen' && s.date < gameDateMs && sameReportTeam(s, tid))
+    .filter(s => !s.deletedAt && (s.kind || 'bullpen') === 'bullpen' && s.date < gameDateMs && sameReportTeam(s, tid) && !partialSession(s))   // C1 A
     .slice().sort((a, b) => b.date - a.date)
     .slice(0, 5);
   const out = [];
@@ -17030,7 +17395,7 @@ async function buildGameReportPayload(session, p){
   );
 
   const priorGames = state.sessions
-    .filter(s => s.id !== session.id && !s.deletedAt && (s.kind || 'bullpen') === 'game' && sameReportTeam(s, tid))
+    .filter(s => s.id !== session.id && !s.deletedAt && (s.kind || 'bullpen') === 'game' && sameReportTeam(s, tid) && !partialSession(s))   // C1 A
     .slice().sort((a, b) => b.date - a.date)
     .slice(0, 5);
   // Chronological order (oldest first), THIS game last -- matches the
@@ -17050,6 +17415,7 @@ async function buildGameReportPayload(session, p){
     chartingPerspective: session.chartingPerspective,
     loggedByCoach: session.loggedByCoach,
     raOn: session.raOn === true,   // U14: the legend shows only when RA was on
+    chartedIntent: chartsIntent(session), chartedOutcome: chartsOutcome(session),   // C1 A (the function reads the row; this is for older ones)
     pitchTypes: reportPitchTypes(p, pitchesForReport),
     pitches: pitchesForReport,
     recentPens: buildRecentPensForGame(session.date, tid),
@@ -17081,7 +17447,7 @@ function gameLineOpen(s){ return !!s && (s.kind || 'bullpen') === 'game' && !s.p
 function reportPitchSessions(session){
   const tid = reportTeamId(session), list = [session];
   if((session.kind || 'bullpen') === 'game'){
-    state.sessions.filter(s => !s.deletedAt && (s.kind || 'bullpen') === 'bullpen' && s.date < session.date && sameReportTeam(s, tid))
+    state.sessions.filter(s => !s.deletedAt && (s.kind || 'bullpen') === 'bullpen' && s.date < session.date && sameReportTeam(s, tid) && !partialSession(s))   // C1 A
       .sort((a, b) => b.date - a.date).slice(0, 5).forEach(s => list.push(s));
   }
   state.sessions.forEach(s => { if(!s.stats && sameReportTeam(s, tid)) list.push(s); });

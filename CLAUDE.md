@@ -58,6 +58,50 @@ storage.
 - **Reports:** a U14 session gets per-pitch-type exact / RA grids inside each batter-side block (exact `--brand-mid` via `--kr-link`, RA `--brand-soft`, misses as hollow rings; legend only with RA on; headline "H hits of N — E exact, R RA"). Pens charted with no batter get a "No batter" block. Intent games get them too. These use inline styles only, so the report stylesheet is unchanged.
 - **Reset (Joel's instruction):** `supabase/scripts/u14_reset_list.sql`, then `u14_reset_run.sql`. It clears every zone and switch and proves the pitches unchanged by checksum. The lists are in `plans/u14-evidence/`; cleared zones are not restored.
 
+## Charting in parts (C1 Stage A, Joel, Nov 25 2026; `plans/c1-charting-parts.md`, decisions in `plans/c1-preconditions.md`)
+
+Where this and the sections above differ (U14's Live Game question, "Turn on Intent?", U16's voice), this wins.
+- **The first start question, bullpen and Live Game:** "What parts of charting will you be handling?" Two switches, both
+  on to start, at least one (`partsStartQuestion`; `s.parts`):
+  - **Intent — Pitch Calling** (the type and where it's aimed);
+  - **Outcome — Pitch Locations** (a pen) / **Outcome & Response — Pitch Locations and Results** (a game: where it went
+    and everything after; never split).
+  - Both = today's flows exactly (the same rows for the same taps as before). "Turn on Intent?" is gone: Intent is the
+    answer.
+- **Order:** a pen asks parts → What's this pen for? → Relative Accuracy (both parts only) → radar (Outcome only) →
+  Which team (last). A game: parts → radar → Continue from… → Starting mid-game? (both Outcome & Response only) →
+  Opponent → Which team.
+- **Relative Accuracy is bullpen-only (Joel, Nov 25):** a Live Game never asks or scores it (`ra_on` false; Intent pitches
+  score exact / miss). Games saved before keep what they stored.
+- **Intent only (pen and game; `renderC1Controls`, `c1AimTap`, `c1Confirm`, `c1Next`, `c1Back`):**
+  - Under the chart: ‹ Back above the batter button, with the yellow "Tap where you're aiming" beside it (gone once a cell
+    is chosen); then batter · **Confirm Pitch** (#E5486B) · **Next Pitch** (yellow), the one to tap next pulsing.
+  - Confirm Pitch writes the pitch (type, target, batter side; a pen's delivery) and says the call (`speakCall(…, queue)`:
+    queued, never cut off); Next Pitch never stops speech.
+  - Back: un-confirm → clear the cell → reopen the previous pitch. A pitch is frozen once the next one is confirmed
+    (`s.c1.frozen`); the log has no edit for calls.
+  - A game: V1's Select Batter Side first; the batter button flips the side; the scoreboard is "–"; no result rows,
+    velocity or Windup / Set (`renderC1GameView`). Nothing about count, outs, innings, runners or at-bats is saved.
+- **Outcome only (pen; `c1LandTap`):** one tap per pitch, "Select Pitch Outcome", the grid pulsing; no target, no
+  accuracy. **Outcome & Response only (game):** today's Intent-off game, unchanged.
+- **Empty, never a default:** `sessions.charted_intent` / `charted_outcome` (locked once saved); a pitch's target or
+  location is null when its part wasn't charted (`actual_row/col` may be null since this migration; `sync_session`
+  keeps 0-0 for older apps with Outcome). Helpers `hasTarget`, `hasLocation`, `isScored`, `partialSession`.
+- **Accuracy only from pitches with both** (`session_stats.scored`, v3; `isAccurate` never true for two empties). A
+  session missing a part is left out of baselines, Trends, the leaderboard, the card's accuracy, report history and
+  Bullpen to game. Blank shows "—", never 0. History: an "Intent only" / "Outcome only" chip; called spots are rings.
+- **Reports:** partial sessions get their own sections (`send-session-report/c1.ts`, the builders in `template.ts`);
+  full sessions are byte-identical (`scripts/c1a-report-check.ts`). The function reads the parts from the session row.
+- **A killed tab** comes back at the same step in every mode (the draft keeps the step, the chosen cell, tap 1 of a pen
+  and the type; a started session is offered even with 0 pitches).
+- **More Plays** (Live Game): a button next to ‹ Back on the FC · E · H · O row (and the play's later rows) with markers
+  for this ball in play: Infield fly, Ground-rule double, Fan interference (`pitches.play_flags`). Rare plays adds
+  Dropped foul (error), Pickoff throw (no out), Batting out of order (an `other` event, one out) and, baseball, Illegal
+  pitch with the bases empty. A runner moved between pitches can be Defensive indifference, Obstruction, Appeal or
+  Runner's interference (`other` events with the reason on the move); the runners question has "Advanced on an error".
+- Migration `20261129000000_c1a_charting_parts`; rollback in `supabase/rollback/`; test
+  `supabase/tests/c1a_charting_parts.sql`. Policies 32 / 12.
+
 ## Session tags (SR1 Stage A, Joel, Nov 19 2026; `plans/sr1-session-reports.md`, decisions in `plans/sr1a-preconditions.md`)
 
 - **Asked on a bullpen's start screen**, after "Turn on Relative Accuracy?": "What's this pen for?" Command · Velocity ·

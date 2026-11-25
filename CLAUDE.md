@@ -94,7 +94,7 @@ Where this and the sections above differ (U14's Live Game question, "Turn on Int
   full sessions are byte-identical (`scripts/c1a-report-check.ts`). The function reads the parts from the session row.
 - **A killed tab** comes back at the same step in every mode (the draft keeps the step, the chosen cell, tap 1 of a pen
   and the type; a started session is offered even with 0 pitches).
-- **More Plays** (Live Game): a button next to ‹ Back on the FC · E · H · O row (and the play's later rows) with markers
+- **More Plays** (Live Game; full width beside ‹ Back since Nov 25): a button next to ‹ Back on the FC · E · H · O row (and the play's later rows) with markers
   for this ball in play: Infield fly, Ground-rule double, Fan interference (`pitches.play_flags`). Rare plays adds
   Dropped foul (error), Pickoff throw (no out), Batting out of order (an `other` event, one out) and, baseball, Illegal
   pitch with the bases empty. A runner moved between pitches can be Defensive indifference, Obstruction, Appeal or
@@ -124,6 +124,14 @@ Where this and the sections above differ (U14's Live Game question, "Turn on Int
     (`live_unconfirm`).
   - **A game:** the Outcome & Response device moves the at-bat on; either device may set the batter side
     (`live_set_state`).
+- **The Outcome device's screen (Joel, Nov 25 2026, v377):**
+  - Its prompt reads "Awaiting Pitch Intent" until the call arrives, then "Intent logged, Select Pitch Outcome".
+  - Once the call is in, the whole 5x5 board blinks slowly (`c1-live-blink`). Nothing marks where it was called.
+  - Back reaches only as far as the last pitch charted with the caller: a game's Back stays inside the pitch being
+    charted (`gameCanGoBack`); recorded pitches have no edit or ✕ in the log.
+  - In a game it shares the scoreboard (inning, outs, count, runs, pitch count) through `live_set_state` (migration
+    `20261202000000_c1d_live_scoreboard`, which merges only the keys sent). The caller's Intent-only screen shows it;
+    alone, "–" with its own call count.
 - **Polling, not Realtime:** no new policy.
   - While charting: 1 s when one device waits on the other, else 3 s, only in front and online (`liveTick`).
   - The marks: 30 s, on return to the app, and at sign-in.
@@ -457,6 +465,11 @@ Built far past the uploaded spec `plans/g5-live-game-diamond.md` -- where they d
 - **The flip:** after a location tap the pitch chart turns over (a flat card turn, ~650 ms; no 3D -- iPad Safari mis-sized a 3D flip) to the **field on its back**: the same square and the same 25 boxes in every layout, the field drawn upright. At rest the field is built exactly like the chart (`g5Card` → `.zone-grid.g5-flat`); the two-face card exists only during the flip. Next / Undo / New batter flip back.
 - **The field** (in the field's own units, 100 a box): home plate mid box 15; foul lines through 17/3 and 23/11; fence arc from box 4's top-left corner, peaking mid 7, to box 10's top-right; 1B and 3B just inside the lines (mid 23 / mid 17, outer side on the line), 2B at the bottom of 25; dirt from 17's top-left corner peaking mid 25 to 23's top-right; mound mid 24; V mower stripes (fair #8CBA5A/#6FA548, foul #60963C/#548A35), plaid infield grass -- softball: all-dirt infield, pitcher's circle. The report draws it in `send-session-report/diamond.ts`. **Since V1 (Joel, Nov 18 2026)** the app's charting field has the V1 boards' look and the report keeps its own: the box layout, the geometry and what a tap means stay identical in both; the drawings may differ.
 - **Boxes** (row 0 top): `5 6 7 8 9 / 4 19 20 21 10 / 3 18 25 22 11 / 2 17 24 23 12 / 1 16 15 14 13`. What happened? Swing 1 · Looking 2 · Ball 12 · In Play 13 · Foul 14. Foul → Foul Tip 13 (any foul ball) · Foul Out 12 (any caught foul, incl. a caught strike three -- stored as an out in play, not a K). H/O/E: O 12 · H 13 · E 14. Contact: Bunt 1 · Pop 2 · GB 12 · Fly 13 · LD 14. Location: Fly flashes the outfield and Bunt the infield at once; GB / Pop / LD wait for IF 12 / OF 13 (stored `pitches.spray_field`); HR? 13 on a fly hit, 14 on a line-drive hit, then the area over the fence (hit_type HR, bases empty, no runners question). Foul Out shades foul ground only; a ball in play's location shades fair ground only (exact opposites). Runners: 3B 17 · 2B 25 · 1B 23 · Next pitch 24 (radar off).
+- **The shaded areas (Joel, Nov 25 2026, `g5ZoneShade`):** IF, OF, FOUL and over the fence follow the V1 boards' own
+  outlines, in board units (×1.4837 onto the box square on both layouts), so each covers all of that ground on the drawn
+  field, past the 25-box square (below it on phones, both sides on iPad / computer). The stage clips them.
+- **The iPad / computer scoreboard** is one even row: Inning, Outs, Count, Batter #, Runs, **Pitches** (the total, with
+  + / − adjustments), Runners (Joel, Nov 25).
 - **Rules:** outs only when recorded (O, a strikeout, + Out); the runners question after every plate appearance except a strikeout and a homer (walks -- including ball four by + Ball -- pre-fill the forced runners); runs are not tracked; three outs end the half-inning. + Out / + Strike / + Ball under the field (+ Strike / + Ball also under the chart): auto strike / auto ball events (pitch-clock), never pitches. The G3 extra-inning "runner on 2B?" prompt sits under the chart. Velocity after the flip back sits in the chart's last two rows.
 - **Data:** `pitches.spray_box` (1–25), `runners_after` (bitmask), `spray_field` (IF/OF) -- game-only (CHECKs), saved by `sync_session` (migrations `20261007000000_g5_spray_box`, `20261008000000_g5_spray_field`). New games leave `hit_type` (except HR), fielders, `runner_advances`, `runs_scored`, `bb_x/bb_y` NULL. Old games are placed on the field by fielder (C 15, P 24, 1B 23, 2B 22, SS 18, 3B 17, LF 19, CF 20, RF 21).
 - **Game report:** spray charts on the field (all / by result / by contact / by pitch type, Infield · Outfield counts), what led to it (per box, per contact, pitch type × result), base states, "The pitches that mattered" (strike three, first-pitch strikes, hits, outs in play, walks, errors), "Bullpen to game" (same pitch, same spot vs the last 5 bullpens, same team; the app sends `recentPenPitches`, `from_rows.ts` builds the same).

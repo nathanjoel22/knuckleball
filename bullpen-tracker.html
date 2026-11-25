@@ -1104,6 +1104,9 @@
   @keyframes c1Pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(var(--c1-ring),.55); } 50%{ box-shadow:0 0 0 7px rgba(var(--c1-ring),.18); } }
   @media (prefers-reduced-motion: reduce){ .c1-pulse{ box-shadow:0 0 0 5px rgba(var(--c1-ring),.35) !important; } }
   .sb-blank{ opacity:.55; }
+  .rel-glow-overlay.c1-live-blink{ background:#000; animation:c1LiveBlink 2.4s ease-in-out infinite; }   /* C1: the call is in */
+  @keyframes c1LiveBlink{ 0%,100%{ opacity:.06; } 50%{ opacity:.42; } }
+  @media (prefers-reduced-motion: reduce){ .rel-glow-overlay.c1-live-blink{ opacity:.22 !important; } }
   /* C1 Stage B: live sessions -- the red mark, the Home notice, the joining note and the status line */
   .live-dot{ display:inline-block; width:9px; height:9px; border-radius:50%; background:#E0332B; margin-right:6px; vertical-align:middle; animation:liveDot 1.6s ease-in-out infinite; }
   @keyframes liveDot{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
@@ -1361,7 +1364,7 @@
   .v1-pitcher .zone-number{ color:#F2F4F1; }
   .v1-wide .zone-number{ font-size:10px; }
   .v1-field .zone-grid.g5-flat{ background:transparent !important; }
-  .v1-field .g5-field{ left:0; top:0; width:100%; height:100%; }
+  .v1-field .g5-field{ left:0; top:0; width:100%; height:100%; overflow:visible; }   /* the shade runs past the square (the stage clips it) */
   .wide-right .v1-field .g5-cell{ --g5c:calc(var(--stw, 600px) * 0.1431 - 3px); /* geometry: the field square is 529.47 of the board's 740 */ }
   /* the card turn (G5, Oct 10) now turns the whole stage */
   .v1-flip{ position:relative; width:100%; aspect-ratio:440 / 518; flex:0 0 auto; }
@@ -1510,7 +1513,9 @@
     position:relative; background:var(--brand-bg); border-radius:var(--radius-control);
     padding:var(--s-8) var(--s-12); display:flex; align-items:center; justify-content:space-between; gap:var(--s-8);
   }
-  .game-panel-header .stat-readout{ gap:var(--s-12); }
+  .game-panel-header .stat-readout{ display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0, 1fr); gap:var(--s-12); align-items:end; width:100%; }   /* Joel, Nov 25: one even row */
+  .game-panel-header .stat-box{ align-items:center; text-align:center; }
+  .game-panel-header .runner-diamond-btn{ height:32px; padding:0; display:flex; align-items:center; justify-content:center; line-height:0; }
   .game-panel-header .stat-num{ color:var(--surface); }
   .game-panel-header .stat-lbl{ color:var(--on-dark-dim); }
   .game-panel-handle{ color:var(--on-dark-dim); font-size:12px; letter-spacing:0.08em; flex:0 0 auto; }
@@ -3194,7 +3199,8 @@ function gameBatterChosen(s){
 // The four steps of a Live Game pitch (Joel): the yellow prompt under the chart always says what to tap next.
 function gameStepPrompt(s){
   if(!gameBatterChosen(s)) return 'Select Batter Side';
-  if(liveWaiting(s)) return 'Waiting for the call';   // C1 B: the caller's device is next
+  if(liveWaiting(s)) return 'Awaiting Pitch Intent';   // C1 B (Joel, Nov 25): the caller's device is next
+  if(s.live && s.live.part === 'outcome' && liveNextCall(s) && !s.gamePendingPitch) return 'Intent logged, Select Pitch Outcome';
   if(!gamePitchType()) return 'Select Pitch Type';
   return (s.intent && !s.gameTarget) ? 'Select Pitch Intent' : 'Select Pitch Outcome';
 }
@@ -3208,6 +3214,7 @@ async function gamePickBatterSide(col){
   const side = (col === 0) === rhbLeft ? 'R' : 'L';
   gameBatterSides(s)[s.atBatIndex] = side;
   s.currentBatterSide = side;
+  liveSendSide(s);   // C1: the other device gets it at once
   if(s.batterFix){
     s.batterFix = false;
     s.pitches.forEach(pt => {
@@ -7068,7 +7075,7 @@ function renderVoiceToggle(){
 
 window.handleZoneTap = async function(row, col){
   if(state.editDraftRow !== null){ state.hint = 'Finish editing that pitch first: Save or Cancel under Recent pitches'; render(); return; }
-  if(liveWaiting(state.activeSession)){ state.hint = 'Waiting for the call'; render(); return; }   // C1 B: Intent comes first
+  if(liveWaiting(state.activeSession)){ state.hint = 'Awaiting Pitch Intent'; render(); return; }   // C1 B: Intent comes first
   if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
   state.hint = '';
   if(intentOnly(state.activeSession)) return c1AimTap(row, col);       // C1 Stage A: the call only
@@ -7236,6 +7243,7 @@ window.c1GameSide = async function(){
   if(!s || s.kind !== 'game' || !gameBatterChosen(s)) return;
   const side = sessionBatterSide(s) === 'R' ? 'L' : 'R';
   gameBatterSides(s)[s.atBatIndex] = side; s.currentBatterSide = side;
+  liveSendSide(s);   // C1: the other device gets it at once
   await storSet(draftKey(), s);
   render();
 };
@@ -7355,10 +7363,6 @@ function liveNextCall(s){
   return livePitchList(s).find(x => x.seq >= (s.live.from || 1) && x.intent_at && !x.no_pitch && !x.has_outcome && !done.has(x.seq)) || null;
 }
 function liveWaiting(s){ return !!(s && s.live && s.live.part === 'outcome' && isOnline() && liveIntentElsewhere(s) && liveFresh(s) && !liveNextCall(s) && !s.live.skipNext); }   // no signal: chart on
-function liveCallScreen(s){   // the call, where the screen draws it (stored catcher frame -> this device's view)
-  const c = liveNextCall(s);
-  return c && c.target_row != null ? { row: c.target_row, col: perspectiveCol(c.target_col, sessionPerspective(s)) } : null;
-}
 async function liveTick(){
   livePollTimer = null;
   const s = state.activeSession;
@@ -7376,7 +7380,8 @@ async function liveTick(){
   if(cur && cur.live && !cur.live.done && !cur.startQ) livePollTimer = setTimeout(liveTick, (liveWaiting(cur) || (cur.live.part === 'intent' && livePitchList(cur).some(x => x.intent_at && !x.has_outcome && !x.no_pitch))) ? LIVE_FAST : LIVE_SLOW);
 }
 function liveApply(s, d){
-  const L = s.live, before = JSON.stringify([L.view, livePitchList(s), liveWaiting(s), L.skipShown]);
+  const L = s.live, sig = () => JSON.stringify([L.view, livePitchList(s), liveWaiting(s), L.skipShown, s.kind === 'game' ? [s.atBatIndex, gameBatterSides(s)] : 0]);
+  const before = sig();
   L.view = d.live || L.view;
   L.pitches = L.pitches || {};
   const lo = Math.max(0, (L.after || 0) - 30);
@@ -7392,14 +7397,27 @@ function liveApply(s, d){
   if(liveWaiting(s)){ if(!L.waitSince) L.waitSince = Date.now(); L.skipShown = Date.now() - L.waitSince >= LIVE_SKIP_MS; }
   else { L.waitSince = null; L.skipShown = false; }
   storSet(draftKey(), s);
-  if(before !== JSON.stringify([L.view, livePitchList(s), liveWaiting(s), L.skipShown])) render();
+  if(before !== sig()) render();   // a new call, a side or scoreboard from the other device, or Chart without it
+}
+function liveSendSide(s){
+  if(!s || !s.live || s.kind !== 'game' || !isOnline()) return;
+  const side = gameBatterSides(s)[s.atBatIndex];
+  if(!side) return;
+  s.live.lastMine = Object.assign({}, s.live.lastMine || {}, { ab: s.atBatIndex, side });
+  liveRpc('live_set_state', { p_live: s.live.id, p_state: { ab: s.atBatIndex, side } }).catch(() => {});
 }
 function liveSyncBatter(s, remote){
   const L = s.live, mine = { ab: s.atBatIndex, side: gameBatterSides(s)[s.atBatIndex] || null };
-  const changed = !L.lastMine || L.lastMine.ab !== mine.ab || L.lastMine.side !== mine.side;
+  if(L.part === 'outcome'){   // Joel, Nov 25: the Outcome & Response device also shares the scoreboard with the caller
+    Object.assign(mine, { inning: s.inning, outs: displayOuts(s), balls: s.balls, strikes: s.strikes, runs: gameRuns(s),
+      pc: gameStats(s.pitches, gamePitchCountAdj(s), s.events).total });
+  }
+  L.remote = remote;   // what the Intent device shows
+  const changed = !L.lastMine || JSON.stringify(L.lastMine) !== JSON.stringify(mine);
   if(changed && (L.part === 'outcome' || mine.side)){   // a change made here: send it
     L.lastMine = mine; L.lastRemoteAt = null;
-    liveRpc('live_set_state', { p_live: L.id, p_state: mine }).catch(() => {});
+    const send = {}; Object.keys(mine).forEach(k => { if(mine[k] !== null && mine[k] !== undefined) send[k] = mine[k]; });   // never blank the other's side
+    liveRpc('live_set_state', { p_live: L.id, p_state: send }).catch(() => {});
     return;
   }
   if(!remote.at || remote.at === L.lastRemoteAt) return;
@@ -7410,7 +7428,8 @@ function liveSyncBatter(s, remote){
   } else if(remote.ab === s.atBatIndex && remote.side && !gameBatterChosen(s)){
     gameBatterSides(s)[s.atBatIndex] = remote.side;   // the caller set it first
   }
-  L.lastMine = { ab: s.atBatIndex, side: gameBatterSides(s)[s.atBatIndex] || null };
+  L.lastMine = L.part === 'outcome' ? Object.assign({}, L.lastMine || {}, { ab: s.atBatIndex, side: gameBatterSides(s)[s.atBatIndex] || null })
+    : { ab: s.atBatIndex, side: gameBatterSides(s)[s.atBatIndex] || null };
 }
 // Sending a part: now if there's a signal, else queued with its (server-corrected) time for matching later.
 async function liveSendIntent(s, pt){
@@ -7427,13 +7446,14 @@ async function liveSendIntent(s, pt){
 }
 async function liveSendOutcome(s, pt, seq, skip, at){
   const L = s.live; if(!L) return;
+  if(seq) pt.liveSeq = seq;   // this call is answered from now on (the next one is awaited at once)
   const out = { type: pt.type, actual_row: pt.actualRow, actual_col: pt.actualCol, velo: pt.velo == null ? null : pt.velo, result: pt.result || null,
     in_play_outcome: pt.inPlayOutcome || null, hit_type: pt.hitType || null, batter_side: pt.batterSide || null };
   if(isOnline() && !(L.queue || []).length && (seq || skip || !liveIntentElsewhere(s))){
     try{
       const r = await liveRpc('live_put_outcome', { p_live: L.id, p_seq: seq || null, p_outcome: out, p_skip: !!skip });
       if(r && r.ok){ pt.liveSeq = r.seq; await storSet(draftKey(), s); return; }
-      if(r && (r.error === 'not_open' || r.error === 'not_holding')){ return; }   // the call was taken back, or it closed: unmatched
+      if(r && (r.error === 'not_open' || r.error === 'not_holding')){ pt.liveSeq = undefined; await storSet(draftKey(), s); return; }   // the call was taken back, or it closed: unmatched
     }catch(e){}
   }
   (L.queue = L.queue || []).push({ key: pt.id, at: new Date(at || liveNow()).toISOString(), outcome: out }); await storSet(draftKey(), s);
@@ -7501,7 +7521,7 @@ window.liveFollow = async function(id){
 };
 async function c1LandTap(row, col){
   const s = state.activeSession;
-  if(liveWaiting(s)){ state.hint = 'Waiting for the call'; render(); return; }   // C1 B: Intent comes first
+  if(liveWaiting(s)){ state.hint = 'Awaiting Pitch Intent'; render(); return; }   // C1 B: Intent comes first
   const call = s.live ? liveNextCall(s) : null, skip = !!(s.live && s.live.skipNext && !call);
   if(s.pitches.length === 0) s.usesRadarGun = sessionUsesRadarGun(s);   // U9: frozen at the first pitch
   s.pitches.push({ id: genUUID(), type: (call && call.type) || state.selectedType, velo: null, targetRow: null, targetCol: null,
@@ -8962,7 +8982,10 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
     const zoneNow = ((isBullpenTap && pendingTarget) || gameAim) && litType && sessionRelAccuracy(sa, gp)
       ? zoneCellsFor(state.currentPitcherId, litType, batterSide) : null;
     const sideStep = !isBullpenTap && !!(sa && sa.kind === 'game' && !gameBatterChosen(sa));   // V1 Part B, Select Batter Side
-    const landStep = isBullpenTap && outcomeOnlyPen(sa) && !!state.selectedType;   // C1 A: "Select Pitch Outcome" -- the grid pulses
+    const liveIn = !!(sa && sa.live && sa.live.part === 'outcome' && liveIntentElsewhere(sa));
+    const landStep = isBullpenTap && outcomeOnlyPen(sa) && !!state.selectedType && !liveIn;   // C1 A: "Select Pitch Outcome" -- the grid pulses
+    // C1 (Joel, Nov 25): the call is in -- the whole board comes alive with a slow blink, and nothing marks where it was called
+    const liveReady = liveIn && !!liveNextCall(sa) && (isBullpenTap || (gameBatterChosen(sa) && !sa.g5 && !sa.gamePendingPitch));
     const glowCells = zoneNow
       ? new Set(zoneNow.map(k => { const [zr, zc] = k.split('-').map(Number); return zr + '-' + perspectiveCol(zc, chartingPerspective); }))
       : null;
@@ -8984,6 +9007,7 @@ function renderZoneGrid(pitches, clickable, flashCell, pendingTarget, chartingPe
         let inner = num !== null ? `<span class="zone-number">${num}</span>` : '';
         if(isGlow) inner += `<span class="rel-glow-overlay"></span>`;
         if((sideStep && (col === 0 || col === GRID_SIZE - 1)) || landStep) inner += `<span class="rel-glow-overlay v1-side-glow"></span>`;
+        else if(liveReady) inner += `<span class="rel-glow-overlay c1-live-blink"></span>`;
         if(isTarget){ cls += ' zone-cell-target'; inner += `<span class="target-dot"><span class="target-dot-core"></span></span>`; }
         if(ballHere){ cls += ' zone-cell-ball' + (state.gameBallFlash ? ' ball-flash' : ''); inner += `<span class="zone-ball">${G5_BALL_SVG}</span>`; }
         if(isFlash){
@@ -9750,7 +9774,7 @@ window.handleGameZoneTap = async function(row, col){
     setTimeout(() => { if(state.gameBallFlash === key){ state.gameBallFlash = null; render(); } }, 650);
   }
   if(si.live && si.live.part === 'outcome' && !(si.g5 && G5_CHART_STEPS[si.g5.step]) && liveWaiting(si)){
-    state.hint = 'Waiting for the call'; render(); return;   // C1 B: Intent comes first
+    state.hint = 'Awaiting Pitch Intent'; render(); return;   // C1 B: Intent comes first
   }
   const liveCall = si.live && si.live.part === 'outcome' ? liveNextCall(si) : null;
   // A re-tap (whether idle or mid-result-menu) starts this pitch's capture
@@ -10438,6 +10462,7 @@ window.gameAdjustStep = async function(dir){
 };
 // ‹ Back (Oct 19, replaces Undo): steps back within the pitch being entered; otherwise undoes the last action.
 function gameCanGoBack(s){
+  if(s.live && s.live.part === 'outcome') return !!s.g5;   // C1 (Joel, Nov 25): never past the last pitch charted with the caller
   return !!(s.g5 || (s.intent && s.gameTarget) || s.pitches.length || (s.events || []).length || (s.manualActs || []).length
     || (s.tiebreakNo || []).includes(s.inning));
 }
@@ -10447,6 +10472,7 @@ window.gameBack = async function(){
   state.g5More = false;
   if(s.g5) return g5Back();
   if(s.intent && s.gameTarget) return resetGameTarget();
+  if(s.live && s.live.part === 'outcome'){ state.hint = 'A pitch charted with the caller stays as it is'; render(); return; }   // C1
   await undoLastGameAction();
   // V1 Part B: Back across an at-bat forgets the sides chosen for the batters after it -- every new batter is asked again
   const m = gameBatterSides(s);
@@ -11172,8 +11198,9 @@ function renderGameStatusBar(){
     <div ${gameAdjustAttrs('balls', 'stat-box')}><span class="stat-num mono">${s.balls}-${s.strikes}</span><span class="stat-lbl">Count</span></div>
     <div class="stat-box"><span class="stat-num mono">${s.atBatIndex}</span><span class="stat-lbl">Batter #</span></div>
     ${gameRunsCell(s)}
+    <div class="stat-box"><span class="stat-num mono">${gameStats(s.pitches, gamePitchCountAdj(s), s.events).total}</span><span class="stat-lbl">Pitches</span></div>
     <div class="stat-box">${renderRunnerDiamond()}<span class="stat-lbl">Runners</span></div>
-  </div>`;
+  </div>`;   // Joel, Nov 25: the total pitch count on iPad / computer too
 }
 function renderDeliveryToggle(noTime, noPlus){
   const s = state.activeSession;
@@ -12839,8 +12866,34 @@ function g5FieldSvg(){
   const base = (x, y, bit) => occ & bit ? `<rect x="${x - 11}" y="${y - 11}" width="22" height="22" rx="2" transform="rotate(45 ${x} ${y})" class="g5-base on"/>` : '';
   return `<svg class="g5-field" viewBox="0 0 500 500" aria-hidden="true">
 ${base(342.2, 342.2, 1)}${base(250, 282, 2)}${base(157.8, 342.2, 4)}
-${g && g.step === 'where' && g.zone === 'FOUL' ? '<path class="g5-zone-shade" d="M0,200 L250,450 L500,200 L500,500 L0,500 Z"/>' : ''}${g && g.step === 'hr' ? '<path class="g5-zone-shade" d="M0,0 L500,0 L500,100 A650,650 0 0 0 0,100 Z"/>' : ''}${g && g.step === 'where' && g.zone === 'IF' ? '<path class="g5-zone-shade" d="M250,450 L100,300 A250,250 0 0 1 400,300 Z"/>' : ''}${g && g.step === 'where' && g.zone === 'OF' ? '<path class="g5-zone-shade" fill-rule="evenodd" d="M250,450 L0,200 L0,100 A650,650 0 0 1 500,100 L500,200 Z M250,450 L100,300 A250,250 0 0 1 400,300 Z"/>' : ''}
+${g5ZoneShade(g)}
 </svg>`;
+}
+// Joel, Nov 25: the shaded area being asked about covers ALL of that ground on the drawn field (the V1 boards), not just
+// the 25-box square -- the art runs past the square (below it on phones, both sides on iPad / computer). Drawn with the
+// boards' own outlines, in board units: the boards map onto this 500 x 500 square at one scale, 1.4837, on both layouts.
+// Fair = the wedge between the foul lines; the wall bounds it; outside the square the stage itself clips it.
+const G5_SHADE_GEO = {
+  phone: { wall: 'L0,68 Q168.5,-4 337,68', l: -200, r: 537, y: 68 },
+  wide:  { wall: 'L-67,104 Q168.5,-40 404,104', l: -300, r: 604, y: 104 }
+};
+function g5ZoneShade(g){
+  if(!g) return '';
+  const which = g.step === 'hr' ? 'hr' : g.step === 'where' ? g.zone : null;
+  if(!which) return '';
+  const G = G5_SHADE_GEO[v1Layout()];
+  const fair = 'M168.5,300 L-400,-260 L737,-260 Z';                                                       // between the foul lines
+  const below = `M${G.l},${G.y} ${G.wall} L${G.r},${G.y} L${G.r},520 L${G.l},520 Z`;                     // inside the wall
+  const above = `M${G.l},-300 L${G.r},-300 L${G.r},${G.y} ${G.wall.replace(/^L([-\d.]+),([-\d.]+) Q([-\d.]+),([-\d.]+) ([-\d.]+),([-\d.]+)$/, 'L$5,$6 Q$3,$4 $1,$2')} L${G.l},${G.y} Z`;   // over it
+  const dirt = 'M168.5,306 L70,208 A139,139 0 0 1 267,208 Z';                                              // the infield
+  const clip = (id, d) => `<clipPath id="${id}"><path d="${d}"/></clipPath>`;
+  let shape = '';
+  if(which === 'IF') shape = `<path class="g5-zone-shade" d="${dirt}"/>`;
+  else if(which === 'OF') shape = `<path class="g5-zone-shade" fill-rule="evenodd" clip-path="url(#g5c-fair)" d="${below} ${dirt}"/>`;
+  else if(which === 'FOUL') shape = `<path class="g5-zone-shade" fill-rule="evenodd" clip-path="url(#g5c-below)" d="${below} ${fair}"/>`;
+  else if(which === 'hr') shape = `<path class="g5-zone-shade" clip-path="url(#g5c-fair)" d="${above}"/>`;
+  if(!shape) return '';
+  return `<defs>${clip('g5c-fair', fair)}${clip('g5c-below', below)}</defs><g transform="scale(1.4837)">${shape}</g>`;
 }
 const G5_BALL_SVG = `<svg class="g5-ball" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.5" fill="#fff" stroke="#9aa" stroke-width="1"/><path d="M7 4.5c2.5 4 2.5 11 0 15M17 4.5c-2.5 4-2.5 11 0 15" fill="none" stroke="#C8302F" stroke-width="1.3" stroke-dasharray="1.6 1.4"/></svg>`;
 
@@ -12979,7 +13032,7 @@ function g5FieldActions(n){
     `<button type="button" class="btn btn-secondary btn-sm g5-more-btn" aria-pressed="${(g.flags || []).includes(k) ? 'true' : 'false'}" onclick="g5FlagToggle('${k}')">${(g.flags || []).includes(k) ? '✓ ' : ''}${l}</button>`).join('')}</div>` : '';
   const next = g.step === 'bases' ? `<button type="button" class="btn btn-primary btn-sm g5-nav-btn next-pitch" onclick="g5Next()" ${blocked ? 'disabled title="Put the batter on base first"' : ''}>Next ›</button>`
     : mp;
-  if(n){   // lined up with the centred row above (g5PlayBelow)
+  if(n && g.step === 'bases'){   // lined up with the centred row above (g5PlayBelow); More Plays gets the full row (Joel, Nov 25)
     const half = Math.max(1, Math.floor(n / 2));
     const nx = next.replace(/^<(button|span) /, `<$1 style="grid-column:${n - half + 1} / span ${half};" `);
     return `${summary}<div class="g5-nav g5-shift" style="--n:${n}"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn" style="grid-column:1 / span ${half};" onclick="g5Back()">‹ Back</button>${nx}</div>${g.step === 'bases' ? `<div class="g5-nav">${mp}</div>` : ''}${mpTray}`;
@@ -13391,7 +13444,7 @@ function g5Surface(pitches, chartingPerspective, currentBatterSide){
   const sa = state.activeSession, asking = !!(sa && sa.g5 && G5_CHART_STEPS[sa.g5.step]);
   // Intent (Oct 12): the called spot gets the bullpen's target dot; where it went gets the dark box with the ball
   const mark = intentOnly(sa) ? c1Mark(sa)   // C1 A: the call being made
-    : (sa && sa.live && sa.live.part === 'outcome' && !asking) ? liveCallScreen(sa)   // C1 B: the caller's call
+    : (sa && sa.live && sa.live.part === 'outcome' && !asking) ? null   // C1 (Joel, Nov 25): no hint of where it was called
     : (sa && sa.intent) ? (sa.gameTarget || (asking && sa.gamePendingPitch && sa.gamePendingPitch.target) || null) : (asking ? sa.gameDot : null);
   state.gameBallCell = (sa && sa.intent && asking) ? sa.gameDot : null;
   let chart = renderZoneGrid(pitches, true, state.flashCell, mark, chartingPerspective, currentBatterSide, 'handleGameZoneTap');
@@ -13436,13 +13489,18 @@ function renderC1GameView(p){
   }).join('') || `<p style="color:var(--ink-faint);font-size:12px;">No calls yet. Pick a type, then tap where it's aimed.</p>`;
   const stage = g5Surface(pitches, persp, side), ctl = renderC1Controls(s);
   const statLine = `Intent only · Pitches called: ${pitches.length}`;
+  // Joel, Nov 25: the caller sees the game -- inning, outs, count, runs and the pitch count -- from the Outcome &
+  // Response device when one is charting with them (live state); alone, "–" (the pitch count is its own calls)
+  const R = s.live && s.live.remote && Number.isInteger(s.live.remote.inning) ? s.live.remote : null;
+  const sb = { inn: R ? '▲' + R.inning : '–', outs: R ? R.outs : '–', count: R ? R.balls + '-' + R.strikes : '–', runs: R ? R.runs : '–',
+    pc: R && Number.isInteger(R.pc) ? R.pc : pitches.length };
   if(phoneSessionMode(p)){
-    const cell = lbl => `<span class="sb-cell sb-blank"><span class="sb-num ph-item">–</span><span class="sb-lbl">${lbl}</span></span>`;
+    const cell = (lbl, v) => `<span class="sb-cell${R ? '' : ' sb-blank'}"><span class="sb-num ph-item">${v}</span><span class="sb-lbl">${lbl}</span></span>`;
     return `
     <div class="session-grid-layout ph-layout">
       <div class="panel controls-panel ph-controls">
-        <div class="ph-status on-dark">${cell('Inn')}${cell('Outs')}${cell('Count')}${cell('Runs')}
-          <span class="ph-status-deliv ph-status-persp">${renderPerspButton(false)}</span>
+        <div class="ph-status on-dark">${cell('Inn', sb.inn)}${cell('Outs', sb.outs)}${cell('Count', sb.count)}${cell('Runs', sb.runs)}<span class="sb-cell"><span class="sb-num ph-item">${sb.pc}</span><span class="sb-lbl">Pitches</span></span>
+          ${pitches.length ? '' : `<span class="ph-status-deliv ph-status-persp">${renderPerspButton(false)}</span>`}
         </div>${renderPerspNote()}
         ${renderPhoneDeliveryRow(p, true)}
         <div class="ph-grid-wrap">${renderPhoneHint()}
@@ -13458,9 +13516,9 @@ function renderC1GameView(p){
       </div>
     </div>`;
   }
-  const box = lbl => `<div class="stat-box sb-blank"><span class="stat-num mono">–</span><span class="stat-lbl">${lbl}</span></div>`;
-  const bar = `<div class="game-panel-header"><div class="stat-readout">${box('Inning')}${box('Outs')}${box('Count')}${box('Runs')}
-    <div class="stat-box"><span class="stat-num mono">${pitches.length}</span><span class="stat-lbl">Called</span></div></div></div>`;
+  const box = (lbl, v) => `<div class="stat-box${R ? '' : ' sb-blank'}"><span class="stat-num mono">${v}</span><span class="stat-lbl">${lbl}</span></div>`;
+  const bar = `<div class="game-panel-header"><div class="stat-readout">${box('Inning', R ? R.inning : '–')}${box('Outs', sb.outs)}${box('Count', sb.count)}${box('Runs', sb.runs)}
+    <div class="stat-box"><span class="stat-num mono">${sb.pc}</span><span class="stat-lbl">Pitches</span></div></div></div>`;
   const left = `${renderPerspectiveToggle()}<div>${renderPitchTypeLabel(p, isWideSession())}${pitchTypeTray(p, isWideSession(), isWideSession())}${renderMixPrompt(p)}</div>`;
   return `
     <div class="session-grid-layout">
@@ -13504,7 +13562,7 @@ function renderGameSessionView(p){
       const runsText = gameRunsText(pt);
       return `<div class="pitch-log-row">
         <span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pitchLabel(pt.type)}</span> · ${veloText}${escHtml(gameResultText(pt))}${runsText} · <span style="color:var(--ink-faint);">Inn ${pt.inning}, ${pt.ballsBefore}-${pt.strikesBefore}, ${pt.outsBefore} out</span></span>
-        <span class="pitch-row-actions"><button class="btn btn-tertiary btn-sm" onclick="startEditGameRow(${idx})">edit</button></span>
+        <span class="pitch-row-actions">${s.live && pt.liveSeq ? '' : `<button class="btn btn-tertiary btn-sm" onclick="startEditGameRow(${idx})">edit</button>`}</span>
       </div>${state.editGameRow === idx ? renderEditGameRow(p, pt, idx) : ''}`;
     }
     const ev = entry.ev;
@@ -13944,10 +14002,10 @@ function v1StatusSlot(s){
 // C1 B: the Outcome device's line: waiting for the call (and, after 4 s, Chart without it), or the call itself
 function liveOutcomeCaption(s){
   if(!s || !s.live || s.live.part !== 'outcome') return '';
-  if(liveWaiting(s)) return 'Waiting for the call' + (s.live.skipShown ? ` <button type="button" class="btn btn-secondary btn-sm live-skip" onclick="event.stopPropagation(); liveSkip()">Chart without it</button>` : '');
+  // Joel, Nov 25: "Awaiting Pitch Intent", then "Intent logged, Select Pitch Outcome" -- and nothing says where it was called
+  if(liveWaiting(s)) return 'Awaiting Pitch Intent' + (s.live.skipShown ? ` <button type="button" class="btn btn-secondary btn-sm live-skip" onclick="event.stopPropagation(); liveSkip()">Chart without it</button>` : '');
   if(s.live.skipNext) return 'Chart without a call: Select Pitch Outcome';
-  const c = liveNextCall(s);
-  return c ? `Select Pitch Outcome · ${escHtml(pitchLabel(c.type))} called ${zoneNumberFor(c.target_row, c.target_col, c.batter_side || 'R') || 'ball'}` : '';
+  return liveNextCall(s) ? 'Intent logged, Select Pitch Outcome' : '';
 }
 function liveSkipRow(s){
   if(!s || s.kind !== 'game' || !s.live || s.live.part !== 'outcome') return '';
@@ -13956,7 +14014,7 @@ function liveSkipRow(s){
 }
 function c1Mark(s){ const c = s && s.c1; return c && c.cell && c.step !== 'aim' ? { row: c.cell.row, col: perspectiveCol(c.cell.col, sessionPerspective(s)) } : null; }
 function v1PenStage(pitches, chartingPerspective, currentBatterSide){
-  const mark = intentOnly(state.activeSession) ? c1Mark(state.activeSession) : outcomeOnlyPen(state.activeSession) ? liveCallScreen(state.activeSession) : state.pendingTarget;
+  const mark = intentOnly(state.activeSession) ? c1Mark(state.activeSession) : outcomeOnlyPen(state.activeSession) ? null : state.pendingTarget;   // Joel, Nov 25: no hint of the call
   const grid = renderZoneGrid(pitches, true, state.flashCell, mark, chartingPerspective, currentBatterSide, 'handleZoneTap');
   return v1Stage(v1View(chartingPerspective), v1Layout(), grid, isNoBatter(state.activeSession) ? {} : { batter: { left: insideColumnOnScreenLeft(chartingPerspective, currentBatterSide) } });
 }
@@ -14075,9 +14133,9 @@ function renderSessionView(){
       : `${targetNum ? 'aimed '+targetNum : 'aimed ball'} → ${actualNum ? 'landed '+actualNum : 'landed ball'}${accurate ? ' ✓' : ''}${modeTag}`;
     return `<div class="pitch-log-row">
       <span><span class="plr-dot" style="background:${color}"></span><span class="mono">${pitchLabel(pt.type)}</span> · ${veloText}${strike ? 'Strike' : 'Ball'} · <span style="color:var(--ink-faint);">${locText}</span></span>
-      <span class="pitch-row-actions">
+      <span class="pitch-row-actions">${state.activeSession.live && pt.liveSeq ? '' : `
         <button class="btn btn-tertiary btn-sm" onclick="startEditDraftRow(${realIdx})">edit</button>
-        <button class="btn btn-tertiary btn-sm hit44 row-x-btn" onclick="removePitch(${realIdx})" title="Remove this pitch" aria-label="Remove this pitch">✕</button>
+        <button class="btn btn-tertiary btn-sm hit44 row-x-btn" onclick="removePitch(${realIdx})" title="Remove this pitch" aria-label="Remove this pitch">✕</button>`}
       </span>
     </div>`;
   }).join('') || `<p style="color:var(--ink-faint);font-size:12px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;

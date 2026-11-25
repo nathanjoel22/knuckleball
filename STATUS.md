@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-25 · C1 Stage B (shared charting between two devices) · **staging** (PR pending), branch `c1-stage-b`, cache `kb-shell-v375`
+## 2026-11-25 · C1 Stage B (shared charting between two devices) · **staging** (PR #153), branch `c1-stage-b`, cache `kb-shell-v375`
 
 - **When a session is live:** it was started with one part and a signal. Anyone who can chart that pitcher sees it:
   - the Home notice;

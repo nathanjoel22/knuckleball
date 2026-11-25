@@ -61,7 +61,7 @@ toggle buttons.
     - Shell: v374 (A), v375 (B), v376 (C). STATUS updated per stage.
 
 ## Notes for Joel
-- **Before compiling:** a piece shows in History with "Shared · waiting for the other device" and no report. This
+- **Approved by Joel (Nov 25 2026). Before compiling:** a piece shows in History with "Shared · waiting for the other device" and no report. This
   replaces "hidden everywhere" for the time before the combined session exists. Otherwise there would be nothing in
   History until the last device saved.
 - **Account deletion:** the live tables keep the departed charter's login id (no name) until the pitcher's profile

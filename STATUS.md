@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-25 · C1 Stage A (charting in parts, alone; More Plays) · **staging** (PR #151), branch `c1-stage-a`, cache `kb-shell-v374`
+## 2026-11-25 · C1 Stage A (charting in parts, alone; More Plays) · **production** (PR #151, merge `439cec2`), branch `c1-stage-a`, cache `kb-shell-v374`
 
 - **Joel's answers** to the report (`plans/c1-preconditions.md`): yes to all, except Relative Accuracy is now bullpen-only
   (Live Games never ask or score it).
@@ -78,7 +78,10 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Evidence:** `plans/c1a-evidence.md` (Done when 1–8 PASS).
 - **Deviations:** WP / PB on the pitch stays on the runner diamond (not More Plays); obstruction / runner's
   interference are between-pitch runner reasons; see the evidence file.
-- **Production order (Joel):**
+- **On production (Nov 24, Joel):** backup `~/knuckleball-backups/2026-11-24-2207-*`; the migration (298 stats rows byte-identical
+  after the v3 recompute, policies 32 / 12; 107 of 141 games marked charted without Intent); `send-session-report` v54,
+  `rerender-reports` v5; merged.
+- **Production order (as run):**
   1. backup;
   2. `db push`;
   3. deploy `send-session-report` and `rerender-reports` (they read the new columns);

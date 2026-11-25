@@ -1098,11 +1098,21 @@
   .c1-confirm:disabled{ background:#E5486B; color:#fff; opacity:.4; }
   .c1-next{ background:var(--accent); color:var(--accent-ink, #111); }
   .c1-next:disabled{ background:var(--accent); color:var(--accent-ink, #111); opacity:.4; }
-  .c1-pulse{ animation:c1Pulse 1.1s ease-in-out infinite; }
+  /* the button whose turn it is: the batter button's dark underline (Joel, Nov 25), and a pulsing ring around it */
+  .c1-pulse{ position:relative; box-shadow:var(--shadow-segment), var(--ring-under) #0B1A12; }
+  .c1-pulse::after{ content:''; position:absolute; inset:-5px; border-radius:inherit; border:3px solid rgba(var(--c1-ring),.6); pointer-events:none; animation:c1Pulse 1.1s ease-in-out infinite; }
   .c1-confirm.c1-pulse{ --c1-ring:229,72,107; }
   .c1-next.c1-pulse{ --c1-ring:255,184,28; }
-  @keyframes c1Pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(var(--c1-ring),.55); } 50%{ box-shadow:0 0 0 7px rgba(var(--c1-ring),.18); } }
-  @media (prefers-reduced-motion: reduce){ .c1-pulse{ box-shadow:0 0 0 5px rgba(var(--c1-ring),.35) !important; } }
+  @keyframes c1Pulse{ 0%,100%{ opacity:.15; transform:scale(.98); } 50%{ opacity:1; transform:scale(1.02); } }
+  @media (prefers-reduced-motion: reduce){ .c1-pulse::after{ opacity:.6 !important; } }
+  /* the bubble pops out when a tap lands anywhere but the next thing */
+  .c1-pop{ animation:c1Pop .45s ease-out; }
+  @keyframes c1Pop{ 0%{ transform:scale(1); } 35%{ transform:scale(1.12); box-shadow:0 4px 14px rgba(0,0,0,.25); } 100%{ transform:scale(1); } }
+  @media (prefers-reduced-motion: reduce){ .c1-pop{ outline:3px solid var(--accent); } }
+  /* the Outcome device while a call is in: the caller's pitch type and delivery, locked */
+  .c1-lock #pitch-strip .pstrip-chip:not([aria-pressed="true"]), .c1-lock [data-tray="ptype"] .seg:not([aria-pressed="true"]),
+  .c1-lock .deliv-one, .c1-lock [data-tray="deliv"] .seg:not([aria-pressed="true"]){ opacity:.4; }
+  .c1-lock #pitch-strip, .c1-lock [data-tray="ptype"], .c1-lock .deliv-one, .c1-lock [data-tray="deliv"]{ cursor:not-allowed; }
   .sb-blank{ opacity:.55; }
   .rel-glow-overlay.c1-live-blink{ background:#000; animation:c1LiveBlink 2.4s ease-in-out infinite; }   /* C1: the call is in */
   @keyframes c1LiveBlink{ 0%,100%{ opacity:.06; } 50%{ opacity:.42; } }
@@ -1117,7 +1127,6 @@
   .kind-card.kind-live{ border-color:#E0332B; box-shadow:0 0 0 2px #E0332B inset; }
   .live-line{ font-size:13px; color:var(--ink-soft); margin:var(--s-8) 0 0; text-align:center; }
   .live-join-note{ color:#B3261E; font-weight:700; }
-  .c1-nopitch{ flex:0 0 auto; }
   .live-succ{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--s-8); background:var(--card); border:1px solid var(--border); border-radius:12px; padding:var(--s-8) var(--s-12); }
   .start-file .seg{ flex:1 1 auto; padding:0 var(--s-16); }
   .start-q-input{ font-size:16px; min-height:44px; }
@@ -6656,7 +6665,11 @@ window.discardDraft = async function(){
   render();
 };
 
+// C1 (Joel, Nov 25): while a call is in, the Outcome device's pitch type and delivery are the caller's -- locked like
+// the view after the first pitch; they open again for the next pitch (so a pitch with no call can still be charted)
+function c1OutcomeLocked(s){ return !!(s && s.live && s.live.part === 'outcome' && liveNextCall(s)); }
 window.selectType = function(type){
+  if(c1OutcomeLocked(state.activeSession)){ c1PopBubble(); return; }
   state.selectedType = type;
   if(state.activeSession && state.activeSession.kind){ state.activeSession.selType = type; storSet(draftKey(), state.activeSession); }   // V1 (Q9); C1 A: pens too (a killed tab keeps it)
   state.hint = '';
@@ -7076,7 +7089,7 @@ function renderVoiceToggle(){
 window.handleZoneTap = async function(row, col){
   if(state.editDraftRow !== null){ state.hint = 'Finish editing that pitch first: Save or Cancel under Recent pitches'; render(); return; }
   if(liveWaiting(state.activeSession)){ state.hint = 'Awaiting Pitch Intent'; render(); return; }   // C1 B: Intent comes first
-  if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
+  if(!state.selectedType){ if(intentOnly(state.activeSession)) return c1PopBubble(); state.hint = 'Select a pitch type first'; render(); return; }
   state.hint = '';
   if(intentOnly(state.activeSession)) return c1AimTap(row, col);       // C1 Stage A: the call only
   if(outcomeOnlyPen(state.activeSession)) return c1LandTap(row, col);  // C1 Stage A: where it landed only
@@ -7174,7 +7187,7 @@ async function c1Save(){ await storSet(draftKey(), state.activeSession); render(
 function c1AimTap(row, col){
   const s = state.activeSession, c = c1State();
   if(s.kind === 'game' && !gameBatterChosen(s)) return gamePickBatterSide(col);   // V1 step 1 stays
-  if(c.step === 'confirmed'){ state.hint = 'Tap Next Pitch first'; render(); return; }
+  if(c.step === 'confirmed'){ c1PopBubble(); return; }   // Joel, Nov 25: the bubble says Tap Next Pitch
   c.cell = { row, col: perspectiveCol(col, sessionPerspective(s)) };   // catcher frame, like every stored coordinate
   c.step = 'chosen';
   c1Save();
@@ -7202,6 +7215,7 @@ window.c1Confirm = function(){
 window.c1Next = function(){
   const c = c1State();
   if(!c || c.step !== 'confirmed') return;
+  if(c1AwaitingOutcome(state.activeSession)){ c1PopBubble(); return; }
   c.step = 'aim'; c.cell = null;
   c1Save();
 };
@@ -7247,14 +7261,7 @@ window.c1GameSide = async function(){
   await storSet(draftKey(), s);
   render();
 };
-// C1 B: "No pitch" for the last call while the other device hasn't recorded it; a line saying who's on the other part
-function liveNoPitchBtn(s){
-  const pt = s.pitches[s.pitches.length - 1];
-  if(!s.live || !pt || !pt.liveSeq || c1LiveLocked(s, pt) || !liveIntentPartner(s)) return '';
-  const x = s.live.pitches && s.live.pitches[pt.liveSeq];
-  if(x && x.no_pitch) return '';
-  return `<button type="button" class="btn btn-tertiary btn-sm c1-nopitch" onclick="liveNoPitch()">No pitch</button>`;
-}
+// C1 B: a line saying who's on the other part
 function liveIntentPartner(s){ const p = s.live && s.live.view && s.live.view.parts; return !!(p && p.outcome && !p.outcome.mine); }
 function liveStatusLine(s){
   if(!s.live) return '';
@@ -7264,25 +7271,45 @@ function liveStatusLine(s){
 }
 // The controls under the chart (Joel's layout): Back over the batter button with the yellow instruction beside it,
 // then the batter button, Confirm Pitch (reddish pink) and Next Pitch (yellow); the one to tap next pulses.
+// C1 (Joel, Nov 25): a shared session's caller waits for the other device's result before the next call
+function c1AwaitingOutcome(s){
+  const c = s && s.c1, pt = s && s.pitches[s.pitches.length - 1];
+  if(!c || c.step !== 'confirmed' || !s.live || !pt || !liveIntentPartner(s) || !liveFresh(s)) return false;
+  const x = pt.liveSeq && s.live.pitches && s.live.pitches[pt.liveSeq];
+  return !(x && (x.has_outcome || x.no_pitch));
+}
+// The one yellow bubble says what to tap next, every step (Joel, Nov 25)
+function c1NextStep(s){
+  const c = s.c1 || { step: 'aim' }, game = s.kind === 'game';
+  if(game && !gameBatterChosen(s)) return 'Select Batter Side';
+  if(!(game ? gamePitchType() : state.selectedType)) return 'Select Pitch Type';
+  if(c.step === 'aim') return "Tap where you're aiming";
+  if(c.step === 'chosen') return 'Tap Confirm Pitch';
+  return c1AwaitingOutcome(s) ? 'Awaiting Pitch Outcome' : 'Tap Next Pitch';
+}
+// A tap anywhere but the next thing: the bubble pops out a little
+function c1PopBubble(){
+  const el = document.querySelector('.c1-ins, .ph-lg-prompt, .v1-under .zone-caption, .pb-zone .zone-caption');
+  if(!el) return;
+  el.classList.remove('c1-pop'); void el.offsetWidth; el.classList.add('c1-pop');
+}
 function renderC1Controls(s){
   const c = s.c1 || { step: 'aim' }, game = s.kind === 'game';
   const sideChosen = !game || gameBatterChosen(s);
-  const type = game ? gamePitchType() : state.selectedType;
-  const ins = c.step !== 'aim' ? '' : !sideChosen ? 'Select Batter Side' : !type ? 'Select Pitch Type' : "Tap where you're aiming";
+  const ins = c1NextStep(s), waitOut = c1AwaitingOutcome(s);
   const batter = game
     ? `<button type="button" class="btn c1-batter${sideChosen ? ' is-selected' : ' btn-secondary'}" ${sideChosen ? '' : 'disabled'} onclick="c1GameSide()" aria-label="Batter side${sideChosen ? ': ' + (sessionBatterSide(s) === 'R' ? 'right' : 'left') + '. Tap to change.' : ''}">${sideChosen ? (sessionBatterSide(s) === 'R' ? 'vs RHB' : 'vs LHB') : 'Batter'}</button>`
     : (() => { const none = isNoBatter(s), label = none ? 'No batter' : (sessionBatterSide(s) === 'R' ? 'vs RHB' : 'vs LHB');
         return `<button type="button" class="btn c1-batter${none ? ' btn-secondary' : ' is-selected'}" onclick="cycleBatterMode()" aria-label="Batter: ${label}. Tap to change.">${label}</button>`; })();
   return `<div class="c1-ctl">
     <div class="c1-top">
-      <button type="button" class="btn btn-secondary c1-back" ${c1CanBack() ? '' : 'disabled'} onclick="c1Back()">‹ Back</button>
-      ${ins ? `<div class="zone-caption c1-ins">${ins}</div>` : '<div class="c1-ins"></div>'}
-      ${liveNoPitchBtn(s)}
-    </div>${state.hint ? `<div class="ph-tap-hint">${escHtml(state.hint)}</div>` : ''}${liveSuccessorPrompt(s)}${liveStatusLine(s)}
+      <button type="button" class="btn btn-secondary c1-back" ${c1CanBack() ? '' : 'disabled'} onclick="c1Back()">‹ Undo Selection</button>
+      <div class="zone-caption c1-ins" role="status">${ins}</div>
+    </div>${liveSuccessorPrompt(s)}${liveStatusLine(s)}
     <div class="c1-row">
       ${batter}
       <button type="button" class="btn c1-confirm${c.step === 'chosen' ? ' c1-pulse' : ''}" ${c.step === 'chosen' ? '' : 'disabled'} onclick="c1Confirm()">Confirm Pitch</button>
-      <button type="button" class="btn c1-next${c.step === 'confirmed' ? ' c1-pulse' : ''}" ${c.step === 'confirmed' ? '' : 'disabled'} onclick="c1Next()">Next Pitch</button>
+      <button type="button" class="btn c1-next${c.step === 'confirmed' && !waitOut ? ' c1-pulse' : ''}" ${c.step === 'confirmed' && !waitOut ? '' : 'disabled'} onclick="c1Next()">Next Pitch</button>
     </div>
   </div>`;
 }
@@ -7416,7 +7443,9 @@ function liveSyncBatter(s, remote){
   const changed = !L.lastMine || JSON.stringify(L.lastMine) !== JSON.stringify(mine);
   if(changed && (L.part === 'outcome' || mine.side)){   // a change made here: send it
     L.lastMine = mine; L.lastRemoteAt = null;
-    const send = {}; Object.keys(mine).forEach(k => { if(mine[k] !== null && mine[k] !== undefined) send[k] = mine[k]; });   // never blank the other's side
+    const newAb = !!(L.sentAb && L.sentAb !== mine.ab); L.sentAb = mine.ab;
+    const send = {}; Object.keys(mine).forEach(k => { if(mine[k] !== null && mine[k] !== undefined) send[k] = mine[k]; });   // never blank the other's side...
+    if(newAb && L.part === 'outcome' && !mine.side) send.side = null;   // ...except for a new batter: the caller picks his side again (Joel, Nov 25)
     liveRpc('live_set_state', { p_live: L.id, p_state: send }).catch(() => {});
     return;
   }
@@ -7488,17 +7517,26 @@ async function liveFinishItem(item){
     liveAfterSet(liveAfterList().filter(x => x.itemId !== item.id));
   }catch(e){}
 }
-// Intent: "No pitch" -- the last call was never thrown; it comes off and the other device moves on.
-window.liveNoPitch = async function(){
-  const s = state.activeSession, c = s && s.c1, pt = s && s.pitches[s.pitches.length - 1];
-  if(!s || !s.live || !pt || !pt.liveSeq) return;
-  try{
-    const r = await liveRpc('live_no_pitch', { p_live: s.live.id, p_seq: pt.liveSeq });
-    if(!r || !r.ok){ state.hint = 'The other device has already charted that pitch'; render(); return; }
-  }catch(e){ state.hint = 'No pitch needs a connection'; render(); return; }
-  s.pitches.pop(); c.step = 'aim'; c.cell = null; c.frozen = Math.min(c.frozen || 0, s.pitches.length);
-  c1Save();
-};
+document.addEventListener('pointerdown', e => {
+  const s = state.activeSession;
+  if(!s || !intentOnly(s) || s.startQ || state.view !== 'session' || !onChartingScreen()) return;
+  const t = e.target && e.target.closest ? e.target : null;
+  const ctl = t && t.closest('button, .zone-cell, input, select, a, label, .pstrip, .tray');
+  if(ctl && !ctl.disabled && !(ctl.classList && ctl.classList.contains('zone-cell') && s.c1 && s.c1.step === 'confirmed')) return;
+  c1PopBubble();
+}, true);
+// C1 (Joel, Nov 25): a game's result tap (K, backwards K, B, F or IP) is the outcome the caller waits for -- sent then,
+// under the id the pitch will have, so the caller can call the next pitch while the rest of the play is charted.
+function liveMarkOutcome(s, code){
+  const pd = s && s.gamePendingPitch;
+  if(!s || !s.live || s.live.part !== 'outcome' || !pd || pd.liveSent) return;
+  pd.liveSent = true;
+  const persp = sessionPerspective(s);
+  const proxy = { id: pd.pid || (pd.pid = genUUID()), type: pd.type, actualRow: pd.row, actualCol: perspectiveCol(pd.col, persp), velo: null,
+    result: G5_RESULT[code] || (code === 'inplay' ? 'in_play' : null), batterSide: sessionBatterSide(s) };
+  s.live.skipNext = false;
+  liveSendOutcome(s, proxy, pd.liveSeq || null, !!pd.liveSkip, pd.liveAt).then(() => { if(proxy.liveSeq) pd.liveSeq = proxy.liveSeq; storSet(draftKey(), s); });
+}
 // Outcome: "Chart without it" -- the next tap is charted with no call.
 window.liveSkip = function(){ const s = state.activeSession; if(s && s.live){ s.live.skipNext = true; s.live.skipShown = false; render(); } };
 // A pitching change: the caller is asked to keep calling for the next pitcher's live session.
@@ -9743,8 +9781,8 @@ window.handleGameZoneTap = async function(row, col){
     return;
   }
   if(intentOnly(state.activeSession)){   // C1 Stage A: calls only -- no count, no result, no field
-    if(!gameBatterChosen(state.activeSession)) return gamePickBatterSide(col);
-    if(!state.selectedType) return;
+    if(!gameBatterChosen(state.activeSession)){ if(col !== 0 && col !== GRID_SIZE - 1) return c1PopBubble(); return gamePickBatterSide(col); }
+    if(!state.selectedType) return c1PopBubble();
     return c1AimTap(row, col);
   }
   if(tiebreakPending(state.activeSession)){ state.hint = 'Answer the extra-inning question first'; render(); return; }
@@ -9790,7 +9828,7 @@ window.handleGameZoneTap = async function(row, col){
   // in-grid boxes), and survives a resume -- cleared only by Next Pitch or
   // by Back cancelling this location.
   if(si.live && si.live.part === 'outcome'){   // C1 B
-    Object.assign(state.activeSession.gamePendingPitch, { liveSeq: liveCall ? liveCall.seq : null, liveSkip: !!(si.live.skipNext && !liveCall),
+    Object.assign(state.activeSession.gamePendingPitch, { pid: genUUID(), liveSeq: liveCall ? liveCall.seq : null, liveSkip: !!(si.live.skipNext && !liveCall),
       liveAt: liveNow(), liveTarget: liveCall && liveCall.target_row != null ? { row: liveCall.target_row, col: liveCall.target_col } : null });
     if(liveCall && liveCall.type) state.activeSession.gamePendingPitch.type = liveCall.type;
   }
@@ -9880,6 +9918,7 @@ function defaultGameDelivery(s){
   s.delivery = gameHasRunners(s) ? 'set' : 'windup';
 }
 window.setGameDelivery = async function(d){
+  if(c1OutcomeLocked(state.activeSession)){ c1PopBubble(); return; }
   state.activeSession.delivery = d;
   await storSet(draftKey(), state.activeSession);
   render();
@@ -10247,7 +10286,7 @@ window.recordGameResult = async function(result, extra){
     s.usesRadarGun = sessionUsesRadarGun(s);
   }
   s.pitches.push({
-    id: genUUID(),
+    id: pending.pid || genUUID(),   // C1: the id the result was sent under (liveMarkOutcome)
     // G1b (h): orders this pitch against every OTHER pitch and event in the
     // session -- what undoLastGameAction (below) compares to find whichever
     // of the two collections actually happened most recently. Client-only;
@@ -10304,7 +10343,8 @@ window.recordGameResult = async function(result, extra){
   if(s.live && s.live.part === 'outcome'){   // C1 B: the other half of the called pitch (or one of its own)
     if(pending.liveTarget) pushedPitch.liveTarget = pending.liveTarget;
     s.live.skipNext = false;
-    liveSendOutcome(s, pushedPitch, pending.liveSeq || null, !!pending.liveSkip, pending.liveAt);
+    if(pending.liveSent){ if(pending.liveSeq) pushedPitch.liveSeq = pending.liveSeq; }   // sent already, at the result tap
+    else liveSendOutcome(s, pushedPitch, pending.liveSeq || null, !!pending.liveSkip, pending.liveAt);
   }
   const atBatBefore = s.atBatIndex;
   const playResult = applyGameResultProgression(result, extra);
@@ -12246,6 +12286,7 @@ window.g5What = async function(code){
   const s = state.activeSession, g = s.g5;
   if(!g || g.step !== 'what') return;
   state.g5More = false;
+  liveMarkOutcome(s, code);   // C1 (Joel, Nov 25): the caller can call the next pitch while the play is charted
   if(code === 'inplay'){ g.step = 'hoe'; g5FlipIn(); return g5Save(); }   // only In Play turns the chart over
   const result = G5_RESULT[code];
   if(!result) return;
@@ -14061,6 +14102,7 @@ function renderArchivedBanner(){
 }
 function renderSessionView(){
   const p = currentPitcher();
+  document.documentElement.classList.toggle('c1-lock', c1OutcomeLocked(state.activeSession));   // C1: type and delivery locked
   if(!isCoach() && currentTeamArchived() && !state.draftAvailable){
     const team = state.teams.find(t => t.id === state.currentTeamId);
     const other = activeTeams()[0];

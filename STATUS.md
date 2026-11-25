@@ -60,6 +60,22 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-25 · C1 edits 2 (Joel's notes) · **staging** (PR #160), branch `c1-edits-2`, cache `kb-shell-v378`
+
+- **New batter:** the caller picks the side again on the dark flashing side columns (the Outcome & Response device
+  clears it).
+- **The caller waits for the result:** "Awaiting Pitch Outcome", until the other device taps K, ꓘ, B, F or IP (sent at
+  that tap). Then "Tap Next Pitch", even while the play is still being charted.
+- **The turn's button:** Confirm Pitch / Next Pitch get the batter button's dark underline when it's their turn.
+- **One yellow bubble** for every next step on the caller's screen. A stray tap pops it out. "Tap Next Pitch first" is
+  gone from under the buttons, so the Live line and the buttons move up.
+- **No pitch is removed;** Back reads "‹ Undo Selection".
+- **The Outcome device:** pitch type and Windup / Set lock while a call is in, and open again for the next pitch.
+- **Checked:** two devices on staging (`plans/c1b-evidence.md`'s harness). No database change.
+- **Production (Joel):** merge only.
+
+---
+
 ## 2026-11-25 · C1 edits (Joel's notes after Stage C) · **production** (PR #158, merge `ec39866`), branch `c1-edits`, cache `kb-shell-v377`
 
 - **Back on the Outcome device (shared session):** before this change, a game's Back could undo pitches already charted

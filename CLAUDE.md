@@ -119,7 +119,8 @@ Where this and the sections above differ (U14's Live Game question, "Turn on Int
   - **Intent:** Confirm Pitch sends the call (`live_put_intent`).
   - **The other device** opens for a pitch only when its call arrives ("Waiting for the call"), takes the caller's pitch
     type, and draws the call on its chart (`liveNextCall`). After 4 s with no call, "Chart without it" (skipped).
-  - **"No pitch"** releases a call never thrown.
+  - ~~"No pitch" releases a call never thrown~~ (removed Nov 25, v378: Undo Selection takes a call back until it's
+    answered).
   - **Back:** the caller's Back works until the other device records that pitch or a later call is confirmed
     (`live_unconfirm`).
   - **A game:** the Outcome & Response device moves the at-bat on; either device may set the batter side
@@ -132,6 +133,19 @@ Where this and the sections above differ (U14's Live Game question, "Turn on Int
   - In a game it shares the scoreboard (inning, outs, count, runs, pitch count) through `live_set_state` (migration
     `20261202000000_c1d_live_scoreboard`, which merges only the keys sent). The caller's Intent-only screen shows it;
     alone, "–" with its own call count.
+- **The caller's screen in a shared session (Joel, Nov 25 2026, v378):**
+  - One yellow bubble says what to tap next, every step (`c1NextStep`): Select Batter Side → Select Pitch Type → Tap
+    where you're aiming → Tap Confirm Pitch → **Awaiting Pitch Outcome** → Tap Next Pitch.
+  - A tap anywhere but the next thing pops the bubble (`c1PopBubble`); there's no hint line under the buttons.
+  - Next Pitch waits for the other device's result (`c1AwaitingOutcome`). A game's result counts the moment K, ꓘ, B, F
+    or IP is tapped (`liveMarkOutcome` sends it then, under the id the pitch will have), so the caller calls the next
+    pitch while the play is still being charted.
+  - A new at-bat on the Outcome & Response device clears the side (`live_set_state` with side null), so the caller picks
+    it again on the flashing side columns.
+  - The button whose turn it is has the dark underline (`.c1-pulse`). Back reads **‹ Undo Selection**; "No pitch" is
+    gone (the server function stays, unused).
+- **The Outcome device while a call is in:** pitch type and Windup / Set are the caller's, locked (`c1OutcomeLocked`,
+  `html.c1-lock`). They open again for the next pitch, so a pitch with no call can still be charted.
 - **Polling, not Realtime:** no new policy.
   - While charting: 1 s when one device waits on the other, else 3 s, only in front and online (`liveTick`).
   - The marks: 30 s, on return to the app, and at sign-in.

@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-25 · C1 edits (Joel's notes after Stage C) · **staging** (PR #158), branch `c1-edits`, cache `kb-shell-v377`
+## 2026-11-25 · C1 edits (Joel's notes after Stage C) · **production** (PR #158, merge `ec39866`), branch `c1-edits`, cache `kb-shell-v377`
 
 - **Back on the Outcome device (shared session):** before this change, a game's Back could undo pitches already charted
   with the caller. Now it stays inside the pitch being charted ("A pitch charted with the caller stays as it is"), and
@@ -73,7 +73,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **More Plays:** a full-width row beside ‹ Back (it had shrunk to one box after the contact step).
 - **The IF / OF / FOUL / over-the-fence shading** covers all of that ground on the drawn field, phone and wide.
 - **iPad / computer scoreboard:** one even row (Runners was lower than the rest), plus a total **Pitches** count.
-- **Production order (Joel):** backup → `db push` (one function) → merge.
+- **On production (Nov 25, Joel):** backup `~/knuckleball-backups/2026-11-25-0919-*`; the migration (`live_set_state` keeps
+  the scoreboard; policies 32 / 12); merged.
 
 ---
 

@@ -60,6 +60,32 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
+## 2026-11-25 · C1 Stage B (shared charting between two devices) · **staging** (PR pending), branch `c1-stage-b`, cache `kb-shell-v375`
+
+- **When a session is live:** it was started with one part and a signal. Anyone who can chart that pitcher sees it:
+  - the Home notice;
+  - a red Live mark on Chart;
+  - "In Progress — Chart Now" on the card.
+
+  The first to tap takes the open part.
+- **In step:** the two devices chart the same server-numbered pitches.
+  - The Outcome device waits for each call, takes its pitch type, and after 4 s can "Chart without it".
+  - The caller has "No pitch", and Back locks once the other device records the pitch.
+  - In a game, the batter side and at-bat follow across both devices.
+- **No signal:** taps queue and are matched by time when it's back. The deliberate unmatched tap stays empty.
+- **Staging database:**
+  - `20261130000000_c1b_live_sessions`: three live tables with no grant and no policy, reached only through functions.
+  - `20261130000001_c1b_piece_columns`: `sessions.live_session_id` / `live_part`, `pitches.live_seq`, saved by
+    `sync_session`.
+  - Policies 32 / 12.
+- **Evidence:** `plans/c1b-evidence.md` (Done when 9–14 PASS; 14 by the database test).
+- **Open:**
+  - the "Keep calling for <name>?" prompt is checked only in the database;
+  - Stage C compiles the pieces (until then they show as two sessions).
+- **Production order (Joel):** backup → `db push` → merge. No function deploy.
+
+---
+
 ## 2026-11-25 · C1 Stage A (charting in parts, alone; More Plays) · **production** (PR #151, merge `439cec2`), branch `c1-stage-a`, cache `kb-shell-v374`
 
 - **Joel's answers** to the report (`plans/c1-preconditions.md`): yes to all, except Relative Accuracy is now bullpen-only

@@ -1104,6 +1104,18 @@
   @keyframes c1Pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(var(--c1-ring),.55); } 50%{ box-shadow:0 0 0 7px rgba(var(--c1-ring),.18); } }
   @media (prefers-reduced-motion: reduce){ .c1-pulse{ box-shadow:0 0 0 5px rgba(var(--c1-ring),.35) !important; } }
   .sb-blank{ opacity:.55; }
+  /* C1 Stage B: live sessions -- the red mark, the Home notice, the joining note and the status line */
+  .live-dot{ display:inline-block; width:9px; height:9px; border-radius:50%; background:#E0332B; margin-right:6px; vertical-align:middle; animation:liveDot 1.6s ease-in-out infinite; }
+  @keyframes liveDot{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+  .dock-live{ position:absolute; top:4px; right:8px; background:#E0332B; color:#fff; font-size:10px; font-weight:800; letter-spacing:.04em; padding:1px 5px; border-radius:6px; text-transform:uppercase; }
+  .dock-btn{ position:relative; }
+  .live-notice{ display:flex; align-items:center; gap:var(--s-8); width:100%; text-align:left; background:var(--card); border:2px solid #E0332B; border-radius:14px; padding:var(--s-12) var(--s-16); margin:0 0 var(--s-16); font:inherit; color:var(--ink); cursor:pointer; }
+  .live-notice .live-go{ margin-left:auto; font-weight:800; color:#B3261E; white-space:nowrap; }
+  .kind-card.kind-live{ border-color:#E0332B; box-shadow:0 0 0 2px #E0332B inset; }
+  .live-line{ font-size:13px; color:var(--ink-soft); margin:var(--s-8) 0 0; text-align:center; }
+  .live-join-note{ color:#B3261E; font-weight:700; }
+  .c1-nopitch{ flex:0 0 auto; }
+  .live-succ{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--s-8); background:var(--card); border:1px solid var(--border); border-radius:12px; padding:var(--s-8) var(--s-12); }
   .start-file .seg{ flex:1 1 auto; padding:0 var(--s-16); }
   .start-q-input{ font-size:16px; min-height:44px; }
   .start-q-actions{ display:flex; gap:var(--s-8); margin-top:var(--s-4); }
@@ -3175,6 +3187,7 @@ function gameBatterChosen(s){
 // The four steps of a Live Game pitch (Joel): the yellow prompt under the chart always says what to tap next.
 function gameStepPrompt(s){
   if(!gameBatterChosen(s)) return 'Select Batter Side';
+  if(liveWaiting(s)) return 'Waiting for the call';   // C1 B: the caller's device is next
   if(!gamePitchType()) return 'Select Pitch Type';
   return (s.intent && !s.gameTarget) ? 'Select Pitch Intent' : 'Select Pitch Outcome';
 }
@@ -3596,6 +3609,7 @@ async function loadFullContextOnline(alreadyPainted){
   await saveLastKnownContext();   // so the next cold start has a fresh cache to paint from
   warmOtherProfiles();            // S4: every other profile gets an offline snapshot too (background)
   chatStartPolling();             // F1-C1: the Chat tab's count (only shows with a facility)
+  liveStartSummaryPolling();      // C1 Stage B: the Live marks
   loadGuardianStatus().then(() => { if(state.guardianStatus) render(); });   // P1-10
   finishInit();
 }
@@ -4899,7 +4913,7 @@ function dockActiveIndex(){
 }
 function renderCoachDock(){
   const idx = dockActiveIndex(), keys = dockKeys();
-  const btn = (k, label, i) => `<button type="button" role="tab" class="dock-btn${idx === i ? ' on' : ''}" data-go="${k}" aria-selected="${idx === i ? 'true' : 'false'}" tabindex="${(idx === i || (idx < 0 && i === 0)) ? '0' : '-1'}" onclick="dockTap('${k}')" aria-label="${label}">${DOCK_ICONS[k]}<span>${label}</span></button>`;
+  const btn = (k, label, i) => `<button type="button" role="tab" class="dock-btn${idx === i ? ' on' : ''}" data-go="${k}" aria-selected="${idx === i ? 'true' : 'false'}" tabindex="${(idx === i || (idx < 0 && i === 0)) ? '0' : '-1'}" onclick="dockTap('${k}')" aria-label="${label}${k === 'charts' && liveEntries().length ? ', live session in progress' : ''}">${DOCK_ICONS[k]}<span>${label}</span>${k === 'charts' && liveEntries().length ? '<span class="dock-live" aria-hidden="true">Live</span>' : ''}</button>`;
   return `<nav class="coach-dock" role="tablist" aria-label="Shortcuts" style="--dock-n:${keys.length}">
     <span class="dock-pill${idx < 0 ? ' off' : ''}" aria-hidden="true" style="transform:translateX(${Math.max(idx, 0) * 100}%)"></span>
     ${keys.map((k, i) => btn(k, DOCK_LABELS[k], i)).join('')}
@@ -6619,6 +6633,7 @@ window.resumeDraft = function(){
   // additive, resumes exactly as today for an old draft.
   state.draftAvailable = false;
   render();
+  if(state.activeSession && state.activeSession.live && !state.activeSession.live.done) liveEnsurePolling();   // C1 B
 };
 window.discardDraft = async function(){
   await storDelete(draftKey());
@@ -7046,6 +7061,7 @@ function renderVoiceToggle(){
 
 window.handleZoneTap = async function(row, col){
   if(state.editDraftRow !== null){ state.hint = 'Finish editing that pitch first: Save or Cancel under Recent pitches'; render(); return; }
+  if(liveWaiting(state.activeSession)){ state.hint = 'Waiting for the call'; render(); return; }   // C1 B: Intent comes first
   if(!state.selectedType){ state.hint = 'Select a pitch type first'; render(); return; }
   state.hint = '';
   if(intentOnly(state.activeSession)) return c1AimTap(row, col);       // C1 Stage A: the call only
@@ -7167,6 +7183,7 @@ window.c1Confirm = function(){
   s.pitches.push(pt);
   c.step = 'confirmed';
   c1Save();
+  if(s.live) liveSendIntent(s, pt);     // C1 B: to the other device
 };
 window.c1Next = function(){
   const c = c1State();
@@ -7174,9 +7191,12 @@ window.c1Next = function(){
   c.step = 'aim'; c.cell = null;
   c1Save();
 };
+// C1 B: in a live session a confirmed call is locked once the other device has recorded it
+function c1LiveLocked(s, pt){ const x = pt && pt.liveSeq && s.live && s.live.pitches && s.live.pitches[pt.liveSeq]; return !!(x && x.has_outcome); }
 function c1CanBack(){
   const s = state.activeSession, c = s && s.c1;
   if(!c) return false;
+  if(c.step !== 'chosen' && c1LiveLocked(s, s.pitches[s.pitches.length - 1])) return false;
   if(c.step === 'chosen' || c.step === 'confirmed') return true;
   return s.pitches.length > (c.frozen || 0);   // 'aim': reopen the previous pitch while it isn't frozen
 }
@@ -7185,6 +7205,15 @@ window.c1Back = function(){
   if(!c1CanBack()) return;
   if(c.step === 'chosen'){ c.step = 'aim'; c.cell = null; }
   else if(c.step === 'confirmed'){   // un-confirm: the pitch comes off; its cell stays chosen
+    const last = s.pitches[s.pitches.length - 1];
+    if(s.live && last && last.liveSeq){   // C1 B: the server says whether it's still ours to take back
+      liveRpc('live_unconfirm', { p_live: s.live.id, p_seq: last.liveSeq }).then(r => {
+        if(r && r.ok){ s.pitches.pop(); c.cell = { row: last.targetRow, col: last.targetCol }; c.step = 'chosen'; delete s.live.pitches[last.liveSeq]; c1Save(); }
+        else { state.hint = 'The other device has already charted that pitch'; render(); }
+      }).catch(() => { state.hint = 'Taking a call back needs a connection'; render(); });
+      return;
+    }
+    if(s.live && s.live.queue) s.live.queue = s.live.queue.filter(x => x.key !== (last && last.id));   // not sent yet: just drop it
     const pt = s.pitches.pop();
     c.cell = { row: pt.targetRow, col: pt.targetCol }; c.step = 'chosen';
   } else {                           // back to the previous pitch, still confirmed
@@ -7203,6 +7232,21 @@ window.c1GameSide = async function(){
   await storSet(draftKey(), s);
   render();
 };
+// C1 B: "No pitch" for the last call while the other device hasn't recorded it; a line saying who's on the other part
+function liveNoPitchBtn(s){
+  const pt = s.pitches[s.pitches.length - 1];
+  if(!s.live || !pt || !pt.liveSeq || c1LiveLocked(s, pt) || !liveIntentPartner(s)) return '';
+  const x = s.live.pitches && s.live.pitches[pt.liveSeq];
+  if(x && x.no_pitch) return '';
+  return `<button type="button" class="btn btn-tertiary btn-sm c1-nopitch" onclick="liveNoPitch()">No pitch</button>`;
+}
+function liveIntentPartner(s){ const p = s.live && s.live.view && s.live.view.parts; return !!(p && p.outcome && !p.outcome.mine); }
+function liveStatusLine(s){
+  if(!s.live) return '';
+  const other = s.live.part === 'intent' ? liveIntentPartner(s) : liveIntentElsewhere(s);
+  const q = (s.live.queue || []).length;
+  return `<p class="live-line"><span class="live-dot" aria-hidden="true"></span>${other ? 'Live: charting with another device' : 'Live: the other part is open'}${q ? ` · ${q} waiting for a signal` : ''}</p>`;
+}
 // The controls under the chart (Joel's layout): Back over the batter button with the yellow instruction beside it,
 // then the batter button, Confirm Pitch (reddish pink) and Next Pitch (yellow); the one to tap next pulses.
 function renderC1Controls(s){
@@ -7218,7 +7262,8 @@ function renderC1Controls(s){
     <div class="c1-top">
       <button type="button" class="btn btn-secondary c1-back" ${c1CanBack() ? '' : 'disabled'} onclick="c1Back()">‹ Back</button>
       ${ins ? `<div class="zone-caption c1-ins">${ins}</div>` : '<div class="c1-ins"></div>'}
-    </div>${state.hint ? `<div class="ph-tap-hint">${escHtml(state.hint)}</div>` : ''}
+      ${liveNoPitchBtn(s)}
+    </div>${state.hint ? `<div class="ph-tap-hint">${escHtml(state.hint)}</div>` : ''}${liveSuccessorPrompt(s)}${liveStatusLine(s)}
     <div class="c1-row">
       ${batter}
       <button type="button" class="btn c1-confirm${c.step === 'chosen' ? ' c1-pulse' : ''}" ${c.step === 'chosen' ? '' : 'disabled'} onclick="c1Confirm()">Confirm Pitch</button>
@@ -7226,15 +7271,240 @@ function renderC1Controls(s){
     </div>
   </div>`;
 }
+
+/* ---------- C1 Stage B (Joel, Nov 25 2026): shared charting ----------
+   A session started with one part is LIVE and OPEN: anyone else who can chart that pitcher sees it (the Home notice,
+   a red Live mark on Chart, "In Progress — Chart Now" on the card) and the first to tap takes the open part. The two
+   devices chart the same pitches, numbered by the server (live_put_intent / live_put_outcome), polling every 1 s while
+   one waits on the other and every 3 s otherwise (polling, not Realtime: no new policy). Intent comes first: the other
+   device opens for a pitch when its call is confirmed, and charts with the caller's pitch type; after 4 s with no call
+   it can "Chart without it". The caller's Back stops working on a pitch once the other device has recorded it; "No
+   pitch" releases a call that was never thrown. A device that loses signal keeps charting its own part; when it's back
+   its taps (each time corrected to the server's clock) are matched by time (live_put_offline). Each charter saves their
+   own piece as today, carrying the live session and each pitch's number (Stage C puts them together). */
+const LIVE_FAST = 1000, LIVE_SLOW = 3000, LIVE_SUMMARY_MS = 30000, LIVE_SKIP_MS = 4000, LIVE_STALE_MS = 8000;
+const liveClock = { offset: 0, rtt: Infinity, at: 0 };
+function liveNow(){ return Date.now() + liveClock.offset; }   // the server's clock, as best this device knows it
+async function liveRpc(name, args){
+  const t0 = Date.now();
+  const { data, error } = await netTimeout(supabaseClient.rpc(name, args), 8000);
+  const t1 = Date.now();
+  if(error) throw error;
+  if(data && data.server_now){   // keep the quickest round trip of the last minute: the best offset estimate
+    const rtt = t1 - t0, fresh = Date.now() - liveClock.at > 60000;
+    if(rtt <= liveClock.rtt || fresh){ liveClock.offset = new Date(data.server_now).getTime() - (t0 + t1) / 2; liveClock.rtt = rtt; liveClock.at = Date.now(); }
+  }
+  return data;
+}
+// The Live marks: the open live sessions this login can join, every 30 s while the app is in front, on return to it,
+// and at sign-in. Nothing is kept on the device (it needs a signal anyway).
+async function liveRefreshSummary(){
+  if(!state.session || !isOnline()) return;
+  try{
+    const d = await liveRpc('live_summary', {});
+    const list = Array.isArray(d) ? d : [];
+    const sig = JSON.stringify(list.map(x => [x.live_id, x.open]));
+    if(sig !== state.liveSummarySig){ state.liveSummarySig = sig; state.liveSummary = list; if(!onChartingScreen()) render(); }
+  }catch(e){}
+}
+function liveStartSummaryPolling(){
+  setInterval(() => { if(document.visibilityState === 'visible') liveRefreshSummary(); }, LIVE_SUMMARY_MS);
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') liveRefreshSummary(); });
+  liveRefreshSummary();
+}
+// The ones for the pitchers this view charts: a coach's current team (roster, assignment, camp); anyone else's own.
+function liveEntries(){
+  return (state.liveSummary || []).filter(x => isCoach()
+    ? (x.team_id === state.currentTeamId && (state.roster.some(r => r.id === x.pitcher_id) || assignedPitcher(x.pitcher_id) || campPitcher(x.pitcher_id)))
+    : !!state.profile && (x.pitcher_id === state.profile.id));
+}
+function liveFor(pitcherId, kind){ return liveEntries().find(x => x.pitcher_id === pitcherId && x.kind === kind) || null; }
+function liveNameOf(id){ const r = (state.roster || []).find(x => x.id === id); return r ? r.name : (state.profile && state.profile.id === id ? state.profile.full_name : 'A pitcher'); }
+function renderLiveNotice(){
+  const e = liveEntries()[0];
+  if(!e || viewOnlyLinked()) return '';
+  return `<button type="button" class="live-notice" onclick="liveOpen('${e.live_id}')"><span class="live-dot" aria-hidden="true"></span>
+    <span><strong>Live ${e.kind === 'game' ? 'game' : 'bullpen'} in progress</strong> for ${escHtml(liveNameOf(e.pitcher_id))} · ${e.open.includes('intent') ? 'Intent' : 'Outcome'} is open</span>
+    <span class="live-go">Chart Now ›</span></button>`;
+}
+window.liveOpen = async function(id){
+  const e = (state.liveSummary || []).find(x => x.live_id === id);
+  if(!e) return;
+  if(state.currentPitcherId !== e.pitcher_id){ state.currentPitcherId = e.pitcher_id; }
+  state.view = 'session';
+  await refreshDraftState();
+  if(state.draftAvailable){ render(); return; }   // an unfinished session of this pitcher's comes first
+  return chooseSessionKind(e.kind);
+};
+// In a live session: the poll, the next call for the Outcome device, and whether it's waiting.
+let livePollTimer = null;
+function liveEnsurePolling(){ if(!livePollTimer) livePollTimer = setTimeout(liveTick, 200); }
+function livePitchList(s){ return Object.values((s.live && s.live.pitches) || {}).sort((a, b) => a.seq - b.seq); }
+function liveIntentElsewhere(s){ const p = s.live && s.live.view && s.live.view.parts; return !!(p && p.intent && !p.intent.mine); }
+function liveFresh(s){ return !!(s.live && s.live.polledAt && Date.now() - s.live.polledAt < LIVE_STALE_MS); }
+function liveNextCall(s){
+  if(!s || !s.live || s.live.part !== 'outcome') return null;
+  const done = new Set(s.pitches.map(p => p.liveSeq).filter(Boolean));
+  return livePitchList(s).find(x => x.seq >= (s.live.from || 1) && x.intent_at && !x.no_pitch && !x.has_outcome && !done.has(x.seq)) || null;
+}
+function liveWaiting(s){ return !!(s && s.live && s.live.part === 'outcome' && isOnline() && liveIntentElsewhere(s) && liveFresh(s) && !liveNextCall(s) && !s.live.skipNext); }   // no signal: chart on
+function liveCallScreen(s){   // the call, where the screen draws it (stored catcher frame -> this device's view)
+  const c = liveNextCall(s);
+  return c && c.target_row != null ? { row: c.target_row, col: perspectiveCol(c.target_col, sessionPerspective(s)) } : null;
+}
+async function liveTick(){
+  livePollTimer = null;
+  const s = state.activeSession;
+  if(!s || !s.live || s.startQ || s.live.done) return;
+  if(!s.live.view && !s.live.polledAt) s.live.polledAt = 0;
+  if(document.visibilityState === 'visible' && isOnline()){
+    try{
+      await liveFlush(s);
+      const d = await liveRpc('live_poll', { p_live: s.live.id, p_after: s.live.after || 0 });
+      if(d && d.ok){ s.live.polledAt = Date.now(); liveApply(s, d); }
+    }catch(e){ /* no signal: this device keeps charting its part */ }
+  }
+  // the session object can be replaced (a background reload re-reads the draft): keep polling whichever holds it now
+  const cur = state.activeSession;
+  if(cur && cur.live && !cur.live.done && !cur.startQ) livePollTimer = setTimeout(liveTick, (liveWaiting(cur) || (cur.live.part === 'intent' && livePitchList(cur).some(x => x.intent_at && !x.has_outcome && !x.no_pitch))) ? LIVE_FAST : LIVE_SLOW);
+}
+function liveApply(s, d){
+  const L = s.live, before = JSON.stringify([L.view, livePitchList(s), liveWaiting(s), L.skipShown]);
+  L.view = d.live || L.view;
+  L.pitches = L.pitches || {};
+  const lo = Math.max(0, (L.after || 0) - 30);
+  const got = {};
+  (d.pitches || []).forEach(x => { got[x.seq] = 1; L.pitches[x.seq] = x; L.after = Math.max(L.after || 0, x.seq); });
+  Object.keys(L.pitches).forEach(k => { if(+k > lo && !got[k]) delete L.pitches[k]; });   // a call taken back
+  // the Outcome device takes the caller's pitch type
+  const c = liveNextCall(s);
+  if(c && c.type && state.selectedType !== c.type){ state.selectedType = c.type; s.selType = c.type; }
+  // the batter (games): the Outcome device moves the at-bat on; either device may set the side
+  if(s.kind === 'game') liveSyncBatter(s, (d.live && d.live.state) || {});
+  // "Chart without it": the call hasn't come for 4 s
+  if(liveWaiting(s)){ if(!L.waitSince) L.waitSince = Date.now(); L.skipShown = Date.now() - L.waitSince >= LIVE_SKIP_MS; }
+  else { L.waitSince = null; L.skipShown = false; }
+  storSet(draftKey(), s);
+  if(before !== JSON.stringify([L.view, livePitchList(s), liveWaiting(s), L.skipShown])) render();
+}
+function liveSyncBatter(s, remote){
+  const L = s.live, mine = { ab: s.atBatIndex, side: gameBatterSides(s)[s.atBatIndex] || null };
+  const changed = !L.lastMine || L.lastMine.ab !== mine.ab || L.lastMine.side !== mine.side;
+  if(changed && (L.part === 'outcome' || mine.side)){   // a change made here: send it
+    L.lastMine = mine; L.lastRemoteAt = null;
+    liveRpc('live_set_state', { p_live: L.id, p_state: mine }).catch(() => {});
+    return;
+  }
+  if(!remote.at || remote.at === L.lastRemoteAt) return;
+  L.lastRemoteAt = remote.at;
+  if(L.part === 'intent'){   // the at-bat follows the Outcome device; a new batter asks the side again
+    if(remote.ab && remote.ab !== s.atBatIndex){ s.atBatIndex = remote.ab; }
+    if(remote.side) gameBatterSides(s)[s.atBatIndex] = remote.side; else if(remote.ab) delete gameBatterSides(s)[s.atBatIndex];
+  } else if(remote.ab === s.atBatIndex && remote.side && !gameBatterChosen(s)){
+    gameBatterSides(s)[s.atBatIndex] = remote.side;   // the caller set it first
+  }
+  L.lastMine = { ab: s.atBatIndex, side: gameBatterSides(s)[s.atBatIndex] || null };
+}
+// Sending a part: now if there's a signal, else queued with its (server-corrected) time for matching later.
+async function liveSendIntent(s, pt){
+  const L = s.live; if(!L) return;
+  const item = { key: pt.id, at: new Date(liveNow()).toISOString(), type: pt.type, row: pt.targetRow, col: pt.targetCol, side: pt.batterSide || null };
+  if(isOnline() && !(L.queue || []).length){
+    try{
+      const r = await liveRpc('live_put_intent', { p_live: L.id, p_type: pt.type, p_row: pt.targetRow, p_col: pt.targetCol, p_side: pt.batterSide || null });
+      if(r && r.ok){ pt.liveSeq = r.seq; await storSet(draftKey(), s); liveEnsurePolling(); return; }
+      if(r && r.error === 'not_holding'){ return; }   // no longer in it (it closed): this piece stands alone
+    }catch(e){}
+  }
+  (L.queue = L.queue || []).push(item); await storSet(draftKey(), s);
+}
+async function liveSendOutcome(s, pt, seq, skip, at){
+  const L = s.live; if(!L) return;
+  const out = { type: pt.type, actual_row: pt.actualRow, actual_col: pt.actualCol, velo: pt.velo == null ? null : pt.velo, result: pt.result || null,
+    in_play_outcome: pt.inPlayOutcome || null, hit_type: pt.hitType || null, batter_side: pt.batterSide || null };
+  if(isOnline() && !(L.queue || []).length && (seq || skip || !liveIntentElsewhere(s))){
+    try{
+      const r = await liveRpc('live_put_outcome', { p_live: L.id, p_seq: seq || null, p_outcome: out, p_skip: !!skip });
+      if(r && r.ok){ pt.liveSeq = r.seq; await storSet(draftKey(), s); return; }
+      if(r && (r.error === 'not_open' || r.error === 'not_holding')){ return; }   // the call was taken back, or it closed: unmatched
+    }catch(e){}
+  }
+  (L.queue = L.queue || []).push({ key: pt.id, at: new Date(at || liveNow()).toISOString(), outcome: out }); await storSet(draftKey(), s);
+}
+// What this device charted without a signal, matched by time on the server; each matched pitch takes its number.
+async function liveFlush(s){
+  const L = s.live;
+  if(!L || !(L.queue || []).length || !isOnline()) return;
+  const items = L.queue.slice();
+  const r = await liveRpc('live_put_offline', { p_live: L.id, p_items: items });
+  if(!r || !r.ok) return;
+  const bySeq = {}; (r.items || []).forEach(x => { bySeq[x.key] = x.seq; });
+  s.pitches.forEach(pt => { if(bySeq[pt.id] !== undefined && bySeq[pt.id] !== null) pt.liveSeq = bySeq[pt.id]; });
+  L.queue = L.queue.filter(x => bySeq[x.key] === undefined);
+  L.matched = (L.matched || 0) + (r.kept || 0); L.unmatched = (L.unmatched || 0) + (r.dropped || 0);
+  await storSet(draftKey(), s);
+}
+// A saved piece: its queue (if any) and leaving, kept on the device until there's a signal, run before its sync.
+function liveAfterKey(){ return 'kb:liveAfter:' + (state.session ? state.session.user.id : ''); }
+function liveAfterList(){ try{ return JSON.parse(lsGet(liveAfterKey()) || '[]'); }catch(e){ return []; } }
+function liveAfterSet(a){ try{ lsSet(liveAfterKey(), JSON.stringify(a)); }catch(e){} }
+async function liveFinishItem(item){
+  const w = liveAfterList().find(x => x.itemId === item.id);
+  if(!w || !isOnline()) return;
+  try{
+    if((w.queue || []).length){
+      const r = await liveRpc('live_put_offline', { p_live: w.liveId, p_items: w.queue });
+      if(r && r.ok){ const by = {}; (r.items || []).forEach(x => { by[x.key] = x.seq; }); item.pitches.forEach(pt => { if(by[pt.id]) pt.liveSeq = by[pt.id]; });
+        await updateOutboxItem(state.session.user.id, item); }   // kept with the item, in case this sync fails
+    }
+    await liveRpc('live_leave', { p_live: w.liveId, p_piece: item.id });
+    liveAfterSet(liveAfterList().filter(x => x.itemId !== item.id));
+  }catch(e){}
+}
+// Intent: "No pitch" -- the last call was never thrown; it comes off and the other device moves on.
+window.liveNoPitch = async function(){
+  const s = state.activeSession, c = s && s.c1, pt = s && s.pitches[s.pitches.length - 1];
+  if(!s || !s.live || !pt || !pt.liveSeq) return;
+  try{
+    const r = await liveRpc('live_no_pitch', { p_live: s.live.id, p_seq: pt.liveSeq });
+    if(!r || !r.ok){ state.hint = 'The other device has already charted that pitch'; render(); return; }
+  }catch(e){ state.hint = 'No pitch needs a connection'; render(); return; }
+  s.pitches.pop(); c.step = 'aim'; c.cell = null; c.frozen = Math.min(c.frozen || 0, s.pitches.length);
+  c1Save();
+};
+// Outcome: "Chart without it" -- the next tap is charted with no call.
+window.liveSkip = function(){ const s = state.activeSession; if(s && s.live){ s.live.skipNext = true; s.live.skipShown = false; render(); } };
+// A pitching change: the caller is asked to keep calling for the next pitcher's live session.
+function liveSuccessorPrompt(s){
+  const succ = s.live && s.live.view && s.live.view.successor_id;
+  if(!succ || s.live.part !== 'intent' || s.live.successorNo === succ) return '';
+  const e = (state.liveSummary || []).find(x => x.live_id === succ);
+  if(!e){ liveRefreshSummary(); return ''; }
+  return `<div class="live-succ"><span>Pitching change. Keep calling for ${escHtml(liveNameOf(e.pitcher_id))}?</span>
+    <button type="button" class="btn btn-primary btn-sm" onclick="liveFollow('${succ}')">Keep calling</button>
+    <button type="button" class="btn btn-tertiary btn-sm" onclick="state.activeSession.live.successorNo='${succ}'; render()">No</button></div>`;
+}
+window.liveFollow = async function(id){
+  const e = (state.liveSummary || []).find(x => x.live_id === id);
+  if(!e) return;
+  const s = state.activeSession;
+  if(s && s.pitches.length){ state.skipRecap = true; await endSession(); }
+  else if(s){ await discardActiveSession(); }
+  return liveOpen(id);
+};
 async function c1LandTap(row, col){
   const s = state.activeSession;
+  if(liveWaiting(s)){ state.hint = 'Waiting for the call'; render(); return; }   // C1 B: Intent comes first
+  const call = s.live ? liveNextCall(s) : null, skip = !!(s.live && s.live.skipNext && !call);
   if(s.pitches.length === 0) s.usesRadarGun = sessionUsesRadarGun(s);   // U9: frozen at the first pitch
-  s.pitches.push({ id: genUUID(), type: state.selectedType, velo: null, targetRow: null, targetCol: null,
+  s.pitches.push({ id: genUUID(), type: (call && call.type) || state.selectedType, velo: null, targetRow: null, targetCol: null,
+    liveTarget: call && call.target_row != null ? { row: call.target_row, col: call.target_col } : undefined,
     actualRow: row, actualCol: perspectiveCol(col, sessionPerspective(s)), accuracyMode: null, inAccuracyZone: null,
     accuracyZoneCells: null, accuracyHitKind: null, batterSide: isNoBatter(s) ? null : sessionBatterSide(s),
     delivery: s.delivery || null, timeToPlate: null, ts: Date.now() });
   state.veloTargetIdx = s.pitches.length - 1;
   await storSet(draftKey(), s);
+  if(s.live){ s.live.skipNext = false; liveSendOutcome(s, s.pitches[s.pitches.length - 1], call ? call.seq : null, skip, liveNow()); }   // C1 B
   const flashKey = uid();
   state.flashCell = { row, col, strike: isStrikeCell(row, col), key: flashKey };
   render();
@@ -7352,6 +7622,8 @@ window.endSession = async function(){
     raOn: state.activeSession.raOn === true,   // U14
     purpose: state.activeSession.kind === 'bullpen' ? (state.activeSession.purpose || null) : null,   // SR1 A
     chartedIntent: chartsIntent(state.activeSession), chartedOutcome: chartsOutcome(state.activeSession),   // C1 Stage A
+    liveSessionId: state.activeSession.live ? state.activeSession.live.id : null,                         // C1 Stage B: a piece
+    livePart: state.activeSession.live ? state.activeSession.live.part : null,
     assignmentId: state.activeSession.assignmentId || null,   // F2 Stage 1
     campId: state.activeSession.campId || null,               // F2 Stage 4
     pitchCountAdjust: state.activeSession.kind === 'game' ? gamePitchCountAdj(state.activeSession) : 0,   // Oct 19: + / - pitch count, saved
@@ -7366,6 +7638,11 @@ window.endSession = async function(){
   if(item.kind === 'game' && !item.chartedOutcome){   // C1 A: an Intent-only game charted no line, outs or runners
     item.gameFinalInning = null; item.gameOutsRecorded = null; item.runnersLeft = null; item.leftOwners = null;
     item.relievedSessionId = null; item.inheritedRunners = null; item.pitchCountAdjust = 0;
+  }
+  if(state.activeSession.live){   // C1 B: leave (the part opens again from the next pitch), after any unmatched taps
+    const L = state.activeSession.live; L.done = true;
+    liveAfterSet(liveAfterList().concat([{ itemId: item.id, liveId: L.id, queue: L.queue || [] }]));
+    if(item.kind === 'game' && L.part === 'outcome' && state.skipRecap) state.liveAfter = L.id;   // a pitching change: the next pitcher's points back
   }
   await enqueueOutboxItem(state.session.user.id, item);
   gsMark(item.kind === 'game' ? 'game' : 'pen');   // N1-D: Get started knows at once, offline too
@@ -7579,6 +7856,7 @@ async function syncOutbox(){
   render();
 
   for(const item of items){
+    if(item.liveSessionId) await liveFinishItem(item);   // C1 B: match what was charted offline, then leave
     const sessionRow = {
       id: item.id,
       pitcher_id: item.pitcherId,
@@ -7605,6 +7883,7 @@ async function syncOutbox(){
       ra_on: item.raOn === true,   // U14: the start question's answer (false for anything queued before U14)
       purpose: item.purpose || null,   // SR1 A: the pen's tag (null: Feel Good / no tag, a game, or queued before Stage A)
       charted_intent: item.chartedIntent !== false, charted_outcome: item.chartedOutcome !== false,   // C1 Stage A (older items: both)
+      live_session_id: item.liveSessionId || null, live_part: item.livePart || null,                    // C1 Stage B
       assignment_id: item.assignmentId || null,   // F2 Stage 1: the server releases it in the same save
       camp_id: item.campId || null,               // F2 Stage 4: the camp (and its name) rides on the session
       pitch_count_adjust: item.kind === 'game' ? (item.pitchCountAdjust || 0) : 0,   // Oct 19: + / - pitch count
@@ -7673,7 +7952,8 @@ async function syncOutbox(){
       charged_prev: item.kind === 'game' && p.chargedPrev === true ? true : null,
       charged_runs: item.kind === 'game' && p.chargedRuns && p.chargedRuns.length ? p.chargedRuns : null,   // R3 (B3)
       charged_prev_session: item.kind === 'game' && p.chargedPrev === true ? (item.relievedSessionId || null) : null,
-      play_flags: item.kind === 'game' && p.playFlags && p.playFlags.length ? p.playFlags : null   // C1 Stage A: More Plays
+      play_flags: item.kind === 'game' && p.playFlags && p.playFlags.length ? p.playFlags : null,   // C1 Stage A: More Plays
+      live_seq: Number.isInteger(p.liveSeq) ? p.liveSeq : null                                         // C1 Stage B
     }));
     // G1b (h): game_events, pitches' sibling in the same queued item.
     // after_pitch_id relies on pitch ids being client-generated UUIDs
@@ -8902,7 +9182,8 @@ function renderSessionKindChooser(){
   return `<div class="kind-chooser">
     <h2 class="kind-chooser-label">${PLACE.chart} · What will we be charting today?</h2>
     <div class="kind-chooser-buttons" role="group" aria-label="What will we be charting today?">
-      ${kinds.map(c => `<button type="button" class="kind-card" onclick="chooseSessionKind('${c.k}')"><span class="kind-card-title display">${c.title}</span><span class="kind-card-sub">${c.sub}</span></button>`).join('')}
+      ${kinds.map(c => { const lv = liveFor(state.currentPitcherId, c.k);   // C1 B: someone's charting it now
+        return `<button type="button" class="kind-card${lv ? ' kind-live' : ''}" onclick="chooseSessionKind('${c.k}')"><span class="kind-card-title display">${c.title}</span><span class="kind-card-sub">${lv ? '<span class="live-dot" aria-hidden="true"></span>In Progress — Chart Now' : c.sub}</span></button>`; }).join('')}
     </div>
     ${last ? `<button type="button" class="kind-last" onclick="setView('history')">
       <span class="kind-last-label">Last session</span>
@@ -9014,7 +9295,9 @@ window.chooseSessionKind = async function(kind){
   state.activeSession.typeOrder = pitchTypesFor(pq).slice();   // U15: this session's colour order (colorTypesFor)
   state.activeSession.startQ = { radar: !!(pq && pq.usesRadarGun), rel: raLastAnswer(pq), file: fileDefault(), purpose: null,   // SR1 A: Feel Good (no tag) to start, every time
     pi: true, po: true };   // C1 Stage A: the parts this device charts -- both to start (today's), at least one
-  const handoff = kind === 'game' ? gameHandoff() : null;
+  { const lv = liveFor(state.currentPitcherId, kind), q = state.activeSession.startQ;   // C1 B: only the open part
+    if(lv){ q.live = lv.live_id; q.liveOpen = lv.open; q.liveTeam = lv.team_id; q.pi = lv.open.includes('intent'); q.po = lv.open.includes('outcome') && !q.pi; } }
+  const handoff = kind === 'game' && !state.activeSession.startQ.live ? gameHandoff() : null;
   if(handoff){ state.activeSession.startQ.carry = true; if(handoff.opponent && !state.activeSession.opponent) state.activeSession.opponent = handoff.opponent; }
   if(kind === 'game') loadOpponents();   // the saved list, refreshed in the background when online
   await storSet(draftKey(), state.activeSession);
@@ -9167,9 +9450,41 @@ window.startSessionNow = async function(){
     defaultGameDelivery(s);
   }
   if(s.kind === 'game'){ try{ localStorage.removeItem(GAME_HANDOFF_KEY); }catch(e){} }   // asked once
+  // C1 Stage B: one part, with a signal -> a live session others can join (no signal: a private one, as Stage A);
+  // joining takes the open part and picks up at the next pitch.
+  state.liveStartError = '';
+  const livePart = pi ? 'intent' : 'outcome';
+  if(q.live){
+    if(!isOnline()){ state.liveStartError = 'Joining needs a connection.'; render(); return; }
+    let r = null;
+    try{ r = await liveRpc('live_join', { p_live: q.live, p_part: livePart, p_profile: state.profile.id }); }catch(e){}
+    if(!r || !r.ok){
+      state.liveStartError = !r ? "Couldn't reach the server. Try again." : r.error === 'taken' ? 'Someone just took that part.'
+        : r.error === 'closed' ? 'That session has ended.' : "You can't join this one.";
+      s.parts = null; liveRefreshSummary(); render(); return;
+    }
+    if(!isCoach()) s.fileTeam = q.liveTeam || null;
+    s.live = { id: q.live, part: livePart, from: r.from_seq || 1, after: Math.max(0, (r.from_seq || 1) - 1), pitches: {}, queue: [], view: r.live || null };
+    if(s.kind === 'game' && r.live && r.live.state && r.live.state.side) gameBatterSides(s)[s.atBatIndex] = r.live.state.side;
+  } else if(pi !== po && isOnline()){
+    try{
+      const r = await liveRpc('live_start', { p_pitcher: state.currentPitcherId, p_team: sessionFiling(s), p_kind: s.kind, p_part: livePart,
+        p_profile: state.profile.id, p_after: state.liveAfter || null });
+      state.liveAfter = null;
+      if(r && r.ok) s.live = { id: r.live_id, part: livePart, from: 1, after: 0, pitches: {}, queue: [], view: r.live || null };
+      else if(r && r.error === 'live_exists'){   // someone got there first: offer the open part instead
+        await liveRefreshSummary();
+        const lv = (state.liveSummary || []).find(x => x.live_id === r.live_id);
+        if(lv){ q.live = lv.live_id; q.liveOpen = lv.open; q.liveTeam = lv.team_id; q.pi = lv.open.includes('intent'); q.po = lv.open.includes('outcome') && !q.pi; }
+        state.liveStartError = 'This pitcher is already being charted on another device' + (lv ? ': take the open part.' : '.');
+        s.parts = null; render(); return;
+      }
+    }catch(e){ /* no signal: a private session */ }
+  }
   s.startQ = null;
   await storSet(draftKey(), s);
   render();
+  if(s.live) liveEnsurePolling();
 };
 // Opponents for the quick-pick list: every opponent this team's games were charted against, plus every name typed
 // here, newest first. Kept on the device per team (works offline); refreshed from the team's saved games when online.
@@ -9317,16 +9632,18 @@ window.setMidFrom = async function(i){
 // Live Game, choosing Intent replaces "Turn on Intent?".
 function partsStartQuestion(q, game){
   const pi = q.pi !== false, po = q.po !== false;
+  const lv = q.live ? (q.liveOpen || []) : null;   // C1 B: joining -- only the open part; the other is on another device
+  const busy = k => lv && !lv.includes(k) ? ' · on another device' : '';
   const tray = segTray([
-    { label: 'Intent — Pitch Calling', selected: pi, onclick: `setStartQ('pi', ${pi ? 'false' : 'true'})` },
-    { label: game ? 'Outcome & Response — Pitch Locations and Results' : 'Outcome — Pitch Locations', selected: po, onclick: `setStartQ('po', ${po ? 'false' : 'true'})` }
+    { label: 'Intent — Pitch Calling' + busy('intent'), selected: pi, disabled: !!busy('intent'), onclick: `setStartQ('pi', ${pi ? 'false' : 'true'})` },
+    { label: (game ? 'Outcome & Response — Pitch Locations and Results' : 'Outcome — Pitch Locations') + busy('outcome'), selected: po, disabled: !!busy('outcome'), onclick: `setStartQ('po', ${po ? 'false' : 'true'})` }
   ], { label: 'Parts of charting (choose one or both)', cls: 'start-yn start-parts' });   // no sliding indicator: both can be on
   const note = !pi && !po ? 'Choose at least one part.'
     : pi && po ? (game ? 'Tap where the catcher calls the pitch, then where it went.' : 'Tap where each pitch is aimed, then where it landed.')
     : pi ? 'You call each pitch: tap where it\'s aimed, then Confirm Pitch. Where it goes isn\'t charted here.'
     : (game ? 'Tap where each pitch went, then what happened, as usual. No calls are charted here.' : 'Tap where each pitch landed. No targets, so no accuracy for this pen.');
-  return `<div class="start-q-item"><div class="start-q-label">What parts of charting will you be handling?</div>${tray}
-    <p class="start-q-note">${note}</p></div>`;
+  return `<div class="start-q-item"><div class="start-q-label">What parts of charting will you be handling?</div>${lv ? '<p class="start-q-note live-join-note"><span class="live-dot" aria-hidden="true"></span>In progress on another device: you\'ll pick up at the next pitch.</p>' : ''}${tray}
+    <p class="start-q-note">${note}</p>${state.liveStartError ? `<p class="profile-msg">${escHtml(state.liveStartError)}</p>` : ''}</div>`;
 }
 function renderStartQuestions(p){
   const s = state.activeSession, q = s.startQ, game = s.kind === 'game';
@@ -9418,6 +9735,10 @@ window.handleGameZoneTap = async function(row, col){
     state.gameBallFlash = key;
     setTimeout(() => { if(state.gameBallFlash === key){ state.gameBallFlash = null; render(); } }, 650);
   }
+  if(si.live && si.live.part === 'outcome' && !(si.g5 && G5_CHART_STEPS[si.g5.step]) && liveWaiting(si)){
+    state.hint = 'Waiting for the call'; render(); return;   // C1 B: Intent comes first
+  }
+  const liveCall = si.live && si.live.part === 'outcome' ? liveNextCall(si) : null;
   // A re-tap (whether idle or mid-result-menu) starts this pitch's capture
   // over -- simplest correction path for a mis-tapped location, same
   // "just tap again" precedent as a bullpen's tap 1 always overwriting a
@@ -9430,6 +9751,11 @@ window.handleGameZoneTap = async function(row, col){
   // G1b-r3: the dot is remembered for the whole play (drawn above the
   // in-grid boxes), and survives a resume -- cleared only by Next Pitch or
   // by Back cancelling this location.
+  if(si.live && si.live.part === 'outcome'){   // C1 B
+    Object.assign(state.activeSession.gamePendingPitch, { liveSeq: liveCall ? liveCall.seq : null, liveSkip: !!(si.live.skipNext && !liveCall),
+      liveAt: liveNow(), liveTarget: liveCall && liveCall.target_row != null ? { row: liveCall.target_row, col: liveCall.target_col } : null });
+    if(liveCall && liveCall.type) state.activeSession.gamePendingPitch.type = liveCall.type;
+  }
   state.activeSession.gameDot = { row, col };
   state.activeSession.gameVeloIdx = null;
   state.activeSession.gameResultMenu = null;
@@ -9937,6 +10263,11 @@ window.recordGameResult = async function(result, extra){
     playFlags: extra.playFlags && extra.playFlags.length ? extra.playFlags.slice() : null   // C1 A: More Plays markers
   });
   const pushedPitch = s.pitches[s.pitches.length - 1];
+  if(s.live && s.live.part === 'outcome'){   // C1 B: the other half of the called pitch (or one of its own)
+    if(pending.liveTarget) pushedPitch.liveTarget = pending.liveTarget;
+    s.live.skipNext = false;
+    liveSendOutcome(s, pushedPitch, pending.liveSeq || null, !!pending.liveSkip, pending.liveAt);
+  }
   const atBatBefore = s.atBatIndex;
   const playResult = applyGameResultProgression(result, extra);
   pushedPitch.batterTo = playResult.batterTo;
@@ -13028,7 +13359,7 @@ function g5BelowChart(step){
     top = `<div class="g5-below"><div class="g5-q">Extra inning — start with a runner on 2B?</div>
       ${segTray([{ label: 'Yes', onclick: 'gridTiebreak(true)' }, { label: 'No', onclick: 'gridTiebreak(false)' }], { label: 'Start with a runner on 2B?', cls: 'g5-qbtns' })}</div>`;
   }
-  return top + g5ResultRow(step) + g5NavRow();
+  return top + liveSkipRow(state.activeSession) + g5ResultRow(step) + g5NavRow();
 }
 // Joel, Oct 19 (phones): the step badge sits beside the batter pill, under the chart, in short words --
 // Tap Pitch Intent (Intent on) -> Tap Pitch Outcome -> Tap Pitch Result (then K / B / F / IP).
@@ -13046,6 +13377,7 @@ function g5Surface(pitches, chartingPerspective, currentBatterSide){
   const sa = state.activeSession, asking = !!(sa && sa.g5 && G5_CHART_STEPS[sa.g5.step]);
   // Intent (Oct 12): the called spot gets the bullpen's target dot; where it went gets the dark box with the ball
   const mark = intentOnly(sa) ? c1Mark(sa)   // C1 A: the call being made
+    : (sa && sa.live && sa.live.part === 'outcome' && !asking) ? liveCallScreen(sa)   // C1 B: the caller's call
     : (sa && sa.intent) ? (sa.gameTarget || (asking && sa.gamePendingPitch && sa.gamePendingPitch.target) || null) : (asking ? sa.gameDot : null);
   state.gameBallCell = (sa && sa.intent && asking) ? sa.gameDot : null;
   let chart = renderZoneGrid(pitches, true, state.flashCell, mark, chartingPerspective, currentBatterSide, 'handleGameZoneTap');
@@ -13420,6 +13752,8 @@ window.openSessionSheet = function(){ state.sessionSheetOpen = true; state.sessi
 window.closeSessionSheet = function(){ state.sessionSheetOpen = false; state.sessionDiscardArmed = false; render(); };
 window.armDiscardSession = function(){ state.sessionDiscardArmed = true; render(); };
 window.discardActiveSession = async function(){
+  if(state.activeSession && state.activeSession.live && isOnline()){ liveRpc('live_leave', { p_live: state.activeSession.live.id }).catch(() => {}); }   // C1 B: the part opens again
+  if(state.activeSession && state.activeSession.live) state.activeSession.live.done = true;
   if(state.activeSession && state.activeSession.assignmentId){   // F2 Stage 1: a discard ends the assignment
     const st = assignStore(); st.cancels = (st.cancels || []).concat([state.activeSession.assignmentId]); assignSave();
     loadAssignments();
@@ -13593,9 +13927,22 @@ function v1StatusSlot(s){
   return renderStatusDelivery();
 }
 // C1 A: the Intent-only cell (stored catcher frame) where the screen draws it
+// C1 B: the Outcome device's line: waiting for the call (and, after 4 s, Chart without it), or the call itself
+function liveOutcomeCaption(s){
+  if(!s || !s.live || s.live.part !== 'outcome') return '';
+  if(liveWaiting(s)) return 'Waiting for the call' + (s.live.skipShown ? ` <button type="button" class="btn btn-secondary btn-sm live-skip" onclick="event.stopPropagation(); liveSkip()">Chart without it</button>` : '');
+  if(s.live.skipNext) return 'Chart without a call: Select Pitch Outcome';
+  const c = liveNextCall(s);
+  return c ? `Select Pitch Outcome · ${escHtml(pitchLabel(c.type))} called ${zoneNumberFor(c.target_row, c.target_col, c.batter_side || 'R') || 'ball'}` : '';
+}
+function liveSkipRow(s){
+  if(!s || s.kind !== 'game' || !s.live || s.live.part !== 'outcome') return '';
+  return (liveWaiting(s) && s.live.skipShown
+    ? `<div class="g5-nav"><button type="button" class="btn btn-secondary btn-sm g5-nav-btn live-skip" onclick="liveSkip()">Chart without it</button></div>` : '') + liveStatusLine(s);
+}
 function c1Mark(s){ const c = s && s.c1; return c && c.cell && c.step !== 'aim' ? { row: c.cell.row, col: perspectiveCol(c.cell.col, sessionPerspective(s)) } : null; }
 function v1PenStage(pitches, chartingPerspective, currentBatterSide){
-  const mark = intentOnly(state.activeSession) ? c1Mark(state.activeSession) : state.pendingTarget;
+  const mark = intentOnly(state.activeSession) ? c1Mark(state.activeSession) : outcomeOnlyPen(state.activeSession) ? liveCallScreen(state.activeSession) : state.pendingTarget;
   const grid = renderZoneGrid(pitches, true, state.flashCell, mark, chartingPerspective, currentBatterSide, 'handleZoneTap');
   return v1Stage(v1View(chartingPerspective), v1Layout(), grid, isNoBatter(state.activeSession) ? {} : { batter: { left: insideColumnOnScreenLeft(chartingPerspective, currentBatterSide) } });
 }
@@ -13721,7 +14068,7 @@ function renderSessionView(){
     </div>`;
   }).join('') || `<p style="color:var(--ink-faint);font-size:12px;">No pitches logged yet. Pick a type, then tap the zone.</p>`;
 
-  const zoneCaption = outcomeOnlyPen(state.activeSession) ? (state.selectedType ? 'Select Pitch Outcome' : 'Select Pitch Type')   // C1 A
+  const zoneCaption = outcomeOnlyPen(state.activeSession) ? (liveOutcomeCaption(state.activeSession) || (state.selectedType ? 'Select Pitch Outcome' : 'Select Pitch Type'))   // C1 A / B
     : state.pendingTarget
     ? `Now tap where it actually landed <a href="#" onclick="resetTarget();return false;" style="color:var(--accent-ink);">(reset target)</a>`
     : `Tap where you're aiming`;
@@ -13742,7 +14089,7 @@ function renderSessionView(){
         <div class="ph-grid-wrap">${renderPhoneHint()}
           <div class="zone-wrap pb-zone">
             ${v1PenStage(pitches, chartingPerspective, currentBatterSide)}
-            ${c1i ? '' : `<div class="zone-caption">${zoneCaption}</div>${state.hint ? `<div class="ph-tap-hint">${escHtml(state.hint)}</div>` : ''}`}${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
+            ${c1i ? '' : `<div class="zone-caption">${zoneCaption}</div>${state.hint ? `<div class="ph-tap-hint">${escHtml(state.hint)}</div>` : ''}${state.activeSession.live ? liveStatusLine(state.activeSession) : ''}`}${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
           </div>
         </div>
         ${c1i ? renderC1Controls(state.activeSession) : renderPenBatterPill()}
@@ -13780,7 +14127,7 @@ function renderSessionView(){
         <div>
           <div class="zone-wrap">
             ${v1PenStage(pitches, chartingPerspective, currentBatterSide)}
-            ${c1i ? renderC1Controls(state.activeSession) : v1UnderRow(zoneCaption, isNoBatter(state.activeSession) ? '' : v1BatterPill(), insideColumnOnScreenLeft(chartingPerspective, currentBatterSide))}${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
+            ${c1i ? renderC1Controls(state.activeSession) : v1UnderRow(zoneCaption, isNoBatter(state.activeSession) ? '' : v1BatterPill(), insideColumnOnScreenLeft(chartingPerspective, currentBatterSide)) + (state.activeSession.live ? liveStatusLine(state.activeSession) : '')}${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
           </div>
         </div>
         ${sessionUsesRadarGun(state.activeSession) ? `<div>
@@ -13827,7 +14174,7 @@ function renderSessionView(){
           <div class="wide-right">
             <div class="zone-wrap">
               ${v1PenStage(pitches, chartingPerspective, currentBatterSide)}
-              ${c1i ? renderC1Controls(state.activeSession) : v1UnderRow(renderWideCaption(zoneCaption), isNoBatter(state.activeSession) ? '' : v1BatterPill(), insideColumnOnScreenLeft(chartingPerspective, currentBatterSide))}${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
+              ${c1i ? renderC1Controls(state.activeSession) : v1UnderRow(renderWideCaption(zoneCaption), isNoBatter(state.activeSession) ? '' : v1BatterPill(), insideColumnOnScreenLeft(chartingPerspective, currentBatterSide)) + (state.activeSession.live ? liveStatusLine(state.activeSession) : '')}${sportCfg().zoneNote ? `<div class="zone-note">${sportCfg().zoneNote}</div>` : ''}
             </div>
             ${sessionUsesRadarGun(state.activeSession) ? `<div>
               <div class="field-label" style="margin-bottom:var(--s-8);">Velocity</div>
@@ -15107,7 +15454,7 @@ function renderSideNav(teamSelector){
     ${renderOutboxBadge()}
     <div class="nav-items">
       ${item('home', DOCK_ICONS.home, PLACE.home, v === 'home', "navGo('home')")}
-      ${viewOnlyLinked() ? '' : item('charts', DOCK_ICONS.charts, PLACE.chart, v === 'session', "navGo('charts')")}
+      ${viewOnlyLinked() ? '' : item('charts', DOCK_ICONS.charts, PLACE.chart, v === 'session', "navGo('charts')", liveEntries().length ? 'Live' : '')}
       ${item('history', DOCK_ICONS.history, PLACE.history, history, "navGo('history')")}
       <div class="nav-subs">${sub(PLACE.sessions, v === 'history', "navGo('history')")}${sub(PLACE.trends, v === 'trends', "navGo('trends')")}</div>
       ${coach ? item('roster', DOCK_ICONS.roster, PLACE.roster, v === 'roster' || v === 'pitcher' || v === 'pitcherProfile', "navGo('roster')", facNew ? facNew + ' new' : '') : ''}
@@ -15450,7 +15797,7 @@ function renderLastSessionCard(p, s, label, withAcc){
 }
 function isParentView(){ return activePlayerIsMine() || activeLinked() === 'guardian' || activeLinked() === 'family'; }
 function renderHomeView(){
-  if(isCoach()) return renderGettingStarted() + renderCoachHome();
+  if(isCoach()) return renderLiveNotice() + renderGettingStarted() + renderCoachHome();   // C1 B: the live notice
   const p = currentPitcher(); if(!p) return renderGettingStarted();
   const list = myWeekList(), wk = weekDays(list);
   const sorted = list.slice().sort((a, b) => b.at - a.at);
@@ -15460,7 +15807,7 @@ function renderHomeView(){
     const chips = chipChoices().length > 1 ? renderPitcherChip(p) : `<div class="pitcher-chip-row"><span class="pitcher-chip is-static">${renderHeadshot(p)}<span class="pitcher-chip-name">${escHtml(p.name)}</span></span></div>`;
     const earlier = sorted.slice(1, 4);
     return `<div class="home-page">
-      ${renderGettingStarted()}
+      ${renderLiveNotice()}${renderGettingStarted()}
       ${renderMilestoneBanner()}
       ${chips}
       ${renderLineScore({ single: wk, sentence: `${first} threw ${wk.total} pitch${wk.total === 1 ? '' : 'es'} in ${wk.sessions} session${wk.sessions === 1 ? '' : 's'} this week.`, label: `${p.name} · this week` })}
@@ -15471,7 +15818,7 @@ function renderHomeView(){
     </div>`;
   }
   return `<div class="home-page">
-    ${renderGettingStarted()}
+    ${renderLiveNotice()}${renderGettingStarted()}
     ${renderMilestoneBanner()}
     ${renderLineScore({ single: wk })}
     ${chartBtn}

@@ -76,7 +76,11 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Checked:** `scripts/rp1-check.ts` (233 of 233: every sentence, both sports, every level; nothing outside The Play,
   the at-bat endings and the caption changed; the same versions carry it). `scripts/c1a-report-check.ts`: pens
   identical; its 27 game cases differ only in those three places. Three sent staging game reports hash the same after
-  the deploy.
+  the deploy. End to end on staging: a two-play test game charted in the app, its report made by the deployed function:
+  "Flyball out in the Right-field corner", "Shallow SS groundball out", at-bat log "Out · F9 · Fly · in the
+  Right-field corner".
+- **Left on staging:** that test game (b709c0bd) and two one-pitch games from interrupted test runs (47581dd4,
+  af88049d) on a facility team; the demo logins aren't allowed to delete them.
 - **Production (Joel):** merge, then `supabase functions deploy send-session-report`. No app cache bump (no app file
   changed).
 

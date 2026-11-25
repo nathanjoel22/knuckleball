@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-25 · C1 Stage B (shared charting between two devices) · **staging** (PR #153), branch `c1-stage-b`, cache `kb-shell-v375`
+## 2026-11-25 · C1 Stage B (shared charting between two devices) · **production** (PR #153, merge `4ff4eef`), branch `c1-stage-b`, cache `kb-shell-v375`
 
 - **When a session is live:** it was started with one part and a signal. Anyone who can chart that pitcher sees it:
   - the Home notice;
@@ -82,7 +82,8 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 - **Open:**
   - the "Keep calling for <name>?" prompt is checked only in the database;
   - Stage C compiles the pieces (until then they show as two sessions).
-- **Production order (Joel):** backup → `db push` → merge. No function deploy.
+- **On production (Nov 24, Joel):** backup `~/knuckleball-backups/2026-11-24-2243-*`; both migrations (policies 32 / 12, no
+  grants on the live tables, `sync_session` unchanged in shape); merged.
 
 ---
 

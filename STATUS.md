@@ -60,7 +60,7 @@ Newest first. Entries from Oct 6 to Oct 9, 2026 and the "Earlier releases" secti
 
 ---
 
-## 2026-11-25 · RP1 "The Play" (field places by name in game reports) · **staging** (function only; PR pending), branch `rp1-the-play`
+## 2026-11-25 · RP1 "The Play" (field places by name in game reports) · **staging** (function only; PR #164), branch `rp1-the-play`
 
 - **Packet:** `plans/rp1-the-play.md` (verbatim). Joel's answers: yes to 1, 3, 4, 5, 6. Decision 2 was replaced: the
   charter's own Infield / Outfield / Foul answer decides; the fielder never does, except on box 24 (the packet's rule).
